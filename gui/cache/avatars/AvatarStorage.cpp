@@ -13,7 +13,7 @@ namespace
 {
     QString CreateKey(QStringView _aimId, const int _sizePx)
     {
-        assert(_sizePx > 0);
+        im_assert(_sizePx > 0);
         const QStringView aimId = _aimId.isEmpty() ? u"default" : _aimId;
         return aimId % u'/' % QString::number(_sizePx);
     }
@@ -68,16 +68,16 @@ namespace Logic
             }
 
             auto defaultAvatar = Utils::getDefaultAvatar(_aimId, drawDisplayName, _sizePx);
-            assert(!defaultAvatar.isNull());
+            im_assert(!defaultAvatar.isNull());
 
             const auto result = AvatarsByAimId_.emplace(_aimId, std::move(defaultAvatar));
-            assert(result.second);
+            im_assert(result.second);
 
             iterByAimId = result.first;
         }
 
         const auto &avatarByAimId = iterByAimId->second;
-        assert(!avatarByAimId.isNull());
+        im_assert(!avatarByAimId.isNull());
 
         const auto regenerateAvatar = ((avatarByAimId.width() < _sizePx) && _isDefault) && _aimId != _displayName;
         if (regenerateAvatar || _regenerate)
@@ -96,7 +96,7 @@ namespace Logic
             scaledImage = avatarByAimId.scaledToHeight(_sizePx, Qt::SmoothTransformation);
 
         const auto result = AvatarsByAimIdAndSize_.emplace(key, std::move(scaledImage));
-        assert(result.second);
+        im_assert(result.second);
 
         if (_aimId.isEmpty() || _aimId == u"mail")
             return result.first->second;
@@ -127,7 +127,7 @@ namespace Logic
 
     void AvatarStorage::SetAvatar(const QString& _aimId, const QPixmap& _pixmap)
     {
-        assert(!_aimId.isEmpty());
+        im_assert(!_aimId.isEmpty());
 
         auto iter = AvatarsByAimId_.find(_aimId);
         if (iter == AvatarsByAimId_.end())
@@ -207,12 +207,12 @@ namespace Logic
 
     QPixmap AvatarStorage::GetRounded(const QString& _aimId, const QString& _displayName, const int _sizePx, bool& _isDefault, bool _regenerate, bool mini_icons)
     {
-        assert(_sizePx > 0);
+        im_assert(_sizePx > 0);
 
         const auto &avatar = Get(_aimId, _displayName, _sizePx, _isDefault, _regenerate);
         if (avatar.isNull())
         {
-            assert(!"avatar is null");
+            im_assert(!"avatar is null");
             return avatar;
         }
 
@@ -268,7 +268,7 @@ namespace Logic
             return;
         }
 
-        assert(!_aimId.isEmpty());
+        im_assert(!_aimId.isEmpty());
         LoadedAvatarsFails_.removeAll(_aimId);
 
         const auto avatarSize = QSize(_size, _size);
@@ -381,7 +381,7 @@ namespace Logic
 
     QPixmap AvatarStorage::GetRounded(const QPixmap& _avatar, const QString& _aimId, bool mini_icons, bool _isDefault)
     {
-        assert(!_avatar.isNull());
+        im_assert(!_avatar.isNull());
 
         const QString key = CreateKey(_aimId, _avatar.width());
 

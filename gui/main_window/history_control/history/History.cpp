@@ -199,7 +199,7 @@ namespace hist
         : QObject(_parent)
         , aimId_(_aimId)
     {
-        assert(!aimId_.isEmpty());
+        im_assert(!aimId_.isEmpty());
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::messageBuddies, this, &History::messageBuddies);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::messageIdsFromServer, this, &History::messageIdsFromServer);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::messageIdsUpdated, this, &History::messageIdsUpdated);
@@ -296,7 +296,7 @@ namespace hist
         }
         else
         {
-            assert(!messages_.empty() || !pendings_.empty());
+            im_assert(!messages_.empty() || !pendings_.empty());
             if (viewBounds_.bottom)
             {
                 const auto it = messages_.upper_bound(*viewBounds_.bottom);
@@ -496,21 +496,21 @@ namespace hist
     void History::setTopBound(const Logic::MessageKey& _key, CheckViewLock _mode)
     {
         if (_mode == CheckViewLock::Yes)
-            assert(canViewFetch());
+            im_assert(canViewFetch());
         else
-            assert(isViewLocked());
-        assert(canUnload(UnloadDirection::toTop, _mode));
+            im_assert(isViewLocked());
+        im_assert(canUnload(UnloadDirection::toTop, _mode));
         qCDebug(history) << aimId_ << "setTopBound" << _key.getId() << _key.getInternalId();
         logCurrentIds(qsl("setTopBoundBefore"), LogType::Simple);
         if (_key.hasId())
         {
-            assert(viewBounds_.top);
+            im_assert(viewBounds_.top);
             if (viewBounds_.top)
                 viewBounds_.top = _key.getId();
         }
         else
         {
-            assert(viewBounds_.topPending);
+            im_assert(viewBounds_.topPending);
             if (viewBounds_.topPending)
             {
                 viewBounds_.topPending = _key;
@@ -525,15 +525,15 @@ namespace hist
     void History::setBottomBound(const Logic::MessageKey& _key, CheckViewLock _mode)
     {
         if (_mode == CheckViewLock::Yes)
-            assert(canViewFetch());
+            im_assert(canViewFetch());
         else
-            assert(isViewLocked());
-        assert(canUnload(UnloadDirection::toBottom, _mode));
+            im_assert(isViewLocked());
+        im_assert(canUnload(UnloadDirection::toBottom, _mode));
         qCDebug(history) << aimId_ << "setBottomBound" << _key.getId() << _key.getInternalId();
         logCurrentIds(qsl("setBottomBoundBefore"), LogType::Simple);
         if (_key.hasId())
         {
-            assert(viewBounds_.bottom);
+            im_assert(viewBounds_.bottom);
             if (viewBounds_.bottom)
             {
                 viewBounds_.bottom = _key.getId();
@@ -543,7 +543,7 @@ namespace hist
         }
         else
         {
-            assert(viewBounds_.bottomPending);
+            im_assert(viewBounds_.bottomPending);
             if (viewBounds_.bottomPending)
                 viewBounds_.bottomPending = _key;
         }
@@ -563,7 +563,7 @@ namespace hist
         const auto nIt = messages_.find(_newer);
         if (nIt != messages_.end() && oIt != messages_.end())
         {
-            assert(isVisibleMessage(nIt->second) && isVisibleMessage(oIt->second));
+            im_assert(isVisibleMessage(nIt->second) && isVisibleMessage(oIt->second));
             for (auto it = nIt; it != oIt; --it)
             {
                 if (const auto prev = std::prev(it); prev == oIt)
@@ -760,7 +760,7 @@ namespace hist
 
         for (const auto& msg : range)
         {
-            assert(msg->IsPending());
+            im_assert(msg->IsPending());
             auto key = msg->ToKey();
             if (auto it = std::find_if(pendings_.begin(), pendings_.end(), isKeyEqual(key)); it != pendings_.end())
             {
@@ -849,7 +849,7 @@ namespace hist
     template<typename R>
     [[nodiscard]] static qint64 requestMessagesByIds(const QString& aimId, IdsMessages mode, const R& range)
     {
-        assert(std::distance(range.begin(), range.end()) > 0);
+        im_assert(std::distance(range.begin(), range.end()) > 0);
         Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
         collection.set_value_as_qstring("contact", aimId);
         core::ifptr<core::iarray> idsArray(collection->create_array());
@@ -882,7 +882,7 @@ namespace hist
             return;
         }
 
-        assert(std::is_sorted(_ids.begin(), _ids.end()));
+        im_assert(std::is_sorted(_ids.begin(), _ids.end()));
 
         std::scoped_lock locker(lockForViewFetchCounter_);
 
@@ -1020,7 +1020,7 @@ namespace hist
         if (_aimId != aimId_)
             return;
 
-        assert(_key.isPending());
+        im_assert(_key.isPending());
 
         const auto it = std::lower_bound(pendings_.begin(), pendings_.end(), MessageWithKey{ _key, nullptr }, msgWithKeyComparator);
         if (it != pendings_.end() && it->key == _key)
@@ -1139,7 +1139,7 @@ namespace hist
             if (!modification->HasText() &&
                 !modification->IsChatEvent())
             {
-                assert(!"unexpected modification");
+                im_assert(!"unexpected modification");
                 continue;
             }
 
@@ -1279,25 +1279,25 @@ namespace hist
                             }
                             else if (viewBounds_.topPending == key)
                             {
-                                assert(!pendings_.empty());
+                                im_assert(!pendings_.empty());
                                 const auto it = std::lower_bound(pendings_.begin(), pendings_.end(), MessageWithKey{ *viewBounds_.topPending, nullptr }, msgWithKeyComparator);
-                                assert(it != pendings_.end());
+                                im_assert(it != pendings_.end());
                                 if (it != pendings_.end())
                                 {
-                                    assert(it->key != key);
+                                    im_assert(it->key != key);
                                     viewBounds_.topPending = it->key;
                                 }
                             }
                             else if (viewBounds_.bottomPending == key)
                             {
-                                assert(!pendings_.empty());
+                                im_assert(!pendings_.empty());
                                 const auto it = std::find_if(pendings_.crbegin(), pendings_.crend(), [&key](const auto& x){
                                     return x.key < key;
                                 });
-                                assert(it != pendings_.crend());
+                                im_assert(it != pendings_.crend());
                                 if (it != pendings_.crend())
                                 {
-                                    assert(it->key != key);
+                                    im_assert(it->key != key);
                                     viewBounds_.bottomPending = it->key;
                                 }
                             }
@@ -1527,7 +1527,7 @@ namespace hist
 
     void History::processRequestedByIds(const Data::MessageBuddies& _buddies)
     {
-        assert(!messages_.empty());
+        im_assert(!messages_.empty());
         if (messages_.empty())
             return;
 

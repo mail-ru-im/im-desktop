@@ -19,8 +19,8 @@ namespace Logic
         , isHovered_(_isHovered)
         , unreadDigitsNumber_(_unreadDigitsNumber)
     {
-        assert(_unreadDigitsNumber >= 0);
-        assert(_unreadDigitsNumber <= 2);
+        im_assert(_unreadDigitsNumber >= 0);
+        im_assert(_unreadDigitsNumber <= 2);
     }
 
     bool UnknownItemDelegate::ItemKey::operator < (const ItemKey& _key) const
@@ -105,6 +105,12 @@ namespace Logic
     void UnknownItemDelegate::setFixedWidth(int _newWidth)
     {
         viewParams_.fixedWidth_ = _newWidth;
+    }
+
+    bool UnknownItemDelegate::needsTooltip(const QString& _aimId, const QModelIndex& _index, QPoint _posCursor) const
+    {
+        const auto it = items_.find(_aimId);
+        return it != items_.end() && it->second && it->second->needsTooltip(_posCursor);
     }
 
     void UnknownItemDelegate::dlgStateChanged(const Data::DlgState& _dlgState)

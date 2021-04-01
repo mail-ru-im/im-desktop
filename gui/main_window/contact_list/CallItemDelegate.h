@@ -23,10 +23,17 @@ namespace Logic
 
         QSize sizeHint(const QStyleOptionViewItem& _option, const QModelIndex& _index) const override;
 
+        bool needsTooltip(const QString& _aimId, const QModelIndex& _index, QPoint _posCursor = {}) const override;
+
+        QString getFriendly(const QModelIndex& _index) const;
+
     private:
         Ui::TextRendering::TextUnitPtr name_;
         Ui::TextRendering::TextUnitPtr serviceName_;
         Ui::TextRendering::TextUnitPtr date_;
+        Ui::TextRendering::TextUnitPtr count_;
+
+        mutable std::unordered_map<int, bool> elidedItems_;
 
         bool pictureOnly_;
     };

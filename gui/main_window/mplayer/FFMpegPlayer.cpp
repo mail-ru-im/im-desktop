@@ -314,7 +314,7 @@ namespace Ui
     {
         ffmpeg::AVStream* stream = 0;
 
-        assert(_context);
+        im_assert(_context);
 
         int32_t streamIndex = ffmpeg::av_find_best_stream(_context, (ffmpeg::AVMediaType) _type, -1, -1, NULL, 0);
         if (streamIndex < 0)
@@ -418,7 +418,7 @@ namespace Ui
     {
         if (_media.formatContext_->pb && _media.formatContext_->pb->error)
         {
-            assert(false);
+            im_assert(false);
             return true;
         }
 
@@ -1556,13 +1556,17 @@ namespace Ui
 
         auto calc_ts = [_tsms](ffmpeg::AVStream* _stream)
         {
-            int64_t ts = ffmpeg::av_rescale(_tsms, _stream->time_base.den, _stream->time_base.num);
-            ts /= 1000;
+            int64_t ts = 0;
+            if (_stream)
+            {
+                ts = ffmpeg::av_rescale(_tsms, _stream->time_base.den, _stream->time_base.num);
+                ts /= 1000;
+            }
             return ts;
         };
 
         const auto ts_video = calc_ts(_media.videoStream_);
-        const auto ts_audio = _media.hasAudio() ? calc_ts(_media.audioStream_) : 0;
+        const auto ts_audio = calc_ts(_media.audioStream_);
         return seekFrame(_videoId, ts_video, ts_audio, _media);
     }
 
@@ -1786,7 +1790,7 @@ namespace Ui
                             auto emplace_result = demuxData.insert(std::make_pair(msg.videoId_, Ui::DemuxData()));
                             if (!emplace_result.second)
                             {
-                                assert(false);
+                                im_assert(false);
                                 continue;
                             }
 
@@ -2653,7 +2657,7 @@ namespace Ui
 
         if (seek_request_id_ < 0)
         {
-            //assert(false);
+            //im_assert(false);
             seek_request_id_ = 0;
         }
 
@@ -3599,7 +3603,7 @@ namespace Ui
         }
         else
         {
-            assert(!"MediaContainer: fail on init");
+            im_assert(!"MediaContainer: fail on init");
         }
 
         return id;

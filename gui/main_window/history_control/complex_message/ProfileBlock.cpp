@@ -22,6 +22,8 @@
 #include "utils/PhoneFormatter.h"
 #include "utils/gui_coll_helper.h"
 #include "../../contact_list/ContactListModel.h"
+#include "utils/features.h"
+#include "controls/TooltipWidget.h"
 
 namespace
 {
@@ -212,7 +214,6 @@ namespace
         d.addCancelButton(QT_TRANSLATE_NOOP("profile_block", "Cancel"), true);
         d.showInCenter();
     }
-
 }
 
 using namespace Ui::ComplexMessage;
@@ -223,7 +224,7 @@ using namespace Ui::ComplexMessage;
 //////////////////////////////////////////////////////////////////////////
 
 ProfileBlockBase::ProfileBlockBase(ComplexMessageItem* _parent, const QString& _link)
-    : GenericBlock(_parent, _link, MenuFlags::MenuFlagCopyable, false)
+    : GenericBlock(_parent, Data::FormattedString(_link), MenuFlags::MenuFlagCopyable, false)
     , Layout_(new ProfileBlockLayout())
 {
     Testing::setAccessibleName(this, u"AS HistoryPage messageProfile " % QString::number(_parent->getId()));
@@ -413,15 +414,31 @@ void ProfileBlockBase::mouseMoveEvent(QMouseEvent* _event)
     }
     else if (loaded_)
     {
-        auto clickAreaHovered = getClickArea(Layout_->getContentRect()).contains(_event->pos()) && !Utils::InterConnector::instance().isMultiselect();
-        auto buttonHovered = button_->rect().contains(_event->pos());
+        const auto pos = _event->pos();
+        auto clickAreaHovered = getClickArea(Layout_->getContentRect()).contains(pos) && !Utils::InterConnector::instance().isMultiselect();
+        auto buttonHovered = button_->rect().contains(pos);
 
         auto needUpdate = buttonHovered != button_->hovered() || clickAreaHovered != clickAreaHovered_;
-
 
         if (!Utils::InterConnector::instance().isMultiselect())
             button_->setHovered(buttonHovered);
         clickAreaHovered_ = clickAreaHovered;
+
+        if (Features::longPathTooltipsAllowed() && nameUnit_->isElided() && nameUnit_->contains(pos))
+        {
+            if (!isTooltipActivated())
+            {
+                QRect ttRect(0, nameUnit_->offsets().y(), width(), nameUnit_->cachedSize().height());
+                auto isFullyVisible = visibleRegion().boundingRect().y() < ttRect.top();
+                const auto arrowDir = isFullyVisible ? Tooltip::ArrowDirection::Down : Tooltip::ArrowDirection::Up;
+                const auto arrowPos = isFullyVisible ? Tooltip::ArrowPointPos::Top : Tooltip::ArrowPointPos::Bottom;
+                showTooltip(nameUnit_->getSourceText().string(), QRect(mapToGlobal(ttRect.topLeft()), ttRect.size()), arrowDir, arrowPos);
+            }
+        }
+        else
+        {
+            hideTooltip();
+        }
 
         setCursor(clickAreaHovered_ || button_->hovered() ? Qt::PointingHandCursor : Qt::ArrowCursor);
 
@@ -452,6 +469,7 @@ void ProfileBlockBase::leaveEvent(QEvent* _event)
     clickAreaHovered_ = false;
 
     setCursor(Qt::ArrowCursor);
+    hideTooltip();
 
     update();
 
@@ -552,7 +570,7 @@ QString ProfileBlock::extractProfileId(const QString& _link)
     return QString();
 }
 
-QString ProfileBlock::getSelectedText(const bool _isFullSelect, const IItemBlock::TextDestination _dest) const
+Data::FormattedString ProfileBlock::getSelectedText(const bool _isFullSelect, const IItemBlock::TextDestination _dest) const
 {
     Q_UNUSED(_isFullSelect)
     Q_UNUSED(_dest)
@@ -704,9 +722,9 @@ PhoneProfileBlock::~PhoneProfileBlock()
 
 }
 
-QString PhoneProfileBlock::getSourceText() const
+Data::FormattedString PhoneProfileBlock::getSourceText() const
 {
-    return QString();
+    return {};
 }
 
 QString PhoneProfileBlock::getTextForCopy() const
@@ -714,13 +732,13 @@ QString PhoneProfileBlock::getTextForCopy() const
     return name_ % ql1c(' ') % phone_;
 }
 
-QString PhoneProfileBlock::getSelectedText(const bool _isFullSelect, const IItemBlock::TextDestination _dest) const
+Data::FormattedString PhoneProfileBlock::getSelectedText(const bool _isFullSelect, const IItemBlock::TextDestination _dest) const
 {
     Q_UNUSED(_isFullSelect)
     if (_dest == IItemBlock::TextDestination::selection)
         return getTextForCopy();
     else
-        return QString();
+        return {};
 }
 
 QString PhoneProfileBlock::getButtonText() const

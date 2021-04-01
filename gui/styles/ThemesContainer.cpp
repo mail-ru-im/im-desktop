@@ -78,7 +78,7 @@ namespace Styling
 
         if (doc.HasParseError() || !doc.HasMember("style"))
         {
-            assert(QFile::exists(getDefaultJSONPath()));
+            im_assert(QFile::exists(getDefaultJSONPath()));
 
             QFile file(getDefaultJSONPath());
             if (!file.open(QFile::ReadOnly | QFile::Text))
@@ -89,7 +89,7 @@ namespace Styling
             doc.Parse(json);
             if (doc.HasParseError())
             {
-                assert(false);
+                im_assert(false);
                 return;
             }
             file.close();
@@ -98,7 +98,6 @@ namespace Styling
         const auto styleIter = doc.FindMember("style");
         const auto themeIter = doc.FindMember("themes");
         const auto wallpaperIter = doc.FindMember("wallpapers");
-        const auto urlIter = doc.FindMember("base_url");
 
         if (themeIter != doc.MemberEnd() && themeIter->value.IsArray())
             availableThemes_.reserve(themeIter->value.Size());
@@ -122,11 +121,11 @@ namespace Styling
 
         if (availableThemes_.empty())
         {
-            assert(!"no themes in JSON");
+            im_assert(!"no themes in JSON");
             availableThemes_.push_back(std::make_shared<Theme>(defaultTheme));
         }
 
-        assert(std::any_of(availableThemes_.begin(), availableThemes_.end(), [](const auto& _theme) { return _theme->getId() == u"default"; }));
+        im_assert(std::any_of(availableThemes_.begin(), availableThemes_.end(), [](const auto& _theme) { return _theme->getId() == u"default"; }));
 
         if (wallpaperIter != doc.MemberEnd() && wallpaperIter->value.IsArray())
         {
@@ -160,14 +159,12 @@ namespace Styling
                         }
                         else
                         {
-                            assert(false);
+                            im_assert(false);
                         }
                     }
                 }
             }
         }
-
-        baseUrl_ = JsonUtils::getString(urlIter->value);
     }
 
     void ThemesContainer::unserializeUserWallpapers(core::coll_helper _collection)
@@ -175,7 +172,7 @@ namespace Styling
         core::iarray* valuesArray = _collection.get_value_as_array("user_folders");
         if (!valuesArray)
         {
-            assert(false);
+            im_assert(false);
             return;
         }
 
@@ -201,7 +198,7 @@ namespace Styling
         core::iarray* valuesArray = _collection.get_value_as_array("values");
         if (!valuesArray)
         {
-            assert(false);
+            im_assert(false);
             return;
         }
 
@@ -225,7 +222,7 @@ namespace Styling
                 if (const auto id = QString::fromUtf8(data, len); !id.isEmpty())
                     globalWallpaperId = id;
                 else
-                    assert(!"invalid global wallpaper id");
+                    im_assert(!"invalid global wallpaper id");
             }
             else if (name == "id" && globalWallpaperId.isEmpty()) // legacy, for backward compatibility
             {
@@ -234,7 +231,7 @@ namespace Styling
                 else if (len == sizeof(int64_t))
                     globalWallpaperId = QString::number((int32_t) *((int64_t*)data));
                 else
-                    assert(!"invalid legacy wallpaper id");
+                    im_assert(!"invalid legacy wallpaper id");
             }
             else if (name == "contacts_themes")
             {
@@ -273,7 +270,7 @@ namespace Styling
 
         QSignalBlocker sb(this);
 
-        assert(!availableThemes_.empty());
+        im_assert(!availableThemes_.empty());
 
         if (!globalTheme.isEmpty())
             setCurrentTheme(globalTheme, GuiCall::no);
@@ -320,8 +317,6 @@ namespace Styling
 
     void ThemesContainer::postImageUrlsToCore() const
     {
-        assert(!baseUrl_.isEmpty());
-
         Ui::gui_coll_helper coll(Ui::GetDispatcher()->create_collection(), true);
 
         const auto allWallpapers = getAllAvailableWallpapers();
@@ -338,8 +333,8 @@ namespace Styling
                 Ui::gui_coll_helper collWall(coll->create_collection(), true);
 
                 collWall.set_value_as_qstring("id", wpId);
-                collWall.set_value_as_qstring("image_url",   baseUrl_ % wall->getWallpaperUrl());
-                collWall.set_value_as_qstring("preview_url", baseUrl_ % wall->getPreviewUrl());
+                collWall.set_value_as_qstring("image_url", wall->getWallpaperUrl());
+                collWall.set_value_as_qstring("preview_url", wall->getPreviewUrl());
 
                 core::ifptr<core::ivalue> val(coll->create_value());
                 val->set_as_collection(collWall.get());
@@ -356,7 +351,7 @@ namespace Styling
 
     void ThemesContainer::postCurrentThemeIdToCore() const
     {
-        assert(currentTheme_);
+        im_assert(currentTheme_);
         if (!currentTheme_)
             return;
 
@@ -450,11 +445,11 @@ namespace Styling
 
     void ThemesContainer::onWallpaper(const WallpaperId& _id, const QPixmap& _image)
     {
-        assert(_id.isValid());
-        assert(!_image.isNull());
+        im_assert(_id.isValid());
+        im_assert(!_image.isNull());
 
         const auto wallpapers = getAllWallpapersById(_id);
-        assert(!wallpapers.empty());
+        im_assert(!wallpapers.empty());
 
         if (!wallpapers.empty())
         {
@@ -469,8 +464,8 @@ namespace Styling
 
     void ThemesContainer::onWallpaperPreview(const WallpaperId& _id, const QPixmap& _image)
     {
-        assert(_id.isValid());
-        assert(!_image.isNull());
+        im_assert(_id.isValid());
+        im_assert(!_image.isNull());
 
         for (const auto& wp : getAllWallpapersById(_id))
             wp->setPreviewImage(_image);
@@ -492,11 +487,11 @@ namespace Styling
 
     WallpaperPtr ThemesContainer::getThemeDefaultWallpaper() const
     {
-        assert(currentTheme_);
+        im_assert(currentTheme_);
 
         if (currentTheme_)
         {
-            assert(currentTheme_->getDefaultWallpaperId().isValid());
+            im_assert(currentTheme_->getDefaultWallpaperId().isValid());
             auto wp = currentTheme_->getDefaultWallpaper();
             if (!wp)
                 wp = currentTheme_->getFirstWallpaper();
@@ -618,7 +613,7 @@ namespace Styling
 
     ThemePtr ThemesContainer::getCurrentTheme() const
     {
-        assert(currentTheme_);
+        im_assert(currentTheme_);
         return currentTheme_;
     }
 
@@ -656,7 +651,7 @@ namespace Styling
             res.emplace_back(t->getId(), !name.isEmpty() ? name : id);
         }
 
-        assert(!res.empty());
+        im_assert(!res.empty());
         return res;
     }
 
@@ -691,7 +686,7 @@ namespace Styling
 
         for (const auto& [_, wall] : contactWallpapers_)
         {
-            assert(wall);
+            im_assert(wall);
             if (wall)
             {
                 const auto id = wall->getId();
@@ -744,7 +739,7 @@ namespace Styling
 
     void ThemesContainer::addUserWallpaper(const WallpaperPtr& _wallpaper)
     {
-        assert(_wallpaper);
+        im_assert(_wallpaper);
         if (!_wallpaper)
             return;
 
@@ -785,7 +780,7 @@ namespace Styling
 
     WallpaperPtr ThemesContainer::createUserWallpaper(const ThemePtr& _theme, const WallpaperId& _id)
     {
-        assert(_theme);
+        im_assert(_theme);
 
         const auto defWp = _theme->getDefaultWallpaper();
         auto wp = std::make_shared<Styling::ThemeWallpaper>(*defWp);
@@ -817,7 +812,7 @@ namespace Styling
 
     void ThemesContainer::requestWallpaper(const WallpaperPtr _wallpaper)
     {
-        assert(_wallpaper);
+        im_assert(_wallpaper);
         const auto needRequest =
                 _wallpaper &&
                 _wallpaper->hasWallpaper() &&
@@ -836,7 +831,7 @@ namespace Styling
 
     void ThemesContainer::requestWallpaperPreview(const WallpaperPtr _wallpaper)
     {
-        assert(_wallpaper);
+        im_assert(_wallpaper);
         const auto needRequest =
                 _wallpaper &&
                 _wallpaper->hasWallpaper() &&

@@ -33,13 +33,6 @@
     </message>
 </context>
 <context>
-    <name>QObject</name>
-    <message>
-        <source>Unable to start the server: %1.</source>
-        <translation>Unable to start the server: %1.</translation>
-    </message>
-</context>
-<context>
     <name>QWidgetTextControl</name>
     <message>
         <source>&amp;Undo</source>
@@ -3472,8 +3465,8 @@ You can leave your feedback or report an error here:</translation>
         <translation>Sticker</translation>
     </message>
     <message>
-        <source>The message is not supported on your version of ICQ. Update the app to see the message</source>
-        <translation>The message is not supported on your version of ICQ. Update the app to see the message</translation>
+        <source>The message is not supported on your version. Update the app to see the message</source>
+        <translation>Unable to display message in your version of the app. Refresh</translation>
     </message>
 </context>
 <context>
@@ -4592,6 +4585,62 @@ contact</translation>
         <source>Send Statistic</source>
         <translation>Send statistics</translation>
     </message>
+    <message>
+        <source>Member limit exceeded (maximum %1)</source>
+        <translation>Member limit exceeded (maximum %1)</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to open external link %1?</source>
+        <translation>Are you sure you want to open external link %1?</translation>
+    </message>
+    <message>
+        <source>Enable net compression</source>
+        <translation>Enable compression of network requests</translation>
+    </message>
+    <message>
+        <source>Cannot remove %1</source>
+        <translation>Cannot remove %1</translation>
+    </message>
+    <message>
+        <source>Cannot block %1</source>
+        <translation>Failed to block %1</translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1</source>
+        <translation>Cannot unblock %1</translation>
+    </message>
+    <message>
+        <source>User not found</source>
+        <translation>User is not found</translation>
+    </message>
+    <message>
+        <source>User is already blocked</source>
+        <translation>User is already blocked</translation>
+    </message>
+    <message>
+        <source>User not blocked</source>
+        <translation>User is not blocked</translation>
+    </message>
+    <message>
+        <source>Permission denied</source>
+        <translation>Permission denied</translation>
+    </message>
+    <message>
+        <source>Error removing federation user</source>
+        <translation>Error removing federation user</translation>
+    </message>
+    <message>
+        <source>Error blocking federation user</source>
+        <translation>Error blocking federation user</translation>
+    </message>
+    <message>
+        <source>Error unblocking federation user</source>
+        <translation>Error unblocking a federation user</translation>
+    </message>
+    <message>
+        <source>User not a member</source>
+        <translation>User is not a member of this group</translation>
+    </message>
 </context>
 <context>
     <name>previewer</name>
@@ -5416,6 +5465,10 @@ contact</translation>
         <source>Disable SMS notifications</source>
         <translation>Disable SMS Alerts</translation>
     </message>
+    <message>
+        <source>Show notifications when app in focus</source>
+        <translation>Show notifications when app in focus</translation>
+    </message>
 </context>
 <context>
     <name>settings_connection</name>
@@ -5617,10 +5670,6 @@ contact</translation>
 </context>
 <context>
     <name>sidebar</name>
-    <message>
-        <source>Add to chat</source>
-        <translation>Add to chat</translation>
-    </message>
     <message>
         <source>Notifications</source>
         <translation>Notifications</translation>
@@ -5967,6 +6016,14 @@ Please edit phone number and try again.</translation>
         <source>All subscribers</source>
         <translation>All subscribers</translation>
     </message>
+    <message>
+        <source>Back</source>
+        <translation>Back</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Close</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -6246,6 +6303,14 @@ Please edit phone number and try again.</translation>
         <source>Calls</source>
         <translation>Calls</translation>
     </message>
+    <message>
+        <source>Structure</source>
+        <translation>Structure</translation>
+    </message>
+    <message>
+        <source>Tasks</source>
+        <translation>Tasks</translation>
+    </message>
 </context>
 <context>
     <name>tab header</name>
@@ -6451,14 +6516,6 @@ Please edit phone number and try again.</translation>
         <translation>Incoming call</translation>
     </message>
     <message>
-        <source>Add to call</source>
-        <translation>Add to call</translation>
-    </message>
-    <message>
-        <source>OTHERS</source>
-        <translation>OTHERS</translation>
-    </message>
-    <message>
         <source>Screen</source>
         <translation>Screen</translation>
     </message>
@@ -6503,10 +6560,6 @@ Please edit phone number and try again.</translation>
         <translation>ALL GROUP MEMBERS</translation>
     </message>
     <message>
-        <source>CALL MEMBERS</source>
-        <translation>CALL MEMBERS</translation>
-    </message>
-    <message>
         <source>Minimize</source>
         <translation>Minimize</translation>
     </message>
@@ -6541,6 +6594,30 @@ with click</translation>
     <message>
         <source>Busy</source>
         <translation>Busy</translation>
+    </message>
+    <message>
+        <source>Call members</source>
+        <translation>Call members</translation>
+    </message>
+    <message>
+        <source>SHOW ALL</source>
+        <translation>SHOW ALL</translation>
+    </message>
+    <message>
+        <source>HIDE</source>
+        <translation>HIDE</translation>
+    </message>
+    <message>
+        <source>IN CALL</source>
+        <translation>IN CALL</translation>
+    </message>
+    <message>
+        <source>In call</source>
+        <translation>In call</translation>
+    </message>
+    <message>
+        <source>CONTACTS</source>
+        <translation>CONTACTS</translation>
     </message>
 </context>
 <context>
@@ -6678,6 +6755,20 @@ Meeting</translation>
     <message>
         <source>SHOW ALL</source>
         <translation>SHOW ALL</translation>
+    </message>
+    <message>
+        <source>Show
+participants</source>
+        <translation>Show
+participants</translation>
+    </message>
+    <message>
+        <source>Show all</source>
+        <translation>Show all</translation>
+    </message>
+    <message>
+        <source>Show one</source>
+        <translation>Show one</translation>
     </message>
 </context>
 <context>

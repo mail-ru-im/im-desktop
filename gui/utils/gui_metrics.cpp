@@ -319,7 +319,7 @@ void GuiMetrics::eventMainWindowActive()
         reportForegroundByIconStat();
         break;
     default:
-        assert(!"handle internal state");
+        im_assert(!"handle internal state");
     }
 
     dropState();

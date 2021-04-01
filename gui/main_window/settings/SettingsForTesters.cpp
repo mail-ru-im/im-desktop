@@ -151,7 +151,7 @@ namespace Ui
                                                   {
                                                       Ui::gui_coll_helper coll(_coll, false);
                                                       auto last_error = coll.get_value_as_int("last_error");
-                                                      assert(!last_error);
+                                                      im_assert(!last_error);
                                                       Q_UNUSED(last_error);
                                                   });
         });
@@ -162,7 +162,7 @@ namespace Ui
                                                   {
                                                       Ui::gui_coll_helper coll(_coll, false);
                                                       auto last_error = coll.get_value_as_int("last_error");
-                                                      assert(!last_error);
+                                                      im_assert(!last_error);
                                                       Q_UNUSED(last_error);
                                                   });
         });
@@ -214,11 +214,17 @@ namespace Ui
                                                                    {},
                                                                    Utils::scale_value(36), qsl("AS AdditionalSettingsPage serverSearchSetting"));
 
-            devCustomIdCheckbox_ = GeneralCreator::addSwitcher(this, mainLayout_,
-                                                               QT_TRANSLATE_NOOP("popup_window", "Set dev_id"),
-                                                               appConfig.hasCustomDeviceId(),
+            netCompressionCheckbox_ = GeneralCreator::addSwitcher(this, mainLayout_,
+                                                               QT_TRANSLATE_NOOP("popup_window", "Enable net compression"),
+                                                               appConfig.IsNetCompressionEnabled(),
                                                                {},
-                                                               Utils::scale_value(36), qsl("AS AdditionalSettingsPage setDevIdSetting"));
+                                                               Utils::scale_value(36), qsl("AS AdditionalSettingsPage netCompression"));
+
+            devCustomIdCheckbox_ = GeneralCreator::addSwitcher(this, mainLayout_,
+                QT_TRANSLATE_NOOP("popup_window", "Set dev_id"),
+                appConfig.hasCustomDeviceId(),
+                {},
+                Utils::scale_value(36), qsl("AS AdditionalSettingsPage setDevIdSetting"));
 
             connect(devSaveCallRTPdumpsCheckbox_, &Ui::SidebarCheckboxButton::checked, this, &SettingsForTesters::onToggleSaveRTPDumps);
             connect(devServerSearchCheckbox_, &Ui::SidebarCheckboxButton::checked, this, &SettingsForTesters::onToggleServerSearch);
@@ -227,6 +233,7 @@ namespace Ui
             {
                 GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::dev_statistic_event, { { "app_version", Utils::getVersionPrintable().toStdString()} });
             });
+            connect(netCompressionCheckbox_, &Ui::SidebarCheckboxButton::checked, this, &SettingsForTesters::onToggleNetCompression);
 
             if constexpr (!build::is_pkg_msi())
             {
@@ -270,6 +277,9 @@ namespace Ui
 
         if (watchGuiMemoryCheckbox_ && watchGuiMemoryCheckbox_->isChecked() != _appConfig.WatchGuiMemoryEnabled())
             watchGuiMemoryCheckbox_->setChecked(_appConfig.WatchGuiMemoryEnabled());
+
+        if (netCompressionCheckbox_ && netCompressionCheckbox_->isChecked() != _appConfig.IsNetCompressionEnabled())
+            netCompressionCheckbox_->setChecked(_appConfig.IsNetCompressionEnabled());
     }
 
     void SettingsForTesters::onOpenLogsPath(const QString &_logsPath)
@@ -347,6 +357,16 @@ namespace Ui
         ModifyAppConfig(std::move(appConfig), [this](core::icollection* _coll) {
             initViewElementsFrom(GetAppConfig());
         }, this);
+    }
+
+    void SettingsForTesters::onToggleNetCompression(bool _checked)
+    {
+        AppConfig appConfig = GetAppConfig();
+        appConfig.SetNetCompressionEnabled(_checked);
+
+        ModifyAppConfig(std::move(appConfig), [this](core::icollection* _coll) {
+            initViewElementsFrom(GetAppConfig());
+            }, this);
     }
 
     SettingsForTesters::~SettingsForTesters() = default;

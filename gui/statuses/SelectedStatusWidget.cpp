@@ -101,7 +101,7 @@ namespace
     {
         if constexpr (platform::is_apple())
             return Utils::scale_value(-1);
-        
+
         return Utils::scale_value(2);
     }
 
@@ -263,7 +263,7 @@ SelectedStatusWidget::SelectedStatusWidget(QWidget* _parent)
     d->statusContent_ = new QWidget(this);
     QVBoxLayout* statusContentLayout = Utils::emptyVLayout(d->statusContent_);
 
-    d->description_ = new TextWidget(this, QString());
+    d->description_ = new TextWidget(this, QString(), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
 
     Testing::setAccessibleName(d->description_, qsl("AS SelectStatusWidget statusDescription"));
     d->description_->init(statusDescriptionFont(), descriptionFontColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);

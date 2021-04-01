@@ -58,7 +58,7 @@ namespace
         switch (_quote.mediaType_)
         {
             case Ui::MediaType::noMedia:
-                return Utils::convertFilesPlaceholders(Utils::convertMentions(_quote.text_, _quote.mentions_), _quote.files_);
+                return Utils::convertFilesPlaceholders(Utils::convertMentions(Data::stubFromFormattedString(_quote.text_), _quote.mentions_), _quote.files_);
 
             case Ui::MediaType::mediaTypeSticker:
                 return QT_TRANSLATE_NOOP("contact_list", "Sticker");
@@ -203,7 +203,7 @@ namespace Ui
 
     QRect QuotesContainer::getRowRect(const int _idx) const
     {
-        assert(_idx >= 0 && _idx < rowCount());
+        im_assert(_idx >= 0 && _idx < rowCount());
 
         if (_idx >= 0 && _idx < rowCount())
         {

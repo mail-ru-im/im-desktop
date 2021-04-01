@@ -169,7 +169,7 @@ namespace hist::MessageBuilder
 
         const auto emptyTextAllowed = buddy.IsSticker() || !buddy.Quotes_.isEmpty() || buddy.sharedContact_ || buddy.poll_;
 
-        if (!emptyTextAllowed && QStringView(buddy.GetSourceText()).trimmed().isEmpty())
+        if (!emptyTextAllowed && Data::FormattedStringView(buddy.GetSourceText()).trimmed().isEmpty())
             return {};
 
         auto item = Ui::ComplexMessage::ComplexMessageItemBuilder::makeComplexItem(nullptr, buddy, Ui::ComplexMessage::ComplexMessageItemBuilder::ForcePreview::Yes);
@@ -179,7 +179,7 @@ namespace hist::MessageBuilder
 
     std::unique_ptr<Ui::ServiceMessageItem> createNew(const QString& _aimId, int _itemWidth, QWidget* _parent)
     {
-        assert(_parent);
+        im_assert(_parent);
 
         std::unique_ptr<Ui::ServiceMessageItem> newPlate = std::make_unique<Ui::ServiceMessageItem>(_parent);
 

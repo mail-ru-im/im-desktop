@@ -1,7 +1,5 @@
 #include "stdafx.h"
 
-#include "private/qsplitter_p.h"
-
 #include "Splitter.h"
 
 #include "../styles/ThemeParameters.h"
@@ -33,9 +31,7 @@ namespace Ui
         updateStyle();
     }
 
-    SplitterHandle::~SplitterHandle()
-    {
-    }
+    SplitterHandle::~SplitterHandle() = default;
 
     void SplitterHandle::updateStyle()
     {
@@ -44,7 +40,6 @@ namespace Ui
 
     void SplitterHandle::mouseMoveEvent(QMouseEvent* _event)
     {
-        QSplitterHandle::mouseMoveEvent(_event);
         if (auto s = splitter(); s && (_event->buttons() & Qt::LeftButton))
         {
             auto pos = pick(parentWidget()->mapFromGlobal(_event->globalPos())) - mouseOffset_;
@@ -61,6 +56,7 @@ namespace Ui
             if (auto splitter = qobject_cast<Splitter*>(s); splitter)
                 splitter->movedImpl(pos, res, index);
         }
+        QSplitterHandle::mouseMoveEvent(_event);
     }
 
     void SplitterHandle::mousePressEvent(QMouseEvent* _event)

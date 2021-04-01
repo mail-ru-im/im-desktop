@@ -31,7 +31,7 @@ namespace
             if (auto intId = -1; JsonUtils::unserialize_value(_node, _name, intId))
                 _out = QString::number(intId);
         }
-        //assert(!_out.isEmpty());
+        //im_assert(!_out.isEmpty());
     }
 }
 
@@ -144,7 +144,7 @@ namespace Styling
 
     void ThemeWallpaper::unserialize(const rapidjson::Value& _node)
     {
-        //assert(_node.HasMember("style"));
+        //im_assert(_node.HasMember("style"));
         if (const auto nodeIter = _node.FindMember("style"); nodeIter->value.IsObject() && !nodeIter->value.ObjectEmpty())
             Style::unserialize(nodeIter->value);
 
@@ -174,7 +174,7 @@ namespace Styling
 
     void ThemeWallpaper::setWallpaperImage(const QPixmap& _image) // must be tinted beforehand!
     {
-        assert(!_image.isNull());
+        im_assert(!_image.isNull());
 
         setImageRequested(false);
         image_ = _image;
@@ -182,7 +182,7 @@ namespace Styling
 
     void ThemeWallpaper::setPreviewImage(const QPixmap& _image)
     {
-        assert(!_image.isNull());
+        im_assert(!_image.isNull());
         setPreviewRequested(false);
         preview_ = _image;
         Utils::check_pixel_ratio(preview_);

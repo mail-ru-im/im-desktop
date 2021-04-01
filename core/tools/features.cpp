@@ -84,12 +84,12 @@ namespace features
 
     bool is_webp_preview_accepted()
     {
-        return omicronlib::_o(omicron::keys::webp_preview_accepted, false);
+        return omicronlib::_o(omicron::keys::webp_preview_accepted, true);
     }
 
     bool is_webp_original_accepted()
     {
-        return omicronlib::_o(omicron::keys::webp_original_accepted, false);
+        return omicronlib::_o(omicron::keys::webp_original_accepted, true);
     }
 
     bool is_update_from_backend_enabled()
@@ -122,5 +122,20 @@ namespace features
         auto value = config::get().is_on(config::features::silent_message_delete);
         value = config::is_overridden(config::features::silent_message_delete) ? value : omicronlib::_o(omicron::keys::silent_message_delete, value);
         return value;
+    }
+
+    std::chrono::seconds get_link_metainfo_repeat_interval()
+    {
+        return std::chrono::seconds(omicronlib::_o(omicron::keys::link_metainfo_repeat_interval, 60));
+    }
+
+    std::chrono::milliseconds get_metainfo_repeat_interval()
+    {
+        return std::chrono::milliseconds(omicronlib::_o(omicron::keys::metainfo_repeat_interval, 1000));
+    }
+
+    std::chrono::milliseconds get_preview_repeat_interval()
+    {
+        return std::chrono::milliseconds(omicronlib::_o(omicron::keys::preview_repeat_interval, 1000));
     }
 }

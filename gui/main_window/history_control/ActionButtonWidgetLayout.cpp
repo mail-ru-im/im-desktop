@@ -14,7 +14,7 @@ ActionButtonWidgetLayout::ActionButtonWidgetLayout(ActionButtonWidget *parent)
     , Item_(parent)
     , ProgressTextSize_(0, 0)
 {
-    assert(Item_);
+    im_assert(Item_);
 }
 
 void ActionButtonWidgetLayout::setGeometry(const QRect&)
@@ -68,7 +68,7 @@ void ActionButtonWidgetLayout::invalidate()
 
 QRect ActionButtonWidgetLayout::evaluateContentRect(const QSize &iconSize, const QSize &progressTextSize) const
 {
-    assert(!iconSize.isEmpty());
+    im_assert(!iconSize.isEmpty());
 
     auto contentRectWidth = std::max(iconSize.width(), progressTextSize.width() + 2 * MessageStyle::getProgressTextRectHMargin()) + 1;
 
@@ -89,8 +89,8 @@ QRect ActionButtonWidgetLayout::evaluateContentRect(const QSize &iconSize, const
 
 QRect ActionButtonWidgetLayout::evaluateIconRect(const QRect &contentRect, const QSize &iconSize) const
 {
-    assert(Item_);
-    assert(!iconSize.isEmpty());
+    im_assert(Item_);
+    im_assert(!iconSize.isEmpty());
 
     QRect result(QPoint(), iconSize);
 
@@ -105,7 +105,7 @@ QRect ActionButtonWidgetLayout::evaluateIconRect(const QRect &contentRect, const
 
 QRect ActionButtonWidgetLayout::evaluateProgressRect(const QRect &iconRect) const
 {
-    assert(!iconRect.isEmpty());
+    im_assert(!iconRect.isEmpty());
 
     auto result(iconRect);
 
@@ -120,11 +120,11 @@ QRect ActionButtonWidgetLayout::evaluateProgressRect(const QRect &iconRect) cons
 
 QRect ActionButtonWidgetLayout::evaluateProgressTextRect(const QRect &iconRect, const QSize &progressTextSize) const
 {
-    assert(!iconRect.isEmpty());
+    im_assert(!iconRect.isEmpty());
 
     auto textX = iconRect.center().x() - progressTextSize.width() / 2;
 
-    assert(textX >= 0);
+    im_assert(textX >= 0);
 
     auto textY = (iconRect.bottom() + 1);
     textY += MessageStyle::getRotatingProgressBarTextTopMargin();
@@ -136,7 +136,7 @@ QRect ActionButtonWidgetLayout::evaluateProgressTextRect(const QRect &iconRect, 
 
 void ActionButtonWidgetLayout::setGeometryInternal()
 {
-    assert(Item_);
+    im_assert(Item_);
 
     const auto &progressText = Item_->getProgressText();
     if (progressText != LastProgressText_)
@@ -146,13 +146,13 @@ void ActionButtonWidgetLayout::setGeometryInternal()
     }
 
     const auto &iconSize = Item_->getIconSize();
-    assert(!iconSize.isEmpty());
+    im_assert(!iconSize.isEmpty());
 
     ContentRect_ = evaluateContentRect(iconSize, ProgressTextSize_);
 
     IconRect_ = evaluateIconRect(ContentRect_, iconSize);
-    assert(!IconRect_.isEmpty());
-    assert(ContentRect_.contains(IconRect_));
+    im_assert(!IconRect_.isEmpty());
+    im_assert(ContentRect_.contains(IconRect_));
 
     ProgressRect_ = evaluateProgressRect(IconRect_);
 
@@ -161,7 +161,7 @@ void ActionButtonWidgetLayout::setGeometryInternal()
 
 QSize ActionButtonWidgetLayout::evaluateProgressTextSize(const QString& progressText) const
 {
-    assert(Item_);
+    im_assert(Item_);
 
     if (progressText.isEmpty())
     {

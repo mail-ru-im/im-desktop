@@ -28,4 +28,8 @@ namespace features
     size_t get_max_parallel_sticker_downloads();
 
     bool is_silent_delete_enabled();
+
+    std::chrono::seconds get_link_metainfo_repeat_interval();
+    std::chrono::milliseconds get_metainfo_repeat_interval();
+    std::chrono::milliseconds get_preview_repeat_interval();
 }

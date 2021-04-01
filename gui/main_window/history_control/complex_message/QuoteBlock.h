@@ -36,7 +36,7 @@ public:
 
     bool updateFriendly(const QString& _aimId, const QString& _friendly) override;
 
-    QString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
+    Data::FormattedString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
 
     bool isSelected() const override;
 
@@ -66,7 +66,7 @@ public:
 
     QString getTextForCopy() const override;
 
-    QString getSourceText() const override;
+    Data::FormattedString getSourceText() const override;
 
     QString formatRecentsText() const override;
 

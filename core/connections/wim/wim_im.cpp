@@ -64,7 +64,6 @@
 #include "../../archive/archive_index.h"
 #include "../../archive/not_sent_messages.h"
 #include "../../archive/messages_data.h"
-#include "stat/imstat.h"
 #include "dialog_holes.h"
 
 #include "../../log/log.h"
@@ -150,7 +149,7 @@ namespace
         return stickers_size;
     }
 
-    void set_stickers_size(const std::string& _size)
+    void set_stickers_size(std::string_view _size)
     {
         auto& stickers_size = get_stickers_size();
 
@@ -261,6 +260,31 @@ namespace
         return loader_errors::internal_logic_error;
 #endif
     }
+
+    void chat_failures_helper(const std::map<chat_member_failure, std::vector<std::string>>& _failures, coll_helper& _coll)
+    {
+        ifptr<iarray> array(_coll->create_array());
+        array->reserve(static_cast<int32_t>(_failures.size()));
+        for (const auto& [type, contacts] : _failures)
+        {
+            coll_helper coll_failure(_coll->create_collection(), true);
+            coll_failure.set_value_as_int("type", static_cast<int>(type));
+            ifptr<iarray> sn_array(_coll->create_array());
+            sn_array->reserve(contacts.size());
+            for (const auto& c : contacts)
+            {
+                ifptr<ivalue> val(_coll->create_value());
+                val->set_as_string(c.c_str(), static_cast<int32_t>(c.size()));
+                sn_array->push_back(val.get());
+            }
+            coll_failure.set_value_as_array("contacts", sn_array.get());
+
+            ifptr<ivalue> val(_coll->create_value());
+            val->set_as_collection(coll_failure.get());
+            array->push_back(val.get());
+        }
+        _coll.set_value_as_array("failures", array.get());
+    }
 }
 
 void search::search_data::reset_post_timer()
@@ -331,7 +355,7 @@ std::shared_ptr<async_task_handlers> core::wim::wim_send_thread::post_packet(
     {
         _packet->execute_async([wr_this = weak_from_this(), _error_handler = std::move(_error_handler), callback_handlers, _packet](int32_t _error)
         {
-            g_core->execute_core_context([wr_this, callback_handlers, _error_handler = std::move(_error_handler), _error, method = _packet->get_method()]()
+            g_core->execute_core_context({ [wr_this, callback_handlers, _error_handler = std::move(_error_handler), _error, method = _packet->get_method()] ()
             {
                 auto ptr_this = wr_this.lock();
                 if (!ptr_this)
@@ -344,7 +368,7 @@ std::shared_ptr<async_task_handlers> core::wim::wim_send_thread::post_packet(
 
                 if (_error_handler)
                     _error_handler(_error);
-            });
+            } });
         });
 
         return callback_handlers;
@@ -489,7 +513,6 @@ im::im(const im_login_id& _login,
     async_tasks_(std::make_shared<async_executer>("im async tasks")),
 
     store_timer_id_(empty_timer_id),
-    statistic_timer_id_(empty_timer_id),
     hosts_config_timer_id_(empty_timer_id),
     dlg_state_timer_id_(empty_timer_id),
     stat_timer_id_(empty_timer_id),
@@ -503,7 +526,6 @@ im::im(const im_login_id& _login,
     failed_holes_requests_(std::make_shared<holes::failed_requests>()),
     sent_pending_messages_active_(false),
     sent_pending_delete_messages_active_(false),
-    imstat_(std::make_unique<statistic::imstat>()),
     history_searcher_(nullptr),
     search_data_(std::make_shared<search::search_data>()),
     start_session_time_(std::chrono::system_clock::now() - start_session_timeout),
@@ -540,7 +562,6 @@ im::~im()
     save_cached_objects(force_save::yes);
     cancel_requests();
     stop_waiters();
-    stop_statistic_timer();
     stop_stat_timer();
     stop_ui_activity_timer();
     stop_external_config_timer();
@@ -565,40 +586,19 @@ void im::init_failed_requests()
 
 void im::schedule_store_timer()
 {
-    store_timer_id_ = g_core->add_timer([wr_this = weak_from_this()]
+    store_timer_id_ = g_core->add_timer({ [wr_this = weak_from_this()]
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
             return;
         ptr_this->save_cached_objects();
 
-    }, std::chrono::seconds(10));
+    } }, std::chrono::seconds(10));
 }
 
 void im::stop_store_timer()
 {
     stop_timer(store_timer_id_);
-}
-
-
-void im::schedule_statistic_timer()
-{
-    constexpr auto timeout = std::chrono::seconds(build::is_debug() ? 10 : 60);
-
-    statistic_timer_id_ = g_core->add_timer([wr_this = weak_from_this()]
-    {
-        auto ptr_this = wr_this.lock();
-        if (!ptr_this)
-            return;
-
-        ptr_this->send_statistic_if_needed();
-
-    }, timeout);
-}
-
-void im::stop_statistic_timer()
-{
-    stop_timer(statistic_timer_id_);
 }
 
 void im::stop_waiters()
@@ -781,19 +781,6 @@ void im::handle_net_error(const std::string& _url, int err)
     }
 }
 
-std::shared_ptr<async_task_handlers> im::post_wim_packet(std::shared_ptr<wim_packet> _packet)
-{
-//    assert(!std::dynamic_pointer_cast<robusto_packet>(_packet));
-    return wim_send_thread_->post_packet(_packet, [wr_this = weak_from_this(), _packet](int32_t err)
-    {
-        auto ptr_this = wr_this.lock();
-        if (!ptr_this)
-            return;
-
-        ptr_this->handle_net_error(_packet->get_url(), err);
-    });
-}
-
 void im::login(int64_t _seq, const login_info& _info)
 {
     switch (_info.get_login_type())
@@ -819,7 +806,7 @@ void im::login_by_agent_token(
     auto packet = std::make_shared<client_login>(make_wim_params(), _login, _token);
     packet->set_product_guid_8x(_guid);
 
-    post_wim_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -858,7 +845,7 @@ void im::login_by_password(
 {
     auto packet = std::make_shared<client_login>(make_wim_params(), login, password, _token_type);
 
-    post_wim_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, save_auth_data, _seq, _from_export_login, _token_type](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, save_auth_data, _seq, _from_export_login, _token_type](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -1387,13 +1374,13 @@ void im::resume_download_stickers()
     {
         get_stickers()->set_download_meta_error(false);
 
-        get_stickers()->get_md5()->on_result_ = [wr_this = weak_from_this()](const std::string& _md5)
+        get_stickers()->get_etag()->on_result_ = [wr_this = weak_from_this()](std::string_view _etag)
         {
             auto ptr_this = wr_this.lock();
             if (!ptr_this)
                 return;
 
-            ptr_this->download_stickers_metafile(0, get_stickers_size(), _md5);
+            ptr_this->download_stickers_metafile(0, get_stickers_size(), _etag);
         };
     }
 }
@@ -1408,7 +1395,7 @@ void im::resume_download_masks()
 #endif
 }
 
-void im::post_stickers_meta_to_gui(int64_t _seq, const std::string& _size)
+void im::post_stickers_meta_to_gui(int64_t _seq, std::string_view _size)
 {
     coll_helper _coll(g_core->create_collection(), true);
 
@@ -1452,9 +1439,9 @@ void im::post_stickers_search_result_to_gui(int64_t _seq)
     };
 }
 
-void im::load_stickers_data(int64_t _seq, const std::string& _size)
+void im::load_stickers_data(int64_t _seq, std::string_view _size)
 {
-    get_stickers()->make_set_icons_tasks(_size)->on_result_ = [wr_this = weak_from_this(), _size](int _task_count)
+    get_stickers()->make_set_icons_tasks(_size)->on_result_ = [wr_this = weak_from_this()](int _task_count)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -1471,7 +1458,6 @@ void im::on_im_created()
     g_core->post_message_to_gui("im/created", 0, nullptr);
 
     schedule_store_timer();
-    schedule_statistic_timer();
     schedule_ui_activity_timer();
 
     if (config::get().is_on(config::features::external_url_config))
@@ -1642,7 +1628,7 @@ void im::load_cached_objects()
     };
 }
 
-void im::download_stickers_metafile(int64_t _seq, const std::string& _size, const std::string& _md5)
+void im::download_stickers_metafile(int64_t _seq, std::string_view _size, std::string_view _etag)
 {
     if (get_stickers()->is_download_meta_error())
         return;
@@ -1650,101 +1636,110 @@ void im::download_stickers_metafile(int64_t _seq, const std::string& _size, cons
     if (get_stickers()->is_download_meta_in_progress())
         return;
 
-    get_stickers()->set_up_to_date(false);
     get_stickers()->set_download_meta_in_progress(true);
     get_stickers()->set_flag_meta_need_reload(false);
 
-    auto packet = std::make_shared<get_stickers_index>(make_wim_params(), _md5);
+    auto packet = std::make_shared<get_stickers_index>(make_wim_params(), _etag);
 
-    post_wim_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _seq, _size](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _seq, size = std::string(_size)](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
             return;
 
-        if (_error == 0)
+        auto load_stickers = [wr_this, _seq, size]()
         {
-            const auto& response = packet->get_response();
+            auto ptr_this = wr_this.lock();
+            if (!ptr_this)
+                return;
 
-            ptr_this->get_stickers()->parse(response, false)->on_result_ = [response, wr_this, _seq, _size](const stickers::parse_result& _res)
-            {
-                auto ptr_this = wr_this.lock();
-                if (!ptr_this)
-                    return;
-
-                if (_res.is_success())
-                {
-                    const bool up_to_date = _res.is_up_to_date();
-                    ptr_this->get_stickers()->set_up_to_date(up_to_date);
-
-                    if (!up_to_date)
-                    {
-                        ptr_this->post_stickers_meta_to_gui(_seq, _size);
-
-                        response->reset_out();
-                        ptr_this->get_stickers()->save(response)->on_result_ = [wr_this, _seq, _size](bool _res)
-                        {
-                            auto ptr_this = wr_this.lock();
-                            if (!ptr_this)
-                                return;
-
-                            ptr_this->load_stickers_data(_seq, _size);
-                        };
-                    }
-                    else
-                    {
-                        ptr_this->load_stickers_data(_seq, _size);
-                    }
-                }
-            };
+            ptr_this->load_stickers_data(_seq, size);
 
             ptr_this->get_stickers()->set_download_meta_in_progress(false);
             if (ptr_this->get_stickers()->is_flag_meta_need_reload())
             {
                 ptr_this->get_stickers()->set_flag_meta_need_reload(false);
-                ptr_this->get_stickers()->get_md5()->on_result_ = [wr_this, _size, _seq](const std::string& _md5)
+                ptr_this->get_stickers()->get_etag()->on_result_ = [wr_this, size, _seq](std::string_view _etag)
                 {
                     auto ptr_this = wr_this.lock();
                     if (!ptr_this)
                         return;
 
-                    ptr_this->download_stickers_metafile(_seq, _size, _md5);
+                    ptr_this->download_stickers_metafile(_seq, size, _etag);
                 };
             }
-        }
-        else
+        };
+
+        if (_error == 0)
         {
-            if (wim_packet::needs_to_repeat_failed(_error))
+            const auto& response = packet->get_response();
+            const auto& old_etag = packet->get_request_etag();
+            const auto& new_etag = packet->get_response_etag();
+            const bool up_to_date = !old_etag.empty() && new_etag == old_etag;
+            if (!up_to_date)
             {
-                ptr_this->get_stickers()->set_download_meta_error(true);
-                ptr_this->get_stickers()->set_download_meta_in_progress(false);
+                ptr_this->get_stickers()->parse(response, false)->on_result_ =
+                    [response, wr_this, _seq, size, etag = new_etag, load_stickers = std::move(load_stickers)](bool _success) mutable
+                {
+                    auto ptr_this = wr_this.lock();
+                    if (!ptr_this)
+                        return;
+
+                    if (!_success)
+                        return;
+
+                    ptr_this->post_stickers_meta_to_gui(_seq, size);
+
+                    response->reset_out();
+                    ptr_this->get_stickers()->save(response)->on_result_ =
+                        [wr_this, etag = std::move(etag), load_stickers = std::move(load_stickers)](bool _res)
+                    {
+                        auto ptr_this = wr_this.lock();
+                        if (!ptr_this)
+                            return;
+
+                        ptr_this->get_stickers()->set_etag(std::move(etag));
+                        load_stickers();
+                    };
+                };
             }
+            else
+            {
+                load_stickers();
+            }
+        }
+        else if (packet->get_http_code() == 304)
+        {
+            load_stickers();
+        }
+        else if (wim_packet::needs_to_repeat_failed(_error))
+        {
+            ptr_this->get_stickers()->set_download_meta_error(true);
+            ptr_this->get_stickers()->set_download_meta_in_progress(false);
         }
     };
 }
 
-void im::get_stickers_meta(int64_t _seq, const std::string& _size)
+void im::get_stickers_meta(int64_t _seq, std::string_view _size)
 {
     set_stickers_size(_size);
 
-    get_stickers()->load_meta_from_local()->on_result_ = [wr_this = weak_from_this(), stickers_size = _size, _seq](const stickers::load_result& _res)
+    get_stickers()->load_meta_from_local()->on_result_ = [wr_this = weak_from_this(), size = std::string(_size), _seq](const stickers::load_result& _res)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
             return;
 
-        ptr_this->get_stickers()->set_gui_request_params(stickers::gui_request_params(stickers_size, _seq, _res.get_md5()));
-
         if (_res.get_result())
-            ptr_this->post_stickers_meta_to_gui(_seq, stickers_size);
+            ptr_this->post_stickers_meta_to_gui(_seq, size);
 
-        ptr_this->download_stickers_metafile(_seq, stickers_size, _res.get_md5());
+        ptr_this->download_stickers_metafile(_seq, size, _res.get_etag());
     };
 }
 
 void im::reload_stickers_meta(const int64_t _seq, const std::string& _size)
 {
-    get_stickers()->get_md5()->on_result_ = [wr_this = weak_from_this(), _size](const std::string& _md5)
+    get_stickers()->get_etag()->on_result_ = [wr_this = weak_from_this(), _size](std::string_view _etag)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -1756,7 +1751,7 @@ void im::reload_stickers_meta(const int64_t _seq, const std::string& _size)
         }
         else
         {
-            ptr_this->download_stickers_metafile(0, _size, _md5);
+            ptr_this->download_stickers_metafile(0, _size, _etag);
         }
     };
 }
@@ -1765,7 +1760,7 @@ void im::get_stickers_pack_info(const int64_t _seq, const int32_t _set_id, const
 {
     auto packet = std::make_shared<get_stickers_pack_info_packet>(make_wim_params(), _set_id, _store_id, _file_id);
 
-    post_wim_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _seq, _set_id, _store_id, _file_id](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _seq, _set_id, _store_id, _file_id](int32_t _error)
     {
         coll_helper coll_result(g_core->create_collection(), true);
 
@@ -1810,8 +1805,6 @@ void im::get_stickers_pack_info(const int64_t _seq, const int32_t _set_id, const
             if (iter_data == doc.MemberEnd() || !iter_data->value.IsObject())
                 return;
 
-            ptr_this->get_stickers()->update_template_urls(iter_data->value);
-
             stickers::set set;
             if (!set.unserialize(iter_data->value))
                 return;
@@ -1831,7 +1824,7 @@ void im::add_stickers_pack(const int64_t _seq, const int32_t _set_id, std::strin
 {
     auto packet = std::make_shared<add_stickers_pack_packet>(make_wim_params(), _set_id, std::move(_store_id));
 
-    post_wim_packet(std::move(packet))->on_result_ = [_seq](int32_t _error)
+    post_packet(std::move(packet))->on_result_ = [_seq](int32_t _error)
     {
         coll_helper coll(g_core->create_collection(), true);
 
@@ -1845,7 +1838,7 @@ void im::remove_stickers_pack(const int64_t _seq, const int32_t _set_id, std::st
 {
     auto packet = std::make_shared<remove_stickers_pack_packet>(make_wim_params(), _set_id, std::move(_store_id));
 
-    post_wim_packet(std::move(packet))->on_result_ = [_seq](int32_t _error)
+    post_packet(std::move(packet))->on_result_ = [_seq](int32_t _error)
     {
         coll_helper coll(g_core->create_collection(), true);
 
@@ -1859,7 +1852,7 @@ void im::get_stickers_store(const int64_t _seq)
 {
     auto packet = std::make_shared<get_stickers_store_packet>(make_wim_params());
 
-    post_wim_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _seq](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _seq](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -1885,7 +1878,7 @@ void im::search_stickers_store(const int64_t _seq, const std::string& _search_te
 {
     auto packet = std::make_shared<get_stickers_store_packet>(make_wim_params(), _search_term);
 
-    post_wim_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _seq](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _seq](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -1911,7 +1904,7 @@ void im::set_sticker_order(const int64_t _seq, std::vector<int32_t> _values)
 {
     auto packet = std::make_shared<set_stickers_order_packet>(make_wim_params(), std::move(_values));
 
-    post_wim_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _seq](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _seq](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -1929,7 +1922,7 @@ void im::get_fs_stickers_by_ids(const int64_t _seq, std::vector<std::pair<int32_
 {
     auto packet = std::make_shared<stickers_migration>(make_wim_params(), _values);
 
-    post_wim_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _seq, _values = std::move(_values)](int32_t _error) mutable
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _seq, _values = std::move(_values)](int32_t _error) mutable
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -2248,7 +2241,7 @@ void im::get_chat_info(int64_t _seq, const std::string& _aimid, const std::strin
 
     auto packet = std::make_shared<core::wim::get_chat_info>(make_wim_params(), std::move(params));
 
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet, _limit, _aimid](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet, _limit, _aimid](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -2298,7 +2291,7 @@ void im::get_chat_info(int64_t _seq, const std::string& _aimid, const std::strin
 void im::resolve_pending(int64_t _seq, const std::string& _aimid, const std::vector<std::string>& _contacts, bool _approve)
 {
     auto packet = std::make_shared<core::wim::resolve_pending>(make_wim_params(), _aimid, _contacts, _approve);
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -2320,7 +2313,7 @@ void core::wim::im::get_chat_member_info(int64_t _seq, const std::string & _aimi
 {
     auto packet = std::make_shared<core::wim::get_chat_member_info>(make_wim_params(), _aimid, _members);
 
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -2347,7 +2340,7 @@ void im::get_chat_members_page(int64_t _seq, std::string_view _aimid, std::strin
             return;
 
         auto packet = std::make_shared<core::wim::get_chat_members>(ptr_this->make_wim_params(), contact, role, _page_size);
-        ptr_this->post_robusto_packet(packet)->on_result_ = [wr_this, _seq, packet, _page_size](int32_t _error)
+        ptr_this->post_packet(packet)->on_result_ = [wr_this, _seq, packet, _page_size](int32_t _error)
         {
             auto ptr_this = wr_this.lock();
             if (!ptr_this)
@@ -2383,7 +2376,7 @@ void im::get_chat_members_next_page(int64_t _seq, std::string_view _aimid, std::
 {
     auto packet = std::make_shared<core::wim::get_chat_members>(make_wim_params(), _aimid, std::string_view(), _page_size, _cursor);
 
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet, _page_size](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet, _page_size](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -2418,7 +2411,7 @@ void core::wim::im::search_chat_members_page(int64_t _seq, std::string_view _aim
 {
     auto packet = std::make_shared<core::wim::search_chat_members>(make_wim_params(), _aimid, _role, _keyword, _page_size);
 
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet, _page_size](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet, _page_size](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -2432,7 +2425,7 @@ void core::wim::im::search_chat_members_next_page(int64_t _seq, std::string_view
 {
     auto packet = std::make_shared<core::wim::search_chat_members>(make_wim_params(), _aimid, std::string_view(), std::string_view(), _page_size, _cursor);
 
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet, _page_size](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet, _page_size](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -2467,7 +2460,7 @@ void im::get_chat_contacts(int64_t _seq, const std::string& _aimid, const std::s
 {
     auto packet = std::make_shared<core::wim::get_chat_contacts>(make_wim_params(), _aimid, _cursor, _page_size);
 
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet, _aimid](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet, _aimid](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -2487,7 +2480,7 @@ void im::create_chat(int64_t _seq, const std::string& _aimid, const std::string&
 {
     auto packet = std::make_shared<core::wim::create_chat>(make_wim_params(), _aimid, _name, std::move(_members));
     packet->set_chat_params(std::move(_params));
-    post_robusto_packet(packet)->on_result_ = [_seq, packet](int32_t _error)
+    post_packet(packet)->on_result_ = [_seq, packet](int32_t _error)
     {
         coll_helper coll(g_core->create_collection(), true);
         coll.set_value_as_int("error", _error);
@@ -2508,7 +2501,7 @@ void im::mod_chat_params(int64_t _seq, const std::string& _aimid, core::wim::cha
 {
     auto packet = std::make_shared<core::wim::mod_chat>(make_wim_params(), _aimid);
     packet->set_chat_params(std::move(_params));
-    post_robusto_packet(packet)->on_result_ = [_seq, packet](int32_t _error)
+    post_packet(packet)->on_result_ = [_seq, packet](int32_t _error)
     {
         coll_helper coll(g_core->create_collection(), true);
         coll.set_value_as_int("error", _error);
@@ -2520,7 +2513,7 @@ void im::mod_chat_name(int64_t _seq, const std::string& _aimid, const std::strin
 {
     auto packet = std::make_shared<core::wim::mod_chat>(make_wim_params(), _aimid);
     packet->get_chat_params().set_name(_name);
-    post_robusto_packet(packet)->on_result_ = [_seq, packet](int32_t _error)
+    post_packet(packet)->on_result_ = [_seq, packet](int32_t _error)
     {
         coll_helper coll(g_core->create_collection(), true);
         coll.set_value_as_int("error", _error);
@@ -2532,7 +2525,7 @@ void im::mod_chat_about(int64_t _seq, const std::string& _aimid, const std::stri
 {
     auto packet = std::make_shared<core::wim::mod_chat>(make_wim_params(), _aimid);
     packet->get_chat_params().set_about(_about);
-    post_robusto_packet(packet)->on_result_ = [_seq, packet](int32_t _error)
+    post_packet(packet)->on_result_ = [_seq, packet](int32_t _error)
     {
         coll_helper coll(g_core->create_collection(), true);
         coll.set_value_as_int("error", _error);
@@ -2544,7 +2537,7 @@ void im::mod_chat_rules(int64_t _seq, const std::string& _aimid, const std::stri
 {
     auto packet = std::make_shared<core::wim::mod_chat>(make_wim_params(), _aimid);
     packet->get_chat_params().set_rules(_rules);
-    post_robusto_packet(packet)->on_result_ = [_seq, packet](int32_t _error)
+    post_packet(packet)->on_result_ = [_seq, packet](int32_t _error)
     {
         coll_helper coll(g_core->create_collection(), true);
         coll.set_value_as_int("error", _error);
@@ -2557,7 +2550,7 @@ void im::set_attention_attribute(int64_t _seq, std::string _aimid, const bool _v
     if (!_resume)
         get_archive()->update_attention_attribute(_aimid, _value);
 
-    auto handler = post_wim_packet(std::make_shared<core::wim::set_attention_attribute>(make_wim_params(), _aimid, _value));
+    auto handler = post_packet(std::make_shared<core::wim::set_attention_attribute>(make_wim_params(), _aimid, _value));
 
     handler->on_result_ = [_aimid, wr_this = weak_from_this()](int32_t _error)
     {
@@ -2574,19 +2567,19 @@ void im::set_attention_attribute(int64_t _seq, std::string _aimid, const bool _v
 
 void im::send_notify_sms(std::string_view _contact)
 {
-    post_robusto_packet(std::make_shared<core::wim::send_notify_sms>(make_wim_params(), _contact));
+    post_packet(std::make_shared<core::wim::send_notify_sms>(make_wim_params(), _contact));
 }
 
 void core::wim::im::pin_chat_message(int64_t _seq, const std::string & _aimid, int64_t _message, bool _is_unpin)
 {
     auto packet = std::make_shared<core::wim::pin_message>(make_wim_params(), _aimid, _message, _is_unpin);
-    post_robusto_packet(packet);
+    post_packet(packet);
 }
 
 void core::wim::im::get_mentions_suggests(int64_t _seq, const std::string& _aimid, const std::string& _pattern)
 {
     auto packet = std::make_shared<core::wim::get_mentions_suggests>(make_wim_params(), _aimid, _pattern);
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
     {
         if (_error == 0)
         {
@@ -2628,7 +2621,7 @@ void core::wim::im::get_mentions_suggests(int64_t _seq, const std::string& _aimi
 void im::block_chat_member(int64_t _seq, const std::string& _aimid, const std::string& _contact, bool _block, bool _remove_messages)
 {
     auto packet = std::make_shared<core::wim::block_chat_member>(make_wim_params(), _aimid, _contact, _block, _remove_messages);
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet, _block](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet, _block](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -2639,6 +2632,12 @@ void im::block_chat_member(int64_t _seq, const std::string& _aimid, const std::s
 
         coll_helper coll(g_core->create_collection(), true);
         coll.set_value_as_int("error", _error);
+        coll.set_value_as_string("chat", packet->get_chat());
+        coll.set_value_as_bool("block", _block);
+
+        if (const auto& failures = packet->get_failures(); !failures.empty())
+            chat_failures_helper(failures, coll);
+
         g_core->post_message_to_gui("chats/block/result", _seq, coll.get());
     };
 }
@@ -2646,7 +2645,7 @@ void im::block_chat_member(int64_t _seq, const std::string& _aimid, const std::s
 void im::set_chat_member_role(int64_t _seq, const std::string& _aimid, const std::string& _contact, const std::string& _role)
 {
     auto packet = std::make_shared<core::wim::mod_chat_member>(make_wim_params(), _aimid, _contact, _role);
-    post_robusto_packet(packet)->on_result_ = [_seq, packet](int32_t _error)
+    post_packet(packet)->on_result_ = [_seq, packet](int32_t _error)
     {
         coll_helper coll(g_core->create_collection(), true);
         coll.set_value_as_int("error", _error);
@@ -2658,7 +2657,7 @@ void im::get_chat_home(int64_t _seq, const std::string& _tag)
 {
     auto packet = std::make_shared<core::wim::get_chat_home>(make_wim_params(), _tag);
 
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -2937,10 +2936,10 @@ void im::cancel_requests()
         ++stop_objects_->active_session_id_;
     }
 
-    g_core->execute_core_context([]()
+    g_core->execute_core_context({ []()
     {
         curl_handler::instance().process_stopped_tasks();
-    });
+    } });
 }
 
 bool im::is_session_valid(uint64_t _session_id)
@@ -2982,7 +2981,7 @@ void im::post_pending_messages(const bool _recurcive)
             // start timer
             assert(ptr_this->post_messages_timer_ == empty_timer_id);
 
-            ptr_this->post_messages_timer_ = g_core->add_timer([wr_this]
+            ptr_this->post_messages_timer_ = g_core->add_timer({ [wr_this]
             {
                 auto ptr_this = wr_this.lock();
                 if (!ptr_this)
@@ -2990,7 +2989,7 @@ void im::post_pending_messages(const bool _recurcive)
 
                 ptr_this->post_pending_messages(true);
 
-            }, post_messages_rate);
+            } }, post_messages_rate);
 
             return;
         }
@@ -3103,7 +3102,7 @@ void im::post_pending_delete_messages(const bool _recurcive)
                 }
             }
 
-            ptr_this->post_robusto_packet(packet)->on_result_ = [wr_this, _messages, _contact, _operation](int32_t _error)
+            ptr_this->post_packet(packet)->on_result_ = [wr_this, _messages, _contact, _operation](int32_t _error)
             {
                 auto ptr_this = wr_this.lock();
                 if (!ptr_this)
@@ -3275,9 +3274,11 @@ void im::poll(
             if (_error == wpie_error_request_canceled || !ptr_this->is_session_valid(active_session_id))
                 return;
 
-            if (_error == wpie_network_error)
+            if (_error == wpie_network_error || _error == wpie_couldnt_resolve_host)
             {
-                config::hosts::switch_to_dns_mode(packet->get_url(), _error);
+                _error == wpie_network_error ?
+                    config::hosts::switch_to_dns_mode(packet->get_url(), _error) :
+                    config::hosts::switch_to_ip_mode(packet->get_url(), _error);
 
                 ptr_this->set_connection_state(connection_state::connecting);
 
@@ -3291,7 +3292,9 @@ void im::poll(
                         ptr_this->start_session(is_ping::yes);
                 }
                 else
+                {
                     ptr_this->poll(_is_first, im::poll_reason::after_network_error, (_failed_network_error_count + 1));
+                }
             }
             else if (_error == wpie_error_resend)
             {
@@ -3301,9 +3304,6 @@ void im::poll(
             }
             else
             {
-                if (_error == wpie_couldnt_resolve_host)
-                    config::hosts::switch_to_ip_mode(packet->get_url(), _error);
-
                 ptr_this->start_session();
             }
         }
@@ -3393,7 +3393,7 @@ void im::download_gallery_holes(const std::string& _aimid, int _depth)
         if (gallery_hole_timer_id_ != empty_timer_id)
             return;
 
-        gallery_hole_timer_id_ = g_core->add_timer([wr_this = weak_from_this(), _depth]
+        gallery_hole_timer_id_ = g_core->add_timer({ [wr_this = weak_from_this(), _depth]
         {
             auto ptr_this = wr_this.lock();
             if (!ptr_this)
@@ -3411,7 +3411,7 @@ void im::download_gallery_holes(const std::string& _aimid, int _depth)
             if (ptr_this->gallery_hole_requests_.empty())
                 stop_timer(ptr_this->gallery_hole_timer_id_);
 
-        }, gallery_holes_request_rate);
+        } }, gallery_holes_request_rate);
     }
 }
 
@@ -3435,7 +3435,7 @@ void im::download_gallery_holes_impl(const std::string& _aimid, int _depth)
         if (_local_state.patch_version_changed)
         {
             auto packet = std::make_shared<core::wim::get_dialog_gallery>(ptr_this->make_wim_params(), _aimid, _local_state.patch_version_, core::archive::gallery_entry_id(), core::archive::gallery_entry_id(), 0, true);
-            ptr_this->post_robusto_packet(packet)->on_result_ = [wr_this, _aimid, _depth, packet](int32_t _error)
+            ptr_this->post_packet(packet)->on_result_ = [wr_this, _aimid, _depth, packet](int32_t _error)
             {
                 auto ptr_this = wr_this.lock();
                 if (!ptr_this)
@@ -3507,7 +3507,7 @@ void im::download_gallery_holes_impl(const std::string& _aimid, int _depth)
             }
 
             auto packet = std::make_shared<core::wim::get_dialog_gallery>(ptr_this->make_wim_params(), _aimid, _local_state.patch_version_, _from, _till, 1000);
-            ptr_this->post_robusto_packet(packet)->on_result_ = [wr_this, _aimid, _depth, _local_state, _from, _till, packet](int32_t _error)
+            ptr_this->post_packet(packet)->on_result_ = [wr_this, _aimid, _depth, _local_state, _from, _till, packet](int32_t _error)
             {
                 auto ptr_this = wr_this.lock();
                 if (!ptr_this)
@@ -3614,7 +3614,7 @@ void im::logout(std::function<void()> _on_result)
 
     erase_auth_data();
 
-    post_wim_packet(packet)->on_result_ = [packet, _on_result = std::move(_on_result), wr_this = weak_from_this()](int32_t _error)
+    post_packet(packet)->on_result_ = [packet, _on_result = std::move(_on_result), wr_this = weak_from_this()](int32_t _error)
     {
         if (_on_result)
             _on_result();
@@ -3719,7 +3719,7 @@ void im::attach_phone(int64_t _seq, const auth_parameters& auth_params, const ph
 {
     auto packet = std::make_shared<core::wim::attach_phone>(make_wim_params(), _info);
 
-    post_wim_packet(packet)->on_result_ = [packet, _seq, wr_this = weak_from_this()](int32_t _error)
+    post_packet(packet)->on_result_ = [packet, _seq, wr_this = weak_from_this()](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -3767,7 +3767,7 @@ void im::attach_uin(int64_t _seq, bool _needFill)
 
     auto packet = std::make_shared<core::wim::attach_uin>(make_wim_params(), make_wim_params_general(false));
 
-    post_wim_packet(packet)->on_result_ = [packet, wr_this = weak_from_this(), _seq, _needFill](int32_t _error)
+    post_packet(packet)->on_result_ = [packet, wr_this = weak_from_this(), _seq, _needFill](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -4079,20 +4079,22 @@ void im::on_event_presence(fetch_event_presence* _event, const std::shared_ptr<a
     _on_complete->callback(0);
 }
 
-std::shared_ptr<async_task_handlers> im::post_robusto_packet(std::shared_ptr<robusto_packet> _packet)
+std::shared_ptr<async_task_handlers> im::post_packet(std::shared_ptr<wim_packet> _packet)
 {
     auto handler = std::make_shared<async_task_handlers>();
-    post_wim_packet(_packet)->on_result_ = [wr_this = weak_from_this(), handler, _packet](int32_t _error)
+    wim_send_thread_->post_packet(_packet, [wr_this = weak_from_this(), handler, _packet](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
             return;
 
+        ptr_this->handle_net_error(_packet->get_url(), _error);
+
         if (_packet->auto_resend_on_fail() && wim_packet::needs_to_repeat_failed(_error))
-            ptr_this->failed_robusto_packets_.emplace_back(_packet, handler);
+            ptr_this->failed_packets_.emplace_back(_packet, handler);
         else if (handler->on_result_)
             handler->on_result_(_error);
-    };
+    });
 
     return handler;
 }
@@ -4295,6 +4297,16 @@ static void get_persons_from_message(const archive::history_message& message, co
             core::archive::person p;
             p.friendly_ = friendly;
             result.emplace(quote.get_sender(), std::move(p));
+        }
+
+        if (const auto& friendly = quote.get_chat_name(); !friendly.empty())
+        {
+            if (const auto& chat_id = quote.get_chat(); !chat_id.empty())
+            {
+                core::archive::person p;
+                p.friendly_ = friendly;
+                result.emplace(chat_id, std::move(p));
+            }
         }
     }
 
@@ -4608,7 +4620,7 @@ std::shared_ptr<async_task_handlers> im::get_history_from_server(const get_histo
     const auto from_delete = _params.from_delete_;
     const auto seq = _params.seq_;
 
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, contact = _params.aimid_, init, from_editing, from_delete, from_search, on_result, from_msgid, seq](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, contact = _params.aimid_, init, from_editing, from_delete, from_search, on_result, from_msgid, seq](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -4687,7 +4699,7 @@ std::shared_ptr<async_task_handlers> im::get_history_from_server(const get_histo
                 const auto& patches = packet->get_patches();
                 unpin |= std::any_of(patches.begin(), patches.end(), [id = _local_state.get_pinned_message().get_msgid()](const auto& _patch)
                 { return (_patch.second->get_type() == archive::history_patch::type::deleted ||
-                          _patch.second->get_type() == archive::history_patch::type::modified) && 
+                          _patch.second->get_type() == archive::history_patch::type::modified) &&
                           _patch.second->get_message_id() == id;
                 });
                 if (!unpin)
@@ -4869,7 +4881,7 @@ std::shared_ptr<async_task_handlers> im::get_history_from_server_batch(get_histo
     const auto msg_id = _params.ids_.empty() ? -1 : _params.ids_.back();
 
     auto packet = std::make_shared<core::wim::get_history_batch>(make_wim_params(), std::move(_params), g_core->get_locale());
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, contact, on_result, is_context_req, seq, msg_id](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, contact, on_result, is_context_req, seq, msg_id](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -5187,7 +5199,7 @@ std::shared_ptr<async_task_handlers> im::set_dlg_state(set_dlg_state_params _par
 
     auto packet = std::make_shared<core::wim::set_dlg_state>(make_wim_params(), std::move(_params));
 
-    post_robusto_packet(packet)->on_result_ = [out_handler, wr_this = weak_from_this(), aimid = std::move(aimid)](int32_t _error) mutable
+    post_packet(packet)->on_result_ = [out_handler, wr_this = weak_from_this(), aimid = std::move(aimid)](int32_t _error) mutable
     {
         if (wim_packet::needs_to_repeat_failed(_error))
         {
@@ -5253,7 +5265,7 @@ void im::download_holes(const std::string& _contact, int64_t _from, int64_t _dep
     holes::request hole_request(_contact, _from, _depth, _recursion);
 
     get_archive()->get_next_hole(_contact, _from, _depth)->on_result =
-        [wr_this = weak_from_this(), _contact, _depth, _recursion, hole_request](std::shared_ptr<archive::archive_hole> _hole)
+        [wr_this = weak_from_this(), _contact, _depth, _recursion, hole_request](std::shared_ptr<archive::archive_hole> _hole, archive::archive_hole_error _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -5261,14 +5273,14 @@ void im::download_holes(const std::string& _contact, int64_t _from, int64_t _dep
 
         if (!_hole)
         {
-            write_ignore_download_holes(_contact, "!_hole");
+            write_ignore_download_holes(_contact, "!_hole", _error, hole_request);
             return;
         }
 
         // fix for empty dialog
         if ((_recursion > 0) && (_hole->get_from() == -1))
         {
-            write_ignore_download_holes(_contact, "recursion > 0");
+            write_ignore_download_holes(_contact, "recursion > 0", _error, hole_request);
             return;
         }
 
@@ -5277,12 +5289,12 @@ void im::download_holes(const std::string& _contact, int64_t _from, int64_t _dep
         if (safety_limit_reached)
         {
             write_files_error_in_log("download_holes", _recursion);
-            write_ignore_download_holes(_contact, "safety_limit_reached");
+            write_ignore_download_holes(_contact, "safety_limit_reached", _error, hole_request);
             assert(!"archive logic bug");
             return;
         }
 
-        ptr_this->get_archive()->get_dlg_state(_contact)->on_result = [wr_this, _hole, _contact, _depth, _recursion, hole_request](const archive::dlg_state& _state)
+        ptr_this->get_archive()->get_dlg_state(_contact)->on_result = [wr_this, _hole, _contact, _depth, _recursion, hole_request, _error](const archive::dlg_state& _state)
         {
             auto ptr_this = wr_this.lock();
             if (!ptr_this)
@@ -5307,7 +5319,7 @@ void im::download_holes(const std::string& _contact, int64_t _from, int64_t _dep
                     _state.get_del_up_to()
                 );
 
-                write_ignore_download_holes(_contact, "is_request_obsolete");
+                write_ignore_download_holes(_contact, "is_request_obsolete", _error, hole_request);
                 return;
             }
 
@@ -5332,7 +5344,7 @@ void im::download_holes(const std::string& _contact, int64_t _from, int64_t _dep
 
                 if (depth_tail <= 0)
                 {
-                    write_ignore_download_holes(_contact, "depth_tail");
+                    write_ignore_download_holes(_contact, "depth_tail", _error, hole_request);
                     return;
                 }
 
@@ -5493,7 +5505,7 @@ void im::post_dlg_state_to_gui(const std::string& _aimid, core::icollection* _dl
     {
         if (dlg_state_timer_id_ == empty_timer_id)
         {
-            dlg_state_timer_id_ = g_core->add_timer([wr_this = weak_from_this()]
+            dlg_state_timer_id_ = g_core->add_timer({ [wr_this = weak_from_this()]
             {
                 auto ptr_this = wr_this.lock();
                 if (!ptr_this)
@@ -5510,7 +5522,7 @@ void im::post_dlg_state_to_gui(const std::string& _aimid, core::icollection* _dl
                     ptr_this->stop_dlg_state_timer();
                 }
 
-            }, std::chrono::milliseconds(100));
+            } }, std::chrono::milliseconds(100));
         }
     }
     else
@@ -5614,7 +5626,7 @@ void im::post_history_search_result_msg_to_gui(const std::string_view _contact, 
     if (search_data_->post_results_timer_ == empty_timer_id && g_core)
     {
         auto req = search_data_->req_id_.load();
-        search_data_->post_results_timer_ = g_core->add_timer([wr_this = weak_from_this(), req]()
+        search_data_->post_results_timer_ = g_core->add_timer({ [wr_this = weak_from_this(), req] ()
         {
             auto ptr_this = wr_this.lock();
             if (!ptr_this || !g_core)
@@ -5637,7 +5649,7 @@ void im::post_history_search_result_msg_to_gui(const std::string_view _contact, 
 
             ptr_this->search_data_->search_results_->messages_.clear();
 
-        }, std::chrono::milliseconds(100));
+        } }, std::chrono::milliseconds(100));
     }
 }
 
@@ -5697,7 +5709,7 @@ void im::load_reactions_from_server(const std::string& _contact, const std::shar
 
     auto packet = std::make_shared<core::wim::get_reaction>(make_wim_params(), _contact, *_ids);
 
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _contact, _ids](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _contact, _ids](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -6213,7 +6225,7 @@ void im::login_normalize_phone(int64_t _seq, const std::string& _country, const 
 
     auto packet = std::make_shared<core::wim::normalize_phone>(make_wim_params(), _country, _raw_phone);
 
-    post_wim_packet(packet)->on_result_ = [packet, _seq, wr_this = weak_from_this(), _locale, _is_login](int32_t _error)
+    post_packet(packet)->on_result_ = [packet, _seq, wr_this = weak_from_this(), _locale, _is_login](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -6613,7 +6625,7 @@ void im::login_get_sms_code(int64_t _seq, const phone_info& _info, bool _is_logi
 {
     auto packet = std::make_shared<core::wim::validate_phone>(make_wim_params(), _info.get_phone(), _info.get_locale());
 
-    post_wim_packet(packet)->on_result_ = [packet, _seq, wr_this = weak_from_this(), _is_login](int32_t _error)
+    post_packet(packet)->on_result_ = [packet, _seq, wr_this = weak_from_this(), _is_login](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -6694,7 +6706,7 @@ void im::login_by_phone(int64_t _seq, const phone_info& _info)
     info_for_login.set_sms_code(_info.get_sms_code());
 
     auto packet = std::make_shared<core::wim::phone_login>(make_wim_params(), std::move(info_for_login));
-    post_wim_packet(packet)->on_result_ = [packet, _seq, wr_this = weak_from_this()](int32_t _error)
+    post_packet(packet)->on_result_ = [packet, _seq, wr_this = weak_from_this()](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -6770,7 +6782,7 @@ void im::resume_failed_network_requests()
         ptr_this->resume_failed_poll_requests();
         ptr_this->resume_failed_group_subscriptions();
         ptr_this->resume_failed_get_reactions();
-        ptr_this->resume_failed_robusto_packets();
+        ptr_this->resume_failed_packets();
 
         ptr_this->get_async_loader().resume_suspended_tasks(ptr_this->make_wim_params());
 
@@ -6825,7 +6837,7 @@ void im::send_user_agreement(const accept_agreement_info &_info, int64_t _seq)
             g_core->post_message_to_gui("user_accept_gdpr_result", _seq, nullptr);
     };
 
-    post_wim_packet(packet)->on_result_ = on_result;
+    post_packet(packet)->on_result_ = on_result;
 }
 
 void im::resume_failed_user_agreements()
@@ -6948,10 +6960,10 @@ void im::resume_failed_get_reactions()
     failed_get_reactions_.clear();
 }
 
-void im::resume_failed_robusto_packets()
+void im::resume_failed_packets()
 {
-    for (auto&& [packet, handler] : std::exchange(failed_robusto_packets_, {}))
-        post_robusto_packet(std::move(packet))->on_result_ = std::move(handler->on_result_);
+    for (auto&& [packet, handler] : std::exchange(failed_packets_, {}))
+        post_packet(std::move(packet))->on_result_ = std::move(handler->on_result_);
 }
 
 
@@ -7031,11 +7043,13 @@ std::shared_ptr<send_message_handler> im::send_message_async(
     const int64_t _updated_id,
     const std::string& _contact,
     const std::string& _message,
+    const core::data::format::string_formatting& _message_format,
     const std::string& _internal_id,
     const core::message_type _type,
     const core::archive::quotes_vec& _quotes,
     const core::archive::mentions_map& _mentions,
     const std::string& _description,
+    const core::data::format::string_formatting& _description_format,
     const std::string& _url,
     const core::archive::shared_contact& _shared_contact,
     const core::archive::geo& _geo,
@@ -7047,9 +7061,9 @@ std::shared_ptr<send_message_handler> im::send_message_async(
 
     auto handler = std::make_shared<send_message_handler>();
 
-    auto packet = std::make_shared<core::wim::send_message>(make_wim_params(), _updated_id, _type, _internal_id, _contact, _message, _quotes, _mentions, _description, _url, _shared_contact, _geo, _poll, _smartreply_marker);
+    auto packet = std::make_shared<core::wim::send_message>(make_wim_params(), _updated_id, _type, _internal_id, _contact, _message, _message_format, _quotes, _mentions, _description, _description_format, _url, _shared_contact, _geo, _poll, _smartreply_marker);
 
-    post_wim_packet(packet)->on_result_ = [handler, packet, wr_this = weak_from_this(), _contact](int32_t _error)
+    post_packet(packet)->on_result_ = [handler, packet, wr_this = weak_from_this(), _contact](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -7092,11 +7106,12 @@ static archive::not_sent_message_sptr make_message(const std::string& _contact, 
     }
     else
     {
-        msg_not_sent = archive::not_sent_message::make(_contact, std::move(_pack.message_), _pack.type_, time, std::move(_pack.internal_id_));
+        msg_not_sent = archive::not_sent_message::make(_contact, std::move(_pack.message_), _pack.message_format_, _pack.type_, time, std::move(_pack.internal_id_));
         msg_not_sent->set_calc_stat(true);
     }
 
     msg_not_sent->set_description(std::move(_pack.description_));
+    msg_not_sent->set_description_format(std::move(_pack.description_format_));
     msg_not_sent->set_url(std::move(_pack.url_));
     msg_not_sent->attach_quotes(std::move(_pack.quotes_));
     msg_not_sent->set_mentions(std::move(_pack.mentions_));
@@ -7119,7 +7134,7 @@ static archive::not_sent_message_sptr make_message(const std::string& _contact, 
     {
         if (!hist_msg->get_chat_data())
             hist_msg->set_chat_data(archive::chat_data());
-        hist_msg->get_chat_data()->set_sender(_pack.channel_ ? _contact : _auth_params->aimid_);
+        hist_msg->get_chat_data()->set_sender(_pack.chat_sender_.empty() ? _auth_params->aimid_ : _pack.chat_sender_);
     }
 
     return msg_not_sent;
@@ -7269,7 +7284,7 @@ void im::send_message_typing(int64_t _seq, const std::string& _contact, const co
 {
     auto packet = std::make_shared<core::wim::send_message_typing>(make_wim_params(), _contact, _status, _id);
 
-    post_wim_packet(std::move(packet))->on_result_ = [wr_this = weak_from_this()](int32_t _error)
+    post_packet(std::move(packet))->on_result_ = [wr_this = weak_from_this()](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -7281,13 +7296,13 @@ void im::send_message_typing(int64_t _seq, const std::string& _contact, const co
 
 void im::set_state(const int64_t _seq, const core::profile_state _state)
 {
-    post_wim_packet(std::make_shared<core::wim::set_state>(make_wim_params(), _state));
+    post_packet(std::make_shared<core::wim::set_state>(make_wim_params(), _state));
 }
 
 void im::phoneinfo(int64_t seq, const std::string &phone, const std::string &gui_locale)
 {
     auto packet = std::make_shared<core::wim::phoneinfo>(make_wim_params(), phone, gui_locale);
-    post_wim_packet(packet)->on_result_ = [seq, packet](int32_t _error)
+    post_packet(packet)->on_result_ = [seq, packet](int32_t _error)
     {
         if (_error == 0)
         {
@@ -7343,13 +7358,8 @@ void im::phoneinfo(int64_t seq, const std::string &phone, const std::string &gui
 
 void im::remove_members(std::string _aimid, std::vector<std::string> _members_to_delete)
 {
-    post_robusto_packet(std::make_shared<core::wim::remove_members>(make_wim_params(), std::move(_aimid), std::move(_members_to_delete)));
-}
-
-void im::add_members(std::string _aimid, std::vector<std::string> _m_chat_members_to_add, bool _unblock)
-{
-    auto packet = std::make_shared<core::wim::add_members>(make_wim_params(), std::move(_aimid), std::move(_m_chat_members_to_add), _unblock);
-    post_robusto_packet(packet)->on_result_ = [packet, wr_this = weak_from_this()](int32_t _error)
+    auto packet = std::make_shared<core::wim::remove_members>(make_wim_params(), std::move(_aimid), std::move(_members_to_delete));
+    post_packet(packet)->on_result_ = [packet, wr_this = weak_from_this()](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -7357,32 +7367,31 @@ void im::add_members(std::string _aimid, std::vector<std::string> _m_chat_member
 
         coll_helper coll(g_core->create_collection(), true);
         coll.set_value_as_int("error", _error);
-        coll.set_value_as_string("contact", packet->get_aimid());
+        coll.set_value_as_string("chat", packet->get_aimid());
 
         if (const auto& failures = packet->get_failures(); !failures.empty())
-        {
-            ifptr<iarray> array(coll->create_array());
-            array->reserve((int32_t)failures.size());
-            for (const auto& [type, contacts] : failures)
-            {
-                coll_helper coll_failure(coll->create_collection(), true);
-                coll_failure.set_value_as_int("type", (int)type);
-                ifptr<iarray> sn_array(coll->create_array());
-                sn_array->reserve(contacts.size());
-                for (const auto& c : contacts)
-                {
-                    ifptr<ivalue> val(coll->create_value());
-                    val->set_as_string(c.c_str(), (int32_t)c.size());
-                    sn_array->push_back(val.get());
-                }
-                coll_failure.set_value_as_array("contacts", sn_array.get());
+            chat_failures_helper(failures, coll);
 
-                ifptr<ivalue> val(coll->create_value());
-                val->set_as_collection(coll_failure.get());
-                array->push_back(val.get());
-            }
-            coll.set_value_as_array("failures", array.get());
-        }
+        g_core->post_message_to_gui("remove_members/result", 0, coll.get());
+    };
+}
+
+void im::add_members(std::string _aimid, std::vector<std::string> _m_chat_members_to_add, bool _unblock)
+{
+    auto packet = std::make_shared<core::wim::add_members>(make_wim_params(), std::move(_aimid), std::move(_m_chat_members_to_add), _unblock);
+    post_packet(packet)->on_result_ = [packet, wr_this = weak_from_this()](int32_t _error)
+    {
+        auto ptr_this = wr_this.lock();
+        if (!ptr_this)
+            return;
+
+        coll_helper coll(g_core->create_collection(), true);
+        coll.set_value_as_int("error", _error);
+        coll.set_value_as_string("chat", packet->get_aimid());
+
+        if (const auto& failures = packet->get_failures(); !failures.empty())
+            chat_failures_helper(failures, coll);
+
         g_core->post_message_to_gui("add_members/result", 0, coll.get());
     };
 }
@@ -7391,7 +7400,7 @@ void im::get_mrim_key(int64_t _seq, const std::string& _email)
 {
     auto packet = std::make_shared<core::wim::mrim_get_key>(make_wim_params(), _email);
 
-    post_wim_packet(packet)->on_result_ = [packet, _seq, wr_this = weak_from_this()](int32_t _error)
+    post_packet(packet)->on_result_ = [packet, _seq, wr_this = weak_from_this()](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -7478,11 +7487,13 @@ std::shared_ptr<async_task_handlers> im::send_pending_message_async(int64_t _seq
         pending_message->get_msgid(),
         _message->get_aimid(),
         pending_message->get_text(),
+        pending_message->get_format(),
         _message->get_network_request_id(),
         pending_message->get_type(),
         _message->get_quotes(),
         _message->get_mentions(),
         _message->get_description(),
+        _message->get_description_format(),
         _message->get_url(),
         _message->get_shared_contact(),
         _message->get_geo(),
@@ -7968,23 +7979,23 @@ void im::schedule_external_config_timer()
     const auto inifile_update_interval = core::configuration::get_app_config().update_interval();
     const auto update_period = (inifile_update_interval == 0) ? default_update_interval : std::chrono::seconds(inifile_update_interval);
 
-    external_config_timer_id_ = g_core->add_timer([wr_this = weak_from_this()]
+    external_config_timer_id_ = g_core->add_timer({ [wr_this = weak_from_this()]
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
             return;
 
         ptr_this->load_external_config();
-    }, update_period);
+    } }, update_period);
 }
 
 void im::schedule_resolve_hosts_timer()
 {
-    resolve_hosts_timer_id_ = g_core->add_timer([]
+    resolve_hosts_timer_id_ = g_core->add_timer({ []
     {
         config::hosts::resolve_hosts();
 
-    }, std::chrono::seconds(omicronlib::_o(omicron::keys::dns_resolve_timeout_sec, feature::default_dns_resolve_timeout_sec())));
+    } }, std::chrono::seconds(omicronlib::_o(omicron::keys::dns_resolve_timeout_sec, feature::default_dns_resolve_timeout_sec())));
 }
 
 void im::stop_external_config_timer()
@@ -8167,7 +8178,7 @@ void im::post_voip_msg_to_server(const voip_manager::VoipProtoMsg& msg) {
     auto packet = std::make_shared<core::wim::wim_webrtc>(make_wim_params(), msg);
     auto __this = weak_from_this();
 
-    post_wim_packet(packet)->on_result_ = [packet, __this, msg](int32_t _error)
+    post_packet(packet)->on_result_ = [packet, __this, msg](int32_t _error)
     {
         std::shared_ptr<wim::im> ptr_this = __this.lock();
         if (!!ptr_this) {
@@ -8193,7 +8204,7 @@ std::shared_ptr<wim::wim_packet> im::prepare_voip_pac(const voip_manager::VoipPr
 void im::post_voip_alloc_to_server(const std::string& data)
 {
     auto packet = std::make_shared<core::wim::wim_allocate>(make_wim_params(), data);
-    post_wim_packet(packet)->on_result_ = [packet, wr_this = weak_from_this()](int32_t _error)
+    post_packet(packet)->on_result_ = [packet, wr_this = weak_from_this()](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!!ptr_this) {
@@ -8256,7 +8267,7 @@ void im::hide_chat_async(const std::string& _contact,  const int64_t _last_msg_i
 {
     auto packet = std::make_shared<core::wim::hide_chat>(make_wim_params(), _contact, _last_msg_id);
 
-    post_wim_packet(packet)->on_result_ = [_contact, packet, wr_this = weak_from_this(), _on_result](int32_t _error)
+    post_packet(packet)->on_result_ = [_contact, packet, wr_this = weak_from_this(), _on_result](int32_t _error)
     {
         if (_error == 0)
         {
@@ -8299,7 +8310,7 @@ void im::mute_chats(std::shared_ptr<std::list<std::string>> _chats)
 
     auto packet = std::make_shared<core::wim::mute_buddy>(make_wim_params(), chat, true);
 
-    post_wim_packet(packet)->on_result_ = [packet, wr_this = weak_from_this(), _chats](int32_t _error)
+    post_packet(packet)->on_result_ = [packet, wr_this = weak_from_this(), _chats](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -8316,7 +8327,7 @@ void im::mute_chats(std::shared_ptr<std::list<std::string>> _chats)
 
 std::shared_ptr<async_task_handlers> im::mute_chat_async(const std::string& _contact, bool _mute)
 {
-    return post_wim_packet(std::make_shared<core::wim::mute_buddy>(make_wim_params(), _contact, _mute));
+    return post_packet(std::make_shared<core::wim::mute_buddy>(make_wim_params(), _contact, _mute));
 }
 
 void im::mute_chat(const std::string& _contact, bool _mute)
@@ -8415,12 +8426,14 @@ void im::upload_file_sharing_internal(const archive::not_sent_message_sptr& _not
                     _message->get_aimid(),
                     {
                         _info.get_file_url(),
+                        {},
                         _message->get_quotes(),
                         _message->get_mentions(),
                         _message->get_internal_id(),
                         message_type::file_sharing,
                         0,
                         _message->get_description(),
+                        _message->get_description_format(),
                         with_caption ? _info.get_file_url() : std::string(),
                         common::tools::patch_version() }
                 );
@@ -8549,6 +8562,7 @@ void im::upload_file_sharing(
     const std::string& _extension,
     const core::archive::quotes_vec& _quotes,
     const std::string& _description,
+    const core::data::format::string_formatting& _description_format,
     const core::archive::mentions_map& _mentions,
     const std::optional<int64_t>& _duration,
     const bool _strip_exif,
@@ -8584,7 +8598,7 @@ void im::upload_file_sharing(
         q.set_time(quote_time);
     }
 
-    auto not_sent = archive::not_sent_message::make_outgoing_file_sharing(_contact, time, file_name, quotes, _description, _mentions, _duration);
+    auto not_sent = archive::not_sent_message::make_outgoing_file_sharing(_contact, time, file_name, quotes, _description, _description_format, _mentions, _duration);
 
     if (!not_sent)
     {
@@ -8652,6 +8666,24 @@ void im::download_file_sharing_metainfo(const int64_t _seq, const std::string& _
             auto ptr_this = wr_this.lock();
             if (!ptr_this)
                 return;
+
+            if (_error == loader_errors::come_back_later)
+            {
+                auto timeout = features::get_metainfo_repeat_interval();
+                if (timeout != decltype(timeout)::zero())
+                {
+                    g_core->add_single_shot_timer({ [_seq, _file_url, wr_this]
+                    {
+                        auto ptr_this = wr_this.lock();
+                        if (!ptr_this)
+                        return;
+
+                        ptr_this->download_file_sharing_metainfo(_seq, _file_url);
+
+                    } }, timeout);
+                    return;
+                }
+            }
 
             coll_helper cl_coll(g_core->create_collection(), true);
 
@@ -8755,13 +8787,31 @@ void im::download_file_sharing(const int64_t _seq, const std::string& _contact, 
     });
 
     auto completion_callback = file_info_handler_t::completion_callback_t(
-        [_seq, _file_url, _filename, wr_this = weak_from_this()](loader_errors _error, const file_info_data_t& _data)
+        [_seq, _contact, _file_url, _force_request_metainfo, _filename, _download_dir, _raise_priority, wr_this = weak_from_this()](loader_errors _error, const file_info_data_t& _data)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
             return;
 
         coll_helper coll(g_core->create_collection(), true);
+
+        if (_error == loader_errors::come_back_later)
+        {
+            auto timeout = features::get_metainfo_repeat_interval();
+            if (timeout != decltype(timeout)::zero())
+            {
+                g_core->add_single_shot_timer({ [_seq, _contact, _file_url, _force_request_metainfo, _filename, _download_dir, _raise_priority, wr_this]
+                {
+                    auto ptr_this = wr_this.lock();
+                    if (!ptr_this)
+                    return;
+
+                    ptr_this->download_file_sharing(_seq, _contact, _file_url, _force_request_metainfo, _filename, _download_dir, _raise_priority);
+
+                } }, timeout);
+                return;
+            }
+        }
 
         if (_error != loader_errors::success)
         {
@@ -8874,13 +8924,31 @@ void im::download_image(
         g_core->post_message_to_gui("image/download/progress", _seq, coll.get());
     });
 
-    auto completion_callback = file_info_handler_t::completion_callback_t([_seq, _image_url, _download_preview](loader_errors _error, const file_info_data_t& _data)
+    auto completion_callback = file_info_handler_t::completion_callback_t([_seq, _image_url, _forced_path, _download_preview, _preview_width, _preview_height, _ext_resource, _raise_priority, wr_this = weak_from_this()](loader_errors _error, const file_info_data_t& _data)
     {
         __INFO("async_loader",
             "image_handler\n"
             "seq      = <%1%>\n"
             "url      = <%2%>\n"
             "result   = <%3%>\n", _seq % _image_url % static_cast<int>(_error));
+
+        if (_error == loader_errors::come_back_later)
+        {
+            auto timeout = features::get_preview_repeat_interval();
+            if (timeout != decltype(timeout)::zero())
+            {
+                g_core->add_single_shot_timer({ [_seq, _image_url, _forced_path, _download_preview, _preview_width, _preview_height, _ext_resource, _raise_priority, wr_this]
+                {
+                    auto ptr_this = wr_this.lock();
+                    if (!ptr_this)
+                    return;
+
+                    ptr_this->download_image(_seq, _image_url, _forced_path, _download_preview, _preview_width, _preview_height, _ext_resource, _raise_priority);
+
+                } }, timeout);
+                return;
+            }
+        }
 
         coll_helper cl_coll(g_core->create_collection(), true);
 
@@ -8930,7 +8998,7 @@ void im::download_link_metainfo(const int64_t _seq,
     assert(_preview_height < 1000);
 
     get_async_loader().download_image_metainfo(_url, make_wim_params(), link_meta_handler_t(
-        [_seq, _url, _preview_width, _preview_height, _load_preview, wr_this = weak_from_this()](loader_errors _error, const link_meta_data_t _data)
+        [_seq, _url, _preview_width, _preview_height, _load_preview, _log_str, wr_this = weak_from_this()](loader_errors _error, const link_meta_data_t _data)
         {
             auto ptr_this = wr_this.lock();
             if (!ptr_this)
@@ -8940,7 +9008,20 @@ void im::download_link_metainfo(const int64_t _seq,
 
             if (_error == loader_errors::come_back_later)
             {
-                return;
+                auto timeout = features::get_link_metainfo_repeat_interval();
+                if (timeout != decltype(timeout)::zero())
+                {
+                    g_core->add_single_shot_timer({ [_seq, _url, _preview_width, _preview_height, _load_preview, _log_str, wr_this]
+                    {
+                        auto ptr_this = wr_this.lock();
+                        if (!ptr_this)
+                        return;
+
+                        ptr_this->download_link_metainfo(_seq, _url, _preview_width, _preview_height, _load_preview, _log_str);
+
+                    } }, timeout);
+                    return;
+                }
             }
 
             auto meta = _data.additional_data_;
@@ -8973,23 +9054,23 @@ void im::download_link_metainfo(const int64_t _seq,
 
                 if (_load_preview)
                 {
-                    g_core->execute_core_context([_seq, _preview_width, _preview_height, meta, wr_this]()
+                    g_core->execute_core_context({ [_seq, _preview_width, _preview_height, meta, wr_this]()
                     {
                         auto ptr_this = wr_this.lock();
                         if (!ptr_this)
                             return;
 
                         ptr_this->download_link_preview_image(_seq, *meta, _preview_width, _preview_height);
-                    });
+                    } });
 
-                    g_core->execute_core_context([_seq, meta, wr_this]()
+                    g_core->execute_core_context({ [_seq, meta, wr_this]()
                     {
                         auto ptr_this = wr_this.lock();
                         if (!ptr_this)
                             return;
 
                         ptr_this->download_link_preview_favicon(_seq, *meta);
-                    });
+                    } });
                 }
             }
 
@@ -9151,7 +9232,7 @@ void im::speech_to_text(int64_t _seq, const std::string& _url, const std::string
 {
     auto packet = std::make_shared<core::wim::speech_to_text>(make_wim_params(), _url, _locale);
 
-    post_wim_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -9185,7 +9266,7 @@ void im::search_contacts_server(const int64_t _seq, const std::string_view _keyw
 {
     auto packet = std::make_shared<search_contacts>(make_wim_params(), _keyword, _phone, core::configuration::get_app_config().is_hide_keyword_pattern());
 
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -9208,7 +9289,7 @@ void im::syncronize_address_book(const int64_t _seq, const std::string& _keyword
 {
     auto packet = std::make_shared<sync_ab>(make_wim_params(), _keyword, _phone);
 
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -9227,7 +9308,7 @@ void im::search_dialogs_one(const int64_t _seq, const std::string_view _keyword,
     auto packet = std::make_shared<search_dialogs>(make_wim_params(), _keyword, _contact);
     packet->set_hide_keyword(core::configuration::get_app_config().is_hide_keyword_pattern());
 
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -9242,7 +9323,7 @@ void im::search_dialogs_all(const int64_t _seq, const std::string_view _keyword)
     auto packet = std::make_shared<search_dialogs>(make_wim_params(), _keyword, std::string_view());
     packet->set_hide_keyword(core::configuration::get_app_config().is_hide_keyword_pattern());
 
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -9257,7 +9338,7 @@ void im::search_dialogs_continue(const int64_t _seq, const std::string_view _cur
     auto packet = std::make_shared<search_dialogs>(make_wim_params(), std::string_view(), _contact, _cursor);
     packet->set_hide_keyword(core::configuration::get_app_config().is_hide_keyword_pattern());
 
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -9304,7 +9385,7 @@ void im::add_contact(int64_t _seq, const std::string& _aimid, const std::string&
 
         auto packet = std::make_shared<core::wim::add_buddy>(ptr_this->make_wim_params(), _aimid, _group, _auth_message);
 
-        ptr_this->post_wim_packet(packet)->on_result_ = [packet, _seq, _aimid](int32_t _error)
+        ptr_this->post_packet(packet)->on_result_ = [packet, _seq, _aimid](int32_t _error)
         {
             coll_helper coll(g_core->create_collection(), true);
             coll.set_value_as_int("error", _error);
@@ -9363,7 +9444,7 @@ void im::remove_contact(int64_t _seq, const std::string& _aimid)
 
                 if (ptr_this->contact_list_->exist(_aimid))
                 {
-                    ptr_this->post_wim_packet(packet)->on_result_ = on_result;
+                    ptr_this->post_packet(packet)->on_result_ = on_result;
                 }
                 else
                 {
@@ -9379,7 +9460,7 @@ void im::rename_contact(int64_t _seq, const std::string& _aimid, const std::stri
 {
     auto packet = std::make_shared<core::wim::set_buddy_attribute>(make_wim_params(), _aimid, _friendly);
 
-    post_wim_packet(packet)->on_result_ = [_aimid, _friendly, _seq](int32_t _error)
+    post_packet(packet)->on_result_ = [_aimid, _friendly, _seq](int32_t _error)
     {
         coll_helper coll(g_core->create_collection(), true);
 
@@ -9413,7 +9494,7 @@ void im::ignore_contact(int64_t _seq, const std::string& _aimid, bool _ignore)
 
     auto packet = std::make_shared<core::wim::set_permit_deny>(make_wim_params(), _aimid, oper);
 
-    post_wim_packet(packet)->on_result_ = [_ignore, wr_this = weak_from_this(), _aimid, _seq](int32_t _error)
+    post_packet(packet)->on_result_ = [_ignore, wr_this = weak_from_this(), _aimid, _seq](int32_t _error)
     {
         if (_error == 0)
         {
@@ -9443,7 +9524,7 @@ void im::get_ignore_list(int64_t _seq)
 {
     auto packet = std::make_shared<core::wim::get_permit_deny>(make_wim_params());
 
-    post_wim_packet(packet)->on_result_ = [_seq, wr_this = weak_from_this(), packet](int32_t _error)
+    post_packet(packet)->on_result_ = [_seq, wr_this = weak_from_this(), packet](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -9721,7 +9802,7 @@ void im::on_event_chat_heads(fetch_event_chat_heads* _event, const std::shared_p
 
         if (chat_heads_timer_ == empty_timer_id)
         {
-            chat_heads_timer_ = g_core->add_timer([wr_this = weak_from_this()]
+            chat_heads_timer_ = g_core->add_timer({ [wr_this = weak_from_this()]
             {
                 auto ptr_this = wr_this.lock();
                 if (!ptr_this)
@@ -9732,7 +9813,7 @@ void im::on_event_chat_heads(fetch_event_chat_heads* _event, const std::shared_p
 
                 stop_timer(ptr_this->chat_heads_timer_);
 
-            }, std::chrono::seconds(1));
+            } }, std::chrono::seconds(1));
         }
     }
 
@@ -9817,7 +9898,7 @@ void im::on_event_gallery_notify(fetch_event_gallery_notify* _event, const std::
             if (_local_state.patch_version_ != new_state.patch_version_)
             {
                 auto packet = std::make_shared<core::wim::get_dialog_gallery>(ptr_this->make_wim_params(), aimid, _local_state.patch_version_, core::archive::gallery_entry_id(), core::archive::gallery_entry_id(), 0, true);
-                ptr_this->post_robusto_packet(packet)->on_result_ = [wr_this, aimid, packet, finish](int32_t _error)
+                ptr_this->post_packet(packet)->on_result_ = [wr_this, aimid, packet, finish](int32_t _error)
                 {
                     auto ptr_this = wr_this.lock();
                     if (!ptr_this)
@@ -10069,16 +10150,6 @@ void im::set_resend_gdpr_info(std::unique_ptr<accept_agreement_info> _info)
     resend_gdpr_info_ = std::move(_info);
 }
 
-void im::send_statistic_if_needed()
-{
-    if (imstat_->need_send())
-    {
-        auto packet = imstat_->get_statistic(make_wim_params());
-        if (packet)
-            post_wim_packet(packet);
-    }
-}
-
 std::string im::get_login() const
 {
     return auth_params_->aimid_;
@@ -10088,7 +10159,7 @@ void im::check_themes_meta_updates(int64_t _seq)
 {
     const auto etag = g_core->load_themes_etag();
     auto packet = std::make_shared<get_themes_index>(make_wim_params(), etag);
-    post_wim_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, etag, _seq](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, etag, _seq](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -10236,7 +10307,7 @@ void im::update_profile(int64_t _seq, const std::vector<std::pair<std::string, s
 {
     auto packet = std::make_shared<core::wim::update_profile>(make_wim_params(), _field);
 
-    post_wim_packet(packet)->on_result_ = [packet, _seq, wr_this = weak_from_this()](int32_t _error)
+    post_packet(packet)->on_result_ = [packet, _seq, wr_this = weak_from_this()](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -10252,7 +10323,7 @@ void im::join_live_chat(int64_t _seq, const std::string& _stamp)
 {
     auto packet = std::make_shared<core::wim::join_chat>(make_wim_params(), _stamp);
 
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet, _stamp](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet, _stamp](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -10271,7 +10342,7 @@ std::shared_ptr<async_task_handlers> im::send_timezone()
     auto handler = std::make_shared<async_task_handlers>();
     auto packet = std::make_shared<core::wim::set_timezone>(make_wim_params());
 
-    post_wim_packet(packet)->on_result_ = [handler](int32_t _error)
+    post_packet(packet)->on_result_ = [handler](int32_t _error)
     {
         if (handler->on_result_)
             handler->on_result_(_error);
@@ -10284,7 +10355,7 @@ void im::set_avatar(const int64_t _seq, tools::binary_stream image, const std::s
 {
     auto packet = std::make_shared<core::wim::set_avatar>(make_wim_params(), image, _aimId, _chat);
 
-    post_wim_packet(packet)->on_result_ = [packet, _seq, wr_this = weak_from_this(), _aimId](int32_t _error)
+    post_packet(packet)->on_result_ = [packet, _seq, wr_this = weak_from_this(), _aimId](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -10351,7 +10422,7 @@ bool im::has_valid_login() const
 
 void im::get_code_by_phone_call(const std::string& _ivr_url)
 {
-    post_wim_packet(std::make_shared<core::wim::get_code_by_phone_call>(make_wim_params(), _ivr_url));
+    post_packet(std::make_shared<core::wim::get_code_by_phone_call>(make_wim_params(), _ivr_url));
 }
 
 void im::get_voip_calls_quality_popup_conf(const int64_t _seq, const std::string &_locale, const std::string &_lang)
@@ -10440,7 +10511,7 @@ void im::report_contact(int64_t _seq, const std::string& _aimid, const std::stri
                 return;
 
             auto packet = std::make_shared<core::wim::set_permit_deny>(ptr_this->make_wim_params(), _aimid, set_permit_deny::operation::ignore);
-            ptr_this->post_wim_packet(packet)->on_result_ = [wr_this, _aimid, _seq](int32_t _error)
+            ptr_this->post_packet(packet)->on_result_ = [wr_this, _aimid, _seq](int32_t _error)
             {
                 auto ptr_this = wr_this.lock();
                 if (!ptr_this)
@@ -10451,22 +10522,22 @@ void im::report_contact(int64_t _seq, const std::string& _aimid, const std::stri
         };
     }
 
-    post_robusto_packet(std::make_shared<core::wim::report_contact>(make_wim_params(), _aimid, core::wim::get_reason_by_string(_reason)))->on_result_ = std::move(on_result);
+    post_packet(std::make_shared<core::wim::report_contact>(make_wim_params(), _aimid, core::wim::get_reason_by_string(_reason)))->on_result_ = std::move(on_result);
 }
 
 void im::report_stickerpack(const int32_t _id, const std::string& _reason)
 {
-    post_robusto_packet(std::make_shared<core::wim::report_stickerpack>(make_wim_params(), _id, core::wim::get_reason_by_string(_reason)));
+    post_packet(std::make_shared<core::wim::report_stickerpack>(make_wim_params(), _id, core::wim::get_reason_by_string(_reason)));
 }
 
 void im::report_sticker(const std::string& _id, const std::string& _reason, const std::string& _aimid, const std::string& _chatId)
 {
-    post_robusto_packet(std::make_shared<core::wim::report_sticker>(make_wim_params(), _id, core::wim::get_reason_by_string(_reason), _aimid, _chatId));
+    post_packet(std::make_shared<core::wim::report_sticker>(make_wim_params(), _id, core::wim::get_reason_by_string(_reason), _aimid, _chatId));
 }
 
 void im::report_message(const int64_t _id, const std::string& _text, const std::string& _reason, const std::string& _aimid, const std::string& _chatId)
 {
-    post_robusto_packet(std::make_shared<core::wim::report_message>(make_wim_params(), _id, _text, core::wim::get_reason_by_string(_reason), _aimid, _chatId));
+    post_packet(std::make_shared<core::wim::report_message>(make_wim_params(), _id, _text, core::wim::get_reason_by_string(_reason), _aimid, _chatId));
 }
 
 void im::user_accept_gdpr(int64_t _seq, const accept_agreement_info &_accept_info)
@@ -10489,7 +10560,7 @@ void im::user_accept_gdpr(int64_t _seq, const accept_agreement_info &_accept_inf
 
 void im::send_stat()
 {
-    post_wim_packet(std::make_shared<core::wim::send_stat>(make_wim_params(), get_audio_devices_names(), get_video_devices_names()));
+    post_packet(std::make_shared<core::wim::send_stat>(make_wim_params(), get_audio_devices_names(), get_video_devices_names()));
 
     const auto current = std::chrono::system_clock::now();
     g_core->set_last_stat_send_time(std::chrono::system_clock::to_time_t(current));
@@ -10509,7 +10580,7 @@ void im::schedule_stat_timer(bool _first_send)
         timeout -= std::chrono::duration_cast<dest_duration>(current - last_send_time);
     }
 
-    stat_timer_id_ = g_core->add_timer([wr_this = weak_from_this(), _first_send]
+    stat_timer_id_ = g_core->add_timer({ [wr_this = weak_from_this(), _first_send]
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -10523,7 +10594,7 @@ void im::schedule_stat_timer(bool _first_send)
             ptr_this->schedule_stat_timer(false);
         }
 
-    }, timeout);
+    } }, timeout);
 }
 
 void im::stop_stat_timer()
@@ -10807,7 +10878,7 @@ void im::schedule_ui_activity_timer()
 {
     constexpr auto timeout = std::chrono::seconds(5);
 
-    ui_activity_timer_id_ = g_core->add_timer([wr_this = weak_from_this()]
+    ui_activity_timer_id_ = g_core->add_timer({ [wr_this = weak_from_this()]
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -10815,7 +10886,7 @@ void im::schedule_ui_activity_timer()
 
         ptr_this->check_ui_activity();
 
-    }, timeout);
+    } }, timeout);
 }
 
 
@@ -10900,7 +10971,7 @@ void im::get_id_info(const int64_t _seq, const std::string_view _id)
 {
     auto packet = std::make_shared<core::wim::get_id_info>(make_wim_params(), _id);
 
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _seq](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _seq](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -10926,7 +10997,7 @@ void im::get_user_info(const int64_t _seq, const std::string& _aimid)
 {
     auto packet = std::make_shared<core::wim::get_user_info>(make_wim_params(), _aimid);
 
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _seq, _aimid](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _seq, _aimid](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -10951,7 +11022,7 @@ void im::set_privacy_settings(const int64_t _seq, privacy_settings _settings)
 {
     auto packet = std::make_shared<core::wim::set_privacy_settings>(make_wim_params(), std::move(_settings));
 
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _seq](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _seq](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -10968,7 +11039,7 @@ void im::get_privacy_settings(const int64_t _seq)
 {
     auto packet = std::make_shared<core::wim::get_privacy_settings>(make_wim_params());
 
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _seq](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _seq](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -10988,7 +11059,7 @@ void im::get_user_last_seen(const int64_t _seq, std::vector<std::string> _ids)
 {
     auto packet = std::make_shared<core::wim::get_user_last_seen>(make_wim_params(), std::move(_ids));
 
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _seq](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _seq](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -11026,7 +11097,7 @@ void im::on_nickname_check(const int64_t _seq, const std::string& _nick, bool _s
 {
     auto packet = std::make_shared<core::wim::check_nick>(make_wim_params(), _nick, _set_nick);
 
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -11062,7 +11133,7 @@ void im::on_group_nickname_check(const int64_t _seq, const std::string& _nick)
 {
     auto packet = std::make_shared<core::wim::check_group_nick>(make_wim_params(), _nick);
 
-    post_wim_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -11098,7 +11169,7 @@ void im::on_get_common_chats(const int64_t _seq, const std::string& _sn)
 {
     auto packet = std::make_shared<core::wim::get_common_chats>(make_wim_params(), _sn);
 
-    post_wim_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -11131,7 +11202,7 @@ void im::get_sticker_suggests(std::string _sn, std::string _text)
 {
     auto packet = std::make_shared<core::wim::get_sticker_suggests>(make_wim_params(), std::move(_sn), std::move(_text));
 
-    post_wim_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -11166,7 +11237,7 @@ void im::get_sticker_suggests(std::string _sn, std::string _text)
 void im::get_smartreplies(std::string _aimid, int64_t _msgid, std::vector<smartreply::type> _types)
 {
     auto packet = std::make_shared<core::wim::get_smartreplies>(make_wim_params(), std::move(_aimid), _msgid, std::move(_types));
-    post_wim_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -11277,7 +11348,7 @@ void im::get_poll(const int64_t _seq, const std::string& _poll_id)
 {
     auto packet = std::make_shared<core::wim::get_poll>(make_wim_params(), _poll_id);
 
-    post_wim_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet, _poll_id](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet, _poll_id](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -11301,7 +11372,7 @@ void im::vote_in_poll(const int64_t _seq, const std::string& _poll_id, const std
 {
     auto packet = std::make_shared<core::wim::vote_in_poll>(make_wim_params(), _poll_id, _answer_id);
 
-    post_wim_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet, _poll_id](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet, _poll_id](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -11321,7 +11392,7 @@ void im::revoke_vote(const int64_t _seq, const std::string& _poll_id)
 {
     auto packet = std::make_shared<core::wim::revoke_vote>(make_wim_params(), _poll_id);
 
-    post_wim_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet, _poll_id](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet, _poll_id](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -11338,7 +11409,7 @@ void im::stop_poll(const int64_t _seq, const std::string& _poll_id)
 {
     auto packet = std::make_shared<core::wim::stop_poll>(make_wim_params(), _poll_id);
 
-    post_wim_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet, _poll_id](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet, _poll_id](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -11355,7 +11426,7 @@ void im::group_subscribe(const int64_t _seq, const std::string& _stamp)
 {
     auto packet = std::make_shared<core::wim::group_subscribe>(make_wim_params(), _stamp);
 
-    post_wim_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, _stamp, packet](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, _stamp, packet](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -11384,7 +11455,7 @@ void im::suggest_group_nick(const int64_t _seq, const std::string& _sn, bool _pu
 {
     auto packet = std::make_shared<core::wim::suggest_group_nick>(make_wim_params(), _sn, _public);
 
-    post_wim_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -11401,7 +11472,7 @@ void im::get_bot_callback_answer(const int64_t& _seq, const std::string_view _ch
 {
     auto packet = std::make_shared<core::wim::get_bot_callback_answer>(make_wim_params(), _chat_id, _callback_data, _msg_id);
 
-    post_wim_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -11416,14 +11487,14 @@ void im::get_bot_callback_answer(const int64_t& _seq, const std::string_view _ch
 
 void im::start_bot(const int64_t _seq, std::string_view _nick, std::string_view _params)
 {
-    post_wim_packet(std::make_shared<core::wim::start_bot>(make_wim_params(), _nick, _params));
+    post_packet(std::make_shared<core::wim::start_bot>(make_wim_params(), _nick, _params));
 }
 
 void im::create_conference(const int64_t _seq, std::string_view _name, bool _is_webinar, std::vector<std::string> _participants, bool _call_participants)
 {
     const auto conf_type = _is_webinar ? conference_type::webinar : conference_type::equitable;
     auto packet = std::make_shared<core::wim::create_conference>(make_wim_params(), _name, conf_type, std::move(_participants), _call_participants);
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, _is_webinar, packet](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, _is_webinar, packet](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -11441,7 +11512,7 @@ void im::create_conference(const int64_t _seq, std::string_view _name, bool _is_
 void im::get_sessions()
 {
     auto packet = std::make_shared<core::wim::get_sessions_list>(make_wim_params());
-    post_wim_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -11481,7 +11552,7 @@ void im::get_sessions()
 void im::reset_session(std::string_view _session_hash)
 {
     auto packet = std::make_shared<core::wim::reset_session>(make_wim_params(), _session_hash);
-    post_wim_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -11496,13 +11567,13 @@ void im::reset_session(std::string_view _session_hash)
 
 void im::cancel_pending_join(std::string _sn)
 {
-    post_wim_packet(std::make_shared<core::wim::group_pending_cancel>(make_wim_params(), std::move(_sn)));
+    post_packet(std::make_shared<core::wim::group_pending_cancel>(make_wim_params(), std::move(_sn)));
 }
 
 void im::cancel_pending_invitation(std::string _contact, std::string _chat)
 {
     auto packet = std::make_shared<core::wim::group_invitations_cancel>(make_wim_params(), std::move(_contact), std::move(_chat));
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -11529,7 +11600,7 @@ void im::add_reaction(const int64_t _seq, int64_t _msg_id, const std::string& _c
 {
     auto packet = std::make_shared<core::wim::add_reaction>(make_wim_params(), _msg_id, _chat_id, _reaction, _reactions_list);
 
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _chat_id, _seq](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _chat_id, _seq](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -11559,7 +11630,7 @@ void im::remove_reaction(const int64_t _seq, int64_t _msg_id, const std::string&
 {
     auto packet = std::make_shared<core::wim::remove_reaction>(make_wim_params(), _msg_id, _chat_id);
 
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _chat_id, _seq](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _chat_id, _seq](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -11582,7 +11653,7 @@ void core::wim::im::list_reactions(const int64_t _seq,
 {
     auto packet = std::make_shared<core::wim::list_reaction>(make_wim_params(), _msg_id, _chat_id, _reaction, _newer_than, _older_than, _limit);
 
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet, _chat_id](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet, _chat_id](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -11619,7 +11690,7 @@ void im::set_status(std::string_view _status, std::chrono::seconds _duration, st
     my_info_cache_->set_status(s);
 
     auto packet = std::make_shared<core::wim::set_status>(make_wim_params(), _status, _duration, _description);
-    post_wim_packet(packet)->on_result_ = [wr_this = weak_from_this(), _duration](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), _duration](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -11648,7 +11719,7 @@ void im::subscribe_event(subscriptions::subs_ptr _subscription)
 
     if (subscr_aggregate_timer_id_ == empty_timer_id)
     {
-        subscr_aggregate_timer_id_ = g_core->add_timer([wr_this = weak_from_this()]
+        subscr_aggregate_timer_id_ = g_core->add_timer({ [wr_this = weak_from_this()]
         {
             auto ptr_this = wr_this.lock();
             if (!ptr_this)
@@ -11660,7 +11731,7 @@ void im::subscribe_event(subscriptions::subs_ptr _subscription)
 
             stop_timer(ptr_this->subscr_aggregate_timer_id_);
 
-        }, std::chrono::milliseconds(100));
+        } }, std::chrono::milliseconds(100));
     }
 }
 
@@ -11677,7 +11748,7 @@ void im::update_subscriptions()
         return;
 
     if (auto to_update = subscr_manager_->get_subscriptions_to_request(); !to_update.empty())
-        post_wim_packet(std::make_shared<core::wim::event_subscribe>(make_wim_params(), std::move(to_update)));
+        post_packet(std::make_shared<core::wim::event_subscribe>(make_wim_params(), std::move(to_update)));
 }
 
 void im::subscribe_status(std::vector<std::string> _contacts)
@@ -11738,7 +11809,7 @@ void im::get_emoji(int64_t _seq, std::string_view _code, int _size)
 void im::misc_support_impl(int64_t _seq, std::string_view _aimid, std::string_view _message, std::string_view _attachment_file_id, std::vector<std::string> _screenshot_file_id_list)
 {
     auto packet = std::make_shared<core::wim::misc_support>(make_wim_params(), _aimid, _message, _attachment_file_id, std::move(_screenshot_file_id_list));
-    post_robusto_packet(std::move(packet))->on_result_ = [_seq](int32_t _error)
+    post_packet(std::move(packet))->on_result_ = [_seq](int32_t _error)
     {
         misc_support_result_to_gui(_seq, _error == 0);
     };
@@ -11759,7 +11830,7 @@ void im::upload_next_screenshot(const std::string& _aimid, const std::shared_ptr
     auto time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     time -= auth_params_->time_offset_;
 
-    auto not_sent = archive::not_sent_message::make_outgoing_file_sharing(_aimid, time, file_name, {}, {}, {}, std::nullopt);
+    auto not_sent = archive::not_sent_message::make_outgoing_file_sharing(_aimid, time, file_name, {}, {}, {}, {}, std::nullopt);
 
     upload_file_params screenshot_params;
     screenshot_params.file_name = core::tools::from_utf8(not_sent->get_file_sharing_local_path());
@@ -11806,7 +11877,7 @@ void im::misc_support(int64_t _seq, std::string_view _aimid, std::string_view _m
     time -= auth_params_->time_offset_;
 
     auto aimid = std::string(_aimid);
-    auto not_sent = archive::not_sent_message::make_outgoing_file_sharing(aimid, time, std::string(_attachment_file_name), {}, {}, {}, std::nullopt);
+    auto not_sent = archive::not_sent_message::make_outgoing_file_sharing(aimid, time, std::string(_attachment_file_name), {}, {}, {}, {}, std::nullopt);
 
     upload_file_params attachment_params;
     attachment_params.file_name = core::tools::from_utf8(not_sent->get_file_sharing_local_path());
@@ -11862,7 +11933,7 @@ void im::misc_support(int64_t _seq, std::string_view _aimid, std::string_view _m
 
 void im::schedule_subscriptions_timer()
 {
-    subscr_timer_id_ = g_core->add_timer([wr_this = weak_from_this()]
+    subscr_timer_id_ = g_core->add_timer({ [wr_this = weak_from_this()]
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -11876,7 +11947,7 @@ void im::schedule_subscriptions_timer()
 
         ptr_this->update_subscriptions();
 
-    }, std::chrono::seconds(10));
+    } }, std::chrono::seconds(10));
 }
 
 void im::stop_subscriptions_timer()
@@ -11887,7 +11958,7 @@ void im::stop_subscriptions_timer()
 void im::add_to_inviters_blacklist(std::vector<std::string> _contacts)
 {
     auto packet = std::make_shared<core::wim::group_inviteblacklist_add>(make_wim_params(), std::move(_contacts));
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -11921,7 +11992,7 @@ void im::add_to_inviters_blacklist(std::vector<std::string> _contacts)
 void im::remove_from_inviters_blacklist(std::vector<std::string> _contacts, bool _delete_all)
 {
     auto packet = std::make_shared<core::wim::group_inviteblacklist_del>(make_wim_params(), std::move(_contacts), _delete_all);
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -11961,7 +12032,7 @@ void im::search_inviters_blacklist(int64_t _seq, std::string_view _keyword, std:
             return;
 
         auto packet = std::make_shared<core::wim::group_inviteblacklist_search>(ptr_this->make_wim_params(), keyword, cursor, _page_size);
-        ptr_this->post_robusto_packet(packet)->on_result_ = [wr_this, _seq, packet, _page_size, first_page = cursor.empty()](int32_t _error)
+        ptr_this->post_packet(packet)->on_result_ = [wr_this, _seq, packet, _page_size, first_page = cursor.empty()](int32_t _error)
         {
             auto ptr_this = wr_this.lock();
             if (!ptr_this)
@@ -12023,7 +12094,7 @@ void im::get_blacklisted_cl_inviters(std::string_view _cursor, uint32_t _page_si
 {
     auto packet = std::make_shared<core::wim::group_inviteblacklist_in_cl>(make_wim_params(), _cursor, _page_size);
 
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet](int32_t _error)
+    post_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)

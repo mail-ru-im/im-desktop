@@ -117,7 +117,7 @@ namespace Styling
                     }
                     else
                     {
-                        assert(!"repeating enum mappings in properties!");
+                        im_assert(!"repeating enum mappings in properties!");
                     }
 
                     if (!setPath.contains(s))
@@ -126,7 +126,7 @@ namespace Styling
                     }
                     else
                     {
-                        assert(!"repeating path mappings in properties!");
+                        im_assert(!"repeating path mappings in properties!");
                     }
                 }
             }
@@ -142,7 +142,7 @@ namespace Styling
         const auto& props = getVariableStrings();
 
         const auto it = std::find_if(props.begin(), props.end(), [_var](auto _p) { return _p.first == _var; });
-        assert(it != props.end());
+        im_assert(it != props.end());
         if (it != props.end())
             return it->second;
 
@@ -154,7 +154,7 @@ namespace Styling
         const auto& props = getVariableStrings();
 
         const auto it = std::find_if(props.begin(), props.end(), [_name](auto _p) { return _p.second == _name; });
-        assert(it != props.end());
+        im_assert(it != props.end());
         if (it != props.end())
             return it->first;
 

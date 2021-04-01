@@ -5,6 +5,7 @@
 #include "../async_task.h"
 #include "../tools/binary_stream.h"
 #include "../tools/strings.h"
+#include "../connections/urls_cache.h"
 
 namespace fs = boost::filesystem;
 
@@ -246,7 +247,7 @@ namespace core
 
             const auto image_file_name = get_wp_path(_wall.id_);
             const auto image_time = get_wp_file_time(_wall.id_);
-            download_tasks_.emplace_back(_wall.full_image_url_, "wallpapersImage", image_file_name, image_time, _wall.id_);
+            download_tasks_.emplace_back(core::urls::get_url(core::urls::url_type::wallpapers) + _wall.full_image_url_, "wallpapersImage", image_file_name, image_time, _wall.id_);
             download_tasks_.back().set_requested(_is_requested);
         }
 
@@ -256,7 +257,7 @@ namespace core
 
             const auto thumb_file_name = get_preview_path(_wall.id_);
             const auto thumb_time = get_preview_file_time(_wall.id_);
-            download_tasks_.emplace_back(_wall.preview_url_, "wallpapersThumb", thumb_file_name, thumb_time, _wall.id_);
+            download_tasks_.emplace_back(core::urls::get_url(core::urls::url_type::wallpapers) + _wall.preview_url_, "wallpapersThumb", thumb_file_name, thumb_time, _wall.id_);
             download_tasks_.back().set_is_preview(true);
             download_tasks_.back().set_requested(_is_requested);
         }

@@ -33,13 +33,6 @@
     </message>
 </context>
 <context>
-    <name>QObject</name>
-    <message>
-        <source>Unable to start the server: %1.</source>
-        <translation>Unable to start the server: %1.</translation>
-    </message>
-</context>
-<context>
     <name>QWidgetTextControl</name>
     <message>
         <source>&amp;Undo</source>
@@ -3472,8 +3465,8 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
         <translation>Nhãn dán</translation>
     </message>
     <message>
-        <source>The message is not supported on your version of ICQ. Update the app to see the message</source>
-        <translation>Không thể hiển thị một thông báo trong phiên bản ứng dụng của bạn. Cập nhật</translation>
+        <source>The message is not supported on your version. Update the app to see the message</source>
+        <translation>Không thể hiển thị thông báo trong phiên bản ứng dụng của bạn. Làm tươi</translation>
     </message>
 </context>
 <context>
@@ -4592,6 +4585,62 @@ tiếp xúc</translation>
         <source>Send Statistic</source>
         <translation>Gửi số liệu thống kê</translation>
     </message>
+    <message>
+        <source>Member limit exceeded (maximum %1)</source>
+        <translation>Đã vượt quá giới hạn thành viên (tối đa %1)</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to open external link %1?</source>
+        <translation>Bạn có chắc chắn muốn mở liên kết ngoài %1không?</translation>
+    </message>
+    <message>
+        <source>Enable net compression</source>
+        <translation>Cho phép nén các yêu cầu mạng</translation>
+    </message>
+    <message>
+        <source>Cannot remove %1</source>
+        <translation>Không xóa được %1</translation>
+    </message>
+    <message>
+        <source>Cannot block %1</source>
+        <translation>Không chặn được %1</translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1</source>
+        <translation>Không mở khóa được %1</translation>
+    </message>
+    <message>
+        <source>User not found</source>
+        <translation>Người dùng không được tìm thấy</translation>
+    </message>
+    <message>
+        <source>User is already blocked</source>
+        <translation>Người dùng đã bị chặn</translation>
+    </message>
+    <message>
+        <source>User not blocked</source>
+        <translation>Người dùng không bị chặn</translation>
+    </message>
+    <message>
+        <source>Permission denied</source>
+        <translation>Truy cập bị từ chối</translation>
+    </message>
+    <message>
+        <source>Error removing federation user</source>
+        <translation>Lỗi khi xóa người dùng liên kết</translation>
+    </message>
+    <message>
+        <source>Error blocking federation user</source>
+        <translation>Lỗi khi chặn người dùng liên kết</translation>
+    </message>
+    <message>
+        <source>Error unblocking federation user</source>
+        <translation>Lỗi khi bỏ chặn người dùng liên kết</translation>
+    </message>
+    <message>
+        <source>User not a member</source>
+        <translation>Người dùng không phải là thành viên của nhóm này</translation>
+    </message>
 </context>
 <context>
     <name>previewer</name>
@@ -5416,6 +5465,10 @@ tiếp xúc</translation>
         <source>Disable SMS notifications</source>
         <translation>Tắt thông báo SMS</translation>
     </message>
+    <message>
+        <source>Show notifications when app in focus</source>
+        <translation>Hiển thị thông báo khi ứng dụng hoạt động</translation>
+    </message>
 </context>
 <context>
     <name>settings_connection</name>
@@ -5617,10 +5670,6 @@ tiếp xúc</translation>
 </context>
 <context>
     <name>sidebar</name>
-    <message>
-        <source>Add to chat</source>
-        <translation>Thêm để trò chuyện</translation>
-    </message>
     <message>
         <source>Notifications</source>
         <translation>Các thông báo</translation>
@@ -5967,6 +6016,14 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <source>All subscribers</source>
         <translation>Tất cả người đăng ký</translation>
     </message>
+    <message>
+        <source>Back</source>
+        <translation>Trở lại</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Đóng</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -6246,6 +6303,14 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <source>Calls</source>
         <translation>Các cuộc gọi</translation>
     </message>
+    <message>
+        <source>Structure</source>
+        <translation>Kết cấu</translation>
+    </message>
+    <message>
+        <source>Tasks</source>
+        <translation>Nhiệm vụ</translation>
+    </message>
 </context>
 <context>
     <name>tab header</name>
@@ -6451,14 +6516,6 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <translation>Cuộc gọi đến</translation>
     </message>
     <message>
-        <source>Add to call</source>
-        <translation>Thêm vào cuộc gọi</translation>
-    </message>
-    <message>
-        <source>OTHERS</source>
-        <translation>KHÁC</translation>
-    </message>
-    <message>
         <source>Screen</source>
         <translation>Màn hình</translation>
     </message>
@@ -6503,10 +6560,6 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <translation>TẤT CẢ CÁC THÀNH VIÊN NHÓM</translation>
     </message>
     <message>
-        <source>CALL MEMBERS</source>
-        <translation>GỌI THAM GIA</translation>
-    </message>
-    <message>
         <source>Minimize</source>
         <translation>Giảm</translation>
     </message>
@@ -6541,6 +6594,30 @@ bằng cách nhấp chuột</translation>
     <message>
         <source>Busy</source>
         <translation>Bận</translation>
+    </message>
+    <message>
+        <source>Call members</source>
+        <translation>Gọi người tham gia</translation>
+    </message>
+    <message>
+        <source>SHOW ALL</source>
+        <translation>HIỂN THỊ TẤT CẢ</translation>
+    </message>
+    <message>
+        <source>HIDE</source>
+        <translation>GIẢM</translation>
+    </message>
+    <message>
+        <source>IN CALL</source>
+        <translation>TRONG CUỘC GỌI</translation>
+    </message>
+    <message>
+        <source>In call</source>
+        <translation>Trong cuộc gọi</translation>
+    </message>
+    <message>
+        <source>CONTACTS</source>
+        <translation>LIÊN LẠC</translation>
     </message>
 </context>
 <context>
@@ -6679,6 +6756,20 @@ Meeting</source>
     <message>
         <source>SHOW ALL</source>
         <translation>HIỂN THỊ TẤT CẢ</translation>
+    </message>
+    <message>
+        <source>Show
+participants</source>
+        <translation>Nhìn
+những người tham gia</translation>
+    </message>
+    <message>
+        <source>Show all</source>
+        <translation>Hiển thị tất cả</translation>
+    </message>
+    <message>
+        <source>Show one</source>
+        <translation>Hiển thị một</translation>
     </message>
 </context>
 <context>

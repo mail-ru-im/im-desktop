@@ -1002,7 +1002,7 @@ namespace Ui
         if (!showControlPanel_)
             return;
 
-        assert(controlPanel_);
+        im_assert(controlPanel_);
 
         updateControlsGeometry();
 

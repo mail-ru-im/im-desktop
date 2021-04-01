@@ -15,7 +15,7 @@ void MainStackedWidget::setCurrentIndex(int _index, ForceLocked _forceLocked)
 {
     if (LocalPIN::instance()->locked() && _forceLocked != ForceLocked::Yes)
     {
-        assert(!"setCurrentIndex while locked");
+        im_assert(!"setCurrentIndex while locked");
         return;
     }
 
@@ -26,7 +26,7 @@ void MainStackedWidget::setCurrentWidget(QWidget* _widget, ForceLocked _forceLoc
 {
     if (LocalPIN::instance()->locked() && _forceLocked != ForceLocked::Yes)
     {
-        assert(!"setCurrentWidget while locked");
+        im_assert(!"setCurrentWidget while locked");
         return;
     }
 

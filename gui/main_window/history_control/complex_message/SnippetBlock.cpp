@@ -7,6 +7,7 @@
 #include "../MessageStyle.h"
 #include "styles/ThemeParameters.h"
 #include "utils/PainterPath.h"
+#include "utils/features.h"
 #include "ComplexMessageItem.h"
 #include "ComplexMessageUtils.h"
 #include "../MessageStatusWidget.h"
@@ -24,6 +25,7 @@
 #include "gui_settings.h"
 #include "controls/FileSharingIcon.h"
 #include "../SnippetCache.h"
+#include "controls/TooltipWidget.h"
 
 #include "../../../common.shared/config/config.h"
 
@@ -145,17 +147,17 @@ IItemBlockLayout* SnippetBlock::getBlockLayout() const
     return nullptr; // SnippetBlock doesn't use a layout
 }
 
-QString SnippetBlock::getSelectedText(const bool _isFullSelect, const IItemBlock::TextDestination _dest) const
+Data::FormattedString SnippetBlock::getSelectedText(const bool _isFullSelect, const IItemBlock::TextDestination _dest) const
 {
     if (isSelected())
         return getTextForCopy();
 
-    return QString();
+    return {};
 }
 
 QString SnippetBlock::getTextForCopy() const
 {
-    return shouldCopySource() ? getSourceText() : QString();
+    return shouldCopySource() ? getSourceText().string() : QString();
 }
 
 void SnippetBlock::selectByPos(const QPoint& from, const QPoint& to, bool topToBottom)
@@ -376,6 +378,11 @@ bool SnippetBlock::canStretchWithSender() const
     return content_ && content_->canStretchWithSender();
 }
 
+const QString& SnippetBlock::getLink() const
+{
+    return link_;
+}
+
 const QPixmap& SnippetBlock::getPreviewImage() const
 {
     if (content_)
@@ -416,7 +423,31 @@ void SnippetBlock::mouseMoveEvent(QMouseEvent* _event)
 {
     setCursor(rect().contains(_event->pos()) ? Qt::PointingHandCursor : Qt::ArrowCursor);
 
+    if (Features::longPathTooltipsAllowed() && content_->needsTooltip() && content_->isOverLink(_event->pos()))
+    {
+        if (!isTooltipActivated())
+        {
+            auto ttRect = content_->tooltipRect();
+            ttRect.setX(0);
+            ttRect.setWidth(width());
+            auto isFullyVisible = visibleRegion().boundingRect().y() < ttRect.top();
+            const auto arrowDir = isFullyVisible ? Tooltip::ArrowDirection::Down : Tooltip::ArrowDirection::Up;
+            const auto arrowPos = isFullyVisible ? Tooltip::ArrowPointPos::Top : Tooltip::ArrowPointPos::Bottom;
+            showTooltip(link_, QRect(mapToGlobal(ttRect.topLeft()), ttRect.size()), arrowDir, arrowPos);
+        }
+    }
+    else
+    {
+        hideTooltip();
+    }
+
     GenericBlock::mouseMoveEvent(_event);
+}
+
+void SnippetBlock::leaveEvent(QEvent *_event)
+{
+    hideTooltip();
+    GenericBlock::leaveEvent(_event);
 }
 
 void SnippetBlock::onMenuCopyLink()
@@ -865,6 +896,21 @@ void ArticleContent::hideControls()
         controls_->hide();
 }
 
+bool ArticleContent::isOverLink(const QPoint& _p) const
+{
+    return linkUnit_ && linkUnit_->contains(_p);
+}
+
+bool ArticleContent::needsTooltip() const
+{
+    return linkUnit_ && linkUnit_->isElided();
+}
+
+QRect ArticleContent::tooltipRect() const
+{
+    return linkUnit_ ? QRect(linkUnit_->offsets(), linkUnit_->cachedSize()) : QRect();
+}
+
 bool ArticleContent::isGifArticle() const
 {
     return meta_.getContentType() == Data::LinkContentType::ArticleGif;
@@ -1036,7 +1082,11 @@ bool MediaContent::clicked()
     {
 #ifndef STRIP_AV_MEDIA
         postOpenGalleryStat(snippetBlock_->getChatAimid());
-        Utils::InterConnector::instance().openGallery(Utils::GalleryData(snippetBlock_->getChatAimid(), meta_.getDownloadUri(), snippetBlock_->getGalleryId(), player_));
+        auto data = Utils::GalleryData(snippetBlock_->getChatAimid(), snippetBlock_->getLink(), snippetBlock_->getGalleryId(), player_);
+        if (auto msg = snippetBlock_->getParentComplexMessage())
+            msg->fillGalleryData(data);
+
+        Utils::InterConnector::instance().openGallery(data);
 #endif // !STRIP_AV_MEDIA
     }
 
@@ -1369,7 +1419,10 @@ DialogPlayer* MediaContent::createPlayer()
     connect(player, &DialogPlayer::openGallery, this, [this]()
     {
         postOpenGalleryStat(snippetBlock_->getChatAimid());
-        Utils::InterConnector::instance().openGallery(Utils::GalleryData(snippetBlock_->getChatAimid(), meta_.getDownloadUri(), snippetBlock_->getGalleryId()));
+        auto data = Utils::GalleryData(snippetBlock_->getChatAimid(), snippetBlock_->getLink(), snippetBlock_->getGalleryId());
+        if (auto msg = snippetBlock_->getParentComplexMessage())
+            msg->fillGalleryData(data);
+        Utils::InterConnector::instance().openGallery(data);
     });
 
     connect(player, &DialogPlayer::mouseClicked, this, &MediaContent::clicked);
@@ -1619,6 +1672,21 @@ IItemBlock::MenuFlags FileContent::menuFlags() const
     return IItemBlock::MenuFlagNone;
 }
 
+bool FileContent::isOverLink(const QPoint& _p) const
+{
+    return linkUnit_ && linkUnit_->contains(_p);
+}
+
+bool FileContent::needsTooltip() const
+{
+    return linkUnit_ && linkUnit_->isElided();
+}
+
+QRect FileContent::tooltipRect() const
+{
+    return linkUnit_ ? QRect(linkUnit_->offsets(), linkUnit_->cachedSize()) : QRect();
+}
+
 void FileContent::initTextUnits()
 {
     fileNameUnit_->init(MessageStyle::Snippet::getTitleFont(), MessageStyle::Snippet::getTitleColor(), MessageStyle::Snippet::getTitleColor(),
@@ -1854,6 +1922,21 @@ void ArticlePreloader::onVisibilityChanged(const bool _visible)
 IItemBlock::MenuFlags ArticlePreloader::menuFlags() const
 {
     return IItemBlock::MenuFlagNone;
+}
+
+bool ArticlePreloader::isOverLink(const QPoint& _p) const
+{
+    return linkRect_.contains(_p);
+}
+
+bool ArticlePreloader::needsTooltip() const
+{
+    return true;
+}
+
+QRect ArticlePreloader::tooltipRect() const
+{
+    return linkRect_;
 }
 
 void ArticlePreloader::startAnimation()

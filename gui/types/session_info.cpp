@@ -15,7 +15,7 @@ namespace Data
         startedTime_ = QDateTime::fromSecsSinceEpoch(_coll.get_value_as_int64("started"));
         isCurrent_ = _coll.get_value_as_bool("current");
 
-        assert(!hash_.isEmpty());
+        im_assert(!hash_.isEmpty());
     }
 
     const SessionInfo& SessionInfo::emptyCurrent()

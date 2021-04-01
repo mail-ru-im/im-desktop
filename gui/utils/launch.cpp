@@ -45,7 +45,7 @@
 #include <signal.h>
 #endif //__linux__
 
-#ifdef ICQ_QT_STATIC
+#ifdef IM_QT_STATIC
 
 #ifdef _WIN32
     Q_IMPORT_PLUGIN(QWindowsIntegrationPlugin)
@@ -203,7 +203,7 @@ static void debugMessageHandler(QtMsgType type, const QMessageLogContext &contex
 
         if (std::none_of(std::begin(whiteList), std::end(whiteList), [&msg](auto str) { return msg.startsWith(str); }))
         {
-            assert(false);
+            im_assert(false);
         }
     }
     break;
@@ -232,7 +232,7 @@ int launch::main(int _argc, char* _argv[])
         sigemptyset(&set);
         sigaddset(&set, SIGPIPE);
         if (pthread_sigmask(SIG_BLOCK, &set, NULL) != 0)
-            assert(false);
+            im_assert(false);
 #else
 #ifndef STRIP_CRASH_HANDLER
     crash_system::reporter::instance();
@@ -259,7 +259,7 @@ int launch::main(int _argc, char* _argv[])
 
         if (_argc == 0)
         {
-            assert(false);
+            im_assert(false);
             return -1;
         }
 

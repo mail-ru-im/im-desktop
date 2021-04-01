@@ -109,7 +109,7 @@ namespace Ui
     SmartReplySticker::SmartReplySticker(QWidget* _parent, const Data::SmartreplySuggest& _suggest)
         : SmartReplyItem(_parent, _suggest)
     {
-        assert(!getId().isEmpty());
+        im_assert(!getId().isEmpty());
 
         setFixedSize(stickerBoxSize(), stickerBoxSize());
 
@@ -286,7 +286,7 @@ namespace Ui
         , hasMarginLeft_(true)
         , hasMarginRight_(true)
     {
-        assert(!suggest_.getData().isEmpty());
+        im_assert(!suggest_.getData().isEmpty());
 
         textUnit_ = TextRendering::MakeTextUnit(suggest_.getData(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS, TextRendering::EmojiSizeType::SMARTREPLY);
         textUnit_->init(getTextItemFont(), getTextColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1, TextRendering::LineBreakType::PREFER_SPACES, TextRendering::EmojiSizeType::SMARTREPLY);

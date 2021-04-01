@@ -30,15 +30,15 @@ namespace VirtualDesktops
     void VirtualDesktopManager::registerService()
     {
         ::CoCreateInstance(API::CLSID_ImmersiveShell, NULL, CLSCTX_LOCAL_SERVER, __uuidof(IServiceProvider), (PVOID*)&serviceProvider_);
-        assert(serviceProvider_);
+        im_assert(serviceProvider_);
 
         if (serviceProvider_)
         {
             serviceProvider_->QueryService(__uuidof(API::IVirtualDesktopManager), &desktopManager_);
-            assert(desktopManager_);
+            im_assert(desktopManager_);
 
             serviceProvider_->QueryService(API::CLSID_IVirtualNotificationService, __uuidof(API::IVirtualDesktopNotificationService), (PVOID*)&notificationService_);
-            assert(notificationService_);
+            im_assert(notificationService_);
         }
 
         registerNotifications();

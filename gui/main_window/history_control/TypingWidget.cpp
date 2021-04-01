@@ -24,7 +24,7 @@ namespace
             for (auto i = 0; i < frameCount; ++i)
             {
                 frames_[i] = Utils::renderSvgScaled(u":/history/typing_icon_" % QString::number(i + 1), QSize(16, 16), _color);
-                assert(!frames_[i].isNull());
+                im_assert(!frames_[i].isNull());
             }
         }
     };

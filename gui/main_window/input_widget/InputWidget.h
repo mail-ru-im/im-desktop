@@ -83,7 +83,6 @@ namespace Ui
         struct
         {
             Data::MessageBuddySptr message_;
-            Data::QuotesVec quotes_;
             QString buffer_;
             MediaType type_;
             QString editableText_;
@@ -106,7 +105,6 @@ namespace Ui
             description_.clear();
             edit_.message_.reset();
             edit_.buffer_.clear();
-            edit_.quotes_.clear();
             edit_.type_ = MediaType::noMedia;
             edit_.editableText_.clear();
             view_ = _newView;
@@ -175,8 +173,7 @@ namespace Ui
             Yes
         };
 
-        void send(InstantEdit _mode = InstantEdit::No);
-        void sendPiece(const QStringRef& _msg, InstantEdit _mode = InstantEdit::No);
+        void send();
 
     private Q_SLOTS:
         void textChanged();
@@ -225,30 +222,7 @@ namespace Ui
         void setFocusOnEmoji();
         void setFocusOnAttach();
 
-        void edit(
-            const int64_t _msgId,
-            const QString& _internalId,
-            const common::tools::patch_version& _patchVersion,
-            const QString& _text,
-            const Data::MentionMap& _mentions,
-            const Data::QuotesVec& _quotes,
-            qint32 _time,
-            const Data::FilesPlaceholderMap& _files,
-            MediaType _mediaType,
-            bool _instantEdit);
-
-        void editWithCaption(
-            const int64_t _msgId,
-            const QString& _internalId,
-            const common::tools::patch_version& _patchVersion,
-            const QString& _url,
-            const QString& _description,
-            const Data::MentionMap& _mentions,
-            const Data::QuotesVec& _quotes,
-            qint32 _time,
-            const Data::FilesPlaceholderMap& _files,
-            MediaType _mediaType,
-            bool _instantEdit);
+        void edit(const Data::MessageBuddySptr& _msg, MediaType _mediaType);
 
         void loadInputText();
         void setInputText(const QString& _text, int _pos = -1);
@@ -311,20 +285,6 @@ namespace Ui
 
     private:
         void updateBackgroundGeometry();
-
-        void editImpl(
-            const int64_t _msgId,
-            const QString& _internalId,
-            const common::tools::patch_version& _patchVersion,
-            const Data::QuotesVec& _quotes,
-            qint32 _time,
-            const Data::FilesPlaceholderMap& _files,
-            MediaType _mediaType,
-            InstantEdit _mode,
-            std::optional<QString> _text,
-            std::optional<Data::MentionMap> _mentions,
-            std::optional<QString> _url,
-            std::optional<QString> _description);
 
         void setEditView();
 
@@ -438,10 +398,12 @@ namespace Ui
 
         void createConference(ConferenceType _type);
 
+        Data::MessageBuddy makeMessage(QString _text) const;
+        Data::MentionMap makeMentions(QStringView _text) const;
+
     private:
         std::optional<PttMode> pttMode_;
 
-    private:
         QString contact_;
 
         InputBgWidget* bgWidget_;

@@ -11,7 +11,7 @@ namespace Ui
         class TextUnit;
     }
 
-    class BaseLinkItem
+    class BaseLinkItem : public SidebarListItem
     {
     public:
         virtual ~BaseLinkItem() = default;
@@ -44,6 +44,9 @@ namespace Ui
         virtual ButtonState moreButtonState() const { return ButtonState::NORMAL; }
 
         virtual bool isDateItem() const { return false; }
+
+        virtual bool needsTooltip() const { return false; }
+        virtual QRect getTooltipRect() const { return QRect(); }
     };
 
     class DateLinkItem : public BaseLinkItem
@@ -104,6 +107,9 @@ namespace Ui
 
         bool isDateItem() const override { return false; }
 
+        bool needsTooltip() const override;
+        QRect getTooltipRect() const override;
+
     private:
         void forceRecalcGeometry();
 
@@ -155,6 +161,8 @@ namespace Ui
 
     private:
         void validateDates();
+
+        void updateTooltip(const std::unique_ptr<BaseLinkItem>& _item, const QPoint& _p);
 
     private:
         std::vector<std::unique_ptr<BaseLinkItem>> Items_;

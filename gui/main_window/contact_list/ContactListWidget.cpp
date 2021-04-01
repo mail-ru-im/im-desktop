@@ -27,6 +27,7 @@
 #include "../../app_config.h"
 #include "../../controls/LabelEx.h"
 #include "../../controls/ContextMenu.h"
+#include "../../controls/TooltipWidget.h"
 #include "../../utils/InterConnector.h"
 #include "../../utils/SearchPatternHistory.h"
 #include "../../utils/features.h"
@@ -109,7 +110,7 @@ namespace
         if (_regim == Logic::MembersWidgetRegim::COUNTRY_LIST)
             return Logic::getCountryModel();
 
-        static const auto needSearhModel =
+        static const auto needSearchModel =
         {
             Logic::MembersWidgetRegim::SELECT_MEMBERS,
             Logic::MembersWidgetRegim::SHARE,
@@ -120,7 +121,7 @@ namespace
             Logic::MembersWidgetRegim::UNKNOWN,
             Logic::MembersWidgetRegim::DISALLOWED_INVITERS_ADD,
         };
-        if (std::any_of(needSearhModel.begin(), needSearhModel.end(), [_regim](const auto _r) { return _r == _regim;}))
+        if (std::any_of(needSearchModel.begin(), needSearchModel.end(), [_regim](const auto _r) { return _r == _regim;}))
             return _searchModel;
 
         return Logic::getContactListModel();
@@ -201,6 +202,7 @@ namespace Ui
         , searchModel_(_searchModel)
         , commonChatsModel_(_commonChatsModel)
         , popupMenu_(nullptr)
+        , tooltipTimer_(nullptr)
         , noSearchResultsShown_(false)
         , searchResultsRcvdFirst_(false)
         , searchResultsStatsSent_(false)
@@ -272,10 +274,7 @@ namespace Ui
         }
     }
 
-    ContactListWidget::~ContactListWidget()
-    {
-
-    }
+    ContactListWidget::~ContactListWidget() = default;
 
     void ContactListWidget::connectSearchWidget(SearchWidget* _widget)
     {
@@ -650,7 +649,7 @@ namespace Ui
                 }
                 else
                 {
-                    Q_EMIT Utils::InterConnector::instance().callContact(item->getMembers(), item->getFriendly(false), item->isVideo());
+                    Q_EMIT Utils::InterConnector::instance().callContact(item->getMembers(), item->getFriendly(), item->isVideo());
                 }
             }
         }
@@ -815,6 +814,32 @@ namespace Ui
                     const auto tooltipRect = getAvatarRect(index);
                     return QRect(view_->mapToGlobal(tooltipRect.topLeft()), tooltipRect.size());
                 }, aimId, view_->viewport(), view_);
+            }
+        }
+
+        if (Features::longPathTooltipsAllowed())
+        {
+            const auto aimId = Logic::senderAimIdFromIndex(_index);
+            auto delegate = isSearchMode() ? searchDelegate_ : clDelegate_;
+            if (!aimId.isEmpty() && delegate->needsTooltip(aimId, _index))
+            {
+                if (tooltipIndex_ != _index)
+                {
+                    tooltipIndex_ = _index;
+
+                    const auto rect = view_->visualRect(_index);
+                    auto ttRect = QRect(view_->mapToGlobal(rect.topLeft()), rect.size());
+                    auto callItemDelegate = qobject_cast<Logic::CallItemDelegate*>(delegate);
+                    const auto aimId = Logic::senderAimIdFromIndex(_index);
+                    auto name = callItemDelegate ? callItemDelegate->getFriendly(_index) : Logic::GetFriendlyContainer()->getFriendly(aimId);
+                    const auto direction = rect.y() < 0 ? Tooltip::ArrowDirection::Up : Tooltip::ArrowDirection::Down;
+                    const auto arrowPosition = rect.y() < 0 ? Tooltip::ArrowPointPos::Bottom : Tooltip::ArrowPointPos::Top;
+                    showTooltip(std::move(name), ttRect, direction, arrowPosition);
+                }
+            }
+            else
+            {
+                hideTooltip();
             }
         }
     }
@@ -1409,7 +1434,7 @@ namespace Ui
     {
         if (!_searchModel)
         {
-            assert(!searchModel_);
+            im_assert(!searchModel_);
             searchModel_ = searchModelForRegim(this, regim_, chatMembersModel_);
         }
         else
@@ -1549,6 +1574,39 @@ namespace Ui
         return headers;
     }
 
+    void ContactListWidget::showTooltip(QString _text, QRect _rect, Tooltip::ArrowDirection _arrowDir, Tooltip::ArrowPointPos _arrowPos)
+    {
+        Tooltip::hide();
+
+        if (!tooltipTimer_)
+        {
+            tooltipTimer_ = new QTimer(this);
+            tooltipTimer_->setInterval(Tooltip::getDefaultShowDelay());
+            tooltipTimer_->setSingleShot(true);
+        }
+        else
+        {
+            tooltipTimer_->stop();
+            tooltipTimer_->disconnect(this);
+        }
+
+        connect(tooltipTimer_, &QTimer::timeout, this, [text = std::move(_text), _rect, _arrowDir, _arrowPos]()
+        {
+            Tooltip::show(text, _rect, {}, _arrowDir, _arrowPos, {}, Tooltip::TooltipMode::Multiline);
+        });
+        tooltipTimer_->start();
+    }
+
+    void ContactListWidget::hideTooltip()
+    {
+        tooltipIndex_ = {};
+
+        if (tooltipTimer_)
+            tooltipTimer_->stop();
+
+        Tooltip::hide();
+    }
+
     QRect ContactListWidget::getAvatarRect(const QModelIndex& _index) const
     {
         auto clDelegate = qobject_cast<Logic::ContactListItemDelegate*>(clDelegate_);
@@ -1603,5 +1661,10 @@ namespace Ui
             if (auto model = qobject_cast<Logic::DisallowedInvitersModel*>(searchModel_))
                 model->requestMore();
         }
+    }
+
+    void ContactListWidget::leaveEvent(QEvent*)
+    {
+        hideTooltip();
     }
 }

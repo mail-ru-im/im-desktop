@@ -21,7 +21,7 @@ namespace Utils
         : Main_(base)
         , Ext_(ext)
     {
-        assert(!HasExt() || HasMain());
+        im_assert(!HasExt() || HasMain());
     }
 
     bool SChar::EqualTo(const char ch) const
@@ -168,7 +168,7 @@ namespace Utils
 
         if (LengthQChars() > 1)
         {
-            assert(!"conversion not possible");
+            im_assert(!"conversion not possible");
             return QChar();
         }
 
@@ -191,7 +191,7 @@ namespace Utils
 
         if (IsNull())
         {
-            assert(result.length() <= MAX_LENGTH);
+            im_assert(result.length() <= MAX_LENGTH);
             return result;
         }
 
@@ -207,7 +207,7 @@ namespace Utils
 
         if (!HasExt())
         {
-            assert(result.length() <= MAX_LENGTH);
+            im_assert(result.length() <= MAX_LENGTH);
             return result;
         }
 
@@ -221,7 +221,7 @@ namespace Utils
             result += QChar(Ext_);
         }
 
-        assert(result.length() <= MAX_LENGTH);
+        im_assert(result.length() <= MAX_LENGTH);
         return result;
     }
 
@@ -312,14 +312,14 @@ namespace Utils
 
     SChar PeekNextSuperChar(const QString &s, const QString::size_type offset)
     {
-        assert(offset < s.length());
+        im_assert(offset < s.length());
 
         QTextStream input((QString*)&s, QIODevice::ReadOnly);
 
         const auto success = input.seek(offset);
         if (!success)
         {
-            assert(success);
+            im_assert(success);
         }
 
         return ReadNextSuperChar(input);
@@ -350,7 +350,7 @@ namespace Utils
             const auto seekSucceed = s.seek(pos);
             if (!seekSucceed)
             {
-                assert(seekSucceed);
+                im_assert(seekSucceed);
             }
 
             return high.unicode();

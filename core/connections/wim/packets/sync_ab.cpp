@@ -23,7 +23,7 @@ int32_t core::wim::sync_ab::get_status_code()
 
 std::string_view core::wim::sync_ab::get_method() const
 {
-    return "addressBookSync";
+    return "contacts/sync";
 }
 
 int32_t core::wim::sync_ab::init_request(const std::shared_ptr<core::http_request_simple>& _request)

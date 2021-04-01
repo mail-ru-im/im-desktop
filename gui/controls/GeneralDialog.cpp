@@ -16,17 +16,17 @@
 namespace
 {
     constexpr std::chrono::milliseconds animationDuration = std::chrono::milliseconds(100);
-    constexpr auto defaultDialogWidth()
+    constexpr auto defaultDialogWidth() noexcept
     {
         return 360;
     }
 
-    int getMargin()
+    int getMargin() noexcept
     {
         return Utils::scale_value(16);
     }
 
-    int getTopMargin()
+    int getTopMargin() noexcept
     {
         if constexpr (platform::is_apple())
             return Utils::scale_value(12);
@@ -34,19 +34,29 @@ namespace
         return Utils::scale_value(8);
     }
 
-    int getExtendedVerMargin()
+    int getExtendedVerMargin() noexcept
     {
         return Utils::scale_value(20);
     }
 
-    int getIconSize()
+    int getIconSize() noexcept
     {
         return Utils::scale_value(20);
     }
 
-    int getOptionHeight()
+    int getOptionHeight() noexcept
     {
         return Utils::scale_value(44);
+    }
+
+    auto dialogMaximumHeight()
+    {
+        return Utils::scale_value(660) + 2 * Ui::get_gui_settings()->get_shadow_width();
+    }
+
+    auto dialogVerticalMargin() noexcept
+    {
+        return Utils::scale_value(10);
     }
 }
 
@@ -74,9 +84,6 @@ namespace Ui
         semiWindow_->setCloseWindowInfo({ Utils::CloseWindowInfo::Initiator::Unknown, Utils::CloseWindowInfo::Reason::Keep_Sidebar });
         semiWindow_->hide();
 
-        shadowHost_ = new QWidget(this);
-        shadowHost_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
-
         mainHost_ = new QWidget(this);
         Utils::setDefaultBackground(mainHost_);
         Testing::setAccessibleName(mainHost_, qsl("AS GeneralPopup"));
@@ -87,40 +94,40 @@ namespace Ui
                 mainHost_->setFixedWidth(Utils::scale_value(defaultDialogWidth()));
             else
                 mainHost_->setFixedWidth(options_.preferredSize_.width());
-
-            shadowHost_->setFixedWidth(mainHost_->width() + Ui::get_gui_settings()->get_shadow_width() * 2);
         }
         else
         {
             mainHost_->setMaximumSize(Utils::GetMainRect().size() - 2 * Utils::scale_value(QSize(8, 8)));
-            shadowHost_->setMaximumWidth(mainHost_->maximumWidth() + Ui::get_gui_settings()->get_shadow_width() * 2);
         }
 
         auto globalLayout = Utils::emptyVLayout(mainHost_);
-        globalLayout->setAlignment(Qt::AlignTop);
+        globalLayout->setSizeConstraint(QLayout::SetMaximumSize);
 
         headerLabelHost_ = new QWidget(mainHost_);
-        headerLabelHost_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
+        headerLabelHost_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
         headerLabelHost_->setVisible(false);
         Testing::setAccessibleName(headerLabelHost_, qsl("AS GeneralPopup headerLabel"));
         globalLayout->addWidget(headerLabelHost_);
 
         errorHost_ = new QWidget(mainHost_);
-        errorHost_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
+        errorHost_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
         Utils::ApplyStyle(errorHost_, qsl("height: 1dip;"));
         errorHost_->setVisible(false);
         Testing::setAccessibleName(errorHost_, qsl("AS GeneralPopup errorLabel"));
         globalLayout->addWidget(errorHost_);
 
         textHost_ = new QWidget(mainHost_);
-        textHost_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
+        textHost_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
         Utils::ApplyStyle(textHost_, qsl("height: 1dip;"));
         textHost_->setVisible(false);
         Testing::setAccessibleName(textHost_, qsl("AS GeneralPopup textLabel"));
         globalLayout->addWidget(textHost_);
 
         if (mainWidget_)
+        {
+            mainWidget_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
             globalLayout->addWidget(mainWidget_);
+        }
 
         areaWidget_ = new QWidget(mainHost_);
         areaWidget_->setVisible(false);
@@ -129,7 +136,7 @@ namespace Ui
 
         bottomWidget_ = new QWidget(mainHost_);
         bottomWidget_->setVisible(false);
-        bottomWidget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
+        bottomWidget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
         Utils::setDefaultBackground(bottomWidget_);
         Testing::setAccessibleName(bottomWidget_, qsl("AS GeneralPopup bottomWidget"));
         globalLayout->addWidget(bottomWidget_);
@@ -148,11 +155,25 @@ namespace Ui
 
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::applicationLocked, this, &GeneralDialog::close);
 
-        auto mainLayout = Utils::emptyVLayout(this);
-        mainLayout->addWidget(shadowHost_);
+        mainHost_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Policy::Expanding);
 
+        auto constrainedLayout = Utils::emptyVLayout(this);
+        auto constrainedContainer = new QWidget(this);
+        constrainedContainer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::MinimumExpanding);
+        constrainedContainer->setMaximumHeight(dialogMaximumHeight());
+        const auto verticalMargin = dialogVerticalMargin();
+        constrainedLayout->setContentsMargins(0, verticalMargin, 0, verticalMargin);
+        constrainedLayout->addWidget(constrainedContainer);
+
+        shadowHost_ = new QWidget;
         auto shadowLayout = Utils::emptyVLayout(shadowHost_);
+        shadowLayout->setSizeConstraint(QLayout::SetMinAndMaxSize);
         shadowLayout->addWidget(mainHost_);
+
+        auto mainLayout = Utils::emptyVLayout(constrainedContainer);
+        mainLayout->addStretch();
+        mainLayout->addWidget(shadowHost_, 1);
+        mainLayout->addStretch();
 
         auto parentLayout = Utils::emptyVLayout(parentWidget());
         parentLayout->setAlignment(Qt::AlignHCenter);
@@ -229,7 +250,6 @@ namespace Ui
         const auto maxWidth = mainHost_->maximumWidth() - 2 * getMargin();
         auto label = new TextUnitLabel(textHost_, std::move(text), Ui::TextRendering::VerPosition::TOP, maxWidth, true);
         label->setMaximumWidth(maxWidth);
-        label->sizeHint();
 
         const auto leftMargin = (_alignment & Qt::AlignHCenter) ? (maxWidth - label->width()) / 2 + getMargin() : getMargin();
         const auto topMargin = (_alignment & Qt::AlignVCenter) ? getExtendedVerMargin() : getTopMargin();
@@ -421,10 +441,10 @@ namespace Ui
 
     QHBoxLayout* GeneralDialog::getBottomLayout()
     {
-        assert(bottomWidget_);
+        im_assert(bottomWidget_);
         if (bottomWidget_->layout())
         {
-            assert(qobject_cast<QHBoxLayout*>(bottomWidget_->layout()));
+            im_assert(qobject_cast<QHBoxLayout*>(bottomWidget_->layout()));
             return qobject_cast<QHBoxLayout*>(bottomWidget_->layout());
         }
 
@@ -514,7 +534,6 @@ namespace Ui
     {
         errorHost_->setVisible(true);
         errorHost_->setContentsMargins(0, 0, 0, 0);
-        errorHost_->setSizePolicy(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Expanding);
 
         auto textLayout = Utils::emptyVLayout(errorHost_);
 
@@ -652,7 +671,7 @@ namespace Ui
         : QWidget(_parent)
         , listWidget_(new SimpleListWidget(Qt::Vertical, this))
     {
-        assert(!_options.empty());
+        im_assert(!_options.empty());
 
         int i = 1;
         for (const auto& [icon, caption] : _options)

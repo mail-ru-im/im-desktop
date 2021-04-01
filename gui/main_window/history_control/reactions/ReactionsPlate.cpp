@@ -745,6 +745,14 @@ void ReactionsPlate::leaveEvent(QEvent* _event)
 
 }
 
+void ReactionsPlate::wheelEvent(QWheelEvent* _event)
+{
+    if constexpr (platform::is_apple())
+        Tooltip::hide();
+
+    QWidget::wheelEvent(_event);
+}
+
 void ReactionsPlate::onMultiselectChanged()
 {
     if (Utils::InterConnector::instance().isMultiselect())

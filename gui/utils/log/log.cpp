@@ -60,7 +60,7 @@ QTextStream& operator <<(QTextStream &oss, const core::file_sharing_content_type
         case file_sharing_base_content_type::video: return (oss << ql1s("type = video"));
         case file_sharing_base_content_type::lottie: return (oss << ql1s("type = lottie"));
         default:
-            assert(!"unexpected file sharing content type");
+            im_assert(!"unexpected file sharing content type");
     }
 
     switch (arg.subtype_)
@@ -68,7 +68,7 @@ QTextStream& operator <<(QTextStream &oss, const core::file_sharing_content_type
         case file_sharing_sub_content_type::sticker: return (oss << ql1s("subtype = sticker"));
         case file_sharing_sub_content_type::undefined: return (oss << ql1s("subtype = undefined"));
         default:
-            assert(!"unexpected file sharing content subtype");
+            im_assert(!"unexpected file sharing content subtype");
     }
 
     return (oss << ql1s("#unknown"));
@@ -78,8 +78,8 @@ QTextStream& operator <<(QTextStream &oss, const core::file_sharing_function arg
 {
     using namespace core;
 
-    assert(arg > file_sharing_function::min);
-    assert(arg < file_sharing_function::max);
+    im_assert(arg > file_sharing_function::min);
+    im_assert(arg < file_sharing_function::max);
 
     switch(arg)
     {
@@ -100,7 +100,7 @@ QTextStream& operator <<(QTextStream &oss, const core::file_sharing_function arg
             break;
 
         default:
-            assert(!"unknown core::file_sharing_function value");
+            im_assert(!"unknown core::file_sharing_function value");
             break;
     }
 
@@ -111,9 +111,9 @@ namespace
 {
     void log(QStringView type, QStringView area, QStringView text)
     {
-        assert(!type.isEmpty());
-        assert(!area.isEmpty());
-        assert(!text.isEmpty());
+        im_assert(!type.isEmpty());
+        im_assert(!area.isEmpty());
+        im_assert(!text.isEmpty());
 
         gui_coll_helper collection(GetDispatcher()->create_collection(), true);
         collection.set_value_as_qstring("type", type);

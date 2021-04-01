@@ -14,7 +14,7 @@ namespace core
         main_thread();
         virtual ~main_thread();
 
-        void execute_core_context(std::function<void()> task);
+        void execute_core_context(stacked_task task);
 
         std::thread::id get_core_thread_id() const;
 

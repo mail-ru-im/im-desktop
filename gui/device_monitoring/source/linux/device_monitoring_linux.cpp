@@ -119,7 +119,7 @@ void DeviceMonitoringLinux::OnEvent()
         DeviceMonitoringVideoListChanged();
     } else
     {
-       assert(0);
+       im_assert(0);
     }
     _udev_device_unref(device);
 }

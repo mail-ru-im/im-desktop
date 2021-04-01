@@ -24,7 +24,7 @@ void ServiceUrlsManager::processNewServiceURls(const QVector<QString> &_urlsVect
     for (const auto& urlString: _urlsVector)
     {
         auto request = ServiceRequestsFactory::requestForUrl(urlString);
-        assert(request && "couldn't parse service request");
+        im_assert(request && "couldn't parse service request");
         if (!request)
             continue;
 
@@ -35,7 +35,7 @@ void ServiceUrlsManager::processNewServiceURls(const QVector<QString> &_urlsVect
 void ServiceUrlsManager::handleServiceRequest(std::shared_ptr<ServiceRequest> _request)
 {
     auto handler = RequestHandlersFactory::handlerForRequest(_request);
-    assert(handler && "couldn't get handler for request");
+    im_assert(handler && "couldn't get handler for request");
     if (!handler)
         return;
 

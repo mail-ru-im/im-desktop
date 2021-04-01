@@ -2,6 +2,7 @@
 
 #include "history/History.h"
 #include "history/Message.h"
+#include "../../types/filesharing_meta.h"
 
 
 namespace hist
@@ -22,7 +23,7 @@ namespace Ui
 
     struct SelectedMessageInfo
     {
-        QString text_;
+        Data::FormattedString text_;
         bool isOutgoing_ = false;
         bool isUnsupported_ = false;
         Data::QuotesVec quotes_;
@@ -106,7 +107,7 @@ namespace Ui
             Formatted
         };
 
-        QString getSelectedText(TextFormat _format = TextFormat::Formatted) const;
+        Data::FormattedString getSelectedText(TextFormat _format = TextFormat::Formatted) const;
         Data::FilesPlaceholderMap getFilesPlaceholders() const;
         Data::MentionMap getMentions() const;
 
@@ -207,6 +208,8 @@ namespace Ui
         bool hasItems() const noexcept;
 
         void clearPttProgress();
+
+        std::optional<Data::FileSharingMeta> getMeta(const QString& _id) const;
 
     public Q_SLOTS:
         void notifySelectionChanges();

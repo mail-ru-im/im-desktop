@@ -290,7 +290,7 @@ void VCSCommand::execute()
         return;
 
 #ifndef STRIP_VOIP
-    Ui::GetDispatcher()->getVoipController().setStartVCS(url_.toStdString().c_str());
+    Ui::GetDispatcher()->getVoipController().setStartVCS(url_);
 #endif
     return;
 }

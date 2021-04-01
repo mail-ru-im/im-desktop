@@ -733,7 +733,7 @@ public:
 //////////////////////////////////////////////////////////////////////////
 
 PollBlock::PollBlock(ComplexMessageItem* _parent, const Data::PollData& _poll, const QString& _text)
-    : GenericBlock(_parent, QString(), MenuFlags::MenuFlagCopyable, false),
+    : GenericBlock(_parent, {}, MenuFlags::MenuFlagCopyable, false),
       d(std::make_unique<PollBlock_p>())
 {
     Testing::setAccessibleName(this, u"AS HistoryPage messagePoll " % QString::number(_parent->getId()));
@@ -756,7 +756,7 @@ IItemBlockLayout *PollBlock::getBlockLayout() const
     return d->layout_;
 }
 
-QString PollBlock::getSelectedText(const bool _isFullSelect, const IItemBlock::TextDestination _dest) const
+Data::FormattedString PollBlock::getSelectedText(const bool _isFullSelect, const IItemBlock::TextDestination _dest) const
 {
     Q_UNUSED(_isFullSelect)
     Q_UNUSED(_dest)
@@ -853,7 +853,7 @@ void PollBlock::updateWith(IItemBlock* _other)
     }
 }
 
-QString PollBlock::getSourceText() const
+Data::FormattedString PollBlock::getSourceText() const
 {
     return d->question_;
 }

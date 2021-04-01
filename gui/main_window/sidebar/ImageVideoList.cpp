@@ -234,7 +234,7 @@ MediaContentWidget::ItemData ImageVideoList::itemAt(const QPoint &_pos)
 void ImageVideoList::onClicked(MediaContentWidget::ItemData _data)
 {
     Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::fullmediascr_view, { { "chat_type", Utils::chatTypeByAimId(aimId_) }, { "from", "gallery" }, { "media_type", _data.is_video_ ? "video" : (_data.is_gif_ ? "gif" : "photo") } });
-    Utils::InterConnector::instance().getMainWindow()->openGallery(Utils::GalleryData(aimId_, _data.link_, _data.msg_));
+    Utils::InterConnector::instance().openGallery(Utils::GalleryData(aimId_, _data.link_, _data.msg_, _data.sender_, _data.time_));
 }
 
 void ImageVideoList::onVisitorTimeout()
@@ -563,7 +563,7 @@ QRect ImageVideoBlock::itemRect(int _index)
     const auto rowSize = calcRowSize(rect_.width());
 
     const auto row = (rowSize != 0 ? (_index / rowSize) : 0);
-    const auto column = _index % rowSize;
+    const auto column = (rowSize != 0 ? (_index % rowSize) : 0);
 
     const auto topMargin = dateRect().height() + vMargin();
 

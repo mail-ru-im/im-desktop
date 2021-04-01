@@ -105,7 +105,7 @@ namespace Ui
         }
 
         // - no active voip call
-        if (const auto mainPage = Utils::InterConnector::instance().getMainPage(); mainPage && mainPage->isVideoWindowActive())
+        if (const auto mainPage = Utils::InterConnector::instance().getMessengerPage(); mainPage && mainPage->isVideoWindowActive())
             return false;
 
         return true;

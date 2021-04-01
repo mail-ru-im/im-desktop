@@ -5,9 +5,12 @@
 #include "../../core_dispatcher.h"
 #include "../../controls/TextUnit.h"
 #include "../../controls/ContextMenu.h"
+#include "../../controls/TooltipWidget.h"
 #include "../../fonts.h"
 #include "../../utils/utils.h"
+#include "../../utils/features.h"
 #include "../../utils/UrlParser.h"
+#include "../../utils/InterConnector.h"
 #include "utils/stat_utils.h"
 #include "../../my_info.h"
 #include "../GroupChatOperations.h"
@@ -106,6 +109,8 @@ namespace Ui
     {
         date_->setOffsets(Utils::scale_value(HOR_OFFSET), Utils::scale_value(DATE_TOP_OFFSET) + _rect.y());
         date_->draw(_p);
+
+        markDrew();
     }
 
     int DateLinkItem::getHeight() const
@@ -192,6 +197,8 @@ namespace Ui
 
         date_->setOffsets(width_ - Utils::scale_value(RIGHT_OFFSET) - date_->cachedSize().width(), date_offset);
         date_->draw(_p);
+
+        markDrew();
     }
 
     int LinkItem::getHeight() const
@@ -219,8 +226,12 @@ namespace Ui
         height_ += Utils::scale_value(VER_OFFSET) * 2;
         width_ = _width;
 
+        const auto linkWidth = width_ - Utils::scale_value(HOR_OFFSET + RIGHT_OFFSET + PREVIEW_WIDTH + PREVIEW_RIGHT_OFFSET + DATE_LEFT_OFFSET);
+        link_->elide(linkWidth);
+
         if (friendly_)
-            friendly_->elide(width_ - Utils::scale_value(HOR_OFFSET + RIGHT_OFFSET + PREVIEW_WIDTH + PREVIEW_RIGHT_OFFSET + DATE_LEFT_OFFSET) - date_->cachedSize().width());
+            friendly_->elide(linkWidth - date_->cachedSize().width());
+
     }
 
     void LinkItem::setReqId(qint64 _id)
@@ -266,12 +277,16 @@ namespace Ui
 
     bool LinkItem::isOverLink(const QPoint& _pos, int _totalHeight) const
     {
+        if (!isDrew())
+            return false;
         auto r = QRect(Utils::scale_value(HOR_OFFSET), Utils::scale_value(VER_OFFSET) + _totalHeight, Utils::scale_value(PREVIEW_WIDTH), Utils::scale_value(PREVIEW_HEIGHT));
         return isOverLink(_pos) || title_->contains(_pos) || desc_->contains(_pos) || r.contains(_pos);
     }
 
     bool LinkItem::isOverLink(const QPoint& _pos) const
     {
+        if (!isDrew())
+            return false;
         return link_->contains(_pos);
     }
 
@@ -282,6 +297,8 @@ namespace Ui
 
     bool LinkItem::isOverDate(const QPoint& _pos) const
     {
+        if (!isDrew())
+            return false;
         return date_->contains(_pos);
     }
 
@@ -348,6 +365,8 @@ namespace Ui
 
     bool LinkItem::isOverMoreButton(const QPoint& _pos, int _h) const
     {
+        if (!isDrew())
+            return false;
         auto r = QRect(width_ - Utils::scale_value(RIGHT_OFFSET) / 2 - Utils::scale_value(MORE_BUTTON_SIZE) / 2, _h + height_ / 2 - Utils::scale_value(MORE_BUTTON_SIZE) / 2, Utils::scale_value(MORE_BUTTON_SIZE), Utils::scale_value(MORE_BUTTON_SIZE));
         return r.contains(_pos);
     }
@@ -355,6 +374,16 @@ namespace Ui
     ButtonState LinkItem::moreButtonState() const
     {
         return moreState_;
+    }
+
+    bool LinkItem::needsTooltip() const
+    {
+        return link_ && link_->isElided();
+    }
+
+    QRect LinkItem::getTooltipRect() const
+    {
+        return QRect(0, link_->offsets().y(), width_, link_->cachedSize().height());
     }
 
     void LinkItem::forceRecalcGeometry()
@@ -467,6 +496,8 @@ namespace Ui
     {
         if (!timer_->isActive())
             timer_->start();
+
+        hideTooltip();
     }
 
     void LinkList::paintEvent(QPaintEvent* e)
@@ -598,21 +629,30 @@ namespace Ui
     void LinkList::mouseMoveEvent(QMouseEvent* _event)
     {
         auto point = false;
+        auto forceTooltip = false;
+        const auto pos = _event->pos();
         auto h = 0;
         for (auto& i : Items_)
         {
-            if (i->isOverLink(_event->pos(), h))
+            if (i->isOverLink(pos, h))
             {
                 point = true;
-                if (i->isOverLink(_event->pos()))
+                if (i->isOverLink(pos))
+                {
                     i->underline(true);
+                    if (Features::longPathTooltipsAllowed() && i->needsTooltip())
+                    {
+                        forceTooltip = true;
+                        updateTooltip(i, pos);
+                    }
+                }
             }
             else
             {
                 i->underline(false);
             }
 
-            if (i->isOverDate(_event->pos()))
+            if (i->isOverDate(pos))
             {
                 point = true;
                 i->setDateState(true, false);
@@ -622,15 +662,16 @@ namespace Ui
                 i->setDateState(false, false);
             }
 
-            if (i->isOverMoreButton(_event->pos(), h))
+            if (i->isOverMoreButton(pos, h))
             {
-                i->setMoreButtonState(ButtonState::HOVERED);
+                if (i->moreButtonState() != ButtonState::PRESSED)
+                    i->setMoreButtonState(ButtonState::HOVERED);
                 point = true;
             }
             else
             {
                 auto r = QRect(0, h, width(), i->getHeight());
-                if (r.contains(_event->pos()))
+                if (r.contains(pos))
                     i->setMoreButtonState(ButtonState::NORMAL);
                 else
                     i->setMoreButtonState(ButtonState::HIDDEN);
@@ -638,6 +679,10 @@ namespace Ui
 
             h += i->getHeight();
         }
+
+        Tooltip::forceShow(forceTooltip);
+        if (!forceTooltip)
+            hideTooltip();
 
         setCursor(point ? Qt::PointingHandCursor : Qt::ArrowCursor);
         update();
@@ -650,6 +695,7 @@ namespace Ui
         for (auto& i : Items_)
             i->setMoreButtonState(ButtonState::HIDDEN);
 
+        hideTooltip();
         update();
         MediaContentWidget::leaveEvent(_event);
     }
@@ -783,5 +829,24 @@ namespace Ui
         }
 
         setFixedHeight(h);
+    }
+
+    void LinkList::updateTooltip(const std::unique_ptr<BaseLinkItem>& _item, const QPoint& _p)
+    {
+        if (_item->isOverLink(_p))
+        {
+            if (!isTooltipActivated())
+            {
+                auto ttRect = _item->getTooltipRect();
+                auto isFullyVisible = visibleRegion().boundingRect().y() < ttRect.top();
+                const auto arrowDir = isFullyVisible ? Tooltip::ArrowDirection::Down : Tooltip::ArrowDirection::Up;
+                const auto arrowPos = isFullyVisible ? Tooltip::ArrowPointPos::Top : Tooltip::ArrowPointPos::Bottom;
+                showTooltip(_item->getLink(), QRect(mapToGlobal(ttRect.topLeft()), ttRect.size()), arrowDir, arrowPos);
+            }
+        }
+        else
+        {
+            hideTooltip();
+        }
     }
 }

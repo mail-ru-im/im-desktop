@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../gui/types/message.h"
+
 namespace Ui
 {
     namespace TextRendering
@@ -11,6 +13,10 @@ namespace Ui
         int ceilToInt(double _value);
         int roundToInt(double _value);
         double textWidth(const QFont& _font, const QString& _text);
+
+        //! Includes width of right exceeding regular width part of last symbol of italic text
+        double textVisibleWidth(const QFont& _font, const QString& _text);
+
         double textAscent(const QFont& _font);
         double averageCharWidth(const QFont& _font);
         int textHeight(const QFont& _font);
@@ -25,6 +31,7 @@ namespace Ui
         bool isEmoji(QStringView _text);
 
         QString elideText(const QFont& _font, const QString& _text, int _width);
+        Data::FormattedStringView elideText(const QFont& _font, Data::FormattedStringView _text, int _width);
 
         QString stringFromCode(int _code);
         QString spaceAsString();

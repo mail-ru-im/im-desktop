@@ -54,12 +54,18 @@
 #include "connections/urls_cache.h"
 #include "connections/wim/wim_packet.h"
 
+#ifndef STRIP_NET_CHANGE_NOTIFY
 #include "network/network_change_notifier.h"
 #include "network/network_change_observer.h"
+#endif // !STRIP_NET_CHANGE_NOTIFY
 
 
 #ifdef _WIN32
     #include "../common.shared/win32/crash_handler.h"
+#endif
+
+#if __linux__
+#include <gnu/libc-version.h>
 #endif
 
 #if HAVE_SECURE_GETENV && __linux__
@@ -214,6 +220,9 @@ namespace
         }
         return res;
     }
+
+    thread_local core::stack_vec current_stack_;
+    constexpr auto need_stack() noexcept { return build::is_debug() || platform::is_apple(); }
 }
 
 using namespace core;
@@ -255,6 +264,45 @@ static constexpr std::string_view get_omicron_arch() noexcept
 #endif // defined(__x86_64__)
 }
 
+stacked_task::stacked_task(std::function<void()> _func)
+    : func_(std::move(_func))
+{
+    if (need_stack())
+    {
+        stack_.reserve(current_stack_.size() + 1);
+        stack_.push_back(std::make_shared<boost::stacktrace::stacktrace>());
+        stack_.insert(stack_.end(), current_stack_.begin(), current_stack_.end());
+    }
+}
+
+stacked_task::operator bool() const noexcept
+{
+    return func_.operator bool();
+}
+
+void stacked_task::execute()
+{
+    if (need_stack())
+        current_stack_.push_back(stack_.front());
+
+    if (func_)
+        func_();
+
+    if (need_stack())
+        current_stack_.pop_back();
+}
+
+const stack_vec& stacked_task::get_stack() const
+{
+    if (!need_stack())
+    {
+        static const stack_vec empty;
+        return empty;
+    }
+
+    return stack_;
+}
+
 core_dispatcher::core_dispatcher()
     : core_thread_(nullptr)
     , gui_connector_(nullptr)
@@ -288,7 +336,7 @@ std::string core::core_dispatcher::get_uniq_device_id() const
     return settings_->get_value<std::string>(core_settings_values::csv_device_id, std::string());
 }
 
-void core::core_dispatcher::execute_core_context(std::function<void()> _func)
+void core::core_dispatcher::execute_core_context(stacked_task _func)
 {
     if (!core_thread_)
     {
@@ -329,7 +377,7 @@ std::shared_ptr<base_im> core::core_dispatcher::find_im_by_id(unsigned id) const
     return nullptr;
 }
 
-uint32_t core::core_dispatcher::add_timer(std::function<void()> _func, std::chrono::milliseconds _timeout)
+uint32_t core::core_dispatcher::add_timer(stacked_task _func, std::chrono::milliseconds _timeout)
 {
     if (!scheduler_)
     {
@@ -338,6 +386,17 @@ uint32_t core::core_dispatcher::add_timer(std::function<void()> _func, std::chro
     }
 
     return scheduler_->push_timer(std::move(_func), _timeout);
+}
+
+uint32_t core::core_dispatcher::add_single_shot_timer(stacked_task _func, std::chrono::milliseconds _timeout)
+{
+    if (!scheduler_)
+    {
+        assert(false);
+        return 0;
+    }
+
+    return scheduler_->push_single_shot_timer(std::move(_func), _timeout);
 }
 
 void core::core_dispatcher::stop_timer(uint32_t _id)
@@ -363,10 +422,10 @@ void core::core_dispatcher::link_gui(icore_interface* _core_face, const common::
     core_factory_ = _core_face->get_factory();
     core_thread_ = new main_thread();
 
-    execute_core_context([this, _settings]
+    execute_core_context({ [this, _settings]
     {
         start(_settings);
-    });
+    } });
 }
 
 void core::core_dispatcher::start(const common::core_gui_settings& _settings)
@@ -445,7 +504,7 @@ void core::core_dispatcher::start(const common::core_gui_settings& _settings)
 
 #if defined _WIN32 || defined __linux__ || BUILD_FOR_STORE
     report_sender_ = std::make_shared<dump::report_sender>(g_core->get_login_after_start(), core::configuration::get_app_config().is_full_log_enabled());
-    report_sender_->send_report();
+    try_send_crash_report();
 #endif
 
     load_gui_settings();
@@ -477,7 +536,7 @@ void core::core_dispatcher::start(const common::core_gui_settings& _settings)
 
 void core::core_dispatcher::unlink_gui()
 {
-    execute_core_context([this]
+    execute_core_context({ [this]
     {
         // NOTE : this order is important!
         voip_manager_.reset();
@@ -487,7 +546,9 @@ void core::core_dispatcher::unlink_gui()
             stop_timer(omicron_update_timer_id_);
         omicronlib::omicron_cleanup();
 
+#ifndef STRIP_NET_CHANGE_NOTIFY
         network_change_notifier_.reset();
+#endif // !STRIP_NET_CHANGE_NOTIFY
 
         const auto keep_local_data = is_keep_local_data();
         if (!keep_local_data)
@@ -513,7 +574,7 @@ void core::core_dispatcher::unlink_gui()
             remove_local_data(true);
 
         curl_handler::instance().cleanup();
-    });
+    } });
 
     delete core_thread_;
     core_thread_ = nullptr;
@@ -796,13 +857,13 @@ void core_dispatcher::load_statistics()
 
     statistics_ = std::make_shared<core::stats::statistics>(utils::get_product_data_path() + L"/stats/stats_mt.stg");
 
-    execute_core_context([this]
+    execute_core_context({ [this]
     {
         statistics_->init();
         start_session_stats(false /* delayed */);
 
         constexpr auto timeout = (build::is_debug() ? std::chrono::seconds(10) : std::chrono::minutes(5));
-        delayed_stat_timer_id_ = add_timer([this]
+        delayed_stat_timer_id_ = add_timer({ [this]
         {
             if (statistics_)
             {
@@ -810,8 +871,8 @@ void core_dispatcher::load_statistics()
             }
 
             stop_timer(delayed_stat_timer_id_);
-        }, timeout);
-    });
+        } }, timeout);
+    } });
 }
 
 bool core_dispatcher::is_im_stats_enabled() const
@@ -865,14 +926,14 @@ void core_dispatcher::insert_event(core::stats::stats_event_names _event, core::
     if (!is_stats_enabled())
         return;
 
-    g_core->execute_core_context([wr_stats = std::weak_ptr<core::stats::statistics>(statistics_), _event, _props = std::move(_props)]() mutable
+    g_core->execute_core_context({ [wr_stats = std::weak_ptr<core::stats::statistics>(statistics_), _event, _props = std::move(_props)] () mutable
     {
         auto ptr_stats = wr_stats.lock();
         if (!ptr_stats)
             return;
 
         ptr_stats->insert_event(_event, std::move(_props));
-    });
+    } });
 }
 
 void core_dispatcher::insert_im_stats_event(core::stats::im_stat_event_names _event)
@@ -885,14 +946,14 @@ void core_dispatcher::insert_im_stats_event(core::stats::im_stat_event_names _ev
     if (!is_im_stats_enabled())
         return;
 
-    g_core->execute_core_context([wr_stats = std::weak_ptr<core::stats::im_stats>(im_stats_), _event, _props = std::move(_props)]() mutable
+    g_core->execute_core_context({ [wr_stats = std::weak_ptr<core::stats::im_stats>(im_stats_), _event, _props = std::move(_props)] () mutable
     {
         auto ptr_stats = wr_stats.lock();
         if (!ptr_stats)
             return;
 
         ptr_stats->insert_event(_event, std::move(_props));
-    });
+    } });
 }
 
 void core_dispatcher::load_theme_settings()
@@ -1087,12 +1148,12 @@ void core::core_dispatcher::on_misc_support(int64_t _seq, coll_helper& _params)
     {
         if (g_core)
         {
-            g_core->execute_core_context([_seq, aimid = std::move(aimid), message = std::move(message), attachment = tools::from_utf16(utils::create_feedback_logs_archive({}).wstring()), screenshots_list = std::move(screenshots_list)]()
+            g_core->execute_core_context({ [_seq, aimid = std::move(aimid), message = std::move(message), attachment = tools::from_utf16(utils::create_feedback_logs_archive({}).wstring()), screenshots_list = std::move(screenshots_list)] ()
             {
                 // then send the ready data to the support
                 if (auto im = g_core->find_im_by_id(0))
                     im->misc_support(_seq, aimid, message, attachment, std::move(screenshots_list));
-            });
+            } });
         }
 
         return 0;
@@ -1197,7 +1258,7 @@ void core::core_dispatcher::receive_message_from_gui(std::string_view _message, 
         return;
     }
 
-    execute_core_context([this, message_string = std::string(_message), _seq, _message_data]
+    execute_core_context({ [this, message_string = std::string(_message), _seq, _message_data]
     {
         coll_helper params(_message_data, true);
 
@@ -1327,7 +1388,7 @@ void core::core_dispatcher::receive_message_from_gui(std::string_view _message, 
         {
             im_container_->on_message_from_gui(message_string, _seq, params);
         }
-    });
+    } });
 }
 
 const common::core_gui_settings& core::core_dispatcher::get_core_gui_settings() const
@@ -1405,26 +1466,26 @@ void core::core_dispatcher::replace_uin_in_login(im_login_id& old_login, im_logi
 
 #ifndef STRIP_VOIP
 void core::core_dispatcher::post_voip_message(unsigned _id, const voip_manager::VoipProtoMsg& msg) {
-    execute_core_context([this, _id, msg] {
+    execute_core_context({ [this, _id, msg] {
         auto im = find_im_by_id(_id);
         assert(!!im);
 
         if (!!im) {
             im->post_voip_msg_to_server(msg);
         }
-    });
+    } });
 }
 
 void core::core_dispatcher::post_voip_alloc(unsigned _id, const char* _data, size_t _len) {
     std::string data_str(_data, _len);
-    execute_core_context([this, _id, data_str] {
+    execute_core_context({ [this, _id, data_str] {
         auto im = find_im_by_id(_id);
         assert(!!im);
 
         if (!!im) {
             im->post_voip_alloc_to_server(data_str);
         }
-    });
+    } });
 }
 #endif
 
@@ -1441,10 +1502,10 @@ void core::core_dispatcher::unlogin(const bool _is_auth_error, const bool _force
 
     write_data_to_network_log(std::move(bs));
 
-    execute_core_context([this, _is_auth_error]()
+    execute_core_context({ [this, _is_auth_error]()
     {
         im_container_->logout(_is_auth_error);
-    });
+    } });
 
     if (_force_clean_local_data)
     {
@@ -1452,10 +1513,10 @@ void core::core_dispatcher::unlogin(const bool _is_auth_error, const bool _force
         stream_val.write(false);
         gui_settings_->set_value(settings_keep_logged_in, std::move(stream_val));
 
-        execute_core_context([this]()
+        execute_core_context({ [this]()
         {
             remove_local_data(false);
-        });
+        } });
     }
 }
 
@@ -1572,25 +1633,25 @@ bool core_dispatcher::get_voip_mute_fix_flag() const
 
 void core_dispatcher::update_outgoing_msg_count(const std::string& _aimid, int _count)
 {
-    execute_core_context([this, _aimid, _count]()
+    execute_core_context({ [this, _aimid, _count]()
     {
         auto im = find_im_by_id(1);
         if (im)
             im->update_outgoing_msg_count(_aimid, _count);
-    });
+    } });
 }
 
 void core_dispatcher::post_install_action()
 {
     constexpr auto timeout = std::chrono::seconds(20);
-    delayed_post_timer_id_ = add_timer([this]
+    delayed_post_timer_id_ = add_timer({ [this]
     {
         stop_timer(delayed_post_timer_id_);
 
         installer_services::post_install_action act(utils::get_product_data_path() + L'/' + ::common::get_final_act_filename());
         act.load();
         act.delete_tmp_resources();
-    }, timeout);
+    } }, timeout);
 }
 
 static void omicron_log_helper(const std::string& _text)
@@ -1603,14 +1664,14 @@ static void omicron_update_helper(const std::string& _data)
 {
     if (g_core)
     {
-        g_core->execute_core_context([_data]
+        g_core->execute_core_context({ [_data]
         {
             coll_helper cl_coll(g_core->create_collection(), true);
             cl_coll.set_value_as_string("data", _data);
             g_core->post_message_to_gui("omicron/update/data", 0, cl_coll.get());
 
             g_core->check_if_network_change_notifier_available();
-        });
+        } });
     }
 }
 
@@ -1686,6 +1747,9 @@ void core::core_dispatcher::start_omicron_service()
     conf.add_fingerprint("os_version", core::tools::system::get_os_version_string());
     conf.add_fingerprint("device_id", g_core->get_uniq_device_id());
     conf.add_fingerprint("arch", std::string(get_omicron_arch()));
+#if __linux__
+    conf.add_fingerprint("glibc_version", gnu_get_libc_version());
+#endif
     auto account = g_core->get_root_login();
     if (!account.empty())
         conf.add_fingerprint("account", account);
@@ -1705,7 +1769,7 @@ void core::core_dispatcher::start_omicron_service()
 
     auto inifile_update_interval = core::configuration::get_app_config().update_interval();
     auto update_period = (inifile_update_interval == 0) ? omicronlib::default_update_interval() : std::chrono::seconds(inifile_update_interval);
-    omicron_update_timer_id_ = add_timer([fl = account.empty()]()
+    omicron_update_timer_id_ = add_timer({ [fl = account.empty()] ()
     {
         static auto need_add_account = fl;
         if (need_add_account && g_core)
@@ -1719,7 +1783,7 @@ void core::core_dispatcher::start_omicron_service()
         }
 
         omicronlib::omicron_update();
-    }, update_period);
+    } }, update_period);
 }
 
 void core_dispatcher::set_last_stat_send_time(int64_t _time)
@@ -1824,9 +1888,7 @@ void core_dispatcher::remove_local_data(bool _is_exit)
     utils::remove_dir_contents_recursively2(data_path + L"/settings", { core_settings_file_name, gui_settings_file_name, theme_settings_file_name });
 
     if (_is_exit)
-    {
         tools::system::delete_directory(data_path + L"/stats");
-    }
 }
 
 void core_dispatcher::update_gui_settings()
@@ -1842,6 +1904,7 @@ void core_dispatcher::reset_connection()
 
 void core::core_dispatcher::check_if_network_change_notifier_available()
 {
+#ifndef STRIP_NET_CHANGE_NOTIFY
     if (!network_change_notifier_ && network_change_notifier::is_enabled())
     {
         auto network_observer = std::make_unique<network_change_observer>();
@@ -1851,11 +1914,25 @@ void core::core_dispatcher::check_if_network_change_notifier_available()
     {
         network_change_notifier_.reset();
     }
+#endif // !STRIP_NET_CHANGE_NOTIFY
 }
 
 bool core::core_dispatcher::is_network_change_notifier_valid() const
 {
+#ifndef STRIP_NET_CHANGE_NOTIFY
     return !!network_change_notifier_;
+#else
+    return false;
+#endif // !STRIP_NET_CHANGE_NOTIFY
+}
+
+void core_dispatcher::try_send_crash_report()
+{
+#if defined _WIN32 || defined __linux__ || BUILD_FOR_STORE
+    if (report_sender_)
+        if (auto url = config::hosts::get_host_url(config::hosts::host_url_type::base_binary); !url.empty())
+            report_sender_->send_report(url);
+#endif
 }
 
 bool core_dispatcher::is_smartreply_available() const

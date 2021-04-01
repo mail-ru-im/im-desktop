@@ -12,6 +12,12 @@ namespace Logic
     class StatusProxyModel;
 }
 
+namespace Tooltip
+{
+    enum class ArrowDirection;
+    enum class ArrowPointPos;
+}
+
 namespace Ui
 {
     using highlightsV = std::vector<QString>;
@@ -125,6 +131,9 @@ namespace Ui
 
         void scrolled(const int _value);
 
+    protected:
+        void leaveEvent(QEvent* _event) override;
+
     private:
         void switchToInitial(bool _initial);
         void searchUpOrDownPressed(bool _isUp);
@@ -140,6 +149,8 @@ namespace Ui
         using SearchHeaders = std::vector<std::pair<SearchCategory, QModelIndex>>;
         SearchHeaders getCurrentCategories() const;
 
+        void showTooltip(QString _text, QRect _rect, Tooltip::ArrowDirection _arrowDir, Tooltip::ArrowPointPos _arrowPos);
+        void hideTooltip();
 
     private:
         QVBoxLayout* layout_;
@@ -170,6 +181,9 @@ namespace Ui
         Logic::CallsModel* callsModel_;
 
         ContextMenu* popupMenu_;
+
+        QTimer* tooltipTimer_;
+        QModelIndex tooltipIndex_;
 
         QString searchDialogContact_;
         bool noSearchResultsShown_;

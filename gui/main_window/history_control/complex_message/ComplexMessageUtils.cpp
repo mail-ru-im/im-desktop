@@ -7,8 +7,8 @@ UI_COMPLEX_MESSAGE_NS_BEGIN
 
 QSize limitSize(const QSize& _size, const QSize& _maxSize, const QSize& _minSize)
 {
-    assert(!_size.isEmpty());
-    assert(_maxSize.width() > 0 || _maxSize.height() > 0);
+    im_assert(!_size.isEmpty());
+    im_assert(_maxSize.width() > 0 || _maxSize.height() > 0);
 
     if (_size.isEmpty())
         return _size;

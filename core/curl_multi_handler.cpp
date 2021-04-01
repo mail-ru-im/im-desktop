@@ -22,9 +22,13 @@ namespace
 
     GlobalInfo global;
 
-#ifndef _WIN32
     int setNonblocking(int fd)
     {
+#ifdef _WIN32
+
+        u_long mode = 1;
+        return ioctlsocket(fd, FIONBIO, &mode);
+#else
         int flags;
 #if defined(O_NONBLOCK)
         if (-1 == (flags = fcntl(fd, F_GETFL, 0)))
@@ -33,9 +37,9 @@ namespace
 #else
         flags = 1;
         return ioctl(fd, FIOBIO, &flags);
-#endif
-    }
+#endif //O_NONBLOCK
 #endif //_WIN32
+    }
 
 #ifdef _WIN32
     HANDLE events[WSA_MAXIMUM_WAIT_EVENTS];
@@ -169,8 +173,10 @@ namespace
             rc = 1;
         }
 #else
-        FD_SET(get_signal(), &fdread);
-        rc = select(maxfd + 2, &fdread, &fdwrite, &fdexcep, &timeout);
+        const auto signal = get_signal();
+        FD_SET(signal, &fdread);
+        maxfd = std::max(maxfd, signal);
+        rc = select(maxfd + 1, &fdread, &fdwrite, &fdexcep, &timeout);
         if (rc)
         {
             if (FD_ISSET(get_signal(), &fdread))
@@ -362,6 +368,15 @@ namespace
         }
 
         return 0;
+    }
+
+    static int socket_options(void*, curl_socket_t curlfd, curlsocktype)
+    {
+        if (!setNonblocking(curlfd))
+            return CURL_SOCKOPT_OK;
+
+        write_log("failed to make socket non-blocking");
+        return CURL_SOCKOPT_ERROR;
     }
 
     int resolve_host(std::string_view _host, std::string& _result)
@@ -636,6 +651,7 @@ namespace core
                 {
                     curl_easy_setopt(easy.handler, CURLOPT_OPENSOCKETFUNCTION, opensocket);
                     curl_easy_setopt(easy.handler, CURLOPT_CLOSESOCKETFUNCTION, close_socket);
+                    curl_easy_setopt(easy.handler, CURLOPT_SOCKOPTFUNCTION, socket_options);
 
                     if (const auto code = task->execute_multi(global.multi, easy.handler); code == CURLE_OK)
                         tasks[easy.handler] = task;

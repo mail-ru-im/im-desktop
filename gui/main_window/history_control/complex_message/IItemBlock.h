@@ -3,6 +3,7 @@
 #include "../../../namespaces.h"
 #include "../../../types/message.h"
 #include "../../../types/StickerId.h"
+#include "../../../types/filesharing_meta.h"
 
 namespace Ui
 {
@@ -98,11 +99,11 @@ public:
         selection,
         quote
     };
-    virtual QString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const = 0;
+    virtual Data::FormattedString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const = 0;
 
-    virtual QString getSourceText() const = 0;
+    virtual Data::FormattedString getSourceText() const = 0;
 
-    virtual QString getTextInstantEdit() const = 0;
+    virtual Data::FormattedString getTextInstantEdit() const = 0;
 
     virtual QString getPlaceholderText() const = 0;
 
@@ -193,6 +194,8 @@ public:
     virtual void shiftHorizontally(const int _shift) {}
 
     virtual void setText(const QString& _text) {}
+    
+    virtual void setText(const Data::FormattedString& _text) {}
 
     virtual void startSpellChecking() {}
 
@@ -233,6 +236,8 @@ public:
     virtual void setSpellErrorsVisible(bool _visible) {}
 
     virtual bool setProgress(const QString& _fsId, const int32_t _val) { return false; }
+
+    virtual std::optional<Data::FileSharingMeta> getMeta(const QString& _id) const { return std::nullopt; }
 
 protected:
     virtual IItemBlockLayout* getBlockLayout() const = 0;

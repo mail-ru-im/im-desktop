@@ -258,7 +258,7 @@ public:
             case Hover:     return imagePath % name % u"_icon" % u"_hover";
             case Pressed:   return imagePath % name % u"_icon" % u"_active";
         }
-        assert(!"invalid kind!");
+        im_assert(!"invalid kind!");
         return QString();
     }
 
@@ -904,7 +904,7 @@ public:
     {
         if (itemIdx >= static_cast<int>(items_.size()))
         {
-            assert(!"wrong item index");
+            im_assert(!"wrong item index");
             return QRect();
         }
 
@@ -1111,11 +1111,11 @@ AccessibleGalleryFrame::AccessibleGalleryFrame(GalleryFrame* widget)
     {
         auto drawable = galleryFrame->d->objects_.at(control).get();
         auto controlObject = dynamic_cast<QObject*>(drawable);
-        assert(controlObject);
+        im_assert(controlObject);
         if (controlObject)
         {
             auto accessibleControlObject = QAccessible::queryAccessibleInterface(controlObject);
-            assert(accessibleControlObject);
+            im_assert(accessibleControlObject);
             children_.emplace_back(accessibleControlObject);
         }
     }

@@ -32,6 +32,7 @@ AppConfig::AppConfig(const core::coll_helper &collection)
     , IsServerSearchEnabled_(collection.get<bool>("dev.server_search", true))
     , IsShowHiddenThemes_(collection.get<bool>("show_hidden_themes", false))
     , IsSysCrashHandleEnabled_(collection.get<bool>("sys_crash_handler_enabled", false))
+    , IsNetCompressionEnabled_(collection.get<bool>("dev.net_compression", true))
     , WatchGuiMemoryEnabled_(collection.get<bool>("dev.watch_gui_memory", false))
     , ShowMsgOptionHasChanged_(false)
     , GDPR_UserHasAgreed_(collection.get<bool>("gdpr.user_has_agreed") || config::get().is_on(config::features::auto_accepted_gdpr))
@@ -105,6 +106,11 @@ bool AppConfig::IsShowHiddenThemes() const noexcept
 bool AppConfig::IsSysCrashHandleEnabled() const noexcept
 {
     return IsSysCrashHandleEnabled_;
+}
+
+bool AppConfig::IsNetCompressionEnabled() const noexcept
+{
+    return IsNetCompressionEnabled_;
 }
 
 bool AppConfig::WatchGuiMemoryEnabled() const noexcept
@@ -249,6 +255,11 @@ void AppConfig::SetCustomDeviceId(bool _custom) noexcept
         deviceId_.clear();
 }
 
+void AppConfig::SetNetCompressionEnabled(bool _enabled) noexcept
+{
+    IsNetCompressionEnabled_ = _enabled;
+}
+
 bool AppConfig::hasCustomDeviceId() const
 {
     return !deviceId_.empty() && deviceId_ != common::get_dev_id();
@@ -256,14 +267,14 @@ bool AppConfig::hasCustomDeviceId() const
 
 const AppConfig& GetAppConfig()
 {
-    assert(AppConfig_);
+    im_assert(AppConfig_);
 
     return *AppConfig_;
 }
 
 void SetAppConfig(AppConfigUptr&& appConfig)
 {
-    assert(appConfig);
+    im_assert(appConfig);
 
     if (AppConfig_)
     {
@@ -287,6 +298,7 @@ void ModifyAppConfig(AppConfig _appConfig, message_processed_callback _callback,
     collection.set_value_as_bool("dev.server_search", _appConfig.IsServerSearchEnabled());
     collection.set_value_as_bool("dev.watch_gui_memory", _appConfig.WatchGuiMemoryEnabled());
     collection.set_value_as_string("dev_id", _appConfig.getDevId());
+    collection.set_value_as_bool("dev.net_compression", _appConfig.IsNetCompressionEnabled());
 
     if (!postToCore)
     {

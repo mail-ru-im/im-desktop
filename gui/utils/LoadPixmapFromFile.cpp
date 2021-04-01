@@ -10,8 +10,8 @@ namespace Utils
         : path_(path)
         , maxSize_(_maxSize)
     {
-        assert(!path_.isEmpty());
-        assert(QFile::exists(path_));
+        im_assert(!path_.isEmpty());
+        im_assert(QFile::exists(path_));
     }
 
     LoadPixmapFromFileTask::~LoadPixmapFromFileTask()
@@ -37,7 +37,7 @@ namespace Utils
             return;
         }
 
-        assert(!preview.isNull());
+        im_assert(!preview.isNull());
 
         if (Q_LIKELY(QCoreApplication::instance()))
             Q_EMIT loadedSignal(preview, originalImageSize);
@@ -47,8 +47,8 @@ namespace Utils
         : path_(path)
         , maxSize_(_maxSize)
     {
-        assert(!path_.isEmpty());
-        assert(QFile::exists(path_));
+        im_assert(!path_.isEmpty());
+        im_assert(QFile::exists(path_));
     }
 
     LoadImageFromFileTask::~LoadImageFromFileTask()
@@ -68,7 +68,7 @@ namespace Utils
 
         Utils::loadImageScaled(path_, maxSize_, preview, originalImageSize, Utils::PanoramicCheck::no);
 
-        assert(!preview.isNull());
+        im_assert(!preview.isNull());
 
         Q_EMIT loadedSignal(preview, originalImageSize);
     }

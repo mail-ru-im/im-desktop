@@ -87,26 +87,32 @@ namespace
         return normalize(n1) == normalize(n2);
     }
 
-    std::string getDeviceName()
+    std::optional<std::string> getDeviceName()
     {
+        std::optional<std::string> result;
+        const openal::ALCchar *device = openal::alcGetString(NULL, ALC_CAPTURE_DEVICE_SPECIFIER);
         const auto fromSettings = getDeviceNameFromSettings();
         if (fromSettings.isEmpty())
-            return {};
-        const openal::ALCchar *device = openal::alcGetString(NULL, ALC_CAPTURE_DEVICE_SPECIFIER);
-        const openal::ALCchar *next = device + 1;
-        size_t len = 0;
+        {
+            if (device && *device != '\0')
+                result = std::string();
+            return result;
+        }
 
-        while (device && *device != '\0' && next && *next != '\0')
+        size_t len = 0;
+        while (device && *device != '\0')
         {
             len = strlen(device);
             if (areNamesEqual(fromSettings, QString::fromUtf8(device, len)))
-                return std::string(device, len);
+            {
+                result = std::string(device, len);
+                return result;
+            }
             qCDebug(pttLog) << device;
             device += (len + 1);
-            next += (len + 2);
         }
 
-        return {};
+        return result;
     }
 }
 
@@ -194,7 +200,7 @@ namespace ptt
 
     void AudioRecorder2::onTimer()
     {
-        assert(!inGuiThread());
+        im_assert(!inGuiThread());
 
         if (needReinit())
         {
@@ -259,7 +265,7 @@ namespace ptt
 
     void AudioRecorder2::resetBuffer()
     {
-        assert(!inGuiThread());
+        im_assert(!inGuiThread());
         buffer_.clear();
         for (size_t i = 0, size = getWavHeaderSize(); i < size; ++i)
             buffer_.push_back('\0');
@@ -299,7 +305,7 @@ namespace ptt
         qCDebug(pttLog) << "reInit";
         if (device_)
             stopAndCloseDevice(device_);
-        deviceName_ = getDeviceName();
+        deviceName_ = getDeviceName().value_or(std::string());
         device_ = openDevice(internalBuffer_.size(), deviceName_);
         if (!device_)
         {
@@ -313,7 +319,7 @@ namespace ptt
 
     void AudioRecorder2::setStateImpl(State2 _state)
     {
-        assert(!inGuiThread());
+        im_assert(!inGuiThread());
         if (state_ != _state)
         {
             qCDebug(pttLog) << "setStateImpl" << (int)_state;
@@ -341,18 +347,15 @@ namespace ptt
         }
     }
 
-    bool AudioRecorder2::hasDevice(const char* deviceName)
+    bool AudioRecorder2::hasDevice()
     {
-        std::string d = deviceName ? deviceName : getDeviceName();
-        auto res = openDevice(rate() * channelsCount() * bitesPerSample() / 8 * std::chrono::seconds(1).count(), d.c_str());
-        const auto error = errorHappened(res);
-        stopAndCloseDevice(res);
-        return res != nullptr && !error;
+        const openal::ALCchar *device = openal::alcGetString(NULL, ALC_CAPTURE_DEVICE_SPECIFIER);
+        return device && *device != '\0'; // have at least 1 device
     }
 
     void AudioRecorder2::recordImpl()
     {
-        assert(!inGuiThread());
+        im_assert(!inGuiThread());
         if (timer_->isActive())
             return;
 
@@ -379,7 +382,7 @@ namespace ptt
 
     void AudioRecorder2::pauseRecordImpl()
     {
-        assert(!inGuiThread());
+        im_assert(!inGuiThread());
 
         setStateImpl(State2::Paused);
         timer_->stop();
@@ -388,7 +391,7 @@ namespace ptt
 
     void AudioRecorder2::stopImpl()
     {
-        assert(!inGuiThread());
+        im_assert(!inGuiThread());
 
         const auto prevState = getStateImpl();
         setStateImpl(State2::Stopped);
@@ -401,7 +404,7 @@ namespace ptt
 
     void AudioRecorder2::getDataImpl(const ptt::StatInfo& _statInfo)
     {
-        assert(!inGuiThread());
+        im_assert(!inGuiThread());
 
         if ((currentDurationImpl() >= minDuration_) && insertWavHeader())
             Q_EMIT dataReady(buffer_, contact_, _statInfo, QPrivateSignal());
@@ -409,7 +412,7 @@ namespace ptt
 
     void AudioRecorder2::getPcmDataImpl()
     {
-        assert(!inGuiThread());
+        im_assert(!inGuiThread());
 
         if ((currentDurationImpl() >= minDuration_) && insertWavHeader())
             Q_EMIT pcmDataReady({ buffer_, getWavHeaderSize(), rate(), format(), bitesPerSample(), channelsCount() }, contact_, QPrivateSignal());

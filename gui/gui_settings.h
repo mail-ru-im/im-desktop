@@ -76,7 +76,7 @@ Q_SIGNALS:
 
             if (data.size() != sizeof(t_))
             {
-                assert(false);
+                im_assert(false);
                 return _defaultValue;
             }
 
@@ -106,14 +106,14 @@ Q_SIGNALS:
         template <class t_>
         t_ get_value(QStringView _name, const t_& _defaultValue) const
         {
-            assert(false);
+            im_assert(false);
             return _defaultValue;
         }
 
         template <class t_>
         t_ get_value(const char* _name, const t_& _defaultValue) const
         {
-            assert(false);
+            im_assert(false);
             return _defaultValue;
         }
 

@@ -267,12 +267,12 @@ namespace Ui
 
     void HistoryControlPageItem::setContact(const QString& _aimId)
     {
-        assert(!_aimId.isEmpty());
+        im_assert(!_aimId.isEmpty());
 
         if (_aimId == aimId_)
             return;
 
-        assert(aimId_.isEmpty());
+        im_assert(aimId_.isEmpty());
 
         aimId_ = _aimId;
         QuoteAnimation_.setAimId(_aimId);
@@ -518,6 +518,14 @@ namespace Ui
             reactions_->onMouseLeave();
 
         QWidget::leaveEvent(_event);
+    }
+
+    void HistoryControlPageItem::wheelEvent(QWheelEvent* _event)
+    {
+        if constexpr (platform::is_apple())
+            Tooltip::hide();
+
+        QWidget::wheelEvent(_event);
     }
 
     bool HistoryControlPageItem::showHeadsTooltip(const QRect& _rc, const QPoint& _pos)

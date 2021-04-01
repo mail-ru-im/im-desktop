@@ -24,7 +24,7 @@ namespace
 
         if (doc.HasParseError())
         {
-            assert(QFile::exists(getDefaultJSONPath()));
+            im_assert(QFile::exists(getDefaultJSONPath()));
 
             QFile file(getDefaultJSONPath());
             if (!file.open(QFile::ReadOnly | QFile::Text))
@@ -35,7 +35,7 @@ namespace
             doc.Parse(json.constData(), json.size());
             if (doc.HasParseError())
             {
-                assert(false);
+                im_assert(false);
                 return statuses;
             }
             file.close();

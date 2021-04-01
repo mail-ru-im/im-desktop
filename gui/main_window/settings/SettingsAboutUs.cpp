@@ -64,6 +64,7 @@ void GeneralSettingsWidget::Creator::initAbout(QWidget* _parent)
                 auto versionText = new TextEmojiWidget(aboutWidget, Fonts::appFontScaled(15), textColor);
                 versionText->setText(Utils::getVersionLabel());
                 versionText->setSelectable(true);
+                versionText->setMultiline(true);
                 Utils::grabTouchWidget(versionText);
                 Testing::setAccessibleName(versionText, qsl("AS AboutUsPage versionText"));
                 aboutLayout->addWidget(versionText);

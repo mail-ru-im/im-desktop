@@ -228,7 +228,7 @@ namespace Ui
 
     void my_info::setFriendly(const QString& _friendly)
     {
-        assert(!_friendly.isEmpty());
+        im_assert(!_friendly.isEmpty());
         data_.friendly_ = _friendly;
         Q_EMIT received();
     }

@@ -567,7 +567,7 @@ namespace Ui
 
     void NickLineEdit::clearHint()
     {
-        hintUnit_->setText({});
+        hintUnit_->setText(QString());
         updateNickLine(false);
         update();
     }

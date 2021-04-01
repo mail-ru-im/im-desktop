@@ -48,6 +48,7 @@
 #include "../../main_window/containers/FriendlyContainer.h"
 #include "../../main_window/containers/LastseenContainer.h"
 #include "../../main_window/containers/InputTextContainer.h"
+#include "main_window/history_control/history/MessageBuilder.h"
 
 #include "../../utils/gui_coll_helper.h"
 #include "../../utils/exif.h"
@@ -112,6 +113,56 @@ namespace
     {
         const auto useProfileAgent = config::get().is_on(config::features::profile_agent_as_domain_url);
         return useProfileAgent ? Features::getProfileDomainAgent() : Features::getProfileDomain();
+    }
+
+    int quotesLength(const Data::QuotesVec& _quotes)
+    {
+        auto res = 0;
+        for (const auto& q : _quotes)
+            res += q.text_.size();
+
+        return res;
+    }
+
+    QString getTextPart(QStringView text)
+    {
+        constexpr auto maxSize = Utils::getInputMaximumChars();
+        decltype(maxSize) textSize = text.size();
+        const auto majorCurrentPiece = text.left(std::min(maxSize, textSize));
+
+        auto partSize = text.size();
+
+        if (partSize > maxSize)
+            partSize = majorCurrentPiece.lastIndexOf(QChar::Space);
+
+        if (partSize == -1 || partSize == 0)
+            partSize = majorCurrentPiece.lastIndexOf(QChar::LineFeed);
+        if (partSize == -1 || partSize == 0)
+            partSize = std::min(textSize, maxSize);
+
+        return majorCurrentPiece.left(partSize).toString();
+    }
+
+    std::unordered_set<QStringView, Utils::QStringViewHasher> extractMentions(QStringView _text)
+    {
+        std::unordered_set<QStringView, Utils::QStringViewHasher> mentions;
+        auto i = 0;
+        while (i < _text.size())
+        {
+            auto startPos = _text.indexOf(ql1c('@'), i);
+            auto endPos = _text.indexOf(ql1c(']'), startPos);
+
+            if (startPos != -1 && startPos < _text.size() - 1 && _text[startPos + 1] == ql1c('[') && endPos != -1)
+            {
+                mentions.insert(_text.mid(startPos + 2, endPos - startPos - 2));
+                i = endPos;
+            }
+            else
+            {
+                break;
+            }
+        }
+        return mentions;
     }
 }
 
@@ -458,18 +509,8 @@ namespace Ui
         {
             currentState().mentionSignIndex_ = -1;
 
-            if (isEdit)
-            {
-                if (currentState().edit_.message_)
-                {
-                    assert(currentState().edit_.message_);
-                    currentState().edit_.message_->Mentions_.clear();
-                }
-            }
-            else
-            {
+            if (!isEdit)
                 currentState().mentions_.clear();
-            }
         }
 
         updateSubmitButtonState(UpdateMode::IfChanged);
@@ -607,8 +648,10 @@ namespace Ui
         Ui::gui_coll_helper collection(GetDispatcher()->create_collection(), true);
         collection.set_value_as_qstring("contact", contact_);
         collection.set_value_as_bool("fs_sticker", true);
-        collection.set_value_as_qstring("message", Stickers::getSendBaseUrl() % _stickerId);
-        collection.set_value_as_bool("channel", Logic::getContactListModel()->isChannel(contact_));
+        collection.set_value_as_qstring("message", Stickers::getSendUrl(_stickerId));
+
+        if (Logic::getContactListModel()->isChannel(contact_))
+            collection.set_value_as_qstring("chat_sender", contact_);
 
         const auto isEdit = isEditing();
         const auto& quotes = getInputQuotes();
@@ -807,13 +850,13 @@ namespace Ui
             send();
     }
 
-    void InputWidget::send(InstantEdit _mode)
+    void InputWidget::send()
     {
         if (currentState().isDisabled())
             return;
 
         const auto& curState = currentState();
-        const auto isEdit = isEditing() || _mode == InstantEdit::Yes;
+        const auto isEdit = isEditing();
         auto files = isEdit ? curState.edit_.message_->Files_ : curState.files_;
 
         const auto inputText = getInputText().trimmed();
@@ -822,7 +865,9 @@ namespace Ui
 
         QString text;
 
-        if (hasMessage && !isMedia && _mode == InstantEdit::No)
+        const auto addedDescription = isMedia && hasMessage && curState.edit_.message_->GetDescription().isEmpty();
+
+        if (hasMessage && !isMedia || addedDescription)
             text = inputText;
         else if (auto trimmedBufer = QStringView(curState.edit_.buffer_).trimmed(); trimmedBufer.isEmpty() && hasMessage)
             text = curState.edit_.message_->GetUrl();
@@ -833,7 +878,7 @@ namespace Ui
             text = inputText;
         textEdit_->getUndoRedoStack().clear(HistoryUndoStack::ClearType::Full);
 
-        if (hasMessage && isMedia && _mode == InstantEdit::No)
+        if (hasMessage && isMedia)
         {
             curState.edit_.message_->SetDescription(inputText);
 
@@ -841,13 +886,10 @@ namespace Ui
                 curState.edit_.message_->SetUrl(Utils::replaceFilesPlaceholders(curState.edit_.message_->GetText(), files));
         }
 
-        if (isEdit && _mode == InstantEdit::No
-            && (
+        if (isEdit && (
                  !hasMessage
                  || (!curState.canBeEmpty_ && !inputText.isEmpty() && text == curState.edit_.message_->GetText())
-                 || (curState.canBeEmpty_ && inputText.isEmpty() && inputText == currentState().edit_.editableText_)
-                )
-            )
+                 || (curState.canBeEmpty_ && inputText.isEmpty() && inputText == currentState().edit_.editableText_)))
         {
             clearInputText();
             clearEdit();
@@ -857,57 +899,37 @@ namespace Ui
 
         text = Utils::replaceFilesPlaceholders(text, files);
 
-        const auto& quotes = isEdit ? curState.edit_.quotes_ : curState.quotes_;
+        const auto& quotes = isEdit ? curState.edit_.message_->Quotes_ : curState.quotes_;
 
         if (!curState.canBeEmpty_ && text.isEmpty() && quotes.isEmpty())
             return;
 
-        if (!isEdit)
+        if (isEdit)
+        {
+            GetDispatcher()->updateMessage(makeMessage(text));
+            clearEdit();
+        }
+        else
+        {
             hideSmartreplies();
 
-        size_t quotesLength = 0;
-        for (const auto& q : quotes)
-        {
-            quotesLength += q.text_.size();
-            files.insert(q.files_.begin(), q.files_.end());
-        }
-
-        if (quotesLength >= 0.9 * Utils::getInputMaximumChars() || (text.isEmpty() && curState.canBeEmpty_))
-        {
-            sendPiece({}, _mode);
-            clearQuotes();
-        }
-
-        QStringRef textRef(&text);
-
-        while (!textRef.isEmpty())
-        {
-            constexpr auto maxSize = Utils::getInputMaximumChars();
-            const auto majorCurrentPiece = textRef.left(maxSize);
-
-            auto spaceIdx = (static_cast<decltype(maxSize)>(textRef.size()) <= maxSize)
-                            ? textRef.size()
-                            : majorCurrentPiece.lastIndexOf(QChar::Space);
-
-            if (spaceIdx == -1 || spaceIdx == 0)
-                spaceIdx = majorCurrentPiece.lastIndexOf(QChar::LineFeed);
-            if (spaceIdx == -1 || spaceIdx == 0)
-                spaceIdx = std::min(static_cast<decltype(maxSize)>(textRef.size()), maxSize);
-
-            sendPiece(majorCurrentPiece.left(spaceIdx), _mode);
-            textRef = textRef.mid(spaceIdx);
-
-            if (_mode == InstantEdit::No)
+            if (quotesLength(quotes) >= 0.9 * Utils::getInputMaximumChars() || (text.isEmpty() && curState.canBeEmpty_))
             {
-                if (isEdit)
-                    clearEdit();
-                else
-                    clearQuotes();
+                GetDispatcher()->sendMessage(makeMessage({}));
+                clearQuotes();
+            }
+
+            auto textView = QStringView(text);
+
+            while (!textView.isEmpty())
+            {
+                auto part = getTextPart(textView);
+                textView = textView.mid(part.size());
+
+                GetDispatcher()->sendMessage(makeMessage(part));
+                clearQuotes();
             }
         }
-
-        if (_mode == InstantEdit::No)
-            clearInputText();
 
         if (!isEdit)
         {
@@ -918,140 +940,11 @@ namespace Ui
             Q_EMIT sendMessage(contact_);
         }
 
-        if (_mode == InstantEdit::No)
-            switchToPreviousView();
+        clearInputText();
+        switchToPreviousView();
 
         if (!isEdit)
             sendStatsIfNeeded();
-    }
-
-    void InputWidget::sendPiece(const QStringRef& _msg, InstantEdit _mode)
-    {
-        const auto& curState = currentState();
-        const auto isEdit = isEditing() || _mode == InstantEdit::Yes;
-        if (isEdit)
-        {
-            assert(curState.edit_.message_);
-            if (!curState.edit_.message_)
-                return;
-        }
-
-        const auto& quotes = isEdit ? curState.edit_.quotes_ : curState.quotes_;
-        const auto& files = isEdit ? curState.edit_.message_->Files_ : curState.files_;
-
-        Ui::gui_coll_helper collection(GetDispatcher()->create_collection(), true);
-        collection.set_value_as_qstring("contact", contact_);
-        collection.set_value_as_bool("channel", Logic::getContactListModel()->isChannel(contact_));
-
-        std::optional<QString> msg;
-
-        if (isEdit)
-        {
-            if (!curState.edit_.message_->GetDescription().isEmpty() && curState.edit_.message_->GetType() != core::message_type::base)
-            {
-                collection.set_value_as_qstring("description", curState.edit_.message_->GetDescription());
-                msg = std::make_optional(curState.edit_.message_->GetUrl());
-                collection.set_value_as_qstring("url", *msg);
-            }
-            else if (curState.edit_.message_->GetType() != core::message_type::base)
-            {
-                collection.set_value_as_qstring("description", _msg.mid(curState.edit_.message_->GetUrl().size() + 1));
-            }
-        }
-
-        if (msg)
-            collection.set_value_as_qstring("message", *msg);
-        else
-            collection.set_value_as_qstring("message", Utils::convertFilesPlaceholders(_msg, files));
-
-        if (!quotes.isEmpty())
-        {
-            core::ifptr<core::iarray> quotesArray(collection->create_array());
-            quotesArray->reserve(quotes.size());
-            for (auto quote : quotes)
-            {
-                if (_msg != quote.description_ || _msg != quote.url_)
-                {
-                    quote.url_.clear();
-                    quote.description_.clear();
-                }
-                core::ifptr<core::icollection> quoteCollection(collection->create_collection());
-                quote.text_ = Utils::replaceFilesPlaceholders(quote.text_, quote.files_);
-                quote.serialize(quoteCollection.get());
-                core::ifptr<core::ivalue> val(collection->create_value());
-                val->set_as_collection(quoteCollection.get());
-                quotesArray->push_back(val.get());
-            }
-            collection.set_value_as_array("quotes", quotesArray.get());
-
-            GetDispatcher()->post_stats_to_core(_msg.isEmpty() ? core::stats::stats_event_names::quotes_send_alone : core::stats::stats_event_names::quotes_send_answer);
-            GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::quotes_messagescount, { { "Quotes_MessagesCount", std::to_string(quotes.size()) } });
-        }
-
-        auto& myMentions = isEdit ? curState.edit_.message_->Mentions_ : curState.mentions_;
-        auto myMentionCount = myMentions.size();
-
-        auto allMentions = isEdit ? curState.edit_.message_->Mentions_ : curState.mentions_; // copy
-        for (const auto& q : quotes)
-            allMentions.insert(q.mentions_.begin(), q.mentions_.end());
-
-        if (!allMentions.empty())
-        {
-            QString textWithMentions;
-            textWithMentions += _msg;
-            for (const auto& q : quotes)
-                textWithMentions.append(q.text_);
-
-            for (auto it = allMentions.cbegin(); it != allMentions.cend();)
-            {
-                if (!textWithMentions.contains(u"@[" % it->first % u']'))
-                {
-                    if (myMentions.count(it->first))
-                        --myMentionCount;
-
-                    it = allMentions.erase(it);
-                }
-                else
-                {
-                    ++it;
-                }
-            }
-        }
-
-        if (!allMentions.empty())
-        {
-            core::ifptr<core::iarray> mentArray(collection->create_array());
-            mentArray->reserve(allMentions.size());
-            for (const auto&[aimid, friendly] : std::as_const(allMentions))
-            {
-                core::ifptr<core::icollection> mentCollection(collection->create_collection());
-                Ui::gui_coll_helper coll(mentCollection.get(), false);
-                coll.set_value_as_qstring("aimid", aimid);
-                coll.set_value_as_qstring("friendly", friendly);
-
-                core::ifptr<core::ivalue> val(collection->create_value());
-                val->set_as_collection(mentCollection.get());
-                mentArray->push_back(val.get());
-            }
-            collection.set_value_as_array("mentions", mentArray.get());
-
-            if (myMentionCount)
-                GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::mentions_sent, { { "Mentions_Count", std::to_string(myMentionCount) } });
-        }
-
-        if (isEdit)
-        {
-            collection.set_value_as_int64("id", curState.edit_.message_->Id_);
-            collection.set_value_as_qstring("internal_id", curState.edit_.message_->InternalId_);
-            collection.set_value_as_string("update_patch_version", curState.edit_.message_->GetUpdatePatchVersion().as_string());
-            collection.set_value_as_int("offline_version", curState.edit_.message_->GetUpdatePatchVersion().get_offline_version());
-
-            if (curState.edit_.message_->Id_ > 0)
-                collection.set_value_as_int64("msg_time", curState.edit_.message_->GetTime());
-        }
-
-        const auto coreMessage = isEdit ? std::string_view("update_message") : std::string_view("send_message");
-        GetDispatcher()->post_message_to_core(coreMessage, collection.get());
     }
 
     void InputWidget::selectFileToSend(const FileSelectionFilter _filter)
@@ -1429,6 +1322,68 @@ namespace Ui
         callLinkCreator_->createCallLink(_type, contact_);
     }
 
+    Data::MessageBuddy InputWidget::makeMessage(QString _text) const
+    {
+        Data::MessageBuddy buddy;
+
+        if (isEditing() && currentState().edit_.message_)
+        {
+            buddy = *currentState().edit_.message_;
+        }
+        else
+        {
+            buddy.Quotes_.reserve(currentState().quotes_.size());
+            for (auto quote : currentState().quotes_)
+            {
+                if (_text != quote.description_.string() || _text != quote.url_)
+                {
+                    quote.url_.clear();
+                    quote.description_.clear();
+                }
+                quote.text_ = Utils::replaceFilesPlaceholders(quote.text_, quote.files_);
+                buddy.Quotes_.push_back(std::move(quote));
+            }
+
+            buddy.AimId_ = contact_;
+            if (Logic::getContactListModel()->isChannel(contact_))
+                buddy.SetChatSender(contact_);
+        }
+
+        buddy.Mentions_ = makeMentions(_text);
+
+        if (buddy.GetDescription().isEmpty())
+            buddy.SetText(std::move(_text));
+        else
+            buddy.SetDescription(std::move(_text));
+
+        return buddy;
+    }
+
+    Data::MentionMap InputWidget::makeMentions(QStringView _text) const
+    {
+        std::unordered_set<QStringView, Utils::QStringViewHasher> messageMentions;
+        messageMentions.merge(extractMentions(_text));
+
+        const auto& quotes = isEditing() ? currentState().edit_.message_->Quotes_ : currentState().quotes_;
+        for (const auto& quote : quotes)
+            messageMentions.merge(extractMentions(quote.text_.string()));
+
+        auto mentions = isEditing() ? currentState().edit_.message_->Mentions_ : currentState().mentions_;
+        auto it = mentions.begin();
+        while (it != mentions.end()) // remove unnecessary mentions
+        {
+            if (messageMentions.count(it->first) == 0)
+                it = mentions.erase(it);
+            else
+                ++it;
+        }
+
+        for (const auto& quote : quotes)
+            mentions.insert(quote.mentions_.begin(), quote.mentions_.end()); // add mentions from quotes
+
+        return mentions;
+    }
+
     bool InputWidget::canSetFocus() const
     {
         return !contact_.isEmpty() && currentView() != InputView::Disabled;
@@ -1608,97 +1563,27 @@ namespace Ui
         return core::message_type::base;
     }
 
-    void InputWidget::edit(const int64_t _msgId, const QString& _internalId, const common::tools::patch_version& _patchVersion, const QString& _text, const Data::MentionMap& _mentions, const Data::QuotesVec& _quotes, int32_t _time, const Data::FilesPlaceholderMap& _files, MediaType _mediaType, bool _instantEdit)
+    void InputWidget::edit(const Data::MessageBuddySptr& _msg, MediaType _mediaType)
     {
-        const auto mode = _instantEdit ? InstantEdit::Yes : InstantEdit::No;
-        editImpl(_msgId, _internalId, _patchVersion, _quotes, _time, _files, _mediaType, mode, _text, _mentions, {}, {});
-    }
-
-    void InputWidget::editWithCaption(const int64_t _msgId, const QString& _internalId, const common::tools::patch_version& _patchVersion, const QString& _url, const QString& _description, const Data::MentionMap& _mentions, const Data::QuotesVec& _quotes, int32_t _time, const Data::FilesPlaceholderMap& _files, MediaType _mediaType, bool _instantEdit)
-    {
-        const auto mode = _instantEdit ? InstantEdit::Yes : InstantEdit::No;
-        editImpl(_msgId, _internalId, _patchVersion, _quotes, _time, _files, _mediaType, mode, {}, _mentions, _url, _description);
-    }
-
-    void InputWidget::editImpl(
-        const int64_t _msgId,
-        const QString& _internalId,
-        const common::tools::patch_version& _patchVersion,
-        const Data::QuotesVec& _quotes,
-        qint32 _time,
-        const Data::FilesPlaceholderMap& _files,
-        MediaType _mediaType,
-        InstantEdit _mode,
-        std::optional<QString> _text,
-        std::optional<Data::MentionMap> _mentions,
-        std::optional<QString> _url,
-        std::optional<QString> _description)
-    {
-        if (_msgId == -1 && _internalId.isEmpty())
+        if (_msg->Id_ == -1 && _msg->InternalId_.isEmpty())
             return;
 
-        auto copyState = _mode == InstantEdit::Yes ? std::make_optional(currentState()) : std::nullopt;
-
-        Data::MessageBuddySptr message = std::make_shared<Data::MessageBuddy>();
-        message->AimId_ = contact_;
-        message->Id_ = _msgId;
-        message->InternalId_ = _internalId;
-        message->SetUpdatePatchVersion(_patchVersion);
-        message->Files_ = _files;
-        message->SetTime(_time);
-        const auto type = getMediaType(_mediaType);
-        message->SetType(type);
-
-        if (_mentions)
-            message->Mentions_ = std::move(*_mentions);
-
-        if (_description && _url)
-        {
-            message->SetDescription(*_description);
-            message->SetUrl(*_url);
-        }
-        else if (_text)
-        {
-            message->SetText(*_text);
-        }
-        currentState().edit_.message_ = std::move(message);
-        currentState().edit_.quotes_ = _quotes;
+        _msg->SetType(getMediaType(_mediaType));
+        currentState().edit_.message_ = _msg;
         currentState().edit_.type_ = _mediaType;
 
-        if (_description)
-        {
-            currentState().edit_.buffer_ = *_description;
-            currentState().edit_.editableText_ = std::move(*_description);
-            currentState().canBeEmpty_ = type != core::message_type::base || !_quotes.empty();
-        }
-        else if (_text)
-        {
-            currentState().edit_.buffer_ = (type == core::message_type::base) ? *_text : QString();
-            currentState().edit_.editableText_ = *std::move(_text);
-            if (_mode == InstantEdit::No)
-            currentState().canBeEmpty_ = type != core::message_type::base || !_quotes.empty();
-        }
+        QString text;
+        if (!_msg->GetDescription().isEmpty())
+            text = _msg->GetDescription().string();
+        else if (_msg->GetType() == core::message_type::base)
+            text = _msg->GetText();
 
-        if (_mode == InstantEdit::Yes)
-        {
-            send(_mode);
-            currentState() = std::move(*copyState);
-        }
-        else
-        {
-            panelMain_->forceSendButton(currentState().canBeEmpty_);
-            setEditView();
-        }
-    }
+        currentState().edit_.buffer_ = text;
+        currentState().edit_.editableText_ = std::move(text);
+        currentState().canBeEmpty_ = _msg->GetType() != core::message_type::base || !_msg->Quotes_.empty();
 
-    bool InputWidget::isAllAttachmentsEmpty(const QString& _contact) const
-    {
-        const auto it = states_.find(_contact);
-        if (it == states_.end())
-            return true;
-
-        const auto& contactState = it->second;
-        return contactState.quotes_.isEmpty() && contactState.filesToSend_.empty();
+        panelMain_->forceSendButton(currentState().canBeEmpty_);
+        setEditView();
     }
 
     bool InputWidget::shouldOfferMentions() const
@@ -1721,13 +1606,13 @@ namespace Ui
 
     InputWidgetState& InputWidget::currentState()
     {
-        assert(!contact_.isEmpty());
+        im_assert(!contact_.isEmpty());
         return states_[contact_];
     }
 
     const InputWidgetState& InputWidget::currentState() const
     {
-        assert(!contact_.isEmpty());
+        im_assert(!contact_.isEmpty());
         return states_.find(contact_)->second;
     }
 
@@ -1792,7 +1677,7 @@ namespace Ui
             });
 
             textEdit_ = panelMain_->getTextEdit();
-            assert(textEdit_);
+            im_assert(textEdit_);
             connect(textEdit_->document(), &QTextDocument::contentsChanged, this, &InputWidget::editContentChanged, Qt::QueuedConnection);
             connect(textEdit_, &HistoryTextEdit::selectionChanged, this, &InputWidget::selectionChanged, Qt::QueuedConnection);
             connect(textEdit_, &HistoryTextEdit::cursorPositionChanged, this, &InputWidget::cursorPositionChanged);
@@ -1905,7 +1790,7 @@ namespace Ui
     {
         AttachFilePopup::hidePopup();
 
-        assert(_widget);
+        im_assert(_widget);
         const auto prev = stackWidget_->currentWidget();
         if (_widget == prev)
             return;
@@ -2143,7 +2028,7 @@ namespace Ui
                 media::permissions::requestPermission(media::permissions::DeviceType::Microphone, startCallBackEnsureMainThread);
             }
 #else
-            assert(!"unimpl");
+            im_assert(!"unimpl");
 #endif //__APPLE__
         }
         else
@@ -2320,7 +2205,7 @@ namespace Ui
                 auto& currState = currentState();
                 panelMain_->showEdit(currState.edit_.message_, currState.edit_.type_);
 
-                assert(currState.edit_.message_);
+                im_assert(currState.edit_.message_);
                 if (currState.edit_.message_)
                 {
                     textEdit_->limitCharacters(Utils::getInputMaximumChars());
@@ -2340,7 +2225,7 @@ namespace Ui
 
                         if (spaceIDX == -1)
                         {
-                            textToEdit = currState.edit_.message_->GetDescription();
+                            textToEdit = currState.edit_.message_->GetDescription().string();
                         }
                         else
                         {
@@ -2630,7 +2515,6 @@ namespace Ui
     {
         currentState().edit_.message_.reset();
         currentState().edit_.buffer_.clear();
-        currentState().edit_.quotes_.clear();
         currentState().edit_.editableText_.clear();
         currentState().canBeEmpty_ = false;
         currentState().edit_.type_ = MediaType::noMedia;
@@ -2643,7 +2527,7 @@ namespace Ui
 
     void InputWidget::loadInputText()
     {
-        assert(!contact_.isEmpty());
+        im_assert(!contact_.isEmpty());
         if (contact_.isEmpty())
             return;
 
@@ -2911,7 +2795,7 @@ namespace Ui
                     }
 
                     Data::Quote q;
-                    q.text_ = std::move(link);
+                    q.text_ = link;
                     q.type_ = Data::Quote::Type::link;
 
                     Ui::shareContact({ std::move(q) }, contact_, quotes);
@@ -2939,7 +2823,7 @@ namespace Ui
                     clearContactModel(selectContactsWidget_);
                     Q_EMIT Utils::InterConnector::instance().openDialogOrProfileById(aimId);
 
-                    if (auto mp = Utils::InterConnector::instance().getMainPage(); mp && mp->getFrameCount() != FrameCountMode::_1)
+                    if (auto mp = Utils::InterConnector::instance().getMessengerPage(); mp && mp->getFrameCount() != FrameCountMode::_1)
                         mp->showSidebar(aimId);
 
                     Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::sharecontactscr_contact_action, { {"chat_type", Ui::getStatsChatType() }, { "type", std::string("internal") }, { "status", std::string("not_sent") } });
@@ -2998,7 +2882,7 @@ namespace Ui
 
     QRect InputWidget::getAttachFileButtonRect() const
     {
-        assert(panelMain_);
+        im_assert(panelMain_);
         if (panelMain_)
             return panelMain_->getAttachFileButtonRect();
 
@@ -3082,7 +2966,7 @@ namespace Ui
     {
         if (isEditing())
         {
-            assert(currentState().edit_.message_);
+            im_assert(currentState().edit_.message_);
             if (currentState().edit_.message_)
             {
                 if (const auto msgId = currentState().edit_.message_->Id_; msgId != -1)

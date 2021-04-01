@@ -127,6 +127,9 @@ pt::ptree app_config::as_ptree() const
         case app_config::AppConfigOption::app_update_interval_secs:
             result.add(option_name(key), app_update_interval_secs());
             break;
+        case app_config::AppConfigOption::net_compression:
+            result.add(option_name(key), is_net_compression_enabled());
+            break;
 
         default:
             assert(!"unhandled option for as_ptree");
@@ -225,6 +228,13 @@ bool app_config::is_watch_gui_memory_enabled() const
 {
     auto it = app_config_options_.find(app_config::AppConfigOption::watch_gui_memory);
     return it == app_config_options_.end() ? false
+        : boost::any_cast<bool>(it->second);
+}
+
+bool app_config::is_net_compression_enabled() const
+{
+    auto it = app_config_options_.find(app_config::AppConfigOption::net_compression);
+    return it == app_config_options_.end() ? true
         : boost::any_cast<bool>(it->second);
 }
 
@@ -444,6 +454,7 @@ void app_config::serialize(Out core::coll_helper &_collection) const
     _collection.set<bool>(option_name(app_config::AppConfigOption::sys_crash_handler_enabled), is_sys_crash_handler_enabled());
     _collection.set<bool>(option_name(app_config::AppConfigOption::watch_gui_memory), is_watch_gui_memory_enabled());
     _collection.set<uint32_t>(option_name(app_config::AppConfigOption::app_update_interval_secs), app_update_interval_secs());
+    _collection.set<bool>(option_name(app_config::AppConfigOption::net_compression), is_net_compression_enabled());
 
     // urls
     _collection.set<std::string_view>("urls.url_update_mac_alpha", get_update_mac_alpha_url());
@@ -636,6 +647,11 @@ namespace
                 app_config::AppConfigOption::app_update_interval_secs,
                 property_tree_.get<uint32_t>(option_name(app_config::AppConfigOption::app_update_interval_secs), 86400)
             }
+            ,
+            {
+                app_config::AppConfigOption::net_compression,
+                property_tree_.get<bool>(option_name(app_config::AppConfigOption::net_compression), true)
+            }
         };
     }
 
@@ -689,6 +705,8 @@ namespace
             return "dev.watch_gui_memory";
         case app_config::AppConfigOption::app_update_interval_secs:
             return "dev.app_update_interval_secs";
+        case app_config::AppConfigOption::net_compression:
+            return "dev.net_compression";
 
         default:
             assert(!"unhandled option for option_name");

@@ -15,6 +15,7 @@ namespace Ui
     class HistoryControlPage;
     class ContactDialog;
     class MainPage;
+    class AppsPage;
     struct SidebarParams;
     class DialogPlayer;
 }
@@ -86,6 +87,14 @@ namespace Utils
         NotFound
     };
 
+    enum class ChatMembersOperation
+    {
+        Add,
+        Remove,
+        Block,
+        Unblock
+    };
+
     struct GalleryData
     {
         GalleryData(const QString& _aimid, const QString& _link, int64_t _msgId, Ui::DialogPlayer* _attachedPlayer = nullptr, QPixmap _preview = QPixmap(), QSize _originalSize = QSize())
@@ -95,15 +104,29 @@ namespace Utils
             , attachedPlayer_(_attachedPlayer)
             , preview_(std::move(_preview))
             , originalSize_(_originalSize)
+            , time_(-1)
+        {
+        }
+
+        GalleryData(const QString& _aimid, const QString& _link, int64_t _msgId, const QString& _sender, time_t _time)
+            : aimId_(_aimid)
+            , link_(_link)
+            , sender_(_sender)
+            , msgId_(_msgId)
+            , attachedPlayer_(nullptr)
+            , time_(_time)
         {
         }
 
         QString aimId_;
         QString link_;
+        QString sender_;
+        QString caption_;
         int64_t msgId_;
         Ui::DialogPlayer* attachedPlayer_;
         QPixmap preview_;
         QSize originalSize_;
+        time_t time_;
     };
 
     class InterConnector : public QObject
@@ -294,6 +317,7 @@ Q_SIGNALS:
         void changeMyStatus(const Statuses::Status& _status);
         void updateWhenUserInactive();
         void onMacUpdateInfo(MacUpdateState _state);
+        void trayIconThemeChanged();
 
         void addReactionPlateActivityChanged(const QString& _contact, bool _active);
 
@@ -310,7 +334,8 @@ Q_SIGNALS:
         Ui::MainWindow* getMainWindow(bool _check_destroying = false) const;
         Ui::HistoryControlPage* getHistoryPage(const QString& aimId) const;
         Ui::ContactDialog* getContactDialog() const;
-        Ui::MainPage* getMainPage() const;
+        Ui::AppsPage* getAppsPage() const;
+        Ui::MainPage* getMessengerPage() const;
 
         bool isInBackground() const;
 
@@ -359,7 +384,7 @@ Q_SIGNALS:
         void openGallery(const GalleryData& _data);
 
         bool isRecordingPtt() const;
-        void showAddMembersFailuresPopup(QString _chatAimId, std::map<core::add_member_failure, std::vector<QString>> _failures);
+        void showChatMembersFailuresPopup(ChatMembersOperation _operation, QString _chatAimId, std::map<core::chat_member_failure, std::vector<QString>> _failures);
 
     private:
         InterConnector();

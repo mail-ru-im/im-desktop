@@ -133,7 +133,49 @@ namespace
     }
 
     constexpr std::chrono::milliseconds animDuration() noexcept { return std::chrono::milliseconds(150); }
-    constexpr std::chrono::milliseconds tooltipShowDelay() noexcept { return std::chrono::milliseconds(400); }
+
+    auto badgeNotchHeight() noexcept
+    {
+        return Utils::scale_value(24);
+    }
+    auto badgeHeight() noexcept
+    {
+        return Utils::scale_value(20);
+    }
+    auto badgeNotchPadding() noexcept
+    {
+        return Utils::scale_value(2);
+    }
+
+    auto badgeMarginLeft() noexcept
+    {
+        return Utils::scale_value(26);
+    }
+    auto badgeMarginTop() noexcept
+    {
+        return getButtonCircleSize(Ui::PanelButton::ButtonSize::Big) - badgeMarginLeft() - badgeHeight();
+    }
+    auto badgeNotchMarginLeft() noexcept
+    {
+        return badgeMarginLeft() - badgeNotchPadding();
+    }
+    auto badgeNotchMarginTop() noexcept
+    {
+        return badgeMarginTop() - badgeNotchPadding();
+    }
+
+    QFont getBadgeTextForNumbersFont()
+    {
+        if constexpr (platform::is_apple())
+            return Fonts::appFontScaled(13, Fonts::FontFamily::SF_PRO_TEXT, Fonts::FontWeight::Medium);
+        else
+            return Fonts::appFontScaled(14, Fonts::FontFamily::SOURCE_SANS_PRO, Fonts::FontWeight::SemiBold);
+    }
+
+    QColor badgeTextColor()
+    {
+        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
+    }
 }
 
 namespace Ui
@@ -170,6 +212,8 @@ namespace Ui
         , size_(_size)
         , textUnit_(nullptr)
         , more_(nullptr)
+        , badgeTextUnit_(nullptr)
+        , count_(0)
     {
         const auto size = getButtonSize(size_);
 
@@ -261,6 +305,25 @@ namespace Ui
         update();
     }
 
+    void PanelButton::setCount(int _count)
+    {
+        if (count_ != _count && _count >= 0)
+        {
+            count_ = _count;
+            QString badgeText = _count > 0 ? QString::number(_count) : QString();
+            if (badgeTextUnit_)
+            {
+                badgeTextUnit_->setText(badgeText);
+            }
+            else
+            {
+                badgeTextUnit_ = TextRendering::MakeTextUnit(badgeText);
+                badgeTextUnit_->init(getBadgeTextForNumbersFont(), badgeTextColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
+            }
+            update();
+        }
+    }
+
     void PanelButton::paintEvent(QPaintEvent* _event)
     {
         QColor circleColor;
@@ -287,6 +350,7 @@ namespace Ui
 
         const auto circleSize = getButtonCircleSize(size_);
         const auto circlePlace = QRect((width() - circleSize) / 2, getButtonCircleVerOffset(size_), circleSize, circleSize);
+        const bool isDoubleDigitBadge = count_ > 9;
         if (circleColor.isValid())
         {
             QPixmap circle(Utils::scale_bitmap(QSize(circleSize, circleSize)));
@@ -301,7 +365,7 @@ namespace Ui
             Utils::check_pixel_ratio(circle);
 
             QPixmap cut = circle;
-            if (more_)
+            if (more_ || count_ > 0)
             {
                 QPainter _p(&cut);
                 _p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
@@ -309,9 +373,26 @@ namespace Ui
                 _p.setBrush(Qt::transparent);
                 _p.setCompositionMode(QPainter::CompositionMode_Source);
 
-                const auto r = getMoreButtonSize();
-                QRect smallCircle(getMoreButtonMarginLeft(), getMoreButtonMarginTop(), r, r);
-                _p.drawEllipse(smallCircle);
+                if (more_)
+                {
+                    const auto r = getMoreButtonSize();
+                    QRect smallCircle(getMoreButtonMarginLeft(), getMoreButtonMarginTop(), r, r);
+                    _p.drawEllipse(smallCircle);
+                }
+                if (count_ > 0)
+                {
+                    const auto r = badgeNotchHeight();
+                    if (isDoubleDigitBadge)
+                    {
+                        QRect smallCircle(badgeNotchMarginLeft(), badgeNotchMarginTop(), 2 * r, r);
+                        _p.drawRoundedRect(smallCircle, r / 2, r / 2);
+                    }
+                    else
+                    {
+                        QRect smallCircle(badgeNotchMarginLeft(), badgeNotchMarginTop(), r, r);
+                        _p.drawEllipse(smallCircle);
+                    }
+                }
             }
             p.drawPixmap(circlePlace, cut);
         }
@@ -329,6 +410,13 @@ namespace Ui
 
         if (more_)
             more_->move(circlePlace.left() + getMoreButtonMarginLeft(), circlePlace.top() + getMoreButtonMarginTop());
+
+        if (count_ > 0)
+        {
+            const auto color = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT, 0.25);
+            const auto badgeTextColor = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
+            Utils::drawUnreads(p, getBadgeTextForNumbersFont(), color, badgeTextColor, count_, badgeHeight(), circlePlace.x() + badgeMarginLeft(), circlePlace.y() + badgeMarginTop());
+        }
     }
 
     TransparentPanelButton::TransparentPanelButton(QWidget* _parent, const QString& _iconName, const QString& _tooltipText, Qt::Alignment _align, bool _isAnimated)
@@ -339,6 +427,7 @@ namespace Ui
         , anim_(nullptr)
         , currentAngle_(0)
         , dir_(RotateDirection::Left)
+        , rotateMode_(RotateAnimationMode::Full)
     {
         if (_isAnimated)
         {
@@ -364,15 +453,11 @@ namespace Ui
         iconHovered_ = makeIcon(true, false);
         iconPressed_ = makeIcon(false, true);
 
-        connect(this, &ClickableWidget::clicked, this, [this]()
-        {
-            rotate(dir_);
-            dir_ = (dir_ == RotateDirection::Right) ? RotateDirection::Left : RotateDirection::Right;
-        });
+        connect(this, &ClickableWidget::clicked, this, &TransparentPanelButton::onClicked);
 
         setFixedSize(getButtonSize(PanelButton::ButtonSize::Small));
         tooltipTimer_->setSingleShot(true);
-        tooltipTimer_->setInterval(tooltipShowDelay());
+        tooltipTimer_->setInterval(Tooltip::getDefaultShowDelay());
         connect(tooltipTimer_, &QTimer::timeout, this, &TransparentPanelButton::onTooltipTimer);
     }
 
@@ -426,6 +511,14 @@ namespace Ui
         tooltipBoundingRect_ = _r;
     }
 
+    void TransparentPanelButton::changeState()
+    {
+        rotateMode_ = RotateAnimationMode::ShowFinalState;
+        onClicked();
+        update();
+        rotateMode_ = RotateAnimationMode::Full;
+    }
+
     void TransparentPanelButton::onTooltipTimer()
     {
         if (isHovered())
@@ -444,15 +537,28 @@ namespace Ui
         Tooltip::show(tooltipText_, QRect(pos, getButtonIconSize()), { 0, 0 }, Tooltip::ArrowDirection::Down, Tooltip::ArrowPointPos::Top, tooltipBoundingRect_);
     }
 
+    void TransparentPanelButton::onClicked()
+    {
+        rotate(dir_);
+        dir_ = (dir_ == RotateDirection::Right) ? RotateDirection::Left : RotateDirection::Right;
+    }
+
     void TransparentPanelButton::rotate(const RotateDirection _dir)
     {
         if (anim_)
         {
             const auto endAngle = 180.0 * (_dir == RotateDirection::Left ? -1 : 0);
-            anim_->stop();
-            anim_->setStartValue(currentAngle_);
-            anim_->setEndValue(endAngle);
-            anim_->start();
+            if (rotateMode_ == RotateAnimationMode::Full)
+            {
+                anim_->stop();
+                anim_->setStartValue(currentAngle_);
+                anim_->setEndValue(endAngle);
+                anim_->start();
+            }
+            else
+            {
+                currentAngle_ = endAngle;
+            }
         }
     }
 

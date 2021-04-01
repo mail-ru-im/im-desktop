@@ -181,8 +181,8 @@ namespace Ui
         , opacityAnimation_ (new QVariantAnimation(this))
         , persistent_(false)
     {
-        assert(!popupInstance);
-        assert(_input);
+        im_assert(!popupInstance);
+        im_assert(_input);
         setCursor(Qt::ArrowCursor);
 
         listWidget_ = new SimpleListWidget(Qt::Vertical, this);
@@ -248,7 +248,7 @@ namespace Ui
                     listWidget_->setCurrentIndex(idx);
             });
 
-            assert(std::none_of(items_.begin(), items_.end(), [_id](const auto& _p) { return _p.second == _id; }));
+            im_assert(std::none_of(items_.begin(), items_.end(), [_id](const auto& _p) { return _p.second == _id; }));
             items_.push_back({ idx, _id });
         };
 
@@ -276,11 +276,11 @@ namespace Ui
     {
         if (!popupInstance)
         {
-            if (auto mainPage = Utils::InterConnector::instance().getMainPage())
+            if (auto mainPage = Utils::InterConnector::instance().getMessengerPage())
             {
                 auto inputWidget = mainPage->getContactDialog()->getInputWidget();
-                assert(mainPage);
-                assert(inputWidget);
+                im_assert(mainPage);
+                im_assert(inputWidget);
 
                 popupInstance = new AttachFilePopup(mainPage, inputWidget);
             }
@@ -465,7 +465,7 @@ namespace Ui
     {
         Q_EMIT Utils::InterConnector::instance().attachFilePopupVisiblityChanged(false);
 
-        const auto mainPage = Utils::InterConnector::instance().getMainPage();
+        const auto mainPage = Utils::InterConnector::instance().getMessengerPage();
         if (input_ && mainPage && !mainPage->isSemiWindowVisible())
         {
             if (persistent_)

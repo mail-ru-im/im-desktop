@@ -84,7 +84,7 @@ void ShowQualityReasonsPopupConfig::ReasonCategory::unserialize(const Ui::gui_co
 
     if (!_coll.is_value_exist("category_id") || !_coll.is_value_exist("reasons"))
     {
-        assert(!"required fields missing in ReasonCategory::unserialize");
+        im_assert(!"required fields missing in ReasonCategory::unserialize");
         return;
     }
 

@@ -57,11 +57,12 @@ not_sent_message_sptr not_sent_message::make(const not_sent_message_sptr& _messa
 not_sent_message_sptr not_sent_message::make(
     const std::string& _aimid,
     std::string _message,
+    core::data::format::string_formatting _message_format,
     const message_type _type,
     const uint64_t _message_time,
     std::string _internal_id)
 {
-    return not_sent_message_sptr(new not_sent_message(_aimid, std::move(_message), _type, _message_time, std::move(_internal_id)));
+    return not_sent_message_sptr(new not_sent_message(_aimid, std::move(_message), std::move(_message_format), _type, _message_time, std::move(_internal_id)));
 }
 
 not_sent_message_sptr not_sent_message::make_outgoing_file_sharing(
@@ -70,6 +71,7 @@ not_sent_message_sptr not_sent_message::make_outgoing_file_sharing(
     const std::string& _local_path,
     const core::archive::quotes_vec& _quotes,
     const std::string& _description,
+    const core::data::format::string_formatting& _description_format,
     const core::archive::mentions_map& _mentions,
     const std::optional<int64_t>& _duration)
 {
@@ -81,6 +83,7 @@ not_sent_message_sptr not_sent_message::make_outgoing_file_sharing(
         new not_sent_message(
             _aimid,
             std::string(),
+            {},
             message_type::file_sharing,
             _message_time,
             std::string()));
@@ -90,6 +93,7 @@ not_sent_message_sptr not_sent_message::make_outgoing_file_sharing(
         return {};
 
     not_sent->set_description(_description);
+    not_sent->set_description_format(_description_format);
     not_sent->attach_quotes(_quotes);
     not_sent->set_mentions(_mentions);
 
@@ -107,7 +111,7 @@ not_sent_message_sptr not_sent_message::make_incoming_file_sharing(
     assert(!_internal_id.empty());
 
     not_sent_message_sptr not_sent(
-        new not_sent_message(_aimid, _uri, message_type::file_sharing, _message_time, std::move(_internal_id))
+        new not_sent_message(_aimid, _uri, {}, message_type::file_sharing, _message_time, std::move(_internal_id))
         );
 
     not_sent->get_message()->init_file_sharing_from_link(_uri);
@@ -130,6 +134,7 @@ not_sent_message::not_sent_message()
 not_sent_message::not_sent_message(
     const std::string& _aimid,
     std::string _message,
+    core::data::format::string_formatting _message_format,
     const message_type _type,
     const uint64_t _message_time,
     std::string&& _internal_id)
@@ -149,6 +154,7 @@ not_sent_message::not_sent_message(
     else
     {
         message_->set_text(std::move(_message));
+        message_->set_format(_message_format);
     }
 
     if (_aimid.find("@chat.agent") != _aimid.npos)
@@ -400,6 +406,11 @@ const delete_operation& not_sent_message::get_delete_operation() const
 void not_sent_message::set_description(const std::string& _description)
 {
     message_->set_description(_description);
+}
+
+void not_sent_message::set_description_format(const core::data::format::string_formatting& _description_format)
+{
+    message_->set_description_format(_description_format);
 }
 
 std::string not_sent_message::get_description() const

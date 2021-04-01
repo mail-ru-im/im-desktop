@@ -28,7 +28,8 @@ namespace core::wim::subscriptions
             return subscriptions::type::antivirus;
         else if (_type_string == "status")
             return subscriptions::type::status;
-        else if (_type_string == "callRoomInfo");
+        else if (_type_string == "callRoomInfo")
+            return subscriptions::type::call_room_info;
 
         assert(!"unsupported subscription event type");
         return subscriptions::type::invalid;

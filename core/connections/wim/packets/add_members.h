@@ -27,12 +27,12 @@ namespace core
             std::vector<std::string> members_to_add_;
             bool unblock_ = false;
 
-            std::map<add_member_failure, std::vector<std::string>> failures_;
+            std::map<chat_member_failure, std::vector<std::string>> failures_;
 
         public:
             add_members(wim_packet_params _params, std::string _aimid, std::vector<std::string> _members_to_add, bool _unblock);
 
-            const std::map<add_member_failure, std::vector<std::string>>& get_failures() const noexcept { return failures_; }
+            const std::map<chat_member_failure, std::vector<std::string>>& get_failures() const noexcept { return failures_; }
             const std::string& get_aimid() const noexcept { return aimid_; }
 
             virtual std::string_view get_method() const override;

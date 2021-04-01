@@ -36,7 +36,7 @@ GalleryLoader::GalleryLoader(const Utils::GalleryData& _data)
     connect(Ui::GetDispatcher(), &Ui::core_dispatcher::dialogGalleryHolesDownloading, this, &GalleryLoader::dialogGalleryHoles);
     connect(Ui::GetDispatcher(), &Ui::core_dispatcher::dialogGalleryIndex, this, &GalleryLoader::dialogGalleryIndex);
 
-    items_.push_back(createItem(_data.link_, _data.msgId_, 0, 0, QString(), QString(), _data.attachedPlayer_, _data.preview_, _data.originalSize_));
+    items_.push_back(createItem(_data.link_, _data.msgId_, 0, _data.time_, _data.sender_, _data.caption_, _data.attachedPlayer_, _data.preview_, _data.originalSize_));
     current_ = 0;
 
     firstItemSeq_ = Ui::GetDispatcher()->getDialogGalleryByMsg(aimId_, { qsl("image"), qsl("video") }, _data.msgId_);
@@ -97,16 +97,22 @@ void GalleryLoader::dialogGalleryResult(const int64_t _seq, const QVector<Data::
 
 void GalleryLoader::dialogGalleryResultByMsg(const int64_t _seq, const QVector<Data::DialogGalleryEntry> &_entries, int _index, int _total)
 {
-    if (_seq != firstItemSeq_ || _entries.empty())
+    if (_seq != firstItemSeq_)
         return;
 
     index_ = _index;
     total_ = _total;
     auto & firstItem = items_.front();
+    if (_entries.isEmpty())
+    {
+        ++index_;
+        ++total_;
+    }
+
     for (const auto& e : _entries)
     {
         ++index_;
-        if (e.msg_id_ == firstItem->msg() && e.url_ == firstItem->link())
+        if (e.msg_id_ == firstItem->msg() && (_entries.size() == 1 || e.url_ == firstItem->link()))
         {
             firstItem->setSeq(e.seq_);
             firstItem->setTime(e.time_);
@@ -156,7 +162,7 @@ void GalleryLoader::dialogGalleryUpdate(const QString& _aimId, const QVector<Dat
 
                 if (galleryItem == items_.front().get())
                 {
-                    assert(!isFirstItemInitialized_);
+                    im_assert(!isFirstItemInitialized_);
                     isFirstItemInitialized_ = true;
                 }
             }
@@ -216,9 +222,8 @@ void GalleryLoader::dialogGalleryHoles(const QString& _aimId)
     if (current)
     {
         if (!isFirstItemInitialized_ && current == items_.front().get())
-        {
-            Ui::GetDispatcher()->getDialogGalleryByMsg(_aimId, { qsl("image"), qsl("video") }, current->msg());
-        }
+            firstItemSeq_ = Ui::GetDispatcher()->getDialogGalleryByMsg(_aimId, { qsl("image"), qsl("video") }, current->msg());
+
         Ui::GetDispatcher()->getDialogGalleryIndex(_aimId, { qsl("image"), qsl("video") }, current->msg(), current->seq());
     }
 }

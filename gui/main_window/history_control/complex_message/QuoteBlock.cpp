@@ -114,22 +114,23 @@ bool QuoteBlock::updateFriendly(const QString& _aimId, const QString& _friendly)
     return needUpdate;
 }
 
-QString QuoteBlock::getSelectedText(const bool _isFullSelect, const TextDestination _dest) const
+Data::FormattedString QuoteBlock::getSelectedText(const bool _isFullSelect, const TextDestination _dest) const
 {
-    QString result;
+    Data::FormattedString result;
     for (auto b : Blocks_)
     {
         if (b->isSelected())
         {
             const auto selectedText = b->getSelectedText(false, _dest);
-            if (b->getContentType() == IItemBlock::ContentType::Link && result.contains(selectedText))
+            if (b->getContentType() == IItemBlock::ContentType::Link && result.string().contains(selectedText.string()))
                 continue;
-            result += selectedText % QChar::LineFeed;
+            result += selectedText;
+            result += QChar::LineFeed;
         }
     }
 
     if (_isFullSelect && !result.isEmpty())
-        return getQuoteHeader() % result;
+        return Data::FormattedString(getQuoteHeader()) += result;
 
     return result;
 }
@@ -139,7 +140,7 @@ QString QuoteBlock::getTextForCopy() const
     QString result;
     for (auto b : Blocks_)
     {
-        const auto textForCopy = !b->hasSourceText() ? b->getTextForCopy() : b->getSourceText();
+        const auto textForCopy = !b->hasSourceText() ? b->getTextForCopy() : b->getSourceText().string();
         if (b->getContentType() == IItemBlock::ContentType::Link && result.contains(textForCopy))
             continue;
 
@@ -153,21 +154,22 @@ QString QuoteBlock::getTextForCopy() const
     return result;
 }
 
-QString QuoteBlock::getSourceText() const
+Data::FormattedString QuoteBlock::getSourceText() const
 {
-    QString result;
+    Data::FormattedString result;
     for (auto b : Blocks_)
     {
-        const auto sourceText = !b->hasSourceText() ? b->getTextForCopy() : b->getSourceText();
-        if (b->getContentType() == IItemBlock::ContentType::Link && result.contains(sourceText))
+        const auto sourceText = b->hasSourceText() ? b->getSourceText() : b->getTextForCopy();
+        if (b->getContentType() == IItemBlock::ContentType::Link && result.string().contains(sourceText.string()))
             continue;
 
         result += sourceText;
         result += QChar::LineFeed;
     }
 
+    // TODO-FORMAT-IMPLEMENT
     if (!result.isEmpty())
-        return getQuoteHeader() % result;
+        return Data::FormattedString(getQuoteHeader()) += result;
 
     return result;
 }
@@ -183,12 +185,12 @@ QString QuoteBlock::formatRecentsText() const
         const auto friendly = senderFriendly.default_ ? QString() : senderFriendly.name_;
         const auto separator = senderFriendly.default_ ? QStringView() : QStringView(u": ");
         if (!Quote_.description_.isEmpty())
-            return friendly % separator % Blocks_.front()->formatRecentsText() % QChar::Space % Quote_.description_;
+            return friendly % separator % Blocks_.front()->formatRecentsText() % QChar::Space % Quote_.description_.string();
 
         return friendly % separator % Blocks_.front()->formatRecentsText();
     }
 
-    assert(false);
+    im_assert(false);
     return QString();
 }
 

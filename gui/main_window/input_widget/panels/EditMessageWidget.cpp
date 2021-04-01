@@ -58,13 +58,13 @@ namespace Ui
         QString text;
         if (!_message->GetText().isEmpty())
         {
-            assert(!_message->GetText().isEmpty());
+            im_assert(!_message->GetText().isEmpty());
             text = _message->GetText();
         }
         else if (!_message->GetDescription().isEmpty())
         {
-            assert(!_message->GetDescription().isEmpty());
-            text = _message->GetDescription();
+            im_assert(!_message->GetDescription().isEmpty());
+            text = _message->GetDescription().string();
         }
 
 

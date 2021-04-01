@@ -342,8 +342,8 @@ namespace Ui
         , ContactNameWidget_(_contactNameWidget)
         , Overlay_(_overlay)
     {
-        assert(ContactNameWidget_);
-        assert(ScrollArea_);
+        im_assert(ContactNameWidget_);
+        im_assert(ScrollArea_);
 
         setContactName(_contactName.isEmpty() ? Logic::GetFriendlyContainer()->getFriendly(_aimId) : _contactName);
 
@@ -565,7 +565,7 @@ namespace Ui
         case HistoryControlPage::State::Inserting: _oss << ql1s("INSERTING"); break;
 
         default:
-            assert(!"unexpected state value");
+            im_assert(!"unexpected state value");
             break;
         }
 
@@ -765,7 +765,7 @@ namespace Ui
         {
             connect(messagesArea_, &MessagesScrollArea::messagesSelected, this, [this]()
             {
-                QApplication::clipboard()->setText(messagesArea_->getSelectedText(), QClipboard::Selection);
+                QApplication::clipboard()->setText(Data::stubFromFormattedString(messagesArea_->getSelectedText()), QClipboard::Selection);
             });
         }
 
@@ -947,6 +947,7 @@ namespace Ui
             contactName_->setFixedHeight(Utils::scale_value(20));
             contactName_->setCursor(Qt::PointingHandCursor);
             connect(contactName_, &ClickableWidget::clicked, this, &HistoryControlPage::nameClicked);
+            connect(contactName_, &ClickableWidget::hoverChanged, this, &HistoryControlPage::updateContactNameTooltip);
             Testing::setAccessibleName(contactName_, qsl("AS HistoryPage dialogName"));
             contactWidgetLayout->addWidget(contactName_);
 
@@ -1183,7 +1184,7 @@ namespace Ui
 
     void HistoryControlPage::initFor(qint64 _id, hist::scroll_mode_type _type, FirstInit _firstInit)
     {
-        assert(_type == hist::scroll_mode_type::none || _type == hist::scroll_mode_type::search || _type == hist::scroll_mode_type::unread);
+        im_assert(_type == hist::scroll_mode_type::none || _type == hist::scroll_mode_type::search || _type == hist::scroll_mode_type::unread);
         history_->initFor(_id, _type);
 
         if (_firstInit == FirstInit::Yes)
@@ -1281,7 +1282,7 @@ namespace Ui
 
     HistoryControlPageItem* HistoryControlPage::getPageItemByKey(const Logic::MessageKey & _key) const
     {
-        assert(!_key.isEmpty());
+        im_assert(!_key.isEmpty());
 
         if (auto widget = getWidgetByKey(_key))
             return qobject_cast<HistoryControlPageItem*>(widget);
@@ -1317,8 +1318,8 @@ namespace Ui
 
     void HistoryControlPage::replaceExistingWidgetByKey(const Logic::MessageKey& _key, std::unique_ptr<QWidget> _widget)
     {
-        assert(_key.hasId());
-        assert(_widget);
+        im_assert(_key.hasId());
+        im_assert(_widget);
 
         messagesArea_->replaceWidget(_key, std::move(_widget));
     }
@@ -1581,21 +1582,12 @@ namespace Ui
         forwardText({});
     }
 
-    void HistoryControlPage::edit(const int64_t _msgId, const QString& _internalId, const common::tools::patch_version& _patchVersion, const QString& _text, const Data::MentionMap& _mentions, const Data::QuotesVec& _quotes, qint32 _time, const Data::FilesPlaceholderMap& _files, MediaType _mediaType, bool instantEdit)
+    void HistoryControlPage::edit(const Data::MessageBuddySptr& _msg, MediaType _mediaType)
     {
         if (auto inputWidget = getInputWidget())
         {
             messagesArea_->clearSelection();
-            inputWidget->edit(_msgId, _internalId, _patchVersion, _text, _mentions, _quotes, _time, _files, _mediaType, instantEdit);
-        }
-    }
-
-    void HistoryControlPage::editWithCaption(const int64_t _msgId, const QString& _internalId, const common::tools::patch_version& _patchVersion, const QString& _url, const QString& _description, const Data::MentionMap& _mentions, const Data::QuotesVec& _quotes, qint32 _time, const Data::FilesPlaceholderMap& _files, MediaType _mediaType, bool instantEdit)
-    {
-        if (auto inputWidget = getInputWidget())
-        {
-            messagesArea_->clearSelection();
-            inputWidget->editWithCaption(_msgId, _internalId, _patchVersion, _url, _description, _mentions, _quotes, _time, _files, _mediaType, instantEdit);
+            inputWidget->edit(_msg, _mediaType);
         }
     }
 
@@ -1718,7 +1710,7 @@ namespace Ui
         {
             params.scrollMode = hist::scroll_mode_type::unread;
 
-            assert(std::is_sorted(_buddies.begin(), _buddies.end(), [](const auto& l, const auto& r){ return l->Id_ < r->Id_; }));
+            im_assert(std::is_sorted(_buddies.begin(), _buddies.end(), [](const auto& l, const auto& r){ return l->Id_ < r->Id_; }));
 
             if (history_->lastMessageId() > _buddies.back()->Id_ && newPlateId_ < _buddies.front()->Id_)
                 params.scrollToMesssageId = newPlateId_;
@@ -1737,7 +1729,7 @@ namespace Ui
         if (complexMessageItem)
         {
             if (!connectToComplexMessageItemImpl(complexMessageItem))
-                assert(!"can not connect to complexMessageItem");
+                im_assert(!"can not connect to complexMessageItem");
         }
         else if (auto layout = _widget->layout())
         {
@@ -1748,12 +1740,12 @@ namespace Ui
                 if (auto childComplexMessageItem = qobject_cast<const Ui::ComplexMessage::ComplexMessageItem*>(childWidget))
                 {
                     if (!connectToComplexMessageItemImpl(childComplexMessageItem))
-                        assert(!"can not connect to complexMessageItem");
+                        im_assert(!"can not connect to complexMessageItem");
                 }
                 else if (auto childVoipItem = qobject_cast<const Ui::VoipEventItem*>(childWidget))
                 {
                     if (!connectToVoipItem(childVoipItem))
-                        assert(!"can not connect to VoipEventItem");
+                        im_assert(!"can not connect to VoipEventItem");
                 }
 
                 if (auto item = qobject_cast<const Ui::HistoryControlPageItem*>(childWidget))
@@ -1787,7 +1779,6 @@ namespace Ui
             connect(complexMessageItem, &ComplexMessage::ComplexMessageItem::avatarMenuRequest, this, &HistoryControlPage::avatarMenuRequest),
             connect(complexMessageItem, &ComplexMessage::ComplexMessageItem::pin, this, &HistoryControlPage::pin),
             connect(complexMessageItem, &ComplexMessage::ComplexMessageItem::edit, this, &HistoryControlPage::edit),
-            connect(complexMessageItem, &ComplexMessage::ComplexMessageItem::editWithCaption, this, &HistoryControlPage::editWithCaption),
             connect(complexMessageItem, &ComplexMessage::ComplexMessageItem::needUpdateRecentsText, this, &HistoryControlPage::onNeedUpdateRecentsText),
             connect(complexMessageItem, &ComplexMessage::ComplexMessageItem::layoutChanged, this, &HistoryControlPage::onItemLayoutChanged),
             connect(complexMessageItem, &ComplexMessage::ComplexMessageItem::addToFavorites, this, &HistoryControlPage::addToFavorites),
@@ -1812,8 +1803,8 @@ namespace Ui
             "	key=<" << _key.getId() << ";" << _key.getInternalId() << ">");
 
         const auto result = removeExistingWidgetByKey(_key);
-        assert(result > WidgetRemovalResult::Min);
-        assert(result < WidgetRemovalResult::Max);
+        im_assert(result > WidgetRemovalResult::Min);
+        im_assert(result < WidgetRemovalResult::Max);
     }
 
     void HistoryControlPage::insertMessages(InsertHistMessagesParams&& _params)
@@ -1859,7 +1850,7 @@ namespace Ui
                             continue;
                         }
 
-                        assert(false);
+                        im_assert(false);
                         continue;
                     }
 
@@ -1922,7 +1913,7 @@ namespace Ui
                 if (auto childVoipItem = qobject_cast<const Ui::VoipEventItem*>(itemData.second.get()))
                 {
                     if (!connectToVoipItem(childVoipItem))
-                        assert(!"can not connect to VoipEventItem");
+                        im_assert(!"can not connect to VoipEventItem");
                 }
                 else
                 {
@@ -1969,7 +1960,7 @@ namespace Ui
         {
             std::scoped_lock lock(*(messagesArea_->getLayout()));
 
-            assert(history_->isViewLocked());
+            im_assert(history_->isViewLocked());
 
             if (messagesArea_->isScrollAtBottom())
             {
@@ -2007,7 +1998,7 @@ namespace Ui
             for (const auto& key : boost::make_iterator_range(begin, it))
                 qCDebug(historyPage) << key.getId() << key.getInternalId();
 
-            assert(std::prev(it)->getControlType() == Logic::control_type::ct_message);
+            im_assert(std::prev(it)->getControlType() == Logic::control_type::ct_message);
 
             keys.erase(lastMessIt);
             cancelWidgetRequests(keys);
@@ -2029,7 +2020,7 @@ namespace Ui
             for (const auto& key : boost::make_iterator_range(begin, it))
                 qCDebug(historyPage) << key.getId() << key.getInternalId();
 
-            assert(std::prev(it)->getControlType() == Logic::control_type::ct_message);
+            im_assert(std::prev(it)->getControlType() == Logic::control_type::ct_message);
 
             keys.erase(lastMessIt);
             cancelWidgetRequests(keys);
@@ -2301,7 +2292,7 @@ namespace Ui
         {
             updateWidgetsTheme();
             wallpaperId_ = newWallpaperId;
-            assert(wallpaperId_.isValid());
+            im_assert(wallpaperId_.isValid());
         }
         else
         {
@@ -2342,7 +2333,7 @@ namespace Ui
 
     void HistoryControlPage::cancelSelection()
     {
-        assert(messagesArea_);
+        im_assert(messagesArea_);
         messagesArea_->cancelSelection();
     }
 
@@ -2599,10 +2590,10 @@ namespace Ui
 
     void HistoryControlPage::setState(const State _state, const char* _dbgWhere)
     {
-        assert(_state > State::Min);
-        assert(_state < State::Max);
-        assert(state_ > State::Min);
-        assert(state_ < State::Max);
+        im_assert(_state > State::Min);
+        im_assert(_state < State::Max);
+        im_assert(state_ > State::Min);
+        im_assert(state_ < State::Max);
 
         __INFO(
             "smooth_scroll",
@@ -2618,10 +2609,10 @@ namespace Ui
 
     bool HistoryControlPage::isState(const State _state) const
     {
-        assert(state_ > State::Min);
-        assert(state_ < State::Max);
-        assert(_state > State::Min);
-        assert(_state < State::Max);
+        im_assert(state_ > State::Min);
+        im_assert(state_ < State::Max);
+        im_assert(_state > State::Min);
+        im_assert(_state < State::Max);
 
         return (state_ == _state);
     }
@@ -2643,7 +2634,7 @@ namespace Ui
 
     void HistoryControlPage::postponeMessagesRequest(const char *_dbgWhere, bool _isDown)
     {
-        assert(isStateInserting());
+        im_assert(isStateInserting());
 
         dbgWherePostponed_ = _dbgWhere;
         isMessagesRequestPostponed_ = true;
@@ -3125,7 +3116,7 @@ namespace Ui
             }
 
             const auto itemId = pageItem->getId();
-            assert(itemId >= -1);
+            im_assert(itemId >= -1);
 
             const bool itemHasId = itemId != -1;
 
@@ -3187,7 +3178,7 @@ namespace Ui
                 isOutgoing = voipMessageItem->isOutgoing();
 
             const auto itemId = pageItem->getId();
-            assert(itemId >= -1);
+            im_assert(itemId >= -1);
 
             const bool isChatEvent = !!qobject_cast<Ui::ChatEventItem*>(_item);
             const bool itemHasId = itemId != -1;
@@ -3559,7 +3550,7 @@ namespace Ui
 
     void HistoryControlPage::resumeVisibleItems()
     {
-        assert(messagesArea_);
+        im_assert(messagesArea_);
         if (messagesArea_)
         {
             messagesArea_->resumeVisibleItems();
@@ -3568,7 +3559,7 @@ namespace Ui
 
     void HistoryControlPage::suspendVisisbleItems()
     {
-        assert(messagesArea_);
+        im_assert(messagesArea_);
 
         if (messagesArea_)
         {
@@ -3831,7 +3822,7 @@ namespace Ui
 
     void HistoryControlPage::notifyUIActive(const bool _active)
     {
-        if (!Utils::InterConnector::instance().getMainWindow()->isMainPage())
+        if (!Utils::InterConnector::instance().getMainWindow()->isMessengerPageContactDialog())
             return;
 
         lookingTimer_->stop();
@@ -3949,6 +3940,11 @@ namespace Ui
                 return true;
             }, false);
         }
+    }
+
+    std::optional<Data::FileSharingMeta> HistoryControlPage::getMeta(const QString& _id) const
+    {
+        return messagesArea_->getMeta(_id);
     }
 
     void HistoryControlPage::onMessageBuddies(const Data::MessageBuddies& _buddies, const QString& _aimId, Ui::MessagesBuddiesOpt _option, bool _havePending, qint64 _seq, int64_t _last_msgid)
@@ -4278,7 +4274,7 @@ namespace Ui
     PlaceholderState HistoryControlPage::getPlaceholderState() const
     {
         const auto dlg = dlgState_.AimId_.isEmpty() ? hist::getDlgState(aimId_) : dlgState_;
-        assert(!dlg.AimId_.isEmpty());
+        im_assert(!dlg.AimId_.isEmpty());
 
         const auto hasHistory = dlg.HasLastMsgId();
         if (Utils::isChat(aimId_))
@@ -4346,6 +4342,15 @@ namespace Ui
 
         if (msgAreaVisChanged)
             messagesArea_->invalidateLayout();
+    }
+
+    void HistoryControlPage::updateContactNameTooltip(bool _show)
+    {
+        if (Features::longPathTooltipsAllowed())
+        {
+            const auto name = Logic::GetFriendlyContainer()->getFriendly(aimId_);
+            contactName_->setTooltipText(_show && contactName_->isElided() ? name : QString());
+        }
     }
 }
 

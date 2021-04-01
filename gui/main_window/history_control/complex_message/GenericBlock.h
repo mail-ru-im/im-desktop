@@ -8,6 +8,12 @@ namespace Utils
     enum class OpenAt;
 }
 
+namespace Tooltip
+{
+    enum class ArrowDirection;
+    enum class ArrowPointPos;
+}
+
 UI_NS_BEGIN
 
 class ActionButtonWidget;
@@ -37,26 +43,26 @@ class GenericBlock :
 
 public:
     GenericBlock(
-        ComplexMessageItem *parent,
-        const QString &sourceText,
-        const MenuFlags menuFlags,
-        const bool isResourcesUnloadingEnabled);
+        ComplexMessageItem* parent,
+        const Data::FormattedString& _sourceText,
+        const MenuFlags _menuFlags,
+        const bool _isResourcesUnloadingEnabled);
 
     using IItemBlock::clicked;
 
     virtual ~GenericBlock() = 0;
 
-    virtual QSize blockSizeForMaxWidth(const int32_t maxWidth) override;
+    QSize blockSizeForMaxWidth(const int32_t maxWidth) override;
 
-    virtual void deleteLater() final override;
+    void deleteLater() final override;
 
-    virtual QString formatRecentsText() const override;
+    QString formatRecentsText() const override;
 
     Ui::MediaType getMediaType() const override;
 
-    virtual bool standaloneText() const override { return false; }
+    bool standaloneText() const override { return false; }
 
-    virtual ComplexMessageItem* getParentComplexMessage() const final override;
+    ComplexMessageItem* getParentComplexMessage() const final override;
 
     qint64 getId() const;
 
@@ -64,13 +70,13 @@ public:
 
     QString getSenderFriendly() const;
 
-    void setSourceText(const QString& _text);
+    void setSourceText(const Data::FormattedString& _text);
 
     const QString& getChatAimid() const;
 
-    QString getSourceText() const override;
+    Data::FormattedString getSourceText() const override;
 
-    QString getTextInstantEdit() const override;
+    Data::FormattedString getTextInstantEdit() const override;
 
     QString getPlaceholderText() const override;
 
@@ -86,9 +92,9 @@ public:
 
     bool isOutgoing() const;
 
-    virtual bool isDraggable() const override;
+    bool isDraggable() const override;
 
-    virtual bool isSharingEnabled() const override;
+    bool isSharingEnabled() const override;
 
     bool isStandalone() const;
 
@@ -143,7 +149,7 @@ public:
     void setSelected(bool _selected) override;
 
     void clearSelection() override;
-    virtual Data::FilesPlaceholderMap getFilePlaceholders() override;
+    Data::FilesPlaceholderMap getFilePlaceholders() override;
 
     void updateWith(IItemBlock* _other) override;
 
@@ -172,7 +178,7 @@ public:
     bool isEdited() const;
 
 protected:
-    virtual bool drag() override;
+    bool drag() override;
 
     virtual void drawBlock(QPainter &p, const QRect& _rect, const QColor& _quoteColor) = 0;
 
@@ -196,23 +202,29 @@ protected:
 
     virtual void onUnloadResources();
 
-    virtual void enterEvent(QEvent *) override;
+    void enterEvent(QEvent*) override;
 
-    virtual void paintEvent(QPaintEvent *e) final override;
+    void paintEvent(QPaintEvent* _e) final override;
 
-    virtual void mouseMoveEvent(QMouseEvent *e) override;
+    void mouseMoveEvent(QMouseEvent* _e) override;
 
-    virtual void mousePressEvent(QMouseEvent *e) override;
+    void mousePressEvent(QMouseEvent* _e) override;
 
-    virtual void mouseReleaseEvent(QMouseEvent *e) override;
+    void mouseReleaseEvent(QMouseEvent* _e) override;
 
-    virtual QPoint getShareButtonPos(const bool _isBubbleRequired, const QRect& _bubbleRect) const override;
+    void wheelEvent(QWheelEvent* _e) override;
+
+    QPoint getShareButtonPos(const bool _isBubbleRequired, const QRect& _bubbleRect) const override;
 
     QPoint mapFromParent(const QPoint& _point, const QRect& _blockGeometry) const;
 
     void resizeBlock(const QSize& _size) override;
 
     void onBlockSizeChanged(const QSize& _size) override;
+
+    bool isTooltipActivated() const;
+    void showTooltip(QString _text, QRect _rect, Tooltip::ArrowDirection _arrowDir, Tooltip::ArrowPointPos _arrowPos);
+    void hideTooltip();
 
     QuoteColorAnimation QuoteAnimation_;
 
@@ -235,7 +247,7 @@ private:
 
     QTimer *ResourcesUnloadingTimer_;
 
-    QString SourceText_;
+    Data::FormattedString SourceText_;
 
     bool IsBubbleRequired_;
 
@@ -250,6 +262,9 @@ private:
     bool IsInsideForward_;
 
     bool IsSelected_;
+
+    QTimer* tooltipTimer_;
+    bool tooltipActivated_;
 
 private Q_SLOTS:
     void onResourceUnloadingTimeout();

@@ -19,7 +19,7 @@ namespace Styling
 
         static WallpaperId fromContact(const QString& _contact)
         {
-            assert(!_contact.isEmpty());
+            im_assert(!_contact.isEmpty());
             if (_contact.isEmpty())
                 return invalidId();
 

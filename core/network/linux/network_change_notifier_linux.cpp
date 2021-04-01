@@ -25,39 +25,39 @@ namespace core
         network_change_notifier::init();
         auto address_change_callback = [wr_this = weak_from_this()]()
         {
-            g_core->execute_core_context([wr_this]
+            g_core->execute_core_context({[wr_this]
             {
                 auto ptr_this = wr_this.lock();
                 if (!ptr_this)
                     return;
                 auto ptr_linux = std::static_pointer_cast<network_change_notifier_linux>(ptr_this);
                 ptr_linux->notify_of_ip_address_change();
-            });
+            }});
 
         };
         auto link_changed_callback = [wr_this = weak_from_this()]()
         {
-            g_core->execute_core_context([wr_this]
+            g_core->execute_core_context({[wr_this]
             {
                 auto ptr_this = wr_this.lock();
                 if (!ptr_this)
                     return;
                 auto ptr_linux = std::static_pointer_cast<network_change_notifier_linux>(ptr_this);
                 ptr_linux->notify_of_connection_type_change();
-            });
+            }});
         };
         address_tracker_ = std::make_unique<internal::address_tracker_linux>(std::move(address_change_callback), std::move(link_changed_callback), []{}, std::unordered_set<std::string>());
 
         auto init_callback = [wr_this = weak_from_this()](connection_type type)
         {
-            g_core->execute_core_context([wr_this, type]
+            g_core->execute_core_context({[wr_this, type]
             {
                 auto ptr_this = wr_this.lock();
                 if (!ptr_this)
                     return;
                 auto ptr_linux = std::static_pointer_cast<network_change_notifier_linux>(ptr_this);
                 ptr_linux->set_initial_connection_type(type);
-            });
+            }});
         };
         address_tracker_->init(std::move(init_callback));
     }

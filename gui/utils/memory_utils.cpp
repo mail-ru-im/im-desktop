@@ -46,7 +46,7 @@ template struct Rob<A_member, &QPixmap::data>;
 template<typename Type>
 qint64 getMemoryFootprint(Type _object)
 {
-    assert(!"not implemented");
+    im_assert(!"not implemented");
     return 0;
 }
 
@@ -153,7 +153,7 @@ qint64 getMemoryFootprint(Ui::ComplexMessage::TextBlock* _block)
 {
     qint64 res = 0;
 
-    res += _block->getSourceText().toUtf8().size();
+    res += Data::stubFromFormattedString(_block->getSourceText()).toUtf8().size();
 
     return res;
 }

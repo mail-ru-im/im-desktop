@@ -147,7 +147,7 @@ namespace Ui
 
     QAction* ContextMenu::findAction(QStringView _command) const
     {
-        assert(!_command.isEmpty());
+        im_assert(!_command.isEmpty());
         const auto actionList = actions();
         for (const auto& action : actionList)
         {

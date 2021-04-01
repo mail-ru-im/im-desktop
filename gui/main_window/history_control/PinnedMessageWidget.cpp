@@ -660,13 +660,11 @@ namespace Ui
         }
         else if (isImage() || isPlayable())
         {
-            auto mw = Utils::InterConnector::instance().getMainWindow();
-            if (mw)
-            {
-                const auto link = Utils::replaceFilesPlaceholders(complexMessage_->getFirstLink(), complexMessage_->getFilesPlaceholders());
-                Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::fullmediascr_view, { { "chat_type", Utils::chatTypeByAimId(Logic::getContactListModel()->selectedContact()) },{ "from", "chat" },{ "media_type", isImage() ? "photo" : "video" } });
-                mw->openGallery(Utils::GalleryData(Logic::getContactListModel()->selectedContact(), Utils::normalizeLink(link).toString(), complexMessage_->getId()));
-            }
+            const auto link = Utils::replaceFilesPlaceholders(complexMessage_->getFirstLink(), complexMessage_->getFilesPlaceholders());
+            Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::fullmediascr_view, { { "chat_type", Utils::chatTypeByAimId(Logic::getContactListModel()->selectedContact()) },{ "from", "chat" },{ "media_type", isImage() ? "photo" : "video" } });
+            auto data = Utils::GalleryData(Logic::getContactListModel()->selectedContact(), Utils::normalizeLink(link).toString(), complexMessage_->getId());
+            complexMessage_->fillGalleryData(data);
+            Utils::InterConnector::instance().openGallery(data);
         }
     }
 

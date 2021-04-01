@@ -474,7 +474,7 @@ namespace Ui
         }
 
         default:
-            assert(!"invalid state");
+            im_assert(!"invalid state");
             break;
         }
         return IconStates();
@@ -495,7 +495,7 @@ namespace Ui
             return QT_TRANSLATE_NOOP("input_widget", "Edit");
 
         default:
-            assert(!"invalid state");
+            im_assert(!"invalid state");
             break;
         }
 

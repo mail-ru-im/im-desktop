@@ -261,7 +261,7 @@ namespace Ui
         if (canShowTooltip())
         {
             const auto r = rect();
-            Tooltip::show(getTooltipText(), QRect(mapToGlobal(r.topLeft()), r.size()), {0, 0}, Tooltip::ArrowDirection::Down);
+            Tooltip::show(getTooltipText(), QRect(mapToGlobal(r.topLeft()), r.size()), {0, 0}, Tooltip::ArrowDirection::Down, Tooltip::ArrowPointPos::Top, {}, Tooltip::TooltipMode::Multiline);
         }
     }
 
@@ -343,7 +343,7 @@ namespace Ui
         if (leftPadding_ != _x)
         {
             leftPadding_ = _x;
-            setText(text_->getSourceText());
+            setText(Data::stubFromFormattedString(text_->getSourceText()));
         }
     }
 
@@ -358,12 +358,13 @@ namespace Ui
     void ClickableTextWidget::resizeEvent(QResizeEvent* _e)
     {
         elideText();
-
         ClickableWidget::resizeEvent(_e);
     }
 
     void ClickableTextWidget::elideText()
     {
+        text_->evaluateDesiredSize();
+        text_->elide(width());
         text_->getHeight(width());
         update();
     }

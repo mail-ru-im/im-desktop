@@ -97,7 +97,6 @@ namespace Ui
         void updatePanels() const;
         void _switchFullscreen();
         void checkPanelsVisibility(bool _forceHide = false);
-        inline void updateWindowTitle();
         bool isOverlapped() const;
 
         // @return true, if we were able to load size from settings
@@ -130,9 +129,9 @@ namespace Ui
         void createdNewCall();
         void sendStatistic();
 
-        void updateMicroAlertState();
         void checkMicroPermission();
-        void showPermissionPanel();
+        void updateMicroAlertState();
+        //void showPermissionPanel();
 
     private Q_SLOTS:
         void checkOverlap();
@@ -149,6 +148,7 @@ namespace Ui
         void onVoipCallCreated(const voip_manager::ContactEx& _contactEx);
         //void onVoipChangeWindowLayout(intptr_t hwnd, bool bTray, const std::string& layout);
         void onVoipMainVideoLayoutChanged(const voip_manager::MainVideoLayout& mainLayout);
+        void onVoipMediaLocalAudio(bool _enabled);
 
         void onEscPressed();
 
@@ -170,7 +170,7 @@ namespace Ui
         void windowWillDeminiaturize();
         void windowDidDeminiaturize();
 
-        void onScreenSharing();
+        void onScreenSharing(bool _on);
         void onSetPreviewPrimary();
         void onSetContactPrimary();
         void onSetContactPrimary(const std::string& contact);
@@ -210,7 +210,7 @@ namespace Ui
         bool isMinimized() const;
         VideoPanel* getVideoPanel() const;
         void showToast(const QString& _text, int _maxLineCount = 1);
-        void setMicrophoneAlert(MicroIssue _issue);
+        void hideToast();
         void updateHangUpState();
         void raiseWindow();
 
@@ -268,6 +268,7 @@ namespace Ui
         // All is connected and talking now.
         bool startTalking;
         bool miniWindowShown = false;
+        bool isScreenSharingEnabled_ = false;
 
         // true for security calls.
         //bool enableSecureCall_;

@@ -18,14 +18,14 @@ namespace HistoryControl
 
         if (info.is_value_exist("local_path"))
         {
-            assert(!info.is_value_exist("uri"));
-            assert(IsOutgoing_);
+            im_assert(!info.is_value_exist("uri"));
+            im_assert(IsOutgoing_);
             LocalPath_ = QString::fromUtf8(info.get_value_as_string("local_path"));
         }
         else
         {
             Uri_ = QString::fromUtf8(info.get_value_as_string("uri"));
-            assert(!Uri_.isEmpty());
+            im_assert(!Uri_.isEmpty());
         }
 
         if (!info.is_value_exist("content_type"))
@@ -45,8 +45,8 @@ namespace HistoryControl
 
         const auto width = info.get_value_as_int("width");
         const auto height = info.get_value_as_int("height");
-        assert(width > 0);
-        assert(height > 0);
+        im_assert(width > 0);
+        im_assert(height > 0);
         Size_ = std::make_unique<QSize>(width, height);
     }
 
@@ -57,7 +57,7 @@ namespace HistoryControl
 
     const QString& FileSharingInfo::GetLocalPath() const
     {
-        assert(IsOutgoing());
+        im_assert(IsOutgoing());
 
         return LocalPath_;
     }
@@ -74,7 +74,7 @@ namespace HistoryControl
 
     const QString& FileSharingInfo::GetUploadingProcessId() const
     {
-        assert(IsOutgoing());
+        im_assert(IsOutgoing());
 
         return UploadingProcessId_;
     }
@@ -96,7 +96,7 @@ namespace HistoryControl
 
     void FileSharingInfo::SetUri(const QString &uri)
     {
-        assert(IsOutgoing());
+        im_assert(IsOutgoing());
         Uri_ = uri;
     }
 

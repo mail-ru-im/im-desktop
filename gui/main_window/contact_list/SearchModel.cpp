@@ -157,7 +157,7 @@ namespace Logic
 
         if (isSearchInDialogs())
         {
-            assert(!searchPattern_.isEmpty());
+            im_assert(!searchPattern_.isEmpty());
             uint32_t src = SearchDataSource::none;
 
             if (isServerMessagesNeeded())
@@ -332,7 +332,7 @@ namespace Logic
             return QVariant();
 
         if (Testing::isAccessibleRole(_role))
-            return results_[cur]->getAccessibleName();
+            return QString(u"AS Search " % results_[cur]->getAccessibleName());
 
         return QVariant::fromValue(results_[cur]);
     }

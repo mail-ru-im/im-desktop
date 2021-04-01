@@ -1,6 +1,12 @@
 #pragma once
 #include "../../types/chat.h"
 
+namespace Tooltip
+{
+    enum class ArrowDirection;
+    enum class ArrowPointPos;
+}
+
 namespace Ui
 {
     class ContextMenu;
@@ -56,8 +62,8 @@ namespace Ui
         void onMenuAction(QAction* _action);
 
     protected:
-        virtual void mousePressEvent(QMouseEvent* _event) override;
-        virtual void mouseReleaseEvent(QMouseEvent* _event) override;
+        void mousePressEvent(QMouseEvent* _event) override;
+        void mouseReleaseEvent(QMouseEvent* _event) override;
 
         virtual ItemData itemAt(const QPoint& _pos) { return ItemData(); }
         virtual void onClicked(ItemData _data) {}
@@ -66,9 +72,17 @@ namespace Ui
 
         ContextMenu* makeContextMenu(qint64 _msg, const QString& _link, const QString& _sender, time_t _time, const QString& _aimid);
 
+        bool isTooltipActivated() const;
+        void showTooltip(QString _text, QRect _rect, Tooltip::ArrowDirection _arrowDir, Tooltip::ArrowPointPos _arrowPos);
+        void hideTooltip();
+
         QString aimId_;
         QPoint pos_;
         Type type_;
+
+        QTimer* tooltipTimer_ = nullptr;
+        bool tooltipActivated_ = false;
+
     };
 
     class GalleryList : public QWidget

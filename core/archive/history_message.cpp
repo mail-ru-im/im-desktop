@@ -83,6 +83,28 @@ namespace
     constexpr std::string_view c_reactions = "reactions";
     constexpr std::string_view c_has_animated_sticker = "hasAnimatedSticker";
 
+    constexpr std::string_view c_format = "format";
+    constexpr std::string_view c_format_type = "type";
+    constexpr std::string_view c_format_bold = "bold";
+    constexpr std::string_view c_format_italic = "italic";
+    constexpr std::string_view c_format_underline = "underline";
+    constexpr std::string_view c_format_strikethrough = "strikethrough";
+    constexpr std::string_view c_format_link = "link";
+    constexpr std::string_view c_format_url = "url";
+    constexpr std::string_view c_format_mention = "mention";
+    constexpr std::string_view c_format_inline_code = "inline_code";
+    constexpr std::string_view c_format_pre = "pre";
+    constexpr std::string_view c_format_ordered_list = "ordered_list";
+    constexpr std::string_view c_format_unordered_list = "unordered_list";
+    constexpr std::string_view c_format_quote = "quote";
+    constexpr std::string_view c_format_offset = "offset";
+    constexpr std::string_view c_format_length = "length";
+    constexpr std::string_view c_format_data = "data";
+    constexpr std::string_view c_format_lang = "lang";
+
+    constexpr std::string_view c_coll_format = "format";
+    constexpr std::string_view c_coll_description_format = "description_format";
+
     std::string parse_sender_aimid(const rapidjson::Value &_node);
 
     void serialize_metadata_from_uri(const std::string &_uri, Out coll_helper &_coll);
@@ -128,6 +150,36 @@ namespace
 
         return result;
     }
+
+    namespace core_fmt = core::data::format;
+    core_fmt::format_type read_format_type_from_string(std::string_view _name)
+    {
+        if (_name == c_format_bold)
+            return core_fmt::format_type::bold;
+        else if (_name == c_format_italic)
+            return core_fmt::format_type::italic;
+        else if (_name == c_format_inline_code)
+            return core_fmt::format_type::inline_code;
+        else if (_name == c_format_underline)
+            return core_fmt::format_type::underline;
+        else if (_name == c_format_strikethrough)
+            return core_fmt::format_type::strikethrough;
+        else if (_name == c_format_link)
+            return core_fmt::format_type::link;
+        else if (_name == c_format_mention)
+            return core_fmt::format_type::mention;
+        else if (_name == c_format_pre)
+            return core_fmt::format_type::pre;
+        else if (_name == c_format_ordered_list)
+            return core_fmt::format_type::ordered_list;
+        else if (_name == c_format_unordered_list)
+            return core_fmt::format_type::unordered_list;
+        else if (_name == c_format_quote)
+            return core_fmt::format_type::quote;
+
+        assert(!"unknown format type name");
+        return core_fmt::format_type::none;
+    };
 }
 
 
@@ -593,6 +645,22 @@ enum message_fields : uint32_t
     mf_chat_event_owner_status = 97,
     mf_chat_event_sender_status_desctiprion = 98,
     mf_chat_event_owner_status_description = 99,
+    mf_format = 100,
+    mf_format_offset = 101,
+    mf_format_length = 102,
+    mf_format_data = 103,
+    mf_format_bold = 104,
+    mf_format_italic = 105,
+    mf_format_underline = 106,
+    mf_format_strikethrough = 107,
+    mf_format_inline_code = 108,
+    mf_format_url = 109,
+    mf_format_mention = 110,
+    mf_format_quote = 111,
+    mf_format_pre = 112,
+    mf_format_ordered_list = 113,
+    mf_format_unordered_list = 114,
+    mf_description_format = 115,
 };
 
 void shared_contact_data::serialize(icollection *_collection) const
@@ -1688,27 +1756,20 @@ chat_event_data::chat_event_data(const tools::tlvpack& _pack)
 
         assert(item);
         if (item)
-        {
             deserialize_mchat_members(item->get_value<tools::tlvpack>());
-        }
 
-        item = _pack.get_item(message_fields::mf_chat_event_mchat_members_aimids);
-        if (item)
-        {
+        if (item = _pack.get_item(message_fields::mf_chat_event_mchat_members_aimids))
             deserialize_mchat_members_aimids(item->get_value<tools::tlvpack>());
-        }
 
-        if (auto item = _pack.get_item(message_fields::mf_chat_requested_by))
+        if (item = _pack.get_item(message_fields::mf_chat_requested_by))
             mchat_.requested_by_ = item->get_value<std::string>(std::string());
 
-        if (auto item = _pack.get_item(message_fields::mf_chat_requested_by_friendly))
+        if (item = _pack.get_item(message_fields::mf_chat_requested_by_friendly))
             mchat_.requested_by_friendly_ = item->get_value<std::string>(std::string());
     }
 
     if (has_chat_modifications())
-    {
         deserialize_chat_modifications(_pack);
-    }
 
     if (has_generic_text())
     {
@@ -1822,9 +1883,7 @@ void chat_event_data::serialize(Out tools::tlvpack &_pack) const
     }
 
     if (has_chat_modifications())
-    {
         serialize_chat_modifications(Out _pack);
-    }
 
     if (has_generic_text())
     {
@@ -2028,19 +2087,13 @@ void chat_event_data::serialize_chat_modifications(Out tools::tlvpack &_pack) co
     }
 
     if (type_ == chat_event_type::chat_description_modified)
-    {
         _pack.push_child(tools::tlv(mf_chat_event_new_chat_description, chat_.new_description_));
-    }
 
     if (type_ == chat_event_type::chat_rules_modified)
-    {
         _pack.push_child(tools::tlv(mf_chat_event_new_chat_rules, chat_.new_rules_));
-    }
 
     if (type_ == chat_event_type::chat_stamp_modified)
-    {
         _pack.push_child(tools::tlv(mf_chat_event_new_chat_stamp, chat_.new_stamp_));
-    }
 }
 
 void chat_event_data::serialize_mchat_members(Out coll_helper &_coll) const
@@ -2188,6 +2241,7 @@ history_message_sptr history_message::make_modified_patch(const int64_t _archive
     assert(_archive_id > 0 || !_internal_id.empty());
 
     auto result = make_updated_patch(_archive_id, _internal_id);
+    result->set_modified(true);
 
     result->chat_event_ = _chat_event ? _chat_event : chat_event_data::make_simple_event(chat_event_type::message_deleted);
 
@@ -2351,6 +2405,10 @@ void history_message::copy(const history_message& _message)
     update_patch_version_ = _message.update_patch_version_;
     time_ = _message.time_;
     text_ = _message.text_;
+    if (_message.format_)
+        format_ = std::make_unique<format_data>(*_message.format_);
+    else
+        format_.reset();
     data_offset_ = _message.data_offset_;
     data_size_ = _message.data_size_;
     flags_ = _message.flags_;
@@ -2360,6 +2418,10 @@ void history_message::copy(const history_message& _message)
     snippets_ = _message.snippets_;
     url_ = _message.url_;
     description_ = _message.description_;
+    if (_message.description_format_)
+        description_format_ = std::make_unique<format_data>(*_message.description_format_);
+    else
+        description_format_.reset();
 
     sticker_.reset();
     mult_.reset();
@@ -2413,6 +2475,8 @@ void history_message::merge(const history_message& _message)
     update_patch_version_ = _message.update_patch_version_;
     url_ = _message.url_;
     description_ = _message.description_;
+    if (_message.description_format_)
+        description_format_ = std::make_unique<format_data>(*_message.description_format_);
     hide_edit_ = _message.hide_edit_;
 
     sticker_.reset();
@@ -2424,6 +2488,7 @@ void history_message::merge(const history_message& _message)
     shared_contact_.reset();
     geo_.reset();
     poll_.reset();
+    format_.reset();
 
     if (_message.sticker_)
         sticker_ = std::make_unique<core::archive::sticker_data>(*_message.sticker_);
@@ -2451,6 +2516,9 @@ void history_message::merge(const history_message& _message)
 
     if (_message.poll_)
         poll_ = _message.poll_;
+
+    if (_message.format_)
+        format_ = std::make_unique<format_data>(*_message.format_);
 }
 
 archive::chat_data* history_message::get_chat_data() noexcept
@@ -2505,6 +2573,8 @@ void history_message::serialize(icollection* _collection, const time_t _offset, 
     coll.set_value_as_string("update_patch_version", update_patch_version_.as_string());
     coll.set_value_as_int("offline_version", update_patch_version_.get_offline_version());
     coll.set_value_as_string("description", description_);
+    if (description_format_ && !description_format_->empty())
+        description_format_->serialize(coll.get(), c_coll_description_format);
     coll.set_value_as_string("url", url_);
     coll.set_value_as_bool("unsupported", unsupported_);
     coll.set_value_as_bool("hide_edit", hide_edit_);
@@ -2649,6 +2719,9 @@ void history_message::serialize(icollection* _collection, const time_t _offset, 
 
         coll.set_value_as_array("buttons", buttons_aray.get());
     }
+
+    if (format_)
+        format_->serialize(coll.get(), c_coll_format);
 }
 
 void history_message::serialize(core::tools::binary_stream& _data) const
@@ -2675,6 +2748,13 @@ void history_message::serialize_call(core::tools::binary_stream& _data, const st
     msg_pack.push_child(core::tools::tlv(mf_sender_aimid, sender_aimid_));
     msg_pack.push_child(core::tools::tlv(mf_buttons, buttons_json_));
     msg_pack.push_child(core::tools::tlv(mf_hide_edit, hide_edit_));
+
+    if (format_)
+    {
+        core::tools::tlvpack format_pack;
+        format_->serialize(format_pack);
+        msg_pack.push_child(core::tools::tlv(mf_format, format_pack));
+    }
 
     if (chat_)
     {
@@ -2751,6 +2831,14 @@ void history_message::serialize_call(core::tools::binary_stream& _data, const st
         reactions_->serialize(msg_pack);
 
     msg_pack.push_child(core::tools::tlv(mf_call_aimid, _aimid));
+
+    if (description_format_)
+    {
+        core::tools::tlvpack format_pack;
+        description_format_->serialize(format_pack);
+        msg_pack.push_child(core::tools::tlv(mf_description_format, format_pack));
+    }
+
     msg_pack.serialize(_data);
 }
 
@@ -2791,6 +2879,13 @@ int32_t history_message::unserialize_call(core::tools::binary_stream& _data, std
             break;
         case message_fields::mf_text:
             text_ = tlv_field->get_value<std::string>(std::string());
+            break;
+        case message_fields::mf_format:
+            {
+                format_ = std::make_unique<core::archive::format_data>();
+                auto pack = tlv_field->get_value<core::tools::tlvpack>();
+                format_->unserialize(pack);
+            }
             break;
         case message_fields::mf_update_patch_version:
             update_patch_version_.set_version(tlv_field->get_value<std::string>(std::string()));
@@ -2872,15 +2967,19 @@ int32_t history_message::unserialize_call(core::tools::binary_stream& _data, std
                 snippets_.push_back(std::move(s));
             }
             break;
-
         case message_fields::mf_description:
             description_ = tlv_field->get_value<std::string>(std::string());
             break;
-
+        case message_fields::mf_description_format:
+            {
+                description_format_ = std::make_unique<core::archive::format_data>();
+                auto pack = tlv_field->get_value<core::tools::tlvpack>();
+                description_format_->unserialize(pack);
+            }
+            break;
         case message_fields::mf_url:
             url_ = tlv_field->get_value<std::string>(std::string());
             break;
-
         case message_fields::mf_shared_contact:
             {
                 const auto pack = tlv_field->get_value<core::tools::tlvpack>();
@@ -2889,7 +2988,6 @@ int32_t history_message::unserialize_call(core::tools::binary_stream& _data, std
                     shared_contact_ = std::move(contact);
             }
             break;
-
         case message_fields::mf_geo:
             {
                 const auto pack = tlv_field->get_value<core::tools::tlvpack>();
@@ -2898,14 +2996,12 @@ int32_t history_message::unserialize_call(core::tools::binary_stream& _data, std
                     geo_ = std::move(geo);
             }
             break;
-
         case message_fields::mf_poll:
             {
                 auto pack = tlv_field->get_value<core::tools::tlvpack>();
                 poll_ = unserializePoll(pack);
             }
             break;
-
         case message_fields::mf_reactions:
             {
                 const auto pack = tlv_field->get_value<core::tools::tlvpack>();
@@ -2913,7 +3009,6 @@ int32_t history_message::unserialize_call(core::tools::binary_stream& _data, std
                 if (reactions.unserialize(pack))
                     reactions_ = std::move(reactions);
             }
-
         case message_fields::mf_json:
             {
                 json_ = tlv_field->get_value<std::string>(std::string());
@@ -2926,7 +3021,6 @@ int32_t history_message::unserialize_call(core::tools::binary_stream& _data, std
             }
 
             break;
-
         case message_fields::mf_sender_aimid:
             {
                 sender_aimid_ = tlv_field->get_value<std::string>(std::string());
@@ -2937,27 +3031,19 @@ int32_t history_message::unserialize_call(core::tools::binary_stream& _data, std
                     return unserialize(doc, sender_aimid_);
                 }
             }
-
             break;
-
         case message_fields::mf_buttons:
             {
                 buttons_json_ = tlv_field->get_value<std::string>(std::string());
                 buttons_ = unserialize_buttons(buttons_json_);
             }
-
             break;
-
         case message_fields::mf_hide_edit:
-        {
             hide_edit_ = tlv_field->get_value<bool>(false);
             break;
-        }
-
         case message_fields::mf_call_aimid:
             _aimid = tlv_field->get_value<std::string>(std::string());
             break;
-
         default:
             break;
         }
@@ -3112,14 +3198,26 @@ int32_t history_message::unserialize(const rapidjson::Value& _node, const std::s
                         {
                             text_ = rapidjson_get_string(field.value);
                         }
+                        else if (name == c_format)
+                        {
+                            if (!format_)
+                                format_ = std::make_unique<format_data>();
+                            format_->unserialize(field.value);
+                        }
                         else if (name == c_captioned_content)
                         {
-
                             if (const auto it = field.value.FindMember(tools::make_string_ref(c_url)); it != field.value.MemberEnd() && it->value.IsString())
                                 url_ = rapidjson_get_string(it->value);
 
                             if (const auto it = field.value.FindMember(tools::make_string_ref(c_caption)); it != field.value.MemberEnd() && it->value.IsString())
                                 description_ = rapidjson_get_string(it->value);
+
+                            if (const auto it = field.value.FindMember(tools::make_string_ref(c_format)); it != field.value.MemberEnd() && it->value.IsObject())
+                            {
+                                if (!description_format_)
+                                    description_format_ = std::make_unique<format_data>();
+                                description_format_->unserialize(it->value);
+                            }
                         }
                         else if (name == c_contact)
                         {
@@ -3356,6 +3454,11 @@ int64_t history_message::get_id_field(core::tools::binary_stream& _stream)
     }
 
     return -1;
+}
+
+void core::archive::history_message::set_description_format(const core::data::format::string_formatting& _format)
+{
+    description_format_ = std::make_unique<format_data>(_format);
 }
 
 bool history_message::is_outgoing() const
@@ -3696,6 +3799,11 @@ bool history_message::has_text() const noexcept
     return !text_.empty();
 }
 
+void core::archive::history_message::set_format(const core::data::format::string_formatting& _format)
+{
+    format_ = std::make_unique<format_data>(_format);
+}
+
 quote::quote()
     : time_(-1)
     , setId_(-1)
@@ -3704,7 +3812,6 @@ quote::quote()
     , is_forward_(false)
 {
 }
-
 
 void quote::serialize(icollection* _collection) const
 {
@@ -3733,6 +3840,12 @@ void quote::serialize(icollection* _collection) const
 
     if (poll_)
         poll_->serialize(helper.get());
+
+    if (format_)
+        format_->serialize(helper.get(), c_coll_format);
+
+    if (description_format_)
+        description_format_->serialize(helper.get(), c_coll_description_format);
 }
 
 void quote::serialize(core::tools::tlvpack& _pack) const
@@ -3783,6 +3896,20 @@ void quote::serialize(core::tools::tlvpack& _pack) const
 
     if (poll_)
         serializePoll(*poll_, _pack);
+
+    if (format_)
+    {
+        core::tools::tlvpack pack;
+        format_->serialize(pack);
+        _pack.push_child(core::tools::tlv(mf_format, pack));
+    }
+
+    if (description_format_)
+    {
+        core::tools::tlvpack pack;
+        description_format_->serialize(pack);
+        _pack.push_child(core::tools::tlv(mf_description_format, pack));
+    }
 }
 
 void quote::unserialize(icollection* _coll)
@@ -3811,6 +3938,18 @@ void quote::unserialize(icollection* _coll)
 
     if (helper.is_value_exist("description"))
         description_ = helper.get_value_as_string("description");
+
+    if (helper.is_value_exist(c_coll_format))
+    {
+        format_.emplace();
+        format_->unserialize(helper, c_coll_format);
+    }
+
+    if (helper.is_value_exist(c_coll_description_format))
+    {
+        description_format_.emplace();
+        description_format_->unserialize(helper, c_coll_description_format);
+    }
 
     if (helper.is_value_exist("shared_contact"))
     {
@@ -3878,6 +4017,13 @@ bool quote::unserialize(const rapidjson::Value& _node, bool _is_forward, const m
             auto iter_description = field.value.FindMember(tools::make_string_ref(c_caption));
             if (iter_description != field.value.MemberEnd() && iter_description->value.IsString())
                 description_ = rapidjson_get_string(iter_description->value);
+
+            auto iter_format = field.value.FindMember(tools::make_string_ref(c_format));
+            if (iter_format != field.value.MemberEnd() && iter_format->value.IsObject())
+            {
+                format_.emplace();
+                format_->unserialize(iter_format->value);
+            }
         }
         else if (c_sticker_id == name)
         {
@@ -3916,6 +4062,11 @@ bool quote::unserialize(const rapidjson::Value& _node, bool _is_forward, const m
             // only check for field existence
             continue;
         }
+        else if (c_format == name)
+        {
+            format_.emplace();
+            format_->unserialize(field.value);
+        }
         else if (_new_fields.find(name) != _new_fields.end()) // ! must be the last check
         {
             return false;
@@ -3936,6 +4087,7 @@ void quote::unserialize(const core::tools::tlvpack &_pack)
         if (const auto item = _pack.get_item(_field))
             *_out_ptr = item->template get_value<std::remove_pointer_t<decltype(_out_ptr)>>(_def_value);
     };
+
     get_value(message_fields::mf_quote_text,    std::string(),  &text_);
     get_value(message_fields::mf_quote_sn,      std::string(),  &sender_);
     get_value(message_fields::mf_quote_chat_id, std::string(),  &chat_);
@@ -3970,6 +4122,20 @@ void quote::unserialize(const core::tools::tlvpack &_pack)
     {
         auto pack = poll_item->get_value<core::tools::tlvpack>();
         poll_ = unserializePoll(pack);
+    }
+
+    if (auto format_item = _pack.get_item(message_fields::mf_format))
+    {
+        auto pack = format_item->get_value<core::tools::tlvpack>();
+        format_.emplace();
+        format_->unserialize(pack);
+    }
+
+    if (auto format_item = _pack.get_item(message_fields::mf_description_format))
+    {
+        auto pack = format_item->get_value<core::tools::tlvpack>();
+        description_format_.emplace();
+        description_format_->unserialize(pack);
     }
 }
 
@@ -4045,8 +4211,7 @@ void url_snippet::unserialize(const core::tools::tlvpack& _pack)
 {
     auto get_value = [&_pack](auto _field, auto _def_value, Out auto _out_ptr)
     {
-        const auto item = _pack.get_item(_field);
-        if (item)
+        if (const auto item = _pack.get_item(_field))
             *_out_ptr = item->template get_value<std::remove_pointer_t<decltype(_out_ptr)>>(_def_value);
     };
     get_value(message_fields::mf_snippet_url,           std::string(), &url_);
@@ -4069,18 +4234,14 @@ namespace
         static ReverseIndexMap map;
 
         if (!map.empty())
-        {
             return map;
-        }
 
         auto index = 0;
 
         const auto fill_map = [&index](const char from, const char to)
         {
             for (auto ch = from; ch <= to; ++ch, ++index)
-            {
                 map.emplace(ch, index);
-            }
         };
 
         fill_map('0', '9');
@@ -4435,3 +4596,230 @@ namespace
         return unserialize_buttons(doc);
     }
 }
+
+void core::archive::format_data::serialize(icollection* _collection, std::string_view _name) const
+{
+    namespace core_fmt = core::data::format;
+
+    auto coll = coll_helper(_collection, false);
+    auto coll_format = coll_helper(coll->create_collection(), true);
+
+    core::ifptr<core::iarray> array(coll->create_array());
+    array->reserve(formats_.size());
+    for (const auto& info : formats_)
+    {
+        core::coll_helper coll_range(coll->create_collection(), true);
+        coll_range.set_value_as_uint(c_format_type, static_cast<uint32_t>(info.type_));
+        coll_range.set_value_as_int(c_format_offset, info.range_.offset_);
+        coll_range.set_value_as_int(c_format_length, info.range_.length_);
+        if (info.data_.has_value())
+            coll_range.set_value_as_string(c_format_data, *(info.data_));
+        core::ifptr<core::ivalue> value(coll->create_value());
+        value->set_as_collection(coll_range.get());
+        array->push_back(value.get());
+    }
+    coll.set_value_as_array(_name, array.get());
+}
+
+void core::archive::format_data::serialize(tools::tlvpack& _pack) const
+{
+    namespace core_fmt = core::data::format;
+
+    const auto to_mf_type = [](core_fmt::format_type _type)
+    {
+        switch (_type)
+        {
+        case core_fmt::format_type::bold:
+            return message_fields::mf_format_bold;
+        case core_fmt::format_type::italic:
+            return message_fields::mf_format_italic;
+        case core_fmt::format_type::underline:
+            return message_fields::mf_format_underline;
+        case core_fmt::format_type::strikethrough:
+            return message_fields::mf_format_strikethrough;
+        case core_fmt::format_type::inline_code:
+            return message_fields::mf_format_inline_code;
+        case core_fmt::format_type::link:
+            return message_fields::mf_format_url;
+        case core_fmt::format_type::mention:
+            return message_fields::mf_format_mention;
+        case core_fmt::format_type::quote:
+            return message_fields::mf_format_quote;
+        case core_fmt::format_type::pre:
+            return message_fields::mf_format_pre;
+        case core_fmt::format_type::ordered_list:
+            return message_fields::mf_format_ordered_list;
+        case core_fmt::format_type::unordered_list:
+            return message_fields::mf_format_unordered_list;
+        case core_fmt::format_type::none:
+            assert(false);
+        }
+        return message_fields::mf_format_bold;
+    };
+
+    for (const auto& params : formats_)
+    {
+        core::tools::tlvpack pack;
+        pack.push_child(core::tools::tlv(message_fields::mf_format_offset, static_cast<int32_t>(params.range_.offset_)));
+        pack.push_child(core::tools::tlv(message_fields::mf_format_length, static_cast<int32_t>(params.range_.length_)));
+        if (params.data_.has_value())
+            pack.push_child(core::tools::tlv(message_fields::mf_format_data, *(params.data_)));
+        _pack.push_child(core::tools::tlv(to_mf_type(params.type_), pack));
+    }
+}
+
+void core::archive::format_data::unserialize(const rapidjson::Value& _node)
+{
+    assert(_node.IsObject());
+    namespace core_fmt = core::data::format;
+
+    if (!_node.IsObject())
+        return;
+
+    const auto read_range = [](const rapidjson::Value& _value)
+    {
+        assert(_value.IsObject());
+        auto result = core_fmt::format_range();
+        tools::unserialize_value(_value, c_format_offset, result.offset_);
+        tools::unserialize_value(_value, c_format_length, result.length_);
+        return result;
+    };
+
+    for (const auto& field : _node.GetObject())
+    {
+        const auto format_type = read_format_type_from_string(rapidjson_get_string_view(field.name));
+        assert(field.value.IsArray());
+        const auto params_array = field.value.GetArray();
+        for (const auto& format_params : params_array)
+        {
+            const auto range = read_range(format_params);
+            auto data = core_fmt::format_data();
+            if (format_type == core_fmt::format_type::link)
+            {
+                auto data_str = std::string();
+                tools::unserialize_value(format_params, c_format_url, data_str);
+                if (!data_str.empty())
+                    data = data_str;
+            }
+            else if (format_type == core_fmt::format_type::pre)
+            {
+                auto data_str = std::string();
+                tools::unserialize_value(format_params, c_format_lang, data_str);
+                if (!data_str.empty())
+                    data = data_str;
+            }
+            formats_.emplace_back(format_type, range, std::move(data));
+        }
+    }
+}
+
+bool core::archive::format_data::unserialize(core::tools::tlvpack& _pack)
+{
+    const auto from_mf_type = [](message_fields _mf_type)
+    {
+        using format_type = core::data::format::format_type;
+        switch (_mf_type)
+        {
+        case message_fields::mf_format_bold:
+            return format_type::bold;
+        case message_fields::mf_format_italic:
+            return format_type::italic;
+        case message_fields::mf_format_underline:
+            return format_type::underline;
+        case message_fields::mf_format_strikethrough:
+            return format_type::strikethrough;
+        case message_fields::mf_format_inline_code:
+            return format_type::inline_code;
+        case message_fields::mf_format_url:
+            return format_type::link;
+        case message_fields::mf_format_mention:
+            return format_type::mention;
+        case message_fields::mf_format_quote:
+            return format_type::quote;
+        case message_fields::mf_format_pre:
+            return format_type::pre;
+        case message_fields::mf_format_ordered_list:
+            return format_type::ordered_list;
+        case message_fields::mf_format_unordered_list:
+            return format_type::unordered_list;
+        default:
+            assert(false);
+        };
+        return format_type::bold;
+    };
+
+    const auto read_format_info = [](core::tools::tlvpack& _info_pack)
+    {
+        namespace core_fmt = core::data::format;
+
+        auto result = core_fmt::format();
+        for (auto field = _info_pack.get_first(); field; field = _info_pack.get_next())
+        {
+            switch (static_cast<message_fields>(field->get_type()))
+            {
+            case message_fields::mf_format_offset:
+                result.range_.offset_ = field->get_value<int32_t>();
+                break;
+            case message_fields::mf_format_length:
+                result.range_.length_ = field->get_value<int32_t>();
+                break;
+            case message_fields::mf_format_data:
+                result.data_ = field->get_value<std::string>();
+                break;
+            default:
+                assert(false);
+            }
+        }
+        return result;
+    };
+
+    formats_.clear();
+    for (auto field = _pack.get_first(); field; field = _pack.get_next())
+    {
+        const auto mf_type = static_cast<message_fields>(field->get_type());
+        const auto type = from_mf_type(mf_type);
+        auto range_info_pack = field->get_value<core::tools::tlvpack>();
+        auto info = read_format_info(range_info_pack);
+        info.type_ = type;
+        formats_.emplace_back(info);
+    }
+    return false;
+}
+
+void core::archive::format_data::unserialize(const coll_helper& _coll, std::string_view _name)
+{
+    if (!_coll.is_value_exist(_name))
+        return;
+
+    clear();
+
+    auto array = _coll.get_value_as_array(_name);
+    for (auto i = 0; i < array->size(); ++i)
+    {
+        auto coll = array->get_at(i)->get_as_collection();
+        assert(coll);
+        if (coll)
+        {
+            core_fmt::format format;
+
+            auto v = coll->get_value(c_format_offset);
+            if (v)
+                format.range_.offset_ = v->get_as_int();
+
+            if (v = coll->get_value(c_format_length); v)
+                format.range_.length_ = v->get_as_int();
+
+            if (v = coll->get_value(c_format_type); v)
+                format.type_ = static_cast<core_fmt::format_type>(v->get_as_uint());
+
+            if (coll->is_value_exist(c_format_data))
+            {
+                if (v = coll->get_value(c_format_data); v)
+                    format.data_ = v->get_as_string();
+            }
+
+            add(std::move(format));
+        }
+    }
+}
+

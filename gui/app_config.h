@@ -38,6 +38,7 @@ public:
     bool IsServerSearchEnabled() const noexcept;
     bool IsShowHiddenThemes() const noexcept;
     bool IsSysCrashHandleEnabled() const noexcept;
+    bool IsNetCompressionEnabled() const noexcept;
 
     bool WatchGuiMemoryEnabled() const noexcept;
 
@@ -74,6 +75,7 @@ public:
     void SetCacheHistoryControlPagesFor(int secs) noexcept;
     void SetWatchGuiMemoryEnabled(bool _watch) noexcept;
     void SetCustomDeviceId(bool _custom) noexcept;
+    void SetNetCompressionEnabled(bool _enabled) noexcept;
 
     bool hasCustomDeviceId() const;
 
@@ -89,6 +91,7 @@ private:
     bool IsServerSearchEnabled_;
     bool IsShowHiddenThemes_;
     bool IsSysCrashHandleEnabled_;
+    bool IsNetCompressionEnabled_;
 
     bool WatchGuiMemoryEnabled_;
 

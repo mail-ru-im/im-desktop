@@ -41,6 +41,8 @@ namespace Ui
         virtual void drawMouseState(QPainter& _p, const QRect& _rect, const bool _isHovered, const bool _isSelected, const bool _isKeyboardFocused = false);
 
         const QString& getAimid() const;
+
+        virtual bool needsTooltip(QPoint _posCursor = {}) const { return false; }
     };
 
 
@@ -191,6 +193,8 @@ namespace Ui
             const bool _hideMessage,
             const bool _showHeads);
         virtual ~RecentItemRecent();
+
+        bool needsTooltip(QPoint _posCursor = {}) const override;
     };
 
 
@@ -313,6 +317,8 @@ namespace Ui
 
         static std::unique_ptr<RecentItemBase> createItem(const Data::DlgState& _state);
         static bool shouldDisplayHeads(const Data::DlgState& _state);
+
+        bool needsTooltip(const QString& _aimId, const QModelIndex& _index, QPoint _posCursor = {}) const override;
 
     private:
         void onFriendlyChanged(const QString& _aimId, const QString& _friendly);

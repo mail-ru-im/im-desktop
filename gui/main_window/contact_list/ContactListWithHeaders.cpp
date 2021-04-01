@@ -126,7 +126,7 @@ namespace Logic
             if (row == getIndexTopContacts())
             {
                 if (Testing::isAccessibleRole(_role))
-                    return qsl("AS ContactsSearch topContacts");
+                    return qsl("AS Contacts topContacts");
 
                 static auto hdr = serviceHdr(qsl("~top~"), QT_TRANSLATE_NOOP("contact_list", "TOP CONTACTS"));
                 return QVariant::fromValue(&hdr);
@@ -134,7 +134,7 @@ namespace Logic
             else if (row == getIndexAllContacts())
             {
                 if (Testing::isAccessibleRole(_role))
-                    return qsl("AS ContactsSerach allContacts");
+                    return qsl("AS Contacts allContacts");
 
                 static auto hdr = serviceHdr(qsl("~all~"), QT_TRANSLATE_NOOP("contact_list", "ALL CONTACTS"));
                 return QVariant::fromValue(&hdr);

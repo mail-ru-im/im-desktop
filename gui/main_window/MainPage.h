@@ -200,6 +200,7 @@ namespace Ui
 
     public:
         static MainPage* instance(QWidget* _parent = nullptr);
+        static bool hasInstance();
         static void reset();
         ~MainPage();
         void selectRecentChat(const QString& _aimId);
@@ -287,12 +288,7 @@ namespace Ui
         FrameCountMode getFrameCount() const;
 
         void closeAndHighlightDialog();
-        void showAddMembersFailuresPopup(QString _chatAimId, std::map<core::add_member_failure, std::vector<QString>> _failures);
-
-#ifndef STRIP_VOIP
-        void setMicroIssue(MicroIssue _issue);
-        MicroIssue getMicroIssue() const noexcept { return microIssue_; }
-#endif
+        void showChatMembersFailuresPopup(Utils::ChatMembersOperation _operation, QString _chatAimId, std::map<core::chat_member_failure, std::vector<QString>> _failures);
 
     protected:
         void resizeEvent(QResizeEvent* _event) override;
@@ -345,7 +341,6 @@ namespace Ui
         QVBoxLayout* pagesLayout_;
         GeneralSettingsWidget* generalSettings_;
         Stickers::Store* stickersStore_;
-        QHBoxLayout* horizontalLayout_;
         QTimer* settingsTimer_;
         QPropertyAnimation* animCLWidth_;
         QWidget* clSpacer_;
@@ -416,18 +411,6 @@ namespace Ui
         QString prevSearchInput_;
 
         std::vector<std::pair<int, Tabs>> indexToTabs_;
-
-#ifndef STRIP_VOIP
-        MicroIssue microIssue_;
-#endif
-
-        enum class VideoWindowState
-        {
-            BlockedByCall,
-            CanRaise
-        };
-
-        VideoWindowState videoWindowState_ = VideoWindowState::CanRaise;
 
         Tabs getTabByIndex(int _index) const;
         int getIndexByTab(Tabs _tab) const;

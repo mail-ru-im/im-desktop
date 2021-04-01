@@ -320,8 +320,8 @@ namespace Utils
         const int coreCount             ///< core count, -1 = auto multithreading
         )
     {
-        assert(src);
-        assert(radius <= maxRadius() && radius >= minRadius());
+        im_assert(src);
+        im_assert(radius <= maxRadius() && radius >= minRadius());
         if (radius > maxRadius() || radius < minRadius() || !src)
             return;
 

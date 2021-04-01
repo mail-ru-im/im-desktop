@@ -202,7 +202,7 @@ namespace Ui
         , DeviceTimer_(new QTimer(this))
     {
         sounds_.resize(static_cast<size_t>(Sound::Size));
-        initSounds();
+
         Timer_->setInterval(IncomingMessageInterval);
         Timer_->setSingleShot(true);
         connect(Timer_, &QTimer::timeout, this, &SoundsManager::timedOut);
@@ -242,16 +242,19 @@ namespace Ui
         for (auto& s : sounds_)
             s.free();
 
-        if (AlInited_)
-            shutdownOpenAl();
+        {
+            std::scoped_lock lock(mutex_);
+            if (AlInited_)
+                shutdownOpenAl();
+        }
     }
 
     std::chrono::milliseconds SoundsManager::playSound(Sound _type)
     {
-        checkAudioDevice();
-
         if (!canPlaySound(_type))
             return std::chrono::milliseconds::zero();
+
+        checkAudioDevice();
 
         switch (_type)
         {
@@ -293,9 +296,11 @@ namespace Ui
 
     void SoundsManager::onDeviceListChanged()
     {
-        if (AlInited_)
-            shutdownOpenAl();
-
+        {
+            std::scoped_lock lock(mutex_);
+            if (AlInited_)
+                shutdownOpenAl();
+        }
         Q_EMIT deviceListChanged(QPrivateSignal());
     }
 
@@ -400,8 +405,7 @@ namespace Ui
 
     void SoundsManager::initPlayingData(PlayingData& _data, const QString& _file)
     {
-        if (!AlInited_)
-            initOpenAl();
+        im_assert(AlInited_);
 
         if (!_data.isEmpty())
             return;
@@ -506,8 +510,11 @@ namespace Ui
 #ifndef USE_SYSTEM_OPENAL
         openal::alcDevicePauseSOFT(AlAudioDevice_);
 #else
-        if (AlInited_)
-            shutdownOpenAl();
+        {
+            std::scoped_lock lock(mutex_);
+            if (AlInited_)
+                shutdownOpenAl();
+        }
 #endif
     }
 
@@ -595,22 +602,17 @@ namespace Ui
     void SoundsManager::callInProgress(bool value)
     {
         CallInProgress_ = value;
+        if (value)
+            shutdownOpenAl();
     }
 
     void SoundsManager::checkAudioDevice()
     {
+        std::scoped_lock lock(mutex_);
         if (!AlInited_)
         {
             initOpenAl();
-            initSounds();
         }
-    }
-
-    void SoundsManager::reinit()
-    {
-        if (AlInited_)
-            shutdownOpenAl();
-        initSounds();
     }
 
     void SoundsManager::DeviceMonitoringListChanged()
@@ -620,6 +622,9 @@ namespace Ui
 
     void SoundsManager::initOpenAl()
     {
+        if (AlInited_)
+            return;
+
         std::string deviceName = selectedDeviceName();
         if (!deviceName.empty())
         {
@@ -652,9 +657,12 @@ namespace Ui
         openal::alDistanceModel(AL_NONE);
 
         AlInited_ = true;
-        updateDeviceTimer();
+        QMetaObject::invokeMethod(this, &SoundsManager::updateDeviceTimer);
 
         qCDebug(soundManager) << "inited OpenAl device:" << AlAudioDevice_ << AlAudioContext_;
+
+        initSounds();
+
     }
 
     void SoundsManager::closeOpenAlDevice()
@@ -713,11 +721,6 @@ namespace Ui
             g_sounds_manager.reset();
     }
 
-    void ReinitSoundsManager()
-    {
-        if (g_sounds_manager)
-            g_sounds_manager->reinit();
-    }
 
     std::string SoundsManager::selectedDeviceName()
     {

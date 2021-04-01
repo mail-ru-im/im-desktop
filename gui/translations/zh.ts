@@ -33,13 +33,6 @@
     </message>
 </context>
 <context>
-    <name>QObject</name>
-    <message>
-        <source>Unable to start the server: %1.</source>
-        <translation>Unable to start the server: %1.</translation>
-    </message>
-</context>
-<context>
     <name>QWidgetTextControl</name>
     <message>
         <source>&amp;Undo</source>
@@ -3472,8 +3465,8 @@ You can leave your feedback or report an error here:</source>
         <translation>贴图</translation>
     </message>
     <message>
-        <source>The message is not supported on your version of ICQ. Update the app to see the message</source>
-        <translation>无法在您的应用程序版本中显示消息。更新资料</translation>
+        <source>The message is not supported on your version. Update the app to see the message</source>
+        <translation>无法在您的应用版本中显示消息。刷新</translation>
     </message>
 </context>
 <context>
@@ -4592,6 +4585,62 @@ to contact status</source>
         <source>Send Statistic</source>
         <translation>发送统计信息</translation>
     </message>
+    <message>
+        <source>Member limit exceeded (maximum %1)</source>
+        <translation>超出会员限制（最大%1）</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to open external link %1?</source>
+        <translation>您确定要打开外部链接%1吗？</translation>
+    </message>
+    <message>
+        <source>Enable net compression</source>
+        <translation>启用网络请求压缩</translation>
+    </message>
+    <message>
+        <source>Cannot remove %1</source>
+        <translation>无法删除 %1</translation>
+    </message>
+    <message>
+        <source>Cannot block %1</source>
+        <translation>无法阻止 %1</translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1</source>
+        <translation>无法解锁%1</translation>
+    </message>
+    <message>
+        <source>User not found</source>
+        <translation>找不到用户</translation>
+    </message>
+    <message>
+        <source>User is already blocked</source>
+        <translation>用户已被阻止</translation>
+    </message>
+    <message>
+        <source>User not blocked</source>
+        <translation>用户未被阻止</translation>
+    </message>
+    <message>
+        <source>Permission denied</source>
+        <translation>访问被拒绝</translation>
+    </message>
+    <message>
+        <source>Error removing federation user</source>
+        <translation>删除联盟用户时出错</translation>
+    </message>
+    <message>
+        <source>Error blocking federation user</source>
+        <translation>阻止联盟用户时出错</translation>
+    </message>
+    <message>
+        <source>Error unblocking federation user</source>
+        <translation>解除阻止联合身份验证用户时出错</translation>
+    </message>
+    <message>
+        <source>User not a member</source>
+        <translation>用户不是该组的成员</translation>
+    </message>
 </context>
 <context>
     <name>previewer</name>
@@ -5416,6 +5465,10 @@ to contact status</source>
         <source>Disable SMS notifications</source>
         <translation>禁用短信提醒</translation>
     </message>
+    <message>
+        <source>Show notifications when app in focus</source>
+        <translation>在应用程序激活时显示通知</translation>
+    </message>
 </context>
 <context>
     <name>settings_connection</name>
@@ -5617,10 +5670,6 @@ to contact status</source>
 </context>
 <context>
     <name>sidebar</name>
-    <message>
-        <source>Add to chat</source>
-        <translation>添加至聊天</translation>
-    </message>
     <message>
         <source>Notifications</source>
         <translation>通知</translation>
@@ -5967,6 +6016,14 @@ Please edit phone number and try again.</source>
         <source>All subscribers</source>
         <translation>所有订阅者</translation>
     </message>
+    <message>
+        <source>Back</source>
+        <translation>回到</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>关闭</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -6246,6 +6303,14 @@ Please edit phone number and try again.</source>
         <source>Calls</source>
         <translation>来电</translation>
     </message>
+    <message>
+        <source>Structure</source>
+        <translation>结构</translation>
+    </message>
+    <message>
+        <source>Tasks</source>
+        <translation>任务</translation>
+    </message>
 </context>
 <context>
     <name>tab header</name>
@@ -6451,14 +6516,6 @@ Please edit phone number and try again.</source>
         <translation>来电</translation>
     </message>
     <message>
-        <source>Add to call</source>
-        <translation>加入通话</translation>
-    </message>
-    <message>
-        <source>OTHERS</source>
-        <translation>其他</translation>
-    </message>
-    <message>
         <source>Screen</source>
         <translation>屏幕</translation>
     </message>
@@ -6503,10 +6560,6 @@ Please edit phone number and try again.</source>
         <translation>所有小组成员</translation>
     </message>
     <message>
-        <source>CALL MEMBERS</source>
-        <translation>通话参与者</translation>
-    </message>
-    <message>
         <source>Minimize</source>
         <translation>降低</translation>
     </message>
@@ -6541,6 +6594,30 @@ with click</source>
     <message>
         <source>Busy</source>
         <translation>忙</translation>
+    </message>
+    <message>
+        <source>Call members</source>
+        <translation>致电参加者</translation>
+    </message>
+    <message>
+        <source>SHOW ALL</source>
+        <translation>显示所有</translation>
+    </message>
+    <message>
+        <source>HIDE</source>
+        <translation>减少</translation>
+    </message>
+    <message>
+        <source>IN CALL</source>
+        <translation>在电话里</translation>
+    </message>
+    <message>
+        <source>In call</source>
+        <translation>在通话中</translation>
+    </message>
+    <message>
+        <source>CONTACTS</source>
+        <translation>联系方式</translation>
     </message>
 </context>
 <context>
@@ -6679,6 +6756,20 @@ Meeting</source>
     <message>
         <source>SHOW ALL</source>
         <translation>显示所有</translation>
+    </message>
+    <message>
+        <source>Show
+participants</source>
+        <translation>看
+参加者</translation>
+    </message>
+    <message>
+        <source>Show all</source>
+        <translation>全部显示</translation>
+    </message>
+    <message>
+        <source>Show one</source>
+        <translation>显示一个</translation>
     </message>
 </context>
 <context>

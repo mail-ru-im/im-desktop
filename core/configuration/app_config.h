@@ -35,6 +35,7 @@ public:
         sys_crash_handler_enabled = 20,
         watch_gui_memory = 21,
         app_update_interval_secs = 22,
+        net_compression = 23
     };
 
     enum class gdpr_report_to_server_state
@@ -65,6 +66,7 @@ public:
     bool is_show_hidden_themes() const;
     bool is_sys_crash_handler_enabled() const;
     bool is_watch_gui_memory_enabled() const;
+    bool is_net_compression_enabled() const;
 
     bool gdpr_user_has_agreed() const;
     int32_t gdpr_agreement_reported_to_server() const;

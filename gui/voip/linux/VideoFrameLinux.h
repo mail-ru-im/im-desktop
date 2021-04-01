@@ -25,7 +25,7 @@ public:
 
     WId frameId() const override;
     void resizeEvent(QResizeEvent * event) override;
-    void initNative(platform_specific::ViewResize _mode) override;
+    void initNative(platform_specific::ViewResize _mode, QSize _size = {}) override;
     void freeNative() override;
     void setOpacity(double _opacity) override;
 

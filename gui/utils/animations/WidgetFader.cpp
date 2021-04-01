@@ -65,7 +65,7 @@ WidgetFader::WidgetFader(QWidget* _widget, double _lower, double _upper)
     : QGraphicsOpacityEffect(_widget)
     , d(new WidgetFaderPrivate(this))
 {
-    assert(_widget != nullptr);
+    im_assert(_widget != nullptr);
 
     d->initializeAnimation(this, _lower, _upper);
 

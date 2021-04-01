@@ -80,14 +80,14 @@ namespace
     ReportsList unserialize_reports_array(core::iarray *reports_array)
     {
         ReportsList result;
-        assert(reports_array);
+        im_assert(reports_array);
         if (!reports_array)
             return {};
 
         for (core::iarray::size_type i = 0; i < reports_array->size(); ++i)
         {
             core::icollection* report_coll = reports_array->get_at(i)->get_as_collection();
-            assert(report_coll);
+            im_assert(report_coll);
             if (!report_coll)
                 continue;
 

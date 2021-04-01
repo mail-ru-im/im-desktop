@@ -5,6 +5,7 @@
 #include "../MainPage.h"
 #include "../../my_info.h"
 #include "../../utils/utils.h"
+#include "../../utils/features.h"
 #include "../../utils/InterConnector.h"
 #include "../../utils/SChar.h"
 #include "../../utils/gui_coll_helper.h"
@@ -219,14 +220,23 @@ namespace Ui
         auto layout = Utils::emptyVLayout(this);
 
         titleBar_->setTitle(QT_TRANSLATE_NOOP("head", "Chats"));
-        statusWidget_ = new ContactAvatarWidget(this, QString(), QString(), Utils::scale_value(24), true);
-        statusWidget_->SetMode(ContactAvatarWidget::Mode::ChangeStatus);
-        statusWidget_->setStatusTooltipEnabled(true);
-        statusWidget_->setFixedSize(Utils::scale_value(32), Utils::scale_value(32));
-        titleBar_->addCentralWidget(statusWidget_);
+
+        if (!Features::isStatusInAppsNavigationBar())
+        {
+            statusWidget_ = new ContactAvatarWidget(this, QString(), QString(), Utils::scale_value(24), true);
+            statusWidget_->SetMode(ContactAvatarWidget::Mode::ChangeStatus);
+            statusWidget_->setStatusTooltipEnabled(true);
+            statusWidget_->setFixedSize(Utils::scale_value(32), Utils::scale_value(32));
+            Testing::setAccessibleName(statusWidget_, qsl("AS RecentsTab statusButton"));
+            titleBar_->addCentralWidget(statusWidget_);
+
+            connect(MyInfo(), &my_info::received, this, [this]()
+            {
+                statusWidget_->UpdateParams(MyInfo()->aimId(), MyInfo()->friendly());
+            });
+        }
 
         Testing::setAccessibleName(titleBar_, qsl("AS RecentsTab titleBar"));
-        Testing::setAccessibleName(statusWidget_, qsl("AS RecentsTab statusButton"));
         layout->addWidget(titleBar_);
 
         pencil_ = new HeaderTitleBarButton(this);
@@ -243,10 +253,6 @@ namespace Ui
 
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::titleButtonsUpdated, this, &RecentsHeader::titleButtonsUpdated);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::hideSearchDropdown, this, [this]() { pencil_->setActive(false); });
-        connect(MyInfo(), &my_info::received, this, [this]()
-        {
-            statusWidget_->UpdateParams(MyInfo()->aimId(), MyInfo()->friendly());
-        });
 
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated, this, &RecentsHeader::updateTitle);
         connect(get_gui_settings(), &qt_gui_settings::changed, this, [this](const QString& _key)
@@ -272,11 +278,13 @@ namespace Ui
 
     void RecentsHeader::updateTitle()
     {
-        const auto showStatus = Statuses::isStatusEnabled();
-        titleBar_->setTitleVisible(!showStatus);
-        titleBar_->setCentralWidgetVisible(showStatus);
+        if (!Features::isStatusInAppsNavigationBar())
+        {
+            const auto showStatus = Statuses::isStatusEnabled();
+            titleBar_->setTitleVisible(!showStatus);
+            titleBar_->setCentralWidgetVisible(showStatus);
+        }
         refresh();
-        update();
     }
 
     void RecentsHeader::titleButtonsUpdated()
@@ -388,7 +396,7 @@ namespace Ui
 
     void TopPanelWidget::setRegime(const Regime _regime)
     {
-        assert(_regime != Regime::Invalid);
+        im_assert(_regime != Regime::Invalid);
         if (regime_ == _regime)
         {
             updateHeader();
@@ -457,13 +465,10 @@ namespace Ui
 
     void TopPanelWidget::searchActiveChanged(const bool _active)
     {
-        if (const auto mw = Utils::InterConnector::instance().getMainWindow())
+        if (const auto mp = Utils::InterConnector::instance().getMessengerPage())
         {
-            if (const auto mp = mw->getMainPage())
-            {
-                if (_active && mp->isSearchInDialog() && config::get().is_on(config::features::add_contact))
-                    Q_EMIT Utils::InterConnector::instance().showSearchDropdownAddContact();
-            }
+            if (_active && mp->isSearchInDialog() && config::get().is_on(config::features::add_contact))
+                Q_EMIT Utils::InterConnector::instance().showSearchDropdownAddContact();
         }
     }
 

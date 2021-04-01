@@ -56,7 +56,7 @@ namespace Ui
             : ButtonWithCircleHover(_parent, qsl(":/ptt/delete_record"), deleteButtonSize(), Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION))
             , buttonSubmit_(_submit)
         {
-            assert(_submit);
+            im_assert(_submit);
 
             setHoverColor(Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION_HOVER));
             setActiveColor(Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION_ACTIVE));
@@ -363,8 +363,8 @@ namespace Ui
         QWidget* widgets[] = { deleteButton_, histogram_->getButtonWidget(), buttonSubmit_ };
         for (size_t i = 0; i < std::size(widgets) - 1; ++i)
         {
-            assert(widgets[i]);
-            assert(widgets[i + 1]);
+            im_assert(widgets[i]);
+            im_assert(widgets[i + 1]);
             setTabOrder(widgets[i], widgets[i + 1]);
         }
     }

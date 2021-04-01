@@ -13,18 +13,18 @@ platform_win32::GraphicsPanelWin32::GraphicsPanelWin32(
 {
 
     //for (unsigned ix = 0; ix < panels.size(); ix++) {
-    //    assert(parent);
+    //    im_assert(parent);
     //    if (!parent) { continue; }
 
-    //    assert(panels[ix]);
+    //    im_assert(panels[ix]);
     //    if (!panels[ix]) { continue; }
     //
     //    HWND panelView = (HWND)panels[ix]->winId();
-    //    assert(panelView);
+    //    im_assert(panelView);
     //    if (!panelView) { continue; }
 
     //    HWND parentView = (HWND)parent->winId();
-    //    assert(parentView);
+    //    im_assert(parentView);
     //    if (!parentView) { continue; }
     //
     //    ::SetParent(panelView, parentView);

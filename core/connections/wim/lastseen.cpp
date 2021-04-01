@@ -64,7 +64,7 @@ namespace core
         if (bool is_bot = false; tools::unserialize_value(_node, "bot", is_bot) && is_bot)
             state_ = seen_state::bot;
 
-        if (state_ != seen_state::active || (*time_ && time_ < 0))
+        if (state_ != seen_state::active || (time_ && *time_ < 0))
             time_ = {};
     }
 

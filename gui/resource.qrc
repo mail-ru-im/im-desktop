@@ -222,10 +222,22 @@
         <file alias="RoundedMplus_Bold">resources/fonts/RoundedMplus1c-Bold.ttf</file>
         <file alias="RobotoMono_Regular">resources/fonts/RobotoMono-Regular.ttf</file>
         <file alias="RobotoMono_Medium">resources/fonts/RobotoMono-Medium.ttf</file>
+        <file alias="RobotoMono_Bold">resources/fonts/RobotoMono-Bold.ttf</file>
+        <file alias="RobotoMono_Italic">resources/fonts/RobotoMono-Italic.ttf</file>
+        <file alias="RobotoMono_MediumItalic">resources/fonts/RobotoMono-MediumItalic.ttf</file>
+        <file alias="RobotoMono_BoldItalic">resources/fonts/RobotoMono-BoldItalic.ttf</file>
         <file alias="SFProText_Regular">resources/fonts/SFProText-Regular.ttf</file>
         <file alias="SFProText_Medium">resources/fonts/SFProText-Medium.ttf</file>
         <file alias="SFProText_SemiBold">resources/fonts/SFProText-Semibold.ttf</file>
         <file alias="SFProText_Bold">resources/fonts/SFProText-Bold.ttf</file>
+        <file alias="SFProText_RegularItalic">resources/fonts/SFProText-RegularItalic.ttf</file>
+        <file alias="SFProText_MediumItalic">resources/fonts/SFProText-MediumItalic.ttf</file>
+        <file alias="SFProText_SemiBoldItalic">resources/fonts/SFProText-SemiboldItalic.ttf</file>
+        <file alias="SFProText_BoldItalic">resources/fonts/SFProText-BoldItalic.ttf</file>
+        <file alias="SFMono_Medium">resources/fonts/SF-Mono-Medium.otf</file>
+        <file alias="SFMono_MediumItalic">resources/fonts/SF-Mono-MediumItalic.otf</file>
+        <file alias="SFMono_Bold">resources/fonts/SF-Mono-Bold.otf</file>
+        <file alias="SFMono_BoldItalic">resources/fonts/SF-Mono-BoldItalic.otf</file>
     </qresource>
 
     <qresource prefix="/ptt">
@@ -474,6 +486,7 @@
         <file alias="videocall_icon">resources/video_panel/ic_videocall_fill.svg</file>
         <file alias="share_to_chat">resources/video_panel/ic_share_to_chat.svg</file>
         <file alias="add_contact">resources/video_panel/ic_addtocall_fill.svg</file>
+        <file alias="show_participants">resources/video_panel/ic_show_participants.svg</file>
         <file alias="call_share">resources/video_panel/ic_call_share_line.svg</file>
         <file alias="open_masks">resources/video_panel/ic_mask_fill.svg</file>
         <file alias="more_micro">resources/video_panel/ic_more-micro_fill.svg</file>
@@ -833,6 +846,8 @@
         <file alias="cancel">resources/context_menu/cancel_icon.svg</file>
         <file alias="stop">resources/context_menu/stop_icon.svg</file>
         <file alias="favorites">resources/context_menu/favorites_icon.svg</file>
+        <file alias="conference_one_icon">resources/context_menu/picture_in_picture_icon.svg</file>
+        <file alias="conference_all_icon">resources/context_menu/show_in_grid_icon.svg</file>
     </qresource>
     <qresource prefix="/phone_widget">
         <file alias="sim_100">resources/phone_widget/sim_icon_100.png</file>
@@ -856,6 +871,10 @@
         <file alias="settings">resources/tabs/settings_tab_line_icon.svg</file>
         <file alias="expand">resources/tabs/expand_icon.svg</file>
         <file alias="attention">resources/tabs/counter_mark_unread.svg</file>
+        <file alias="tasks">resources/tabs/ic_task.svg</file>
+        <file alias="tasks_active">resources/tabs/ic_tasks_fill.svg</file>
+        <file alias="structure">resources/tabs/ic_structure.svg</file>
+        <file alias="structure_active">resources/tabs/ic_structure_fill.svg</file>
     </qresource>
     <qresource prefix="/header">
         <file alias="add_user">resources/header/add_user_line_icon.svg</file>

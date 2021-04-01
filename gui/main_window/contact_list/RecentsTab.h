@@ -20,6 +20,12 @@ namespace Data
     class Contact;
 }
 
+namespace Tooltip
+{
+    enum class ArrowDirection;
+    enum class ArrowPointPos;
+}
+
 namespace Ui
 {
     class CustomButton;
@@ -160,7 +166,8 @@ namespace Ui
         QRect getAvatarRect(const QModelIndex& _index) const;
 
     protected:
-        virtual void resizeEvent(QResizeEvent* _event) override;
+        void resizeEvent(QResizeEvent* _event) override;
+        void leaveEvent(QEvent* _event) override;
 
     private:
         void updateTabState();
@@ -169,6 +176,9 @@ namespace Ui
         void searchUpOrDownPressed(const bool _isUpPressed);
         void setKeyboardFocused(const bool _isFocused);
         void onMouseMoved(const QPoint& _pos, const QModelIndex& _index);
+
+        void showTooltip(QString _text, QRect _rect, Tooltip::ArrowDirection _arrowDir, Tooltip::ArrowPointPos _arrowPos);
+        void hideTooltip();
 
     private:
         RCLEventFilter* listEventFilter_;
@@ -197,6 +207,9 @@ namespace Ui
 
         QLabel* transitionLabel_;
         QPropertyAnimation* transitionAnim_;
+
+        QTimer* tooltipTimer_;
+        QModelIndex tooltipIndex_;
 
         int currentTab_;
         int prevTab_;

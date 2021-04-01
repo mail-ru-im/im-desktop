@@ -218,7 +218,7 @@ namespace Ui
     {
         for (const auto &page : std::as_const(pages_))
         {
-            assert(page);
+            im_assert(page);
             page->cancelSelection();
         }
     }
@@ -297,7 +297,7 @@ namespace Ui
 
     void HistoryControl::contactSelected(const QString& _aimId, qint64 _messageId, const highlightsV& _highlights, bool _ignoreScroll)
     {
-        assert(!_aimId.isEmpty());
+        im_assert(!_aimId.isEmpty());
 
         const bool contactChanged = (_aimId != current_);
 
@@ -515,7 +515,7 @@ namespace Ui
     {
         if (auto page = getCurrentPage())
         {
-            if (Utils::InterConnector::instance().getMainWindow()->isMainPage())
+            if (Utils::InterConnector::instance().getMainWindow()->isMessengerPageContactDialog())
                 page->pageOpen();
             else
                 page->pageLeave();
@@ -583,7 +583,7 @@ namespace Ui
 
     HistoryControlPage* HistoryControl::getCurrentPage() const
     {
-        assert(stackPages_);
+        im_assert(stackPages_);
 
         return qobject_cast<HistoryControlPage*>(stackPages_->currentWidget());
     }
@@ -662,7 +662,7 @@ namespace Ui
     void HistoryControl::inputTyped()
     {
         auto page = getCurrentPage();
-        assert(page);
+        im_assert(page);
         if (!page)
             return;
 

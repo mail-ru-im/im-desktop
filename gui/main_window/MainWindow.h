@@ -30,6 +30,7 @@ namespace Utils
 
 namespace Ui
 {
+    class AppsPage;
     class MainPage;
     class LoginPage;
     class TermsPrivacyWidget;
@@ -123,7 +124,8 @@ namespace Ui
 
     public Q_SLOTS:
         void showLoginPage(const bool _is_auth_error);
-        void showMainPage();
+        void showAppsPage();
+        void showMessengerPage();
         void showGDPRPage();
         void checkForUpdates();
         void checkForUpdatesInBackground();
@@ -191,7 +193,9 @@ namespace Ui
         //! Same as isUIActive but considering only MainWindow
         bool isUIActiveMainWindow() const;
 
-        bool isMainPage() const;
+        bool isAppsPage() const;
+        bool isMessengerPage() const;
+        bool isMessengerPageContactDialog() const;
 
         int getScreen() const;
         QRect screenGeometry() const;
@@ -208,7 +212,8 @@ namespace Ui
         void closePopups(const Utils::CloseWindowInfo&);
 
         HistoryControlPage* getHistoryPage(const QString& _aimId) const;
-        MainPage* getMainPage() const;
+        MainPage* getMessengerPage() const;
+        AppsPage* getAppsPage() const;
         QLabel* getWindowLogo() const;
 
         void showSidebar(const QString& _aimId);
@@ -225,7 +230,7 @@ namespace Ui
         int getTitleHeight() const;
         bool isMaximized() const;
 
-        void resize(int w, int h);
+        void resize(int _w, int _h);
 
         QWidget* getWidget() const;
 
@@ -250,8 +255,6 @@ namespace Ui
         void userActivity();
         void updateMaximizeButton(bool _isMaximized);
         void needChangeState();
-
-        void resetMainPage();
 
         void saveWindowGeometryAndState(QSize size);
 
@@ -282,24 +285,24 @@ namespace Ui
 
     private:
         QPointer<Previewer::GalleryWidget> gallery_;
-        MainPage* mainPage_;
+        AppsPage* appsPage_;
         LoginPage* loginPage_;
         TermsPrivacyWidget* gdprPage_;
         QApplication* app_;
         TitleWidgetEventFilter* eventFilter_;
         TrayIcon* trayIcon_;
         QPixmap backgroundPixmap_;
-        QWidget *mainWidget_;
-        QVBoxLayout *mainLayout_;
-        QWidget *titleWidget_;
-        QHBoxLayout *titleLayout_;
-        QLabel *logo_;
-        QLabel *title_;
-        QSpacerItem *spacer_;
-        CustomButton *hideButton_;
-        CustomButton *maximizeButton_;
-        CustomButton *closeButton_;
-        MainStackedWidget *stackedWidget_;
+        QWidget* mainWidget_;
+        QVBoxLayout* mainLayout_;
+        QWidget* titleWidget_;
+        QHBoxLayout* titleLayout_;
+        QLabel* logo_;
+        QLabel* title_;
+        QSpacerItem* spacer_;
+        CustomButton* hideButton_;
+        CustomButton* maximizeButton_;
+        CustomButton* closeButton_;
+        MainStackedWidget* stackedWidget_;
         ShadowWindow* Shadow_;
         DialogPlayer* ffplayer_;
         CallQualityStatsMgr* callStatsMgr_;
@@ -331,5 +334,6 @@ namespace Ui
 
         ShowingAgreementInfo showingAgreementInfo_;
         LocalPINWidget* localPINWidget_;
+        const QString validOrFirstLogin_;
     };
 }

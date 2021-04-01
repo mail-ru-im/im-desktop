@@ -6,6 +6,11 @@
 namespace
 {
     constexpr auto maxEmojiLength = 9;
+
+    inline QString getMyteamString()
+    {
+        return qsl("Myteam");
+    }
 }
 
 namespace Emoji
@@ -125,7 +130,13 @@ namespace Emoji
             {u"--", QVariant::fromValue(QString(0x2014))},
             {u"->", QVariant::fromValue(QString(0x2192))},
             {u"<-", QVariant::fromValue(QString(0x2190))},
-            {u"<->", QVariant::fromValue(QString(0x2194))}
+            {u"<->", QVariant::fromValue(QString(0x2194))},
+            {u"myTeam", QVariant::fromValue(getMyteamString())},
+            {u"MyTeam", QVariant::fromValue(getMyteamString())},
+            {u"myTeam", QVariant::fromValue(getMyteamString())},
+            {u"MYteam", QVariant::fromValue(getMyteamString())},
+            {u"MYTEAM", QVariant::fromValue(getMyteamString())},
+            {u"myteam", QVariant::fromValue(getMyteamString())}
         };
 
         return text2emojiMap;

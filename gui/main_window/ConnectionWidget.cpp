@@ -51,7 +51,7 @@ namespace
     std::string round_interval(const long long _min_val, const long long _value,
                                const long long _step, const long long _max_value)
     {
-        assert(_value >= _min_val && _value <= _max_value && _step);
+        im_assert(_value >= _min_val && _value <= _max_value && _step);
         if ((_value < _min_val) || (_value > _max_value) || !_step)
             return std::string();
 
@@ -303,7 +303,7 @@ void ConnectionWidget::setState(const ConnectionState& _state)
         case ConnectionState::stateUnknown:
         {
             animationWidget_->stop();
-            assert(false);
+            im_assert(false);
             break;
         }
     }
@@ -415,7 +415,7 @@ bool ConnectionStateWatcher::shouldStartAggregator(ConnectionState _state) const
 
 void ConnectionStateWatcher::Aggregator::start()
 {
-    assert(!isStarted());
+    im_assert(!isStarted());
     if (isStarted())
         return;
 

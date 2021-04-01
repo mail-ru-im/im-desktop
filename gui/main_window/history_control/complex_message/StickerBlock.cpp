@@ -45,7 +45,7 @@ StickerBlock::StickerBlock(ComplexMessageItem* _parent,  const HistoryControl::S
     , Layout_(nullptr)
     , LastSize_(getGhostSize())
 {
-    assert(Info_);
+    im_assert(Info_);
 
     Testing::setAccessibleName(this, u"AS HistoryPage messageSticker " % QString::number(_parent->getId()));
 
@@ -65,12 +65,12 @@ IItemBlockLayout* StickerBlock::getBlockLayout() const
     return Layout_;
 }
 
-QString StickerBlock::getSelectedText(const bool, const TextDestination) const
+Data::FormattedString StickerBlock::getSelectedText(const bool, const TextDestination) const
 {
     return isSelected() ? QT_TRANSLATE_NOOP("contact_list", "Sticker") : QString();
 }
 
-QString StickerBlock::getSourceText() const
+Data::FormattedString StickerBlock::getSourceText() const
 {
     return QT_TRANSLATE_NOOP("contact_list", "Sticker");
 }
@@ -177,7 +177,7 @@ void StickerBlock::connectStickerSignal(const bool _isConnected)
 
 void StickerBlock::loadSticker()
 {
-    assert(Sticker_.isNull());
+    im_assert(Sticker_.isNull());
 
     const auto sticker = getSticker(Info_->SetId_, Info_->StickerId_);
     if (!sticker)
@@ -202,7 +202,7 @@ void StickerBlock::loadSticker()
 
 void StickerBlock::requestSticker()
 {
-    assert(Sticker_.isNull());
+    im_assert(Sticker_.isNull());
 
     Ui::GetDispatcher()->getSticker(Info_->SetId_, Info_->StickerId_, getStickerSize());
 }
@@ -242,7 +242,7 @@ void StickerBlock::onSticker(const qint32 _error, const QString&, const qint32 _
     if (_stickerId <= 0)
         return;
 
-    assert(_setId > 0);
+    im_assert(_setId > 0);
 
     const auto isMySticker = ((qint32(Info_->SetId_) == _setId) && (qint32(Info_->StickerId_) == _stickerId));
     if (!isMySticker)

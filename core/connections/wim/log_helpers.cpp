@@ -3,6 +3,7 @@
 #include "log_helpers.h"
 
 #include "../../core.h"
+#include "archive/archive_index.h"
 
 namespace core
 {
@@ -18,14 +19,18 @@ namespace core
             g_core->write_data_to_network_log(std::move(bs));
         }
 
-        void write_ignore_download_holes(std::string_view contact, std::string_view reason)
+        void write_ignore_download_holes(std::string_view contact, std::string_view reason, std::optional<archive::archive_hole_error> _error, const std::optional<holes::request>& _request)
         {
+            std::stringstream s;
+            s << "ignore download holes for " << contact << ": " << reason << ";";
+            if (_error)
+                s << " error: " << int(*_error) << ";";
+            if (_request)
+                s << " from: " << _request->get_from() << "; depth: " << _request->get_depth() << "; " << "recursion: " << _request->get_recursion();
+            s << "\r\n";
+
             tools::binary_stream bs;
-            bs.write<std::string_view>("ignore download holes for ");
-            bs.write<std::string_view>(contact);
-            bs.write<std::string_view>(": ");
-            bs.write<std::string_view>(reason);
-            bs.write<std::string_view>("\r\n");
+            bs.write<std::string_view>(s.str());
 
             g_core->write_data_to_network_log(std::move(bs));
         }

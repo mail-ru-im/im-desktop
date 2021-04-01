@@ -82,7 +82,7 @@ namespace Ui
 
             if (!str || !std::strlen(str))
             {
-                assert(!"broken VoipCallsCountMap settings");
+                im_assert(!"broken VoipCallsCountMap settings");
                 break;
             }
 
@@ -113,7 +113,7 @@ namespace Ui
 
             if (ds.status() != QDataStream::Ok)
             {
-                assert("int - int map read fail in qt_gui_settings");
+                im_assert("int - int map read fail in qt_gui_settings");
                 return _def;
             }
 
@@ -228,7 +228,7 @@ namespace Ui
 
         if ((data.size() % sizeof(int32_t)) != 0)
         {
-            assert(false);
+            im_assert(false);
             return _defaultValue;
         }
 
@@ -249,7 +249,7 @@ namespace Ui
 
         if ((data.size() % sizeof(int32_t)) != 0)
         {
-            assert(false);
+            im_assert(false);
             return _defaultValue;
         }
 
@@ -274,7 +274,7 @@ namespace Ui
 
         if (data.size() != sizeof(int32_t[4]))
         {
-            assert(false);
+            im_assert(false);
             return _defaultValue;
         }
 
@@ -291,7 +291,7 @@ namespace Ui
 
         if (data.size() != sizeof(int32_t[4]))
         {
-            assert(false);
+            im_assert(false);
             return _defaultValue;
         }
 
@@ -321,7 +321,7 @@ namespace Ui
         core::iarray* values_array = _collection.get_value_as_array("values");
         if (!values_array)
         {
-            assert(false);
+            im_assert(false);
             return;
         }
 

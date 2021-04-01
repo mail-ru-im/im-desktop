@@ -71,8 +71,8 @@ namespace Ui
 
     void BackgroundWidget::setColor(const QColor& _color)
     {
-        assert(_color.isValid());
-        assert(_color.alpha() == 255);
+        im_assert(_color.isValid());
+        im_assert(_color.alpha() == 255);
         bgColor_ = _color;
         wallpaper_ = QPixmap();
         tiling_ = false;

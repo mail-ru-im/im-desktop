@@ -34,7 +34,7 @@ namespace platform_specific
         virtual void windowWillDeminiaturize() {}
         virtual void windowDidDeminiaturize() {}
         virtual void enableMouseEvents(bool enable) {}
-        virtual void initNative(ViewResize _mode = ViewResize::NoResize) {}
+        virtual void initNative(ViewResize _mode = ViewResize::NoResize, QSize _size = {}) {}
         virtual void freeNative() {}
         virtual void setOpacity(double _opacity){}
     };

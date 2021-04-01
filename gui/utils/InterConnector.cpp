@@ -35,7 +35,7 @@ namespace Utils
 
     InterConnector::~InterConnector()
     {
-        assert(disabledWidgets_.empty());
+        im_assert(disabledWidgets_.empty());
     }
 
     void InterConnector::setMainWindow(Ui::MainWindow* window)
@@ -66,19 +66,28 @@ namespace Utils
 
     Ui::ContactDialog* InterConnector::getContactDialog() const
     {
-        auto mainPage = getMainPage();
+        auto mainPage = getMessengerPage();
         if (!mainPage)
             return nullptr;
 
         return mainPage->getContactDialog();
     }
 
-    Ui::MainPage *InterConnector::getMainPage() const
+    Ui::AppsPage* InterConnector::getAppsPage() const
+    {
+
+        if (!MainWindow_)
+            return nullptr;
+
+        return MainWindow_->getAppsPage();
+    }
+
+    Ui::MainPage *InterConnector::getMessengerPage() const
     {
         if (!MainWindow_)
             return nullptr;
 
-        return MainWindow_->getMainPage();
+        return MainWindow_->getMessengerPage();
     }
 
     bool InterConnector::isInBackground() const
@@ -355,7 +364,7 @@ namespace Utils
         if (iter != disabledWidgets_.end())
             disabledWidgets_.erase(iter);
         else
-            assert(!"not found");
+            im_assert(!"not found");
     }
 
     void InterConnector::clearPartialSelection(const QString& _aimid)
@@ -386,9 +395,9 @@ namespace Utils
         return false;
     }
 
-    void InterConnector::showAddMembersFailuresPopup(QString _chatAimId, std::map<core::add_member_failure, std::vector<QString>> _failures)
+    void InterConnector::showChatMembersFailuresPopup(ChatMembersOperation _operation, QString _chatAimId, std::map<core::chat_member_failure, std::vector<QString>> _failures)
     {
-        if (auto mp = getMainPage())
-            mp->showAddMembersFailuresPopup(std::move(_chatAimId), std::move(_failures));
+        if (auto mp = getMessengerPage())
+            mp->showChatMembersFailuresPopup(_operation, std::move(_chatAimId), std::move(_failures));
     }
 }

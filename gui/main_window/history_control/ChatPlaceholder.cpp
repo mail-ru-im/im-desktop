@@ -97,7 +97,7 @@ namespace Ui
 
     void ChatPlaceholderAvatar::updatePixmap()
     {
-        assert(state_ != PlaceholderState::hidden);
+        im_assert(state_ != PlaceholderState::hidden);
         if (state_ == PlaceholderState::hidden)
             return;
 
@@ -136,7 +136,7 @@ namespace Ui
     {
         if (state_ != _state)
         {
-            assert(_state != PlaceholderState::hidden);
+            im_assert(_state != PlaceholderState::hidden);
             state_ = _state;
             updatePixmap();
         }

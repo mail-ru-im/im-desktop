@@ -215,7 +215,7 @@ namespace Logic
 
         const auto curSelected = Logic::getContactListModel()->selectedContact();
         const auto w = Utils::InterConnector::instance().getMainWindow();
-        const auto mainPageOpened = w && w->isUIActive() && w->isMainPage();
+        const auto mainPageOpened = w && w->isUIActive() && w->isMessengerPageContactDialog();
 
         auto processDlgState = [this, &curSelected, &updatedItems, mainPageOpened](const auto& dlgState)
         {

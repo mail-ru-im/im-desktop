@@ -43,12 +43,12 @@ QRect TextBlockLayout::evaluateContentLtr(const QRect &widgetGeometry) const
 
 QSize TextBlockLayout::setTextControlGeometry(const QRect &contentLtr)
 {
-    assert(contentLtr.width() > 0);
+    im_assert(contentLtr.width() > 0);
 
     if (const auto contentWidth = contentLtr.width(); contentWidth != prevWidth_)
     {
         auto block = blockWidget<TextBlock>();
-        assert(block);
+        im_assert(block);
 
         if (block && block->textUnit_)
         {
@@ -58,27 +58,28 @@ QSize TextBlockLayout::setTextControlGeometry(const QRect &contentLtr)
             QSize textSize(maxLineWidth, block->textUnit_->cachedSize().height());
 
             const auto cm = block->getParentComplexMessage();
-            if (cm && cm->isLastBlock(block) && block->textUnit_->getLineCount() > 0)
+            if (cm && cm->isLastBlock(block) && block->textUnit_->getLinesCount() > 0)
             {
-                const auto oneLiner = block->textUnit_->getLineCount() == 1;
-                const auto textWidth = oneLiner ?
-                    block->textUnit_->desiredWidth()
+                const auto oneLiner = block->textUnit_->getLinesCount() == 1;
+                const auto mightStretch = block->textUnit_->mightStretchForLargerWidth();
+
+                const auto textWidth = oneLiner && !mightStretch
+                    ? block->textUnit_->desiredWidth()
                     : maxLineWidth;
                 textSize.setWidth(textWidth);
 
                 if (const auto timeWidget = cm->getTimeWidget())
                 {
                     const auto timeWidth = timeWidget->width() + MessageStyle::getTimeLeftSpacing();
-                    if (oneLiner && contentWidth - textWidth >= timeWidth)
+                    if (oneLiner && !mightStretch && contentWidth - textWidth >= timeWidth)
                         textSize.rwidth() += timeWidth;
-                    else if (textWidth - block->textUnit_->getLastLineWidth() < timeWidth)
+                    else if (mightStretch || (textWidth - block->textUnit_->getLastLineWidth() < timeWidth))
                         textSize.rheight() += MessageStyle::getShiftedTimeTopMargin() + timeWidget->height();
                 }
             }
 
             cachedSize_ = textSize;
             prevWidth_ = contentWidth;
-
         }
     }
 

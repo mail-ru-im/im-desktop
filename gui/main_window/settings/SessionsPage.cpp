@@ -213,7 +213,7 @@ namespace Ui
 
     void SessionsPage::updateSessions(const std::vector<Data::SessionInfo>& _sessions)
     {
-        assert(!_sessions.empty());
+        im_assert(!_sessions.empty());
         if (_sessions.empty())
             return;
 

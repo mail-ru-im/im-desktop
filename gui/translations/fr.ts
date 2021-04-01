@@ -33,13 +33,6 @@
     </message>
 </context>
 <context>
-    <name>QObject</name>
-    <message>
-        <source>Unable to start the server: %1.</source>
-        <translation>Unable to start the server: %1.</translation>
-    </message>
-</context>
-<context>
     <name>QWidgetTextControl</name>
     <message>
         <source>&amp;Undo</source>
@@ -499,11 +492,11 @@ Vous pouvez laisser vos commentaires ou signaler une erreur ici:</translation>
     </message>
     <message>
         <source>You missed call from %1</source>
-        <translation>Vous avez manqué un appel de : %1</translation>
+        <translation>Vous avez manqué un appel de&#xa0;: %1</translation>
     </message>
     <message>
         <source>Call from %1</source>
-        <translation>Appel de : %1</translation>
+        <translation>Appel de&#xa0;: %1</translation>
     </message>
     <message>
         <source>You called %1</source>
@@ -3472,8 +3465,8 @@ Vous pouvez laisser vos commentaires ou signaler une erreur ici:</translation>
         <translation>Autocollant</translation>
     </message>
     <message>
-        <source>The message is not supported on your version of ICQ. Update the app to see the message</source>
-        <translation>Impossible d&apos;afficher un message dans votre version de l&apos;application. Mettre à jour</translation>
+        <source>The message is not supported on your version. Update the app to see the message</source>
+        <translation>Impossible d&apos;afficher le message dans votre version de l&apos;application. Rafraîchir</translation>
     </message>
 </context>
 <context>
@@ -4098,7 +4091,7 @@ contact</translation>
     </message>
     <message>
         <source>Do you really want mark all as read?</source>
-        <translation>Voulez-vous vraiment tout marquer comme lu ?</translation>
+        <translation>Voulez-vous vraiment tout marquer comme lu&#xa0;?</translation>
     </message>
     <message>
         <source>Mark all as read</source>
@@ -4592,6 +4585,62 @@ contact</translation>
         <source>Send Statistic</source>
         <translation>Envoyer des statistiques</translation>
     </message>
+    <message>
+        <source>Member limit exceeded (maximum %1)</source>
+        <translation>Limite d&apos;adhésion dépassée (max %1)</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to open external link %1?</source>
+        <translation>Voulez-vous vraiment ouvrir le lien externe %1?</translation>
+    </message>
+    <message>
+        <source>Enable net compression</source>
+        <translation>Activer la compression des requêtes réseau</translation>
+    </message>
+    <message>
+        <source>Cannot remove %1</source>
+        <translation>Échec de la suppression de %1</translation>
+    </message>
+    <message>
+        <source>Cannot block %1</source>
+        <translation>Échec du blocage de %1</translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1</source>
+        <translation>Échec du déverrouillage de %1</translation>
+    </message>
+    <message>
+        <source>User not found</source>
+        <translation>L&apos;utilisateur est introuvable</translation>
+    </message>
+    <message>
+        <source>User is already blocked</source>
+        <translation>L&apos;utilisateur est déjà bloqué</translation>
+    </message>
+    <message>
+        <source>User not blocked</source>
+        <translation>L&apos;utilisateur n&apos;est pas bloqué</translation>
+    </message>
+    <message>
+        <source>Permission denied</source>
+        <translation>L&apos;accès est refusé</translation>
+    </message>
+    <message>
+        <source>Error removing federation user</source>
+        <translation>Erreur lors de la suppression de l&apos;utilisateur de la fédération</translation>
+    </message>
+    <message>
+        <source>Error blocking federation user</source>
+        <translation>Erreur lors du blocage de l&apos;utilisateur de la fédération</translation>
+    </message>
+    <message>
+        <source>Error unblocking federation user</source>
+        <translation>Erreur lors du déblocage d&apos;un utilisateur de la fédération</translation>
+    </message>
+    <message>
+        <source>User not a member</source>
+        <translation>L&apos;utilisateur n&apos;est pas membre de ce groupe</translation>
+    </message>
 </context>
 <context>
     <name>previewer</name>
@@ -4893,7 +4942,7 @@ contact</translation>
     </message>
     <message>
         <source>Block contact</source>
-        <translation>Bloquer se contact</translation>
+        <translation>Bloquer&#xa0;se contact</translation>
     </message>
     <message>
         <source>Block contact and report</source>
@@ -5416,6 +5465,10 @@ contact</translation>
         <source>Disable SMS notifications</source>
         <translation>Désactiver les alertes SMS</translation>
     </message>
+    <message>
+        <source>Show notifications when app in focus</source>
+        <translation>Afficher les notifications lorsque l&apos;application est active</translation>
+    </message>
 </context>
 <context>
     <name>settings_connection</name>
@@ -5617,10 +5670,6 @@ contact</translation>
 </context>
 <context>
     <name>sidebar</name>
-    <message>
-        <source>Add to chat</source>
-        <translation>Ajouter au chat</translation>
-    </message>
     <message>
         <source>Notifications</source>
         <translation>Notifications</translation>
@@ -5967,6 +6016,14 @@ Modifiez le numéro et réessayez.</translation>
         <source>All subscribers</source>
         <translation>Tous les abonnés</translation>
     </message>
+    <message>
+        <source>Back</source>
+        <translation>Retour</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Fermer</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -6246,6 +6303,14 @@ Modifiez le numéro et réessayez.</translation>
         <source>Calls</source>
         <translation>Appels</translation>
     </message>
+    <message>
+        <source>Structure</source>
+        <translation>Structure</translation>
+    </message>
+    <message>
+        <source>Tasks</source>
+        <translation>Tâches</translation>
+    </message>
 </context>
 <context>
     <name>tab header</name>
@@ -6451,14 +6516,6 @@ Modifiez le numéro et réessayez.</translation>
         <translation>Appel entrant</translation>
     </message>
     <message>
-        <source>Add to call</source>
-        <translation>Ajouter pour appeler</translation>
-    </message>
-    <message>
-        <source>OTHERS</source>
-        <translation>AUTRES</translation>
-    </message>
-    <message>
         <source>Screen</source>
         <translation>Ecrã</translation>
     </message>
@@ -6503,10 +6560,6 @@ Modifiez le numéro et réessayez.</translation>
         <translation>TOUS LES MEMBRES DU GROUPE</translation>
     </message>
     <message>
-        <source>CALL MEMBERS</source>
-        <translation>APPELER LES PARTICIPANTS</translation>
-    </message>
-    <message>
         <source>Minimize</source>
         <translation>Minimiser</translation>
     </message>
@@ -6541,6 +6594,30 @@ par clic</translation>
     <message>
         <source>Busy</source>
         <translation>Occupé</translation>
+    </message>
+    <message>
+        <source>Call members</source>
+        <translation>Appelez les participants</translation>
+    </message>
+    <message>
+        <source>SHOW ALL</source>
+        <translation>AFFICHER TOUT</translation>
+    </message>
+    <message>
+        <source>HIDE</source>
+        <translation>CACHER</translation>
+    </message>
+    <message>
+        <source>IN CALL</source>
+        <translation>DANS L&apos;APPEL</translation>
+    </message>
+    <message>
+        <source>In call</source>
+        <translation>Dans l&apos;appel</translation>
+    </message>
+    <message>
+        <source>CONTACTS</source>
+        <translation>CONTACTS</translation>
     </message>
 </context>
 <context>
@@ -6679,6 +6756,20 @@ Meeting</source>
     <message>
         <source>SHOW ALL</source>
         <translation>AFFICHER TOUT</translation>
+    </message>
+    <message>
+        <source>Show
+participants</source>
+        <translation>Voir
+participants</translation>
+    </message>
+    <message>
+        <source>Show all</source>
+        <translation>Tout afficher</translation>
+    </message>
+    <message>
+        <source>Show one</source>
+        <translation>Afficher un</translation>
     </message>
 </context>
 <context>

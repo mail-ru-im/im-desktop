@@ -476,6 +476,8 @@ Q_SIGNALS:
 
         void sendStickerToContact(const QString& _contact, const QString& _stickerId);
         void sendMessageToContact(const QString& _contact, const QString& _text, const Data::QuotesVec& _quotes = {}, const Data::MentionMap& _mentions = {});
+        void sendMessage(const Data::MessageBuddy& _buddy);
+        void updateMessage(const Data::MessageBuddy& _buddy);
 
         struct MessageData
         {
@@ -784,6 +786,8 @@ Q_SIGNALS:
         void onChatJoinResult(const int64_t _seq, core::coll_helper _params);
 
         void onAddMembersResult(const int64_t _seq, core::coll_helper _params);
+        void onRemoveMembersResult(const int64_t _seq, core::coll_helper _params);
+
 
         void onInviterBlacklistSearchResult(const int64_t _seq, core::coll_helper _params);
         void onInviterBlacklistedCLContacts(const int64_t _seq, core::coll_helper _params);

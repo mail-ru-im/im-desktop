@@ -111,7 +111,7 @@ public:
     ~ProfileBlock() override;
 
     static QString extractProfileId(const QString& _link);
-    QString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
+    Data::FormattedString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
 
 protected:
     QString getButtonText() const override;
@@ -142,10 +142,10 @@ public:
     PhoneProfileBlock(ComplexMessageItem *_parent, const QString& _name, const QString& _phone, const QString& _sn);
     ~PhoneProfileBlock() override;
 
-    QString getSourceText() const override;
+    Data::FormattedString getSourceText() const override;
     QString getTextForCopy() const override;
 
-    QString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
+    Data::FormattedString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
 
     bool hasSourceText() const override { return false; }
 

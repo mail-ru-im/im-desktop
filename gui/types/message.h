@@ -2,6 +2,7 @@
 
 #include "../../corelib/core_face.h"
 #include "../../common.shared/patch_version.h"
+#include "../../common.shared/message_processing/text_formatting.h"
 #include "../types/typing.h"
 #include "../main_window/mediatype.h"
 #include "reactions.h"
@@ -87,6 +88,106 @@ namespace Data
         style getStyle() const;
     };
 
+
+    class FormattedStringView;
+    struct FormattedString
+    {
+    public:
+        FormattedString() = default;
+        FormattedString(const QString& _string, const core::data::format::string_formatting& _format = {})
+            : string_(_string), format_(_format) { }
+
+        bool hasFormatting() const { return !format_.empty(); }
+        void replace(QChar _old, QChar _new) { string_.replace(_old, _new); }
+        bool isEmpty() const { return string_.isEmpty(); }
+        const QString& string() const { return string_; }
+        const core::data::format::string_formatting& formatting() const { return format_; }
+        core::data::format::string_formatting& formatting() { return format_; }
+        int size() const { return string_.size(); }
+
+        bool startsWith(const QString& _prefix) const { return string_.startsWith(_prefix); }
+        bool endsWith(const QString& _suffix) const { return string_.endsWith(_suffix); }
+
+        bool startsWith(QChar _ch) const { return string_.startsWith(_ch); }
+        bool endsWith(QChar _ch) const { return string_.endsWith(_ch); }
+
+        bool operator!=(const FormattedString& _other);
+
+        void reserve(int _size) { string_.reserve(_size); }
+
+        void chop(int _n);
+
+        FormattedString& operator+=(QChar _ch) { string_ += _ch; return *this; }
+        FormattedString& operator+=(const QString& _other) { string_ += _other; return *this; }
+        FormattedString& operator+=(const FormattedString& _other);
+        FormattedString& operator+=(const FormattedStringView& _other);
+
+        inline void clear() { string_.clear(); format_.clear(); }
+        inline void clearFormat() { format_.clear(); }
+        void setFormatting(const core::data::format::string_formatting& _formatting);
+
+    protected:
+        void fixInvalidRanges();
+
+        QString string_;
+        core::data::format::string_formatting format_;
+    };
+
+    void serializeFormat(const core::data::format::string_formatting& _format, core::icollection* _collection, std::string_view _name);
+    void serializeFormat(const core::data::format::string_formatting& _format, core::coll_helper& _coll, std::string_view _name);
+
+    // TODO-FORMAT-IMPLEMENT
+    //! Calls to this function mark places to be replaced in the cource of further development of formatted text
+    QString stubFromFormattedString(const FormattedString& _string);
+
+    //! NB: FormattedStringView doesn't take care of keeping any ownership
+    class FormattedStringView
+    {
+    public:
+        FormattedStringView() : string_(&emptyString), offset_(0), size_(0) {}
+
+        FormattedStringView(const FormattedString& _string, int _offset = 0, int _size = INT_MAX);
+
+        FormattedStringView& operator=(const FormattedStringView& _other) = default;
+
+        inline FormattedStringView mid(int _offset, int _size = -1) const { return { *string_, _offset + offset_, _size == -1 ? std::max(0, size_ - _offset) : _size }; }
+
+        inline FormattedStringView left(int _size) const { return mid(0, _size); }
+
+        [[nodiscard]] FormattedStringView trimmed() const;
+
+        bool tryToAppend(const FormattedStringView& _other);
+
+        bool tryToAppend(QChar _ch);
+
+        bool tryToAppend(QStringView _text);
+
+        QStringView string() const;
+
+        bool hasFormatting() const;
+
+        bool isEmpty() const { return size_ == 0 || string_->isEmpty(); }
+
+        inline int size() const { return size_; }
+
+        inline int indexOf(QChar _char) const { return string().indexOf(_char); }
+
+        std::vector<core::data::format::format> getStyles() const;
+
+        FormattedString toFormattedString() const;
+
+    protected:
+        [[nodiscard]] core::data::format::format_range cutRangeToFitView(core::data::format::format_range _range) const;
+
+    protected:
+        static const FormattedString emptyString;
+
+        const FormattedString* string_ = nullptr;
+        int offset_;
+        int size_;
+    };
+
+
     using MentionMap = std::map<QString, QString, Utils::StringComparator>; // uin - friendly
     using FilesPlaceholderMap = std::map<QString, QString, Utils::StringComparator>; // link - placeholder
 
@@ -161,9 +262,11 @@ namespace Data
 
         const HistoryControl::StickerInfoSptr& GetSticker() const;
 
-        const QString& GetSourceText() const;
+        const FormattedString& GetSourceText() const;
 
         QString GetText() const;
+
+        inline const FormattedString& getFormattedText() const { return Text_; }
 
         qint32 GetTime() const;
 
@@ -221,7 +324,11 @@ namespace Data
 
         void SetSticker(const HistoryControl::StickerInfoSptr &sticker);
 
-        void SetText(const QString &text);
+        void SetFormatting(const core::data::format::string_formatting& _formatting);
+
+        //void SetText(const QString &text);
+
+        void SetText(const FormattedString& _text);
 
         void SetTime(const qint32 time);
 
@@ -236,7 +343,12 @@ namespace Data
         static qint64 makePendingId(const QString& _internalId);
 
         void SetDescription(const QString& _description);
-        const QString& GetDescription() const;
+
+        void SetDescription(const FormattedString& _description);
+
+        inline void SetDescriptionFormat(const core::data::format::string_formatting& _format) { description_.setFormatting(_format); }
+
+        const FormattedString& GetDescription() const;
 
         void SetUrl(const QString& _url);
         const QString& GetUrl() const;
@@ -250,6 +362,8 @@ namespace Data
 
         void setHideEdit(bool _hideEdit);
         bool hideEdit() const;
+
+        void serialize(core::icollection* _collection) const;
 
         QString AimId_;
         QString InternalId_;
@@ -278,13 +392,13 @@ namespace Data
     private:
         qint64 LastId_;
 
-        QString Text_;
+        FormattedString Text_;
 
         QString ChatSender_;
 
         QDate Date_;
 
-        QString Desription_;
+        FormattedString description_;
 
         QString Url_;
 
@@ -413,14 +527,14 @@ namespace Data
             other = 100
         };
 
-        QString text_;
+        FormattedString text_;
         QString senderId_;
         QString chatId_;
         QString senderFriendly_;
         QString chatStamp_;
         QString chatName_;
         QString url_;
-        QString description_;
+        FormattedString description_;
         QString quoterId_;    // if exists, it is an id of the user quoted the message
         qint32 time_;
         qint64 msgId_;
@@ -536,7 +650,7 @@ namespace Data
         void mergeMembers(const std::vector<QString>& _members);
         void calcCount();
 
-        QString getFriendly(bool _withNumbers = true) const;
+        QString getFriendly() const;
         QString getServiceAimid() const;
         QString getButtonsText() const;
 
@@ -546,6 +660,7 @@ namespace Data
         const std::vector<QString>& getMembers() const;
 
         qint32 time() const;
+        int count() const;
 
         bool isSingleItem() const;
         bool isOutgoing() const;

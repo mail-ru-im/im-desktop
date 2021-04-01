@@ -112,5 +112,17 @@ namespace Features
 
     bool removeDeletedFromNotifications();
 
+    bool longPathTooltipsAllowed();
+
+    bool isFormattingInBubblesEnabled();
+
+    bool isFormattingInInputEnabled();
+
     QString statusBannerEmojis();
+
+    bool isAppsNavigationBarVisible();
+    bool isTabBarVisible();
+    bool isStatusInAppsNavigationBar();
+
+    bool isThreadsEnabled();
 }

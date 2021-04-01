@@ -195,7 +195,7 @@ void GeneralSettingsWidget::Creator::initAppearance(QWidget* _parent)
     auto it_idx = std::find(sc_int.begin(), sc_int.end(), currentValuePersentage);
     if (it_idx == sc_int.end())
     {
-        assert(false);
+        im_assert(false);
     }
     else
         index = std::distance(sc_int.begin(), it_idx);

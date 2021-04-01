@@ -12,6 +12,12 @@ namespace Logic
     class ContactListItemDelegate;
 }
 
+namespace Tooltip
+{
+    enum class ArrowDirection;
+    enum class ArrowPointPos;
+}
+
 namespace Ui
 {
     class ContextMenu;
@@ -114,13 +120,13 @@ namespace Ui
         void setChecked(bool _checked);
         bool isChecked() const;
 
-        virtual void setEnabled(bool _isEnabled) override;
+        void setEnabled(bool _isEnabled) override;
 
     protected:
-        virtual void resizeEvent(QResizeEvent* _event) override;
+        void resizeEvent(QResizeEvent* _event) override;
 
-        virtual void mousePressEvent(QMouseEvent* _event) override;
-        virtual void mouseReleaseEvent(QMouseEvent* _event) override;
+        void mousePressEvent(QMouseEvent* _event) override;
+        void mouseReleaseEvent(QMouseEvent* _event) override;
 
     private:
         QPoint clickedPoint_;
@@ -178,6 +184,7 @@ namespace Ui
         void friendlyChanged(const QString& _aimId, const QString& _friendlyName);
         void statusChanged(const QString& _aimid);
         void stateChanged();
+
     private:
         void loadAvatar();
         void setBadgeRect();
@@ -186,6 +193,12 @@ namespace Ui
         void paintEnabled(QPainter& painter);
         void paintDisabled(QPainter& painter);
         QPoint avatarTopLeft() const;
+
+        QRect getNameRect() const;
+
+        bool isTooltipActivated() const;
+        void showTooltip();
+        void hideTooltip();
 
     private:
         QBasicTimer timer_;
@@ -209,6 +222,9 @@ namespace Ui
 
         QRect badgeRect_;
         StatusPlate* statusPlate_;
+
+        QTimer* tooltipTimer_;
+        bool tooltipActivated_;
     };
 
     class StatusPlate : public QObject
@@ -299,6 +315,8 @@ namespace Ui
         void setColor(const QColor& _color);
         void setLinkColor(const QColor& _color);
 
+        void disableCommands();
+
         void clearMenuActions();
         void addMenuAction(const QString& _iconPath, const QString& _name, const QVariant& _data);
         void makeCopyable();
@@ -361,6 +379,7 @@ namespace Ui
         void setText(const QString& _text, const QColor& _color = QColor());
         void setTextLinkColor(const QColor& _color);
         void setHeaderLinkColor(const QColor& _color);
+        void disableCommandsInText();
         bool isVisible() const;
         QString getSelectedText() const;
 
@@ -472,13 +491,16 @@ namespace Ui
         MembersWidget(QWidget* _parent, Logic::ChatMembersModel* _model, Logic::ContactListItemDelegate* _delegate, int _maxMembersCount);
         void clearCache();
 
+        void setScrollArea(QScrollArea* _scrollArea);
+
     protected:
-        virtual void paintEvent(QPaintEvent* _event) override;
-        virtual void resizeEvent(QResizeEvent* _event) override;
-        virtual void mouseMoveEvent(QMouseEvent* _event) override;
-        virtual void mousePressEvent(QMouseEvent* _event) override;
-        virtual void mouseReleaseEvent(QMouseEvent* _event) override;
-        virtual void leaveEvent(QEvent* _event) override;
+        void paintEvent(QPaintEvent* _event) override;
+        void resizeEvent(QResizeEvent* _event) override;
+        void mouseMoveEvent(QMouseEvent* _event) override;
+        void mousePressEvent(QMouseEvent* _event) override;
+        void mouseReleaseEvent(QMouseEvent* _event) override;
+        void wheelEvent(QWheelEvent* _event) override;
+        void leaveEvent(QEvent* _event) override;
 
     private Q_SLOTS:
         void dataChanged(const QModelIndex&, const QModelIndex&, const QVector<int>&);
@@ -486,6 +508,9 @@ namespace Ui
 
     private:
         void updateSize();
+
+        void showTooltip(QString _text, QRect _rect, Tooltip::ArrowDirection _arrowDir, Tooltip::ArrowPointPos _arrowPos);
+        void hideTooltip();
 
     private:
         Logic::ChatMembersModel* model_;
@@ -495,6 +520,10 @@ namespace Ui
         int memberCount_;
         int hovered_;
         QPoint clicked_;
+        QScrollArea* scrollArea_;
+
+        QTimer* tooltipTimer_;
+        QModelIndex tooltipIndex_;
     };
 
     class ColoredButton : public QWidget
@@ -639,5 +668,16 @@ namespace Ui
         Ui::CheckBox* checkbox_;
         std::unique_ptr<Ui::TextRendering::TextUnit> label_;
         bool removeMessages_;
+    };
+
+    class SidebarListItem
+    {
+    public:
+        virtual ~SidebarListItem() = default;
+    protected:
+        void markDrew() { drew_ = true; }
+        bool isDrew() const { return drew_; }
+    private:
+        bool drew_ = false;
     };
 }

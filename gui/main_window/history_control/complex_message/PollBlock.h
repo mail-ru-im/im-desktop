@@ -24,7 +24,7 @@ public:
     IItemBlockLayout* getBlockLayout() const override;
 
     bool isAllSelected() const override { return isSelected(); }
-    QString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
+    Data::FormattedString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
 
     bool updateFriendly(const QString& _aimId, const QString& _friendly) override { return true; }
 
@@ -43,7 +43,7 @@ public:
 
     void updateWith(IItemBlock* _other) override;
 
-    QString getSourceText() const override;
+    Data::FormattedString getSourceText() const override;
 
     bool onMenuItemTriggered(const QVariantMap& _params) override;
     MenuFlags getMenuFlags(QPoint p) const override;

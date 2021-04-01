@@ -11,14 +11,14 @@ namespace Utils
         : HeightLines_(heightLines)
         , LineHeight_(lineHeight)
     {
-        assert(HeightLines_ > 0);
-        assert(LineHeight_ > 0);
+        im_assert(HeightLines_ > 0);
+        im_assert(LineHeight_ > 0);
     }
 
     int32_t TextHeightMetrics::getHeightPx() const
     {
-        assert(HeightLines_ > 0);
-        assert(LineHeight_ > 0);
+        im_assert(HeightLines_ > 0);
+        im_assert(LineHeight_ > 0);
 
         return (HeightLines_ * LineHeight_);
     }
@@ -35,24 +35,24 @@ namespace Utils
 
     bool TextHeightMetrics::isEmpty() const
     {
-        assert(HeightLines_ > 0);
+        im_assert(HeightLines_ > 0);
         return (HeightLines_ <= 0);
     }
 
     TextHeightMetrics TextHeightMetrics::linesNumberChanged(const int32_t delta)
     {
-        assert(delta != 0);
+        im_assert(delta != 0);
 
         const auto newHeightLines = (getHeightLines() + delta);
-        assert(newHeightLines > 0);
+        im_assert(newHeightLines > 0);
 
         return TextHeightMetrics(newHeightLines, getLineHeight());
     }
 
     int applyMultilineTextFix(const int32_t textHeight, const int32_t contentHeight)
     {
-        assert(textHeight > 0);
-        assert(contentHeight > 0);
+        im_assert(textHeight > 0);
+        im_assert(contentHeight > 0);
         if constexpr (platform::is_windows())
         {
             const auto isMultiline = (textHeight >= Utils::scale_value(38));
@@ -92,7 +92,7 @@ namespace Utils
 
     TextHeightMetrics evaluateTextHeightMetrics(const QString &text, const int32_t textWidth, const QFontMetrics &fontMetrics)
     {
-        assert(textWidth > 0);
+        im_assert(textWidth > 0);
 
         // preliminary fix of division by zero
         // todo: replace the default value when required
@@ -107,7 +107,7 @@ namespace Utils
         const auto textRect = fontMetrics.boundingRect(textLtr, Qt::AlignLeft | Qt::TextWordWrap, text);
         const auto textHeight = textRect.height();
         const auto linesNumber = (1 + ((textHeight - 1) / fontHeight));
-        assert(linesNumber >= 1);
+        im_assert(linesNumber >= 1);
 
         return TextHeightMetrics(linesNumber, fontHeight);
     }
@@ -124,8 +124,8 @@ namespace Utils
 
     QString limitLinesNumber(const QString &text, const int32_t textWidth, const QFontMetrics &fontMetrics, const int32_t maxLinesNumber, const QString &ellipsis)
     {
-        assert(textWidth > fontMetrics.averageCharWidth());
-        assert(maxLinesNumber >= 1);
+        im_assert(textWidth > fontMetrics.averageCharWidth());
+        im_assert(maxLinesNumber >= 1);
 
         const auto nothingToLimit = (
             text.isEmpty() ||
@@ -146,13 +146,13 @@ namespace Utils
         }
 
         const auto maxToActualRatio = ((double)maxLinesNumber / (double)actualLinesNumber);
-        assert(maxToActualRatio < 1);
+        im_assert(maxToActualRatio < 1);
 
         auto limitedTextLength = (int32_t)(text.length() * maxToActualRatio) + 1;
-        assert(limitedTextLength > 0);
+        im_assert(limitedTextLength > 0);
 
         const auto ellipsisLength = ellipsis.length();
-        assert(ellipsisLength > 0);
+        im_assert(ellipsisLength > 0);
 
         limitedTextLength = std::max(limitedTextLength - ellipsisLength, 0);
         if (limitedTextLength == 0)
@@ -171,15 +171,15 @@ namespace Utils
             }
         }
 
-        assert(!"something goes wrong");
+        im_assert(!"something goes wrong");
         return text;
     }
 
     QString limitLinesNumberSlow(const QString &text, const int32_t textWidth, const QFontMetrics &fontMetrics, const int32_t maxLinesNumber, const QString &ellipsis)
     {
-        assert(!text.isEmpty());
-        assert(textWidth > fontMetrics.averageCharWidth());
-        assert(maxLinesNumber > 1);
+        im_assert(!text.isEmpty());
+        im_assert(textWidth > fontMetrics.averageCharWidth());
+        im_assert(maxLinesNumber > 1);
 
         if (textWidth <= fontMetrics.averageCharWidth())
         {

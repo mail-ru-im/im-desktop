@@ -167,7 +167,7 @@ void Ui::IncomingCallWindow::showFrame()
 {
 #ifndef STRIP_VOIP
     rootWidget_->initNative();
-    assert(rootWidget_->frameId());
+    im_assert(rootWidget_->frameId());
     if (rootWidget_->frameId())
     {
         instances_.push_back(this);
@@ -245,7 +245,7 @@ void Ui::IncomingCallWindow::onVoipCallNameChanged(const voip_manager::ContactsL
 
 void Ui::IncomingCallWindow::onAcceptVideoClicked()
 {
-    assert(!contact_.empty());
+    im_assert(!contact_.empty());
     hideFrame();
     if (!contact_.empty())
     {
@@ -255,7 +255,7 @@ void Ui::IncomingCallWindow::onAcceptVideoClicked()
 
 void Ui::IncomingCallWindow::onAcceptAudioClicked()
 {
-    assert(!contact_.empty());
+    im_assert(!contact_.empty());
     hideFrame();
     if (!contact_.empty())
     {
@@ -266,7 +266,7 @@ void Ui::IncomingCallWindow::onAcceptAudioClicked()
 
 void Ui::IncomingCallWindow::onDeclineButtonClicked()
 {
-    assert(!contact_.empty());
+    im_assert(!contact_.empty());
     hideFrame();
     if (!contact_.empty())
     {
@@ -293,7 +293,7 @@ void Ui::IncomingCallWindow::updateTitle()
             friendlyNames.push_back(Logic::GetFriendlyContainer()->getFriendly(QString::fromStdString(contacts_[ix].contact)).toStdString());
 
         auto name = voip_proxy::VoipController::formatCallName(friendlyNames, QT_TRANSLATE_NOOP("voip_pages", "and").toUtf8().constData());
-        assert(!name.empty());
+        im_assert(!name.empty());
 
         header_->setTitle(name.c_str());
     }

@@ -132,19 +132,19 @@ statistics::~statistics()
 
 void statistics::start_save()
 {
-    save_timer_ =  g_core->add_timer([wr_this = weak_from_this()]
+    save_timer_ = g_core->add_timer({ [wr_this = weak_from_this()]
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
             return;
 
         ptr_this->save_if_needed();
-    }, save_to_file_interval);
+    } }, save_to_file_interval);
 }
 
 void statistics::delayed_start_send()
 {
-    start_send_timer_ = g_core->add_timer([wr_this = weak_from_this()]
+    start_send_timer_ = g_core->add_timer({ [wr_this = weak_from_this()]
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -153,31 +153,31 @@ void statistics::delayed_start_send()
         ptr_this->start_send();
         g_core->stop_timer(ptr_this->start_send_timer_);
 
-    }, delay_send_on_start);
+    } }, delay_send_on_start);
 }
 
 void statistics::start_disk_operations()
 {
-    disk_stats_timer_ = g_core->add_timer([wr_this = weak_from_this()]{
+    disk_stats_timer_ = g_core->add_timer({ [wr_this = weak_from_this()] {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
             return;
 
         ptr_this->query_disk_size_async();
-    }, fetch_disk_size_interval);
+    } }, fetch_disk_size_interval);
 
     query_disk_size_async();
 }
 
 void statistics::start_ram_usage_monitoring()
 {
-    ram_stats_timer_ = g_core->add_timer([wr_this = weak_from_this()]{
+    ram_stats_timer_ = g_core->add_timer({ [wr_this = weak_from_this()] {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
             return;
 
         ptr_this->check_ram_usage();
-    }, fetch_ram_usage_interval);
+    } }, fetch_ram_usage_interval);
 }
 
 void statistics::check_ram_usage()
@@ -210,14 +210,14 @@ void statistics::check_ram_usage()
 
 void statistics::start_send()
 {
-    send_mytracker_timer_ = g_core->add_timer([wr_this = weak_from_this()]
+    send_mytracker_timer_ = g_core->add_timer({ [wr_this = weak_from_this()]
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
             return;
 
         ptr_this->resend_failed_mytracker_async();
-    }, send_mytracker_interval);
+    } }, send_mytracker_interval);
 }
 
 bool statistics::load()

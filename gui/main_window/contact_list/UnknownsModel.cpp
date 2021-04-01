@@ -156,7 +156,7 @@ namespace Logic
         const Data::DlgState& cont = dialogs_[cur];
 
         if (Testing::isAccessibleRole(_r))
-            return cont.AimId_;
+            return QString(u"AS Unknowns " % cont.AimId_);
 
         return QVariant::fromValue(cont);
     }
@@ -219,7 +219,7 @@ namespace Logic
 
         const auto curSelected = Logic::getContactListModel()->selectedContact();
         const auto w = Utils::InterConnector::instance().getMainWindow();
-        const auto mainPageOpened = w && w->isUIActive() && w->isMainPage();
+        const auto mainPageOpened = w && w->isUIActive() && w->isMessengerPageContactDialog();
 
         for (const auto& _dlgState : _states)
         {

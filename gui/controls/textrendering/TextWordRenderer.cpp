@@ -117,22 +117,22 @@ namespace Ui
             , addSpace_(0)
             , d(std::make_unique<TextWordRenderer_p>())
         {
-            assert(painter_);
+            im_assert(painter_);
         }
 
         TextWordRenderer::~TextWordRenderer() = default;
 
-        void TextWordRenderer::draw(const TextWord& _word, const bool _needsSpace)
+        void TextWordRenderer::draw(const TextWord& _word, bool _needsSpace, bool _isLast)
         {
             addSpace_ = _word.isSpaceAfter() ? _word.spaceWidth() : 0;
 
             if (_word.isEmoji())
                 drawEmoji(_word, _needsSpace);
             else
-                drawWord(_word, _needsSpace);
+                drawWord(_word, _needsSpace, _isLast);
         }
 
-        void TextWordRenderer::drawWord(const TextWord& _word, const bool _needsSpace)
+        void TextWordRenderer::drawWord(const TextWord& _word, bool _needsSpace, bool _isLast)
         {
             const auto text = _word.getText();
             const auto useLinkPen = _word.isLink() && _word.getShowLinks() == Ui::TextRendering::LinksVisible::SHOW_LINKS;
@@ -159,7 +159,7 @@ namespace Ui
 
             if (_word.isSelected() && selectColor_.isValid())
             {
-                const auto selectedTextColor = _word.getColor();
+                const auto& selectedTextColor = _word.getColor();
                 if (selectedTextColor == textColor && textParts_.size() == 1)
                     fill(text, _word.selectedFrom(), _word.selectedTo(), selectColor_);
                 else
@@ -188,8 +188,9 @@ namespace Ui
                 fillY -= textAscent(_word.getFont());
 
             QVarLengthArray<int> visualOrder;
-            for (const auto& part : textParts_)
+            for (auto it = textParts_.cbegin(); it != textParts_.cend(); ++it)
             {
+                const auto& part = *it;
                 prepareEngine(part.ref_.toString(), _word.getFont(), visualOrder);
 
                 const auto underLineStyle = (part.hasSpellError_ && !useCustomDots()) ? QTextCharFormat::UnderlineStyle::SpellCheckUnderline : QTextCharFormat::UnderlineStyle::NoUnderline;
@@ -217,12 +218,21 @@ namespace Ui
                             else if (!fillHanded)
                             {
                                 const auto leftWidth = textWidth(_word.getFont(), text.left(f.ref_.position()));
-                                const auto selWidth = textWidth(_word.getFont(), text.mid(f.ref_.position(), f.ref_.size()));
+                                const auto subStr = text.mid(f.ref_.position(), f.ref_.size());
+                                const auto selWidth = _isLast && _word.italic()
+                                    ? textVisibleWidth(_word.getFont(), subStr)
+                                    : textWidth(_word.getFont(), subStr);
                                 const QRect r(roundToInt(x + leftWidth), fillY, ceilToInt(selWidth), fillH);
                                 painter_->fillRect(r, f.color_);
                                 fillHanded = true;
                             }
                         }
+                    }
+                    if (it == std::prev(textParts_.cend()) && (_word.isSpaceSelected() || _word.isSpaceHighlighted()))
+                    {
+                        const auto addedWidth = addSpace_ + getExtraSpace();
+                        if (auto fillColor = _word.isSpaceSelected() ? selectColor_ : highlightColor_; fillColor.isValid())
+                            painter_->fillRect(QRect(point_.x() + gf.width.toReal(), fillY, addedWidth, fillH), fillColor);
                     }
 
                     if (_word.hasShadow())
@@ -243,7 +253,7 @@ namespace Ui
                 {
                     const qreal fontFactor = qreal(_word.getFont().pixelSize()) / qreal(10.);
                     startY += Utils::scale_value(3);
-                    Utils::PainterSaver p(*painter_);
+                    Utils::PainterSaver painterSaver(*painter_);
                     painter_->setRenderHint(QPainter::Antialiasing);
                     const static auto color = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_PASTEL);
 
@@ -274,14 +284,6 @@ namespace Ui
                         }
                     }
                 }
-            }
-
-            if (_word.isSpaceSelected() || _word.isSpaceHighlighted())
-            {
-                const auto addedWidth = addSpace_ + getExtraSpace();
-                const auto fillColor = _word.isSpaceSelected() ? selectColor_ : highlightColor_;
-                if (fillColor.isValid())
-                    painter_->fillRect(QRect(point_.x(), fillY, addedWidth, fillH), fillColor);
             }
 
             if (_needsSpace && _word.isSpaceAfter())
@@ -323,7 +325,7 @@ namespace Ui
                 QString someSpaces;
                 someSpaces += QChar::Space;
                 const auto fontMetrics = getMetrics(_word.getFont());
-                while (fontMetrics.width(someSpaces) <= emoji.width() / b)
+                while (fontMetrics.horizontalAdvance(someSpaces) <= emoji.width() / b)
                     someSpaces += QChar::Space;
                 if (!_needsSpace && _word.isSpaceAfter())
                     someSpaces += QChar::Space;

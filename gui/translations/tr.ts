@@ -33,13 +33,6 @@
     </message>
 </context>
 <context>
-    <name>QObject</name>
-    <message>
-        <source>Unable to start the server: %1.</source>
-        <translation>Unable to start the server: %1.</translation>
-    </message>
-</context>
-<context>
     <name>QWidgetTextControl</name>
     <message>
         <source>&amp;Undo</source>
@@ -3472,8 +3465,8 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <translation>etiket</translation>
     </message>
     <message>
-        <source>The message is not supported on your version of ICQ. Update the app to see the message</source>
-        <translation>Uygulama sürümünüzde bir mesaj görüntülenemiyor. yükseltme</translation>
+        <source>The message is not supported on your version. Update the app to see the message</source>
+        <translation>Uygulama sürümünüzde mesaj görüntülenemiyor. Yenile</translation>
     </message>
 </context>
 <context>
@@ -4592,6 +4585,62 @@ to contact status</source>
         <source>Send Statistic</source>
         <translation>İstatistikleri gönder</translation>
     </message>
+    <message>
+        <source>Member limit exceeded (maximum %1)</source>
+        <translation>Üyelik sınırı aşıldı (maks. %1)</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to open external link %1?</source>
+        <translation>%1harici bağlantısını açmak istediğinizden emin misiniz?</translation>
+    </message>
+    <message>
+        <source>Enable net compression</source>
+        <translation>Ağ isteklerinin sıkıştırılmasını etkinleştirin</translation>
+    </message>
+    <message>
+        <source>Cannot remove %1</source>
+        <translation>%1 silinemedi</translation>
+    </message>
+    <message>
+        <source>Cannot block %1</source>
+        <translation>%1 engellenemedi</translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1</source>
+        <translation>%1kilidi açılamadı</translation>
+    </message>
+    <message>
+        <source>User not found</source>
+        <translation>Kullanıcı bulunamadı</translation>
+    </message>
+    <message>
+        <source>User is already blocked</source>
+        <translation>Kullanıcı zaten engellendi</translation>
+    </message>
+    <message>
+        <source>User not blocked</source>
+        <translation>Kullanıcı engellenmedi</translation>
+    </message>
+    <message>
+        <source>Permission denied</source>
+        <translation>Giriş reddedildi</translation>
+    </message>
+    <message>
+        <source>Error removing federation user</source>
+        <translation>Federasyon kullanıcısı silinirken hata oluştu</translation>
+    </message>
+    <message>
+        <source>Error blocking federation user</source>
+        <translation>Federasyon kullanıcısı engellenirken hata oluştu</translation>
+    </message>
+    <message>
+        <source>Error unblocking federation user</source>
+        <translation>Federasyon kullanıcısının engelini kaldırırken hata</translation>
+    </message>
+    <message>
+        <source>User not a member</source>
+        <translation>Kullanıcı bu grubun üyesi değil</translation>
+    </message>
 </context>
 <context>
     <name>previewer</name>
@@ -5416,6 +5465,10 @@ to contact status</source>
         <source>Disable SMS notifications</source>
         <translation>SMS Uyarılarını Devre Dışı Bırak</translation>
     </message>
+    <message>
+        <source>Show notifications when app in focus</source>
+        <translation>Uygulama aktif olduğunda bildirimleri göster</translation>
+    </message>
 </context>
 <context>
     <name>settings_connection</name>
@@ -5617,10 +5670,6 @@ to contact status</source>
 </context>
 <context>
     <name>sidebar</name>
-    <message>
-        <source>Add to chat</source>
-        <translation>Sohbete ekle</translation>
-    </message>
     <message>
         <source>Notifications</source>
         <translation>Uyarılar</translation>
@@ -5967,6 +6016,14 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <source>All subscribers</source>
         <translation>Tüm aboneler</translation>
     </message>
+    <message>
+        <source>Back</source>
+        <translation>Geri</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Kapat</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -6246,6 +6303,14 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <source>Calls</source>
         <translation>aramalar</translation>
     </message>
+    <message>
+        <source>Structure</source>
+        <translation>Yapısı</translation>
+    </message>
+    <message>
+        <source>Tasks</source>
+        <translation>Görevler</translation>
+    </message>
 </context>
 <context>
     <name>tab header</name>
@@ -6451,14 +6516,6 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <translation>Gelen çağrı</translation>
     </message>
     <message>
-        <source>Add to call</source>
-        <translation>Aramaya ekle</translation>
-    </message>
-    <message>
-        <source>OTHERS</source>
-        <translation>DİĞER</translation>
-    </message>
-    <message>
         <source>Screen</source>
         <translation>Ekran</translation>
     </message>
@@ -6503,10 +6560,6 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <translation>TÜM GRUP ÜYELERİ</translation>
     </message>
     <message>
-        <source>CALL MEMBERS</source>
-        <translation>ÇAĞRI KATILIMCILARI</translation>
-    </message>
-    <message>
         <source>Minimize</source>
         <translation>Azalt</translation>
     </message>
@@ -6541,6 +6594,30 @@ tıklama ile</translation>
     <message>
         <source>Busy</source>
         <translation>Meşgul</translation>
+    </message>
+    <message>
+        <source>Call members</source>
+        <translation>Katılımcıları ara</translation>
+    </message>
+    <message>
+        <source>SHOW ALL</source>
+        <translation>HEPSİNİ GÖSTER ↓</translation>
+    </message>
+    <message>
+        <source>HIDE</source>
+        <translation>AZALT</translation>
+    </message>
+    <message>
+        <source>IN CALL</source>
+        <translation>GÖRÜŞMEDE</translation>
+    </message>
+    <message>
+        <source>In call</source>
+        <translation>Görüşmede</translation>
+    </message>
+    <message>
+        <source>CONTACTS</source>
+        <translation>İLETİŞİM</translation>
     </message>
 </context>
 <context>
@@ -6679,6 +6756,20 @@ Meeting</source>
     <message>
         <source>SHOW ALL</source>
         <translation>HEPSİNİ GÖSTER ↓</translation>
+    </message>
+    <message>
+        <source>Show
+participants</source>
+        <translation>Bak
+katılımcılar</translation>
+    </message>
+    <message>
+        <source>Show all</source>
+        <translation>Tümünü göster</translation>
+    </message>
+    <message>
+        <source>Show one</source>
+        <translation>Birini göster</translation>
     </message>
 </context>
 <context>

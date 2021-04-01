@@ -33,13 +33,6 @@
     </message>
 </context>
 <context>
-    <name>QObject</name>
-    <message>
-        <source>Unable to start the server: %1.</source>
-        <translation>Unable to start the server: %1.</translation>
-    </message>
-</context>
-<context>
     <name>QWidgetTextControl</name>
     <message>
         <source>&amp;Undo</source>
@@ -3471,7 +3464,7 @@ You can leave your feedback or report an error here:</source>
         <translation>стікер</translation>
     </message>
     <message>
-        <source>The message is not supported on your version of ICQ. Update the app to see the message</source>
+        <source>The message is not supported on your version. Update the app to see the message</source>
         <translation>Не вдалося визначити відобразити повідомлення у вашій версії програми. оновіться</translation>
     </message>
 </context>
@@ -4591,6 +4584,62 @@ to contact status</source>
         <source>Send Statistic</source>
         <translation>Надіслати статистику</translation>
     </message>
+    <message>
+        <source>Member limit exceeded (maximum %1)</source>
+        <translation>Перевищено ліміт учасників (максимум %1)</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to open external link %1?</source>
+        <translation>Ви впевнені, що хочете відкрити зовнішнє посилання %1?</translation>
+    </message>
+    <message>
+        <source>Enable net compression</source>
+        <translation>Включити стиснення мережевих запитів</translation>
+    </message>
+    <message>
+        <source>Cannot remove %1</source>
+        <translation>Чи не вдалося видалити %1</translation>
+    </message>
+    <message>
+        <source>Cannot block %1</source>
+        <translation>Чи не вдалося заблокувати %1</translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1</source>
+        <translation>Чи не вдалося розблокувати %1</translation>
+    </message>
+    <message>
+        <source>User not found</source>
+        <translation>Користувача не знайдено</translation>
+    </message>
+    <message>
+        <source>User is already blocked</source>
+        <translation>Користувач вже заблокований</translation>
+    </message>
+    <message>
+        <source>User not blocked</source>
+        <translation>Користувач не заблокований</translation>
+    </message>
+    <message>
+        <source>Permission denied</source>
+        <translation>Доступ заборонено</translation>
+    </message>
+    <message>
+        <source>Error removing federation user</source>
+        <translation>Помилка при видаленні користувача федерації</translation>
+    </message>
+    <message>
+        <source>Error blocking federation user</source>
+        <translation>Помилка при блокуванні користувача федерації</translation>
+    </message>
+    <message>
+        <source>Error unblocking federation user</source>
+        <translation>Помилка при розблокуванні користувача федерації</translation>
+    </message>
+    <message>
+        <source>User not a member</source>
+        <translation>Користувач не є учасником цієї групи</translation>
+    </message>
 </context>
 <context>
     <name>previewer</name>
@@ -5415,6 +5464,10 @@ to contact status</source>
         <source>Disable SMS notifications</source>
         <translation>Відключити SMS-оповіщення</translation>
     </message>
+    <message>
+        <source>Show notifications when app in focus</source>
+        <translation>Показувати сповіщення, коли програма активна</translation>
+    </message>
 </context>
 <context>
     <name>settings_connection</name>
@@ -5616,10 +5669,6 @@ to contact status</source>
 </context>
 <context>
     <name>sidebar</name>
-    <message>
-        <source>Add to chat</source>
-        <translation>Додати до чату</translation>
-    </message>
     <message>
         <source>Notifications</source>
         <translation>Сповіщення</translation>
@@ -5966,6 +6015,14 @@ Please edit phone number and try again.</source>
         <source>All subscribers</source>
         <translation>всі передплатники</translation>
     </message>
+    <message>
+        <source>Back</source>
+        <translation>Назад</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Закрити</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -6245,6 +6302,14 @@ Please edit phone number and try again.</source>
         <source>Calls</source>
         <translation>дзвінки</translation>
     </message>
+    <message>
+        <source>Structure</source>
+        <translation>структура</translation>
+    </message>
+    <message>
+        <source>Tasks</source>
+        <translation>завдання</translation>
+    </message>
 </context>
 <context>
     <name>tab header</name>
@@ -6450,14 +6515,6 @@ Please edit phone number and try again.</source>
         <translation>Вхідний дзвінок</translation>
     </message>
     <message>
-        <source>Add to call</source>
-        <translation>Додати в дзвінок</translation>
-    </message>
-    <message>
-        <source>OTHERS</source>
-        <translation>ІНШІ</translation>
-    </message>
-    <message>
         <source>Screen</source>
         <translation>Екран</translation>
     </message>
@@ -6502,10 +6559,6 @@ Please edit phone number and try again.</source>
         <translation>ВСІ УЧАСНИКИ ГРУПИ</translation>
     </message>
     <message>
-        <source>CALL MEMBERS</source>
-        <translation>УЧАСНИКИ ДЗВОНИКА</translation>
-    </message>
-    <message>
         <source>Minimize</source>
         <translation>зменшити</translation>
     </message>
@@ -6540,6 +6593,30 @@ with click</source>
     <message>
         <source>Busy</source>
         <translation>зайнято</translation>
+    </message>
+    <message>
+        <source>Call members</source>
+        <translation>Учасники дзвінка</translation>
+    </message>
+    <message>
+        <source>SHOW ALL</source>
+        <translation>ПОКАЗАТИ ВСІХ</translation>
+    </message>
+    <message>
+        <source>HIDE</source>
+        <translation>ЗГОРНУТИ</translation>
+    </message>
+    <message>
+        <source>IN CALL</source>
+        <translation>У дзвінки</translation>
+    </message>
+    <message>
+        <source>In call</source>
+        <translation>У дзвінку</translation>
+    </message>
+    <message>
+        <source>CONTACTS</source>
+        <translation>КОНТАКТИ</translation>
     </message>
 </context>
 <context>
@@ -6678,6 +6755,20 @@ Meeting</source>
     <message>
         <source>SHOW ALL</source>
         <translation>ПОКАЗАТИ ВСІХ</translation>
+    </message>
+    <message>
+        <source>Show
+participants</source>
+        <translation>Подивитися
+учасників</translation>
+    </message>
+    <message>
+        <source>Show all</source>
+        <translation>Показати всіх</translation>
+    </message>
+    <message>
+        <source>Show one</source>
+        <translation>Збільшити на все вікно</translation>
     </message>
 </context>
 <context>

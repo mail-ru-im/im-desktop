@@ -317,7 +317,7 @@ namespace Ui
             return AlertType::alertTypeEmail;
         else
         {
-            assert(false);
+            im_assert(false);
             return AlertType::alertTypeMessage;
         }
     }

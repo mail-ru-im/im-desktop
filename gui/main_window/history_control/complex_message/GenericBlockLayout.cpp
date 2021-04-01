@@ -53,8 +53,8 @@ void GenericBlockLayout::setGeometry(const QRect &r)
     if (!BlockSize_.isValid())
         return;
 
-    assert(BlockSize_.height() >= 0);
-    assert(BlockSize_.width() > 0);
+    im_assert(BlockSize_.height() >= 0);
+    im_assert(BlockSize_.width() > 0);
 
     BlockGeometry_ = QRect(r.topLeft(), BlockSize_);
 }
@@ -62,7 +62,7 @@ void GenericBlockLayout::setGeometry(const QRect &r)
 QSize GenericBlockLayout::sizeHint() const
 {
     const auto blockHeight = BlockSize_.height();
-    assert(blockHeight >= -1);
+    im_assert(blockHeight >= -1);
 
     const auto height = std::max(
         blockHeight,
@@ -73,7 +73,7 @@ QSize GenericBlockLayout::sizeHint() const
 
 QSize GenericBlockLayout::blockSizeForMaxWidth(const int32_t maxWidth)
 {
-    assert(maxWidth > 0);
+    im_assert(maxWidth > 0);
 
     return QSize();
 }

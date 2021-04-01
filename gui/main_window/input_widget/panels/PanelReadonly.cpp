@@ -88,7 +88,7 @@ namespace Ui
     void InputPanelReadonly::setState(const ReadonlyPanelState _state)
     {
         state_ = _state;
-        assert(state_ != ReadonlyPanelState::Invalid);
+        im_assert(state_ != ReadonlyPanelState::Invalid);
 
         shareButton_->setVisible(isShareButtonEnabled(state_) && !stamp_.isEmpty());
 
@@ -151,7 +151,7 @@ namespace Ui
             break;
 
         default:
-            assert(!"invalid state");
+            im_assert(!"invalid state");
             break;
         }
         mainButton_->setUpdatesEnabled(true);
@@ -192,14 +192,14 @@ namespace Ui
             break;
 
         default:
-            assert(!"invalid state");
+            im_assert(!"invalid state");
             break;
         }
     }
 
     void InputPanelReadonly::onShareClicked()
     {
-        assert(!stamp_.isEmpty());
+        im_assert(!stamp_.isEmpty());
         if (!stamp_.isEmpty())
         {
             const QString link = u"https://" % Utils::getDomainUrl() % u'/' % stamp_;
@@ -210,14 +210,14 @@ namespace Ui
 
     void InputPanelReadonly::joinClicked()
     {
-        assert(!stamp_.isEmpty());
+        im_assert(!stamp_.isEmpty());
         if (!stamp_.isEmpty())
             Logic::getContactListModel()->joinLiveChat(stamp_, true);
     }
 
     void InputPanelReadonly::notifClicked()
     {
-        assert(!aimId_.isEmpty());
+        im_assert(!aimId_.isEmpty());
 
         const auto actionMute = state_ == ReadonlyPanelState::DisableNotifications;
         Logic::getRecentsModel()->muteChat(aimId_, actionMute);

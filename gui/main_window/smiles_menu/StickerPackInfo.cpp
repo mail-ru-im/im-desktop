@@ -217,7 +217,7 @@ PackWidget::PackWidget(Stickers::StatContext _context, QWidget* _parent)
     , setId_(0)
     , moreButton_(nullptr)
     , loadingText_(new QLabel(this))
-    , subtitleControl_(nullptr)
+    , descrControl_(nullptr)
     , dialog_(nullptr)
     , context_(_context)
 {
@@ -264,39 +264,39 @@ void PackWidget::onStickersPackInfo(std::shared_ptr<Ui::Stickers::Set> _set, con
 
     setId_ = _set->getId();
     storeId_ = _set->getStoreId();
-    subtitle_ = _set->getSubtitle();
+    description_ = _set->getDescription();
     purchased_ = _purchased;
     name_ = _set->getName();
 
     loadingText_->setVisible(false);
 
-    if (!subtitle_.isEmpty())
+    if (!description_.isEmpty())
     {
-        if (!subtitleControl_)
+        if (!descrControl_)
         {
             QHBoxLayout* textLayout = new QHBoxLayout(nullptr);
             textLayout->setContentsMargins(getTextMargin(), 0, getButtonMargin(), 0);
 
             int textWidth = width() - getTextMargin() - getButtonMargin();
 
-            subtitleControl_ = new TextEditEx(this, Fonts::appFontScaled(12), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), false, false);
-            subtitleControl_->setWordWrapMode(QTextOption::WordWrap);
-            subtitleControl_->setPlainText(subtitle_, false);
-            subtitleControl_->setObjectName(qsl("description"));
-            subtitleControl_->adjustHeight(textWidth);
-            subtitleControl_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-            subtitleControl_->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-            subtitleControl_->setFrameStyle(QFrame::NoFrame);
-            Utils::ApplyStyle(subtitleControl_, qsl("QWidget { background-color:transparent; border: none; }"));
+            descrControl_ = new TextEditEx(this, Fonts::appFontScaled(12), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), false, false);
+            descrControl_->setWordWrapMode(QTextOption::WordWrap);
+            descrControl_->setPlainText(description_, false);
+            descrControl_->setObjectName(qsl("description"));
+            descrControl_->adjustHeight(textWidth);
+            descrControl_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+            descrControl_->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+            descrControl_->setFrameStyle(QFrame::NoFrame);
+            Utils::ApplyStyle(descrControl_, qsl("QWidget { background-color:transparent; border: none; }"));
 
-            Testing::setAccessibleName(subtitleControl_, qsl("AS StickerPack subtitle"));
-            textLayout->addWidget(subtitleControl_);
+            Testing::setAccessibleName(descrControl_, qsl("AS StickerPack subtitle"));
+            textLayout->addWidget(descrControl_);
 
             rootVerticalLayout_->addLayout(textLayout);
         }
         else
         {
-            subtitleControl_->setPlainText(subtitle_, false);
+            descrControl_->setPlainText(description_, false);
         }
     }
 
@@ -626,6 +626,9 @@ void StickerPackInfo::onReportClicked()
 
 void StickerPackInfo::show()
 {
+    auto mainWindow = Utils::InterConnector::instance().getMainWindow();
+    if (mainWindow)
+        mainWindow->showMessengerPage();
     parentDialog_->showInCenter();
 }
 

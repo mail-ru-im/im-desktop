@@ -20,7 +20,7 @@ namespace Utils
             return path;
         }
 
-        assert(_borderRadius > 0);
+        im_assert(_borderRadius > 0);
 
         const auto right = _rect.right() + 1;
         const auto bottom = _rect.bottom() + 1;
@@ -47,7 +47,7 @@ namespace Utils
                 break;
 
             default:
-                assert(!"only one corner allowed");
+                im_assert(!"only one corner allowed");
                 break;
             }
 

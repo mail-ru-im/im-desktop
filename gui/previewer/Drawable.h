@@ -93,7 +93,7 @@ protected:
 class AccessibleButton : public QAccessibleObject
 {
 public:
-    AccessibleButton(ButtonAccessible* button) : QAccessibleObject(button) { assert(button); }
+    AccessibleButton(ButtonAccessible* button) : QAccessibleObject(button) { im_assert(button); }
 
     int childCount() const override { return 0; }
 

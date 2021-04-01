@@ -16,6 +16,7 @@
 #include "../../common.shared/config/config.h"
 
 #include "connections/urls_cache.h"
+#include "connections/wim/robusto_packet.h"
 
 namespace
 {
@@ -30,27 +31,37 @@ namespace
         return is_lottie_id(core::tools::get_file_id(_uri));
     }
 
-    constexpr std::wstring_view image_ext() { return L".png"; }
-    constexpr std::wstring_view lottie_ext() { return L".lottie"; }
+    constexpr std::wstring_view image_ext() noexcept { return L".png"; }
+    constexpr std::wstring_view lottie_ext() noexcept { return L".lottie"; }
+    constexpr std::string_view big_size() noexcept { return "big"; }
+    constexpr std::wstring_view meta_file_name() noexcept { return L"meta.js"; }
+    constexpr std::wstring_view meta_etag_file_name() noexcept { return L"etag"; }
+
+    std::wstring get_icon_file_name(std::string_view _fs_id, std::string_view _size)
+    {
+        constexpr std::wstring_view icon = L"_icon";
+
+        if (is_lottie_id(_fs_id))
+            return su::wconcat(icon, lottie_ext());
+
+        std::wstring_view suffix = L"64";
+        if (_size == "small")
+            suffix = L"32";
+        else if (_size == "medium")
+            suffix = L"48";
+        else if (_size == big_size())
+            suffix = L"xset";
+
+        return su::wconcat(icon, L'_', suffix, image_ext());
+    }
+
+    std::wstring g_stickers_path;
 }
 
 namespace core
 {
     namespace stickers
     {
-        set_icon_size icon_size_str_to_size(std::string_view _size)
-        {
-            if (_size == "small")
-                return set_icon_size::_32;
-            else if (_size == "medium")
-                return set_icon_size::_48;
-            else if (_size == "large" || _size == "xlarge" || _size == "xxlarge")
-                return set_icon_size::_64;
-
-            assert(!"unknown type");
-            return set_icon_size::_64;
-        }
-
         sets_list parse_sets(const rapidjson::Value& _node, const emoji_map& _emojis)
         {
             sets_list res;
@@ -62,7 +73,7 @@ namespace core
             {
                 auto new_set = std::make_shared<stickers::set>();
 
-                if (!new_set->unserialize(set, _emojis))
+                if (!new_set->unserialize2(set, _emojis))
                 {
                     assert(!"error reading stickers set");
                     continue;
@@ -74,7 +85,14 @@ namespace core
             return res;
         }
 
-        void serialize_sets(coll_helper& _coll, const sets_list& _sets, const std::string& _size = std::string())
+        constexpr set_type string_to_type(std::string_view _str) noexcept
+        {
+            if (_str == "animated")
+                return set_type::animated;
+            return set_type::image;
+        }
+
+        void serialize_sets(coll_helper& _coll, const sets_list& _sets, std::string_view _size = {})
         {
             if (_sets.empty())
                 return;
@@ -83,9 +101,6 @@ namespace core
             sets_array->reserve(_sets.size());
             for (const auto& _set : _sets)
             {
-                if (!_set->is_show())
-                    continue;
-
                 coll_helper coll_set(_coll->create_collection(), true);
                 ifptr<ivalue> val_set(_coll->create_value(), true);
                 val_set->set_as_collection(coll_set.get());
@@ -104,12 +119,17 @@ namespace core
                 _tasks.erase(it);
         }
 
-        constexpr std::wstring_view stickers_meta_file_name() noexcept { return L"meta.js"; }
+
 
 
         //////////////////////////////////////////////////////////////////////////
         // class sticker
         //////////////////////////////////////////////////////////////////////////
+        sticker::sticker(std::string_view _id)
+            : file_sharing_id_(_id)
+        {
+        }
+
         bool sticker::unserialize(const rapidjson::Value& _node, const emoji_map& _emojis)
         {
             file_sharing_id_ = rapidjson_get_string(_node);
@@ -172,44 +192,24 @@ namespace core
             id_ = _id;
         }
 
-        const std::string& set::get_name() const
+        const std::string& set::get_title() const
         {
-            return name_;
+            return title_;
         }
 
-        void set::set_name(std::string&& _name)
+        void set::set_title(std::string&& _title)
         {
-            name_ = std::move(_name);
+            title_ = std::move(_title);
         }
 
-        bool set::is_show() const
+        bool set::is_added() const
         {
-            return show_;
+            return is_added_;
         }
 
-        void set::set_show(bool _show)
+        void set::set_added(bool _added)
         {
-            show_ = _show;
-        }
-
-        bool set::is_purchased() const
-        {
-            return purchased_;
-        }
-
-        void set::set_purchased(const bool _purchased)
-        {
-            purchased_ = _purchased;
-        }
-
-        bool set::is_user() const
-        {
-            return user_;
-        }
-
-        void set::set_user(const bool _user)
-        {
-            user_ = _user;
+            is_added_ = _added;
         }
 
         const std::string& set::get_store_id() const
@@ -232,48 +232,14 @@ namespace core
             return description_;
         }
 
-        const std::string& set::get_subtitle() const
+        const sticker& set::get_main_sticker() const
         {
-            return subtitle_;
+            return main_sticker_;
         }
 
-        void set::set_subtitle(std::string&& _subtitle)
+        void set::set_main_sticker(sticker&& _sticker)
         {
-            subtitle_ = std::move(_subtitle);
-        }
-
-        const set_icon& set::get_big_icon() const
-        {
-            return big_icon_;
-        }
-
-        void set::set_big_icon(set_icon&& _icon)
-        {
-            big_icon_ = std::move(_icon);
-        }
-
-        void set::put_icon(set_icon&& _icon)
-        {
-            const auto size = _icon.get_size();
-            icons_[size] = std::move(_icon);
-        }
-
-        const set_icon& set::get_icon(stickers::set_icon_size _size) const
-        {
-            if (const auto iter = icons_.find(_size); iter != icons_.end())
-                return iter->second;
-
-            if (icons_.size() == 1)
-                if (const auto iter = icons_.cbegin(); iter->first == stickers::set_icon_size::scalable)
-                    return iter->second;
-
-            static const auto empty = set_icon();
-            return empty;
-        }
-
-        const icons_map& set::get_icons() const
-        {
-            return icons_;
+            main_sticker_ = std::move(_sticker);
         }
 
         const stickers_vector& set::get_stickers() const
@@ -281,7 +247,7 @@ namespace core
             return stickers_;
         }
 
-        bool set::unserialize(const rapidjson::Value& _node, const emoji_map& _emojis)
+        bool set::unserialize(const rapidjson::Value& _node)
         {
             if (int id = 0; tools::unserialize_value(_node, "id", id))
                 set_id(id);
@@ -289,19 +255,13 @@ namespace core
                 return false;
 
             if (std::string name; tools::unserialize_value(_node, "title", name))
-                set_name(std::move(name));
+                set_title(std::move(name));
 
             if (std::string name; tools::unserialize_value(_node, "name", name)) // for store/showcase
-                set_name(std::move(name));
-
-            if (bool show = false; tools::unserialize_value(_node, "is_enabled", show))
-                set_show(show);
+                set_title(std::move(name));
 
             if (bool purchased = true; tools::unserialize_value(_node, "purchased", purchased))
-                set_purchased(purchased);
-
-            if (bool usersticker = false; tools::unserialize_value(_node, "usersticker", usersticker))
-                set_user(usersticker);
+                set_added(purchased);
 
             if (std::string store_id; tools::unserialize_value(_node, "store_id", store_id))
                 set_store_id(std::move(store_id));
@@ -309,31 +269,13 @@ namespace core
             if (std::string description; tools::unserialize_value(_node, "description", description))
                 set_description(std::move(description));
 
-            if (std::string subtitle; tools::unserialize_value(_node, "subtitle", subtitle))
-                set_subtitle(std::move(subtitle));
-
-            if (std::string url; tools::unserialize_value(_node, "icons", url))
-            {
-                const auto size = is_lottie_url(url) ? set_icon_size::scalable : set_icon_size::big;
-                set_big_icon(set_icon(size, url));
-            }
+            if (std::string_view url; tools::unserialize_value(_node, "icons", url))
+                set_main_sticker(core::tools::get_file_id(url));
 
             auto unserialize_stickerpicker_icon = [this, &_node](std::string_view _name)
             {
                 if (std::string sp; tools::unserialize_value(_node, _name, sp) && !sp.empty())
-                {
-                    if (is_lottie_url(sp))
-                    {
-                        put_icon(set_icon(set_icon_size::scalable, sp));
-                    }
-                    else
-                    {
-                        put_icon(set_icon(set_icon_size::_20, sp));
-                        put_icon(set_icon(set_icon_size::_32, sp));
-                        put_icon(set_icon(set_icon_size::_48, sp));
-                        put_icon(set_icon(set_icon_size::_64, sp));
-                    }
-                }
+                    set_main_sticker(core::tools::get_file_id(sp));
             };
 
             if (const auto iter_icons = _node.FindMember("contentlist_sticker_picker_icon"); iter_icons != _node.MemberEnd())
@@ -344,23 +286,20 @@ namespace core
                 }
                 else if (iter_icons->value.IsObject())
                 {
-                    if (std::string xsmall; tools::unserialize_value(iter_icons->value, "xsmall", xsmall))
-                        put_icon(set_icon(set_icon_size::_20, std::move(xsmall)));
-
-                    if (std::string small; tools::unserialize_value(iter_icons->value, "small", small))
-                        put_icon(set_icon(set_icon_size::_32, std::move(small)));
-
-                    if (std::string medium; tools::unserialize_value(iter_icons->value, "medium", medium))
-                        put_icon(set_icon(set_icon_size::_48, std::move(medium)));
-
-                    if (std::string large; tools::unserialize_value(iter_icons->value, "large", large))
-                        put_icon(set_icon(set_icon_size::_64, std::move(large)));
+                    for (std::string_view s : { "xsmall", "small", "medium", "large" })
+                    {
+                        if (std::string_view url; tools::unserialize_value(iter_icons->value, s, url))
+                        {
+                            set_main_sticker(core::tools::get_file_id(url));
+                            break;
+                        }
+                    }
                 }
             }
 
             unserialize_stickerpicker_icon("stiker-picker");
 
-            const auto unserialize_stickers = [this, &_node, &_emojis](const auto _node_name)
+            const auto unserialize_stickers = [this, &_node](const auto _node_name)
             {
                 if (const auto iter = _node.FindMember(_node_name); iter != _node.MemberEnd() && iter->value.IsArray())
                 {
@@ -370,7 +309,7 @@ namespace core
 
                         auto success = false;
                         if (sticker.IsString())
-                            success = new_sticker->unserialize(sticker, _emojis);
+                            success = new_sticker->unserialize(sticker, {});
                         else
                             success = new_sticker->unserialize(sticker);
 
@@ -388,19 +327,61 @@ namespace core
             return true;
         }
 
-        bool set::unserialize(const rapidjson::Value& _node)
+        bool set::unserialize2(const rapidjson::Value& _node, const emoji_map& _emojis)
         {
-            return unserialize(_node, {});
+            if (int id = 0; tools::unserialize_value(_node, "id", id))
+                set_id(id);
+            else
+                return false;
+
+            if (std::string store_id; tools::unserialize_value(_node, "store_id", store_id))
+                set_store_id(std::move(store_id));
+
+            if (std::string title; tools::unserialize_value(_node, "title", title))
+                set_title(std::move(title));
+
+            if (std::string description; tools::unserialize_value(_node, "description", description))
+                set_description(std::move(description));
+
+            if (bool added = true; tools::unserialize_value(_node, "is_added", added))
+                set_added(added);
+
+            if (std::string_view id; tools::unserialize_value(_node, "main_sticker", id))
+                set_main_sticker(id);
+
+            if (std::string_view type; tools::unserialize_value(_node, "type", type))
+                type_ = string_to_type(type);
+
+            if (const auto iter = _node.FindMember("stickers"); iter != _node.MemberEnd() && iter->value.IsArray())
+            {
+                auto stickers_array = iter->value.GetArray();
+                stickers_.reserve(stickers_array.Size());
+                for (const auto& sticker : stickers_array)
+                {
+                    auto new_sticker = std::make_shared<stickers::sticker>();
+                    if (new_sticker->unserialize(sticker, _emojis))
+                        stickers_.push_back(std::move(new_sticker));
+                }
+            }
+
+            return true;
         }
 
-        bool set::is_lottie_pack() const
+        std::wstring set::get_main_sticker_path(std::string_view _size) const
         {
-            return
-                big_icon_.get_size() == set_icon_size::scalable ||
-                icons_.find(set_icon_size::scalable) != icons_.end() ||
-                std::any_of(stickers_.begin(), stickers_.end(), [](const auto& s) { return is_lottie_id(s->fs_id()); });
+            return su::wconcat(g_stickers_path, L'/', std::to_wstring(id_), L"/icons/", get_icon_file_name(main_sticker_.fs_id(), _size));
         }
 
+        std::string set::get_main_sticker_url(std::string_view _size) const
+        {
+            const auto& id = main_sticker_.fs_id();
+            if (is_lottie_id(id))
+                return su::concat(urls::get_url(urls::url_type::sticker), '/', id);
+
+            if (_size == big_size())
+                _size = "large";
+            return su::concat(urls::get_url(urls::url_type::files_preview), "/max/sticker_", _size, '/', id);
+        }
 
         //////////////////////////////////////////////////////////////////////////
         // download_task
@@ -459,8 +440,6 @@ namespace core
             return size_;
         }
 
-        std::wstring g_stickers_path;
-
         //////////////////////////////////////////////////////////////////////////
         // class cache
         //////////////////////////////////////////////////////////////////////////
@@ -470,66 +449,27 @@ namespace core
             g_stickers_path = _stickers_path;
         }
 
-        cache::~cache()
-        {
-        }
+        cache::~cache() = default;
 
-        bool cache::parse(core::tools::binary_stream& _data, bool _insitu, bool& _up_todate)
+        bool cache::parse(core::tools::binary_stream& _data, bool _insitu)
         {
-            _up_todate = false;
-
             rapidjson::Document doc;
             const auto& parse_result = (_insitu ? doc.ParseInsitu(_data.read(_data.available())) : doc.Parse(_data.read(_data.available())));
             if (parse_result.HasParseError())
                 return false;
 
-            auto iter_status = doc.FindMember("status");
-            if (iter_status == doc.MemberEnd())
+            const auto iter_status = doc.FindMember("status");
+            if (iter_status == doc.MemberEnd() || !iter_status->value.IsObject())
                 return false;
 
-            if (iter_status->value.IsInt())
-            {
-                auto status_code_ = iter_status->value.GetInt();
-                if (status_code_ != 200)
-                {
-                    assert(false);
-                    return false;
-                }
-            }
-            else if (iter_status->value.IsString())
-            {
-                const auto status = rapidjson_get_string_view(iter_status->value);
-
-                if (status == "UP_TO_DATE")
-                {
-                    _up_todate = true;
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-            else
-            {
-                return false;
-            }
-
-
-            if (!tools::unserialize_value(doc, "md5", md5_))
+            if (int code = 0; !tools::unserialize_value(iter_status->value, "code", code) || code != wim::robusto_protocol_error::ok)
                 return false;
 
-            const auto data_iter = doc.FindMember("data");
+            const auto data_iter = doc.FindMember("result");
             if (data_iter == doc.MemberEnd() || data_iter->value.IsNull() || !data_iter->value.IsObject())
                 return true;
 
-            std::string template_url_preview, template_url_original, template_url_send;
-            tools::unserialize_value(data_iter->value, "template_url_preview", template_url_preview);
-            tools::unserialize_value(data_iter->value, "template_url_original", template_url_original);
-            tools::unserialize_value(data_iter->value, "template_url_send", template_url_send);
-            update_template_urls(std::move(template_url_preview), std::move(template_url_original), std::move(template_url_send));
-
-            const auto iter_packs = data_iter->value.FindMember("packs");
+            const auto iter_packs = data_iter->value.FindMember("sticker_packs");
             if (iter_packs == data_iter->value.MemberEnd() || iter_packs->value.IsNull() || !iter_packs->value.IsArray())
                 return true;
 
@@ -543,6 +483,10 @@ namespace core
                         emoji[st.fs_id_].push_back(suggest.emoji_);
 
             sets_ = parse_sets(iter_packs->value, emoji);
+
+            for (auto& s : sets_)
+                s->set_added(true);
+
             return true;
         }
 
@@ -553,21 +497,18 @@ namespace core
             if (parse_result.HasParseError())
                 return false;
 
-            int status_code = 0;
-            if (!tools::unserialize_value(doc, "status", status_code))
+            const auto iter_status = doc.FindMember("status");
+            if (iter_status == doc.MemberEnd() || !iter_status->value.IsObject())
                 return false;
 
-            if (status_code != 200)
-            {
-                assert(false);
+            if (int code = 0; !tools::unserialize_value(iter_status->value, "code", code) || code != wim::robusto_protocol_error::ok)
                 return false;
-            }
 
-            const auto iter_data = doc.FindMember("data");
+            const auto iter_data = doc.FindMember("result");
             if (iter_data == doc.MemberEnd() || !iter_data->value.IsObject())
                 return false;
 
-            const auto iter_sets = iter_data->value.FindMember("top");
+            const auto iter_sets = iter_data->value.FindMember("showcase");
             if (iter_sets == iter_data->value.MemberEnd() || !iter_sets->value.IsArray())
                 return false;
 
@@ -577,35 +518,12 @@ namespace core
 
         std::wstring cache::get_meta_file_name() const
         {
-            std::wstringstream ss_out;
-            ss_out << g_stickers_path << L'/' << stickers_meta_file_name();
-            return ss_out.str();
+            return su::wconcat(g_stickers_path, L'/', meta_file_name());
         }
 
-        std::wstring cache::get_set_icon_path(int32_t _set_id, const set_icon& _icon)
+        std::wstring cache::get_meta_etag_file_name() const
         {
-            std::wstringstream ss_out;
-            ss_out << g_stickers_path << L'/' << _set_id << L"/icons/_icon";
-
-            if (_icon.get_size() == set_icon_size::scalable)
-                ss_out << lottie_ext();
-            else
-                ss_out << "_" << (int)_icon.get_size() << image_ext();
-
-            return ss_out.str();
-        }
-
-        std::pair<std::wstring, set_icon_size> cache::get_set_big_icon_path(int32_t _set_id)
-        {
-            if (const auto& set = get_set(_set_id))
-            {
-                if (set->get_big_icon().get_size() == set_icon_size::scalable)
-                    return { get_set_icon_path(_set_id, set->get_big_icon()), set_icon_size::scalable };
-            }
-
-            std::wstringstream ss_out;
-            ss_out << g_stickers_path << L'/' << _set_id << L"/icons/_icon_xset" << image_ext();
-            return { ss_out.str(), set_icon_size::big };
+            return su::wconcat(g_stickers_path, L'/', meta_etag_file_name());
         }
 
         std::wstring cache::get_sticker_path(int32_t _set_id, int32_t _sticker_id, std::string_view _fs_id, sticker_size _size)
@@ -704,27 +622,18 @@ namespace core
             }
         }
 
-
-        std::string cache::make_big_icon_url(const int32_t _set_id)
-        {
-            if (const auto& set = get_set(_set_id))
-                return set->get_big_icon().get_url();
-            return {};
-        }
-
-        int cache::make_set_icons_tasks(const std::string& _size)
+        int cache::make_set_icons_tasks(std::string_view _size)
         {
             for (const auto& set : sets_)
             {
-                if (!set->is_show() || !set->is_purchased())
+                if (!set->is_added())
                     continue;
 
-                const auto& icon = set->get_icon(icon_size_str_to_size(_size));
-                auto icon_file = get_set_icon_path(set->get_id(), icon);
-                if (!core::tools::system::is_exist(icon_file))
+                auto path = set->get_main_sticker_path(_size);
+                if (!path.empty() && !core::tools::system::is_exist(path))
                 {
-                    auto dl_task = download_task(icon.get_url(), "stikersMeta", std::move(icon_file), set->get_id());
-                    dl_task.set_need_decompress(icon.get_size() == stickers::set_icon_size::scalable);
+                    auto dl_task = download_task(set->get_main_sticker_url(_size), "stikersMeta", std::move(path), set->get_id());
+                    dl_task.set_need_decompress(is_lottie_id(set->get_main_sticker().fs_id()));
                     dl_task.set_type(download_task::type::icon);
                     pending_tasks_.emplace_back(std::move(dl_task));
                 }
@@ -733,25 +642,20 @@ namespace core
             return pending_tasks_.size();
         }
 
-        void cache::serialize_meta_set_sync(const stickers::set& _set, coll_helper _coll_set, const std::string& _size)
+        void cache::serialize_meta_set_sync(const stickers::set& _set, coll_helper _coll_set, std::string_view _size)
         {
             _coll_set.set_value_as_int("set_id", _set.get_id());
-            _coll_set.set_value_as_string("name", _set.get_name());
+            _coll_set.set_value_as_string("name", _set.get_title());
             _coll_set.set_value_as_string("store_id", _set.get_store_id());
-            _coll_set.set_value_as_bool("purchased", _set.is_purchased());
-            _coll_set.set_value_as_bool("usersticker", _set.is_user());
+            _coll_set.set_value_as_bool("purchased", _set.is_added());
             _coll_set.set_value_as_string("description", _set.get_description());
-            _coll_set.set_value_as_string("subtitle", _set.get_subtitle());
             _coll_set.set_value_as_bool("lottie", _set.is_lottie_pack());
 
             if (!_size.empty())
             {
-                if (const auto& icon = _set.get_icon(icon_size_str_to_size(_size)); icon.is_valid())
-                {
-                    std::wstring file_name = get_set_icon_path(_set.get_id(), icon);
-                    if (tools::system::is_exist(file_name))
-                        _coll_set.set_value_as_string("icon_path", tools::from_utf16(file_name));
-                }
+                const auto path = _set.get_main_sticker_path(_size);
+                if (tools::system::is_exist(path))
+                    _coll_set.set_value_as_string("icon_path", tools::from_utf16(path));
             }
 
             // serialize stickers
@@ -787,12 +691,8 @@ namespace core
             _coll_set.set_value_as_array("stickers", stickers_array.get());
         }
 
-        void cache::serialize_meta_sync(coll_helper _coll, const std::string& _size)
+        void cache::serialize_meta_sync(coll_helper _coll, std::string_view _size)
         {
-            _coll.set_value_as_string("template_url_preview", template_url_preview_);
-            _coll.set_value_as_string("template_url_original", template_url_original_);
-            _coll.set_value_as_string("template_url_send", template_url_send_);
-
             serialize_sets(_coll, sets_, _size);
         }
 
@@ -801,9 +701,14 @@ namespace core
             serialize_sets(_coll, store_);
         }
 
-        const std::string& cache::get_md5() const
+        const std::string& cache::get_etag() const
         {
-            return md5_;
+            return etag_;
+        }
+
+        void cache::set_etag(std::string&& _etag)
+        {
+            etag_ = std::move(_etag);
         }
 
         download_tasks cache::take_download_tasks()
@@ -916,40 +821,31 @@ namespace core
                 return;
             }
 
-            auto [path, size] = get_set_big_icon_path(_set_id);
-            _path = std::move(path);
-            if (!tools::system::is_exist(_path))
+            if (const auto& set = get_set(_set_id))
             {
-                auto sticker_url = make_big_icon_url(_set_id);
-                auto dl_task = download_task(std::move(sticker_url), "stikersBigIcon", _path, _set_id, -1);
-                dl_task.set_need_decompress(size == set_icon_size::scalable);
-                pending_tasks_.emplace_back(std::move(dl_task));
+                _path = set->get_main_sticker_path(big_size());
+                if (!tools::system::is_exist(_path))
+                {
+                    auto dl_task = download_task(set->get_main_sticker_url(big_size()), "stikersBigIcon", _path, _set_id, -1);
+                    dl_task.set_need_decompress(is_lottie_id(set->get_main_sticker().fs_id()));
+                    pending_tasks_.emplace_back(std::move(dl_task));
+                }
             }
         }
 
         void cache::clean_set_icon_big(const int32_t _set_id)
         {
-            if (const auto path = get_set_big_icon_path(_set_id); core::tools::system::is_exist(path.first))
-                core::tools::system::delete_file(path.first);
+            if (const auto& set = get_set(_set_id))
+            {
+                if (const auto path = set->get_main_sticker_path(big_size()); core::tools::system::is_exist(path))
+                    core::tools::system::delete_file(path);
+            }
         }
 
         void cache::serialize_suggests(coll_helper _coll)
         {
             suggests_->serialize(_coll);
         }
-
-        void cache::update_template_urls(std::string _preview_url, std::string _original_url, std::string _send_url)
-        {
-            if (!_preview_url.empty() && _preview_url != template_url_preview_)
-                template_url_preview_ = std::move(_preview_url);
-
-            if (!_original_url.empty() && _original_url != template_url_original_)
-                template_url_original_ = std::move(_original_url);
-
-            if (!_send_url.empty() && _send_url != template_url_send_)
-                template_url_send_ = std::move(_send_url);
-        }
-
 
 
         //////////////////////////////////////////////////////////////////////////
@@ -961,19 +857,18 @@ namespace core
         {
         }
 
-        std::shared_ptr<result_handler<const parse_result&>> face::parse(const std::shared_ptr<core::tools::binary_stream>& _data, bool _insitu)
+        std::shared_ptr<result_handler<bool>> face::parse(const std::shared_ptr<core::tools::binary_stream>& _data, bool _insitu)
         {
-            auto handler = std::make_shared<result_handler<const parse_result&>>();
-            auto up_to_date = std::make_shared<bool>();
+            auto handler = std::make_shared<result_handler<bool>>();
 
-            thread_->run_async_function([stickers_cache = cache_, _data, _insitu, up_to_date]()->int32_t
+            thread_->run_async_function([stickers_cache = cache_, _data, _insitu]()->int32_t
             {
-                return (stickers_cache->parse(*_data, _insitu, *up_to_date) ? 0 : -1);
+                return (stickers_cache->parse(*_data, _insitu) ? 0 : -1);
 
-            })->on_result_ = [handler, up_to_date](int32_t _error)
+            })->on_result_ = [handler](int32_t _error)
             {
                 if (handler->on_result_)
-                    handler->on_result_(parse_result((_error == 0), *up_to_date));
+                    handler->on_result_(_error == 0);
             };
 
             return handler;
@@ -982,13 +877,12 @@ namespace core
         std::shared_ptr<result_handler<const bool>> face::parse_store(std::shared_ptr<core::tools::binary_stream> _data)
         {
             auto handler = std::make_shared<result_handler<const bool>>();
-            auto up_to_date = std::make_shared<bool>();
 
             thread_->run_async_function([stickers_cache = cache_, _data = std::move(_data)]()->int32_t
             {
                 return (stickers_cache->parse_store(*_data) ? 0 : -1);
 
-            })->on_result_ = [handler, up_to_date](int32_t _error)
+            })->on_result_ = [handler](int32_t _error)
             {
                 if (handler->on_result_)
                     handler->on_result_((_error == 0));
@@ -1067,11 +961,11 @@ namespace core
             });
         }
 
-        std::shared_ptr<result_handler<coll_helper>> face::serialize_meta(coll_helper _coll, const std::string& _size)
+        std::shared_ptr<result_handler<coll_helper>> face::serialize_meta(coll_helper _coll, std::string_view _size)
         {
             auto handler = std::make_shared<result_handler<coll_helper>>();
 
-            thread_->run_async_function([stickers_cache = cache_, _coll, size = _size]()->int32_t
+            thread_->run_async_function([stickers_cache = cache_, _coll, size = std::string(_size)]()->int32_t
             {
                 stickers_cache->serialize_meta_sync(_coll, size);
 
@@ -1105,12 +999,12 @@ namespace core
             return handler;
         }
 
-        std::shared_ptr<result_handler<int>> face::make_set_icons_tasks(const std::string& _size)
+        std::shared_ptr<result_handler<int>> face::make_set_icons_tasks(std::string_view _size)
         {
             auto handler = std::make_shared<result_handler<int>>();
-            thread_->run_async_function([stickers_cache = cache_, _size]()->int32_t
+            thread_->run_async_function([stickers_cache = cache_, size = std::string(_size)]()->int32_t
             {
-                return stickers_cache->make_set_icons_tasks(_size);
+                return stickers_cache->make_set_icons_tasks(size);
             })->on_result_ = [handler](int32_t _count)
             {
                 if (handler->on_result_)
@@ -1122,9 +1016,9 @@ namespace core
         std::shared_ptr<result_handler<const load_result&>> face::load_meta_from_local()
         {
             auto handler = std::make_shared<result_handler<const load_result&>>();
-            auto md5 = std::make_shared<std::string>();
+            auto etag = std::make_shared<std::string>();
 
-            thread_->run_async_function([stickers_cache = cache_, md5]()->int32_t
+            thread_->run_async_function([stickers_cache = cache_, etag]()->int32_t
             {
                 core::tools::binary_stream bs;
                 if (!bs.load_from_file(stickers_cache->get_meta_file_name()))
@@ -1132,19 +1026,22 @@ namespace core
 
                 bs.write(0);
 
-                bool up_todate = false;
-
-                if (!stickers_cache->parse(bs, true, up_todate))
+                if (!stickers_cache->parse(bs, true))
                     return -1;
 
-                *md5 = stickers_cache->get_md5();
+                core::tools::binary_stream etag_bs;
+                if (auto loaded = etag_bs.load_from_file(stickers_cache->get_meta_etag_file_name()); loaded && etag_bs.available())
+                {
+                    stickers_cache->set_etag(std::string(etag_bs.get_data(), etag_bs.available()));
+                    *etag = stickers_cache->get_etag();
+                }
 
                 return 0;
 
-            })->on_result_ = [handler, md5](int32_t _error)
+            })->on_result_ = [handler, etag](int32_t _error)
             {
                 if (handler->on_result_)
-                    handler->on_result_(load_result((_error == 0), *md5));
+                    handler->on_result_(load_result((_error == 0), std::move(*etag)));
             };
 
             return handler;
@@ -1157,6 +1054,37 @@ namespace core
             thread_->run_async_function([stickers_cache = cache_, _data = std::move(_data)]()->int32_t
             {
                 return (_data->save_2_file(stickers_cache->get_meta_file_name()) ? 0 : -1);
+
+            })->on_result_ = [handler](int32_t _error)
+            {
+                if (handler->on_result_)
+                    handler->on_result_(_error == 0);
+            };
+
+            return handler;
+        }
+
+        std::shared_ptr<result_handler<bool>> face::set_etag(std::string _etag)
+        {
+            auto handler = std::make_shared<result_handler<bool>>();
+
+            thread_->run_async_function([stickers_cache = cache_, _etag = std::move(_etag)]() mutable
+            {
+                int32_t res = 0;
+                const auto path = stickers_cache->get_meta_etag_file_name();
+                if (!_etag.empty())
+                {
+                    if (!core::tools::binary_stream::save_2_file(_etag, path))
+                        res = -1;
+                }
+                else
+                {
+                    core::tools::system::delete_file(path);
+                }
+
+                stickers_cache->set_etag(std::move(_etag));
+
+                return res;
 
             })->on_result_ = [handler](int32_t _error)
             {
@@ -1203,44 +1131,24 @@ namespace core
             return handler;
         }
 
-        std::shared_ptr<result_handler<const std::string&>> face::get_md5()
+        std::shared_ptr<result_handler<const std::string&>> face::get_etag()
         {
             auto handler = std::make_shared<result_handler<const std::string&>>();
-            auto md5 = std::make_shared<std::string>();
+            auto etag = std::make_shared<std::string>();
 
-            thread_->run_async_function([stickers_cache = cache_, md5]()->int32_t
+            thread_->run_async_function([stickers_cache = cache_, etag]()->int32_t
             {
-                *md5 = stickers_cache->get_md5();
+                *etag = stickers_cache->get_etag();
 
                 return 0;
 
-            })->on_result_ = [handler, md5](int32_t _error)
+            })->on_result_ = [handler, etag](int32_t _error)
             {
                 if (handler->on_result_)
-                    handler->on_result_(*md5);
+                    handler->on_result_(*etag);
             };
 
             return handler;
-        }
-
-        void face::set_gui_request_params(const gui_request_params& _params)
-        {
-            gui_request_params_ = _params;
-        }
-
-        const gui_request_params& face::get_gui_request_params()
-        {
-            return gui_request_params_;
-        }
-
-        void face::set_up_to_date(bool _up_to_date)
-        {
-            up_to_date_ = _up_to_date;
-        }
-
-        bool face::is_up_to_date() const
-        {
-            return up_to_date_;
         }
 
         void face::set_download_meta_error(const bool _is_error)
@@ -1301,24 +1209,6 @@ namespace core
             };
 
             return handler;
-        }
-
-        void face::update_template_urls(const rapidjson::Value& _value)
-        {
-            std::string template_url_preview, template_url_original, template_url_send;
-
-            tools::unserialize_value(_value, "template_url_preview", template_url_preview);
-            tools::unserialize_value(_value, "template_url_original", template_url_original);
-            tools::unserialize_value(_value, "template_url_send", template_url_send);
-
-            thread_->run_async_function([stickers_cache = cache_,
-                                         url_preview = std::move(template_url_preview),
-                                         url_original = std::move(template_url_original),
-                                         url_send = std::move(template_url_send)]()
-            {
-                stickers_cache->update_template_urls(std::move(url_preview), std::move(url_original), std::move(url_send));
-                return 0;
-            });
         }
 
         static void serialize_image(coll_helper& _coll, const tools::binary_stream& _data, std::string_view _id)

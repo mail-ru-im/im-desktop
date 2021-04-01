@@ -46,6 +46,9 @@ namespace core
 
         public:
 
+            sticker() = default;
+            sticker(std::string_view _id);
+
             int32_t get_id() const;
             const std::string& fs_id() const;
 
@@ -57,38 +60,12 @@ namespace core
             bool unserialize(const rapidjson::Value& _node);
         };
 
-
-        enum class set_icon_size
+        enum class set_type
         {
-            invalid = 0,
-
-            scalable = 1,
-            big = 2,
-
-            _20	= 20,
-            _32 = 32,
-            _48 = 48,
-            _64 = 64,
+            image,      // usual stickers
+            animated,   // animated
         };
 
-        class set_icon
-        {
-            set_icon_size size_ = set_icon_size::invalid;
-            std::string url_;
-
-        public:
-            set_icon() = default;
-            set_icon(set_icon_size _size, std::string _url)
-                : size_(_size)
-                , url_(std::move(_url))
-            {}
-
-            set_icon_size get_size() const noexcept { return size_; }
-            const std::string& get_url() const noexcept { return url_; }
-            bool is_valid() const noexcept { return size_ != set_icon_size::invalid; }
-        };
-
-        using icons_map = std::map<stickers::set_icon_size, set_icon>;
         using stickers_vector = std::vector<std::shared_ptr<sticker>>;
 
         //////////////////////////////////////////////////////////////////////////
@@ -97,46 +74,27 @@ namespace core
         class set
         {
             int32_t id_ = -1;
-
-            bool show_ = true;
-
-            bool purchased_ = true;
-
-            bool user_ = false;
-
-            std::string name_;
-
             std::string store_id_;
-
+            std::string title_;
             std::string description_;
-
-            std::string subtitle_;
-
-            icons_map icons_;
+            sticker main_sticker_;
+            set_type type_ = set_type::image;
+            bool is_added_ = false;
 
             stickers_vector stickers_;
 
-            set_icon big_icon_;
-
         public:
-
             int32_t get_id() const;
             void set_id(int32_t _id);
 
-            const std::string& get_name() const;
-            void set_name(std::string&& _name);
+            const std::string& get_title() const;
+            void set_title(std::string&& _name);
 
-            void put_icon(set_icon&& _icon);
-            const set_icon& get_icon(stickers::set_icon_size _size) const;
+            void set_main_sticker(sticker&& _sticker);
+            const sticker& get_main_sticker() const;
 
-            bool is_show() const;
-            void set_show(const bool _show);
-
-            bool is_purchased() const;
-            void set_purchased(const bool _purchased);
-
-            bool is_user() const;
-            void set_user(const bool _user);
+            bool is_added() const;
+            void set_added(bool _added);
 
             const std::string& get_store_id() const;
             void set_store_id(std::string&& _store_id);
@@ -144,19 +102,17 @@ namespace core
             const std::string& get_description() const;
             void set_description(std::string&& _description);
 
-            const std::string& get_subtitle() const;
-            void set_subtitle(std::string&& _subtitle);
-
-            const icons_map& get_icons() const;
             const stickers_vector& get_stickers() const;
 
-            const set_icon& get_big_icon() const;
-            void set_big_icon(set_icon&& _icon);
-
-            bool unserialize(const rapidjson::Value& _node, const emoji_map& _emojis);
+            // legacy parsing, remove when "openstore/filespackinfowithmeta" is refactored and rename unserialize2 to unserialize
             bool unserialize(const rapidjson::Value& _node);
 
-            bool is_lottie_pack() const;
+            bool unserialize2(const rapidjson::Value& _node, const emoji_map& _emojis = {});
+
+            bool is_lottie_pack() const noexcept { return type_ == set_type::animated; }
+
+            std::wstring get_main_sticker_path(std::string_view _size) const;
+            std::string get_main_sticker_url(std::string_view _size) const;
         };
 
         using sets_list = std::list<std::shared_ptr<stickers::set>>;
@@ -185,30 +141,17 @@ namespace core
         //////////////////////////////////////////////////////////////////////////
         //
         //////////////////////////////////////////////////////////////////////////
-        class parse_result
-        {
-            bool result_;
-            bool up_to_date_;
-
-        public:
-
-            parse_result(bool _result, bool _up_to_date) :	result_(_result), up_to_date_(_up_to_date) {}
-
-            bool is_success() const { return result_; }
-            bool is_up_to_date() const { return up_to_date_; }
-        };
-
         class load_result
         {
             bool result_;
-            const std::string md5_;
+            const std::string etag_;
 
         public:
 
-            load_result(bool _result, std::string _md5) :	result_(_result), md5_(std::move(_md5)) {}
+            load_result(bool _result, std::string _etag) :	result_(_result), etag_(std::move(_etag)) {}
 
             bool get_result() const { return result_; }
-            const std::string& get_md5() const { return md5_; }
+            const std::string& get_etag() const { return etag_; }
         };
 
 
@@ -267,13 +210,9 @@ namespace core
         //////////////////////////////////////////////////////////////////////////
         class cache
         {
-            std::string md5_;
+            std::string etag_;
             sets_list sets_;
             sets_list store_;
-
-            std::string template_url_preview_;
-            std::string template_url_original_;
-            std::string template_url_send_;
 
             download_tasks pending_tasks_;
             download_tasks active_tasks_;
@@ -291,25 +230,23 @@ namespace core
             void on_download_tasks_added(int _tasks_count);
 
         public:
-            int make_set_icons_tasks(const std::string& _size);
+            int make_set_icons_tasks(std::string_view _size);
 
             cache(const std::wstring& _stickers_path);
             virtual ~cache();
 
             std::wstring get_meta_file_name() const;
-            bool parse(core::tools::binary_stream& _data, bool _insitu, bool& _up_todate);
+            std::wstring get_meta_etag_file_name() const;
+
+            bool parse(core::tools::binary_stream& _data, bool _insitu);
             bool parse_store(core::tools::binary_stream& _data);
 
-            static void serialize_meta_set_sync(const stickers::set& _set, coll_helper _coll_set, const std::string& _size);
-            void serialize_meta_sync(coll_helper _coll, const std::string& _size);
+            static void serialize_meta_set_sync(const stickers::set& _set, coll_helper _coll_set, std::string_view _size);
+            void serialize_meta_sync(coll_helper _coll, std::string_view _size);
             void serialize_store_sync(coll_helper _coll);
 
-            static std::wstring get_set_icon_path(int32_t _set_id, const set_icon& _icon);
-            std::pair<std::wstring, set_icon_size> get_set_big_icon_path(int32_t _set_id);
             static std::wstring get_sticker_path(const set& _set, const sticker& _sticker, sticker_size _size);
             static std::wstring get_sticker_path(int32_t _set_id, int32_t _sticker_id, std::string_view _fs_id, sticker_size _size);
-
-            std::string make_big_icon_url(const int32_t _set_id);
 
             download_tasks take_download_tasks();
             bool have_tasks_to_download() const noexcept;
@@ -319,23 +256,11 @@ namespace core
             void get_sticker(int64_t _seq, int32_t _set_id, int32_t _sticker_id, std::string _fs_id, const sticker_size _size, std::wstring& _path);
             void get_set_icon_big(const int64_t _seq, const int32_t _set_id, std::wstring& _path);
             void clean_set_icon_big(const int32_t _set_id);
-            const std::string& get_md5() const;
+
+            const std::string& get_etag() const;
+            void set_etag(std::string&& _etag);
 
             void serialize_suggests(coll_helper _coll);
-
-            void update_template_urls(std::string _preview_url, std::string _original_url, std::string _send_url);
-        };
-
-        struct gui_request_params
-        {
-            std::string size_;
-            int64_t seq_ = -1;
-            std::string md5_;
-
-            gui_request_params(const std::string& _size, int64_t _seq, const std::string& _md5)
-                :   size_(_size), seq_(_seq), md5_(_md5) {}
-
-            gui_request_params() = default;
         };
 
         class face
@@ -344,28 +269,24 @@ namespace core
             std::shared_ptr<async_executer> thread_;
 
             bool meta_requested_ = false;
-            bool up_to_date_ = false;
             bool download_meta_in_progress_ = false;
             bool download_meta_error_ = false;
             bool download_stickers_error_ = false;
             bool flag_meta_need_reload_ = false;
 
-            gui_request_params gui_request_params_;
-
         public:
 
             face(const std::wstring& _stickers_path);
 
-            std::shared_ptr<result_handler<const parse_result&>> parse(
-                const std::shared_ptr<core::tools::binary_stream>& _data,
-                bool _insitu);
+            std::shared_ptr<result_handler<bool>> parse(const std::shared_ptr<core::tools::binary_stream>& _data, bool _insitu);
 
             std::shared_ptr<result_handler<const bool>> parse_store(std::shared_ptr<core::tools::binary_stream> _data);
 
             std::shared_ptr<result_handler<const load_result&>> load_meta_from_local();
             std::shared_ptr<result_handler<bool>> save(std::shared_ptr<core::tools::binary_stream> _data);
-            std::shared_ptr<result_handler<int>> make_set_icons_tasks(const std::string& _size);
-            std::shared_ptr<result_handler<coll_helper>> serialize_meta(coll_helper _coll, const std::string& _size);
+            std::shared_ptr<result_handler<bool>> set_etag(std::string _etag);
+            std::shared_ptr<result_handler<int>> make_set_icons_tasks(std::string_view _size);
+            std::shared_ptr<result_handler<coll_helper>> serialize_meta(coll_helper _coll, std::string_view _size);
             std::shared_ptr<result_handler<coll_helper>> serialize_store(coll_helper _coll);
             std::shared_ptr<result_handler<std::wstring_view>> get_sticker(
                 int64_t _seq,
@@ -382,10 +303,7 @@ namespace core
             std::shared_ptr<result_handler<const download_tasks&>> take_download_tasks();
             std::shared_ptr<result_handler<int>> on_task_loaded(const download_task& _task);
 
-            std::shared_ptr<result_handler<const std::string&>> get_md5();
-
-            void set_gui_request_params(const gui_request_params& _params);
-            const gui_request_params& get_gui_request_params();
+            std::shared_ptr<result_handler<const std::string&>> get_etag();
 
             void set_up_to_date(bool _up_to_date);
             bool is_up_to_date() const;
@@ -403,8 +321,6 @@ namespace core
             bool is_download_stickers_error() const;
 
             std::shared_ptr<result_handler<const bool>> serialize_suggests(coll_helper _coll);
-
-            void update_template_urls(const rapidjson::Value& _value);
         };
 
         void post_sticker_2_gui(int64_t _seq, int32_t _set_id, int32_t _sticker_id, std::string_view _fs_id, core::sticker_size _size, std::wstring_view _data);

@@ -62,7 +62,7 @@ AddNewContactStackedWidget::AddNewContactStackedWidget(QWidget *_parent)
 
 void AddNewContactStackedWidget::setOkCancelButtons(const QPair<DialogButton*, DialogButton*> &_buttons)
 {
-    assert(!okButton_ && !cancelButton_);
+    im_assert(!okButton_ && !cancelButton_);
 
     okButton_ = _buttons.first;
     cancelButton_ = _buttons.second;
@@ -203,7 +203,7 @@ void AddNewContactStackedWidget::connectToButtons()
 
 void AddNewContactStackedWidget::enableOkButton(bool _enable)
 {
-    assert(okButton_);
+    im_assert(okButton_);
     okButton_->setEnabled(_enable);
 }
 

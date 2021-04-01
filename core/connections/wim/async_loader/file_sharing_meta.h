@@ -92,7 +92,7 @@ namespace core
 
             static file_sharing_meta_uptr parse_json(InOut char* _json, std::string_view _uri);
 
-            int64_t get_status_code() const { return 0; }
+            int64_t get_status_code() const { return status_code_; }
         };
     }
 }

@@ -6,6 +6,7 @@
 #include "../utils/InterConnector.h"
 #include "../utils/features.h"
 #include "../styles/ThemeParameters.h"
+#include "../controls/TooltipWidget.h"
 
 #include "../main_window/contact_list/CustomAbstractListModel.h"
 
@@ -1107,6 +1108,9 @@ namespace Ui
             if (prevSelected.isValid())
                 update(prevSelected);
         }
+
+        // hide tooltip for long names
+        Tooltip::hide();
     }
 
     void FocusableListView::mouseMoveEvent(QMouseEvent * _e)

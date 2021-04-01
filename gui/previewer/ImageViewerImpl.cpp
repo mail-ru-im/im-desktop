@@ -216,7 +216,7 @@ void Previewer::AbstractViewer::fixBounds(const QSize& _bounds, QRect& _child)
 
 std::unique_ptr<Previewer::AbstractViewer> Previewer::GifViewer::create(const QString& _fileName, const QSize& _viewportSize, QWidget* _parent)
 {
-    assert(_parent);
+    im_assert(_parent);
     auto viewer = std::unique_ptr<AbstractViewer>(new GifViewer(_fileName, _viewportSize, _parent));
 //    auto gifViewer = static_cast<GifViewer*>(viewer.get());
 //    gifViewer->init(gifViewer->gif_.frameRect(), _viewportSize);
@@ -245,7 +245,7 @@ void Previewer::GifViewer::doPaint(QPainter& _painter, const QRect& _source, con
 
 std::unique_ptr<Previewer::AbstractViewer> Previewer::JpegPngViewer::create(const QPixmap &_image, const QSize &_viewportSize, QWidget *_parent, const QSize &_initialViewport, const bool _isVideoPreview)
 {
-    assert(_parent);
+    im_assert(_parent);
     auto viewer = std::unique_ptr<AbstractViewer>(new JpegPngViewer(_image, _viewportSize, _parent, _initialViewport));
     auto jpegViewer = static_cast<JpegPngViewer*>(viewer.get());
     jpegViewer->init(jpegViewer->originalImage_.size(), _initialViewport, _isVideoPreview ? minVideoSize() : minImageSize());

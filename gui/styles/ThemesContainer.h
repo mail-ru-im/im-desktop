@@ -113,7 +113,6 @@ namespace Styling
         WallpaperPtr tryOnWallpaper_;
         QString tryOnContact_;
 
-        QString baseUrl_;
         bool isLoaded_;
     };
 

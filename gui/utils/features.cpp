@@ -369,7 +369,7 @@ namespace Features
 
     bool isCustomStatusEnabled()
     {
-        return Omicron::_o(omicron::keys::custom_statuses_enabled, false);
+        return Omicron::_o(omicron::keys::custom_statuses_enabled, config::get().is_on(config::features::custom_statuses_enabled));
     }
 
     bool isGlobalContactSearchAllowed()
@@ -464,10 +464,45 @@ namespace Features
         return Omicron::_o(omicron::keys::remove_deleted_from_notifications, config::get().is_on(config::features::remove_deleted_from_notifications));
     }
 
+    bool longPathTooltipsAllowed()
+    {
+        return Omicron::_o(omicron::keys::long_path_tooltip_enabled, config::get().is_on(config::features::long_path_tooltip_enabled));
+    }
+
+    bool isFormattingInBubblesEnabled()
+    {
+        return Omicron::_o(omicron::keys::formatting_in_bubbles, config::get().is_on(config::features::formatting_in_bubbles));
+    }
+
+    bool isFormattingInInputEnabled()
+    {
+        return Omicron::_o(omicron::keys::formatting_in_input, config::get().is_on(config::features::formatting_in_input));
+    }
+
     QString statusBannerEmojis()
     {
         std::string csv(config::get().string(config::values::status_banner_emoji_csv));
         csv = config::is_overridden(config::values::status_banner_emoji_csv) ? csv : Omicron::_o(omicron::keys::status_banner_emoji_csv, csv);
         return QString::fromUtf8(csv.data(), csv.size());
+    }
+
+    bool isAppsNavigationBarVisible()
+    {
+        return config::get().is_on(config::features::apps_bar_visible);
+    }
+
+    bool isTabBarVisible()
+    {
+        return !isAppsNavigationBarVisible() || config::get().is_on(config::features::tab_bar_visible);
+    }
+
+    bool isStatusInAppsNavigationBar()
+    {
+        return isAppsNavigationBarVisible() && config::get().is_on(config::features::status_in_apps_bar);
+    }
+
+    bool isThreadsEnabled()
+    {
+        return config::get().is_on(config::features::threads_enabled);
     }
 }

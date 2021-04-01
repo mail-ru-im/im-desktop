@@ -86,6 +86,15 @@ namespace config
         show_sms_notify_setting,
         silent_message_delete,
         remove_deleted_from_notifications,
+        long_path_tooltip_enabled,
+        installer_crash_send,
+        custom_statuses_enabled,
+        formatting_in_bubbles,
+        formatting_in_input,
+        apps_bar_visible,
+        tab_bar_visible,
+        status_in_apps_bar,
+        threads_enabled,
 
         max_size
     };

@@ -899,7 +899,7 @@ bool GalleryWidget::hasPrev() const
 
 void GalleryWidget::prev()
 {
-    assert(hasPrev());
+    im_assert(hasPrev());
 
     Q_EMIT closeContextMenu(QPrivateSignal());
     showProgress();
@@ -917,7 +917,7 @@ bool GalleryWidget::hasNext() const
 
 void GalleryWidget::next()
 {
-    assert(hasNext());
+    im_assert(hasNext());
 
     Q_EMIT closeContextMenu(QPrivateSignal());
     showProgress();

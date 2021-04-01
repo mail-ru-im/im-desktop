@@ -58,9 +58,9 @@ LinkMetadata::LinkMetadata(const QString &_title,
     , fileSize_(_fileSize)
     , originSize_(_originSize)
 {
-    assert(previewSize_.width() >= 0);
-    assert(previewSize_.height() >= 0);
-    assert(fileSize_ >= -1);
+    im_assert(previewSize_.width() >= 0);
+    im_assert(previewSize_.height() >= 0);
+    im_assert(fileSize_ >= -1);
 
     contentType_ = contentTypeFromStr(contentTypeStr_);
 }

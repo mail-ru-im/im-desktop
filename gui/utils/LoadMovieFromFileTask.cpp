@@ -7,8 +7,8 @@ UTILS_NS_BEGIN
 LoadMovieFromFileTask::LoadMovieFromFileTask(const QString& path)
     : Path_(path)
 {
-    assert(!Path_.isEmpty());
-    assert(QFile::exists(Path_));
+    im_assert(!Path_.isEmpty());
+    im_assert(QFile::exists(Path_));
 }
 
 LoadMovieFromFileTask::~LoadMovieFromFileTask()

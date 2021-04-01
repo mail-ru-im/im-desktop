@@ -16,6 +16,7 @@ namespace Ui
 namespace Utils
 {
     void disableCloseButton(QWidget* _w);
+    int getTitlebarHeight(QWidget* _w);
 }
 
 class MacTitlebar;
@@ -41,10 +42,7 @@ public:
     virtual ~MacSupport();
 
     void enableMacUpdater();
-    void enableMacCrashReport();
     void enableMacPreview(WId wid);
-
-    void postCrashStatsIfNedded();
 
     MacTitlebar* windowTitle();
 
@@ -74,7 +72,19 @@ public:
 
     static QString currentRegion();
 
-    static QString currentTheme();
+    enum class ThemeType
+    {
+        Dark,
+        White
+    };
+
+    static ThemeType currentTheme();
+
+    static ThemeType currentThemeForTray();
+
+    static QString themeTypeToString(ThemeType);
+
+    static bool isBigSurOrGreater();
 
     static QString settingsPath();
 
@@ -113,6 +123,8 @@ public:
     static void showInAllWorkspaces(QWidget *w);
 
     static bool isMetalSupported();
+
+    static int getWidgetHeaderHeight(const QWidget& widget);
 
 private:
     void setupDockClickHandler();

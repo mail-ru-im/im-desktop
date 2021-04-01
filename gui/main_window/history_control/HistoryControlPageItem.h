@@ -3,6 +3,7 @@
 #include "QuoteColorAnimation.h"
 #include "../../types/chat.h"
 #include "../../types/chatheads.h"
+#include "../../types/filesharing_meta.h"
 #include "types/reactions.h"
 #include "history/Message.h"
 #include "reactions/MessageReactions.h"
@@ -166,6 +167,8 @@ namespace Ui
         virtual void setSpellErrorsVisible(bool _visible) {}
         virtual QRect avatarRect() const { return QRect(); }
 
+        virtual std::optional<Data::FileSharingMeta> getMeta(const QString& _id) const { return std::nullopt; }
+
     protected:
 
         virtual void drawLastStatusIcon(QPainter& _p, LastStatus _lastStatus, const QString& _aimid, const QString& _friendly, int _rightPadding);
@@ -175,6 +178,7 @@ namespace Ui
         void mouseReleaseEvent(QMouseEvent*) override;
         void enterEvent(QEvent*) override;
         void leaveEvent(QEvent*) override;
+        void wheelEvent(QWheelEvent*) override;
 
         void showMessageStatus();
         void hideMessageStatus();

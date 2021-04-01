@@ -32,6 +32,15 @@ namespace Ui
             DebugText,
         };
 
+        enum class ParagraphType
+        {
+            Regular,
+            Quote,
+            Pre,
+            OrderedList,
+            UnorderedList,
+        };
+
         enum class Space
         {
             WITHOUT_SPACE_AFTER = 0,
@@ -141,6 +150,12 @@ namespace Ui
         [[nodiscard]] inline constexpr QChar singleBackTick() noexcept { return u'`'; }
         [[nodiscard]] inline constexpr QStringView tripleBackTick() noexcept { return u"```"; }
 
+        //! Draw rounded rect around Pre block
+        void drawPreBlockSurroundings(QPainter& _painter, QRectF _rect);
+
+        void drawQuoteBar(QPainter& _painter, QPointF _topLeft, qreal _height);
+
+
         class WordBoundary
         {
         public:
@@ -160,8 +175,13 @@ namespace Ui
         class TextWord
         {
         public:
+            Q_DECLARE_FLAGS(FormatStyles, core::data::format::format_type)
+
             TextWord(QString _text, Space _space, WordType _type, LinksVisible _showLinks, EmojiSizeType _emojiSizeType = EmojiSizeType::REGULAR);
+            TextWord(const Data::FormattedStringView& _text, Space _space, WordType _type, LinksVisible _showLinks, EmojiSizeType _emojiSizeType = EmojiSizeType::REGULAR);
             TextWord(Emoji::EmojiCode _code, Space _space, EmojiSizeType _emojiSizeType = EmojiSizeType::REGULAR);
+            TextWord(const Data::FormattedStringView& _text, Emoji::EmojiCode _code, Space _space, EmojiSizeType _emojiSizeType = EmojiSizeType::REGULAR);
+            void initFormat();
 
             bool operator==(const TextWord& _other) const noexcept
             {
@@ -185,6 +205,9 @@ namespace Ui
             bool isSpaceAfter() const noexcept { return space_ == Space::WITH_SPACE_AFTER; }
 
             QString getText(TextType _text_type = TextType::VISIBLE) const;
+
+            Data::FormattedStringView getView() const { return view_; }
+
             void setText(QString _text); // set text without visible changes. it's needed to edit spell errors.
 
             bool equalTo(QStringView _sl) const;
@@ -196,7 +219,7 @@ namespace Ui
 
             const Emoji::EmojiCode& getCode() const noexcept { return code_; }
 
-            double width(WidthMode _force = WidthMode::PLAIN, int _emojiCount = 0);
+            double width(WidthMode _force = WidthMode::PLAIN, int _emojiCount = 0, bool _isLastWord = false);
 
             void setWidth(double _width, int _emojiCount = 0);
 
@@ -265,7 +288,7 @@ namespace Ui
             bool isLinkDisabled() const noexcept { return linkDisabled_; }
 
             void disableLink();
-            void disableCommand();
+            const QString& disableCommand(); // returns command text if it was removed
 
             void setFont(const QFont& _font);
 
@@ -273,35 +296,53 @@ namespace Ui
 
             void setColor(QColor _color);
 
+            FormatStyles getStyles() const noexcept { return styles_; }
+
+            void setStyles(FormatStyles _styles) { styles_ = _styles; }
+
             const QColor& getColor() const { return color_; }
 
-            void applyFontColor(const TextWord& _other);
+            void applyFontParameters(const TextWord& _other);
 
             void setSubwords(std::vector<TextWord> _subwords);
 
-            const std::vector<TextWord>& getSubwords() const { return subwords_; }
+            void applyCachedStyles(const QFont& _font, const QFont& _monospaceFont);
 
-            bool hasSubwords() const noexcept { return !subwords_.empty(); }
+            inline const std::vector<TextWord>& getSubwords() const { return subwords_; }
+
+            inline bool hasSubwords() const noexcept { return !subwords_.empty(); }
 
             std::vector<TextWord> splitByWidth(int width);
 
             void setUnderline(bool _enabled);
 
-            bool underline() const;
+            void setBold(bool _enabled);
+
+            void setItalic(bool _enabled);
+
+            void setStrikethrough(bool _enabled);
+
+            inline bool underline() const { return font_.underline(); }
+
+            inline bool italic() const { return font_.italic(); }
+
+            inline bool bold() const { return font_.bold(); }
+
+            inline bool strikethrough() const { return font_.strikeOut(); }
 
             void setEmojiSizeType(EmojiSizeType _emojiSizeType) noexcept;
 
             EmojiSizeType getEmojiSizeType() const noexcept { return emojiSizeType_; }
 
-            bool isResizable() const { return emojiSizeType_ == EmojiSizeType::ALLOW_BIG; }
+            inline bool isResizable() const { return emojiSizeType_ == EmojiSizeType::ALLOW_BIG; }
 
-            bool isInTooltip() const { return  emojiSizeType_ == EmojiSizeType::TOOLTIP; }
+            inline bool isInTooltip() const { return emojiSizeType_ == EmojiSizeType::TOOLTIP; }
 
-            void setSpellError(bool _value) { hasSpellError_ = _value; }
+            inline void setSpellError(bool _value) { hasSpellError_ = _value; }
 
-            bool hasSpellError() const noexcept { return hasSpellError_;  }
+            inline bool hasSpellError() const noexcept { return hasSpellError_;  }
 
-            bool skipSpellCheck() const noexcept { return getType() != WordType::TEXT; }
+            inline bool skipSpellCheck() const noexcept { return getType() != WordType::TEXT; }
 
             const std::vector<WordBoundary>& getSyntaxWords() const;
             std::vector<WordBoundary>& getSyntaxWords();
@@ -321,6 +362,7 @@ namespace Ui
             Space space_;
             WordType type_;
             QString text_;
+            Data::FormattedStringView view_;
             QString trimmedText_;
             QString originalMention_;
             QString originalLink_;
@@ -344,7 +386,10 @@ namespace Ui
             std::vector<WordBoundary> syntaxWords_;
             EmojiSizeType emojiSizeType_;
             TextWordShadow shadow_;
+            FormatStyles styles_;
         };
+
+        Q_DECLARE_OPERATORS_FOR_FLAGS(TextWord::FormatStyles)
 
         struct TextWordWithBoundary
         {
@@ -364,7 +409,7 @@ namespace Ui
 
             BlockType getType() const noexcept { return type_; }
 
-            virtual void init(const QFont& _font, const QColor& _color, const QColor& _linkColor, const QColor& _selectionColor, const QColor& _highlightColor, HorAligment _align, EmojiSizeType _emojiSizeType = EmojiSizeType::REGULAR, const LinksStyle _linksStyle = LinksStyle::PLAIN) = 0;
+            virtual void init(const QFont& _font, const QFont& _monospaceFont, const QColor& _color, const QColor& _linkColor, const QColor& _selectionColor, const QColor& _highlightColor, HorAligment _align, EmojiSizeType _emojiSizeType = EmojiSizeType::REGULAR, const LinksStyle _linksStyle = LinksStyle::PLAIN) = 0;
 
             virtual void draw(QPainter& _p, QPoint& _point, VerPosition _align = VerPosition::TOP) = 0;
 
@@ -374,9 +419,9 @@ namespace Ui
 
             virtual int getCachedHeight() const = 0;
 
-            virtual void setMaxHeight(int height) = 0;
+            virtual int getCachedWidth() const = 0;
 
-            virtual void select(const QPoint& _from, const QPoint& _to) = 0;
+            virtual void select(QPoint _from, QPoint _to) = 0;
 
             virtual void selectAll() = 0;
 
@@ -390,23 +435,25 @@ namespace Ui
 
             virtual bool isFullSelected() const = 0;
 
-            virtual QString selectedText(TextType _type = TextType::VISIBLE) const = 0;
+            virtual QString selectedPlainText(TextType _type = TextType::VISIBLE) const = 0;
+
+            virtual Data::FormattedStringView selectedTextView() const = 0;
 
             virtual QString textForInstantEdit() const = 0;
 
             virtual QString getText() const = 0;
 
-            virtual QString getSourceText() const = 0;
+            virtual Data::FormattedString getSourceText() const = 0;
 
-            virtual void clicked(const QPoint& _p) const = 0;
+            virtual void clicked(QPoint _p) const = 0;
 
-            virtual bool doubleClicked(const QPoint& _p, bool _fixSelection) = 0;
+            virtual bool doubleClicked(QPoint _p, bool _fixSelection) = 0;
 
-            virtual bool isOverLink(const QPoint& _p) const = 0;
+            virtual bool isOverLink(QPoint _p) const = 0;
 
-            virtual QString getLink(const QPoint& _p) const = 0;
+            virtual QString getLink(QPoint _p) const = 0;
 
-            virtual void applyMentions(const Data::MentionMap& _mentions) = 0;
+            virtual void applyMentions(const Data::MentionMap& _mentions) {};
 
             virtual int desiredWidth() const = 0;
 
@@ -414,11 +461,17 @@ namespace Ui
 
             virtual bool isElided() const = 0;
 
+            virtual void setMaxLinesCount(size_t _count) = 0;
+
             virtual void setMaxLinesCount(size_t _count, LineBreakType _lineBreak) = 0;
+
+            virtual void setMargins(const QMargins& _margins) {}
+
+            virtual size_t getMaxLinesCount() const { return std::numeric_limits<size_t>::max(); }
 
             virtual void setLastLineWidth(int _width) = 0;
 
-            virtual int getLineCount() const = 0;
+            virtual size_t getLinesCount() const = 0;
 
             virtual void applyLinks(const std::map<QString, QString>& _links) = 0;
 
@@ -454,6 +507,8 @@ namespace Ui
 
             virtual double getLastLineWidth() const = 0;
 
+            virtual double getFirstLineHeight() const = 0;
+
             virtual double getMaxLineWidth() const = 0;
 
             virtual bool isEmpty() const = 0;
@@ -461,6 +516,8 @@ namespace Ui
             virtual bool needsEmojiMargin() const = 0;
 
             virtual void disableCommands() = 0;
+
+            virtual bool mightStretchForLargerWidth() const { return false; }
 
             virtual std::vector<QRect> getLinkRects() const { return {}; }
 
@@ -480,11 +537,13 @@ namespace Ui
         public:
             TextDrawingBlock(QStringView _text, LinksVisible _showLinks = LinksVisible::SHOW_LINKS, BlockType _blockType = BlockType::Text);
 
+            TextDrawingBlock(const Data::FormattedStringView& _text, LinksVisible _showLinks = LinksVisible::SHOW_LINKS, BlockType _blockType = BlockType::Text);
+
             TextDrawingBlock(const std::vector<TextWord>& _words, BaseDrawingBlock* _other);
 
-            void setMargins(const QMargins& _margins);
+            void setMargins(const QMargins& _margins) override;
 
-            void init(const QFont& _font, const QColor& _color, const QColor& _linkColor, const QColor& _selectionColor, const QColor& _highlightColor, HorAligment _align, EmojiSizeType _emojiSizeType = EmojiSizeType::REGULAR, const LinksStyle _linksStyle = LinksStyle::PLAIN) override;
+            void init(const QFont& _font, const QFont& _monospaceFont, const QColor& _color, const QColor& _linkColor, const QColor& _selectionColor, const QColor& _highlightColor, HorAligment _align, EmojiSizeType _emojiSizeType = EmojiSizeType::REGULAR, const LinksStyle _linksStyle = LinksStyle::PLAIN) override;
 
             void draw(QPainter& _p, QPoint& _point, VerPosition _align = VerPosition::TOP) override;
 
@@ -494,9 +553,9 @@ namespace Ui
 
             int getCachedHeight() const override;
 
-            void setMaxHeight(int height) override;
+            int getCachedWidth() const override { return cachedSize_.width(); }
 
-            void select(const QPoint& _from, const QPoint& _to) override;
+            void select(QPoint _from, QPoint _to) override;
 
             void selectAll() override;
 
@@ -510,21 +569,23 @@ namespace Ui
 
             bool isFullSelected() const override;
 
-            QString selectedText(TextType _type) const override;
+            QString selectedPlainText(TextType _type) const override;
+
+            Data::FormattedStringView selectedTextView() const override;
 
             QString textForInstantEdit() const override;
 
             QString getText() const override;
 
-            QString getSourceText() const override;
+            Data::FormattedString getSourceText() const override;
 
-            void clicked(const QPoint& _p) const override;
+            void clicked(QPoint _p) const override;
 
-            bool doubleClicked(const QPoint& _p, bool _fixSelection) override;
+            bool doubleClicked(QPoint _p, bool _fixSelection) override;
 
-            bool isOverLink(const QPoint& _p) const override;
+            bool isOverLink(QPoint _p) const override;
 
-            QString getLink(const QPoint& _p) const override;
+            QString getLink(QPoint _p) const override;
 
             void applyMentions(const Data::MentionMap& _mentions) override;
 
@@ -534,11 +595,15 @@ namespace Ui
 
             bool isElided() const  override { return elided_ && !words_.empty(); }
 
+            void setMaxLinesCount(size_t _count) override;
+
             void setMaxLinesCount(size_t _count, LineBreakType _lineBreak) override;
+
+            size_t getMaxLinesCount() const override { return maxLinesCount_; }
 
             void setLastLineWidth(int _width) override;
 
-            int getLineCount() const override;
+            size_t getLinesCount() const override;
 
             void applyLinks(const std::map<QString, QString>& _links) override;
 
@@ -574,6 +639,8 @@ namespace Ui
 
             double getLastLineWidth() const override;
 
+            double getFirstLineHeight() const override;
+
             double getMaxLineWidth() const override;
 
             bool isEmpty() const override { return words_.empty(); }
@@ -598,9 +665,12 @@ namespace Ui
             [[nodiscard]] std::optional<TextWordWithBoundaryInternal> getWordAtImpl(QPoint, WithBoundary);
             void calcDesired();
             void parseForWords(QStringView _text, LinksVisible _showLinks, std::vector<TextWord>& _words, WordType _type = WordType::TEXT);
+            void parseForWords(Data::FormattedStringView _text, LinksVisible _showLinks, std::vector<TextWord>& _words, WordType _type = WordType::TEXT);
             bool parseWordLink(const TextWord& _wordWithLink, std::vector<TextWord>& _words);
-            bool parseWordNickImpl(const TextWord& _word, std::vector<TextWord>& _words, const QStringRef& _text);
-            bool parseWordNick(const TextWord& _word, std::vector<TextWord>& _words, const QStringRef& _text = QStringRef());
+
+            bool parseWordNick(const TextWord& _word, std::vector<TextWord>& _words);
+            bool parseWordNickImpl(const TextWord& _word, std::vector<TextWord>& _words, QStringView _text);
+            bool parseWordNickImpl(const TextWord& _word, std::vector<TextWord>& _words, Data::FormattedStringView _text);
 
             void correctCommandWord(TextWord _word, std::vector<TextWord>& _words);
 
@@ -637,9 +707,9 @@ namespace Ui
         {
         public:
 
-            NewLineBlock();
+            NewLineBlock(Data::FormattedStringView _view = {});
 
-            void init(const QFont& _font, const QColor& _color, const QColor& _linkColor, const QColor& _selectionColor, const QColor& _highlightColor, HorAligment _align, EmojiSizeType _emojiSizeType = EmojiSizeType::REGULAR, const LinksStyle _linksStyle = LinksStyle::PLAIN) override;
+            void init(const QFont& _font, const QFont& _monospaceFont, const QColor& _color, const QColor& _linkColor, const QColor& _selectionColor, const QColor& _highlightColor, HorAligment _align, EmojiSizeType _emojiSizeType = EmojiSizeType::REGULAR, const LinksStyle _linksStyle = LinksStyle::PLAIN) override;
 
             void draw(QPainter& _p, QPoint& _point, VerPosition _align = VerPosition::TOP) override;
 
@@ -649,9 +719,9 @@ namespace Ui
 
             int getCachedHeight() const override;
 
-            void setMaxHeight(int height) override;
+            int getCachedWidth() const override { return 0; }
 
-            void select(const QPoint& _from, const QPoint& _to) override;
+            void select(QPoint _from, QPoint _to) override;
 
             void selectAll() override;
 
@@ -665,21 +735,23 @@ namespace Ui
 
             bool isFullSelected() const override;
 
-            QString selectedText(TextType _type) const override;
+            QString selectedPlainText(TextType _type) const override;
+
+            Data::FormattedStringView selectedTextView() const override;
 
             QString getText() const override;
 
-            QString getSourceText() const override;
+            Data::FormattedString getSourceText() const override;
 
             QString textForInstantEdit() const override;
 
-            void clicked(const QPoint& _p) const override;
+            void clicked(QPoint _p) const override;
 
-            bool doubleClicked(const QPoint& _p, bool _fixSelection) override;
+            bool doubleClicked(QPoint _p, bool _fixSelection) override;
 
-            bool isOverLink(const QPoint& _p) const override;
+            bool isOverLink(QPoint _p) const override;
 
-            QString getLink(const QPoint& _p) const override;
+            QString getLink(QPoint _p) const override;
 
             void applyMentions(const Data::MentionMap& _mentions) override;
 
@@ -689,11 +761,13 @@ namespace Ui
 
             bool isElided() const override { return false; }
 
+            void setMaxLinesCount(size_t) override { }
+
             void setMaxLinesCount(size_t, LineBreakType) override { }
 
             void setLastLineWidth(int _width) override { }
 
-            int getLineCount() const override { return 0; }
+            size_t getLinesCount() const override { return 1; }
 
             void applyLinks(const std::map<QString, QString>& _links) override { }
 
@@ -729,6 +803,8 @@ namespace Ui
 
             double getLastLineWidth() const override { return 0; }
 
+            double getFirstLineHeight() const override { return getCachedHeight(); }
+
             double getMaxLineWidth() const override { return 0; }
 
             bool isEmpty() const override { return false; }
@@ -742,9 +818,98 @@ namespace Ui
         private:
             QFont font_;
             int cachedHeight_;
+            Data::FormattedStringView view_;
         };
 
-        std::vector<BaseDrawingBlockPtr> parseForBlocks(const QString& _text, const Data::MentionMap& _mentions = Data::MentionMap(), LinksVisible _showLinks = LinksVisible::SHOW_LINKS, ProcessLineFeeds _processLineFeeds = ProcessLineFeeds::KEEP_LINE_FEEDS);
+        class TextDrawingParagraph : public BaseDrawingBlock
+        {
+        public:
+            TextDrawingParagraph(std::vector<BaseDrawingBlockPtr>&& _blocks, ParagraphType _paragraphType, bool _needsTopMargin);
+
+            void addBlock(BaseDrawingBlockPtr&& block)
+            {
+                blocks_.emplace_back(std::move(block));
+            }
+
+            const std::vector<BaseDrawingBlockPtr>& getBlocks() const noexcept { return blocks_; }
+
+            void init(const QFont& _font, const QFont& _monospaceFont, const QColor& _color, const QColor& _linkColor, const QColor& _selectionColor, const QColor& _highlightColor, HorAligment _align, EmojiSizeType _emojiSizeType = EmojiSizeType::REGULAR, const LinksStyle _linksStyle = LinksStyle::PLAIN) override;
+            void draw(QPainter& _p, QPoint& _point, VerPosition _align = VerPosition::TOP) override;
+            void drawSmart(QPainter& _p, QPoint& _point, int _center) override;
+            int getHeight(int _width, int _lineSpacing, CallType _type = CallType::USUAL, bool _isMultiline = false) override;
+            int getCachedHeight() const override;
+            int getCachedWidth() const override;
+            void select(QPoint _from, QPoint _to) override;
+            void selectAll() override;
+            void fixSelection() override;
+            void clearSelection() override;
+            void releaseSelection() override;
+            bool isSelected() const override;
+            bool isFullSelected() const override;
+            QString selectedPlainText(TextType _type) const override;
+            Data::FormattedStringView selectedTextView() const override;
+            QString getText() const override;
+            Data::FormattedString getSourceText() const override;
+            QString textForInstantEdit() const override;
+            void clicked(QPoint _p) const override;
+            bool doubleClicked(QPoint _p, bool _fixSelection) override;
+            bool isOverLink(QPoint _p) const override;
+            QString getLink(QPoint _p) const override;
+            void applyMentions(const Data::MentionMap& _mentions) override;
+            int desiredWidth() const override;
+            void elide(int _width, ElideType _type, bool _prevElided) override;
+            bool isElided() const override;
+            void setMaxLinesCount(size_t, LineBreakType) override;
+            void setMaxLinesCount(size_t _count) override;
+            void setLastLineWidth(int _width) override;
+            size_t getLinesCount() const override;
+            void applyLinks(const std::map<QString, QString>& _links) override;
+            void applyLinksFont(const QFont& _font) override;
+            void setColor(const QColor&) override;
+            void setLinkColor(const QColor&) override;
+            void setSelectionColor(const QColor&) override;
+            void setHighlightedTextColor(const QColor&) override;
+            void setColorForAppended(const QColor&) override;
+            void appendWords(const std::vector<TextWord>&) override;
+            const std::vector<TextWord>& getWords() const override;
+            std::vector<TextWord>& getWords() override;
+            bool markdownSingle(const QFont&, const QColor&) override;
+            bool markdownMulti(const QFont&, const QColor&, bool, std::pair<std::vector<TextWord>, std::vector<TextWord>>&) override;
+            int findForMarkdownMulti() const override;
+            std::vector<TextWord> markdown(MarkdownType, const QFont&, const QColor&, bool) override;
+            void setHighlighted(const bool _isHighlighted) override;
+            void setHighlighted(const highlightsV&) override;
+            void setUnderline(const bool _enabled) override;
+            double getLastLineWidth() const override;
+            double getFirstLineHeight() const override;
+            double getMaxLineWidth() const override;
+            bool isEmpty() const override { return false; }
+            bool needsEmojiMargin() const override { return false; }
+            void disableCommands() override;
+            void setShadow(const int _offsetX, const int _offsetY, const QColor& _color) override;
+            bool mightStretchForLargerWidth() const override { return paragraphType() == ParagraphType::Pre; }
+
+            ParagraphType paragraphType() const { return paragraphType_; }
+            inline int getTopTotalIndentation() const { return topIndent_ + margins_.top(); }
+
+        protected:
+            std::vector<BaseDrawingBlockPtr> blocks_;
+            QMargins margins_;
+            int topIndent_;
+            ParagraphType paragraphType_;
+            QSize cachedSize_;
+            QFont font_;
+            QColor textColor_;
+        };
+
+        using TextDrawingParagraphPtr = std::unique_ptr<TextDrawingParagraph>;
+
+        std::vector<BaseDrawingBlockPtr> parseForBlocks(const QString& _text, const Data::MentionMap& _mentions = {}, LinksVisible _showLinks = LinksVisible::SHOW_LINKS, ProcessLineFeeds _processLineFeeds = ProcessLineFeeds::KEEP_LINE_FEEDS);
+
+        std::vector<BaseDrawingBlockPtr> parseForBlocks(const Data::FormattedStringView& _text, const Data::MentionMap& _mentions = {}, LinksVisible _showLinks = LinksVisible::SHOW_LINKS, ProcessLineFeeds _processLineFeeds = ProcessLineFeeds::KEEP_LINE_FEEDS);
+
+        //! Beware: it creates views on the _text string
+        std::vector<BaseDrawingBlockPtr> parseForParagraphs(const Data::FormattedString& _text, const Data::MentionMap& _mentions = {}, LinksVisible _showLinks = LinksVisible::SHOW_LINKS, ProcessLineFeeds _processLineFeeds = ProcessLineFeeds::KEEP_LINE_FEEDS);
 
         int getBlocksHeight(const std::vector<BaseDrawingBlockPtr>& _blocks, int width, int lineSpacing, CallType _calltype = CallType::USUAL);
 
@@ -752,7 +917,7 @@ namespace Ui
 
         void drawBlocksSmart(const std::vector<BaseDrawingBlockPtr>&, QPainter& _p, QPoint _point, int _center);
 
-        void initBlocks(const std::vector<BaseDrawingBlockPtr>& _blocks, const QFont& _font, const QColor& _color, const QColor& _linkColor, const QColor& _selectionColor, const QColor& _highlightColor, HorAligment _align, EmojiSizeType _emojiSizeType = EmojiSizeType::REGULAR, const LinksStyle _linksStyle = LinksStyle::PLAIN);
+        void initBlocks(const std::vector<BaseDrawingBlockPtr>& _blocks, const QFont& _font, const QFont& _monospaceFont, const QColor& _color, const QColor& _linkColor, const QColor& _selectionColor, const QColor& _highlightColor, HorAligment _align, EmojiSizeType _emojiSizeType = EmojiSizeType::REGULAR, const LinksStyle _linksStyle = LinksStyle::PLAIN);
 
         void selectBlocks(const std::vector<BaseDrawingBlockPtr>& _blocks, const QPoint& from, const QPoint& to);
 
@@ -770,19 +935,21 @@ namespace Ui
 
         void blocksDoubleClicked(const std::vector<BaseDrawingBlockPtr>& _blocks, const QPoint& _p, bool _fixSelection, std::function<void(bool)> _callback);
 
-        bool isOverLink(const std::vector<BaseDrawingBlockPtr>& _blocks, const QPoint& _p);
+        bool isBlocksOverLink(const std::vector<BaseDrawingBlockPtr>& _blocks, const QPoint& _p);
 
         QString getBlocksLink(const std::vector<BaseDrawingBlockPtr>& _blocks, const QPoint& _p);
         [[nodiscard]] std::optional<TextWordWithBoundary> getWord(const std::vector<BaseDrawingBlockPtr>& _blocks, QPoint _p);
         [[nodiscard]] bool replaceWord(const std::vector<BaseDrawingBlockPtr>& _blocks, const QString& _old, const QString& _new, QPoint _p);
 
-        QString getBlocksSelectedText(const std::vector<BaseDrawingBlockPtr>& _blocks, TextType _type = TextType::VISIBLE);
+        Data::FormattedString getBlocksSelectedText(const std::vector<BaseDrawingBlockPtr>& _blocks);
+        Data::FormattedStringView getBlocksSelectedView(const std::vector<BaseDrawingBlockPtr>& _blocks);
+        QString getBlocksSelectedPlainText(const std::vector<BaseDrawingBlockPtr>& _blocks, TextType _type);
 
         QString getBlocksTextForInstantEdit(const std::vector<BaseDrawingBlockPtr>& _blocks);
 
         QString getBlocksText(const std::vector<BaseDrawingBlockPtr>& _blocks);
 
-        QString getBlocksSourceText(const std::vector<BaseDrawingBlockPtr>& _blocks);
+        Data::FormattedString getBlocksSourceText(const std::vector<BaseDrawingBlockPtr>& _blocks);
 
         bool isAllBlocksSelected(const std::vector<BaseDrawingBlockPtr>& _blocks);
 
@@ -796,7 +963,7 @@ namespace Ui
 
         void setBlocksLastLineWidth(const std::vector<BaseDrawingBlockPtr>& _blocks, int _width);
 
-        void applyBLocksLinks(const std::vector<BaseDrawingBlockPtr>& _blocks, const std::map<QString, QString>& _links);
+        void applyBlocksLinks(const std::vector<BaseDrawingBlockPtr>& _blocks, const std::map<QString, QString>& _links);
 
         void applyLinksFont(const std::vector<BaseDrawingBlockPtr>& _blocks, const QFont& _font);
 
@@ -829,5 +996,6 @@ namespace Ui
         void disableCommandsInBlocks(const std::vector<BaseDrawingBlockPtr>& _blocks);
 
         void setShadowForBlocks(std::vector<BaseDrawingBlockPtr>& _blocks, const int _offsetX, const int _offsetY, const QColor& _color);
+
     }
 }

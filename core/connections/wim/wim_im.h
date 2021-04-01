@@ -410,7 +410,6 @@ namespace core
 
             // timers
             int32_t store_timer_id_;
-            int32_t statistic_timer_id_;
             int32_t hosts_config_timer_id_;
             int32_t dlg_state_timer_id_;
             int32_t stat_timer_id_;
@@ -449,13 +448,10 @@ namespace core
 
             std::unordered_map<std::string, std::set<int64_t>> failed_get_reactions_;
 
-            std::vector<std::pair<std::shared_ptr<robusto_packet>, std::shared_ptr<async_task_handlers>>> failed_robusto_packets_;
+            std::vector<std::pair<std::shared_ptr<wim_packet>, std::shared_ptr<async_task_handlers>>> failed_packets_;
 
             bool sent_pending_messages_active_;
             bool sent_pending_delete_messages_active_;
-
-            // statistic
-            std::unique_ptr<statistic::imstat> imstat_;
 
             // search
             std::unique_ptr<async_executer> history_searcher_;
@@ -515,8 +511,7 @@ namespace core
             std::vector<std::string> support_screenshot_file_list_;
             std::vector<std::string> support_screenshot_id_list_;
 
-            std::shared_ptr<async_task_handlers> post_wim_packet(std::shared_ptr<wim_packet> _packet);
-            std::shared_ptr<async_task_handlers> post_robusto_packet(std::shared_ptr<robusto_packet> packet);
+            std::shared_ptr<async_task_handlers> post_packet(std::shared_ptr<wim_packet> packet);
 
             void init_call_log();
 
@@ -563,16 +558,16 @@ namespace core
             std::shared_ptr<async_task_handlers> load_mailboxes();
             std::shared_ptr<async_task_handlers> load_call_log();
             // stickers
-            void load_stickers_data(int64_t _seq, const std::string& _size);
+            void load_stickers_data(int64_t _seq, std::string_view _size);
 
             file_info_handler_t make_sticker_handler(const stickers::download_task& _task);
             file_info_handler_t make_set_icon_handler(const stickers::download_task& _task);
-            void download_stickers_metafile(int64_t _seq, const std::string& _size, const std::string& _md5);
+            void download_stickers_metafile(int64_t _seq, std::string_view _size, std::string_view _etag);
             void download_stickers_and_icons();
             void post_stickers_suggests_2_gui();
 
 
-            void get_stickers_meta(int64_t _seq, const std::string& _size) override;
+            void get_stickers_meta(int64_t _seq, std::string_view _size) override;
             void get_sticker(const int64_t _seq, const int32_t _set_id, const int32_t _sticker_id, std::string_view _fs_id, const core::sticker_size _size) override;
             void get_sticker_cancel(std::vector<std::string> _fs_ids, core::sticker_size _size) override;
             void get_stickers_pack_info(const int64_t _seq, const int32_t _set_id, const std::string& _store_id, const std::string& _file_id) override;
@@ -580,7 +575,7 @@ namespace core
             void remove_stickers_pack(const int64_t _seq, const int32_t _set_id, std::string _store_id) override;
             void get_set_icon_big(const int64_t _seq, const int32_t _set_id) override;
             void clean_set_icon_big(const int64_t _seq, const int32_t _set_id) override;
-            void post_stickers_meta_to_gui(int64_t _seq, const std::string& _size);
+            void post_stickers_meta_to_gui(int64_t _seq, const std::string_view _size);
             void post_stickers_store_to_gui(int64_t _seq);
             void post_stickers_search_result_to_gui(int64_t _seq);
             void reload_stickers_meta(const int64_t _seq, const std::string& _size);
@@ -671,11 +666,6 @@ namespace core
             loader& get_loader();
             async_loader& get_async_loader();
 
-            // statistic
-            void schedule_statistic_timer();
-            void stop_statistic_timer();
-            void send_statistic_if_needed();
-
             void schedule_ui_activity_timer();
             void stop_ui_activity_timer();
 
@@ -723,11 +713,13 @@ namespace core
                 const int64_t _updated_id,
                 const std::string& _contact,
                 const std::string& _message,
+                const core::data::format::string_formatting& _message_format,
                 const std::string& _internal_id,
                 const core::message_type _type,
                 const core::archive::quotes_vec& _quotes,
                 const core::archive::mentions_map& _mentions,
                 const std::string& _description,
+                const core::data::format::string_formatting& _description_format,
                 const std::string& _url,
                 const core::archive::shared_contact& _shared_contact,
                 const core::archive::geo& _geo,
@@ -872,6 +864,7 @@ namespace core
                 const std::string& _extension,
                 const core::archive::quotes_vec& _quotes,
                 const std::string& _description,
+                const core::data::format::string_formatting& _description_format,
                 const core::archive::mentions_map& _mentions,
                 const std::optional<int64_t>& _duration,
                 const bool _strip_exif,
@@ -963,7 +956,7 @@ namespace core
             void resume_failed_poll_requests();
             void resume_failed_group_subscriptions();
             void resume_failed_get_reactions();
-            void resume_failed_robusto_packets();
+            void resume_failed_packets();
             // ------------------------------------------------------------------------------
 
             // group chat

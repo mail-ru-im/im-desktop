@@ -21,9 +21,6 @@ namespace Ui
         TextEditViewport(QWidget* _parent, InputPanelMain* _panelMain);
         void adjustHeight(const int _curEditHeight);
 
-    private Q_SLOTS:
-        void updateTextMargin();
-
     protected:
         void resizeEvent(QResizeEvent* _event) override;
 

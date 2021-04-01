@@ -44,6 +44,19 @@
 namespace
 {
     const int SHADOW_WIDTH = 10;
+
+    void addFont(const QString& _fontName)
+    {
+        int code = 0;
+        code = QFontDatabase::addApplicationFont(_fontName);
+        im_assert(code != -1);
+    }
+
+    template<typename ...Args>
+    void addFonts(Args&&... _args)
+    {
+        (addFont(_args), ...);
+    }
 }
 
 namespace Utils
@@ -103,17 +116,7 @@ namespace Utils
     Application::Application(int& _argc, char* _argv[])
         : QObject(nullptr)
     {
-        if constexpr (platform::is_apple())
-        {
-#ifndef ICQ_QT_STATIC
-            QDir dir(_argv[0]);
-            dir.cdUp();
-            dir.cdUp();
-            dir.cd(qsl("PlugIns"));
-            QCoreApplication::setLibraryPaths(QStringList(dir.absolutePath()));
-#endif
-        }
-        else if constexpr (platform::is_linux())
+        if constexpr (platform::is_linux())
         {
             const auto appFilePath = std::string_view(_argv[0]);
             const std::string appDir = su::concat(appFilePath.substr(0, appFilePath.rfind('/') + 1), "plugins");
@@ -392,22 +395,41 @@ namespace Utils
 
     void Application::initFonts()
     {
-        QFontDatabase::addApplicationFont(qsl(":/fonts/SourceSansPro_Light"));
-        QFontDatabase::addApplicationFont(qsl(":/fonts/SourceSansPro_Regular"));
-        QFontDatabase::addApplicationFont(qsl(":/fonts/SourceSansPro_SemiBold"));
-        QFontDatabase::addApplicationFont(qsl(":/fonts/SourceSansPro_Bold"));
-
-        QFontDatabase::addApplicationFont(qsl(":/fonts/RoundedMplus_Bold"));
-
-        QFontDatabase::addApplicationFont(qsl(":/fonts/RobotoMono_Regular"));
-        QFontDatabase::addApplicationFont(qsl(":/fonts/RobotoMono_Medium"));
+        addFonts(
+            qsl(":/fonts/SourceSansPro_Light")
+          , qsl(":/fonts/SourceSansPro_Regular")
+          , qsl(":/fonts/SourceSansPro_SemiBold")
+          , qsl(":/fonts/SourceSansPro_Bold")
+          , qsl(":/fonts/RoundedMplus_Bold")
+        );
 
         if constexpr (platform::is_apple())
         {
-            QFontDatabase::addApplicationFont(qsl(":/fonts/SFProText_Regular"));
-            QFontDatabase::addApplicationFont(qsl(":/fonts/SFProText_Medium"));
-            QFontDatabase::addApplicationFont(qsl(":/fonts/SFProText_SemiBold"));
-            QFontDatabase::addApplicationFont(qsl(":/fonts/SFProText_Bold"));
+            addFonts(
+                qsl(":/fonts/SFProText_Regular")
+              , qsl(":/fonts/SFProText_Medium")
+              , qsl(":/fonts/SFProText_SemiBold")
+              , qsl(":/fonts/SFProText_Bold")
+              , qsl(":/fonts/SFProText_RegularItalic")
+              , qsl(":/fonts/SFProText_MediumItalic")
+              , qsl(":/fonts/SFProText_SemiBoldItalic")
+              , qsl(":/fonts/SFProText_BoldItalic")
+              , qsl(":/fonts/SFMono_Medium")
+              , qsl(":/fonts/SFMono_MediumItalic")
+              , qsl(":/fonts/SFMono_Bold")
+              , qsl(":/fonts/SFMono_BoldItalic")
+            );
+        }
+        else if constexpr (platform::is_windows())
+        {
+            addFonts(
+                qsl(":/fonts/RobotoMono_Regular")
+              , qsl(":/fonts/RobotoMono_Medium")
+              , qsl(":/fonts/RobotoMono_Bold")
+              , qsl(":/fonts/RobotoMono_Italic")
+              , qsl(":/fonts/RobotoMono_MediumItalic")
+              , qsl(":/fonts/RobotoMono_BoldItalic")
+            );
         }
         app_->setFont(Fonts::appFontFamilyNameQss(Fonts::defaultAppFontFamily(), Fonts::FontWeight::Normal));
     }
@@ -423,7 +445,7 @@ namespace Utils
             }
         };
 
-        if (!Utils::InterConnector::instance().getMainPage())
+        if (!Utils::InterConnector::instance().getMessengerPage())
         {
             activate();
             return;

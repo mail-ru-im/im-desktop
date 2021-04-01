@@ -78,7 +78,10 @@ namespace
         return _isPlaying ? iconPause : iconPlay;
     }
 
-    constexpr std::chrono::milliseconds tooltipShowDelay() noexcept { return std::chrono::milliseconds(400); }
+    QRect playButtonRect() noexcept
+    {
+        return Utils::scale_value(QRect(HOR_OFFSET, ICON_VER_OFFSET, BUTTON_SIZE, BUTTON_SIZE));
+    }
 }
 
 namespace Ui
@@ -115,6 +118,8 @@ namespace Ui
     {
         date_->setOffsets(Utils::scale_value(HOR_OFFSET), Utils::scale_value(DATE_TOP_OFFSET) + _rect.y());
         date_->draw(_p);
+
+        markDrew();
     }
 
     int DatePttItem::getHeight() const
@@ -273,6 +278,8 @@ namespace Ui
             textControl_->setOffsets(Utils::scale_value(TEXT_HOR_OFFSET), Utils::scale_value(TEXT_OFFSET + VER_OFFSET * 2) + offset + date_->cachedSize().height() + _rect.y());
             textControl_->draw(_p);
         }
+
+        markDrew();
     }
 
     int PttItem::getHeight() const
@@ -394,34 +401,42 @@ namespace Ui
         textControl_->getHeight(width_ - Utils::scale_value(HOR_OFFSET + TEXT_HOR_OFFSET + RIGHT_OFFSET));
     }
 
-    bool PttItem::playClicked(const QPoint& _pos) const
+    bool PttItem::isOverPlay(const QPoint& _pos) const
     {
-        static QRect r(Utils::scale_value(HOR_OFFSET), Utils::scale_value(VER_OFFSET), Utils::scale_value(BUTTON_SIZE), Utils::scale_value(BUTTON_SIZE));
+        if (!isDrew())
+            return false;
+        static QRegion r(playButtonRect(), QRegion::RegionType::Ellipse);
         return r.contains(_pos) && (!playing_ || pause_);
     }
 
-    bool PttItem::pauseClicked(const QPoint& _pos) const
+    bool PttItem::isOverPause(const QPoint& _pos) const
     {
-        static QRect r(Utils::scale_value(HOR_OFFSET), Utils::scale_value(VER_OFFSET), Utils::scale_value(BUTTON_SIZE), Utils::scale_value(BUTTON_SIZE));
+        if (!isDrew())
+            return false;
+        static QRegion r(playButtonRect(), QRegion::RegionType::Ellipse);
         return r.contains(_pos) && playing_;
     }
 
-    bool PttItem::textClicked(const QPoint& _pos) const
+    bool PttItem::isOverTextButton(const QPoint& _pos) const
     {
-        if (!config::get().is_on(config::features::ptt_recognition))
+        if (!isDrew() || !config::get().is_on(config::features::ptt_recognition))
             return false;
 
-        QRect r(width_ - Utils::scale_value(HOR_OFFSET + BUTTON_SIZE + RIGHT_OFFSET - PREVIEW_RIGHT_OFFSET), Utils::scale_value(VER_OFFSET), Utils::scale_value(BUTTON_SIZE), Utils::scale_value(BUTTON_SIZE));
+        QRegion r(width_ - Utils::scale_value(HOR_OFFSET + BUTTON_SIZE + RIGHT_OFFSET - PREVIEW_RIGHT_OFFSET), Utils::scale_value(ICON_VER_OFFSET), Utils::scale_value(BUTTON_SIZE), Utils::scale_value(BUTTON_SIZE), QRegion::RegionType::Ellipse);
         return r.contains(_pos);
     }
 
     bool PttItem::isOverProgressBar(const QPoint& _pos) const
     {
+        if (!isDrew())
+            return false;
         return getPlaybackRect().contains(_pos);
     }
 
     bool PttItem::isOverBullet(const QPoint& _pos) const
     {
+        if (!isDrew())
+            return false;
         return progressHovered_;
     }
 
@@ -513,6 +528,8 @@ namespace Ui
 
     bool PttItem::isOverDate(const QPoint& _pos) const
     {
+        if (!isDrew())
+            return false;
         return date_->contains(_pos);
     }
 
@@ -568,6 +585,8 @@ namespace Ui
 
     bool PttItem::isOverMoreButton(const QPoint& _pos, int _h) const
     {
+        if (!isDrew())
+            return false;
         auto r = QRect(width_ - Utils::scale_value(RIGHT_OFFSET) / 2 - Utils::scale_value(MORE_BUTTON_SIZE) / 2, _h + Utils::scale_value(ICON_VER_OFFSET + BUTTON_SIZE / 2) - Utils::scale_value(MORE_BUTTON_SIZE) / 2, Utils::scale_value(MORE_BUTTON_SIZE), Utils::scale_value(MORE_BUTTON_SIZE));
         return r.contains(_pos);
     }
@@ -737,11 +756,11 @@ namespace Ui
             {
                 auto p = _event->pos();
                 p.setY(p.y() - h);
-                if ((i->playClicked(p) || i->pauseClicked(p)) && leftButton)
+                if ((i->isOverPlay(p) || i->isOverPause(p)) && leftButton)
                 {
                     i->setPlayState(ButtonState::PRESSED);
                 }
-                else if (i->textClicked(p) && leftButton)
+                else if (i->isOverTextButton(p) && leftButton)
                 {
                     i->setTextState(ButtonState::PRESSED);
                 }
@@ -812,7 +831,7 @@ namespace Ui
                 continue;
             }
 
-            if (i->playClicked(p))
+            if (i->isOverPlay(p))
             {
                 if (i->playState() == ButtonState::PRESSED)
                 {
@@ -832,7 +851,7 @@ namespace Ui
                 }
                 i->setPlayState(ButtonState::HOVERED);
             }
-            else if (i->pauseClicked(p))
+            else if (i->isOverPause(p))
             {
                 if (i->playState() == ButtonState::PRESSED)
                 {
@@ -846,7 +865,7 @@ namespace Ui
                 }
                 i->setPlayState(ButtonState::HOVERED);
             }
-            else if (i->textClicked(p))
+            else if (i->isOverTextButton(p))
             {
                 if (i->textState() == ButtonState::PRESSED)
                 {
@@ -931,12 +950,12 @@ namespace Ui
             p.ry() -= h;
             if (hovered && !oneOfButtonsPressed)
             {
-                if (i->playClicked(p) || i->pauseClicked(p))
+                if (i->isOverPlay(p) || i->isOverPause(p))
                 {
                     i->setPlayState(ButtonState::HOVERED);
                     point = true;
                 }
-                else if (i->textClicked(p))
+                else if (i->isOverTextButton(p))
                 {
                     i->setTextState(ButtonState::HOVERED);
                     point = true;

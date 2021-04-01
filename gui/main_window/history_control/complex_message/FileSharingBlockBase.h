@@ -41,11 +41,11 @@ public:
 
     QString getProgressText() const;
 
-    virtual QString getSourceText() const override;
+    virtual Data::FormattedString getSourceText() const override;
 
     virtual QString getPlaceholderText() const override;
 
-    virtual QString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
+    virtual Data::FormattedString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
 
     virtual void initialize() final override;
 
@@ -139,7 +139,7 @@ protected:
 
     virtual void onMetainfoDownloaded() = 0;
 
-    virtual void onPreviewMetainfoDownloaded(const QString& _miniPreviewUri, const QString& _fullPreviewUri) = 0;
+    virtual void onPreviewMetainfoDownloaded() = 0;
 
     void requestMetainfo(const bool _isPreview);
 
@@ -168,6 +168,8 @@ protected:
 
     bool isInited() const;
 
+    virtual std::optional<Data::FileSharingMeta> getMeta(const QString& _id) const override;
+
 private:
     void connectSignals();
 
@@ -184,17 +186,9 @@ private:
 
     int64_t DownloadRequestId_;
 
-    QString FileLocalPath_;
-
-    int64_t LastModified_;
-
     int64_t FileMetaRequestId_;
 
     int64_t fileDirectLinkRequestId_;
-
-    QString Filename_;
-
-    int64_t FileSizeBytes_;
 
     bool IsSelected_;
 
@@ -208,8 +202,6 @@ private:
 
     std::unique_ptr<core::file_sharing_content_type> Type_;
 
-    QString directUri_;
-
     bool inited_;
 
     bool loadedFromLocal_;
@@ -219,10 +211,7 @@ private:
     QTimer* dataTransferTimeout_;
 
 protected:
-    bool savedByUser_;
-    bool recognize_;
-    bool gotAudio_;
-    int32_t duration_;
+    Data::FileSharingMeta Meta_;
 
 private Q_SLOTS:
     void onFileDownloaded(qint64 _seq, const Data::FileSharingDownloadResult& _result);

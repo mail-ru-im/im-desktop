@@ -1,19 +1,20 @@
 #include "stdafx.h"
 
 #ifdef __APPLE__
-    #include "../../core/tools/strings.h"
+#include "../../core/tools/strings.h"
 #else
-    #include "../core/tools/strings.h"
+#include "../core/tools/strings.h"
 #endif
 
 #include "url_parser.h"
 #include "../config/config.h"
 
 #include <cctype>
+#include <locale>
 
 namespace
 {
-    #include "domain_parser.in"
+#include "domain_parser.in"
 
     constexpr std::string_view ICQ_COM = "icq.com/files/";
     static constexpr int ICQ_COM_SAFE_POS = std::string_view("icq.com").size() - 1;
@@ -206,9 +207,45 @@ common::tools::url_parser::url_parser(std::vector<std::string> _files_urls)
     init_fixed_urls_compare();
 }
 
-void common::tools::url_parser::process(char c)
+common::tools::url_parser_utf16::url_parser_utf16(std::string_view _files_url)
+    : common::tools::url_parser(_files_url)
+{}
+
+common::tools::url_parser_utf16::url_parser_utf16(std::string_view _files_url, std::vector<std::string> _files_urls)
+    : url_parser(_files_url, _files_urls)
+{}
+
+common::tools::url_parser_utf16::url_parser_utf16(std::vector<std::string> _files_urls)
+    : url_parser(_files_urls)
+{}
+
+void common::tools::url_parser_utf16::process(char16_t _c)
 {
-    char_buf_[char_pos_] = c;
+    char16_buf_[char16_pos_] = _c;
+
+    if (char16_pos_ > 0)
+    {
+        ++char16_pos_;
+
+        if (char16_pos_ < char16_size_)
+            return;
+
+        char16_pos_ = 0;
+        process();
+        return;
+    }
+
+    char16_size_ = core::tools::utf16_char_size(_c);
+    assert(static_cast<size_t>(char16_size_) <= char16_buf_.size());
+    if (char16_size_ == 1)
+        process();
+    else
+        ++char16_pos_;
+}
+
+void common::tools::url_parser::process(char _c)
+{
+    char_buf_[char_pos_] = _c;
 
     if (char_pos_ > 0)
     {
@@ -222,7 +259,7 @@ void common::tools::url_parser::process(char c)
         return;
     }
 
-    char_size_ = core::tools::utf8_char_size(c);
+    char_size_ = core::tools::utf8_char_size(_c);
 
     is_utf8_ = char_size_ > 1;
 
@@ -317,7 +354,7 @@ static bool is_black_list_email_host(std::string_view _s)
 #endif
 #define URL_PARSER_SET_STATE_AND_REPROCESS(X) { assert(state_ != (X)); if (state_ != (X)) { state_ = (X); process(); return; } }
 
-static bool is_supported_scheme(std::string_view scheme)
+static bool is_supported_scheme(std::string_view _scheme)
 {
     const static auto schemes = []() {
         const auto scheme_csv = config::get().string(config::values::register_url_scheme_csv); //url1,descr1,url2,desc2,..
@@ -326,7 +363,39 @@ static bool is_supported_scheme(std::string_view scheme)
         splitted.erase(std::remove_if(splitted.begin(), splitted.end(), [&i](const auto&) { return i % 2 != 0; }), splitted.end());
         return splitted;
     }();
-    return std::any_of(schemes.begin(), schemes.end(), [scheme](auto x) { return x == scheme; });
+    return std::any_of(schemes.begin(), schemes.end(), [_scheme](auto x) { return x == _scheme; });
+}
+
+void common::tools::url_parser_utf16::process()
+{
+    if (char16_buf_[0] != 0)
+    {
+        std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> convert;
+        std::u16string source;
+        source.resize(char16_size_);
+        for (auto i = 0; i < char16_size_; ++i)
+            source[i] = char16_buf_[i];
+        auto dest = std::string();
+        try
+        {
+            dest = convert.to_bytes(source);
+        }
+        catch (const std::range_error& _e)
+        {
+            // might happen on linux for invalid emoji
+            char16_buf_.fill(0);
+            return;
+        }
+        assert(dest.size() <= char_buf_.size());
+        char_size_ = std::min(char_buf_.size(), dest.size());
+        char_buf_.fill(0);
+        for (auto i = 0; i < char_size_; ++i)
+            char_buf_[i] = dest[i];
+        is_utf8_ = dest.size() > 1;
+        char16_buf_.fill(0);
+    }
+
+    url_parser::process();
 }
 
 void common::tools::url_parser::process()
@@ -797,6 +866,15 @@ void common::tools::url_parser::process()
 
 #undef URL_PARSER_URI_FOUND
 
+void common::tools::url_parser_utf16::reset()
+{
+    url_parser::reset();
+
+    char16_buf_.fill(0);
+    char16_pos_ = 0;
+    char16_size_ = 0;
+}
+
 void common::tools::url_parser::reset()
 {
     state_ = states::lookup;
@@ -988,19 +1066,22 @@ bool common::tools::url_parser::save_url()
     if (domain_segments_ == 1 && state_ != states::filesharing_id && protocol_ == url::protocol::undefined)
         return false;
 
-    while (is_ending_char(buf_.back()))
+    if (!buf_.empty())
     {
-        buf_.pop_back();
-        ++tail_size_;
-    }
-
-    if (buf_.back() == ')')
-    {
-        buf_.pop_back();
-        if (buf_.back() != '/')
-            buf_.push_back(')');
-        else
+        while (is_ending_char(buf_.back()))
+        {
+            buf_.pop_back();
             ++tail_size_;
+        }
+
+        if (buf_.back() == ')')
+        {
+            buf_.pop_back();
+            if (buf_.back() != '/')
+                buf_.push_back(')');
+            else
+                ++tail_size_;
+        }
     }
 
     if (char_size_ == 2 && char_buf_[0] == NBSP_FIRST && char_buf_[1] == NBSP_SECOND)
@@ -1158,7 +1239,7 @@ bool common::tools::url_parser::is_allowable_char(char _c, bool _is_utf8) const
         return true;
 
     return _c == '-' || _c == '.' || _c == '_' || _c == '~' || _c == '!' || _c == '$' || _c == '&'
-        || _c == '\'' || _c == '(' || _c == ')'|| _c == '*' || _c == '+' || _c == ',' || _c == ';'
+       || _c == '\'' || _c == '(' || _c == ')' || _c == '*' || _c == '+' || _c == ',' || _c == ';'
         || _c == '=' || _c == ':' || _c == '%' || _c == '?' || _c == '#' || _c == '@'
         || _c == '{' || _c == '}' || _c == '/' || _c == '[' || _c == ']' || _c == '"';
 

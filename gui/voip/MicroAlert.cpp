@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "core_dispatcher.h"
 #include "MicroAlert.h"
 #include "../controls/CustomButton.h"
 #include "../controls/DialogButton.h"
@@ -39,7 +40,7 @@ namespace
     {
         if (_issue == Ui::MicroIssue::NotFound)
             return QT_TRANSLATE_NOOP("voip_video_panel", "Microphone not found. Check that it is connected and working.");
-        else if (_issue == Ui::MicroIssue::NoPermission || _issue == Ui::MicroIssue::Incoming)
+        else if (_issue == Ui::MicroIssue::NoPermission)
             return QT_TRANSLATE_NOOP("voip_video_panel", "Allow access to microphone. Click \"Settings\" and allow application access to microphone");
 
         static QString empty;
@@ -198,80 +199,33 @@ void MicroAlert::updateSize()
     update();
 }
 
-void Utils::checkMicroPermission(QWidget* _parent, MicroPermissionCallback _callback)
+void Utils::showPermissionDialog(QWidget* _parent)
 {
-    if constexpr (platform::is_linux())
+    if (get_gui_settings()->get_value<bool>(show_microphone_request, show_microphone_request_default()))
     {
-        if (_callback)
-            _callback(!ptt::AudioRecorder2::hasDevice() ? MicroIssue::NotFound : MicroIssue::None);
-        return;
-    }
-    else
-    {
-        auto finalCheck = [_callback](bool _allowed)
+        const auto caption = QT_TRANSLATE_NOOP("popup_window", "Allow microphone access, so that interlocutor could hear you");
+        const auto text = QT_TRANSLATE_NOOP("voip_video_panel", "Allow access to microphone. Click \"Settings\" and allow application access to microphone");
+        const QString btnCancel = QT_TRANSLATE_NOOP("popup_window", "Don't allow");
+        const QString btnConfirm = QT_TRANSLATE_NOOP("popup_window", "Settings");
+
+        auto w = new Utils::CheckableInfoWidget(nullptr);
+        w->setCheckBoxText(QT_TRANSLATE_NOOP("popup_window", "Don't show again"));
+        w->setCheckBoxChecked(false);
+        w->setInfoText(text, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+
+        GeneralDialog generalDialog(w, _parent);
+        generalDialog.addLabel(caption);
+        generalDialog.addButtonsPair(btnCancel, btnConfirm, true);
+
+        if (auto parentAsPanel = qobject_cast<FullVideoWindowPanel*>(_parent))
         {
-            if (!_callback)
-                return;
-
-            auto issue = MicroIssue::None;
-            if (!_allowed)
-                issue = MicroIssue::NoPermission;
-            else if (!ptt::AudioRecorder2::hasDevice())
-                issue = MicroIssue::NotFound;
-
-            _callback(issue);
-        };
-
-        static bool isShow = false;
-        const auto device = media::permissions::DeviceType::Microphone;
-        const auto p = media::permissions::checkPermission(device);
-        if (p == media::permissions::Permission::NotDetermined)
-        {
-            isShow = true;
-            auto finalCheckEnsureMainThread = [finalCheck, pThis = QPointer(_parent)](bool _allowed)
-            {
-                if (pThis)
-                    QMetaObject::invokeMethod(pThis, [_allowed, finalCheck]()
-                    {
-                        finalCheck(_allowed);
-                        isShow = false;
-                    });
-            };
-            media::permissions::requestPermission(device, finalCheckEnsureMainThread);
-            return;
+            QObject::connect(parentAsPanel, &FullVideoWindowPanel::onResize, &generalDialog, &Ui::GeneralDialog::updateSize);
+            QObject::connect(parentAsPanel, &FullVideoWindowPanel::aboutToHide, &generalDialog, &Ui::GeneralDialog::reject);
         }
-        else if (get_gui_settings()->get_value<bool>(show_microphone_request, show_microphone_request_default())
-                 && p != media::permissions::Permission::Allowed
-                 && !isShow)
-        {
-            QScopedValueRollback scoped(isShow, true);
-            const auto caption = QT_TRANSLATE_NOOP("popup_window", "Allow microphone access, so that interlocutor could hear you");
-            const auto text = QT_TRANSLATE_NOOP("voip_video_panel", "Allow access to microphone. Click \"Settings\" and allow application access to microphone");
-            const QString btnCancel = QT_TRANSLATE_NOOP("popup_window", "Don't allow");
-            const QString btnConfirm = QT_TRANSLATE_NOOP("popup_window", "Settings");
 
-            auto w = new Utils::CheckableInfoWidget(nullptr);
-            w->setCheckBoxText(QT_TRANSLATE_NOOP("popup_window", "Don't show again"));
-            w->setCheckBoxChecked(false);
-            w->setInfoText(text, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
-
-            GeneralDialog generalDialog(w, _parent);
-            generalDialog.addLabel(caption);
-            generalDialog.addButtonsPair(btnCancel, btnConfirm, true);
-
-            auto parentAsPanel = static_cast<FullVideoWindowPanel*>(_parent);
-            if (parentAsPanel)
-            {
-                QObject::connect(parentAsPanel, &FullVideoWindowPanel::onResize, &generalDialog, &Ui::GeneralDialog::updateSize);
-                QObject::connect(parentAsPanel, &FullVideoWindowPanel::aboutToHide, &generalDialog, &Ui::GeneralDialog::reject);
-            }
-
-            auto res = generalDialog.showInCenter();
-            if (res)
-                media::permissions::openPermissionSettings(device);
-            get_gui_settings()->set_value(show_microphone_request, !w->isChecked());
-        }
-        finalCheck(media::permissions::checkPermission(device) == media::permissions::Permission::Allowed);
+        if (generalDialog.showInCenter())
+            media::permissions::openPermissionSettings(media::permissions::DeviceType::Microphone);
+        get_gui_settings()->set_value(show_microphone_request, !w->isChecked());
     }
 }
 
@@ -279,8 +233,8 @@ ResizeDialogEventFilter::ResizeDialogEventFilter(GeneralDialog* _dialog, QObject
     : QObject(_parent)
     , dialog_(_dialog)
 {
-
 }
+
 bool ResizeDialogEventFilter::eventFilter(QObject* _obj, QEvent* _e)
 {
     QWidget* parent = qobject_cast<QWidget*>(_obj);

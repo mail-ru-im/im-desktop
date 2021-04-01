@@ -212,12 +212,13 @@ history_block local_history::get_mentions(const std::string& _contact, bool& _fi
     return archive->get_mentions();
 }
 
-std::shared_ptr<archive_hole> local_history::get_next_hole(const std::string& _contact, int64_t _from, int64_t _depth)
+local_history::hole_result local_history::get_next_hole(const std::string& _contact, int64_t _from, int64_t _depth)
 {
-    if (auto hole = std::make_shared<archive_hole>(); get_contact_archive(_contact)->get_next_hole(_from, *hole, _depth))
-        return hole;
-
-    return nullptr;
+    auto hole = std::make_shared<archive_hole>();
+    auto error = get_contact_archive(_contact)->get_next_hole(_from, *hole, _depth);
+    if (error == archive_hole_error::ok)
+        return { std::move(hole), error };
+    return { nullptr, error };
 }
 
 
@@ -1040,25 +1041,26 @@ std::shared_ptr<request_next_hole_handler> face::get_next_hole(const std::string
 {
     auto handler = std::make_shared<request_next_hole_handler>();
     auto hole = std::make_shared<archive_hole>();
+    auto hole_error = std::make_shared<archive_hole_error>(archive_hole_error::ok);
 
     static constexpr char task_name[] = "face::get_next_hole";
 
-    thread_->run_async_function([history_cache = history_cache_, hole, _contact, _from, _depth]()->int32_t
+    thread_->run_async_function([history_cache = history_cache_, hole, hole_error, _contact, _from, _depth]()->int32_t
     {
-        auto new_hole = history_cache->get_next_hole(_contact, _from, _depth);
-
-        if (new_hole)
+        auto result = history_cache->get_next_hole(_contact, _from, _depth);
+        *hole_error = result.error;
+        if (result.hole)
         {
-            *hole = *new_hole;
+            *hole = *result.hole;
             return 0;
         }
 
         return -1;
 
-    }, task_name)->on_result_ = [handler, hole](int32_t _error)
+    }, task_name)->on_result_ = [handler, hole, hole_error](int32_t _error)
     {
         if (handler->on_result)
-            handler->on_result( (_error == 0) ? hole : nullptr);
+            handler->on_result( (_error == 0) ? hole : nullptr, *hole_error);
     };
 
     return handler;
@@ -1145,7 +1147,7 @@ void face::get_pending_delete_messages(std::function<void(const bool _empty, con
 std::shared_ptr<insert_pending_delete_message_handler> face::insert_pending_delete_message(const std::string& _contact, delete_message _message)
 {
     auto handler = std::make_shared<insert_pending_delete_message_handler>();
-    
+
     static constexpr char task_name[] = "face::insert_pending_delete_message";
 
     thread_->run_async_function([history_cache = history_cache_, _contact, _message]

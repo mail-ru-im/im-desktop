@@ -200,7 +200,7 @@ namespace core
                 std::unique_lock<std::mutex> locker(wakeup_mutex_);
                 timer_ready_ = false;
                 if (timer == -1)
-                    g_core->add_timer(wakeup_task, std::chrono::seconds(1));
+                    g_core->add_timer({wakeup_task}, std::chrono::seconds(1));
                 if (!timer_ready_ && !need_abort_)
                     timer_cv_.wait(locker, [this] { return timer_ready_ || need_abort_; });
 

@@ -470,6 +470,8 @@ inline void operator>>(const voip_manager::eNotificationTypes& _type, core::coll
     case kNotificationType_MainVideoLayoutChanged: _coll.set_value_as_string(name, "voip_main_video_layout_changed"); return;
     case kNotificationType_ConfPeerDisconnected: _coll.set_value_as_string(name, "conf_peer_disconnected"); return;
 
+    case kNotificationType_HideControlsWhenRemDesktopSharing: _coll.set_value_as_string(name, "hide_ctrls_when_remote_sharing"); return;
+
     default: assert(false); return;
     }
 }

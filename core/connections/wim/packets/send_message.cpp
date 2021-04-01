@@ -34,6 +34,45 @@ namespace
 
         return poll_params;
     }
+
+    rapidjson::Value serialize_format(const core::data::format::string_formatting& _format, rapidjson_allocator& _a)
+    {
+        namespace fmt = core::data::format;
+
+        auto serialize_format_entry = [&_a](const fmt::format& _entry)
+        {
+            rapidjson::Value result(rapidjson::Type::kObjectType);
+            result.AddMember("offset", _entry.range_.offset_, _a);
+            result.AddMember("length", _entry.range_.length_, _a);
+
+            if (_entry.data_)
+            {
+                if (_entry.type_ == fmt::format_type::link)
+                    result.AddMember("url", *_entry.data_, _a);
+
+                if (_entry.type_ == fmt::format_type::pre)
+                    result.AddMember("lang", *_entry.data_, _a);
+            }
+
+            return result;
+        };
+
+        rapidjson::Value format_params(rapidjson::Type::kObjectType);
+
+        std::unordered_map<fmt::format_type, rapidjson::Value> arrays_map;
+        for (const auto& entry : _format.formats())
+        {
+            if (arrays_map.find(entry.type_) == arrays_map.end())
+                arrays_map.emplace(entry.type_, rapidjson::Type::kArrayType);
+
+            arrays_map[entry.type_].PushBack(serialize_format_entry(entry), _a);
+        }
+
+        for (auto& [format_type, arr] : arrays_map)
+            format_params.AddMember(rapidjson::Value(fmt::to_string(format_type).data(), _a), arr, _a);
+
+        return format_params;
+    }
 }
 
 using namespace core;
@@ -45,9 +84,11 @@ send_message::send_message(wim_packet_params _params,
     const std::string& _internal_id,
     const std::string& _aimid,
     const std::string& _message_text,
+    const core::data::format::string_formatting& _message_format,
     const core::archive::quotes_vec& _quotes,
     const core::archive::mentions_map& _mentions,
     const std::string& _description,
+    const core::data::format::string_formatting& _description_format,
     const std::string& _url,
     const archive::shared_contact& _shared_contact,
     const core::archive::geo& _geo,
@@ -59,6 +100,7 @@ send_message::send_message(wim_packet_params _params,
         type_(_type),
         aimid_(_aimid),
         message_text_(_message_text),
+        message_format_(_message_format),
         sms_error_(0),
         sms_count_(0),
         internal_id_(_internal_id),
@@ -68,6 +110,7 @@ send_message::send_message(wim_packet_params _params,
         quotes_(_quotes),
         mentions_(_mentions),
         description_(_description),
+        description_format_(_description_format),
         url_(_url),
         shared_contact_(_shared_contact),
         geo_(_geo),
@@ -112,6 +155,8 @@ int32_t send_message::init_request(const std::shared_ptr<core::http_request_simp
                 quote_params.AddMember("text", "", a);
                 rapidjson::Value caption_params(rapidjson::Type::kObjectType);
                 caption_params.AddMember("caption", quote.get_description(), a);
+                if (!quote.get_description_format().empty())
+                    caption_params.AddMember("format", serialize_format(quote.get_description_format(), a), a);
                 caption_params.AddMember("url", quote.get_url(), a);
                 quote_params.AddMember("captionedContent", std::move(caption_params), a);
             }
@@ -144,9 +189,15 @@ int32_t send_message::init_request(const std::shared_ptr<core::http_request_simp
             else
             {
                 if (auto sticker = quote.get_sticker(); !sticker.empty())
+                {
                     quote_params.AddMember("stickerId", std::move(sticker), a);
+                }
                 else
+                {
                     quote_params.AddMember("text", quote.get_text(), a);
+                    if (const auto& format = quote.get_format())
+                        quote_params.AddMember("format", serialize_format(*format, a), a);
+                }
             }
             quote_params.AddMember("sn", quote.get_sender(), a);
             quote_params.AddMember("msgId", quote.get_msg_id(), a);
@@ -208,6 +259,8 @@ int32_t send_message::init_request(const std::shared_ptr<core::http_request_simp
 
             rapidjson::Value caption_params(rapidjson::Type::kObjectType);
             caption_params.AddMember("caption", description_, a);
+            if (!description_format_.empty())
+                caption_params.AddMember("format", serialize_format(description_format_, a), a);
             caption_params.AddMember("url", url_, a);
             text_params.AddMember("captionedContent", std::move(caption_params), a);
             doc.PushBack(std::move(text_params), a);
@@ -254,8 +307,31 @@ int32_t send_message::init_request(const std::shared_ptr<core::http_request_simp
     {
         if (description_.empty())
         {
-            std::string message_text = is_sticker ? message_text_ : escape_symbols(message_text_);
-            _request->push_post_parameter((is_sticker ? "stickerId" : "message"), std::move(message_text));
+            if (message_format_.empty())
+            {
+                std::string message_text = is_sticker ? message_text_ : escape_symbols(message_text_);
+                _request->push_post_parameter((is_sticker ? "stickerId" : "message"), std::move(message_text));
+            }
+            else
+            {
+                assert(!is_sticker);
+                rapidjson::Document doc(rapidjson::Type::kArrayType);
+                auto& a = doc.GetAllocator();
+
+                rapidjson::Value text_params(rapidjson::Type::kObjectType);
+                text_params.AddMember("mediaType", "text", a);
+                text_params.AddMember("text", message_text_, a);
+
+                rapidjson::Value format_params(rapidjson::Type::kObjectType);
+                text_params.AddMember("format", serialize_format(message_format_, a), a);
+                doc.PushBack(std::move(text_params), a);
+
+                rapidjson::StringBuffer buffer;
+                rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+                doc.Accept(writer);
+
+                _request->push_post_parameter("parts", escape_symbols(rapidjson_get_string_view(buffer)));
+            }
         }
         else
         {
@@ -268,6 +344,8 @@ int32_t send_message::init_request(const std::shared_ptr<core::http_request_simp
 
             rapidjson::Value caption_params(rapidjson::Type::kObjectType);
             caption_params.AddMember("caption", description_, a);
+            if (!description_format_.empty())
+                caption_params.AddMember("format", serialize_format(description_format_, a), a);
             caption_params.AddMember("url", url_, a);
             text_params.AddMember("captionedContent", std::move(caption_params), a);
             doc.PushBack(std::move(text_params), a);
@@ -357,6 +435,7 @@ int32_t send_message::init_request(const std::shared_ptr<core::http_request_simp
         f.add_message_markers();
         f.add_marker("aimsid", aimsid_range_evaluator());
         f.add_marker("message");
+        f.add_marker("text");
         f.add_json_array_marker("responses", poll_responses_ranges_evaluator());
         _request->set_replace_log_function(f);
     }

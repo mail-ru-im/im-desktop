@@ -89,7 +89,7 @@ bool Utils::UrlParser::hasUrl() const
 
 const common::tools::url& Utils::UrlParser::getUrl() const
 {
-    assert(parser_.has_url());
+    im_assert(parser_.has_url());
     return parser_.get_url();
 }
 

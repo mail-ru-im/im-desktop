@@ -16,6 +16,7 @@
 #include "../common.shared/string_utils.h"
 #include "../common.shared/omicron_keys.h"
 #include "../common.shared/string_utils.h"
+#include "configuration/app_config.h"
 
 using namespace core;
 
@@ -502,6 +503,14 @@ void core::http_request_simple::set_compression_method(data_compression_method _
 
 void core::http_request_simple::set_compression_auto()
 {
+    if constexpr (environment::is_develop())
+    {
+        if (!core::configuration::get_app_config().is_net_compression_enabled())
+        {
+            set_compression_method(data_compression_method::none);
+            return;
+        }
+    }
     if (features::is_zstd_request_enabled())
         set_compression_method(data_compression_method::zstd);
     else
@@ -511,7 +520,7 @@ void core::http_request_simple::set_compression_auto()
 void core::http_request_simple::set_etag(std::string_view _etag)
 {
     if (!_etag.empty())
-        custom_headers_.push_back(su::concat("If-None-Match: \"", _etag, '"'));
+        set_custom_header_param(su::concat("If-None-Match: \"", _etag, '"'));
 }
 
 void core::http_request_simple::set_replace_log_function(replace_log_function _func)

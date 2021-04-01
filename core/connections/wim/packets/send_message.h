@@ -41,6 +41,7 @@ namespace core
 
             std::string aimid_;
             std::string message_text_;
+            core::data::format::string_formatting message_format_;
 
             uint32_t sms_error_;
             uint32_t sms_count_;
@@ -57,6 +58,7 @@ namespace core
             core::archive::mentions_map mentions_;
 
             std::string description_;
+            core::data::format::string_formatting description_format_;
             std::string url_;
 
             core::archive::shared_contact shared_contact_;
@@ -86,9 +88,11 @@ namespace core
                 const std::string& _internal_id,
                 const std::string& _aimid,
                 const std::string& _message_text,
+                const core::data::format::string_formatting& _message_format,
                 const core::archive::quotes_vec& _quotes,
                 const core::archive::mentions_map& _mentions,
                 const std::string& _description,
+                const core::data::format::string_formatting& _description_format,
                 const std::string& _url,
                 const core::archive::shared_contact& _shared_contact,
                 const core::archive::geo& _geo,

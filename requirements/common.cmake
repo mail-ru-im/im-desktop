@@ -2,8 +2,9 @@
 set(DOWNLOADS_PATH "${ICQ_ROOT}/downloads")
 
 # Inform QA team if the variable is deleted, moved or the name will be changed
-set(VOIP_LIBS_VERSION "3.5.8.1957")
-set(EXT_LIBS_VERSION "v19")
+set(VOIP_LIBS_VERSION "3.6.5.2072")
+
+set(EXT_LIBS_VERSION "v32")
 
 set(DOWNLOADS_URL "https://hb.bizmrg.com/icq-www/external")
 
@@ -46,8 +47,8 @@ set(deps_lib_version_rapidjson_src "0ccdbf36")
 set(deps_lib_version_re2 "2020-10-01")
 set(deps_lib_version_zlib "1.2.11")
 set(deps_lib_version_zstd "1.4.5")
-set(deps_lib_version_rlottie "master")
-set(deps_lib_version_rlottie_src "a41bd73")
+set(deps_lib_version_rlottie "master-fix-crash")
+set(deps_lib_version_rlottie_src "3cd0015")
 
 function(download_file URL FILENAME MD5_FILENAME)
     message(STATUS "[downloading]")

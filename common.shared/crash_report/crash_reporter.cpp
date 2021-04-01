@@ -141,7 +141,7 @@ namespace crash_system
     }
 
 #ifdef __APPLE__
-    void reporter::init(std::string_view _dump_path, std::string_view _login, std::string_view _bundle_path)
+    void reporter::init(std::string_view _dump_path, std::string_view _base_url, std::string_view _login, std::string_view _bundle_path)
     {
 #ifndef BUILD_FOR_STORE
         if constexpr (!core::dump::is_crash_handle_enabled())
@@ -154,7 +154,7 @@ namespace crash_system
         // Path to the out-of-process handler executable
         base::FilePath handler(su::concat(_bundle_path, "/Contents/Helpers/crashpad_handler"));
         // URL used to submit minidumps to
-        std::string url = submit_url(_login);
+        std::string url = submit_url(_base_url, _login);
         // Optional annotations passed via --annotations to the handler
         std::map<std::string, std::string> annotations;
         // Optional arguments to pass to the handler

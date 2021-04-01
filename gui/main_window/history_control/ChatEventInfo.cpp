@@ -21,7 +21,7 @@ namespace
 {
     [[nodiscard]] QString cleanupFriendlyName(QString _name)
     {
-        assert(!_name.isEmpty());
+        im_assert(!_name.isEmpty());
 
         _name.remove(ql1s("@uin.icq"), Qt::CaseInsensitive);
         return _name;
@@ -60,7 +60,7 @@ namespace HistoryControl
 
     ChatEventInfoSptr ChatEventInfo::make(const core::coll_helper& _info, const bool _isOutgoing, const QString& _myAimid, const QString& _aimid)
     {
-        assert(!_myAimid.isEmpty());
+        im_assert(!_myAimid.isEmpty());
 
         const auto type = _info.get_value_as_enum<chat_event_type>("type");
         const auto isCaptchaPresent = _info.get_value_as_bool("is_captcha_present", false);
@@ -106,7 +106,7 @@ namespace HistoryControl
         if (isChatNameModified)
         {
             const auto newChatName = _info.get<QString>("chat/new_name");
-            assert(!newChatName.isEmpty());
+            im_assert(!newChatName.isEmpty());
 
             eventInfo->setNewName(newChatName);
 
@@ -169,7 +169,7 @@ namespace HistoryControl
             return eventInfo;
         }
 
-        assert(!"unexpected event type");
+        im_assert(!"unexpected event type");
         return eventInfo;
     }
 
@@ -181,9 +181,9 @@ namespace HistoryControl
         , myAimid_(_myAimid)
         , aimId_(_aimid)
     {
-        assert(type_ > chat_event_type::min);
-        assert(type_ < chat_event_type::max);
-        assert(!myAimid_.isEmpty());
+        im_assert(type_ > chat_event_type::min);
+        im_assert(type_ < chat_event_type::max);
+        im_assert(!myAimid_.isEmpty());
     }
 
     QString ChatEventInfo::formatEventTextInternal() const
@@ -282,13 +282,13 @@ namespace HistoryControl
                 break;
         }
 
-        assert(!"unexpected chat event type");
+        im_assert(!"unexpected chat event type");
         return QString();
     }
 
     QString ChatEventInfo::formatAddedToBuddyListText() const
     {
-        assert(type_ == chat_event_type::added_to_buddy_list);
+        im_assert(type_ == chat_event_type::added_to_buddy_list);
 
         if (isOutgoing_)
             return QT_TRANSLATE_NOOP("chat_event", "You added %1 to contacts").arg(senderFriendly());
@@ -297,7 +297,7 @@ namespace HistoryControl
 
     QString ChatEventInfo::formatAvatarModifiedText() const
     {
-        assert(type_ == chat_event_type::avatar_modified);
+        im_assert(type_ == chat_event_type::avatar_modified);
 
         if (isChannel())
         {
@@ -315,7 +315,7 @@ namespace HistoryControl
 
     QString ChatEventInfo::formatBirthdayText() const
     {
-        assert(type_ == chat_event_type::birthday);
+        im_assert(type_ == chat_event_type::birthday);
 
         constexpr auto birthdayEmojiId = 0x1f381;
         return Emoji::EmojiCode::toQString(Emoji::EmojiCode(birthdayEmojiId)) + QT_TRANSLATE_NOOP("chat_event", " has birthday!");
@@ -323,7 +323,7 @@ namespace HistoryControl
 
     QString ChatEventInfo::formatBuddyFound() const
     {
-        assert(type_ == chat_event_type::buddy_found);
+        im_assert(type_ == chat_event_type::buddy_found);
 
         constexpr auto smileEmojiId = 0x1f642;
         const auto smileEmojiString = Emoji::EmojiCode::toQString(Emoji::EmojiCode(smileEmojiId));
@@ -334,7 +334,7 @@ namespace HistoryControl
 
     QString ChatEventInfo::formatBuddyReg() const
     {
-        assert(type_ == chat_event_type::buddy_reg);
+        im_assert(type_ == chat_event_type::buddy_reg);
 
         constexpr auto smileEmojiId = 0x1f642;
         const auto smileEmojiString = Emoji::EmojiCode::toQString(Emoji::EmojiCode(smileEmojiId));
@@ -345,8 +345,8 @@ namespace HistoryControl
 
     QString ChatEventInfo::formatChatNameModifiedText() const
     {
-        assert(type_ == chat_event_type::chat_name_modified);
-        assert(!chat_.newName_.isEmpty());
+        im_assert(type_ == chat_event_type::chat_name_modified);
+        im_assert(!chat_.newName_.isEmpty());
 
         if (isChannel())
         {
@@ -364,15 +364,15 @@ namespace HistoryControl
 
     QString ChatEventInfo::formatGenericText() const
     {
-        assert(type_ == chat_event_type::generic);
-        assert(!generic_.isEmpty());
+        im_assert(type_ == chat_event_type::generic);
+        im_assert(!generic_.isEmpty());
 
         return generic_;
     }
 
     QString ChatEventInfo::formatMchatAddMembersText() const
     {
-        assert(type_ == chat_event_type::mchat_add_members || type_ == chat_event_type::mchat_invite);
+        im_assert(type_ == chat_event_type::mchat_add_members || type_ == chat_event_type::mchat_invite);
 
         const auto doorEmoji = Emoji::EmojiCode::toQString(Emoji::EmojiCode(0x1f6aa));
         const auto wavingHandEmoji = Emoji::EmojiCode::toQString(Emoji::EmojiCode(0x1f44b));
@@ -410,7 +410,7 @@ namespace HistoryControl
 
     QString ChatEventInfo::formatChatDescriptionModified() const
     {
-        assert(type_ == chat_event_type::chat_description_modified);
+        im_assert(type_ == chat_event_type::chat_description_modified);
 
         if (chat_.newDescription_.isEmpty())
         {
@@ -446,7 +446,7 @@ namespace HistoryControl
 
     QString ChatEventInfo::formatChatRulesModified() const
     {
-        assert(type_ == chat_event_type::chat_rules_modified);
+        im_assert(type_ == chat_event_type::chat_rules_modified);
 
         if (chat_.newRules_.isEmpty())
         {
@@ -482,7 +482,7 @@ namespace HistoryControl
 
     QString ChatEventInfo::formatChatStampModified() const
     {
-        assert(type_ == chat_event_type::chat_stamp_modified);
+        im_assert(type_ == chat_event_type::chat_stamp_modified);
 
         if (isOutgoing())
             return QT_TRANSLATE_NOOP("chat_event", "You changed the link to %1").arg(Utils::getDomainUrl() % ql1c('/') % chat_.newStamp_);
@@ -492,7 +492,7 @@ namespace HistoryControl
 
     QString ChatEventInfo::formatJoinModerationModified() const
     {
-        assert(type_ == chat_event_type::chat_join_moderation_modified);
+        im_assert(type_ == chat_event_type::chat_join_moderation_modified);
 
         if (isOutgoing())
         {
@@ -510,7 +510,7 @@ namespace HistoryControl
 
     QString ChatEventInfo::formatPublicModified() const
     {
-        assert(type_ == chat_event_type::chat_public_modified);
+        im_assert(type_ == chat_event_type::chat_public_modified);
 
         if (isOutgoing())
         {
@@ -528,14 +528,14 @@ namespace HistoryControl
 
     QString ChatEventInfo::formatMchatInviteText() const
     {
-        assert(type_ == chat_event_type::mchat_invite);
+        im_assert(type_ == chat_event_type::mchat_invite);
 
         return formatMchatAddMembersText();
     }
 
     QString ChatEventInfo::formatMchatDelMembersText() const
     {
-        assert(type_ == chat_event_type::mchat_del_members);
+        im_assert(type_ == chat_event_type::mchat_del_members);
 
         const auto crossMarkEmoji = Emoji::EmojiCode::toQString(Emoji::EmojiCode(0x274c));
 
@@ -558,7 +558,7 @@ namespace HistoryControl
 
     QString ChatEventInfo::formatMchatAdmGrantedText() const
     {
-        assert(type_ == chat_event_type::mchat_adm_granted);
+        im_assert(type_ == chat_event_type::mchat_adm_granted);
 
         if (isForMe())
         {
@@ -584,7 +584,7 @@ namespace HistoryControl
 
     QString ChatEventInfo::formatMchatAdmRevokedText() const
     {
-        assert(type_ == chat_event_type::mchat_adm_revoked);
+        im_assert(type_ == chat_event_type::mchat_adm_revoked);
 
         if (isForMe())
             return QT_TRANSLATE_NOOP("chat_event", "You are no more an administrator of this group");
@@ -597,7 +597,7 @@ namespace HistoryControl
 
     QString ChatEventInfo::formatMchatAllowedToWrite() const
     {
-        assert(type_ == chat_event_type::mchat_allowed_to_write);
+        im_assert(type_ == chat_event_type::mchat_allowed_to_write);
 
         if (isForMe())
             return QT_TRANSLATE_NOOP("chat_event", "%1 allowed you to write").arg(senderOrAdmin());
@@ -610,7 +610,7 @@ namespace HistoryControl
 
     QString ChatEventInfo::formatMchatDisallowedToWrite() const
     {
-        assert(type_ == chat_event_type::mchat_disallowed_to_write);
+        im_assert(type_ == chat_event_type::mchat_disallowed_to_write);
 
         if (isForMe())
             return QT_TRANSLATE_NOOP("chat_event", "%1 banned you to write").arg(senderOrAdmin());
@@ -623,7 +623,7 @@ namespace HistoryControl
 
     QString ChatEventInfo::formatMchatWaitingForApprove() const
     {
-        assert(type_ == chat_event_type::mchat_waiting_for_approve);
+        im_assert(type_ == chat_event_type::mchat_waiting_for_approve);
 
         const auto alarmClockEmoji = Emoji::EmojiCode::toQString(Emoji::EmojiCode(0x23f0));
         const auto foldedHandsEmoji = Emoji::EmojiCode::toQString(Emoji::EmojiCode(0x1f64f));
@@ -658,7 +658,7 @@ namespace HistoryControl
 
     QString ChatEventInfo::formatMchatJoiningApproved() const
     {
-        assert(type_ == chat_event_type::mchat_joining_approved);
+        im_assert(type_ == chat_event_type::mchat_joining_approved);
 
         const auto checkEmoji = Emoji::EmojiCode::toQString(Emoji::EmojiCode(0x2705));
 
@@ -717,7 +717,7 @@ namespace HistoryControl
 
     QString ChatEventInfo::formatMchatJoiningRejected() const
     {
-        assert(type_ == chat_event_type::mchat_joining_rejected);
+        im_assert(type_ == chat_event_type::mchat_joining_rejected);
 
         const auto crossMarkEmoji = Emoji::EmojiCode::toQString(Emoji::EmojiCode(0x274c));
 
@@ -776,7 +776,7 @@ namespace HistoryControl
 
     QString ChatEventInfo::formatMchatJoiningCanceled() const
     {
-        assert(type_ == chat_event_type::mchat_joining_canceled);
+        im_assert(type_ == chat_event_type::mchat_joining_canceled);
 
         const auto crossMarkEmoji = Emoji::EmojiCode::toQString(Emoji::EmojiCode(0x274c));
 
@@ -792,7 +792,7 @@ namespace HistoryControl
 
     QString ChatEventInfo::formatMchatKickedText() const
     {
-        assert(type_ == chat_event_type::mchat_kicked);
+        im_assert(type_ == chat_event_type::mchat_kicked);
 
         const auto crossMarkEmoji = Emoji::EmojiCode::toQString(Emoji::EmojiCode(0x274c));
 
@@ -815,7 +815,7 @@ namespace HistoryControl
 
     QString ChatEventInfo::formatMchatLeaveText() const
     {
-        assert(type_ == chat_event_type::mchat_leave);
+        im_assert(type_ == chat_event_type::mchat_leave);
 
         const auto manWalkingEmoji = Emoji::EmojiCode::toQString(Emoji::EmojiCode(0x1f6b6, 0x200d, 0x2642, 0xfe0f));
 
@@ -857,11 +857,9 @@ namespace HistoryControl
     const QString& ChatEventInfo::formatEventText() const
     {
         if (formattedEventText_.isEmpty())
-        {
             formattedEventText_ = formatEventTextInternal();
-        }
 
-        assert(!formattedEventText_.isEmpty());
+        im_assert(!formattedEventText_.isEmpty());
         return formattedEventText_;
     }
 
@@ -1012,52 +1010,52 @@ namespace HistoryControl
 
     bool ChatEventInfo::isMyAimid(const QString& _aimId) const
     {
-        assert(!myAimid_.isEmpty());
+        im_assert(!myAimid_.isEmpty());
 
         return (myAimid_ == _aimId);
     }
 
     bool ChatEventInfo::hasMultipleMembers() const
     {
-        assert(!mchat_.members_.isEmpty());
+        im_assert(!mchat_.members_.isEmpty());
 
         return (mchat_.members_.size() > 1);
     }
 
     void ChatEventInfo::setGenericText(QString _text)
     {
-        assert(generic_.isEmpty());
-        assert(!_text.isEmpty());
+        im_assert(generic_.isEmpty());
+        im_assert(!_text.isEmpty());
 
         generic_ = std::move(_text);
     }
 
     void ChatEventInfo::setNewChatRules(const QString& _newChatRules)
     {
-        assert(chat_.newRules_.isEmpty());
+        im_assert(chat_.newRules_.isEmpty());
 
         chat_.newRules_ = _newChatRules;
     }
 
     void ChatEventInfo::setNewChatStamp(const QString& _newChatStamp)
     {
-        assert(chat_.newStamp_.isEmpty());
-        assert(!_newChatStamp.isEmpty());
+        im_assert(chat_.newStamp_.isEmpty());
+        im_assert(!_newChatStamp.isEmpty());
 
         chat_.newStamp_ = _newChatStamp;
     }
 
     void ChatEventInfo::setNewDescription(const QString& _newDescription)
     {
-        assert(chat_.newDescription_.isEmpty());
+        im_assert(chat_.newDescription_.isEmpty());
 
         chat_.newDescription_ = _newDescription;
     }
 
     void ChatEventInfo::setNewName(const QString& _newName)
     {
-        assert(chat_.newName_.isEmpty());
-        assert(!_newName.isEmpty());
+        im_assert(chat_.newName_.isEmpty());
+        im_assert(!_newName.isEmpty());
 
         chat_.newName_ = _newName;
     }
@@ -1074,7 +1072,7 @@ namespace HistoryControl
 
     void ChatEventInfo::setSender(QString _aimid)
     {
-        assert(sender_.isEmpty());
+        im_assert(sender_.isEmpty());
 
         if (!_aimid.isEmpty())
             sender_ = cleanupFriendlyName(std::move(_aimid));

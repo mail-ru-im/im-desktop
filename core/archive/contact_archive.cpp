@@ -475,7 +475,7 @@ std::vector<int64_t> core::archive::contact_archive::get_messages_for_update() c
     return index_->get_messages_for_update();
 }
 
-bool contact_archive::get_next_hole(int64_t _from, archive_hole& _hole, int64_t _depth) const
+archive::archive_hole_error contact_archive::get_next_hole(int64_t _from, archive_hole& _hole, int64_t _depth) const
 {
     return index_->get_next_hole(_from, _hole, _depth);
 }

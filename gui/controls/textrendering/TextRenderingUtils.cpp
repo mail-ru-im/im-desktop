@@ -42,7 +42,15 @@ namespace Ui
 
         double textWidth(const QFont& _font, const QString& _text)
         {
-            return getMetrics(_font).width(_text);
+            return getMetrics(_font).horizontalAdvance(_text);
+        }
+
+        double textVisibleWidth(const QFont& _font, const QString& _text)
+        {
+            if (QStringView(_text).trimmed().isEmpty())
+                return textWidth(_font, _text);
+            else
+                return getMetrics(_font).boundingRect(_text).width();
         }
 
         double textAscent(const QFont& _font)
@@ -149,17 +157,32 @@ namespace Ui
             {
                 auto c = _text[i++];
                 result += c;
-                approxWidth += metrics.width(c);
+                approxWidth += metrics.horizontalAdvance(c);
             }
 
             i = result.size();
-            while (roundToInt(metrics.width(result)) < _width && i < _text.size())
+            while (roundToInt(metrics.horizontalAdvance(result)) < _width && i < _text.size())
                 result.push_back(_text[i++]);
 
-            while (!result.isEmpty() && roundToInt(metrics.width(result)) > _width)
+            while (!result.isEmpty() && roundToInt(metrics.horizontalAdvance(result)) > _width)
                 result.chop(1);
 
             return result;
+        }
+
+        Data::FormattedStringView elideText(const QFont& _font, Data::FormattedStringView _text, int _width)
+        {
+            const auto elidedPlainText = elideText(_font, _text.string().toString(), _width);
+            auto result = _text.mid(0, 0);
+            if (result.tryToAppend(elidedPlainText))
+            {
+                return result;
+            }
+            else
+            {
+                im_assert(false);
+                return _text;
+            }
         }
 
         QString stringFromCode(int _code)

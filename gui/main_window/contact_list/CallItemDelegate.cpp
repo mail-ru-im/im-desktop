@@ -21,7 +21,6 @@ namespace
     constexpr auto SPACE_ITEM_HEIGHT = 8;
     constexpr auto TYPE_ICON_SIZE = 16;
     constexpr auto BUTTON_ICON_SIZE = 24;
-    constexpr auto MAC_ADDITIONAL_OFFSET = 4;
     constexpr auto ICONS_VER_OFFSET = 2;
 
     QPixmap getCallIcon(const bool _isAudio, const bool _isMissed)
@@ -89,6 +88,11 @@ namespace
     {
         return Fonts::appFontScaled(16, (platform::is_apple() && !_isButton) ? Fonts::FontWeight::Medium : Fonts::FontWeight::Normal);
     }
+
+    int countLabelMargin() noexcept
+    {
+        return Utils::scale_value(8);
+    }
 }
 
 using namespace Ui::TextRendering;
@@ -107,6 +111,9 @@ namespace Logic
 
         date_ = MakeTextUnit(QString(), {}, LinksVisible::DONT_SHOW_LINKS, ProcessLineFeeds::REMOVE_LINE_FEEDS);
         date_->init(Fonts::appFontScaled(14), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+
+        count_ = MakeTextUnit(QString(), {}, LinksVisible::DONT_SHOW_LINKS, ProcessLineFeeds::REMOVE_LINE_FEEDS);
+        count_->init(getNameFont(false), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
     }
 
     void CallItemDelegate::paint(QPainter* _painter, const QStyleOptionViewItem& _option, const QModelIndex& _index) const
@@ -145,7 +152,6 @@ namespace Logic
         const auto x = pictureOnly_ ? (_option.rect.width() / 2 - avatar.width() / ratio / 2) : Utils::scale_value(HOR_OFFSET);
         const auto y = (_option.rect.height() - avatar.height() / ratio) / 2;
         const auto y2 = y + avatar.height() / ratio / 2;
-        const auto addOffset = platform::is_apple() ? Utils::scale_value(MAC_ADDITIONAL_OFFSET) : 0;
 
         const auto isMissed = item->isMissed();
 
@@ -160,6 +166,20 @@ namespace Logic
 
         const auto groupCallIcon = getGroupCallIcon();
         auto elidedWidth = _option.rect.width() - Utils::scale_value(HOR_OFFSET * 3) - Utils::scale_value(AVATAR_SIZE) - (item->isSingleItem() ? 0 : Utils::scale_value(TYPE_ICON_SIZE + SMALL_HOR_OFFSET));
+
+        const auto callsCount = item->count();
+        const auto needCount = callsCount > 1;
+
+        if (needCount)
+        {
+            count_->setText(u'(' % QString::number(callsCount) % u')');
+            count_->evaluateDesiredSize();
+            elidedWidth -= count_->desiredWidth() + countLabelMargin();
+        }
+
+        const auto nameHorizontalOffset = Utils::scale_value(HOR_OFFSET * 2) + Utils::scale_value(AVATAR_SIZE);
+        auto countHorizontalOffset = nameHorizontalOffset;
+
         if (isSearch)
         {
             auto name = Ui::createHightlightedText(
@@ -172,26 +192,39 @@ namespace Logic
 
             name->elide(elidedWidth);
             name->evaluateDesiredSize();
-            name->setOffsets(Utils::scale_value(HOR_OFFSET * 2) + Utils::scale_value(AVATAR_SIZE), addOffset);
+            name->setOffsets(nameHorizontalOffset, 0);
             name->draw(*_painter);
+
+            countHorizontalOffset += name->desiredWidth();
 
             if (!item->isSingleItem())
                 _painter->drawPixmap(name->isElided() ? name->horOffset() + elidedWidth :
                                      name->horOffset() + name->cachedSize().width() + Utils::scale_value(SMALL_HOR_OFFSET),
-                                     name->cachedSize().height() / 2 + m.descent() / 2 - groupCallIcon.height() / 2 / ratio, groupCallIcon);
+                                     name->cachedSize().height() / 2 + (platform::is_apple() ? 0 : m.descent() / 2) - groupCallIcon.height() / 2 / ratio, groupCallIcon);
+            elidedItems_[_index.row()] = name->isElided();
         }
         else
         {
             name_->setText(item->getFriendly(), Styling::getParameters().getColor(isMissed ? Styling::StyleVariable::SECONDARY_ATTENTION : Styling::StyleVariable::TEXT_SOLID));
             name_->elide(elidedWidth);
             name_->evaluateDesiredSize();
-            name_->setOffsets(Utils::scale_value(HOR_OFFSET * 2) + Utils::scale_value(AVATAR_SIZE), addOffset);
+            name_->setOffsets(nameHorizontalOffset, 0);
             name_->draw(*_painter);
 
             if (!item->isSingleItem())
                 _painter->drawPixmap(name_->isElided() ? name_->horOffset() + elidedWidth :
                                      name_->horOffset() + name_->cachedSize().width() + Utils::scale_value(SMALL_HOR_OFFSET),
-                                     name_->cachedSize().height() / 2 + m.descent() / 2 - groupCallIcon.height() / 2 / ratio, groupCallIcon);
+                                     name_->cachedSize().height() / 2 + (platform::is_apple() ? 0 : m.descent() / 2)  - groupCallIcon.height() / 2 / ratio, groupCallIcon);
+            elidedItems_[_index.row()] = name_->isElided();
+
+            countHorizontalOffset += name_->desiredWidth();
+        }
+
+        if (needCount)
+        {
+            countHorizontalOffset += countLabelMargin() + (item->isSingleItem() ? 0 : groupCallIcon.width() / ratio);
+            count_->setOffsets(countHorizontalOffset, 2 * name_->verOffset());
+            count_->draw(*_painter);
         }
 
         auto status = Data::LastSeen(item->time()).getStatusString(true);
@@ -199,7 +232,7 @@ namespace Logic
             status[0] = status.at(0).toUpper();
 
         date_->setText(status, Styling::getParameters().getColor(isMissed ? Styling::StyleVariable::SECONDARY_ATTENTION : Styling::StyleVariable::BASE_PRIMARY));
-        date_->setOffsets(Utils::scale_value(HOR_OFFSET * 2 + AVATAR_SIZE + TYPE_ICON_SIZE + SMALL_HOR_OFFSET), y2 + addOffset);
+        date_->setOffsets(Utils::scale_value(HOR_OFFSET * 2 + AVATAR_SIZE + TYPE_ICON_SIZE + SMALL_HOR_OFFSET), y2);
         date_->draw(*_painter);
 
         const auto iconsAddOffset = Utils::scale_value(ICONS_VER_OFFSET);
@@ -237,5 +270,20 @@ namespace Logic
     {
         auto item = _index.data(Qt::DisplayRole).value<Data::CallInfoPtr>();
         return QSize(_option.rect.width(), Utils::scale_value(item && item->isService() ? (item->isSpaceItem() ? SPACE_ITEM_HEIGHT : SERVICE_ITEM_HEIGHT) : ITEM_HEIGHT));
+    }
+
+    bool CallItemDelegate::needsTooltip(const QString&, const QModelIndex& _index, QPoint) const
+    {
+        const auto it = elidedItems_.find(_index.row());
+        return it != elidedItems_.end() && it->second;
+    }
+
+    QString CallItemDelegate::getFriendly(const QModelIndex& _index) const
+    {
+        auto item = _index.data(Qt::DisplayRole).value<Data::CallInfoPtr>();
+        if (!item || item->isSpaceItem())
+            return {};
+
+        return item->getFriendly();
     }
 }

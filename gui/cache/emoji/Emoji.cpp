@@ -134,7 +134,7 @@ namespace Emoji
             emojiSize = Emoji::EmojiSizePx::_96;
             break;
         default:
-            assert(!"invalid scale");
+            im_assert(!"invalid scale");
         }
 
         return emojiSize;
@@ -142,9 +142,9 @@ namespace Emoji
 
     QImage GetEmoji(const EmojiCode& _code, const EmojiSizePx _size)
     {
-        assert(!_code.isNull());
-        assert(_size >= EmojiSizePx::Min);
-        assert(_size <= EmojiSizePx::Max);
+        im_assert(!_code.isNull());
+        im_assert(_size >= EmojiSizePx::Min);
+        im_assert(_size <= EmojiSizePx::Max);
 
         int32_t sizePx = (_size == EmojiSizePx::Auto) ? GetEmojiSizeForCurrentUiScale()
                                                       : int32_t(_size);
@@ -154,7 +154,7 @@ namespace Emoji
 #if defined(__APPLE__)
     static QImage getEmoji_mac(const EmojiCode& _code, int32_t _sizePx)
     {
-        assert(!_code.isNull());
+        im_assert(!_code.isNull());
         const auto pixelRatio = qApp->primaryScreen()->devicePixelRatio();
         auto imageOut = mac::getEmoji(_code, _sizePx);
         imageOut.setDevicePixelRatio(pixelRatio);
@@ -163,7 +163,7 @@ namespace Emoji
 
     static QImage getEmoji_qpainter(const EmojiCode& _code, int32_t _sizePx)
     {
-        assert(!_code.isNull());
+        im_assert(!_code.isNull());
         const auto pixelRatio = qApp->devicePixelRatio();
         const QString s = EmojiCode::toQString(_code);
 
@@ -223,20 +223,20 @@ namespace Emoji
 
     QImage GetEmoji(const EmojiCode& _code, int32_t _sizePx)
     {
-        assert(_sizePx > 0);
-        assert(!_code.isNull());
+        im_assert(_sizePx > 0);
+        im_assert(!_code.isNull());
 
         const auto& info = GetEmojiInfoByCodepoint(_code);
         if (!info.isValid())
             return QImage();
 
-        assert(info.Index_ >= 0);
-        assert(info.FileName_.size() > 0);
+        im_assert(info.Index_ >= 0);
+        im_assert(info.FileName_.size() > 0);
 
         const auto key = MakeCacheKey(info.Index_, _sizePx);
         if (const auto cacheIter = std::as_const(EmojiCache_).find(key); cacheIter != std::as_const(EmojiCache_).end())
         {
-            assert(!cacheIter->second.isNull());
+            im_assert(!cacheIter->second.isNull());
             return cacheIter->second;
         }
 
@@ -245,7 +245,7 @@ namespace Emoji
 #else
         auto image = getEmojiImage(info.FileName_, _sizePx);
 #endif
-        assert(!image.isNull());
+        im_assert(!image.isNull());
 
 #if defined(DEBUG_EMOJI)
         QImage filled(image.width(), image.height(), QImage::Format_ARGB32_Premultiplied);
@@ -350,11 +350,11 @@ namespace Emoji
         const auto it = std::find_if(std::begin(info), std::end(info), [k = int32_t(Utils::getScaleCoefficient() * 100)](auto a) { return a.first == k; });
         if (it != std::end(info))
         {
-            assert(it->second > 0);
+            im_assert(it->second > 0);
             return it->second;
         }
 
-        assert(!"scale is unknown");
+        im_assert(!"scale is unknown");
         return 0;
     }
 }

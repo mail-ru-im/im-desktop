@@ -4,6 +4,7 @@
 #include "styles/WallpaperId.h"
 #include "../../types/chat.h"
 #include "../../types/typing.h"
+#include "../../types/filesharing_meta.h"
 #include "types/reactions.h"
 #include "../../controls/TextUnit.h"
 
@@ -247,6 +248,7 @@ namespace Ui
         void canFetchMore(hist::FetchDirection);
         void nameClicked();
         void editMembers();
+        void updateContactNameTooltip(bool _show);
 
         void onNewMessageAdded(const QString& _aimId);
         void onNewMessagesReceived(const QVector<qint64>&);
@@ -268,30 +270,7 @@ namespace Ui
         void multiselectReply();
         void multiselectForward(const QString&);
 
-        void edit(
-            const int64_t _msgId,
-            const QString& _internalId,
-            const common::tools::patch_version& _patchVersion,
-            const QString& _text,
-            const Data::MentionMap& _mentions,
-            const Data::QuotesVec& _quotes,
-            qint32 _time,
-            const Data::FilesPlaceholderMap& _files,
-            MediaType _mediaType,
-            bool instantEdit);
-
-        void editWithCaption(
-            const int64_t _msgId,
-            const QString& _internalId,
-            const common::tools::patch_version& _patchVersion,
-            const QString& _url,
-            const QString& _description,
-            const Data::MentionMap& _mentions,
-            const Data::QuotesVec& _quotes,
-            qint32 _time,
-            const Data::FilesPlaceholderMap& _files,
-            MediaType _mediaType,
-            bool instantEdit);
+        void edit(const Data::MessageBuddySptr& _msg, MediaType _mediaType);
 
         void onItemLayoutChanged();
 
@@ -442,6 +421,8 @@ namespace Ui
         void clearPttProgress();
 
         MessagesScrollArea* scrollArea() const;
+
+        std::optional<Data::FileSharingMeta> getMeta(const QString& _id) const;
 
     protected:
         void focusOutEvent(QFocusEvent* _event) override;

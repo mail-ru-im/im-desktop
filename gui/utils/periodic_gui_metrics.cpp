@@ -87,7 +87,7 @@ void Periodic_Gui_Metrics::getScreenStats()
 {
     const auto mw = Utils::InterConnector::instance().getMainWindow();
     const auto cd = Utils::InterConnector::instance().getContactDialog();
-    const auto mp = Utils::InterConnector::instance().getMainPage();
+    const auto mp = Utils::InterConnector::instance().getMessengerPage();
 
     // 1. MW to Screen size in percents
     getMW_To_Screen(mw);
@@ -173,7 +173,7 @@ void Periodic_Gui_Metrics::getDTPFramesCount(Ui::ContactDialog *_cd)
         val = "3";
         break;
     default:
-        assert(!"handle new FrameCountMode value");
+        im_assert(!"handle new FrameCountMode value");
         break;
     }
 

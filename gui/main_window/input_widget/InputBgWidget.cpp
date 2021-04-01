@@ -21,7 +21,7 @@ namespace Ui
         : QWidget(_parent)
         , chatBg_(_bgWidget)
     {
-        assert(_bgWidget);
+        im_assert(_bgWidget);
         setAttribute(Qt::WA_TransparentForMouseEvents);
 
         resizeTimer_.setSingleShot(true);
@@ -33,8 +33,8 @@ namespace Ui
 
     void InputBgWidget::setOverlayColor(const QColor& _color)
     {
-        assert(_color.alpha() != 255);
-        assert(_color.isValid());
+        im_assert(_color.alpha() != 255);
+        im_assert(_color.isValid());
         overlay_ = _color;
         update();
     }

@@ -65,8 +65,7 @@ void GeneralSettingsWidget::Creator::initNotifications(NotificationSettings* _pa
         }
         connect(_parent->sounds_, &Ui::SidebarCheckboxButton::checked, scrollArea, [_parent, outgoingSoundWidgets]()
         {
-            bool c = _parent->sounds_->isChecked();
-            if (!c)
+            if (const bool c = _parent->sounds_->isChecked(); !c)
             {
                 outgoingSoundWidgets->setChecked(false);
                 outgoingSoundWidgets->setEnabled(false);
@@ -79,7 +78,7 @@ void GeneralSettingsWidget::Creator::initNotifications(NotificationSettings* _pa
                 outgoingSoundWidgets->setEnabled(true);
             }
         });
-        GeneralCreator::addSwitcher(
+        _parent->notifications_ = GeneralCreator::addSwitcher(
                 scrollArea,
                 mainLayout,
                 QT_TRANSLATE_NOOP("settings", "Show notifications"),
@@ -89,6 +88,32 @@ void GeneralSettingsWidget::Creator::initNotifications(NotificationSettings* _pa
                     if (get_gui_settings()->get_value<bool>(settings_notify_new_messages, true) != enabled)
                         get_gui_settings()->set_value<bool>(settings_notify_new_messages, enabled);
                 }, -1, qsl("AS NotificationsPage showNotificationSetting"));
+
+        auto showNoticationsWithActiveUI = GeneralCreator::addSwitcher(
+            scrollArea,
+            mainLayout,
+            QT_TRANSLATE_NOOP("settings", "Show notifications when app in focus"),
+            get_gui_settings()->get_value<bool>(settings_notify_new_messages_with_active_ui, settings_notify_new_messages_with_active_ui_default()),
+            [](bool enabled)
+            {
+                if (get_gui_settings()->get_value(settings_notify_new_messages_with_active_ui, settings_notify_new_messages_with_active_ui_default()) != enabled)
+                    get_gui_settings()->set_value(settings_notify_new_messages_with_active_ui, enabled);
+            }, -1, qsl("AS NotificationsPage showNoticationsWithActiveUiSetting"));
+
+        connect(_parent->notifications_, &Ui::SidebarCheckboxButton::checked, scrollArea, [_parent, showNoticationsWithActiveUI]()
+        {
+            if (const bool c = _parent->notifications_->isChecked(); !c)
+            {
+                showNoticationsWithActiveUI->setChecked(false);
+                showNoticationsWithActiveUI->setEnabled(false);
+                if (get_gui_settings()->get_value(settings_notify_new_messages_with_active_ui, settings_notify_new_messages_with_active_ui_default()) != c)
+                    get_gui_settings()->set_value(settings_notify_new_messages_with_active_ui, c);
+            }
+            else
+            {
+                showNoticationsWithActiveUI->setEnabled(true);
+            }
+        });
 
         if (Ui::MyInfo()->haveConnectedEmail())
         {

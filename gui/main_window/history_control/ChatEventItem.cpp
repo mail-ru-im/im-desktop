@@ -88,7 +88,7 @@ namespace Ui
         , id_(_id)
         , prevId_(_prevId)
     {
-        assert(EventInfo_);
+        im_assert(EventInfo_);
 
         init();
     }
@@ -99,7 +99,7 @@ namespace Ui
         , id_(_id)
         , prevId_(_prevId)
     {
-        assert(EventInfo_);
+        im_assert(EventInfo_);
 
         const auto showLinks = EventInfo_->isCaptchaPresent() ? TextRendering::LinksVisible::SHOW_LINKS : TextRendering::LinksVisible::DONT_SHOW_LINKS;
         TextWidget_ = TextRendering::MakeTextUnit(EventInfo_->formatEventText(), {}, showLinks);
@@ -171,7 +171,7 @@ namespace Ui
     {
         if (getLastStatus() != _lastStatus)
         {
-            assert(_lastStatus == LastStatus::None);
+            im_assert(_lastStatus == LastStatus::None);
             HistoryControlPageItem::setLastStatus(_lastStatus);
             updateGeometry();
             update();
@@ -180,7 +180,7 @@ namespace Ui
 
     int32_t ChatEventItem::evaluateTextWidth(const int32_t _widgetWidth)
     {
-        assert(_widgetWidth > 0);
+        im_assert(_widgetWidth > 0);
 
         const auto maxBubbleWidth = _widgetWidth - Utils::scale_value(36);
         const auto maxBubbleContentWidth = maxBubbleWidth - 2 * getTextHorPadding();
@@ -269,14 +269,14 @@ namespace Ui
         if (!hasButtons())
             textPlaceholder_->setFixedHeight(height_);
 
-        auto additionalOffset = TextWidget_->getLineCount() > 1 ? (lineSpacing() / 2) : 0;
+        auto additionalOffset = TextWidget_->getLinesCount() > 1 ? (lineSpacing() / 2) : 0;
         TextWidget_->setOffsets(textAligment() == TextRendering::HorAligment::CENTER ? (width() - TextWidget_->cachedSize().width()) / 2 : BubbleRect_.x() + getTextHorPadding(),
             BubbleRect_.top() + getTextTopPadding(textFontSize()) + additionalOffset);
     }
 
     void ChatEventItem::initButtons()
     {
-        assert(!buttonsWidget_);
+        im_assert(!buttonsWidget_);
         buttonsWidget_ = new QWidget(this);
         buttonsWidget_->setFixedHeight(getButtonsHeight() + additionalButtonsPadding());
 
@@ -289,12 +289,14 @@ namespace Ui
         hLayout->setSpacing(getButtonsSpacing());
         hLayout->setContentsMargins(getButtonsSpacing(), 0, getButtonsSpacing(), 0);
         btnLeft_ = new RoundButton(buttonsWidget_, getButtonsRadius());
+        Testing::setAccessibleName(btnLeft_, qsl("AS ChatIvent LeftButton"));
         btnLeft_->setTextColor(textColor);
         btnLeft_->setColors(bgNormal, bgHover, bgActive);
         btnLeft_->setFixedHeight(getButtonsHeight());
         hLayout->addWidget(btnLeft_);
 
         btnRight_ = new RoundButton(buttonsWidget_, getButtonsRadius());
+        Testing::setAccessibleName(btnRight_, qsl("AS ChatIvent RightButton"));
         btnRight_->setTextColor(textColor);
         btnRight_->setColors(bgNormal, bgHover, bgActive);
         btnRight_->setFixedHeight(getButtonsHeight());

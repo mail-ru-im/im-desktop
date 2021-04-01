@@ -290,7 +290,7 @@ namespace
                         nullptr,
                         _setId,
                         _replaceLines ? Utils::replaceLine(s->getName()) : s->getName(),
-                        _replaceLines ? Utils::replaceLine(s->getSubtitle()) : s->getSubtitle(),
+
                         s->getStoreId(),
                         s->isPurchased()));
                 }
@@ -365,19 +365,6 @@ TopPackItem::TopPackItem(QWidget* _parent, std::unique_ptr<PackInfoObject> _info
         name_->setOffsets(0, getPacksViewHeight() - getPackNameHeight() - getPackNameMargin() - getPackDescHeight());
     }
 
-    if (info_->subtitle_.isEmpty())
-    {
-        desc_ = TextRendering::MakeTextUnit(info_->subtitle_, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-        desc_->init(
-            getDescFont(),
-            Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY),
-            QColor(), QColor(), QColor(),
-            TextRendering::HorAligment::CENTER,
-            1);
-        desc_->getHeight(getPackIconSize());
-        desc_->setOffsets(0, getPacksViewHeight() - getPackDescHeight() - getPackNameHeight() + (name_ ? name_->cachedSize().height() : 0));
-    }
-
     connect(this, &ClickableWidget::clicked, this, [id = info_->id_]()
     {
         Stickers::showStickersPack(id, Stickers::StatContext::Discover);
@@ -411,9 +398,6 @@ void TopPackItem::paintEvent(QPaintEvent*)
 
     if (name_)
         name_->draw(p);
-
-    if (desc_)
-        desc_->draw(p);
 }
 
 QRect TopPackItem::getIconRect() const
@@ -619,14 +603,6 @@ PackItem::PackItem(QWidget* _parent, std::unique_ptr<PackInfoObject> _info)
         name_->evaluateDesiredSize();
     }
 
-    if (info_->subtitle_.isEmpty())
-    {
-        desc_ = TextRendering::MakeTextUnit(info_->subtitle_, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-        desc_->init(getDescFont(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
-        desc_->setOffsets(getMyPackIconSize() + getMyPackTextLeftMargin() + getMarginLeft(), getMyPackDescTopMargin());
-        desc_->evaluateDesiredSize();
-    }
-
     connect(this, &ClickableWidget::clicked, this, &PackItem::onClicked);
     connect(this, &ClickableWidget::pressed, this, &PackItem::onPressed);
     connect(this, &ClickableWidget::released, this, &PackItem::onReleased);
@@ -640,7 +616,7 @@ void PackItem::setDragging(bool _isDragging)
 
         if (isDragging())
         {
-            assert(canDrag());
+            im_assert(canDrag());
             if (!graphicsEffect())
             {
                 auto effect = new Utils::OpacityEffect(this);
@@ -711,9 +687,6 @@ void PackItem::paintEvent(QPaintEvent*)
     if (name_)
         name_->draw(p);
 
-    if (desc_)
-        desc_->draw(p);
-
     if (info_->purchased_)
     {
         drawButton(p, getDelButton(hovered, selected), getDelButtonRect());
@@ -734,9 +707,6 @@ void PackItem::resizeEvent(QResizeEvent* _e)
         const int textWidth = width() - getMarginLeft() - getMyPackIconSize() - getDelButtonHeight() - 2 * getMarginRight() - getDragButtonHeight();
         if (name_)
             name_->elide(textWidth);
-
-        if (desc_)
-            desc_->elide(textWidth);
 
         update();
     }
@@ -1089,7 +1059,7 @@ void PacksView::mouseMoveEvent(QMouseEvent* _e)
     const int dragPackPos = getDragPackNum();
     if (dragPackPos == -1)
     {
-        assert(false);
+        im_assert(false);
         return;
     }
 
@@ -1191,7 +1161,7 @@ void PacksView::stopDrag()
 
 void PacksView::postStickersOrder() const
 {
-    assert(orderChanged_);
+    im_assert(orderChanged_);
 
     Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
 

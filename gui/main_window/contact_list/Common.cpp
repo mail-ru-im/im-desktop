@@ -77,8 +77,8 @@ namespace Ui
         , isCreator_(_isCreator)
         , Status_(_status)
     {
-        assert(!AimId_.isEmpty());
-        assert(!ContactName_.isEmpty());
+        im_assert(!AimId_.isEmpty());
+        im_assert(!ContactName_.isEmpty());
     }
 
     const QString& VisualDataBase::GetStatus() const
@@ -154,14 +154,14 @@ namespace Ui
 
     int ItemLength(bool _isWidth, double _koeff, int _addWidth, QWidget* parent)
     {
-        assert(!!parent && "Common.cpp (ItemLength)");
+        im_assert(!!parent && "Common.cpp (ItemLength)");
         auto mainRect = Utils::GetWindowRect(parent);
         if (mainRect.width() && mainRect.height())
         {
             auto mainLength = _isWidth ? mainRect.width() : mainRect.height();
             return _addWidth + mainLength * _koeff;
         }
-        assert("Couldn't get rect: Common.cpp (ItemLength)");
+        im_assert("Couldn't get rect: Common.cpp (ItemLength)");
         return 0;
     }
 
@@ -308,7 +308,7 @@ namespace Ui
         case core::profile_state::offline:
             return QT_TRANSLATE_NOOP("state", "Offline");
         default:
-            assert(!"unknown core::profile_state value");
+            im_assert(!"unknown core::profile_state value");
             return QString();
         }
     }

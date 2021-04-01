@@ -33,13 +33,6 @@
     </message>
 </context>
 <context>
-    <name>QObject</name>
-    <message>
-        <source>Unable to start the server: %1.</source>
-        <translation>Unable to start the server: %1.</translation>
-    </message>
-</context>
-<context>
     <name>QWidgetTextControl</name>
     <message>
         <source>&amp;Undo</source>
@@ -3472,8 +3465,8 @@ Você pode deixar seu feedback ou relatar um erro aqui:</translation>
         <translation>Adesivo</translation>
     </message>
     <message>
-        <source>The message is not supported on your version of ICQ. Update the app to see the message</source>
-        <translation>Não é possível exibir uma mensagem na sua versão do aplicativo. Update</translation>
+        <source>The message is not supported on your version. Update the app to see the message</source>
+        <translation>Não foi possível exibir mensagem em sua versão do aplicativo. Atualizar</translation>
     </message>
 </context>
 <context>
@@ -4592,6 +4585,62 @@ contato</translation>
         <source>Send Statistic</source>
         <translation>Enviar estatísticas</translation>
     </message>
+    <message>
+        <source>Member limit exceeded (maximum %1)</source>
+        <translation>Limite de associação excedido (máx %1)</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to open external link %1?</source>
+        <translation>Tem certeza que deseja abrir o link externo %1?</translation>
+    </message>
+    <message>
+        <source>Enable net compression</source>
+        <translation>Ativar compactação de solicitações de rede</translation>
+    </message>
+    <message>
+        <source>Cannot remove %1</source>
+        <translation>Falha ao deletar %1</translation>
+    </message>
+    <message>
+        <source>Cannot block %1</source>
+        <translation>Falha ao bloquear %1</translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1</source>
+        <translation>Falha ao desbloquear %1</translation>
+    </message>
+    <message>
+        <source>User not found</source>
+        <translation>Usuário não encontrado</translation>
+    </message>
+    <message>
+        <source>User is already blocked</source>
+        <translation>O usuário já está bloqueado</translation>
+    </message>
+    <message>
+        <source>User not blocked</source>
+        <translation>O usuário não está bloqueado</translation>
+    </message>
+    <message>
+        <source>Permission denied</source>
+        <translation>Acesso negado</translation>
+    </message>
+    <message>
+        <source>Error removing federation user</source>
+        <translation>Erro ao excluir usuário da federação</translation>
+    </message>
+    <message>
+        <source>Error blocking federation user</source>
+        <translation>Erro ao bloquear usuário da federação</translation>
+    </message>
+    <message>
+        <source>Error unblocking federation user</source>
+        <translation>Erro ao desbloquear um usuário da federação</translation>
+    </message>
+    <message>
+        <source>User not a member</source>
+        <translation>O usuário não é membro deste grupo</translation>
+    </message>
 </context>
 <context>
     <name>previewer</name>
@@ -5416,6 +5465,10 @@ contato</translation>
         <source>Disable SMS notifications</source>
         <translation>Desativar alertas SMS</translation>
     </message>
+    <message>
+        <source>Show notifications when app in focus</source>
+        <translation>Mostrar notificações quando o aplicativo estiver ativo</translation>
+    </message>
 </context>
 <context>
     <name>settings_connection</name>
@@ -5617,10 +5670,6 @@ contato</translation>
 </context>
 <context>
     <name>sidebar</name>
-    <message>
-        <source>Add to chat</source>
-        <translation>Adicionar ao bate-papo</translation>
-    </message>
     <message>
         <source>Notifications</source>
         <translation>Alertas</translation>
@@ -5967,6 +6016,14 @@ Edite-o e tente novamente.</translation>
         <source>All subscribers</source>
         <translation>Todos os assinantes</translation>
     </message>
+    <message>
+        <source>Back</source>
+        <translation>Voltar</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Fechar</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -6246,6 +6303,14 @@ Edite-o e tente novamente.</translation>
         <source>Calls</source>
         <translation>Chamadas</translation>
     </message>
+    <message>
+        <source>Structure</source>
+        <translation>Estrutura</translation>
+    </message>
+    <message>
+        <source>Tasks</source>
+        <translation>Tarefas</translation>
+    </message>
 </context>
 <context>
     <name>tab header</name>
@@ -6451,14 +6516,6 @@ Edite-o e tente novamente.</translation>
         <translation>Chamada recebida</translation>
     </message>
     <message>
-        <source>Add to call</source>
-        <translation>Adicionar à chamada</translation>
-    </message>
-    <message>
-        <source>OTHERS</source>
-        <translation>OUTROS</translation>
-    </message>
-    <message>
         <source>Screen</source>
         <translation>Ecrã</translation>
     </message>
@@ -6503,10 +6560,6 @@ Edite-o e tente novamente.</translation>
         <translation>TODOS OS MEMBROS DO GRUPO</translation>
     </message>
     <message>
-        <source>CALL MEMBERS</source>
-        <translation>PARTICIPANTES DA CHAMADA</translation>
-    </message>
-    <message>
         <source>Minimize</source>
         <translation>Minimizar</translation>
     </message>
@@ -6541,6 +6594,30 @@ por clique</translation>
     <message>
         <source>Busy</source>
         <translation>Ocupado</translation>
+    </message>
+    <message>
+        <source>Call members</source>
+        <translation>Participantes da chamada</translation>
+    </message>
+    <message>
+        <source>SHOW ALL</source>
+        <translation>MOSTRE TUDO</translation>
+    </message>
+    <message>
+        <source>HIDE</source>
+        <translation>OCULTAR</translation>
+    </message>
+    <message>
+        <source>IN CALL</source>
+        <translation>NA CHAMADA</translation>
+    </message>
+    <message>
+        <source>In call</source>
+        <translation>Na chamada</translation>
+    </message>
+    <message>
+        <source>CONTACTS</source>
+        <translation>CONTATOS</translation>
     </message>
 </context>
 <context>
@@ -6679,6 +6756,20 @@ Meeting</source>
     <message>
         <source>SHOW ALL</source>
         <translation>MOSTRE TUDO</translation>
+    </message>
+    <message>
+        <source>Show
+participants</source>
+        <translation>Olhar
+participantes</translation>
+    </message>
+    <message>
+        <source>Show all</source>
+        <translation>Mostrar tudo</translation>
+    </message>
+    <message>
+        <source>Show one</source>
+        <translation>Mostrar um</translation>
     </message>
 </context>
 <context>

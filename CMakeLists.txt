@@ -45,14 +45,14 @@ if(BUILD_PKG_MSI)
     add_definitions(-DBUILD_PKG_MSI=1)
 endif()
 
-if(NOT ICQ_QT_DYNAMIC)
-    add_definitions(-DICQ_QT_STATIC)
+if(NOT IM_QT_DYNAMIC)
+    add_definitions(-DIM_QT_STATIC)
     message(STATUS "Qt linking: static")
-    message(STATUS "add_definitions(-DICQ_QT_STATIC)")
+    message(STATUS "add_definitions(-DIM_QT_STATIC)")
 else()
-    add_definitions(-DICQ_QT_DYNAMIC)
+    add_definitions(-DIM_QT_DYNAMIC)
     message(STATUS "Qt linking: dynamic")
-    message(STATUS "add_definitions(-DICQ_QT_DYNAMIC)")
+    message(STATUS "add_definitions(-DIM_QT_DYNAMIC)")
 endif()
 
 if (STRIP_VOIP)
@@ -217,7 +217,7 @@ if(MSVC)
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${WIN32_COMMON_OPTS}")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${WIN32_COMMON_OPTS}")
 
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DEBUG /OPT:REF /OPT:ICF")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DEBUG /OPT:NOREF /OPT:NOICF")
     set(WIN_SDK_DIR "$ENV{ProgramFiles\(x86\)}/Windows Kits/10")
     set(WIN_SDK_VER "10.0.18362.0")
     include_directories("${WIN_SDK_DIR}/Include/${WIN_SDK_VER}/shared")
@@ -246,7 +246,7 @@ elseif(APPLE)
     endif()
 
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${MACOS_COMMON_FLAGS}")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MACOS_COMMON_FLAGS} -Werror=inconsistent-missing-override -Werror=effc++")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MACOS_COMMON_FLAGS} -Werror=inconsistent-missing-override -Werror=effc++ -Werror=empty-body")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++")
     add_definitions(-Werror=return-stack-address)
 elseif(UNIX)
@@ -830,7 +830,11 @@ endif()
 if(LINUX)
     set(ICQ_QT_ROOT "${ICQ_EXTERNAL}/qt_${deps_lib_version_qt}")
 else()
-    set(ICQ_QT_ROOT "${ICQ_EXTERNAL}/qt/${ICQ_PLATFORM}")
+    if(IM_QT_DYNAMIC)
+        set(ICQ_QT_ROOT "${ICQ_EXTERNAL}/qt/dynamic/${ICQ_PLATFORM}")
+    else()
+        set(ICQ_QT_ROOT "${ICQ_EXTERNAL}/qt/static/${ICQ_PLATFORM}")
+    endif()
 endif()
 
 
@@ -838,8 +842,10 @@ if(LINUX)
     # FIXME: Hardcoded
     set(ICQ_QT_INCLUDE_DIR "${ICQ_QT_ROOT}/include")
     set(ICQ_QT_LIB_DIR "${ICQ_QT_ROOT}/lib")
+    set(ICQ_QT_LIBEXEC_DIR "${ICQ_QT_ROOT}/libexec")
     set(ICQ_QT_BIN_DIR "${ICQ_EXTERNAL}/qt_utils")
     set(ICQ_QT_PLUGINS_DIR "${ICQ_QT_ROOT}/plugins")
+    set(ICQ_QT_RESOURCES_DIR "${ICQ_QT_ROOT}/resources")
     EXEC_PROGRAM("chmod +x ${ICQ_QT_BIN_DIR}/lrelease")
     EXEC_PROGRAM("chmod +x ${ICQ_QT_BIN_DIR}/rcc")
     EXEC_PROGRAM("chmod +x ${ICQ_QT_BIN_DIR}/uic")
@@ -847,8 +853,10 @@ if(LINUX)
 else()
     set(ICQ_QT_INCLUDE_DIR "${ICQ_QT_ROOT}/include")
     set(ICQ_QT_LIB_DIR "${ICQ_QT_ROOT}/lib")
+    set(ICQ_QT_LIBEXEC_DIR "${ICQ_QT_ROOT}/libexec")
     set(ICQ_QT_BIN_DIR "${ICQ_QT_ROOT}/bin")
     set(ICQ_QT_PLUGINS_DIR "${ICQ_QT_ROOT}/plugins")
+    set(ICQ_QT_RESOURCES_DIR "${ICQ_QT_ROOT}/resources")
 endif()
 
 if(APPLE)
@@ -877,78 +885,172 @@ if(IM_AUTO_TESTING)
     include_directories("${ICQ_QT_INCLUDE_DIR}/QtTest")
 endif()
 
+if(IM_QT_DYNAMIC)
+    if(MSVC)
+        set(QT_LIB_EXT "dll")
+        set(QT_SUP_EXT "lib")
+    elseif(APPLE)
+        set(QT_LIB_EXT "dylib")
+        set(QT_SUP_EXT "a")
+    else()
+        set(QT_LIB_EXT "so")
+        set(QT_SUP_EXT "a")
+    endif()
+else()
+    if(MSVC)
+        set(QT_LIB_EXT "lib")
+        set(QT_SUP_EXT "lib")
+    else()
+        set(QT_LIB_EXT "a")
+        set(QT_SUP_EXT "a")
+    endif()
+endif()
+
 add_definitions(-DQT_STATIC)
 if(MSVC)
     set(QT_LIBRARIES
-        optimized ${ICQ_QT_LIB_DIR}/Qt5Gui.lib debug ${ICQ_QT_LIB_DIR}/Qt5Guid.lib
-        optimized ${ICQ_QT_LIB_DIR}/Qt5Core.lib debug ${ICQ_QT_LIB_DIR}/Qt5Cored.lib
-        optimized ${ICQ_QT_LIB_DIR}/Qt5EventDispatcherSupport.lib debug ${ICQ_QT_LIB_DIR}/Qt5EventDispatcherSupportd.lib
-        optimized ${ICQ_QT_LIB_DIR}/Qt5FontDatabaseSupport.lib debug ${ICQ_QT_LIB_DIR}/Qt5FontDatabaseSupportd.lib
-        optimized ${ICQ_QT_LIB_DIR}/Qt5Network.lib debug ${ICQ_QT_LIB_DIR}/Qt5Networkd.lib
-        optimized ${ICQ_QT_LIB_DIR}/Qt5Multimedia.lib debug ${ICQ_QT_LIB_DIR}/Qt5Multimediad.lib
-        optimized ${ICQ_QT_LIB_DIR}/Qt5MultimediaWidgets.lib debug ${ICQ_QT_LIB_DIR}/Qt5MultimediaWidgetsd.lib
-        optimized ${ICQ_QT_LIB_DIR}/Qt5Multimedia.lib debug ${ICQ_QT_LIB_DIR}/Qt5Multimediad.lib
-        optimized ${ICQ_QT_LIB_DIR}/Qt5Test.lib debug ${ICQ_QT_LIB_DIR}/Qt5Testd.lib
-        optimized ${ICQ_QT_LIB_DIR}/Qt5ThemeSupport.lib debug ${ICQ_QT_LIB_DIR}/Qt5ThemeSupportd.lib
-        optimized ${ICQ_QT_LIB_DIR}/Qt5OpenGL.lib debug ${ICQ_QT_LIB_DIR}/Qt5OpenGLd.lib
-        optimized ${ICQ_QT_LIB_DIR}/Qt5Svg.lib debug ${ICQ_QT_LIB_DIR}/Qt5Svgd.lib
-        optimized ${ICQ_QT_LIB_DIR}/Qt5PlatformCompositorSupport.lib debug ${ICQ_QT_LIB_DIR}/Qt5PlatformCompositorSupportd.lib
-        optimized ${ICQ_QT_LIB_DIR}/Qt5Widgets.lib debug ${ICQ_QT_LIB_DIR}/Qt5Widgetsd.lib
-        optimized ${ICQ_QT_LIB_DIR}/Qt5WinExtras.lib debug ${ICQ_QT_LIB_DIR}/Qt5WinExtrasd.lib
-        optimized ${ICQ_QT_LIB_DIR}/Qt5WindowsUIAutomationSupport.lib debug ${ICQ_QT_LIB_DIR}/Qt5WindowsUIAutomationSupportd.lib
-        optimized ${ICQ_QT_LIB_DIR}/qtpcre2.lib debug ${ICQ_QT_LIB_DIR}/qtpcre2d.lib
-        optimized ${ICQ_QT_LIB_DIR}/qtmain.lib debug ${ICQ_QT_LIB_DIR}/qtmaind.lib
-        optimized ${ICQ_QT_LIB_DIR}/qtharfbuzz.lib debug ${ICQ_QT_LIB_DIR}/qtharfbuzzd.lib
-        optimized ${ICQ_QT_LIB_DIR}/qtfreetype.lib debug ${ICQ_QT_LIB_DIR}/qtfreetyped.lib
-        optimized ${ICQ_QT_LIB_DIR}/qtlibpng.lib debug ${ICQ_QT_LIB_DIR}/qtlibpngd.lib
-        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qgif.lib debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qgifd.lib
-        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qicns.lib debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qicnsd.lib
-        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qico.lib debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qicod.lib
-        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qjpeg.lib debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qjpegd.lib
-        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qsvg.lib debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qsvgd.lib
-        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qtga.lib debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qtgad.lib
-        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qtiff.lib debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qtiffd.lib
-        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qwbmp.lib debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qwbmpd.lib
-        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qwebp.lib debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qwebpd.lib
-        optimized ${ICQ_QT_PLUGINS_DIR}/audio/qtaudio_windows.lib debug ${ICQ_QT_PLUGINS_DIR}/audio/qtaudio_windowsd.lib
-        optimized ${ICQ_QT_PLUGINS_DIR}/platforms/qwindows.lib debug ${ICQ_QT_PLUGINS_DIR}/platforms/qwindowsd.lib
+        optimized ${ICQ_QT_LIB_DIR}/Qt5Gui.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/Qt5Guid.${QT_LIB_EXT}
+        optimized ${ICQ_QT_LIB_DIR}/Qt5Core.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/Qt5Cored.${QT_LIB_EXT}
+        optimized ${ICQ_QT_LIB_DIR}/Qt5EventDispatcherSupport.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/Qt5EventDispatcherSupportd.${QT_LIB_EXT}
+        optimized ${ICQ_QT_LIB_DIR}/Qt5FontDatabaseSupport.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/Qt5FontDatabaseSupportd.${QT_LIB_EXT}
+        optimized ${ICQ_QT_LIB_DIR}/Qt5Network.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/Qt5Networkd.${QT_LIB_EXT}
+        optimized ${ICQ_QT_LIB_DIR}/Qt5Multimedia.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/Qt5Multimediad.${QT_LIB_EXT}
+        optimized ${ICQ_QT_LIB_DIR}/Qt5MultimediaWidgets.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/Qt5MultimediaWidgetsd.${QT_LIB_EXT}
+        optimized ${ICQ_QT_LIB_DIR}/Qt5Multimedia.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/Qt5Multimediad.${QT_LIB_EXT}
+        optimized ${ICQ_QT_LIB_DIR}/Qt5Test.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/Qt5Testd.${QT_LIB_EXT}
+        optimized ${ICQ_QT_LIB_DIR}/Qt5ThemeSupport.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/Qt5ThemeSupportd.${QT_LIB_EXT}
+        optimized ${ICQ_QT_LIB_DIR}/Qt5OpenGL.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/Qt5OpenGLd.${QT_LIB_EXT}
+        optimized ${ICQ_QT_LIB_DIR}/Qt5Svg.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/Qt5Svgd.${QT_LIB_EXT}
+        optimized ${ICQ_QT_LIB_DIR}/Qt5PlatformCompositorSupport.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/Qt5PlatformCompositorSupportd.${QT_LIB_EXT}
+        optimized ${ICQ_QT_LIB_DIR}/Qt5Widgets.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/Qt5Widgetsd.${QT_LIB_EXT}
+        optimized ${ICQ_QT_LIB_DIR}/Qt5WinExtras.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/Qt5WinExtrasd.${QT_LIB_EXT}
+        optimized ${ICQ_QT_LIB_DIR}/Qt5WindowsUIAutomationSupport.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/Qt5WindowsUIAutomationSupportd.${QT_LIB_EXT}
+        optimized ${ICQ_QT_LIB_DIR}/qtpcre2.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/qtpcre2d.${QT_LIB_EXT}
+        optimized ${ICQ_QT_LIB_DIR}/qtmain.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/qtmaind.${QT_LIB_EXT}
+        optimized ${ICQ_QT_LIB_DIR}/qtharfbuzz.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/qtharfbuzzd.${QT_LIB_EXT}
+        optimized ${ICQ_QT_LIB_DIR}/qtfreetype.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/qtfreetyped.${QT_LIB_EXT}
+        optimized ${ICQ_QT_LIB_DIR}/qtlibpng.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/qtlibpngd.${QT_LIB_EXT}
+        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qgif.${QT_LIB_EXT} debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qgifd.${QT_LIB_EXT}
+        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qicns.${QT_LIB_EXT} debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qicnsd.${QT_LIB_EXT}
+        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qico.${QT_LIB_EXT} debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qicod.${QT_LIB_EXT}
+        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qjpeg.${QT_LIB_EXT} debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qjpegd.${QT_LIB_EXT}
+        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qsvg.${QT_LIB_EXT} debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qsvgd.${QT_LIB_EXT}
+        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qtga.${QT_LIB_EXT} debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qtgad.${QT_LIB_EXT}
+        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qtiff.${QT_LIB_EXT} debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qtiffd.${QT_LIB_EXT}
+        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qwbmp.${QT_LIB_EXT} debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qwbmpd.${QT_LIB_EXT}
+        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qwebp.${QT_LIB_EXT} debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qwebpd.${QT_LIB_EXT}
+        optimized ${ICQ_QT_PLUGINS_DIR}/audio/qtaudio_windows.${QT_LIB_EXT} debug ${ICQ_QT_PLUGINS_DIR}/audio/qtaudio_windowsd.${QT_LIB_EXT}
+        optimized ${ICQ_QT_PLUGINS_DIR}/platforms/qwindows.${QT_LIB_EXT} debug ${ICQ_QT_PLUGINS_DIR}/platforms/qwindowsd.${QT_LIB_EXT}
     )
 elseif(APPLE)
     add_definitions(-DQT_GUI_LIB=1)
     set(QT_LIBRARIES
-        ${ICQ_QT_LIB_DIR}/libQt5Concurrent.a
-        ${ICQ_QT_LIB_DIR}/libQt5Core.a
-        ${ICQ_QT_LIB_DIR}/libQt5DBus.a
-        ${ICQ_QT_LIB_DIR}/libQt5Gui.a
-        ${ICQ_QT_LIB_DIR}/libQt5Multimedia.a
-        ${ICQ_QT_LIB_DIR}/libQt5Network.a
-        ${ICQ_QT_LIB_DIR}/libQt5PrintSupport.a
-        ${ICQ_QT_LIB_DIR}/libQt5Widgets.a
-        ${ICQ_QT_LIB_DIR}/libQt5MacExtras.a
-        ${ICQ_QT_LIB_DIR}/libQt5Svg.a
-        ${ICQ_QT_LIB_DIR}/libQt5ClipboardSupport.a
-        ${ICQ_QT_LIB_DIR}/libQt5FontDatabaseSupport.a
-        ${ICQ_QT_LIB_DIR}/libQt5AccessibilitySupport.a
-        ${ICQ_QT_LIB_DIR}/libQt5GraphicsSupport.a
-        ${ICQ_QT_LIB_DIR}/libQt5ThemeSupport.a
-        ${ICQ_QT_LIB_DIR}/libqtfreetype.a
-        ${ICQ_QT_LIB_DIR}/libqtharfbuzz.a
-        ${ICQ_QT_LIB_DIR}/libqtpcre2.a
-        ${ICQ_QT_LIB_DIR}/libqtlibpng.a
-        ${ICQ_QT_LIB_DIR}/libQt5MacExtras.a
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqgif.a
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqicns.a
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqico.a
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqjpeg.a
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqmacheif.a
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqmacjp2.a
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqsvg.a
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqtga.a
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqtiff.a
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqwbmp.a
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqwebp.a
-        ${ICQ_QT_PLUGINS_DIR}/platforms/libqcocoa.a
+        ${ICQ_QT_LIB_DIR}/libQt5Concurrent.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Core.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5DBus.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Gui.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Multimedia.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Network.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5PrintSupport.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Widgets.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5MacExtras.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Svg.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5ClipboardSupport.${QT_SUP_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5FontDatabaseSupport.${QT_SUP_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5AccessibilitySupport.${QT_SUP_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5GraphicsSupport.${QT_SUP_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5ThemeSupport.${QT_SUP_EXT}
+        ${ICQ_QT_LIB_DIR}/libqtfreetype.${QT_SUP_EXT}
+        ${ICQ_QT_LIB_DIR}/libqtharfbuzz.${QT_SUP_EXT}
+        ${ICQ_QT_LIB_DIR}/libqtpcre2.${QT_SUP_EXT}
+        ${ICQ_QT_LIB_DIR}/libqtlibpng.${QT_SUP_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5MacExtras.${QT_LIB_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqgif.${QT_LIB_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqicns.${QT_LIB_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqico.${QT_LIB_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqjpeg.${QT_LIB_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqmacheif.${QT_LIB_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqmacjp2.${QT_LIB_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqsvg.${QT_LIB_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqtga.${QT_LIB_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqtiff.${QT_LIB_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqwbmp.${QT_LIB_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqwebp.${QT_LIB_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/platforms/libqcocoa.${QT_LIB_EXT}
         )
+
+    if(IM_QT_DYNAMIC)
+        set(QT_LIBRARIES_TO_COPY
+            ${ICQ_QT_LIB_DIR}/libQt5Concurrent.${QT_LIB_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5Core.${QT_LIB_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5DBus.${QT_LIB_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5Gui.${QT_LIB_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5Multimedia.${QT_LIB_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5Network.${QT_LIB_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5PrintSupport.${QT_LIB_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5Widgets.${QT_LIB_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5MacExtras.${QT_LIB_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5Svg.${QT_LIB_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5MacExtras.${QT_LIB_EXT}
+            )
+
+        set(QT_IMAGE_PLUGINS_TO_COPY
+            ${ICQ_QT_PLUGINS_DIR}/imageformats/libqgif.${QT_LIB_EXT}
+            ${ICQ_QT_PLUGINS_DIR}/imageformats/libqicns.${QT_LIB_EXT}
+            ${ICQ_QT_PLUGINS_DIR}/imageformats/libqico.${QT_LIB_EXT}
+            ${ICQ_QT_PLUGINS_DIR}/imageformats/libqjpeg.${QT_LIB_EXT}
+            ${ICQ_QT_PLUGINS_DIR}/imageformats/libqmacheif.${QT_LIB_EXT}
+            ${ICQ_QT_PLUGINS_DIR}/imageformats/libqmacjp2.${QT_LIB_EXT}
+            ${ICQ_QT_PLUGINS_DIR}/imageformats/libqsvg.${QT_LIB_EXT}
+            ${ICQ_QT_PLUGINS_DIR}/imageformats/libqtga.${QT_LIB_EXT}
+            ${ICQ_QT_PLUGINS_DIR}/imageformats/libqtiff.${QT_LIB_EXT}
+            ${ICQ_QT_PLUGINS_DIR}/imageformats/libqwbmp.${QT_LIB_EXT}
+            ${ICQ_QT_PLUGINS_DIR}/imageformats/libqwebp.${QT_LIB_EXT}
+            )
+
+        set(QT_PLATFORMS_PLUGINS_TO_COPY
+            ${ICQ_QT_PLUGINS_DIR}/platforms/libqcocoa.${QT_LIB_EXT}
+            )
+
+        if(HAS_WEB_ENGINE)
+            set(QT_LIBRARIES "${QT_LIBRARIES}"
+                ${ICQ_QT_LIB_DIR}/libQt5WebEngine.${QT_LIB_EXT}
+                ${ICQ_QT_LIB_DIR}/libQt5WebEngineCore.${QT_LIB_EXT}
+                ${ICQ_QT_LIB_DIR}/libQt5WebEngineWidgets.${QT_LIB_EXT}
+                ${ICQ_QT_LIB_DIR}/libQt5Quick.${QT_LIB_EXT}
+                ${ICQ_QT_LIB_DIR}/libQt5QmlModels.${QT_LIB_EXT}
+                ${ICQ_QT_LIB_DIR}/libQt5WebChannel.${QT_LIB_EXT}
+                ${ICQ_QT_LIB_DIR}/libQt5Qml.${QT_LIB_EXT}
+                ${ICQ_QT_LIB_DIR}/libQt5Positioning.${QT_LIB_EXT}
+                ${ICQ_QT_LIB_DIR}/libQt5QuickWidgets.${QT_LIB_EXT}
+                )
+
+            set(QT_LIBRARIES_TO_COPY "${QT_LIBRARIES_TO_COPY}"
+                ${ICQ_QT_LIB_DIR}/libQt5WebEngine.${QT_LIB_EXT}
+                ${ICQ_QT_LIB_DIR}/libQt5WebEngineCore.${QT_LIB_EXT}
+                ${ICQ_QT_LIB_DIR}/libQt5WebEngineWidgets.${QT_LIB_EXT}
+                ${ICQ_QT_LIB_DIR}/libQt5Quick.${QT_LIB_EXT}
+                ${ICQ_QT_LIB_DIR}/libQt5QmlModels.${QT_LIB_EXT}
+                ${ICQ_QT_LIB_DIR}/libQt5WebChannel.${QT_LIB_EXT}
+                ${ICQ_QT_LIB_DIR}/libQt5Qml.${QT_LIB_EXT}
+                ${ICQ_QT_LIB_DIR}/libQt5Positioning.${QT_LIB_EXT}
+                ${ICQ_QT_LIB_DIR}/libQt5QuickWidgets.${QT_LIB_EXT}
+                )
+
+            set(QT_LIBEXEC_TO_COPY
+                ${ICQ_QT_LIBEXEC_DIR}/QtWebEngineProcess
+                )
+            
+            set(QT_RESOURCES_TO_COPY
+                ${ICQ_QT_RESOURCES_DIR}/icudtl.dat
+                ${ICQ_QT_RESOURCES_DIR}/qt.conf
+                ${ICQ_QT_RESOURCES_DIR}/qtwebengine_devtools_resources.pak
+                ${ICQ_QT_RESOURCES_DIR}/qtwebengine_resources.pak
+                ${ICQ_QT_RESOURCES_DIR}/qtwebengine_resources_100p.pak
+                ${ICQ_QT_RESOURCES_DIR}/qtwebengine_resources_200p.pak
+                )
+        endif()
+    endif()
 
     if(IM_AUTO_TESTING)
         message(STATUS "... add definitions -DQT_WIDGETS_LIB -DQT_CORE_LIB")
@@ -958,38 +1060,38 @@ elseif(APPLE)
 
 elseif(LINUX)
     set(QT_LIBRARIES
-        ${ICQ_QT_PLUGINS_DIR}/platforms/libqxcb.a
-        ${ICQ_QT_LIB_DIR}/libQt5XcbQpa.a
-        ${ICQ_QT_LIB_DIR}/libQt5ServiceSupport.a
-        ${ICQ_QT_LIB_DIR}/libQt5ThemeSupport.a
-        ${ICQ_QT_LIB_DIR}/libQt5FontDatabaseSupport.a
-        ${ICQ_QT_LIB_DIR}/libQt5XkbCommonSupport.a
-        ${ICQ_QT_LIB_DIR}/libQt5LinuxAccessibilitySupport.a
-        ${ICQ_QT_LIB_DIR}/libQt5AccessibilitySupport.a
-        ${ICQ_QT_LIB_DIR}/libQt5EdidSupport.a
-        ${ICQ_QT_LIB_DIR}/libQt5DBus.a
-        ${ICQ_QT_LIB_DIR}/libQt5Widgets.a
-        ${ICQ_QT_LIB_DIR}/libQt5Gui.a
-        ${ICQ_QT_LIB_DIR}/libQt5Network.a
-        ${ICQ_QT_LIB_DIR}/libQt5Multimedia.a
-        ${ICQ_QT_LIB_DIR}/libQt5Concurrent.a
-        ${ICQ_QT_LIB_DIR}/libxcb-static.a
-        ${ICQ_QT_LIB_DIR}/libQt5Core.a
-        ${ICQ_QT_LIB_DIR}/libQt5Svg.a
-        ${ICQ_QT_LIB_DIR}/libqtpcre2.a
-        ${ICQ_QT_LIB_DIR}/libqtlibpng.a
-        ${ICQ_QT_PLUGINS_DIR}/bearer/libqconnmanbearer.a
-        ${ICQ_QT_PLUGINS_DIR}/bearer/libqnmbearer.a
-        ${ICQ_QT_PLUGINS_DIR}/bearer/libqgenericbearer.a
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqgif.a
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqicns.a
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqico.a
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqjpeg.a
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqsvg.a
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqtga.a
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqtiff.a
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqwbmp.a
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqwebp.a
+        ${ICQ_QT_PLUGINS_DIR}/platforms/libqxcb.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5XcbQpa.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5ServiceSupport.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5ThemeSupport.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5FontDatabaseSupport.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5XkbCommonSupport.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5LinuxAccessibilitySupport.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5AccessibilitySupport.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5EdidSupport.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5DBus.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Widgets.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Gui.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Network.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Multimedia.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Concurrent.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libxcb-static.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Core.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Svg.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libqtpcre2.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libqtlibpng.${QT_LIB_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/bearer/libqconnmanbearer.${QT_LIB_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/bearer/libqnmbearer.${QT_LIB_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/bearer/libqgenericbearer.${QT_LIB_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqgif.${QT_LIB_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqicns.${QT_LIB_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqico.${QT_LIB_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqjpeg.${QT_LIB_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqsvg.${QT_LIB_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqtga.${QT_LIB_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqtiff.${QT_LIB_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqwbmp.${QT_LIB_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqwebp.${QT_LIB_EXT}
         )
 endif()
 

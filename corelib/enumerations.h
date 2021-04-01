@@ -1320,7 +1320,7 @@ namespace core
         empty_response,
     };
 
-    enum class add_member_failure
+    enum class chat_member_failure
     {
         invalid,
 
@@ -1331,5 +1331,44 @@ namespace core
         user_captcha,
         user_already_added,
         bot_setjoingroups_false,
+        user_not_found,
+        not_member,
+        user_is_blocked_already,
+        user_not_blocked,
+        permission_denied,
+        remote_federation_error,
     };
+
+    constexpr chat_member_failure string_to_failure(std::string_view _s) noexcept
+    {
+        if (_s == "user_waiting_for_approve")
+            return chat_member_failure::user_waiting_for_approve;
+        else if (_s == "user_must_join_by_link")
+            return chat_member_failure::user_must_join_by_link;
+        else if (_s == "user_blocked_confirmation_required")
+            return chat_member_failure::user_blocked_confirmation_required;
+        else if (_s == "user_must_be_added_by_admin")
+            return chat_member_failure::user_must_be_added_by_admin;
+        else if (_s == "user_captcha")
+            return chat_member_failure::user_captcha;
+        else if (_s == "user_already_added")
+            return chat_member_failure::user_already_added;
+        else if (_s == "bot_setjoingroups_false")
+            return chat_member_failure::bot_setjoingroups_false;
+        else if (_s == "user_not_found")
+            return chat_member_failure::user_not_found;
+        else if (_s == "not_member")
+            return chat_member_failure::not_member;
+        else if (_s == "user_is_blocked_already")
+            return chat_member_failure::user_is_blocked_already;
+        else if (_s == "user_not_blocked")
+            return chat_member_failure::user_not_blocked;
+        else if (_s == "permission_denied")
+            return chat_member_failure::permission_denied;
+        else if (_s == "remote_federation_error")
+            return chat_member_failure::remote_federation_error;
+
+        assert(false);
+        return chat_member_failure::invalid;
+    }
 }

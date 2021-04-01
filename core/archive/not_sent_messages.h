@@ -79,6 +79,7 @@ namespace core
             static not_sent_message_sptr make(
                 const std::string& _aimid,
                 std::string _message,
+                core::data::format::string_formatting _message_format,
                 const message_type _type,
                 const uint64_t _message_time,
                 std::string _internal_id);
@@ -89,6 +90,7 @@ namespace core
                 const std::string& _local_path,
                 const core::archive::quotes_vec& _quotes,
                 const std::string& _description,
+                const core::data::format::string_formatting& _description_format,
                 const core::archive::mentions_map& _mentions,
                 const std::optional<int64_t>& _duration);
 
@@ -149,6 +151,9 @@ namespace core
             void set_description(const std::string& _description);
             std::string get_description() const;
 
+            core::data::format::string_formatting get_description_format() const { return message_->description_format(); }
+            void set_description_format(const core::data::format::string_formatting& _description_format);
+
             void set_url(const std::string& _url);
             std::string get_url() const;
 
@@ -201,6 +206,7 @@ namespace core
             not_sent_message(
                 const std::string& _aimid,
                 std::string _message,
+                core::data::format::string_formatting _message_format,
                 const message_type _type,
                 const uint64_t _message_time,
                 std::string&& _internal_id);

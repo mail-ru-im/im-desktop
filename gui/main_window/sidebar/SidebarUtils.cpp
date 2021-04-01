@@ -12,6 +12,7 @@
 #include "../../app_config.h"
 #include "../../utils/utils.h"
 #include "../../utils/InterConnector.h"
+#include "../../utils/features.h"
 #include "../../utils/stat_utils.h"
 #include "../contact_list/ContactListModel.h"
 #include "../contact_list/FavoritesUtils.h"
@@ -427,6 +428,8 @@ namespace Ui
         , hovered_(false)
         , nameOnly_(false)
         , statusPlate_(new StatusPlate(this))
+        , tooltipTimer_(nullptr)
+        , tooltipActivated_(false)
     {
         name_ = TextRendering::MakeTextUnit(QString(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
         info_ = TextRendering::MakeTextUnit(QString(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
@@ -715,6 +718,17 @@ namespace Ui
         else
             setCursor(Qt::ArrowCursor);
 
+        const auto nameRect = getNameRect();
+        if (Features::longPathTooltipsAllowed() && nameRect.contains(mapToGlobal(_event->pos())) && name_->isElided())
+        {
+            if (!isTooltipActivated())
+                showTooltip();
+        }
+        else
+        {
+            hideTooltip();
+        }
+
         statusPlate_->onMouseMove(_event->pos());
 
         QWidget::mouseMoveEvent(_event);
@@ -733,6 +747,7 @@ namespace Ui
         hovered_ = false;
         statusPlate_->onMouseLeave();
 
+        hideTooltip();
         update();
 
         QWidget::leaveEvent(_event);
@@ -806,10 +821,50 @@ namespace Ui
         return QPoint(margins_.left(), height() / 2 - avatarSize_ / 2);
     }
 
+    QRect AvatarNameInfo::getNameRect() const
+    {
+        const auto nameWidth = width() - margins_.left() - margins_.right() - avatarSize_ - textOffset_ - (clickable_ ? Utils::scale_value(ICON_SIZE + ICON_OFFSET) : 0);
+        return QRect(mapToGlobal(mapFromParent(name_->offsets())), QSize(nameWidth, name_->cachedSize().height()));
+    }
+
+    bool AvatarNameInfo::isTooltipActivated() const
+    {
+        return tooltipActivated_;
+    }
+
+    void AvatarNameInfo::showTooltip()
+    {
+        if (!tooltipTimer_)
+        {
+            tooltipTimer_ = new QTimer(this);
+            tooltipTimer_->setInterval(Tooltip::getDefaultShowDelay());
+            tooltipTimer_->setSingleShot(true);
+            connect(tooltipTimer_, &QTimer::timeout, this, [this]()
+            {
+                if (name_)
+                    Tooltip::show(name_->getSourceText().string(), getNameRect(), {}, Tooltip::ArrowDirection::Auto, Tooltip::ArrowPointPos::Top, {}, Tooltip::TooltipMode::Multiline);
+            });
+        }
+
+        tooltipTimer_->start();
+
+        tooltipActivated_ = true;
+    }
+
+    void AvatarNameInfo::hideTooltip()
+    {
+        if (tooltipTimer_)
+            tooltipTimer_->stop();
+
+        Tooltip::hide();
+
+        tooltipActivated_ = false;
+    }
+
     StatusPlate::StatusPlate(QObject* _parent)
         : QObject(_parent)
     {
-        text_ = TextRendering::MakeTextUnit(QString(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
+        text_ = TextRendering::MakeTextUnit(QString(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
         text_->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
         connect(Logic::GetStatusContainer(), &Logic::StatusContainer::statusChanged, this, &StatusPlate::onStatusChanged);
     }
@@ -947,7 +1002,7 @@ namespace Ui
           content_(new QWidget(this)),
           status_(_status),
           emoji_(new BigEmojiWidget(_status.toString(), Utils::scale_value(100), this)),
-          text_(new TextWidget(_parent, _status.getDescription())),
+          text_(new TextWidget(_parent, _status.getDescription(), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS)),
           duration_(new TextWidget(_parent, _status.getTimeString()))
 
     {
@@ -1037,7 +1092,7 @@ namespace Ui
         , menu_(nullptr)
     {
         text_ = TextRendering::MakeTextUnit(QString(), Data::MentionMap());
-        collapsedText_ = TextRendering::MakeTextUnit(QString(), Data::MentionMap(), TextRendering::LinksVisible::SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
+        collapsedText_ = TextRendering::MakeTextUnit(QString(), Data::MentionMap(), TextRendering::LinksVisible::SHOW_LINKS);
         readMore_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("sidebar", "Read more"));
 
         iconNormalColor_ = Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY);
@@ -1147,6 +1202,13 @@ namespace Ui
     void TextLabel::setLinkColor(const QColor& _color)
     {
         text_->setLinkColor(_color);
+        update();
+    }
+
+    void TextLabel::disableCommands()
+    {
+        text_->disableCommands();
+        collapsedText_->disableCommands();
         update();
     }
 
@@ -1349,7 +1411,7 @@ namespace Ui
 
                         QMap<QString, QVariant> data;
                         data[qsl("command")] = qsl("copy");
-                        data[qsl("text")] = isTextField_ && text_->isSelected() ? text_->getSelectedText() : text_->getText();
+                        data[qsl("text")] = isTextField_ && text_->isSelected() ? text_->getSelectedText().string() : text_->getText();
 
                         menu->addActionWithIcon(qsl(":/copy_icon"), QT_TRANSLATE_NOOP("sidebar", "Copy"), data);
 
@@ -1373,7 +1435,7 @@ namespace Ui
                     {
                         auto copyRect = QRect(width() - Utils::scale_value(ICON_SIZE) * (onlyCopyButton_ ? 2 : 4), margins_.top(), Utils::scale_value(ICON_SIZE), Utils::scale_value(ICON_SIZE));
                         if (copyRect.contains(pos) && !std::exchange(buttonWasClicked, true))
-                            Q_EMIT copyClicked(text_->getSourceText(), QPrivateSignal());
+                            Q_EMIT copyClicked(Data::stubFromFormattedString(text_->getSourceText()), QPrivateSignal());
 
                         auto shareRect = QRect(width() - Utils::scale_value(ICON_SIZE) * 2, margins_.top(), Utils::scale_value(ICON_SIZE), Utils::scale_value(ICON_SIZE));
                         if (!onlyCopyButton_ && shareRect.contains(pos) && !std::exchange(buttonWasClicked, true))
@@ -1505,8 +1567,8 @@ namespace Ui
     QString TextLabel::getSelectedText() const
     {
         if (collapsed_)
-            return collapsedText_->getSelectedText();
-        return text_->getSelectedText();
+            return collapsedText_->getSelectedText().string();
+        return text_->getSelectedText().string();
     }
 
     void TextLabel::tryClearSelection(const QPoint& _pos)
@@ -1563,6 +1625,12 @@ namespace Ui
     void InfoBlock::setHeaderLinkColor(const QColor& _color)
     {
         header_->setLinkColor(_color);
+    }
+
+    void InfoBlock::disableCommandsInText()
+    {
+        if (text_)
+            text_->disableCommands();
     }
 
     bool InfoBlock::isVisible() const
@@ -1641,7 +1709,7 @@ namespace Ui
             {
                 Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profilescr_chatgallery_action, { { "category", "ChatInfo" }, { "chat_type", Utils::chatTypeByAimId(aimId_) } });
                 Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::fullmediascr_view, { { "chat_type", Utils::chatTypeByAimId(aimId_) }, { "from", "profile_carousel" }, { "media_type", item_->isVideo() ? "video" : (item_->isGif() ? "gif" : "photo") } });
-                Utils::InterConnector::instance().getMainWindow()->openGallery(Utils::GalleryData(aimId_, item_->getLink(), item_->getMsg()));
+                Utils::InterConnector::instance().openGallery(Utils::GalleryData(aimId_, item_->getLink(), item_->getMsg(), item_->sender(), item_->time()));
             }
             else if (_event->button() == Qt::RightButton)
             {
@@ -1977,6 +2045,8 @@ namespace Ui
         , maxMembersCount_(_maxMembersCount)
         , memberCount_(0)
         , hovered_(-1)
+        , scrollArea_(nullptr)
+        , tooltipTimer_(nullptr)
     {
         delegate_->setRenderRole(true);
         updateSize();
@@ -1990,6 +2060,11 @@ namespace Ui
     void MembersWidget::clearCache()
     {
         delegate_->clearCache();
+    }
+
+    void Ui::MembersWidget::setScrollArea(QScrollArea* _scrollArea)
+    {
+        scrollArea_ = _scrollArea;
     }
 
     void MembersWidget::dataChanged(const QModelIndex&, const QModelIndex&, const QVector<int>&)
@@ -2008,6 +2083,39 @@ namespace Ui
     {
         memberCount_ = std::min(model_->rowCount(), maxMembersCount_);
         setFixedHeight(params_.itemHeight() * memberCount_ + Utils::scale_value(MEMBERS_WIDGET_BOTTOM_OFFSET));
+    }
+
+    void MembersWidget::showTooltip(QString _text, QRect _rect, Tooltip::ArrowDirection _arrowDir, Tooltip::ArrowPointPos _arrowPos)
+    {
+        Tooltip::hide();
+
+        if (!tooltipTimer_)
+        {
+            tooltipTimer_ = new QTimer(this);
+            tooltipTimer_->setInterval(Tooltip::getDefaultShowDelay());
+            tooltipTimer_->setSingleShot(true);
+        }
+        else
+        {
+            tooltipTimer_->stop();
+            tooltipTimer_->disconnect(this);
+        }
+
+        connect(tooltipTimer_, &QTimer::timeout, this, [text = std::move(_text), _rect, _arrowDir, _arrowPos]()
+        {
+            Tooltip::show(text, _rect, {}, _arrowDir, _arrowPos, {}, Tooltip::TooltipMode::Multiline);
+        });
+        tooltipTimer_->start();
+    }
+
+    void MembersWidget::hideTooltip()
+    {
+        tooltipIndex_ = {};
+
+        if (tooltipTimer_)
+            tooltipTimer_->stop();
+
+        Tooltip::hide();
     }
 
     void MembersWidget::paintEvent(QPaintEvent* _event)
@@ -2063,6 +2171,31 @@ namespace Ui
             }
         }
 
+        if (Features::longPathTooltipsAllowed() && hovered_ != -1)
+        {
+            const auto index = model_->index(hovered_);
+            const auto aimId = index.data().value<Data::AbstractSearchResultSptr>()->getAimId();
+            if (delegate_->needsTooltip(aimId, index))
+            {
+                if (tooltipIndex_ != index)
+                {
+                    tooltipIndex_ = index;
+
+                    auto ttRect = QRect(mapToGlobal(hoveredRect.topLeft()), hoveredRect.size());
+                    auto name = Logic::GetFriendlyContainer()->getFriendly(aimId);
+                    const auto verticalPosition = scrollArea_ ? (mapTo(scrollArea_->viewport(), rect().topLeft()).y() + hoveredRect.y()) : 0;
+                    const auto needBottom = verticalPosition < 0;
+                    auto direction = needBottom ? Tooltip::ArrowDirection::Up : Tooltip::ArrowDirection::Down;
+                    auto arrowPosition = needBottom ? Tooltip::ArrowPointPos::Bottom : Tooltip::ArrowPointPos::Top;
+                    showTooltip(std::move(name), ttRect, direction, arrowPosition);
+                }
+            }
+            else
+            {
+                hideTooltip();
+            }
+        }
+
         update();
         QWidget::mouseMoveEvent(_event);
     }
@@ -2115,9 +2248,15 @@ namespace Ui
         QWidget::mousePressEvent(_event);
     }
 
+    void Ui::MembersWidget::wheelEvent(QWheelEvent* _event)
+    {
+        hideTooltip();
+    }
+
     void MembersWidget::leaveEvent(QEvent* _event)
     {
         hovered_ = -1;
+        hideTooltip();
         update();
     }
 

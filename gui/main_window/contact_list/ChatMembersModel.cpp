@@ -2,6 +2,7 @@
 #include "ChatMembersModel.h"
 
 #include "ContactListModel.h"
+#include "ContactListUtils.h"
 #include "../../my_info.h"
 #include "../../cache/avatars/AvatarStorage.h"
 #include "../../utils/utils.h"
@@ -26,6 +27,7 @@ namespace Logic
         , membersCount_(0)
         , countFirstCheckedMembers_(0)
         , isDoingRequest_(false)
+        , isInitialPage_(false)
         , mode_(MembersMode::All)
         , timerSearch_(new QTimer(this))
         , contactSearcher_(new ContactSearcher(this))
@@ -75,7 +77,7 @@ namespace Logic
         if (!isDoingRequest_ || !isSeqRelevant(_seq) || _pageSize < 0)
             return;
 
-        if (_resetPages)
+        if (_resetPages || isInitialPage_)
             clearResults();
 
         addResults(_page);
@@ -133,7 +135,7 @@ namespace Logic
             return QVariant();
 
         if (Testing::isAccessibleRole(_role))
-            return results_[curIndex]->getAccessibleName();
+            return QString(u"AS Sidebar GroupMember " % results_[curIndex]->getAccessibleName());
 
         return QVariant::fromValue(results_[curIndex]);
     }
@@ -301,9 +303,14 @@ namespace Logic
         collection.set_value_as_uint("page_size", std::max(Logic::MembersPageSize, static_cast<unsigned int>(countFirstCheckedMembers_)));
 
         if (cursorNextPage_.isEmpty())
+        {
             collection.set_value_as_qstring("role", getRoleName(mode_));
+            isInitialPage_ = true;
+        }
         else
+        {
             collection.set_value_as_qstring("cursor", cursorNextPage_);
+        }
 
         sequences_[mode_] = Ui::GetDispatcher()->post_message_to_core("chats/members/get", collection.get());
         isDoingRequest_ = true;
@@ -486,6 +493,7 @@ namespace Logic
     void ChatMembersModel::clearResults()
     {
         isDoingRequest_ = false;
+        isInitialPage_ = false;
         timerSearch_->stop();
 
         results_.clear();
@@ -507,6 +515,12 @@ namespace Logic
     const std::vector<Data::ChatMemberInfo>&ChatMembersModel::getMembers() const
     {
         return members_;
+    }
+
+    bool ChatMembersModel::isClickableItem(const QModelIndex& _index) const
+    {
+        const auto aimId = Logic::aimIdFromIndex(_index);
+        return aimId.isEmpty() || aimId != Ui::MyInfo()->aimId();
     }
 
     void ChatMembersModel::add(const QString& _aimId)

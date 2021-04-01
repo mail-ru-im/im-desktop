@@ -35,22 +35,22 @@ namespace Ui
     // RecentItemBase
     //////////////////////////////////////////////////////////////////////////
 
-    int get_badge_size()
+    int get_badge_size() noexcept
     {
         return Utils::scale_value(18);
     }
 
-    int get_badge_mention_size()
+    int get_badge_mention_size() noexcept
     {
         return Utils::scale_value(16);
     }
 
-    QSize getPinHeaderSize()
+    QSize getPinHeaderSize() noexcept
     {
         return Utils::scale_value(QSize(16, 16));
     }
 
-    QSize getPinSize()
+    QSize getPinSize() noexcept
     {
         return Utils::scale_value(QSize(12, 12));
     }
@@ -76,17 +76,17 @@ namespace Ui
         return _isSelected ? addSelected : add;
     }
 
-    int getPinPadding()
+    int getPinPadding() noexcept
     {
         return Utils::scale_value(12);
     }
 
-    int getUnreadsSize()
+    int getUnreadsSize() noexcept
     {
         return Utils::scale_value(20);
     }
 
-    QSize getContactsIconSize()
+    constexpr QSize getContactsIconSize() noexcept
     {
         return QSize(20, 20);
     }
@@ -96,7 +96,7 @@ namespace Ui
         return Utils::renderSvgScaled(qsl(":/contacts_icon"), getContactsIconSize());
     }
 
-    QSize getAttentionSize()
+    QSize getAttentionSize() noexcept
     {
         return Utils::scale_value(QSize(20, 20));
     }
@@ -113,7 +113,7 @@ namespace Ui
             });
     }
 
-    QSize getMentionSize()
+    QSize getMentionSize() noexcept
     {
         return Utils::scale_value(QSize(20, 20));
     }
@@ -144,27 +144,27 @@ namespace Ui
         return Utils::renderSvg(qsl(":/mail_icon"), QSize(_size, _size));
     }
 
-    int getUnreadLeftPadding()
+    int getUnreadLeftPadding() noexcept
     {
         return Utils::scale_value(4);
     }
 
-    int getUnreadLeftPaddingPictOnly()
+    int getUnreadLeftPaddingPictOnly() noexcept
     {
         return Utils::scale_value(2);
     }
 
-    int getRigthLineCenter(const bool _compactMode)
+    int getRigthLineCenter(const bool _compactMode) noexcept
     {
         return Utils::scale_value(22);
     }
 
-    int getUnreadBubbleWidthMin()
+    int getUnreadBubbleWidthMin() noexcept
     {
         return Utils::scale_value(20);
     }
 
-    int getUnreadBubbleHeight()
+    int getUnreadBubbleHeight() noexcept
     {
         return Utils::scale_value(20);
     }
@@ -174,17 +174,17 @@ namespace Ui
         return getRigthLineCenter(_compactMode) - (getUnreadBubbleWidthMin() / 2);
     }
 
-    int getUnreadBubbleRightMarginPictOnly()
+    int getUnreadBubbleRightMarginPictOnly() noexcept
     {
         return Utils::scale_value(4);
     }
 
-    int getUnreadBubbleMarginPictOnly()
+    int getUnreadBubbleMarginPictOnly() noexcept
     {
         return Utils::scale_value(4);
     }
 
-    int getMessageY()
+    int getMessageY() noexcept
     {
         if constexpr (platform::is_apple())
             return Utils::scale_value(23);
@@ -192,7 +192,7 @@ namespace Ui
             return Utils::scale_value(28);
     }
 
-    int getMultiChatMessageOffset()
+    int getMultiChatMessageOffset() noexcept
     {
         if constexpr (platform::is_apple())
             return Utils::scale_value(1);
@@ -200,7 +200,7 @@ namespace Ui
             return 0;
     }
 
-    int getUnreadY()
+    int getUnreadY() noexcept
     {
         if constexpr (platform::is_apple())
             return Utils::scale_value(32);
@@ -208,12 +208,12 @@ namespace Ui
             return Utils::scale_value(36);
     }
 
-    int getNameY(const bool _compactMode)
+    int getNameY(const bool _compactMode) noexcept
     {
-        return _compactMode ? Utils::scale_value(11) : platform::is_apple() ? Utils::scale_value(6) : Utils::scale_value(8);
+        return _compactMode ? Utils::scale_value(13) : platform::is_apple() ? Utils::scale_value(6) : Utils::scale_value(8);
     }
 
-    int getMessageLineSpacing()
+    int getMessageLineSpacing() noexcept
     {
         if constexpr (platform::is_apple())
             return Utils::scale_value(1);
@@ -226,7 +226,7 @@ namespace Ui
         return Styling::getParameters().getColor(_isSelected ? Styling::StyleVariable::TEXT_SOLID_PERMANENT : Styling::StyleVariable::TEXT_SOLID);
     }
 
-    Fonts::FontWeight getNameFontWeight()
+    constexpr Fonts::FontWeight getNameFontWeight() noexcept
     {
         return Fonts::FontWeight::Normal;
     }
@@ -241,57 +241,57 @@ namespace Ui
         return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
     }
 
-    int getAlertAvatarSize()
+    int getAlertAvatarSize() noexcept
     {
         return Utils::scale_value(60);
     }
 
-    int getAlertAvatarX()
+    int getAlertAvatarX() noexcept
     {
         return Utils::scale_value(20);
     }
 
-    int getMailAlertIconX()
+    int getMailAlertIconX() noexcept
     {
         return Utils::scale_value(20);
     }
 
-    int getAlertMessageY()
+    int getAlertMessageY() noexcept
     {
         return Utils::scale_value(40);
     }
 
-    int getAlertMessageRightMargin()
+    int getAlertMessageRightMargin() noexcept
     {
         return Utils::scale_value(20);
     }
 
-    int getMailIconSize()
+    int getMailIconSize() noexcept
     {
         return Utils::scale_value(60);
     }
 
-    int getAvatarIconBorderSize()
+    int getAvatarIconBorderSize() noexcept
     {
         return Utils::scale_value(4);
     }
 
-    int getMailAvatarIconSize()
+    int getMailAvatarIconSize() noexcept
     {
         return Utils::scale_value(20);
     }
 
-    int getAvatarIconMargin()
+    int getAvatarIconMargin() noexcept
     {
         return Utils::scale_value(12);
     }
 
-    int getMentionAvatarIconSize()
+    int getMentionAvatarIconSize() noexcept
     {
         return Utils::scale_value(20);
     }
 
-    int getDndOverlaySize()
+    int getDndOverlaySize() noexcept
     {
         return Utils::scale_value(60);
     }
@@ -316,7 +316,7 @@ namespace Ui
         return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
     }
 
-    int getServiceItemHorPadding()
+    int getServiceItemHorPadding() noexcept
     {
         return Utils::scale_value(12);
     }
@@ -326,30 +326,30 @@ namespace Ui
         return Styling::getParameters().getColor(Styling::StyleVariable::BASE_TERTIARY);
     }
 
-    int getMediaTypeIconTopMargin(const bool _multichat)
+    int getMediaTypeIconTopMargin(const bool _multichat) noexcept
     {
         if constexpr (platform::is_apple())
-            return (_multichat ? Utils::scale_value(40) : Utils::scale_value(24));
+            return (_multichat ? Utils::scale_value(42) : Utils::scale_value(26));
         else
             return (_multichat ? Utils::scale_value(48) : Utils::scale_value(30));
     }
 
-    int getMediaTypeIconTopMarginAlert(const bool _multichat)
+    int getMediaTypeIconTopMarginAlert(const bool _multichat) noexcept
     {
         return (_multichat ? Utils::scale_value(60) : Utils::scale_value(42));
     }
 
-    const QSize getMediaIconSize()
+    constexpr QSize getMediaIconSize() noexcept
     {
         return QSize(16, 16);
     }
 
-    int get2LineMessageOffset()
+    int get2LineMessageOffset() noexcept
     {
         return Utils::scale_value(18);
     }
 
-    int getUnknownTextSize()
+    constexpr int getUnknownTextSize() noexcept
     {
         return 16;
     }
@@ -359,22 +359,22 @@ namespace Ui
         return Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY);
     }
 
-    int getUnknownHorPadding()
+    int getUnknownHorPadding() noexcept
     {
         return Utils::scale_value(12);
     }
 
-    int getMessageRightMargin()
+    int getMessageRightMargin() noexcept
     {
         return Utils::scale_value(4);
     }
 
-    int getUnknownRightOffset()
+    int getUnknownRightOffset() noexcept
     {
         return Utils::scale_value(40);
     }
 
-    int getTimeYOffsetFromName()
+    int getTimeYOffsetFromName() noexcept
     {
         if constexpr (platform::is_apple())
             return Utils::scale_value(3);
@@ -475,7 +475,7 @@ namespace Ui
 
             default:
             {
-                assert(false);
+                im_assert(false);
 
                 static QPixmap pix;
                 return pix;
@@ -536,9 +536,7 @@ namespace Ui
     {
     }
 
-    RecentItemBase::~RecentItemBase()
-    {
-    }
+    RecentItemBase::~RecentItemBase() = default;
 
     void RecentItemBase::draw(QPainter& _p, const QRect& _rect, const Ui::ViewParams& _viewParams, const bool _isSelected, const bool _isHovered, const bool _isDrag, const bool _isKeyboardFocused)
     {
@@ -591,7 +589,7 @@ namespace Ui
         else if (_state.AimId_ == u"~unknowns~")
             type_ = ServiceItemType::unknowns;
 
-        badgeTextUnit_ = TextRendering::MakeTextUnit({});
+        badgeTextUnit_ = TextRendering::MakeTextUnit(QString());
         badgeTextUnit_->init(Fonts::appFontScaled(11, platform::is_apple() ? Fonts::FontWeight::Medium : Fonts::FontWeight::Normal),
             Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
         badgeTextUnit_->evaluateDesiredSize();
@@ -606,9 +604,7 @@ namespace Ui
         text_->evaluateDesiredSize();
     }
 
-    RecentItemService::~RecentItemService()
-    {
-    }
+    RecentItemService::~RecentItemService() = default;
 
     void RecentItemService::draw(QPainter& _p, const QRect& _rect, const Ui::ViewParams& _viewParams, const bool _isSelected, const bool _isHovered, const bool _isDrag, const bool _isKeyboardFocused)
     {
@@ -618,7 +614,7 @@ namespace Ui
 
         if (!text_)
         {
-            assert(false);
+            im_assert(false);
             return;
         }
 
@@ -762,9 +758,7 @@ namespace Ui
         }
     }
 
-    RecentItemUnknowns::~RecentItemUnknowns()
-    {
-    }
+    RecentItemUnknowns::~RecentItemUnknowns() = default;
 
     void RecentItemUnknowns::draw(QPainter& _p, const QRect& _rect, const Ui::ViewParams& _viewParams, const bool _isSelected, const bool _isHovered, const bool _isDrag, const bool _isKeyboardFocused)
     {
@@ -1165,8 +1159,11 @@ namespace Ui
 
     }
 
-    RecentItemRecent::~RecentItemRecent()
+    RecentItemRecent::~RecentItemRecent() = default;
+
+    bool RecentItemRecent::needsTooltip(QPoint _posCursor) const
     {
+        return name_->isElided() && (!_posCursor.isNull() ? name_->contains(_posCursor) : true);
     }
 
     void RecentItemRecent::draw(
@@ -1551,9 +1548,7 @@ namespace Ui
         mention_ = _state.mentionAlert_;
     }
 
-    MessageAlertItem::~MessageAlertItem()
-    {
-    }
+    MessageAlertItem::~MessageAlertItem() = default;
 
     void MessageAlertItem::draw(
         QPainter& _p,
@@ -1659,7 +1654,7 @@ namespace Ui
         else
         {
             const auto& messageControl = (messageNameWidth_ > messageMaxWidth) ? messageLongName_ : messageShortName_;
-            assert(messageControl);
+            im_assert(messageControl);
             if (messageControl)
             {
                 if (mediaType_ != MediaType::noMedia)
@@ -1764,9 +1759,7 @@ namespace Ui
         messageLongName_->evaluateDesiredSize();
     }
 
-    MailAlertItem::~MailAlertItem()
-    {
-    }
+    MailAlertItem::~MailAlertItem() = default;
 
     void MailAlertItem::draw(
         QPainter& _p,
@@ -1879,9 +1872,7 @@ namespace Ui
         nameWidth_ = name_->desiredWidth();
     }
 
-    ComplexMailAlertItem::~ComplexMailAlertItem()
-    {
-    }
+    ComplexMailAlertItem::~ComplexMailAlertItem() = default;
 
     void ComplexMailAlertItem::draw(
         QPainter& _p,
@@ -1893,7 +1884,7 @@ namespace Ui
         const bool _isKeyboardFocused)
     {
         static QPixmap mailIcon = getMailIcon(Utils::scale_bitmap(getMailIconSize()), _isSelected);
-        assert(!mailIcon.isNull());
+        im_assert(!mailIcon.isNull());
 
         const auto iconX = _rect.left() + getMailAlertIconX();
         const auto iconY = _rect.top() + (_rect.height() - getMailIconSize()) / 2;
@@ -2037,6 +2028,12 @@ namespace Ui
         return true;
     }
 
+    bool RecentItemDelegate::needsTooltip(const QString& _aimId, const QModelIndex&, QPoint _posCursor) const
+    {
+        const auto it = items_.find(_aimId);
+        return it != items_.end() && it->second && it->second->needsTooltip(std::move(_posCursor));
+    }
+
     void RecentItemDelegate::onFriendlyChanged(const QString& _aimId, const QString& /*_friendly*/)
     {
         removeItem(_aimId);
@@ -2064,8 +2061,8 @@ namespace Ui
         , IsHovered(isHovered)
         , UnreadDigitsNumber(unreadDigitsNumber)
     {
-        assert(unreadDigitsNumber >= 0);
-        assert(unreadDigitsNumber <= 2);
+        im_assert(unreadDigitsNumber >= 0);
+        im_assert(unreadDigitsNumber <= 2);
     }
 
     bool RecentItemDelegate::ItemKey::operator < (const ItemKey &_key) const

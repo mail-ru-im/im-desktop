@@ -33,13 +33,6 @@
     </message>
 </context>
 <context>
-    <name>QObject</name>
-    <message>
-        <source>Unable to start the server: %1.</source>
-        <translation>Unable to start the server: %1.</translation>
-    </message>
-</context>
-<context>
     <name>QWidgetTextControl</name>
     <message>
         <source>&amp;Undo</source>
@@ -3468,8 +3461,8 @@ You can leave your feedback or report an error here:</source>
         <translation>لاصقة</translation>
     </message>
     <message>
-        <source>The message is not supported on your version of ICQ. Update the app to see the message</source>
-        <translation>لا يمكن عرض رسالة في إصدار التطبيق الخاص بك. ترقية</translation>
+        <source>The message is not supported on your version. Update the app to see the message</source>
+        <translation>تعذر عرض الرسالة في إصدارك من التطبيق. تحديث</translation>
     </message>
 </context>
 <context>
@@ -4588,6 +4581,62 @@ to contact status</source>
         <source>Send Statistic</source>
         <translation>أرسل الإحصائيات</translation>
     </message>
+    <message>
+        <source>Member limit exceeded (maximum %1)</source>
+        <translation>تم تجاوز حد العضوية (بحد أقصى %1)</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to open external link %1?</source>
+        <translation>هل تريد بالتأكيد فتح الارتباط الخارجي %1؟</translation>
+    </message>
+    <message>
+        <source>Enable net compression</source>
+        <translation>تفعيل ضغط طلبات الشبكة</translation>
+    </message>
+    <message>
+        <source>Cannot remove %1</source>
+        <translation>فشل حذف %1</translation>
+    </message>
+    <message>
+        <source>Cannot block %1</source>
+        <translation>فشل حظر %1</translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1</source>
+        <translation>فشل إلغاء تأمين %1</translation>
+    </message>
+    <message>
+        <source>User not found</source>
+        <translation>لم يتم العثور على المستخدم</translation>
+    </message>
+    <message>
+        <source>User is already blocked</source>
+        <translation>تم حظر المستخدم بالفعل</translation>
+    </message>
+    <message>
+        <source>User not blocked</source>
+        <translation>المستخدم غير محظور</translation>
+    </message>
+    <message>
+        <source>Permission denied</source>
+        <translation>الدخول محظور</translation>
+    </message>
+    <message>
+        <source>Error removing federation user</source>
+        <translation>خطأ في حذف مستخدم الاتحاد</translation>
+    </message>
+    <message>
+        <source>Error blocking federation user</source>
+        <translation>خطأ في منع مستخدم الاتحاد</translation>
+    </message>
+    <message>
+        <source>Error unblocking federation user</source>
+        <translation>خطأ في إلغاء حظر مستخدم الاتحاد</translation>
+    </message>
+    <message>
+        <source>User not a member</source>
+        <translation>المستخدم ليس عضوا في هذه المجموعة</translation>
+    </message>
 </context>
 <context>
     <name>previewer</name>
@@ -5412,6 +5461,10 @@ to contact status</source>
         <source>Disable SMS notifications</source>
         <translation>تعطيل إشعارات الرسائل القصيرة</translation>
     </message>
+    <message>
+        <source>Show notifications when app in focus</source>
+        <translation>إظهار الإخطارات عندما يكون التطبيق نشطًا</translation>
+    </message>
 </context>
 <context>
     <name>settings_connection</name>
@@ -5613,10 +5666,6 @@ to contact status</source>
 </context>
 <context>
     <name>sidebar</name>
-    <message>
-        <source>Add to chat</source>
-        <translation>إضافة إلى الدردشة</translation>
-    </message>
     <message>
         <source>Notifications</source>
         <translation>إخطارات</translation>
@@ -5963,6 +6012,14 @@ Please edit phone number and try again.</source>
         <source>All subscribers</source>
         <translation>كل المشتركين</translation>
     </message>
+    <message>
+        <source>Back</source>
+        <translation>ارجع الى</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>قريب</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -6242,6 +6299,14 @@ Please edit phone number and try again.</source>
         <source>Calls</source>
         <translation>المكالمات</translation>
     </message>
+    <message>
+        <source>Structure</source>
+        <translation>بنية</translation>
+    </message>
+    <message>
+        <source>Tasks</source>
+        <translation>مهام</translation>
+    </message>
 </context>
 <context>
     <name>tab header</name>
@@ -6447,14 +6512,6 @@ Please edit phone number and try again.</source>
         <translation>مكالمة واردة</translation>
     </message>
     <message>
-        <source>Add to call</source>
-        <translation>أضف إلى المكالمة</translation>
-    </message>
-    <message>
-        <source>OTHERS</source>
-        <translation>أخرى</translation>
-    </message>
-    <message>
         <source>Screen</source>
         <translation>الشاشة</translation>
     </message>
@@ -6499,10 +6556,6 @@ Please edit phone number and try again.</source>
         <translation>جميع أعضاء المجموعة</translation>
     </message>
     <message>
-        <source>CALL MEMBERS</source>
-        <translation>اتصل بالمشاركين</translation>
-    </message>
-    <message>
         <source>Minimize</source>
         <translation>خفض</translation>
     </message>
@@ -6537,6 +6590,30 @@ with click</source>
     <message>
         <source>Busy</source>
         <translation>مشغول</translation>
+    </message>
+    <message>
+        <source>Call members</source>
+        <translation>اتصل بالمشاركين</translation>
+    </message>
+    <message>
+        <source>SHOW ALL</source>
+        <translation>عرض الكل</translation>
+    </message>
+    <message>
+        <source>HIDE</source>
+        <translation>يقلل</translation>
+    </message>
+    <message>
+        <source>IN CALL</source>
+        <translation>في المكالمة</translation>
+    </message>
+    <message>
+        <source>In call</source>
+        <translation>في المكالمة</translation>
+    </message>
+    <message>
+        <source>CONTACTS</source>
+        <translation>جهات الاتصال</translation>
     </message>
 </context>
 <context>
@@ -6675,6 +6752,20 @@ Meeting</source>
     <message>
         <source>SHOW ALL</source>
         <translation>عرض الكل</translation>
+    </message>
+    <message>
+        <source>Show
+participants</source>
+        <translation>بحث
+المشاركين</translation>
+    </message>
+    <message>
+        <source>Show all</source>
+        <translation>إظهار الكل</translation>
+    </message>
+    <message>
+        <source>Show one</source>
+        <translation>تكبير إلى نافذة كاملة</translation>
     </message>
 </context>
 <context>

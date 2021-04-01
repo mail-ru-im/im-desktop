@@ -133,6 +133,9 @@ protected:
 
     bool isSmallPreview() const override;
 
+    void mouseMoveEvent(QMouseEvent* _event) override;
+    void leaveEvent(QEvent* _event) override;
+
 public:
     const QPixmap& getPreview() const;
 
@@ -180,7 +183,7 @@ private:
 
     bool onLeftMouseClick(const QPoint &_pos);
 
-    void onPreviewMetainfoDownloaded(const QString &miniPreviewUri, const QString &fullPreviewUri) override;
+    void onPreviewMetainfoDownloaded() override;
 
     Data::StickerId getStickerId() const override { return Data::StickerId(Id_); }
 
@@ -242,7 +245,6 @@ private:
     QPainterPath PreviewClippingPath_;
     QPainterPath RelativePreviewClippingPath_;
 
-    QPixmap Preview_;
     QPixmap Background_;
     qint64 seq_;
 

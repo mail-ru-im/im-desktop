@@ -18,21 +18,31 @@ scheduler::scheduler()
 
         for(;;)
         {
-            std::unique_lock<std::mutex> lock(mutex_);
-            const auto res = condition_.wait_for(lock, tick_timeout);
-            if (is_stop_)
-                return;
-
-            if (res == std::cv_status::timeout)
+            decltype(timed_tasks_) tmp_list;
             {
-                const auto current_time = std::chrono::steady_clock::now();
+                std::unique_lock<std::mutex> lock(mutex_);
+                const auto res = condition_.wait_for(lock, tick_timeout);
+                if (is_stop_)
+                    return;
 
-                for (auto& timer_task : timed_tasks_)
+                if (res == std::cv_status::timeout)
                 {
-                    if (current_time - timer_task.last_execute_time_ >= timer_task.timeout_)
+                    const auto current_time = std::chrono::steady_clock::now();
+
+                    for (auto timer_task = timed_tasks_.begin(); timer_task != timed_tasks_.end();)
                     {
-                        timer_task.last_execute_time_ = current_time;
-                        g_core->execute_core_context(timer_task.function_);
+                        if (current_time - timer_task->last_execute_time_ >= timer_task->timeout_)
+                        {
+                            timer_task->last_execute_time_ = current_time;
+                            g_core->execute_core_context(timer_task->function_);
+                            if (timer_task->single_shot_)
+                            {
+                                auto splice_it = timer_task++;
+                                tmp_list.splice(tmp_list.begin(), timed_tasks_, splice_it);
+                                continue;
+                            }
+                        }
+                        ++timer_task;
                     }
                 }
             }
@@ -57,7 +67,7 @@ static uint32_t get_id()
     return ++id;
 }
 
-uint32_t core::scheduler::push_timer(std::function<void()> _function, std::chrono::milliseconds _timeout)
+uint32_t core::scheduler::push_timer(stacked_task _function, std::chrono::milliseconds _timeout, bool _single_shot)
 {
     const auto currentId = get_id();
 
@@ -66,6 +76,7 @@ uint32_t core::scheduler::push_timer(std::function<void()> _function, std::chron
     timer_task.timeout_ = _timeout;
     timer_task.id_ = currentId;
     timer_task.last_execute_time_ = std::chrono::steady_clock::now();
+    timer_task.single_shot_ = _single_shot;
 
     decltype(timed_tasks_) tmp_list;
     tmp_list.push_back(std::move(timer_task));
@@ -76,6 +87,16 @@ uint32_t core::scheduler::push_timer(std::function<void()> _function, std::chron
     }
 
     return currentId;
+}
+
+uint32_t core::scheduler::push_timer(stacked_task _function, std::chrono::milliseconds _timeout)
+{
+    return push_timer(_function, _timeout, false);
+}
+
+uint32_t core::scheduler::push_single_shot_timer(stacked_task _function, std::chrono::milliseconds _timeout)
+{
+    return push_timer(_function, _timeout, true);
 }
 
 void core::scheduler::stop_timer(uint32_t _id)

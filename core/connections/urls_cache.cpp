@@ -47,6 +47,7 @@ namespace
                 { url_type::files_preview,              config::hosts::host_url_type::base_binary, su::concat(api_ver, "/files/preview") },
                 { url_type::avatars,                    config::hosts::host_url_type::base_binary, su::concat(api_ver, "/files/avatar") },
                 { url_type::sticker,                    config::hosts::host_url_type::base_binary, su::concat(api_ver, "/files/sticker") },
+                { url_type::wallpapers,                 config::hosts::host_url_type::base_binary, "/images/wallpapers/" },
             };
             return cache;
         }();

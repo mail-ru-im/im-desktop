@@ -12,7 +12,7 @@ namespace HistoryControl
 
     VoipEventInfoSptr VoipEventInfo::Make(const coll_helper &info, const int32_t timestamp)
     {
-        assert(timestamp > 0);
+        im_assert(timestamp > 0);
 
         VoipEventInfoSptr result(new VoipEventInfo(timestamp));
         if (result->unserialize(info))
@@ -28,36 +28,36 @@ namespace HistoryControl
         , IsIncomingCall_(false)
         , isVideoCall_(false)
     {
-        assert(timestamp > 0);
+        im_assert(timestamp > 0);
     }
 
     void VoipEventInfo::serialize(Out coll_helper & _coll) const
     {
         if (_coll.empty())
-            assert(false);
-        assert(!"the method should not be used");
+            im_assert(false);
+        im_assert(!"the method should not be used");
     }
 
     bool VoipEventInfo::unserialize(const coll_helper &_coll)
     {
-        assert(Type_ == voip_event_type::invalid);
+        im_assert(Type_ == voip_event_type::invalid);
 
         Sid_ = _coll.get<QString>("sid");
         Type_ = _coll.get<voip_event_type>("type");
 
         const auto isValidType = ((Type_ > voip_event_type::min) && (Type_ < voip_event_type::max));
-        assert(isValidType);
+        im_assert(isValidType);
         if (!isValidType)
             return false;
 
         ContactAimid_ = _coll.get<QString>("sender_aimid");
 
-        assert(!ContactAimid_.isEmpty());
+        im_assert(!ContactAimid_.isEmpty());
         if (ContactAimid_.isEmpty())
             return false;
 
         DurationSec_ = _coll.get<int32_t>("duration_sec", -1);
-        assert(DurationSec_ >= -1);
+        im_assert(DurationSec_ >= -1);
 
         IsIncomingCall_ = _coll.get<bool>("is_incoming", false);
 
@@ -77,7 +77,7 @@ namespace HistoryControl
 
     QString VoipEventInfo::formatRecentsText() const
     {
-        assert(Type_ > voip_event_type::min && Type_ < voip_event_type::max);
+        im_assert(Type_ > voip_event_type::min && Type_ < voip_event_type::max);
 
         QString result;
         result.reserve(128);
@@ -103,7 +103,7 @@ namespace HistoryControl
             return result;
 
         default:
-            assert(!"unexpected event type");
+            im_assert(!"unexpected event type");
             break;
         }
 
@@ -115,13 +115,13 @@ namespace HistoryControl
 
     QString VoipEventInfo::formatItemText() const
     {
-        assert(Type_ > voip_event_type::min && Type_ < voip_event_type::max);
+        im_assert(Type_ > voip_event_type::min && Type_ < voip_event_type::max);
 
         QString result;
         result.reserve(128);
 
         const auto contactFriendly = Logic::GetFriendlyContainer()->getFriendly(ContactAimid_);
-        assert(!contactFriendly.isEmpty());
+        im_assert(!contactFriendly.isEmpty());
 
         switch (Type_)
         {
@@ -150,7 +150,7 @@ namespace HistoryControl
             break;
 
         default:
-            assert(!"unexpected event type");
+            im_assert(!"unexpected event type");
             break;
         }
 
@@ -174,13 +174,13 @@ namespace HistoryControl
 
     const QString& VoipEventInfo::getContactAimid() const
     {
-        assert(!ContactAimid_.isEmpty());
+        im_assert(!ContactAimid_.isEmpty());
         return ContactAimid_;
     }
 
     int32_t VoipEventInfo::getTimestamp() const
     {
-        assert(Timestamp_ > 0);
+        im_assert(Timestamp_ > 0);
         return Timestamp_;
     }
 

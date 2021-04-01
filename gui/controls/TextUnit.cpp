@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "TextUnit.h"
 #include "textrendering/TextRenderingUtils.h"
+#include "../utils/features.h"
 
 #include "../styles/ThemeParameters.h"
 #include "../spellcheck/Spellchecker.h"
@@ -36,9 +37,8 @@ namespace TextRendering
     {
     }
 
-    TextUnit::TextUnit(const QString& _text, std::vector<BaseDrawingBlockPtr>&& _blocks, const Data::MentionMap& _mentions, LinksVisible _showLinks, ProcessLineFeeds _processLineFeeds, EmojiSizeType _emojiSizeType)
-        : originText_(_text)
-        , blocks_(std::move(_blocks))
+    TextUnit::TextUnit(std::vector<BaseDrawingBlockPtr>&& _blocks, const Data::MentionMap& _mentions, LinksVisible _showLinks, ProcessLineFeeds _processLineFeeds, EmojiSizeType _emojiSizeType)
+        : blocks_(std::move(_blocks))
         , horOffset_(0)
         , verOffset_(0)
         , mentions_(_mentions)
@@ -57,6 +57,27 @@ namespace TextRendering
     {
     }
 
+    TextUnit::TextUnit(const QString& _text, std::vector<BaseDrawingBlockPtr>&& _blocks, const Data::MentionMap& _mentions, LinksVisible _showLinks, ProcessLineFeeds _processLineFeeds, EmojiSizeType _emojiSizeType)
+        : TextUnit(std::move(_blocks), _mentions, _showLinks, _processLineFeeds, _emojiSizeType)
+    {
+        originText_ = _text;
+    }
+
+    TextUnit::TextUnit(const Data::FormattedString& _text, const Data::MentionMap& _mentions, LinksVisible _showLinks, ProcessLineFeeds _processLineFeeds, EmojiSizeType _emojiSizeType)
+        : TextUnit(std::vector<BaseDrawingBlockPtr>(), _mentions, _showLinks, _processLineFeeds, _emojiSizeType)
+    {
+        if (Features::isFormattingInBubblesEnabled())
+        {
+            originText_ = _text;
+            blocks_ = parseForParagraphs(originText_, _mentions, _showLinks, _processLineFeeds);
+        }
+        else
+        {
+            originText_ = _text.string();
+            blocks_ = parseForBlocks(originText_.string(), mentions_, showLinks_, processLineFeeds_);
+        }
+    }
+
     void TextUnit::setText(const QString& _text, const QColor& _color)
     {
         if (_color.isValid())
@@ -64,9 +85,22 @@ namespace TextRendering
         originText_ = _text;
         blocks_ = parseForBlocks(_text, mentions_, showLinks_, processLineFeeds_);
         blockId_ = counter();
-        initBlocks(blocks_, font_, color_, linkColor_, selectionColor_, highlightColor_, align_, emojiSizeType_, linksStyle_);
+        initBlocks(blocks_, font_, monospaceFont_, color_, linkColor_, selectionColor_, highlightColor_, align_, emojiSizeType_, linksStyle_);
         setBlocksMaxLinesCount(blocks_, maxLinesCount_, lineBreak_);
         evaluateDesiredSize();
+    }
+
+    void TextUnit::setText(const Data::FormattedString& _text, const QColor& _color)
+    {
+        if (Features::isFormattingInBubblesEnabled())
+        {
+            setText(Data::stubFromFormattedString(_text));
+            originText_.setFormatting(_text.formatting());
+        }
+        else
+        {
+            setText(_text.string());
+        }
     }
 
     void TextUnit::setMentions(const Data::MentionMap& _mentions)
@@ -84,6 +118,13 @@ namespace TextRendering
     }
 
     void TextUnit::setTextAndMentions(const QString& _text, const Data::MentionMap& _mentions)
+    {
+        if (mentions_ != _mentions)
+            mentions_ = _mentions;
+        setText(_text);
+    }
+
+    void TextUnit::setTextAndMentions(const Data::FormattedString& _text, const Data::MentionMap& _mentions)
     {
         if (mentions_ != _mentions)
             mentions_ = _mentions;
@@ -206,9 +247,10 @@ namespace TextRendering
         getHeight(desiredWidth());
     }
 
-    void TextUnit::init(const QFont& _font, const QColor& _color, const QColor& _linkColor, const QColor& _selectionColor, const QColor& _highlightColor, HorAligment _align, int _maxLinesCount, LineBreakType _lineBreak, EmojiSizeType _emojiSizeType, const LinksStyle _linksStyle)
+    void TextUnit::init(const QFont& _font, const QColor& _color, const QFont& _monospaceFont, const QColor& _linkColor, const QColor& _selectionColor, const QColor& _highlightColor, HorAligment _align, int _maxLinesCount, LineBreakType _lineBreak, EmojiSizeType _emojiSizeType, const LinksStyle _linksStyle)
     {
         font_ = _font;
+        monospaceFont_ = _monospaceFont;
         color_ = _color;
         linkColor_ = _linkColor;
         selectionColor_ = _selectionColor;
@@ -217,8 +259,13 @@ namespace TextRendering
         maxLinesCount_ = _maxLinesCount;
         lineBreak_ = _lineBreak;
         linksStyle_ = _linksStyle;
-        initBlocks(blocks_, _font, _color, _linkColor, _selectionColor, _highlightColor, _align, _emojiSizeType, _linksStyle);
+        initBlocks(blocks_, _font, _monospaceFont, _color, _linkColor, _selectionColor, _highlightColor, _align, _emojiSizeType, _linksStyle);
         setBlocksMaxLinesCount(blocks_, _maxLinesCount, lineBreak_);
+    }
+
+    void TextUnit::init(const QFont& _font, const QColor& _color, const QColor& _linkColor, const QColor& _selectionColor, const QColor& _highlightColor, HorAligment _align, int _maxLinesCount, LineBreakType _lineBreak, EmojiSizeType _emojiSizeType, const LinksStyle _linksStyle)
+    {
+        init(_font, _color, _font, _linkColor, _selectionColor, _highlightColor, _align, _maxLinesCount, _lineBreak, _emojiSizeType, _linksStyle);
     }
 
     void TextUnit::setLastLineWidth(int _width)
@@ -226,12 +273,12 @@ namespace TextRendering
         setBlocksLastLineWidth(blocks_, _width);
     }
 
-    int TextUnit::getLineCount() const
+    size_t TextUnit::getLinesCount() const
     {
-        return std::accumulate(blocks_.begin(), blocks_.end(), 0, [](auto currentValue, const auto& b) { return b->getLineCount() + currentValue; });
+        return std::accumulate(blocks_.begin(), blocks_.end(), 0, [](auto currentValue, const auto& b) { return b->getLinesCount() + currentValue; });
     }
 
-    void TextUnit::select(const QPoint& _from, const QPoint& _to)
+    void TextUnit::select(QPoint _from, QPoint _to)
     {
         return selectBlocks(blocks_, mapPoint(_from), mapPoint(_to));
     }
@@ -273,7 +320,7 @@ namespace TextRendering
 
     bool TextUnit::isOverLink(const QPoint& _p) const
     {
-        return TextRendering::isOverLink(blocks_, mapPoint(_p));
+        return TextRendering::isBlocksOverLink(blocks_, mapPoint(_p));
     }
 
     QString TextUnit::getLink(const QPoint& _p) const
@@ -291,9 +338,12 @@ namespace TextRendering
         return replaceWord(blocks_, _old, _new, mapPoint(_p));
     }
 
-    QString TextUnit::getSelectedText(TextType _type) const
+    Data::FormattedString TextUnit::getSelectedText(TextType _type) const
     {
-        return getBlocksSelectedText(blocks_, _type);
+        if (originText_.hasFormatting())
+            return getBlocksSelectedText(blocks_);
+        else
+            return getBlocksSelectedPlainText(blocks_, _type);
     }
 
     QString TextUnit::getText() const
@@ -306,7 +356,7 @@ namespace TextRendering
         return getBlocksTextForInstantEdit(blocks_);
     }
 
-    QString TextUnit::getSourceText() const
+    Data::FormattedString TextUnit::getSourceText() const
     {
         return sourceModified() ? getBlocksSourceText(blocks_) : originText_;
     }
@@ -323,7 +373,7 @@ namespace TextRendering
 
     void TextUnit::applyLinks(const std::map<QString, QString>& _links)
     {
-        return applyBLocksLinks(blocks_, _links);
+        return applyBlocksLinks(blocks_, _links);
     }
 
     void TextUnit::applyFontToLinks(const QFont& _font)
@@ -454,7 +504,7 @@ namespace TextRendering
 
             if (hasEmoji())
             {
-                initBlocks(blocks_, font_, color_, linkColor_, selectionColor_, highlightColor_, align_, emojiSizeType_, linksStyle_);
+                initBlocks(blocks_, font_, monospaceFont_, color_, linkColor_, selectionColor_, highlightColor_, align_, emojiSizeType_, linksStyle_);
                 setBlocksHighlightedTextColor(blocks_, highlightTextColor_);
             }
         }
@@ -581,6 +631,12 @@ namespace TextRendering
         return res;
     }
 
+    bool TextUnit::mightStretchForLargerWidth() const
+    {
+        return std::any_of(blocks_.cbegin(), blocks_.cend(),
+            [](const auto& _b) { return _b->mightStretchForLargerWidth(); });
+    }
+
     QPoint TextUnit::mapPoint(QPoint _p) const
     {
         return QPoint(_p.x() - horOffset_, _p.y() - verOffset_);
@@ -589,15 +645,25 @@ namespace TextRendering
     void TextUnit::setAlign(HorAligment _align)
     {
         align_ = _align;
-        initBlocks(blocks_, font_, color_, linkColor_, selectionColor_, highlightColor_, align_, emojiSizeType_, isLinksUnderlined() ? LinksStyle::UNDERLINED : LinksStyle::PLAIN);
+        initBlocks(blocks_, font_, monospaceFont_, color_, linkColor_, selectionColor_, highlightColor_, align_, emojiSizeType_, isLinksUnderlined() ? LinksStyle::UNDERLINED : LinksStyle::PLAIN);
         setBlocksHighlightedTextColor(blocks_, highlightTextColor_);
+    }
+
+    TextUnitPtr MakeTextUnit(const Data::FormattedString& _text, const Data::MentionMap& _mentions, LinksVisible _showLinks, ProcessLineFeeds _processLineFeeds, EmojiSizeType _emojiSizeType)
+    {
+        if (Features::isFormattingInBubblesEnabled() && _text.hasFormatting())
+            return std::make_unique<TextUnit>(_text,  _mentions, _showLinks, _processLineFeeds, _emojiSizeType);
+        else
+            return MakeTextUnit(_text.string(), _mentions, _showLinks, _processLineFeeds, _emojiSizeType);
     }
 
     TextUnitPtr MakeTextUnit(const QString& _text, const Data::MentionMap& _mentions, LinksVisible _showLinks, ProcessLineFeeds _processLineFeeds, EmojiSizeType _emojiSizeType)
     {
-        return std::make_unique<TextUnit>(_text, parseForBlocks(_text, _mentions, _showLinks, _processLineFeeds), _mentions, _showLinks, _processLineFeeds, _emojiSizeType);
+        auto blocks = parseForBlocks(_text, _mentions, _showLinks, _processLineFeeds);
+        return std::make_unique<TextUnit>(_text, std::move(blocks), _mentions, _showLinks, _processLineFeeds, _emojiSizeType);
     }
 }
+
 QString getEllipsis()
 {
     return qsl("...");

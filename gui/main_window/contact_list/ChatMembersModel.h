@@ -81,6 +81,8 @@ namespace Logic
         //!! todo: temporarily for an old method "approve all" in GroupProfile::approveAllClicked()
         const std::vector<Data::ChatMemberInfo>& getMembers() const;
 
+        bool isClickableItem(const QModelIndex& _index) const override;
+
     private:
         enum class MembersMode
         {
@@ -122,6 +124,7 @@ namespace Logic
         QString YourRole_;
         QString cursorNextPage_;
         bool isDoingRequest_;
+        bool isInitialPage_;
 
         MembersMode mode_;
 

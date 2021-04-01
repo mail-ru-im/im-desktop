@@ -36,7 +36,7 @@ namespace Data
         virtual QString getSenderAimId() const { return getAimId(); }
         virtual QString getFriendlyName() const = 0;
         virtual QString getNick() const { return QString(); }
-        virtual QString getAccessibleName() const { return getAimId(); }
+        virtual QString getAccessibleName() const { return isMessage() ? getAimId() % u' ' % QString::number(getMessageId()) : getAimId(); }
         virtual qint64 getMessageId() const { return -1; }
 
         bool isService() const { return getType() == SearchResultType::service; }

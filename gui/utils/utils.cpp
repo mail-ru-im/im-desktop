@@ -257,7 +257,7 @@ namespace
     {
         if (uidl.size() != 16)
         {
-            assert(!"wrong uidl");
+            im_assert(!"wrong uidl");
             return QString();
         }
 
@@ -447,6 +447,10 @@ namespace
     constexpr std::chrono::milliseconds getLoaderOverlayDelay()
     {
         return std::chrono::milliseconds(100);
+    }
+    auto avatarOverlayColor()
+    {
+        return Styling::getParameters().getColor(Styling::StyleVariable::GHOST_PRIMARY);
     }
 }
 
@@ -761,7 +765,7 @@ namespace Utils
 
         if (!file.open(QIODevice::ReadOnly))
         {
-            assert(!"open style file error");
+            im_assert(!"open style file error");
             return QString();
         }
 
@@ -934,7 +938,7 @@ namespace Utils
             if (!glyphSearchSucceed)
                 return QPixmap::fromImage(std::move(scaledBigResult));
 
-            assert(numGlyphs == 1);
+            im_assert(numGlyphs == 1);
 
             auto glyphPath = rawFont.pathForGlyph(glyphIndex);
 
@@ -963,11 +967,11 @@ namespace Utils
 
     void updateBgColor(QWidget* _widget, const QColor& _color)
     {
-        assert(_widget);
-        assert(_color.isValid());
+        im_assert(_widget);
+        im_assert(_color.isValid());
         if (_widget)
         {
-            assert(_widget->autoFillBackground());
+            im_assert(_widget->autoFillBackground());
 
             auto pal = _widget->palette();
             pal.setColor(QPalette::Background, _color);
@@ -978,7 +982,7 @@ namespace Utils
 
     void setDefaultBackground(QWidget* _widget)
     {
-        assert(_widget);
+        im_assert(_widget);
         if (_widget)
         {
             _widget->setAutoFillBackground(true);
@@ -1012,7 +1016,7 @@ namespace Utils
 
     QColor getNameColor(const QString& _uin)
     {
-        assert(!_uin.isEmpty());
+        im_assert(!_uin.isEmpty());
         if (!_uin.isEmpty())
         {
             const auto colorIndex = getColorTableIndex(_uin);
@@ -1406,7 +1410,7 @@ namespace Utils
                     if (!layerColor.isValid() || layerColor.alpha() == 0)
                         continue;
 
-                    assert(renderer.elementExists(layerName));
+                    im_assert(renderer.elementExists(layerName));
                     if (!renderer.elementExists(layerName))
                         continue;
 
@@ -1476,7 +1480,7 @@ namespace Utils
     void grabTouchWidget(QWidget* _target, bool _topWidget)
     {
 #ifdef _WIN32
-        assert(_target);
+        im_assert(_target);
         if (!_target)
             return;
         if (_topWidget)
@@ -1496,7 +1500,7 @@ namespace Utils
             sp.setScrollMetric(QScrollerProperties::VerticalOvershootPolicy, overshootPolicy);
 
             QScroller* clScroller = QScroller::scroller(_target);
-            assert(clScroller);
+            im_assert(clScroller);
             if (clScroller)
             {
                 clScroller->grabGesture(_target);
@@ -1567,7 +1571,7 @@ namespace Utils
             return;
         }
 
-        assert(!"unexpected scale value");
+        im_assert(!"unexpected scale value");
         scaleCoefficient = 1.0;
     }
 
@@ -1598,11 +1602,11 @@ namespace Utils
                 return;
             }
 
-            assert(!"unexpected scale value");
+            im_assert(!"unexpected scale value");
             basicScaleCoefficient = 1.0;
         }
         else
-            assert(!"initBasicScaleCoefficient should be called once.");
+            im_assert(!"initBasicScaleCoefficient should be called once.");
     }
 
     void groupTaskbarIcon(bool _enabled)
@@ -1989,9 +1993,9 @@ namespace Utils
 
     QRect GetMainRect()
     {
-        assert(!!Utils::InterConnector::instance().getMainWindow() && "Common.cpp (ItemLength)");
+        im_assert(!!Utils::InterConnector::instance().getMainWindow() && "Common.cpp (ItemLength)");
         QRect mainRect = GetWindowRect(Utils::InterConnector::instance().getMainWindow());
-        assert("Couldn't get rect: Common.cpp (ItemLength)");
+        im_assert("Couldn't get rect: Common.cpp (ItemLength)");
         return mainRect;
     }
 
@@ -2393,11 +2397,11 @@ namespace Utils
 
     bool loadPixmap(const QString& _path, Out QPixmap& _pixmap)
     {
-        assert(!_path.isEmpty());
+        im_assert(!_path.isEmpty());
 
         if (!QFile::exists(_path))
         {
-            assert(!"file does not exist");
+            im_assert(!"file does not exist");
             return false;
         }
 
@@ -2410,7 +2414,7 @@ namespace Utils
 
     bool loadPixmap(const QByteArray& _data, Out QPixmap& _pixmap, Exif::ExifOrientation _orientation)
     {
-        assert(!_data.isEmpty());
+        im_assert(!_data.isEmpty());
 
         static QMimeDatabase db;
         if (db.mimeTypeForData(_data).preferredSuffix() == u"svg")
@@ -2814,7 +2818,7 @@ namespace Utils
             }
             default:
             {
-                assert(false);
+                im_assert(false);
 
                 return QSize(Utils::scale_bitmap(Utils::scale_value(20)), Utils::scale_bitmap(Utils::scale_value(20)));
             }
@@ -2854,7 +2858,7 @@ namespace Utils
             }
             default:
             {
-                assert(false);
+                im_assert(false);
 
                 return QPixmap();
             }
@@ -2876,7 +2880,7 @@ namespace Utils
                 case 3:
                     return Utils::scale_value(QSize(26, 18));
                 default:
-                    assert(!"unsupported length");
+                    im_assert(!"unsupported length");
                     return QSize();
                     break;
                 }
@@ -2915,7 +2919,7 @@ namespace Utils
             {
                 if (_textLength < minTextSize() || _textLength > maxTextSize())
                 {
-                    assert(!"unsupported length");
+                    im_assert(!"unsupported length");
                     return QPixmap();
                 }
 
@@ -2943,7 +2947,7 @@ namespace Utils
 
             if (textLength < minTextSize() || textLength > maxTextSize())
             {
-                assert(!"unsupported length");
+                im_assert(!"unsupported length");
                 return 0;
             }
 
@@ -2966,7 +2970,7 @@ namespace Utils
             const auto textLength = _textUnit->getSourceText().size();
             if (textLength < minTextSize() || textLength > maxTextSize())
             {
-                assert(!"unsupported length");
+                im_assert(!"unsupported length");
                 return 0;
             }
 
@@ -3278,7 +3282,7 @@ namespace Utils
                 default:
                     break;
                 }
-                assert(!resStr.empty());
+                im_assert(!resStr.empty());
                 if (!resStr.empty())
                     Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::mentions_click_in_chat, { { "Result", std::move(resStr) } });
                 return;
@@ -3352,7 +3356,7 @@ namespace Utils
         else
         {
             nativePath = nativePath.replace(u'"', ql1s("\"\""));
-            ShellExecute(0, 0, L"explorer", QString(u"/select," % nativePath).toStdWString().c_str(), 0, SW_SHOWNORMAL);
+            ShellExecute(0, 0, L"explorer", ql1s("/select,\"%1\"").arg(nativePath).toStdWString().c_str(), 0, SW_SHOWNORMAL);
         }
 #else
 #ifdef __APPLE__
@@ -3418,6 +3422,15 @@ namespace Utils
         return _source;
     }
 
+    Data::FormattedString convertMentions(const Data::FormattedString& _source, const Data::MentionMap& _mentions)
+    {
+        // TODO-FORMAT-IMPLEMENT
+        if (_source.hasFormatting())
+            return _source;
+        else
+            return convertMentions(_source.string(), _mentions);
+    }
+
     QString convertFilesPlaceholders(const QStringRef& _source, const Data::FilesPlaceholderMap& _files)
     {
         if (_files.empty())
@@ -3468,7 +3481,16 @@ namespace Utils
         return _text;
     }
 
-    bool isNick(const QStringRef& _text)
+    Data::FormattedString setFilesPlaceholders(const Data::FormattedString& _text, const Data::FilesPlaceholderMap& _files)
+    {
+        // TODO-FORMAT-IMPLEMENT
+        if (_text.hasFormatting())
+            return _text;
+        else
+            return setFilesPlaceholders(_text.string(), _files);
+    }
+
+    bool isNick(const QString& _text)
     {
         // match alphanumeric str with @, starting with a-zA-Z
         static const QRegularExpression re(qsl("^@[a-zA-Z0-9][a-zA-Z0-9._]*$"), QRegularExpression::UseUnicodePropertiesOption);
@@ -3497,7 +3519,7 @@ namespace Utils
 
     OpenDOPResult openDialogOrProfile(const QString& _contact, const OpenDOPParam _paramType)
     {
-        assert(!_contact.isEmpty());
+        im_assert(!_contact.isEmpty());
 
         if (Ui::get_gui_settings()->get_value<bool>(settings_fast_drop_search_results, settings_fast_drop_search_default()))
             Q_EMIT Utils::InterConnector::instance().searchEnd();
@@ -3562,6 +3584,7 @@ namespace Utils
     {
         Logic::GetFriendlyContainer()->updateFriendly(_contact);
         Q_EMIT Utils::InterConnector::instance().addPageToDialogHistory(Logic::getContactListModel()->selectedContact());
+        Utils::InterConnector::instance().getMainWindow()->showMessengerPage();
         Logic::getContactListModel()->setCurrent(_contact, _id, _sel, _getPageCallback);
     }
 
@@ -3709,9 +3732,29 @@ namespace Utils
         return Utils::renderSvg(qsl(":/avatar_badges/add_status"), QSize(badgeSize, badgeSize), Styling::getParameters().getColor(color));
     }
 
-    void drawAvatarWithBadge(QPainter& _p, const QPoint& _topLeft, const QPixmap& _avatar, const bool _isOfficial, const QPixmap& _status, const bool _isMuted, const bool _isSelected, const bool _isOnline, const bool _small_online)
+    void drawAvatarWithBadge(QPainter& _p, const QPoint& _topLeft, const QPixmap& _avatar, const bool _isOfficial, const QPixmap& _status, const bool _isMuted, const bool _isSelected, const bool _isOnline, const bool _small_online, bool _withOverlay)
     {
-        assert(!_avatar.isNull());
+        im_assert(!_avatar.isNull());
+
+        auto drawOverlay = [&_p, &_topLeft](QSize _scaledSize, QRect _cutRect)
+        {
+            QPixmap overlay(_scaledSize);
+            overlay.setDevicePixelRatio(1);
+            overlay.fill(Qt::transparent);
+            QPainter p(&overlay);
+            p.setPen(Qt::NoPen);
+            p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
+            p.setBrush(avatarOverlayColor());
+            p.drawEllipse(overlay.rect());
+            if (_cutRect.isValid())
+            {
+                p.setBrush(Qt::transparent);
+                p.setCompositionMode(QPainter::CompositionMode_Source);
+                p.drawEllipse(_cutRect);
+            }
+            Utils::check_pixel_ratio(overlay);
+            _p.drawPixmap(_topLeft, overlay);
+        };
 
         auto& badges = getBadgesData();
         const auto hasStatus = !_status.isNull();
@@ -3719,16 +3762,19 @@ namespace Utils
         if ((!_isMuted && !_isOfficial && !_isOnline && !hasStatus) || it == badges.end())
         {
             if ((_isMuted || _isOfficial || _isOnline) && it == badges.end())
-                assert(!"unknown size");
+                im_assert(!"unknown size");
 
+            // Draw without badge
             _p.drawPixmap(_topLeft, _avatar);
+            if (_withOverlay)
+                drawOverlay(_avatar.size(), QRect());
             return;
         }
 
         auto badge = it->second;
         if (!_isMuted && hasStatus)
         {
-            const auto statusBadgeParams = getStatusBadgeParams(_avatar.width());
+            const auto& statusBadgeParams = getStatusBadgeParams(_avatar.width());
             if (statusBadgeParams.isValid())
             {
                 badge.offset_ = statusBadgeParams.offset_;
@@ -3737,6 +3783,8 @@ namespace Utils
         }
         const QRect badgeRect(badge.offset_, badge.size_);
 
+        const auto w = badge.cutWidth_;
+        const auto cutRect = badgeRect.adjusted(-w, -w, w, w);
         QPixmap cut = _avatar;
         {
             QPainter p(&cut);
@@ -3744,11 +3792,12 @@ namespace Utils
             p.setBrush(Qt::transparent);
             p.setRenderHint(QPainter::Antialiasing);
             p.setCompositionMode(QPainter::CompositionMode_Source);
-
-            const auto w = badge.cutWidth_;
-            p.drawEllipse(badgeRect.adjusted(-w, -w, w, w));
+            p.drawEllipse(cutRect);
         }
         _p.drawPixmap(_topLeft, cut);
+
+        if (_withOverlay)
+            drawOverlay(_avatar.size(), cutRect);
 
         Utils::PainterSaver ps(_p);
         _p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
@@ -3779,7 +3828,7 @@ namespace Utils
 
     void drawAvatarWithBadge(QPainter& _p, const QPoint& _topLeft, const QPixmap& _avatar, const QString& _aimid, const bool _officialOnly, StatusBadgeState _state, const bool _isSelected, const bool _small_online)
     {
-        assert(!_avatar.isNull());
+        im_assert(!_avatar.isNull());
 
         const auto noBadge = _aimid.isEmpty() || _state == StatusBadgeState::StatusOnly;
         const auto isMuted = noBadge ? false : !_officialOnly && Logic::getContactListModel()->isMuted(_aimid);
@@ -3799,7 +3848,7 @@ namespace Utils
 
     void drawAvatarWithoutBadge(QPainter& _p, const QPoint& _topLeft, const QPixmap& _avatar, const QPixmap& _status)
     {
-        assert(!_avatar.isNull());
+        im_assert(!_avatar.isNull());
 
         drawAvatarWithBadge(_p, _topLeft, _avatar, false, _status, false, false, false, false);
     }
@@ -3870,7 +3919,7 @@ namespace Utils
 
                 Ui::gui_coll_helper coll(_coll, false);
                 auto last_error = coll.get_value_as_int("last_error");
-                assert(!last_error);
+                im_assert(!last_error);
                 Q_UNUSED(last_error);
             }
         );
@@ -3884,7 +3933,7 @@ namespace Utils
 
                 Ui::gui_coll_helper coll(_coll, false);
                 auto last_error = coll.get_value_as_int("last_error");
-                assert(!last_error);
+                im_assert(!last_error);
                 Q_UNUSED(last_error);
             }
         );
@@ -3898,7 +3947,7 @@ namespace Utils
 
                 Ui::gui_coll_helper coll(_coll, false);
                 auto last_error = coll.get_value_as_int("last_error");
-                assert(!last_error);
+                im_assert(!last_error);
                 Q_UNUSED(last_error);
             }
         );
@@ -4079,7 +4128,7 @@ namespace Utils
 
     QString formatFileSize(const int64_t size)
     {
-        assert(size >= 0);
+        im_assert(size >= 0);
 
         constexpr auto KiB = 1024;
         constexpr auto MiB = 1024 * KiB;
@@ -4111,7 +4160,7 @@ namespace Utils
 
     void SetProxyStyle(QWidget* _widget, QStyle* _style)
     {
-        assert(_widget);
+        im_assert(_widget);
         if (_widget)
         {
             _style->setParent(_widget);
@@ -4380,7 +4429,7 @@ namespace Utils
         if (_tint.isValid() && _tint.alpha())
         {
             constexpr auto fullyOpaque = 255;
-            assert(_tint.alpha() > 0 && _tint.alpha() < fullyOpaque);
+            im_assert(_tint.alpha() > 0 && _tint.alpha() < fullyOpaque);
 
             QPixmap pm(_source.size());
             QPainter p(&pm);
@@ -4690,6 +4739,15 @@ QString Utils::replaceFilesPlaceholders(QString _text, const Data::FilesPlacehol
     return _text;
 }
 
+Data::FormattedString Utils::replaceFilesPlaceholders(const Data::FormattedString& _text, const Data::FilesPlaceholderMap& _files)
+{
+    // TODO-FORMAT-IMPLEMENT
+    if (_text.hasFormatting())
+        return _text;
+    else
+        return replaceFilesPlaceholders(_text.string(), _files);
+}
+
 namespace MimeData
 {
     QByteArray convertMapToArray(const std::map<QString, QString, Utils::StringComparator>& _map)
@@ -4738,11 +4796,11 @@ namespace MimeData
 
     void copyMimeData(const Ui::MessagesScrollArea &_area)
     {
-        if (auto rawText = _area.getSelectedText(Ui::MessagesScrollArea::TextFormat::Raw); !rawText.isEmpty())
+        if (auto rawText = Data::stubFromFormattedString(_area.getSelectedText(Ui::MessagesScrollArea::TextFormat::Raw)); !rawText.isEmpty())
         {
             const auto placeholders = _area.getFilesPlaceholders();
             const auto mentions = _area.getMentions();
-            const auto text = _area.getSelectedText();
+            const auto text = Data::stubFromFormattedString(_area.getSelectedText());
 
             auto dt = new QMimeData();
             dt->setText(text);

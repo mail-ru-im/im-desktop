@@ -19,11 +19,11 @@ namespace Profiling
 
     auto_stop_watch::auto_stop_watch(const char *_process_name)
     {
-        assert(_process_name);
-        assert(::strlen(_process_name));
+        im_assert(_process_name);
+        im_assert(::strlen(_process_name));
 
         id_ = ++process_uid_;
-        assert(id_ > 0);
+        im_assert(id_ > 0);
 
         name_ = _process_name;
 

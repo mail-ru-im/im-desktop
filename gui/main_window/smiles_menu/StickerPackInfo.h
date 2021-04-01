@@ -106,13 +106,13 @@ namespace Ui
 
         QString storeId_;
 
-        QString subtitle_;
+        QString description_;
 
         CustomButton* moreButton_;
 
         QLabel* loadingText_;
 
-        TextEditEx* subtitleControl_;
+        TextEditEx* descrControl_;
 
         GeneralDialog* dialog_;
 

@@ -32,7 +32,7 @@
 
 namespace
 {
-    int nickPadding() noexcept
+    auto nickPadding() noexcept
     {
         return Utils::scale_value(4);
     }
@@ -45,6 +45,16 @@ namespace
     QPixmap makeIcon(const QString& _path, QSize _size, Styling::StyleVariable _var)
     {
         return Utils::renderSvgScaled(_path, _size, Styling::getParameters().getColor(_var));
+    }
+
+    auto contactNameOffset() noexcept
+    {
+        return platform::is_apple() ? Utils::scale_value(6) : Utils::scale_value(2);
+    }
+
+    constexpr auto removeIconSize() noexcept
+    {
+        return QSize(18, 18);
     }
 }
 
@@ -144,8 +154,8 @@ namespace Ui
 
     int Item::drawRemove(QPainter &_painter, bool _isSelected, ContactListParams& _contactList, const ViewParams& _viewParams)
     {
-        static const QPixmap rem(makeIcon(qsl(":/controls/close_icon"), QSize(12, 12), Styling::StyleVariable::BASE_SECONDARY));
-        static const QPixmap remSelected(makeIcon(qsl(":/controls/close_icon"), QSize(12, 12), Styling::StyleVariable::BASE_SECONDARY_ACTIVE));
+        static const QPixmap rem(makeIcon(qsl(":/controls/close_icon"), removeIconSize(), Styling::StyleVariable::BASE_SECONDARY));
+        static const QPixmap remSelected(makeIcon(qsl(":/controls/close_icon"), removeIconSize(), Styling::StyleVariable::BASE_SECONDARY_ACTIVE));
 
         const auto& remove_img = _isSelected ? remSelected : rem;
 
@@ -254,9 +264,7 @@ namespace Ui
         name_->evaluateDesiredSize();
     }
 
-    ServiceContact::~ServiceContact()
-    {
-    }
+    ServiceContact::~ServiceContact() = default;
 
     void ServiceContact::paint(QPainter& _painter, const bool _isHovered, const bool _isSelected, const bool /*_isPressed*/, const int _curWidth)
     {
@@ -300,10 +308,7 @@ namespace Ui
         contactRole_->init(Fonts::appFontScaled(secondaryFontSize), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
     }
 
-    ContactItem::~ContactItem()
-    {
-
-    }
+    ContactItem::~ContactItem() = default;
 
     void ContactItem::updateParams(const VisualDataBase& _item, const ViewParams& _viewParams)
     {
@@ -421,18 +426,21 @@ namespace Ui
             int textWidth = contactName_->getLastLineWidth();
             int nickWidth = contactNick_ ? contactNick_->getLastLineWidth() + nickPadding() : 0;
 
+
+            contactName_->evaluateDesiredSize();
+
             if (textWidth + nickWidth > maxWidth)
             {
                 if (contactNick_)
                 {
                     if (nickWidth <= maxWidth / 2)
                     {
-                        contactName_->getHeight(maxWidth - nickWidth);
+                        contactName_->elide(maxWidth - nickWidth);
                         textWidth = contactName_->getLastLineWidth();
                     }
                     else
                     {
-                        contactName_->getHeight(maxWidth / 2);
+                        contactName_->elide(maxWidth / 2);
                         textWidth = contactName_->getLastLineWidth();
 
                         contactNick_->getHeight(maxWidth - textWidth - nickPadding());
@@ -442,12 +450,18 @@ namespace Ui
                 }
                 else
                 {
-                    contactName_->getHeight(maxWidth);
+                    contactName_->elide(maxWidth);
                 }
             }
             else if (contactNick_)
             {
+                if (!contactName_->isElided())
+                    contactName_->elide(maxWidth);
                 contactNick_->setOffsets(nameX + textWidth + nickPadding(), _y);
+            }
+            else if (!contactName_->isElided())
+            {
+                contactName_->elide(maxWidth);
             }
 
             contactName_->setOffsets(nameX, _y);
@@ -495,16 +509,17 @@ namespace Ui
         auto role_right_offset = 0;
 
         const auto isSelectRegim = IsSelectMembers(regim) || Logic::is_share_regims(regim) || regim == Logic::MembersWidgetRegim::SHARE_CONTACT;
+        const auto isCurVideoConf = regim == Logic::MembersWidgetRegim::CURRENT_VIDEO_CONFERENCE;
         auto contactNameY = 0;
-        if (regim == Logic::MembersWidgetRegim::COMMON_CHATS)
-            contactNameY = platform::is_apple() ? Utils::scale_value(6) : Utils::scale_value(2);
+        if (regim == Logic::MembersWidgetRegim::COMMON_CHATS || (item_.HasStatus() && !isFavorites && !isCurVideoConf))
+            contactNameY = contactNameOffset();
         else
-            contactNameY = (!item_.HasStatus() || isFavorites ? contactList.itemHeight() / 2 : (platform::is_apple()) ? Utils::scale_value(6) : Utils::scale_value(2));
+            contactNameY = contactList.itemHeight() / 2;
 
-        const auto center = isFavorites || (regim == Logic::MembersWidgetRegim::COMMON_CHATS ? false : !item_.HasStatus());
-        const auto drawStatus = !isFavorites && (item_.HasStatus() || regim == Logic::MembersWidgetRegim::COMMON_CHATS);
+        const auto center = isFavorites || (regim != Logic::MembersWidgetRegim::COMMON_CHATS && !item_.HasStatus()) || isCurVideoConf;
+        const auto drawStatus = !isFavorites && (item_.HasStatus() || regim == Logic::MembersWidgetRegim::COMMON_CHATS) && !isCurVideoConf;
 
-        if (regim == Logic::MembersWidgetRegim::PENDING_MEMBERS || regim == Logic::MembersWidgetRegim::YOUR_INVITES_LIST)
+        if (regim == Logic::MembersWidgetRegim::PENDING_MEMBERS || regim == Logic::MembersWidgetRegim::YOUR_INVITES_LIST || (!isFavorites && item_.IsHovered_ && isCurVideoConf))
         {
             rightMargin = drawRemove(_painter, false, contactList, params_);
             if (regim == Logic::MembersWidgetRegim::PENDING_MEMBERS)
@@ -534,6 +549,11 @@ namespace Ui
         renderContactName(rightMargin, contactNameY, center, role_right_offset, drawStatus);
     }
 
+    bool ContactItem::needsTooltip() const
+    {
+        return contactName_ && contactName_->isElided();
+    }
+
     Fonts::FontWeight ContactItem::getNameWeight() const
     {
         const auto& contactList = GetContactListParams();
@@ -549,10 +569,7 @@ namespace Ui
         groupName_->evaluateDesiredSize();
     }
 
-    GroupItem::~GroupItem()
-    {
-
-    }
+    GroupItem::~GroupItem() = default;
 
     void GroupItem::paint(QPainter& _painter, const bool _isHovered /* = false */, const bool _isActive /* = false */, const bool /*_isPressed*/, const int _curWidth /* = 0 */)
     {
@@ -577,9 +594,7 @@ namespace Ui
         name_->evaluateDesiredSize();
     }
 
-    ServiceButton::~ServiceButton()
-    {
-    }
+    ServiceButton::~ServiceButton() = default;
 
     void ServiceButton::paint(QPainter& _painter, const bool _isHovered, const bool _isActive /* = false */, const bool _isPressed, const int _curWidth /* = 0 */)
     {
@@ -611,9 +626,7 @@ namespace Logic
         viewParams_.regim_ = _regim;
     }
 
-    ContactListItemDelegate::~ContactListItemDelegate()
-    {
-    }
+    ContactListItemDelegate::~ContactListItemDelegate() = default;
 
     void ContactListItemDelegate::paint(QPainter* _painter, const QStyleOptionViewItem& _option, const QModelIndex& _index) const
     {
@@ -748,7 +761,7 @@ namespace Logic
             {
             case Data::GROUP:
             {
-                auto& item = items[aimId];
+                auto& item = items_[aimId];
                 if (!item)
                     item = std::make_unique<Ui::GroupItem>(displayName);
 
@@ -757,7 +770,7 @@ namespace Logic
             }
             case Data::SERVICE_HEADER:
             {
-                auto& item = items[aimId];
+                auto& item = items_[aimId];
                 if (!item)
                     item = std::make_unique<Ui::ServiceContact>(displayName, contactType);
 
@@ -766,7 +779,7 @@ namespace Logic
             }
             case Data::DROPDOWN_BUTTON:
             {
-                auto& item = items[aimId];
+                auto& item = items_[aimId];
                 if (!item)
                     item = std::make_unique<Ui::ServiceButton>(displayName, icon, hoverIcon, pressedIcon, _option.rect.height());
 
@@ -917,12 +930,18 @@ namespace Logic
 
     void ContactListItemDelegate::clearCache()
     {
-        items.clear();
+        items_.clear();
         contactItems_.clear();
     }
 
     void ContactListItemDelegate::setMembersView()
     {
         membersView_ = true;
+    }
+
+    bool ContactListItemDelegate::needsTooltip(const QString& _aimId, const QModelIndex&, QPoint) const
+    {
+        const auto it = contactItems_.find(_aimId);
+        return it != contactItems_.end() && it->second && it->second->needsTooltip();
     }
 }

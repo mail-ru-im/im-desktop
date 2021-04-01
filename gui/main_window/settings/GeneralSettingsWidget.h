@@ -56,6 +56,7 @@ namespace Ui
         NotificationSettings(QWidget * _parent);
 
         Ui::SidebarCheckboxButton* sounds_;
+        Ui::SidebarCheckboxButton* notifications_;
 
     private Q_SLOTS:
        void value_changed(const QString&);

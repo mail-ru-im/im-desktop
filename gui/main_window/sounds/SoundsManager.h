@@ -86,7 +86,6 @@ Q_SIGNALS:
         void callInProgress(bool value);
 
         void checkAudioDevice();
-        void reinit();
 
         void DeviceMonitoringListChanged() override;
 
@@ -119,7 +118,7 @@ Q_SIGNALS:
         void deInitSounds();
 
         bool canPlaySound(Sound _type);
-        std::string selectedDeviceName();
+        static std::string selectedDeviceName();
 
     private:
         bool CallInProgress_;
@@ -143,9 +142,10 @@ Q_SIGNALS:
         QTimer* DeviceTimer_;
 
         std::unique_ptr<device::DeviceMonitoring> deviceMonitoring_;
+
+        std::mutex mutex_;
     };
 
     SoundsManager* GetSoundsManager();
     void ResetSoundsManager();
-    void ReinitSoundsManager();
 }

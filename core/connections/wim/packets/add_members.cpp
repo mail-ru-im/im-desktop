@@ -8,27 +8,6 @@
 using namespace core;
 using namespace wim;
 
-static add_member_failure string2failure(std::string_view _s)
-{
-    if (_s == "user_waiting_for_approve")
-        return add_member_failure::user_waiting_for_approve;
-    else if (_s == "user_must_join_by_link")
-        return add_member_failure::user_must_join_by_link;
-    else if (_s == "user_blocked_confirmation_required")
-        return add_member_failure::user_blocked_confirmation_required;
-    else if (_s == "user_must_be_added_by_admin")
-        return add_member_failure::user_must_be_added_by_admin;
-    else if (_s == "user_captcha")
-        return add_member_failure::user_captcha;
-    else if (_s ==  "user_already_added")
-        return add_member_failure::user_already_added;
-    else if (_s == "bot_setjoingroups_false")
-        return add_member_failure::bot_setjoingroups_false;
-
-    assert(false);
-    return add_member_failure::invalid;
-}
-
 add_members::add_members(wim_packet_params _params, std::string _aimid, std::vector<std::string> _members_to_add, bool _unblock)
     : robusto_packet(std::move(_params))
     , aimid_(std::move(_aimid))
@@ -77,7 +56,7 @@ int32_t add_members::parse_results(const rapidjson::Value& _node_results)
             for (const auto& f : failures->value.GetArray())
             {
                 if (std::string_view err; tools::unserialize_value(f, "error", err) && !err.empty())
-                    if (const auto failure = string2failure(err); failure != add_member_failure::invalid)
+                    if (const auto failure = string_to_failure(err); failure != chat_member_failure::invalid)
                         if (std::string_view id; tools::unserialize_value(f, "id", id) && !id.empty())
                             failures_[failure].emplace_back(std::move(id));
             }
@@ -89,9 +68,9 @@ int32_t add_members::parse_results(const rapidjson::Value& _node_results)
 int32_t add_members::on_response_error_code()
 {
     if (status_code_ == 40001)
-        return wpie_error_add_member_no_rights;
+        return wpie_error_permission_denied;
     else if (status_code_ == 40401)
-        return wpie_error_add_member_group_not_found;
+        return wpie_error_group_not_found;
 
     return robusto_packet::on_response_error_code();
 }

@@ -63,5 +63,5 @@ int32_t set_status::init_request(const std::shared_ptr<core::http_request_simple
 
 std::string_view set_status::get_method() const
 {
-    return "setStatus";
+    return "status/set";
 }

@@ -23,7 +23,6 @@ namespace platform_macos
     void moveAboveParentWindow(QWidget& parent, QWidget& child);
 
     QRect getWidgetRect(const QWidget& widget);
-    int getWidgetHeaderHeight(const QWidget& widget);
     //QRect getWindowRect(const QWidget& parent);
 
     // Double click interval in ms.

@@ -265,8 +265,8 @@ namespace Ui
                 {
                     const int indexInCategory = idx - count;
 
-                    assert(indexInCategory >= 0);
-                    assert(indexInCategory < (int) category.emojis_.size());
+                    im_assert(indexInCategory >= 0);
+                    im_assert(indexInCategory < (int) category.emojis_.size());
 
                     return category.emojis_[indexInCategory];
                 }
@@ -275,7 +275,7 @@ namespace Ui
             }
         }
 
-        assert(!"invalid emoji number");
+        im_assert(!"invalid emoji number");
 
         return Emoji::EmojiRecord::invalid();
     }
@@ -297,7 +297,7 @@ namespace Ui
                     QImage emojiPixmap = Emoji::GetEmoji(emoji.fullCodePoints, int(Emoji::getEmojiSize()));
                     Utils::check_pixel_ratio(emojiPixmap);
 
-                    assert(!emojiPixmap.isNull());
+                    im_assert(!emojiPixmap.isNull());
                     return emojiPixmap;
                 }
                 else if (Testing::isAccessibleRole(_role))
@@ -1420,7 +1420,7 @@ namespace Ui
 
         auto areMatching = [&ids, &widgets]()
         {
-            assert((size_t)widgets.size() == ids.size());
+            im_assert((size_t)widgets.size() == ids.size());
             auto res = std::mismatch(ids.begin(), ids.end(), widgets.begin(), [](const auto& id, auto w) { return w->getId() == id; });
             return res.first == ids.end() && res.second == widgets.end();
         };
@@ -2438,7 +2438,7 @@ namespace Ui
 
     void SmilesMenu::onSetIconChanged(int _setId)
     {
-        assert(_setId >= 0);
+        im_assert(_setId >= 0);
         if (_setId < 0)
             return;
 

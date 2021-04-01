@@ -52,10 +52,10 @@ namespace Emoji
         , baseCodePoints_(std::move(_baseCodePoints))
         , fullCodePoints(std::move(_fullCodePoints))
     {
-        assert(Category_.size() > 0);
-        assert(FileName_.size() > 0);
-        assert(!baseCodePoints_.isNull());
-        assert(!fullCodePoints.isNull());
+        im_assert(Category_.size() > 0);
+        im_assert(FileName_.size() > 0);
+        im_assert(!baseCodePoints_.isNull());
+        im_assert(!fullCodePoints.isNull());
     }
 
     bool EmojiRecord::isValid() const noexcept
@@ -158,7 +158,7 @@ namespace Emoji
 #if defined(__APPLE__)
         mac::setEmojiVector(EmojiIndexByOrder_);
 #endif
-        assert(!EmojiIndexByOrder_.empty());
+        im_assert(!EmojiIndexByOrder_.empty());
 
         emojiIndexByFullCodepoint_ = makeIndex(EmojiIndexByOrder_, CodePointType::Full);
 
@@ -193,7 +193,7 @@ namespace Emoji
 #endif
 
             const auto& category = record.Category_;
-            assert(category.size() > 0);
+            im_assert(category.size() > 0);
 
             auto& records = EmojiIndexByCategory_[category];
             records.push_back(record);
@@ -212,16 +212,16 @@ namespace Emoji
 
     bool isEmoji(const EmojiCode& _code)
     {
-        assert(!_code.isNull());
-        assert(!emojiIndexByFullCodepoint_.empty() && !emojiIndexByBaseCodepoint_.empty());
+        im_assert(!_code.isNull());
+        im_assert(!emojiIndexByFullCodepoint_.empty() && !emojiIndexByBaseCodepoint_.empty());
         return std::as_const(emojiIndexByFullCodepoint_).find(_code) != std::as_const(emojiIndexByFullCodepoint_).end()
             || std::as_const(emojiIndexByBaseCodepoint_).find(_code) != std::as_const(emojiIndexByBaseCodepoint_).end();
     }
 
     const EmojiRecord& GetEmojiInfoByCodepoint(const EmojiCode& _code)
     {
-        assert(!_code.isNull());
-        assert(!emojiIndexByFullCodepoint_.empty() && !emojiIndexByBaseCodepoint_.empty());
+        im_assert(!_code.isNull());
+        im_assert(!emojiIndexByFullCodepoint_.empty() && !emojiIndexByBaseCodepoint_.empty());
 
         if (const auto iter = std::as_const(emojiIndexByFullCodepoint_).find(_code); iter != std::as_const(emojiIndexByFullCodepoint_).end())
             return EmojiIndexByOrder_[iter->second];
@@ -234,14 +234,14 @@ namespace Emoji
 
     const QVector<QLatin1String>& GetEmojiCategories()
     {
-        assert(!EmojiCategories_.isEmpty());
+        im_assert(!EmojiCategories_.isEmpty());
 
         return EmojiCategories_;
     }
 
     const EmojiRecordVec& GetEmojiInfoByCategory(QLatin1String _category)
     {
-        assert(_category.size() > 0);
+        im_assert(_category.size() > 0);
 
         if (const auto iter = std::as_const(EmojiIndexByCategory_).find(_category); iter != std::as_const(EmojiIndexByCategory_).end())
             return iter->second;

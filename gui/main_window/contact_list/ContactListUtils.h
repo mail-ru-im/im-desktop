@@ -21,6 +21,7 @@ namespace Logic
         FROM_ALERT,
         HISTORY_SEARCH,
         VIDEO_CONFERENCE,
+        CURRENT_VIDEO_CONFERENCE,
         CONTACT_LIST_POPUP,
         COMMON_CHATS,
         SHARE_CONTACT,

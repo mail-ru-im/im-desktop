@@ -42,18 +42,18 @@ namespace ActionButtonResource
         , StopButtonImageActive_(stopButtonImageActive)
         , StopButtonImageHover_(stopButtonImageHover)
     {
-        assert(StartButtonImage_ > ResId::Min);
-        assert(StartButtonImage_ < ResId::Max);
-        assert(StartButtonImageHover_ > ResId::Min);
-        assert(StartButtonImageHover_ < ResId::Max);
-        assert(StartButtonImageActive_ > ResId::Min);
-        assert(StartButtonImageActive_ < ResId::Max);
-        assert(StopButtonImage_ > ResId::Min);
-        assert(StopButtonImage_ < ResId::Max);
-        assert(StopButtonImageHover_ > ResId::Min);
-        assert(StopButtonImageHover_ < ResId::Max);
-        assert(StopButtonImageActive_ > ResId::Min);
-        assert(StopButtonImageActive_ < ResId::Max);
+        im_assert(StartButtonImage_ > ResId::Min);
+        im_assert(StartButtonImage_ < ResId::Max);
+        im_assert(StartButtonImageHover_ > ResId::Min);
+        im_assert(StartButtonImageHover_ < ResId::Max);
+        im_assert(StartButtonImageActive_ > ResId::Min);
+        im_assert(StartButtonImageActive_ < ResId::Max);
+        im_assert(StopButtonImage_ > ResId::Min);
+        im_assert(StopButtonImage_ < ResId::Max);
+        im_assert(StopButtonImageHover_ > ResId::Min);
+        im_assert(StopButtonImageHover_ < ResId::Max);
+        im_assert(StopButtonImageActive_ > ResId::Min);
+        im_assert(StopButtonImageActive_ < ResId::Max);
     }
 
     const ResourceSet ResourceSet::Play_(
@@ -153,15 +153,15 @@ void ActionButtonWidget::createAnimationStartTimer()
 
 void ActionButtonWidget::drawIcon(QPainter &p)
 {
-    assert(Layout_);
-    assert(CurrentIcon_);
+    im_assert(Layout_);
+    im_assert(CurrentIcon_);
 
     CurrentIcon_->Draw(p, Layout_->getIconRect());
 }
 
 void ActionButtonWidget::drawProgress(QPainter &p)
 {
-    assert(IsAnimating_);
+    im_assert(IsAnimating_);
 
     const auto QT_ANGLE_MULT = 16;
 
@@ -199,16 +199,16 @@ void ActionButtonWidget::drawProgressText(QPainter &_p)
 
 int ActionButtonWidget::getProgressBarBaseAngle() const
 {
-    assert(ProgressBarAngle_ >= 0);
-    assert(ProgressBarAngle_ <= PROGRESS_BAR_ANGLE_MAX);
+    im_assert(ProgressBarAngle_ >= 0);
+    im_assert(ProgressBarAngle_ <= PROGRESS_BAR_ANGLE_MAX);
 
     return ProgressBarAngle_;
 }
 
 void ActionButtonWidget::setProgressBarBaseAngle(const int32_t _val)
 {
-    assert(_val >= 0);
-    assert(_val <= PROGRESS_BAR_ANGLE_MAX);
+    im_assert(_val >= 0);
+    im_assert(_val <= PROGRESS_BAR_ANGLE_MAX);
 
     const auto isAngleChanged = (ProgressBarAngle_ != _val);
 
@@ -220,7 +220,7 @@ void ActionButtonWidget::setProgressBarBaseAngle(const int32_t _val)
 
 QPoint ActionButtonWidget::getCenterBias() const
 {
-    assert(Layout_);
+    im_assert(Layout_);
 
     const QRect geometry(QPoint(), sizeHint());
     const auto geometryCenter = geometry.center();
@@ -233,13 +233,13 @@ QPoint ActionButtonWidget::getCenterBias() const
 
 QSize ActionButtonWidget::getIconSize() const
 {
-    assert(CurrentIcon_);
+    im_assert(CurrentIcon_);
     return CurrentIcon_->GetSize();
 }
 
 QPoint ActionButtonWidget::getLogicalCenter() const
 {
-    assert(Layout_);
+    im_assert(Layout_);
 
     return Layout_->getIconRect().center();
 }
@@ -264,8 +264,8 @@ const ActionButtonResource::ResourceSet& ActionButtonWidget::getResourceSet() co
 
 void ActionButtonWidget::setProgress(const double progress)
 {
-    assert(progress >= 0);
-    assert(progress <= 1.01);
+    im_assert(progress >= 0);
+    im_assert(progress <= 1.01);
 
     const auto isProgressChanged = (std::abs(Progress_ - progress) >= 0.01);
     if (!isProgressChanged)
@@ -279,10 +279,10 @@ void ActionButtonWidget::setProgress(const double progress)
 
 void ActionButtonWidget::setProgressPen(const QColor color, const double a, const double width)
 {
-    assert(a >= 0);
-    assert(a <= 1);
-    assert(width > 0);
-    assert(width < 5);
+    im_assert(a >= 0);
+    im_assert(a <= 1);
+    im_assert(width > 0);
+    im_assert(width < 5);
 
     QColor progressColor(color);
     progressColor.setAlphaF(a);
@@ -293,7 +293,7 @@ void ActionButtonWidget::setProgressPen(const QColor color, const double a, cons
 
 void ActionButtonWidget::setProgressText(const QString &progressText)
 {
-    assert(!progressText.isEmpty());
+    im_assert(!progressText.isEmpty());
 
     if (ProgressText_ == progressText)
         return;
@@ -309,7 +309,7 @@ void ActionButtonWidget::setProgressText(const QString &progressText)
 
 void ActionButtonWidget::setDefaultProgressText(const QString &progressText)
 {
-    assert(!progressText.isEmpty());
+    im_assert(!progressText.isEmpty());
 
     if (DefaultProgressText_ == progressText)
         return;
@@ -338,14 +338,14 @@ void ActionButtonWidget::setResourceSet(const ActionButtonResource::ResourceSet 
 
 QSize ActionButtonWidget::sizeHint() const
 {
-    assert(Layout_);
+    im_assert(Layout_);
 
     return Layout_->sizeHint();
 }
 
 void ActionButtonWidget::startAnimation(const int32_t _delay)
 {
-    assert(_delay >= 0);
+    im_assert(_delay >= 0);
 
     if (IsAnimating_)
         return;
@@ -579,9 +579,9 @@ bool ActionButtonWidget::selectCurrentIcon()
     const auto iconChanged = (icon != CurrentIcon_);
 
     CurrentIcon_ = icon;
-    assert(CurrentIcon_);
-    assert(CurrentIcon_->GetWidth() <= getMaxIconDimension());
-    assert(CurrentIcon_->GetHeight() <= getMaxIconDimension());
+    im_assert(CurrentIcon_);
+    im_assert(CurrentIcon_->GetWidth() <= getMaxIconDimension());
+    im_assert(CurrentIcon_->GetHeight() <= getMaxIconDimension());
 
     return iconChanged;
 }

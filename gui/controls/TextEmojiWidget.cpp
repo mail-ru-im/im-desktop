@@ -235,8 +235,8 @@ namespace Ui
 
         auto is_eos = [&](int _offset)
         {
-            assert(_offset >= 0);
-            assert(inputStream.string());
+            im_assert(_offset >= 0);
+            im_assert(inputStream.string());
 
             const auto &text = *inputStream.string();
             return ((inputStream.pos() + _offset) >= text.length());
@@ -401,7 +401,7 @@ namespace Ui
         text_ = _text;
         compiledText_ = std::make_unique<CompiledText>();
         if (!CompiledText::compileText(text_, *compiledText_, multiline_, ellipsis_))
-            assert(!"TextEmojiWidget: couldn't compile text.");
+            im_assert(!"TextEmojiWidget: couldn't compile text.");
         QWidget::update();
         updateGeometry();
     }
@@ -556,7 +556,7 @@ namespace Ui
                 offsetX = (rc.width() - width) / 2;
                 break;
             default:
-                assert(false);
+                im_assert(false);
                 break;
             }
 

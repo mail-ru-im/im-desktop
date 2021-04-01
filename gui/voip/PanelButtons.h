@@ -38,6 +38,8 @@ namespace Ui
 
         void updateStyle(ButtonStyle _style, const QString& _iconName = {}, const QString& _text = {});
 
+        void setCount(int _count);
+
     protected:
         void paintEvent(QPaintEvent* _event) override;
 
@@ -52,6 +54,8 @@ namespace Ui
 
         std::unique_ptr<TextRendering::TextUnit> textUnit_;
         MoreButton* more_;
+        std::unique_ptr<TextRendering::TextUnit> badgeTextUnit_;
+        int count_;
     };
 
     class TransparentPanelButton : public ClickableWidget
@@ -65,6 +69,8 @@ namespace Ui
         void hideTooltip();
         void setTooltipBoundingRect(const QRect& _r);
 
+        void changeState();
+
     protected:
         void paintEvent(QPaintEvent* _event) override;
         void enterEvent(QEvent* _e) override;
@@ -72,11 +78,19 @@ namespace Ui
         void onTooltipTimer() override;
         void showToolTip() override;
 
+    private Q_SLOTS:
+        void onClicked();
+
     private:
         enum class RotateDirection
         {
             Left,
             Right,
+        };
+        enum class RotateAnimationMode
+        {
+            Full,
+            ShowFinalState
         };
 
         void rotate(const RotateDirection _dir);
@@ -94,6 +108,7 @@ namespace Ui
         QVariantAnimation* anim_;
         double currentAngle_;
         RotateDirection dir_;
+        RotateAnimationMode rotateMode_;
         QRect tooltipBoundingRect_;
     };
 

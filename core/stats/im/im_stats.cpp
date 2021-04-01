@@ -109,7 +109,7 @@ void im_stats::start_save()
     if (save_timer_id_ > 0)
         return;
 
-    save_timer_id_ = g_core->add_timer([wr_this = weak_from_this()]()
+    save_timer_id_ = g_core->add_timer({ [wr_this = weak_from_this()] ()
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -117,7 +117,7 @@ void im_stats::start_save()
 
         ptr_this->save_if_needed();
 
-    }, save_events_to_file_interval);
+    } }, save_events_to_file_interval);
 }
 
 void im_stats::delayed_start_send()
@@ -125,7 +125,7 @@ void im_stats::delayed_start_send()
     if (start_send_timer_id_ > 0)
         return;
 
-    start_send_timer_id_ = g_core->add_timer([wr_this = weak_from_this()]()
+    start_send_timer_id_ = g_core->add_timer({ [wr_this = weak_from_this()] ()
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -135,7 +135,7 @@ void im_stats::delayed_start_send()
         ptr_this->start_send_timer_id_ = 0;
         ptr_this->start_send();
 
-    }, delay_send_events_on_start);
+    } }, delay_send_events_on_start);
 }
 
 void im_stats::start_send(bool _check_start_now)
@@ -146,7 +146,7 @@ void im_stats::start_send(bool _check_start_now)
     if (_check_start_now && (std::chrono::system_clock::now() - last_sent_time_) >= events_send_interval_)
         events_send_interval_ = std::chrono::seconds(1);
 
-    send_timer_id_ = g_core->add_timer([wr_this = weak_from_this()]()
+    send_timer_id_ = g_core->add_timer({ [wr_this = weak_from_this()] ()
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -165,7 +165,7 @@ void im_stats::start_send(bool _check_start_now)
             ptr_this->start_send(false);
         }
 
-    }, events_send_interval_);
+    } }, events_send_interval_);
 }
 
 bool im_stats::load()

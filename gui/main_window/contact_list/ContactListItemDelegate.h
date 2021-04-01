@@ -28,6 +28,8 @@ namespace Ui
         static void drawCheckbox(QPainter &_painter, const VisualDataBase &_visData, const ContactListParams& _contactList);
         static int drawRemove(QPainter &_painter, bool _isSelected, ContactListParams& _contactList, const ViewParams& _viewParams);
         static int drawUnreads(QPainter &_painter, const int _unreads, const bool _isMuted, const bool _isSelected, const bool _isHovered, const ViewParams& _viewParams, const ContactListParams& _clParams, const bool _isUnknownHeader = false);
+
+        virtual bool needsTooltip() const { return false; }
     };
 
     class ServiceContact : public Item
@@ -52,6 +54,7 @@ namespace Ui
         void updateParams(const VisualDataBase& _item, const ViewParams& _viewParams);
 
         virtual void paint(QPainter& _painter, const bool _isHovered = false, const bool _isActive = false, const bool _isPressed = false, const int _curWidth = 0) override;
+        bool needsTooltip() const override;
 
     private:
         VisualDataBase item_;
@@ -135,6 +138,8 @@ namespace Logic
 
         void setMembersView();
 
+        bool needsTooltip(const QString& _aimId, const QModelIndex& _index, QPoint _posCursor = {}) const override;
+
     private:
         bool StateBlocked_;
         bool renderRole_;
@@ -143,7 +148,7 @@ namespace Logic
         Ui::ViewParams viewParams_;
         CustomAbstractListModel* chatMembersModel_;
 
-        mutable std::unordered_map<QString, std::unique_ptr<Ui::Item>, Utils::QStringHasher> items;
+        mutable std::unordered_map<QString, std::unique_ptr<Ui::Item>, Utils::QStringHasher> items_;
         mutable std::unordered_map<QString, std::unique_ptr<Ui::ContactItem>, Utils::QStringHasher> contactItems_;
     };
 }

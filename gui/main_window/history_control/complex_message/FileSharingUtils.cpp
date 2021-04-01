@@ -73,7 +73,7 @@ int32_t extractDurationFromFileSharingId(QStringView id)
     const auto isValidId = (id.size() >= 5);
     if (!isValidId)
     {
-        assert(!"invalid file sharing id");
+        im_assert(!"invalid file sharing id");
         return -1;
     }
     if (const auto type = extractContentTypeFromFileSharingId(id); !type.is_ptt())
@@ -87,22 +87,22 @@ QSize extractSizeFromFileSharingId(QStringView id)
     const auto isValidId = (id.size() > 5);
     if (!isValidId)
     {
-        assert(!"invalid id");
+        im_assert(!"invalid id");
         return QSize();
     }
 
     const auto width = decodeSize(id.at(1), id.at(2));
-    assert(width >= 0);
+    im_assert(width >= 0);
 
     const auto height = decodeSize(id.at(3), id.at(4));
-    assert(height >= 0);
+    im_assert(height >= 0);
 
     return QSize(width, height);
 }
 
 QString extractIdFromFileSharingUri(QStringView uri)
 {
-    assert(!uri.isEmpty());
+    im_assert(!uri.isEmpty());
     if (uri.isEmpty())
     {
         return QString();
@@ -149,26 +149,26 @@ namespace
 
         if (ch0 >= map.size())
         {
-            assert(!"invalid first character");
+            im_assert(!"invalid first character");
             return 0;
         }
 
         if (ch1 >= map.size())
         {
-            assert(!"invalid first character");
+            im_assert(!"invalid first character");
             return 0;
         }
 
         const auto index0 = map[ch0];
-        assert(index0 >= 0);
+        im_assert(index0 >= 0);
 
         const auto index1 = map[ch1];
-        assert(index1 >= 0);
+        im_assert(index1 >= 0);
 
         auto size = (index0 * INDEX_DIVISOR);
         size += index1;
 
-        assert(size > 0);
+        im_assert(size > 0);
         return size;
     }
 

@@ -138,7 +138,7 @@ namespace Ui
     public:
 
         //Common
-        int itemHeight() const { return isCl_ ? Utils::scale_value(44) : platform::is_apple() ? Utils::scale_value(68) : Utils::scale_value(72); }
+        int itemHeight() const { return isCl_ ? Utils::scale_value(48) : platform::is_apple() ? Utils::scale_value(68) : Utils::scale_value(72); }
         int globalItemHeight() const { return Utils::scale_value(48); }
         int itemWidth() const { return Utils::scale_value(320); }
         int itemHorPadding() const { return isCl_ ? Utils::scale_value(12) : Utils::scale_value(8); }
@@ -224,8 +224,8 @@ namespace Ui
 
         QString getContactNameStylesheet(const QString& _fontColor, const Fonts::FontWeight _fontWeight) const
         {
-            assert(_fontWeight > Fonts::FontWeight::Min);
-            assert(_fontWeight < Fonts::FontWeight::Max);
+            im_assert(_fontWeight > Fonts::FontWeight::Min);
+            im_assert(_fontWeight < Fonts::FontWeight::Max);
 
             const auto fontQss = Fonts::appFontFullQss(contactNameFontSize(), Fonts::defaultAppFontFamily(), _fontWeight);
             return ql1s("%1; color: %2; background-color: transparent;").arg(fontQss, _fontColor);
@@ -418,6 +418,8 @@ namespace Logic
         {
             return opacityEnabled_;
         }
+
+        virtual bool needsTooltip(const QString& _aimId, const QModelIndex& _index, QPoint _posCursor = {}) const { return false; };
 
     protected:
         bool keyboardFocused_ = false;

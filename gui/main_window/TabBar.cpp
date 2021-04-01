@@ -1,8 +1,11 @@
 #include "TabBar.h"
 
 #include "../utils/utils.h"
+#include "../utils/InterConnector.h"
 
-#include "../controls/TextUnit.h"
+#include "../controls/TooltipWidget.h"
+#include "MainWindow.h"
+#include "AppsPage.h"
 
 #include "../fonts.h"
 
@@ -14,31 +17,28 @@ namespace
     {
         return std::all_of(s.begin(), s.end(), [](auto c) { return c.isDigit(); });
     }
-}
 
-namespace
-{
-    int tabIconSize()
+    int tabIconSize() noexcept
     {
         return Utils::scale_value(28);
     }
 
-    int itemPadding()
+    int itemPadding() noexcept
     {
         return Utils::scale_value(4);
     }
 
-    int badgeTopOffset()
+    int badgeTopOffset() noexcept
     {
         return Utils::scale_value(2);
     }
 
-    int badgeHeight()
+    int badgeHeight() noexcept
     {
         return Utils::scale_value(18);
     }
 
-    int badgeOffset()
+    int badgeOffset() noexcept
     {
         return Utils::scale_value(16);
     }
@@ -83,44 +83,91 @@ namespace
 
     QColor badgeBalloonColor()
     {
-        static const auto c = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
-        return c;
+        return Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
+    }
+
+    auto tabBarDefaultHeight() noexcept
+    {
+        return Utils::scale_value(52);
+    }
+
+    auto appBarContentMargin() noexcept
+    {
+        return Utils::scale_value(8);
+    }
+
+    auto appBarSpacing() noexcept
+    {
+        return Utils::scale_value(8);
+    }
+
+    auto appBarItemSize() noexcept
+    {
+        return Utils::scale_value(52);
+    }
+
+    auto appBarItemCornerRadius() noexcept
+    {
+        return Utils::scale_value(4);
+    }
+
+    auto appBarItemSelectedColor()
+    {
+        return Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY, 0.1);
+    }
+
+    auto appBarItemHoveredColor()
+    {
+        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE);
+    }
+
+    auto appBarIconNormalColor()
+    {
+        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
+    }
+
+    auto appBarIconActiveColor()
+    {
+        return Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
+    }
+
+    constexpr auto tooltipDelay() noexcept
+    {
+        return std::chrono::milliseconds(500);
     }
 }
 
 namespace Ui
 {
-    TabItem::TabItem(const QString& _iconPath, const QString& _iconActivePath, QWidget* _parent)
+    BaseBarItem::BaseBarItem(const QString& _iconPath, const QString& _iconActivePath, const QColor& _activeColor, const QColor& _hoveredColor, const QColor& _normalColor, QWidget* _parent)
         : SimpleListItem(_parent)
-        , isSelected_(false)
         , iconPath_(_iconPath)
         , iconActivePath_(_iconActivePath)
         , activeIconPixmap_(Utils::renderSvg(iconActivePath_, { tabIconSize(), tabIconSize() }, activeColor()))
         , hoveredIconPixmap_(Utils::renderSvg(iconPath_, { tabIconSize(), tabIconSize() }, hoveredColor()))
         , normalIconPixmap_(Utils::renderSvg(iconPath_, { tabIconSize(), tabIconSize() }, normalColor()))
+        , isSelected_(false)
     {
-        setFixedHeight(TabBar::getDefaultHeight());
-        QObject::connect(this, &SimpleListItem::hoverChanged, this, &TabItem::updateTextColor);
+
     }
 
-    TabItem::~TabItem() = default;
+    BaseBarItem::~BaseBarItem() = default;
 
-    void TabItem::setSelected(bool _value)
+    void BaseBarItem::setSelected(bool _value)
     {
         if (isSelected_ != _value)
         {
             isSelected_ = _value;
-            updateTextColor();
             update();
         }
     }
 
-    bool TabItem::isSelected() const
+    bool BaseBarItem::isSelected() const
     {
         return isSelected_;
     }
 
-    void TabItem::setBadgeText(const QString& _text)
+    void BaseBarItem::setBadgeText(const QString& _text)
     {
         if (badgeText_ != _text)
         {
@@ -134,7 +181,7 @@ namespace Ui
         }
     }
 
-    void TabItem::setBadgeIcon(const QString& _icon)
+    void BaseBarItem::setBadgeIcon(const QString& _icon)
     {
         if (badgeIcon_ != _icon)
         {
@@ -146,6 +193,166 @@ namespace Ui
                     {qsl("star"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE)},
                 },
                 {badgeHeight(), badgeHeight()}) : QPixmap();
+            update();
+        }
+    }
+
+    void BaseBarItem::setName(const QString& _name)
+    {
+        name_ = _name;
+    }
+
+    const QPixmap& BaseBarItem::activeIconPixmap() const
+    {
+        return activeIconPixmap_;
+    }
+
+    const QPixmap& BaseBarItem::hoveredIconPixmap() const
+    {
+        return hoveredIconPixmap_;
+    }
+
+    const QPixmap& BaseBarItem::normalIconPixmap() const
+    {
+        return normalIconPixmap_;
+    }
+
+    void BaseBarItem::setBadgeFont(const QFont & _font)
+    {
+        if (badgeTextUnit_ && badgeTextUnit_->getFont() != _font)
+            badgeTextUnit_->init(_font, badgeTextColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
+    }
+
+    AppBarItem::AppBarItem(const QString& _iconPath, const QString& _iconActivePath, QWidget* _parent)
+        : BaseBarItem(_iconPath, _iconActivePath, appBarIconActiveColor(), appBarIconNormalColor(), appBarIconNormalColor(), _parent)
+        , tooltipTimer_(new QTimer(this))
+        , tooltipVisible_(false)
+    {
+        setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
+        setCursor(Qt::PointingHandCursor);
+
+        tooltipTimer_->setSingleShot(true);
+        tooltipTimer_->setInterval(tooltipDelay());
+
+        connect(tooltipTimer_, &QTimer::timeout, this, &AppBarItem::onTooltipTimer);
+
+        connect(this, &SimpleListItem::hoverChanged, this, &AppBarItem::onHoverChanged);
+    }
+
+    void AppBarItem::setName(const QString& _name)
+    {
+        if (name_ != _name)
+        {
+            name_ = _name;
+            if (isHovered() && tooltipVisible_)
+            {
+                hideTooltip();
+                tooltipTimer_->start();
+            }
+        }
+    }
+
+    void AppBarItem::paintEvent(QPaintEvent*)
+    {
+        QPainter p(this);
+
+        p.setRenderHint(QPainter::Antialiasing);
+        p.setRenderHint(QPainter::SmoothPixmapTransform);
+
+        const auto iconSize = tabIconSize();
+        const auto w = width();
+        const auto padding = itemPadding();
+        const auto cornerRadius = appBarItemCornerRadius();
+        p.setPen(Qt::NoPen);
+        if (isSelected())
+        {
+            p.setBrush(appBarItemSelectedColor());
+            p.drawRoundedRect(rect(), cornerRadius, cornerRadius);
+        }
+        else if (isHovered())
+        {
+            p.setBrush(appBarItemHoveredColor());
+            p.drawRoundedRect(rect(), cornerRadius, cornerRadius);
+
+        }
+
+        p.drawPixmap((w - iconSize) / 2, (height() - iconSize) / 2, isSelected() ? activeIconPixmap() : (isHovered() ? hoveredIconPixmap() : normalIconPixmap()));
+
+        if (!badgeText_.isEmpty())
+        {
+            const auto balloonX = (w - iconSize) / 2 + badgeOffset();
+            Utils::Badge::drawBadge(badgeTextUnit_, p, balloonX, badgeTopOffset(), Utils::Badge::Color::Red);
+        }
+        else if (!badgePixmap_.isNull())
+        {
+            const auto h = badgeHeight();
+            const auto balloonX = (w - iconSize) / 2.0 + badgeOffset();
+            p.drawPixmap(balloonX, badgeTopOffset(), h, h, badgePixmap_);
+        }
+    }
+
+    QSize AppBarItem::sizeHint() const
+    {
+        const auto size = appBarItemSize();
+        return QSize(size, size);
+    }
+
+    void AppBarItem::onTooltipTimer()
+    {
+        if (isHovered() && !name_.isEmpty())
+            showTooltip();
+    }
+
+    void AppBarItem::onHoverChanged(bool _hovered)
+    {
+        if (_hovered)
+        {
+            tooltipTimer_->start();
+        }
+        else
+        {
+            if (tooltipVisible_)
+                hideTooltip();
+        }
+
+    }
+
+    void AppBarItem::showTooltip()
+    {
+        tooltipVisible_ = true;
+        const auto r = rect();
+        QRect tooltipRect(mapToGlobal(r.topLeft()), r.size());
+        bool tooltipInverted = false;
+
+        // Move tooltip to bottom for first item in fullscreen mode
+        if (auto w = Utils::InterConnector::instance().getMainWindow())
+            tooltipInverted = (geometry().y() < appBarItemSize()) && w->isFullScreen();
+
+        const auto direction = tooltipInverted ? Tooltip::ArrowDirection::Up : Tooltip::ArrowDirection::Down;
+        const auto position = tooltipInverted ? Tooltip::ArrowPointPos::Bottom : Tooltip::ArrowPointPos::Top;
+        Tooltip::show(name_, QRect(mapToGlobal(r.topLeft()), r.size()), { 0, 0 }, direction, position);
+    }
+
+    void AppBarItem::hideTooltip()
+    {
+        tooltipVisible_ = false;
+        Tooltip::hide();
+    }
+
+    TabItem::TabItem(const QString& _iconPath, const QString& _iconActivePath, QWidget* _parent)
+        : BaseBarItem(_iconPath, _iconActivePath, activeColor(), hoveredColor(), normalColor(), _parent)
+    {
+        setFixedHeight(tabBarDefaultHeight());
+        QObject::connect(this, &SimpleListItem::hoverChanged, this, &TabItem::updateTextColor);
+    }
+
+    void TabItem::setSelected(bool _value)
+    {
+        if (BaseBarItem::isSelected() != _value)
+        {
+            BaseBarItem::setSelected(_value);
+            updateTextColor();
             update();
         }
     }
@@ -180,7 +387,7 @@ namespace Ui
         const auto w = width();
         const auto padding = itemPadding();
 
-        p.drawPixmap((w - iconSize) / 2.0, padding, isSelected() ? activeIconPixmap_ : (isHovered() ? hoveredIconPixmap_ : normalIconPixmap_));
+        p.drawPixmap((w - iconSize) / 2.0, padding, isSelected() ? activeIconPixmap() : (isHovered() ? hoveredIconPixmap() : normalIconPixmap()));
 
         if (!badgeText_.isEmpty())
         {
@@ -208,28 +415,16 @@ namespace Ui
             nameTextUnit_->setColor(Styling::getParameters().getColor(isSelected() ? Styling::StyleVariable::TEXT_PRIMARY : (isHovered() ? Styling::StyleVariable::BASE_SECONDARY_HOVER : Styling::StyleVariable::BASE_PRIMARY)));
     }
 
-    void TabItem::setBadgeFont(const QFont & _font)
+    BaseTabBar::BaseTabBar(Qt::Orientation _orientation, QWidget* _parent)
+        : SimpleListWidget(_orientation, _parent)
     {
-        if (badgeTextUnit_ && badgeTextUnit_->getFont() != _font)
-            badgeTextUnit_->init(_font, badgeTextColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
     }
 
-
-    TabBar::TabBar(QWidget* _parent)
-        : SimpleListWidget(Qt::Horizontal, _parent)
-    {
-        setContentsMargins(0, 0, 0, 0);
-
-        setFixedHeight(TabBar::getDefaultHeight());
-    }
-
-    TabBar::~TabBar() = default;
-
-    void TabBar::setBadgeText(int _index, const QString& _text)
+    void BaseTabBar::setBadgeText(int _index, const QString& _text)
     {
         if (isValidIndex(_index))
         {
-            if (auto item = qobject_cast<TabItem*>(itemAt(_index)))
+            if (auto item = qobject_cast<BaseBarItem*>(itemAt(_index)))
                 item->setBadgeText(_text);
             else
                 qWarning("TabBar: can not cast to TabItem");
@@ -240,6 +435,40 @@ namespace Ui
             qWarning("TabBar: invalid index");
         }
     }
+
+    void BaseTabBar::setBadgeIcon(int _index, const QString& _icon)
+    {
+        if (isValidIndex(_index))
+        {
+            if (auto item = qobject_cast<BaseBarItem*>(itemAt(_index)))
+                item->setBadgeIcon(_icon);
+            else
+                qWarning("TabBar: can not cast to TabItem");
+        }
+        else
+        {
+            qWarning("TabBar: invalid index");
+        }
+    }
+
+    AppsBar::AppsBar(QWidget* _parent)
+        : BaseTabBar(Qt::Vertical, _parent)
+    {
+        setFixedWidth(AppsNavigationBar::defaultWidth());
+        const auto margin = appBarContentMargin();
+        setContentsMargins(margin, margin, margin, margin);
+        setSpacing(appBarSpacing());
+    }
+
+    TabBar::TabBar(QWidget* _parent)
+        : BaseTabBar(Qt::Horizontal, _parent)
+    {
+        setContentsMargins(0, 0, 0, 0);
+
+        setFixedHeight(tabBarDefaultHeight());
+    }
+
+    TabBar::~TabBar() = default;
 
     void TabBar::paintEvent(QPaintEvent* _e)
     {
@@ -253,23 +482,4 @@ namespace Ui
         SimpleListWidget::paintEvent(_e);
     }
 
-    void TabBar::setBadgeIcon(int _index, const QString& _icon)
-    {
-        if (isValidIndex(_index))
-        {
-            if (auto item = qobject_cast<TabItem*>(itemAt(_index)))
-                item->setBadgeIcon(_icon);
-            else
-                qWarning("TabBar: can not cast to TabItem");
-        }
-        else
-        {
-            qWarning("TabBar: invalid index");
-        }
-    }
-
-    int TabBar::getDefaultHeight()
-    {
-        return Utils::scale_value(52);
-    }
 }

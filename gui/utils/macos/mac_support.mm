@@ -103,6 +103,20 @@ void setEditMenuEnabled(bool _enabled)
     }
 }
 
+@interface StatusItemKVO : NSObject
+-(void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary<NSKeyValueChangeKey,id> *)change context:(void *)context;
+@end
+@implementation StatusItemKVO
+-(void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary<NSKeyValueChangeKey,id> *)change context:(void *)context
+{
+    if ([keyPath isEqualToString:@"button.effectiveAppearance"])
+       Q_EMIT Utils::InterConnector::instance().trayIconThemeChanged();
+}
+@end
+
+static NSStatusItem* statusItemForTheme_ = nil;
+static StatusItemKVO* statusItemKVO_ = nil;
+
 @interface AppDelegate: NSObject<NSApplicationDelegate>
 - (void)handleURLEvent:(NSAppleEventDescriptor *)event withReplyEvent:(NSAppleEventDescriptor *)replyEvent;
 //- (void)applicationDidFinishLaunching:(NSNotification *)notification;
@@ -145,8 +159,19 @@ void setEditMenuEnabled(bool _enabled)
 - (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender
 {
     if (mainWindow_ != nil)
-    {
         mainWindow_->exit();
+    if (statusItemKVO_ != nil)
+    {
+        if (statusItemForTheme_ != nil)
+            [statusItemForTheme_ removeObserver:statusItemKVO_ forKeyPath:@"button.effectiveAppearance"];
+
+        [statusItemKVO_ release];
+    }
+    if (statusItemForTheme_ != nil)
+    {
+        [[NSStatusBar systemStatusBar] removeStatusItem:statusItemForTheme_];
+        [statusItemForTheme_ release];
+        statusItemForTheme_ = nil;
     }
     [[NSNotificationCenter defaultCenter] postNotificationName:@"NSApplicationWillTerminateNotification" object:nil];
     return NSTerminateCancel;
@@ -343,20 +368,6 @@ void setEditMenuEnabled(bool _enabled)
 @end
 // end of sparkle
 #endif
-
-BOOL isNetworkAvailable()
-{
-    BOOL connected;
-    BOOL isConnected;
-    const char *host = "www.icq.com";
-    SCNetworkReachabilityRef reachability = SCNetworkReachabilityCreateWithName(NULL, host);
-    SCNetworkReachabilityFlags flags;
-    connected = SCNetworkReachabilityGetFlags(reachability, &flags);
-    isConnected = NO;
-    isConnected = connected && (flags & kSCNetworkFlagsReachable) && !(flags & kSCNetworkFlagsConnectionRequired);
-    CFRelease(reachability);
-    return isConnected;
-}
 
 @interface EventsCatcher : NSObject
 
@@ -602,11 +613,6 @@ bool MacSupport::setFeedUrl()
     return false;
 }
 
-void MacSupport::enableMacCrashReport()
-{
-    return;
-}
-
 void MacSupport::listenSystemEvents()
 {
     static EventsCatcher *eventsCatcher = nil;
@@ -676,11 +682,6 @@ void MacSupport::enableMacPreview(WId wid)
     NSView *view = (__bridge NSView *)pntr;
 
     macPreviewProxy_ = [[MacPreviewProxy alloc] initInWindow:view.window];
-}
-
-void MacSupport::postCrashStatsIfNedded()
-{
-    return;
 }
 
 MacTitlebar* MacSupport::windowTitle()
@@ -777,13 +778,49 @@ QString MacSupport::currentRegion()
     return toQString(locale.localeIdentifier);
 }
 
-QString MacSupport::currentTheme()
+MacSupport::ThemeType MacSupport::currentTheme()
 {
     NSDictionary *dict = [[NSUserDefaults standardUserDefaults] persistentDomainForName:NSGlobalDomain];
     id style = [dict objectForKey:@"AppleInterfaceStyle"];
     BOOL darkModeOn = ( style && [style isKindOfClass:[NSString class]] && NSOrderedSame == [style caseInsensitiveCompare:@"dark"] );
 
-    return darkModeOn ? qsl("black") : qsl("white");
+    return darkModeOn ? ThemeType::Dark : ThemeType::White;
+}
+
+static MacSupport::ThemeType getTheme(NSAppearance *appearance)
+{
+    NSString *appearanceName = (NSString*)(appearance.name);
+    if ([[appearanceName lowercaseString] containsString:@"dark"])
+        return MacSupport::ThemeType::Dark;
+    return MacSupport::ThemeType::White;
+}
+
+MacSupport::ThemeType MacSupport::currentThemeForTray()
+{
+    if (isBigSurOrGreater())
+    {
+        if (statusItemForTheme_ == nil)
+        {
+            statusItemForTheme_ = [[[NSStatusBar systemStatusBar] statusItemWithLength:NSSquareStatusItemLength] retain];
+            statusItemForTheme_.visible = NO;
+            statusItemKVO_ = [[StatusItemKVO alloc] init];
+            [statusItemForTheme_ addObserver:statusItemKVO_ forKeyPath:@"button.effectiveAppearance" options:NSKeyValueObservingOptionNew context:nil];
+        }
+        return getTheme(statusItemForTheme_.button.effectiveAppearance);
+    }
+    return currentTheme();
+}
+
+QString MacSupport::themeTypeToString(ThemeType _type)
+{
+    return _type == ThemeType::Dark ? qsl("black") : qsl("white");
+}
+
+bool MacSupport::isBigSurOrGreater()
+{
+    if (@available(macOS 11.0, *))
+        return true;
+    return false;
 }
 
 QString MacSupport::settingsPath()
@@ -889,7 +926,7 @@ void MacSupport::createMenuBar(bool simple)
         menu->addSeparator();
         menuItems_.insert({window_switchMainWindow, createAction(menu, Utils::getAppTitle(), QString(), mainWindow_, &Ui::MainWindow::activate)});
 
-        if (const auto& mainPage = mainWindow_->getMainPage())
+        if (const auto& mainPage = mainWindow_->getMessengerPage())
             menuItems_[window_switchVoipWindow] = createAction(menu, Utils::Translations::Get(qsl("ICQ VOIP")), QString(), mainPage, &Ui::MainPage::showVideoWindow);
 
         windowMenu_ = menu;
@@ -920,7 +957,7 @@ void MacSupport::createMenuBar(bool simple)
     {
         if (windowMenu_)
         {
-            if (const auto& mainPage = mainWindow_->getMainPage())
+            if (const auto& mainPage = mainWindow_->getMessengerPage())
                 menuItems_[window_switchVoipWindow] = createAction((QMenu*)windowMenu_, Utils::Translations::Get(qsl("ICQ VOIP")), QString(), mainPage, &Ui::MainPage::showVideoWindow);
         }
     }
@@ -1000,16 +1037,21 @@ void MacSupport::updateMainMenu()
     QAction *windowVoip = menuItems_[window_switchVoipWindow];
     QAction *windowICQ = menuItems_[window_switchMainWindow];
     QAction *bringToFront = menuItems_[window_bringToFront];
+    QAction *viewNextUnread = menuItems_[view_unreadMessage];
 
     menuItems_[window_mainWindow]->setEnabled(true);
 
-    const auto mainPage = mainWindow_ ? mainWindow_->getMainPage() : nullptr;
+    const auto mainPage = mainWindow_ ? mainWindow_->getMessengerPage() : nullptr;
     bool mainWindowActive = mainWindow_ && mainWindow_->isActive();
+    const bool messengerPageDisplayed = mainWindow_ && mainWindow_->isMessengerPage();
 
     bool isCall = mainPage && mainPage->isVideoWindowOn();
     bool voipWindowActive = mainPage && mainPage->isVideoWindowActive();
     bool voipWindowMinimized = mainPage && mainPage->isVideoWindowMinimized();
     bool voipWindowFullscreen = !isCall || (mainPage && mainPage->isVideoWindowFullscreen());
+
+    if (viewNextUnread)
+        viewNextUnread->setEnabled(messengerPageDisplayed);
 
     auto code = Ui::get_gui_settings()->get_value<int>(settings_shortcuts_close_action, static_cast<int>(Ui::ShortcutsCloseAction::Default));
     auto act = static_cast<Ui::ShortcutsCloseAction>(code);
@@ -1018,6 +1060,8 @@ void MacSupport::updateMainMenu()
         closeAct_ = act;
         contactClose->setText(Utils::getShortcutsCloseActionName(closeAct_));
     }
+    if (contactClose)
+        contactClose->setEnabled(messengerPageDisplayed || act != Ui::ShortcutsCloseAction::CloseChat);
 
     auto isFullScreen = false;
     auto inDock = false;
@@ -1043,7 +1087,7 @@ void MacSupport::updateMainMenu()
     if (prevChat)
         prevChat->setEnabled(false);
 
-    if (mainWindow_ && mainWindow_->getMainPage() && mainWindow_->getMainPage()->getContactDialog() && nextChat && prevChat)
+    if (mainWindow_ && nextChat && prevChat && messengerPageDisplayed)
     {
         const QString &aimId = Logic::getContactListModel()->selectedContact();
         const auto enabled = !aimId.isEmpty() && !mainWindow_->isMinimized() && !inDock;
@@ -1565,6 +1609,23 @@ bool MacSupport::isMetalSupported()
     }
 
     return isMetalSupported;
+}
+
+int MacSupport::getWidgetHeaderHeight(const QWidget& widget)
+{
+    // get parent window rect
+    auto view = reinterpret_cast<NSView*>(widget.winId());
+    im_assert(view);
+    if (!view)
+        return 0;
+
+    auto window = [view window];
+    im_assert(window);
+    if (!window)
+        return 0;
+
+    const auto contentHeight = [window contentRectForFrameRect: window.frame].size.height;
+    return static_cast<int>(window.frame.size.height - contentHeight);
 }
 
 void MacSupport::zoomWindow(WId wid)

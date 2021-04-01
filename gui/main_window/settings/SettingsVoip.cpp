@@ -37,7 +37,7 @@ void GeneralSettingsWidget::Creator::initVoiceVideo(QWidget* _parent, VoiceAndVi
 
     auto __deviceChanged = [&_voiceAndVideo, _parent](const int ix, const voip_proxy::EvoipDevTypes dev_type)
     {
-        assert(ix >= 0);
+        im_assert(ix >= 0);
         if (ix < 0)
             return;
 
@@ -52,15 +52,15 @@ void GeneralSettingsWidget::Creator::initVoiceVideo(QWidget* _parent, VoiceAndVi
             devList = &_voiceAndVideo.vCapDeviceList; break;
         case voip_proxy::kvoipDevTypeUndefined:
         default:
-            assert(!"unexpected device type");
+            im_assert(!"unexpected device type");
             return;
         };
 
-        assert(devList);
+        im_assert(devList);
         if (devList->empty())
             return;
 
-        assert(ix < (int)devList->size());
+        im_assert(ix < (int)devList->size());
         const DeviceInfo& info = (*devList)[ix];
 
         GeneralSettingsWidget* settingsWidget = qobject_cast<GeneralSettingsWidget*>(_parent->parent());

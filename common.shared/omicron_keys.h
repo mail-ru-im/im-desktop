@@ -147,6 +147,15 @@ namespace omicron
 
         constexpr auto remove_deleted_from_notifications = "remove_deleted_from_notifications";
 
+        constexpr auto long_path_tooltip_enabled = "long_path_tooltip_enabled";
         constexpr auto status_banner_emoji_csv = "status_banner_emoji_csv";
+
+        constexpr auto formatting_in_bubbles = "formatting_in_bubbles";
+
+        constexpr auto formatting_in_input = "formatting_in_input";
+
+        constexpr auto link_metainfo_repeat_interval = "link_metainfo_repeat_interval";
+        constexpr auto metainfo_repeat_interval = "metainfo_repeat_interval";
+        constexpr auto preview_repeat_interval = "preview_repeat_interval";
     }
 }

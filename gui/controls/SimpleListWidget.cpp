@@ -109,9 +109,7 @@ namespace Ui
             setLayout(Utils::emptyVLayout());
     }
 
-    SimpleListWidget::~SimpleListWidget()
-    {
-    }
+    SimpleListWidget::~SimpleListWidget() = default;
 
     int SimpleListWidget::addItem(SimpleListItem* _tab)
     {

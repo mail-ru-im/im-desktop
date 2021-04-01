@@ -107,7 +107,7 @@ void external_url_config::load_async(std::string_view _url, load_callback_t _cal
 {
     auto fire_callback = [_callback = std::move(_callback)](core::ext_url_config_error _error, std::string _url) mutable
     {
-        g_core->execute_core_context([_callback = std::move(_callback), _error, _url = std::move(_url)]() mutable { _callback(_error, std::move(_url)); });
+        g_core->execute_core_context({ [_callback = std::move(_callback), _error, _url = std::move(_url)] () mutable { _callback(_error, std::move(_url)); } });
     };
 
     if (_url.empty())

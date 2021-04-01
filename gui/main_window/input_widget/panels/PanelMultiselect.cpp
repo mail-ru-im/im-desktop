@@ -121,9 +121,18 @@ namespace Ui
 
     void InputPanelMultiselect::resizeEvent(QResizeEvent* _event)
     {
-        copy_->setText(width() > minimum_width() ? QT_TRANSLATE_NOOP("context_menu", "Copy") : QString());
-        reply_->setText(width() > minimum_width() ? QT_TRANSLATE_NOOP("context_menu", "Reply") : QString());
-        forward_->setText(width() > minimum_width() ? QT_TRANSLATE_NOOP("context_menu", "Forward") : QString());
+        const auto isWide = width() > minimum_width();
+
+        copy_->setText(isWide ? QT_TRANSLATE_NOOP("context_menu", "Copy") : QString());
+        reply_->setText(isWide ? QT_TRANSLATE_NOOP("context_menu", "Reply") : QString());
+        forward_->setText(isWide ? QT_TRANSLATE_NOOP("context_menu", "Forward") : QString());
+
+        delete_->setTooltipText(QT_TRANSLATE_NOOP("context_menu", "Remove"));
+        favorites_->setTooltipText(QT_TRANSLATE_NOOP("context_menu", "Add to favorites"));
+        copy_->setTooltipText(isWide ? QString() : QT_TRANSLATE_NOOP("context_menu", "Copy"));
+        reply_->setTooltipText(isWide ? QString() : QT_TRANSLATE_NOOP("context_menu", "Reply"));
+        forward_->setTooltipText(isWide ? QString() : QT_TRANSLATE_NOOP("context_menu", "Forward"));
+
         return QWidget::resizeEvent(_event);
     }
 

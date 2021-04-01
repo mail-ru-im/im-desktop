@@ -10,9 +10,9 @@ namespace Utils
         , radius_(_radius)
         , coreCount_(_coreCount)
     {
-        assert(!source_.isNull());
-        assert(radius_ >= minRadius());
-        assert(radius_ <= maxRadius()); // algorithm requirement
+        im_assert(!source_.isNull());
+        im_assert(radius_ >= minRadius());
+        im_assert(radius_ <= maxRadius()); // algorithm requirement
     }
 
     void BlurPixmapTask::run()

@@ -59,19 +59,19 @@ namespace
 {
     void release(const int64_t _id)
     {
-        assert(_id > 0);
+        im_assert(_id > 0);
 
         auto iter = callbacks_.find(_id);
         if (iter == callbacks_.end())
         {
-            assert(!"release on an unknown callback");
+            im_assert(!"release on an unknown callback");
             return;
         }
 
         const auto &info = std::get<1>(*iter);
 
         const auto ref_counter = get_counter(info);
-        assert(ref_counter > 0);
+        im_assert(ref_counter > 0);
 
         if (ref_counter == 1)
         {
@@ -80,14 +80,14 @@ namespace
         }
 
         const auto &proc = get_proc(info);
-        assert(proc);
+        im_assert(proc);
 
         iter->second = make_info(ref_counter - 1, proc);
     }
 
     int64_t create(const remote_proc_t &_proc)
     {
-        assert(_proc);
+        im_assert(_proc);
 
         const auto uid = ++next_uid_;
 
@@ -108,7 +108,7 @@ namespace
 
     proc_info make_info(const int32_t _counter, const remote_proc_t &_proc)
     {
-        assert(_proc);
+        im_assert(_proc);
 
         return std::make_tuple(_counter, _proc);
     }

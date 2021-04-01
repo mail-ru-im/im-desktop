@@ -22,8 +22,6 @@
 #pragma warning( error : 35038)
 #endif //WIN32
 
-#define BOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED
-
 #include <algorithm>
 #include <numeric>
 #include <atomic>
@@ -68,7 +66,6 @@
 #ifndef _WIN32
 #include <boost/asio.hpp>
 #endif //_WIN32
-#include <boost/bind.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/range/adaptor/reversed.hpp>
 #include <boost/range/adaptor/map.hpp>
@@ -91,7 +88,6 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/property_tree/xml_parser.hpp>
-#include <boost/stacktrace.hpp>
 
 #include "../common.shared/common.h"
 #include "../common.shared/typedefs.h"

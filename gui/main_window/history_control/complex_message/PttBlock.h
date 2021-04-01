@@ -117,7 +117,7 @@ public:
 
     QSize getCtrlButtonSize() const;
 
-    QString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
+    Data::FormattedString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
 
     bool updateFriendly(const QString& _aimId, const QString& _friendly) override;
 
@@ -181,7 +181,7 @@ protected:
 
     void onMetainfoDownloaded() override;
 
-    void onPreviewMetainfoDownloaded(const QString &_miniPreviewUri, const QString &_fullPreviewUri) override;
+    void onPreviewMetainfoDownloaded() override;
 
     void onMenuOpenFolder() final override;
 
@@ -194,6 +194,8 @@ protected:
     void leaveEvent(QEvent* _e) override;
 
     void enterEvent(QEvent* _e) override;
+
+    void wheelEvent(QWheelEvent* _e) override;
 
 private:
     Q_PROPERTY(int32_t PlaybackProgress READ getPlaybackProgress WRITE setPlaybackProgress);

@@ -83,8 +83,8 @@ namespace Logic
         , outgoing_(_outgoing)
         , date_(_date)
     {
-        assert(type_ > core::message_type::min);
-        assert(type_ < core::message_type::max);
+        im_assert(type_ > core::message_type::min);
+        im_assert(type_ < core::message_type::max);
     }
 
     bool MessageKey::operator<(const MessageKey& _other) const noexcept
@@ -115,8 +115,8 @@ namespace Logic
 
     bool MessageKey::isChatEvent() const noexcept
     {
-        assert(type_ >= core::message_type::min);
-        assert(type_ <= core::message_type::max);
+        im_assert(type_ >= core::message_type::min);
+        im_assert(type_ <= core::message_type::max);
 
         return type_ == core::message_type::chat_event;
     }
@@ -128,7 +128,7 @@ namespace Logic
 
     void MessageKey::setId(const int64_t _id) noexcept
     {
-        assert(_id >= -1);
+        im_assert(_id >= -1);
 
         id_ = _id;
     }
@@ -144,7 +144,7 @@ namespace Logic
 
         if (!hasId() && outgoing_)
         {
-            assert(!internalId_.isEmpty());
+            im_assert(!internalId_.isEmpty());
         }
     }
 
@@ -160,16 +160,16 @@ namespace Logic
 
     bool MessageKey::isFileSharing() const noexcept
     {
-        assert(type_ >= core::message_type::min);
-        assert(type_ <= core::message_type::max);
+        im_assert(type_ >= core::message_type::min);
+        im_assert(type_ <= core::message_type::max);
 
         return type_ == core::message_type::file_sharing;
     }
 
     bool MessageKey::isVoipEvent() const noexcept
     {
-        assert(type_ >= core::message_type::min);
-        assert(type_ <= core::message_type::max);
+        im_assert(type_ >= core::message_type::min);
+        im_assert(type_ <= core::message_type::max);
 
         return type_ == core::message_type::voip_event;
     }
@@ -191,8 +191,8 @@ namespace Logic
 
     bool MessageKey::isSticker() const noexcept
     {
-        assert(type_ >= core::message_type::min);
-        assert(type_ <= core::message_type::max);
+        im_assert(type_ >= core::message_type::min);
+        im_assert(type_ <= core::message_type::max);
 
         return (type_ == core::message_type::sticker);
     }
@@ -239,7 +239,7 @@ namespace Logic
 
     MessageKey MessageKey::toPurePending() const
     {
-        assert(!isPending() && !internalId_.isEmpty());
+        im_assert(!isPending() && !internalId_.isEmpty());
         auto res = *this;
         res.id_ = -1;
         res.prev_ = -1;
@@ -304,16 +304,16 @@ namespace Logic
 
     bool Message::isBase() const noexcept
     {
-        assert(key_.getType() > core::message_type::min);
-        assert(key_.getType() < core::message_type::max);
+        im_assert(key_.getType() > core::message_type::min);
+        im_assert(key_.getType() < core::message_type::max);
 
         return key_.getType() == core::message_type::base;
     }
 
     bool Message::isChatEvent() const noexcept
     {
-        assert(key_.getType() > core::message_type::min);
-        assert(key_.getType() < core::message_type::max);
+        im_assert(key_.getType() > core::message_type::min);
+        im_assert(key_.getType() < core::message_type::max);
 
         return key_.getType() == core::message_type::chat_event;
     }
@@ -343,16 +343,16 @@ namespace Logic
 
     bool Message::isFileSharing() const noexcept
     {
-        assert(key_.getType() > core::message_type::min);
-        assert(key_.getType() < core::message_type::max);
-        assert((key_.getType() != core::message_type::file_sharing) || fileSharing_);
+        im_assert(key_.getType() > core::message_type::min);
+        im_assert(key_.getType() < core::message_type::max);
+        im_assert((key_.getType() != core::message_type::file_sharing) || fileSharing_);
 
         return key_.getType() == core::message_type::file_sharing;
     }
 
     bool Message::isOutgoing() const noexcept
     {
-        assert(!buddy_ || key_.isOutgoing() == getBuddy()->IsOutgoing());
+        im_assert(!buddy_ || key_.isOutgoing() == getBuddy()->IsOutgoing());
         return key_.isOutgoing();
     }
 
@@ -369,25 +369,25 @@ namespace Logic
 
     bool Message::isSticker() const noexcept
     {
-        assert(key_.getType() > core::message_type::min);
-        assert(key_.getType() < core::message_type::max);
-        assert((key_.getType() != core::message_type::sticker) || sticker_);
+        im_assert(key_.getType() > core::message_type::min);
+        im_assert(key_.getType() < core::message_type::max);
+        im_assert((key_.getType() != core::message_type::sticker) || sticker_);
 
         return key_.getType() == core::message_type::sticker;
     }
 
     bool Message::isVoipEvent() const noexcept
     {
-        assert(key_.getType() > core::message_type::min);
-        assert(key_.getType() < core::message_type::max);
-        assert((key_.getType() != core::message_type::voip_event) || voipEvent_);
+        im_assert(key_.getType() > core::message_type::min);
+        im_assert(key_.getType() < core::message_type::max);
+        im_assert((key_.getType() != core::message_type::voip_event) || voipEvent_);
 
         return (key_.getType() == core::message_type::voip_event);
     }
 
     const HistoryControl::ChatEventInfoSptr& Message::getChatEvent() const
     {
-        assert(!chatEvent_ || isChatEvent());
+        im_assert(!chatEvent_ || isChatEvent());
 
         return chatEvent_;
     }
@@ -399,7 +399,7 @@ namespace Logic
 
     const HistoryControl::FileSharingInfoSptr& Message::getFileSharing() const
     {
-        assert(!fileSharing_ || isFileSharing());
+        im_assert(!fileSharing_ || isFileSharing());
 
         return fileSharing_;
     }
@@ -407,22 +407,22 @@ namespace Logic
 
     const HistoryControl::StickerInfoSptr& Message::getSticker() const
     {
-        assert(!sticker_ || isSticker());
+        im_assert(!sticker_ || isSticker());
 
         return sticker_;
     }
 
     const HistoryControl::VoipEventInfoSptr& Message::getVoipEvent() const
     {
-        assert(!voipEvent_ || isVoipEvent());
+        im_assert(!voipEvent_ || isVoipEvent());
 
         return voipEvent_;
     }
 
     void Message::setChatEvent(const HistoryControl::ChatEventInfoSptr& _info)
     {
-        assert(!chatEvent_);
-        assert(!_info || (key_.getType() == core::message_type::chat_event));
+        im_assert(!chatEvent_);
+        im_assert(!_info || (key_.getType() == core::message_type::chat_event));
 
         chatEvent_ = _info;
     }
@@ -434,31 +434,31 @@ namespace Logic
 
     void Message::setFileSharing(const HistoryControl::FileSharingInfoSptr& _info)
     {
-        assert(!fileSharing_);
-        assert(!_info || (key_.getType() == core::message_type::file_sharing));
+        im_assert(!fileSharing_);
+        im_assert(!_info || (key_.getType() == core::message_type::file_sharing));
 
         fileSharing_ = _info;
     }
 
     void Message::setSticker(const HistoryControl::StickerInfoSptr& _info)
     {
-        assert(!sticker_);
-        assert(!_info || (key_.getType() == core::message_type::sticker));
+        im_assert(!sticker_);
+        im_assert(!_info || (key_.getType() == core::message_type::sticker));
 
         sticker_ = _info;
     }
 
     void Message::setVoipEvent(const HistoryControl::VoipEventInfoSptr& _info)
     {
-        assert(!voipEvent_);
-        assert(!_info || (key_.getType() == core::message_type::voip_event));
+        im_assert(!voipEvent_);
+        im_assert(!_info || (key_.getType() == core::message_type::voip_event));
 
         voipEvent_ = _info;
     }
 
     void Message::applyModification(const Data::MessageBuddy& _modification)
     {
-        assert(key_.getId() == _modification.Id_);
+        im_assert(key_.getId() == _modification.Id_);
 
         EraseEventData();
 

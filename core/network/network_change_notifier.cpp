@@ -86,7 +86,7 @@ namespace core
 
             if (timer_ != -1)
                 g_core->stop_timer(timer_);
-            timer_ = g_core->add_timer(cb, delay);
+            timer_ = g_core->add_timer({ cb }, delay);
         }
 
     private:

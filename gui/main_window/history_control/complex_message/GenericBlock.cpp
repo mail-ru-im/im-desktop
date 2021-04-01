@@ -20,6 +20,8 @@
 #include "../MessageStyle.h"
 #include "../../mediatype.h"
 
+#include "../../../controls/TooltipWidget.h"
+
 UI_COMPLEX_MESSAGE_NS_BEGIN
 
 namespace
@@ -28,41 +30,43 @@ namespace
 }
 
 GenericBlock::GenericBlock(
-    ComplexMessageItem *parent,
-    const QString &sourceText,
-    const MenuFlags menuFlags,
-    const bool isResourcesUnloadingEnabled)
-    : QWidget(parent)
-    , QuoteAnimation_(parent)
+    ComplexMessageItem* _parent,
+    const Data::FormattedString& _sourceText,
+    const MenuFlags _menuFlags,
+    const bool _isResourcesUnloadingEnabled)
+    : QWidget(_parent)
+    , QuoteAnimation_(_parent)
     , Initialized_(false)
-    , IsResourcesUnloadingEnabled_(isResourcesUnloadingEnabled)
-    , MenuFlags_(menuFlags)
-    , Parent_(parent)
+    , IsResourcesUnloadingEnabled_(_isResourcesUnloadingEnabled)
+    , MenuFlags_(_menuFlags)
+    , Parent_(_parent)
     , ResourcesUnloadingTimer_(nullptr)
-    , SourceText_(sourceText)
+    , SourceText_(_sourceText)
     , IsBubbleRequired_(true)
     , galleryId_(-1)
     , IsInsideQuote_(false)
     , IsInsideForward_(false)
     , IsSelected_(false)
+    , tooltipTimer_(nullptr)
+    , tooltipActivated_(false)
 {
-    assert(Parent_);
+    im_assert(Parent_);
 
     QuoteAnimation_.setAimId(getChatAimid());
-    connect(this, &GenericBlock::setQuoteAnimation, parent, &ComplexMessageItem::setQuoteAnimation);
+    connect(this, &GenericBlock::setQuoteAnimation, _parent, &ComplexMessageItem::setQuoteAnimation);
 }
 
 GenericBlock::GenericBlock()
     : QuoteAnimation_(this)
 {
-    assert(!"program isn't supposed to reach this point");
+    im_assert(!"program isn't supposed to reach this point");
 }
 
 GenericBlock::~GenericBlock() = default;
 
 QSize GenericBlock::blockSizeForMaxWidth(const int32_t maxWidth)
 {
-    assert(maxWidth > 0);
+    im_assert(maxWidth > 0);
 
     if (const auto layout = getBlockLayout())
         return layout->blockSizeForMaxWidth(maxWidth);
@@ -78,7 +82,7 @@ void GenericBlock::deleteLater()
 
 QString GenericBlock::formatRecentsText() const
 {
-    return getSourceText();
+    return Data::stubFromFormattedString(getSourceText());
 }
 
 Ui::MediaType GenericBlock::getMediaType() const
@@ -88,7 +92,7 @@ Ui::MediaType GenericBlock::getMediaType() const
 
 ComplexMessageItem* GenericBlock::getParentComplexMessage() const
 {
-    assert(Parent_);
+    im_assert(Parent_);
     return Parent_;
 }
 
@@ -107,7 +111,7 @@ QString GenericBlock::getSenderFriendly() const
     return getParentComplexMessage()->getSenderFriendly();
 }
 
-void GenericBlock::setSourceText(const QString& _text)
+void GenericBlock::setSourceText(const Data::FormattedString& _text)
 {
     SourceText_ = _text;
 }
@@ -117,20 +121,20 @@ const QString& GenericBlock::getChatAimid() const
     return getParentComplexMessage()->getChatAimid();
 }
 
-QString GenericBlock::getSourceText() const
+Data::FormattedString GenericBlock::getSourceText() const
 {
-    assert(!SourceText_.isEmpty());
+    im_assert(!SourceText_.isEmpty());
     return SourceText_;
 }
 
-QString GenericBlock::getTextInstantEdit() const
+Data::FormattedString GenericBlock::getTextInstantEdit() const
 {
     return getSourceText();
 }
 
 QString GenericBlock::getPlaceholderText() const
 {
-    return getSourceText();
+    return Data::stubFromFormattedString(getSourceText());
 }
 
 const QString& GenericBlock::getLink() const
@@ -141,7 +145,7 @@ const QString& GenericBlock::getLink() const
 
 QString GenericBlock::getTextForCopy() const
 {
-    return getSourceText();
+    return Data::stubFromFormattedString(getSourceText());
 }
 
 bool GenericBlock::isBubbleRequired() const
@@ -350,12 +354,12 @@ void GenericBlock::selectByPos(const QPoint &from, const QPoint &to, bool topToB
     selectionArea = selectionArea.normalized();
 
     const auto selectionOverlap = globalWidgetRect.intersected(selectionArea);
-    assert(selectionOverlap.height() >= 0);
+    im_assert(selectionOverlap.height() >= 0);
 
     const auto widgetHeight = std::max(globalWidgetRect.height(), 1);
     const auto overlappedHeight = selectionOverlap.height();
     const auto overlapRatePercents = ((overlappedHeight * 100) / widgetHeight);
-    assert(overlapRatePercents >= 0);
+    im_assert(overlapRatePercents >= 0);
 
     const auto isSelected = (overlapRatePercents > 50);
     if (isSelected)
@@ -470,17 +474,17 @@ void GenericBlock::markDirty()
 
 void GenericBlock::onMenuCopyLink()
 {
-    assert(!"should be overriden in child class");
+    im_assert(!"should be overriden in child class");
 }
 
 void GenericBlock::onMenuCopyFile()
 {
-    assert(!"should be overriden in child class");
+    im_assert(!"should be overriden in child class");
 }
 
 void GenericBlock::onMenuSaveFileAs()
 {
-    assert(!"should be overriden in child class");
+    im_assert(!"should be overriden in child class");
 }
 
 void GenericBlock::onMenuOpenInBrowser()
@@ -507,7 +511,7 @@ void GenericBlock::onUnloadResources()
 
 }
 
-void GenericBlock::paintEvent(QPaintEvent *e)
+void GenericBlock::paintEvent(QPaintEvent* _e)
 {
     if (!isInitialized())
         return;
@@ -521,7 +525,7 @@ void GenericBlock::paintEvent(QPaintEvent *e)
     p.setPen(Qt::NoPen);
     p.setBrush(Qt::NoBrush);
 
-    drawBlock(p, e->rect(), QuoteAnimation_.quoteColor());
+    drawBlock(p, _e->rect(), QuoteAnimation_.quoteColor());
 
     if (MessageStyle::isBlocksGridEnabled())
     {
@@ -529,16 +533,16 @@ void GenericBlock::paintEvent(QPaintEvent *e)
         p.drawRect(rect());
     }
 
-    QWidget::paintEvent(e);
+    QWidget::paintEvent(_e);
 }
 
-void GenericBlock::mouseMoveEvent(QMouseEvent *e)
+void GenericBlock::mouseMoveEvent(QMouseEvent* _e)
 {
-    const auto isLeftButtonPressed = ((e->buttons() & Qt::LeftButton) != 0);
+    const auto isLeftButtonPressed = ((_e->buttons() & Qt::LeftButton) != 0);
     const auto beginDrag = (isLeftButtonPressed && isDraggable() && !Utils::InterConnector::instance().isMultiselect() && !Parent_->isSelected());
     if (beginDrag)
     {
-        auto pos = e->pos();
+        auto pos = _e->pos();
         if (mousePos_.isNull())
         {
             mousePos_ = pos;
@@ -554,23 +558,33 @@ void GenericBlock::mouseMoveEvent(QMouseEvent *e)
     {
         mousePos_ = QPoint();
     }
-    return QWidget::mouseMoveEvent(e);
+    return QWidget::mouseMoveEvent(_e);
 }
 
-void GenericBlock::mousePressEvent(QMouseEvent *e)
+void GenericBlock::mousePressEvent(QMouseEvent* _e)
 {
-    if (e->button() == Qt::LeftButton)
-        mouseClickPos_ = e->pos();
+    if (_e->button() == Qt::LeftButton)
+        mouseClickPos_ = _e->pos();
 
-    return QWidget::mousePressEvent(e);
+    return QWidget::mousePressEvent(_e);
 }
 
-void GenericBlock::mouseReleaseEvent(QMouseEvent *e)
+void GenericBlock::mouseReleaseEvent(QMouseEvent* _e)
 {
-    if (mouseClickPos_.x() == e->pos().x() && mouseClickPos_.y() == e->pos().y())
+    if (mouseClickPos_.x() == _e->pos().x() && mouseClickPos_.y() == _e->pos().y())
         Q_EMIT clicked();
 
-    return QWidget::mouseReleaseEvent(e);
+    return QWidget::mouseReleaseEvent(_e);
+}
+
+void GenericBlock::wheelEvent(QWheelEvent* _e)
+{
+    if constexpr (platform::is_apple())
+    {
+        if (tooltipActivated_)
+            hideTooltip();
+    }
+    QWidget::wheelEvent(_e);
 }
 
 void GenericBlock::startResourcesUnloadTimer()
@@ -704,6 +718,45 @@ bool GenericBlock::isEdited() const
 qint64 GenericBlock::getGalleryId() const
 {
     return galleryId_ == -1 ? getId() : galleryId_;
+}
+
+bool GenericBlock::isTooltipActivated() const
+{
+    return tooltipActivated_;
+}
+
+void GenericBlock::showTooltip(QString _text, QRect _rect, Tooltip::ArrowDirection _arrowDir, Tooltip::ArrowPointPos _arrowPos)
+{
+    hideTooltip();
+
+    if (!tooltipTimer_)
+    {
+        tooltipTimer_ = new QTimer(this);
+        tooltipTimer_->setInterval(Tooltip::getDefaultShowDelay());
+        tooltipTimer_->setSingleShot(true);
+    }
+    else
+    {
+        tooltipTimer_->disconnect(this);
+    }
+
+    connect(tooltipTimer_, &QTimer::timeout, this, [text = std::move(_text), _rect, _arrowDir, _arrowPos]()
+    {
+        Tooltip::show(text, _rect, {}, _arrowDir, _arrowPos, {}, Tooltip::TooltipMode::Multiline);
+    });
+    tooltipTimer_->start();
+
+    tooltipActivated_ = true;
+}
+
+void GenericBlock::hideTooltip()
+{
+    if (tooltipTimer_)
+        tooltipTimer_->stop();
+
+    Tooltip::hide();
+
+    tooltipActivated_ = false;
 }
 
 UI_COMPLEX_MESSAGE_NS_END

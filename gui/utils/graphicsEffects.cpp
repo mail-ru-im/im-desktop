@@ -59,7 +59,7 @@ namespace Utils
         , width_(_width)
         , sides_(_sides)
     {
-        assert(width_ > 0);
+        im_assert(width_ > 0);
     }
 
     void GradientEdgesEffect::setSides(const Qt::Alignment _sides)

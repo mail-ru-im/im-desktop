@@ -502,10 +502,10 @@ void archive_index::drop_outdated_headers(const std::chrono::seconds _current_ti
     }
 }
 
-bool archive_index::get_next_hole(int64_t _from, archive_hole& _hole, int64_t _depth) const
+archive::archive_hole_error archive_index::get_next_hole(int64_t _from, archive_hole& _hole, int64_t _depth) const
 {
     if (headers_index_.empty())
-        return true;
+        return archive_hole_error::ok;
 
     int64_t current_depth = 0;
 
@@ -528,14 +528,14 @@ bool archive_index::get_next_hole(int64_t _from, archive_hole& _hole, int64_t _d
             _hole.set_from(-1);
             _hole.set_to(last_header_key);
 
-            return true;
+            return archive_hole_error::ok;
         }
 
         auto from_iter = headers_index_.find(_from);
         if (from_iter == headers_index_.cend())
         {
             assert(!"index not found");
-            return false;
+            return archive_hole_error::index_not_found;
         }
 
         iter_cursor = std::make_reverse_iterator(++from_iter);
@@ -545,7 +545,7 @@ bool archive_index::get_next_hole(int64_t _from, archive_hole& _hole, int64_t _d
 
     const auto only_patches_in_index = (iter_cursor == headers_index_.crend());
     if (only_patches_in_index)
-        return true;
+        return archive_hole_error::ok;
 
     // 2. search for holes
 
@@ -564,10 +564,10 @@ bool archive_index::get_next_hole(int64_t _from, archive_hole& _hole, int64_t _d
             if (current_header.get_prev_msgid() != -1)
             {
                 _hole.set_from(current_header.get_id());
-                return true;
+                return archive_hole_error::ok;
             }
 
-            return false;
+            return archive_hole_error::last_reached;
         }
 
         const auto &prev_header = iter_next->second;
@@ -579,17 +579,17 @@ bool archive_index::get_next_hole(int64_t _from, archive_hole& _hole, int64_t _d
             _hole.set_to(prev_header.get_id());
             _hole.set_depth(current_depth);
 
-            return true;
+            return archive_hole_error::ok;
         }
 
         if (_depth != -1 && current_depth >= _depth)
-            return false;
+            return archive_hole_error::depth_reached;
 
         ++iter_cursor;
         iter_cursor = skip_patches_and_deleted_forward(iter_cursor, headers_index_.crend());
     }
 
-    return false;
+    return archive_hole_error::no_hole;
 }
 
 std::vector<int64_t> core::archive::archive_index::get_messages_for_update() const

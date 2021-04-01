@@ -16,7 +16,7 @@ namespace Utils
 SendLogsToUinHandler::SendLogsToUinHandler(std::shared_ptr<SendLogsToUinRequest> _request)
     : request_(std::move(_request))
 {
-    assert(request_);
+    im_assert(request_);
 }
 
 void SendLogsToUinHandler::start()
@@ -52,7 +52,7 @@ void SendLogsToUinHandler::stop()
 void SendLogsToUinHandler::sendFileToContact(const QString &_filePath, const QString &_contact)
 {
     QFileInfo info(_filePath);
-    assert(info.exists());
+    im_assert(info.exists());
     if (!info.exists() || info.size() == 0)
         return;
 
@@ -106,6 +106,9 @@ void SendLogsToUinHandler::onHaveLogsPath(const QString &_logsPath)
 
 bool SendLogsToUinHandler::getUserConsent() const
 {
+    auto mainWindow = Utils::InterConnector::instance().getMainWindow();
+    if (mainWindow)
+        mainWindow->showMessengerPage();
     return Utils::GetConfirmationWithTwoButtons(
         QT_TRANSLATE_NOOP("popup_window", "Cancel"),
         QT_TRANSLATE_NOOP("popup_window", "Yes"),

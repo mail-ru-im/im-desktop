@@ -27,7 +27,7 @@ namespace
                 case AVAuthorizationStatusRestricted:
                     return media::permissions::Permission::Restricted;
                 default:
-                    assert(!"authorizationStatusForMediaType");
+                    im_assert(!"authorizationStatusForMediaType");
                 }
             }
             else
@@ -95,6 +95,7 @@ namespace media::permissions
 
     void requestPermission(DeviceType type, PermissionCallback _callback)
     {
+        assert([NSThread isMainThread]);
         if (type == DeviceType::Screen)
         {
             if (@available(macOS 10.15, *))
@@ -113,13 +114,11 @@ namespace media::permissions
             SEL selector = @selector(requestAccessForMediaType:completionHandler:);
             if ([aClass respondsToSelector:selector])
             {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    [aClass performSelector:selector withObject:getMediaType(type) withObject:^(BOOL granted)
-                    {
-                        if (_callback)
-                            _callback(bool(granted));
-                    }];
-                });
+                [aClass performSelector:selector withObject:getMediaType(type) withObject:^(BOOL granted)
+                {
+                    if (_callback)
+                        _callback(bool(granted));
+                }];
             }
             else
             {

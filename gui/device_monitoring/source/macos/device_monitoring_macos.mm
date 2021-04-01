@@ -117,7 +117,7 @@ DeviceMonitoringMacos::DeviceMonitoringMacos()
 
 DeviceMonitoringMacos::~DeviceMonitoringMacos()
 {
-    assert(nullptr == _objcInstance);
+    im_assert(nullptr == _objcInstance);
 }
 
 bool DeviceMonitoringMacos::Start()

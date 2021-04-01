@@ -527,6 +527,9 @@ namespace Ui
 
     void SelectContactsWidget::itemClicked(const QString& _aimid)
     {
+#ifndef STRIP_VOIP
+        Utils::hideVideoWindowToast();
+#endif
         searchWidget_->setFocus();
 
         if (regim_ == Logic::MembersWidgetRegim::COUNTRY_LIST)
@@ -541,6 +544,9 @@ namespace Ui
 #endif
 
         const auto isSelectChatMembersRegim = Logic::is_select_chat_members_regim(regim_);
+        const auto disableSelfProfile = !isSelectChatMembersRegim && Logic::is_select_members_regim(regim_) && _aimid == MyInfo()->aimId();
+        const auto disableCurrentProfile = chatMembersModel_ && chatMembersModel_->contains(_aimid) && regim_ != Logic::CONTACT_LIST_POPUP && !isSelectChatMembersRegim;
+
         // Restrict max selected elements.
         if (maximumSelectedCount_ >= 0)
         {
@@ -552,6 +558,8 @@ namespace Ui
                 if (isForCheck && (selectedItemCount >= maximumSelectedCount_))
                 {
                     // Disable selection.
+                    if (!disableCurrentProfile)
+                        Utils::showToastOverVideoWindow(QT_TRANSLATE_NOOP("popup_window", "Member limit exceeded (maximum %1)").arg(Ui::GetDispatcher()->getVoipController().maxVideoConferenceMembers()));
                     return;
                 }
             }
@@ -562,7 +570,7 @@ namespace Ui
                 if (!chatMembersModel_->isCheckedItem(_aimid)
                     && chatMembersModel_->getCheckedItemsCount() >= maximumSelectedCount_)
                 {
-                    if (auto mainPage = Utils::InterConnector::instance().getMainPage(); mainPage && mainPage->isVideoWindowOn())
+                    if (auto mainPage = Utils::InterConnector::instance().getMessengerPage(); mainPage && mainPage->isVideoWindowOn())
                         Utils::showToastOverVideoWindow(QT_TRANSLATE_NOOP("popup_window", "Maximum number of members selected"));
                     else
                         Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("popup_window", "Maximum number of members selected"), getToastVerOffset());
@@ -594,9 +602,6 @@ namespace Ui
             return;
         }
 
-        const auto disableSelfProfile = !isSelectChatMembersRegim && Logic::is_select_members_regim(regim_) && _aimid == MyInfo()->aimId();
-
-        const auto disableCurrentProfile = chatMembersModel_ && chatMembersModel_->contains(_aimid) && regim_ != Logic::CONTACT_LIST_POPUP && !isSelectChatMembersRegim;
         if (disableCurrentProfile || disableSelfProfile)
             return;
 
@@ -913,7 +918,7 @@ namespace Ui
         , chatCreation_(_options.chatCreation_)
     {
         globalLayout_ = Utils::emptyVLayout(mainWidget_);
-        mainWidget_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
+        mainWidget_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Maximum);
         mainWidget_->setFixedWidth(Utils::scale_value(DIALOG_WIDTH));
         mainWidget_->installEventFilter(this);
 
@@ -980,21 +985,13 @@ namespace Ui
 
         contactList_ = new ContactListWidget(this, (Logic::MembersWidgetRegim)regim_, chatMembersModel_, _options.searchModel_);
         Testing::setAccessibleName(contactList_, TestingLocal::getContactListWidgetAccessibleName(regim_));
-        contactList_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+        contactList_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
         contactList_->setWidthForDelegate(Utils::scale_value(DIALOG_WIDTH));
         searchModel_ = contactList_->getSearchModel();
 
-        clHost_ = new QWidget(this);
-        auto clVLayout = Utils::emptyVLayout(clHost_);
-        auto clHLayout = Utils::emptyHLayout();
+        globalLayout_->addWidget(contactList_);
 
-        clBottomSpacer_ = new QSpacerItem(0, 0, QSizePolicy::Fixed, QSizePolicy::Fixed);
-        clSpacer_ = new QSpacerItem(0, calcListHeight(), QSizePolicy::Fixed, QSizePolicy::Expanding);
-        clHLayout->addSpacerItem(clSpacer_);
-        clHLayout->addWidget(contactList_);
-        clVLayout->addLayout(clHLayout);
-        clVLayout->addSpacerItem(clBottomSpacer_);
-        globalLayout_->addWidget(clHost_);
+        globalLayout_->setSizeConstraint(QLayout::SetMaximumSize);
 
         // TODO : use SetView here
         auto dialogParent = isVideoModes() ? parentWidget() : Utils::InterConnector::instance().getMainWindow();
@@ -1004,7 +1001,8 @@ namespace Ui
 
         if (isShareModes() || isCreateGroupMode() || Logic::is_select_chat_members_regim(regim_) || Logic::isAddMembersRegim(regim_))
         {
-            avatarsArea_ = new AvatarsArea(clHost_, regim_, chatMembersModel_, searchModel_);
+            avatarsArea_ = new AvatarsArea(contactList_, regim_, chatMembersModel_, searchModel_);
+            globalLayout_->addWidget(avatarsArea_);
             avatarsArea_->setReplaceFavorites(isShareModes());
             avatarsArea_->hide();
             connect(avatarsArea_, &AvatarsArea::removed, this, [this]()
@@ -1019,7 +1017,6 @@ namespace Ui
                 if (avatarsArea_->avatars() < 1)
                 {
                     avatarsArea_->hide();
-                    updateSpacer();
 
                     const auto curFocus = currentFocusPosition();
 
@@ -1035,10 +1032,7 @@ namespace Ui
                 auto selectedIndexes = contactList_->getView()->selectionModel()->selectedIndexes();
                 if (!selectedIndexes.isEmpty())
                     contactList_->getView()->scrollTo(selectedIndexes.first());
-
-                updateSpacer();
             });
-            connect(avatarsArea_, &AvatarsArea::resized, this, &SelectContactsWidget::recalcAvatarArea);
 
             focusWidget_[avatarsArea_] = FocusPosition::Avatars;
         }
@@ -1198,13 +1192,6 @@ namespace Ui
         }
     }
 
-    void SelectContactsWidget::updateSpacer()
-    {
-        clBottomSpacer_->changeSize(0, bottomSpacerHeight(), QSizePolicy::Fixed, QSizePolicy::Fixed);
-        clSpacer_->changeSize(0, calcListHeight(), QSizePolicy::Fixed, QSizePolicy::Expanding);
-        clHost_->layout()->invalidate();
-    }
-
     void SelectContactsWidget::addAvatarToArea(const QString& _aimId)
     {
         if (!avatarsArea_)
@@ -1247,11 +1234,6 @@ namespace Ui
         return FocusPosition::begin;
     }
 
-    int SelectContactsWidget::bottomSpacerHeight() const
-    {
-        return avatarsArea_ && avatarsArea_->isVisible() ? avatarsArea_->height() : 0;
-    }
-
     void SelectContactsWidget::searchEnd()
     {
         Q_EMIT contactList_->searchEnd();
@@ -1273,15 +1255,6 @@ namespace Ui
             regim_ != Logic::MembersWidgetRegim::SELECT_MEMBERS &&
             regim_ != Logic::MembersWidgetRegim::DISALLOWED_INVITERS)
             mainDialog_->accept();
-    }
-
-    void SelectContactsWidget::recalcAvatarArea()
-    {
-        if (avatarsArea_)
-        {
-            avatarsArea_->move(0, clHost_->height() - avatarsArea_->height());
-            avatarsArea_->setFixedWidth(clHost_->width());
-        }
     }
 
     void SelectContactsWidget::nameChanged()
@@ -1315,22 +1288,6 @@ namespace Ui
 
             mainDialog_->setButtonActive(true);
         }
-    }
-
-    int SelectContactsWidget::calcListHeight() const
-    {
-        const auto parentWdg = isVideoModes() ? parentWidget() : Utils::InterConnector::instance().getMainWindow();
-        const auto newHeight = ::Ui::ItemLength(false, heightPartOfMainWindowForFullView, 0, parentWdg);
-
-        auto extraHeight = searchWidget_->sizeHint().height();
-
-        const auto itemHeight = ::Ui::GetContactListParams().itemHeight();
-        const int count = (newHeight - extraHeight) / itemHeight;
-
-        int clHeight = (count + 0.5) * itemHeight;
-        clHeight -= bottomSpacerHeight();
-
-        return clHeight;
     }
 
     bool SelectContactsWidget::show()
@@ -1426,7 +1383,6 @@ namespace Ui
     void SelectContactsWidget::setEmptyLabelVisible(bool _isEmptyIgnoreList)
     {
         contactList_->setEmptyLabelVisible(_isEmptyIgnoreList);
-        updateSpacer();
     }
 
     void SelectContactsWidget::UpdateMembers()
@@ -1469,10 +1425,6 @@ namespace Ui
                 updateFocus(keyEvent->key() == Qt::Key_Tab ? true : false);
                 return true;
             }
-        }
-        else if (_obj == mainWidget_ && _event->type() == QEvent::Resize)
-        {
-            recalcAvatarArea();
         }
 
         return false;

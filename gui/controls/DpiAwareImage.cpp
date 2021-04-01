@@ -28,7 +28,7 @@ namespace Ui
 
     void DpiAwareImage::draw(QPainter& _p, const QPoint& _coords) const
     {
-        assert(!Image_.isNull());
+        im_assert(!Image_.isNull());
 
 #ifdef __APPLE__
         auto imageRect = Image_.rect();

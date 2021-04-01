@@ -45,7 +45,7 @@ QSize PttBlockLayout::setBlockGeometryInternal(const QRect &geometry)
 
 QRect PttBlockLayout::setCtrlButtonGeometry(PttBlock &pttBlock, const QRect &bubbleGeometry)
 {
-    assert(!bubbleGeometry.isEmpty());
+    im_assert(!bubbleGeometry.isEmpty());
 
     const QPoint btnPos(
         pttBlock.isStandalone() ? 0 : MessageStyle::getBubbleHorPadding(),
@@ -59,7 +59,7 @@ QRect PttBlockLayout::setCtrlButtonGeometry(PttBlock &pttBlock, const QRect &bub
 
 QSize PttBlockLayout::setDecodedTextHorGeometry(PttBlock &pttBlock, int32_t bubbleWidth)
 {
-    assert(bubbleWidth > 0);
+    im_assert(bubbleWidth > 0);
 
     if (!pttBlock.hasDecodedText())
         return QSize();
@@ -72,8 +72,8 @@ QSize PttBlockLayout::setDecodedTextHorGeometry(PttBlock &pttBlock, int32_t bubb
 
 void PttBlockLayout::setDecodedTextGeometry(PttBlock &_pttBlock, const QRect &_contentRect, const QSize &_textSize)
 {
-    assert(!_contentRect.isEmpty());
-    assert(!_textSize.isEmpty());
+    im_assert(!_contentRect.isEmpty());
+    im_assert(!_textSize.isEmpty());
 
     const auto x = _pttBlock.isStandalone() ? 0 : MessageStyle::getBubbleHorPadding();
     const auto w = _pttBlock.isStandalone() ? _textSize.width() : _textSize.width() - 2 * MessageStyle::getBubbleHorPadding();
@@ -87,7 +87,7 @@ void PttBlockLayout::setDecodedTextGeometry(PttBlock &_pttBlock, const QRect &_c
 
 QRect PttBlockLayout::setTextButtonGeometry(PttBlock &pttBlock, const QRect &bubbleGeometry)
 {
-    assert(!bubbleGeometry.isEmpty());
+    im_assert(!bubbleGeometry.isEmpty());
 
     const auto buttonSize = pttBlock.getTextButtonSize();
     const auto x = bubbleGeometry.right() + 1 - buttonSize.width() - (pttBlock.isStandalone() ? MessageStyle::Ptt::getTextButtonMarginRight() : MessageStyle::getBubbleHorPadding());
@@ -101,19 +101,19 @@ QRect PttBlockLayout::setTextButtonGeometry(PttBlock &pttBlock, const QRect &bub
 
 const QRect& PttBlockLayout::getContentRect() const
 {
-    assert(!contentRect_.isEmpty());
+    im_assert(!contentRect_.isEmpty());
     return contentRect_;
 }
 
 const QRect& PttBlockLayout::getCtrlButtonRect() const
 {
-    assert(!ctrlButtonRect_.isEmpty());
+    im_assert(!ctrlButtonRect_.isEmpty());
     return ctrlButtonRect_;
 }
 
 const QRect& PttBlockLayout::getTextButtonRect() const
 {
-    assert(!textButtonRect_.isEmpty());
+    im_assert(!textButtonRect_.isEmpty());
     return textButtonRect_;
 }
 

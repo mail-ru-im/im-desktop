@@ -15,7 +15,7 @@ namespace Styling
     class ThemeParameters
     {
     public:
-        ThemeParameters(ThemePtr _theme, WallpaperPtr _wall) : theme_(_theme), wallpaper_(_wall) { assert(_theme); }
+        ThemeParameters(ThemePtr _theme, WallpaperPtr _wall) : theme_(_theme), wallpaper_(_wall) { im_assert(_theme); }
 
         [[nodiscard]] QColor getColor(const StyleVariable _var) const;
         [[nodiscard]] QColor getColor(const StyleVariable _var, double alpha) const;

@@ -35,6 +35,9 @@ namespace Logic
         if (cur >= rowCount())
             return QVariant();
 
+        if (Testing::isAccessibleRole(role))
+            return QString(u"AS Sidebar UserProfile CommonGroup " % chats_[cur].aimid_);
+
         return QVariant::fromValue(chats_[cur]);
     }
 

@@ -18,10 +18,10 @@ namespace core
     {
         constexpr auto max_crash_stat_interval = 24;
 
-        bool report_sender::send(std::string_view _login, const proxy_settings& _proxy)
+        bool report_sender::send(std::string_view _base_url, std::string_view _login, const proxy_settings& _proxy)
         {
-            core::http_request_simple post_request(_proxy, utils::get_user_agent(), default_priority());
-            post_request.set_url(crash_system::reporter::submit_url(_login));
+            core::http_request_simple post_request(_proxy, utils::get_user_agent(_login.empty() ? std::nullopt : std::make_optional(std::string(_login))), default_priority());
+            post_request.set_url(crash_system::reporter::submit_url(_base_url, _login));
             post_request.set_normalized_url("crash_submit");
             post_request.set_post_form(true);
             post_request.set_need_log(true);
@@ -98,24 +98,27 @@ namespace core
             send_thread_.reset();
         }
 
-        void report_sender::send_report()
+        void report_sender::send_report(std::string_view _base_url)
         {
             if (core::dump::report_sender::is_report_existed())
             {
-                insert_imstat_event();
-
-                send_thread_ = std::make_unique<async_executer>("report_sender");
-
-                send_thread_->run_async_function([wr_this = weak_from_this(), user_proxy = g_core->get_proxy_settings()]
+                if (!send_thread_)
                 {
-                    auto ptr_this = wr_this.lock();
-                    if (!ptr_this)
-                        return 0;
+                    insert_imstat_event();
 
-                    if (ptr_this->send(ptr_this->login_, user_proxy))
-                        ptr_this->clear_report_folder();
-                    return 0;
-                });
+                    send_thread_ = std::make_unique<async_executer>("report_sender");
+
+                    send_thread_->run_async_function([wr_this = weak_from_this(), user_proxy = g_core->get_proxy_settings(), base_url = std::string(_base_url)]
+                    {
+                        auto ptr_this = wr_this.lock();
+                        if (!ptr_this)
+                            return 0;
+
+                        if (ptr_this->send(base_url, ptr_this->login_, user_proxy))
+                            ptr_this->clear_report_folder();
+                        return 0;
+                    });
+                }
             }
         }
     }

@@ -12,6 +12,7 @@
 #include "../../controls/TextUnit.h"
 #include "../../controls/ContextMenu.h"
 #include "../../controls/TransparentScrollBar.h"
+#include "../../controls/TooltipWidget.h"
 #include "../containers/FriendlyContainer.h"
 #include "../contact_list/ContactListModel.h"
 #include "../contact_list/FavoritesUtils.h"
@@ -52,7 +53,7 @@ namespace
             return core::stats::stats_event_names::chatgalleryscr_pttmenu_action;
 
         default:
-            assert(false);
+            im_assert(false);
         }
 
         return core::stats::stats_event_names::chatgalleryscr_filemenu_action;
@@ -172,6 +173,46 @@ namespace Ui
         menu->invertRight(_inverted);
 
         menu->popup(mapToGlobal(_pos));
+    }
+
+    bool MediaContentWidget::isTooltipActivated() const
+    {
+        return tooltipActivated_;
+    }
+
+    void MediaContentWidget::showTooltip(QString _text, QRect _rect, Tooltip::ArrowDirection _arrowDir, Tooltip::ArrowPointPos _arrowPos)
+    {
+        hideTooltip();
+
+        if (!tooltipTimer_)
+        {
+            tooltipTimer_ = new QTimer(this);
+            tooltipTimer_->setInterval(Tooltip::getDefaultShowDelay());
+            tooltipTimer_->setSingleShot(true);
+        }
+        else
+        {
+            tooltipTimer_->disconnect(this);
+        }
+
+
+        connect(tooltipTimer_, &QTimer::timeout, this, [text = std::move(_text), _rect, _arrowDir, _arrowPos]()
+        {
+            Tooltip::show(text, _rect, {}, _arrowDir, _arrowPos, {}, Tooltip::TooltipMode::Multiline);
+        });
+        tooltipTimer_->start();
+
+        tooltipActivated_ = true;
+    }
+
+    void MediaContentWidget::hideTooltip()
+    {
+        if (tooltipTimer_)
+            tooltipTimer_->stop();
+
+        Tooltip::hide();
+
+        tooltipActivated_ = false;
     }
 
     ContextMenu *MediaContentWidget::makeContextMenu(qint64 _msg, const QString &_link, const QString& _sender, time_t _time, const QString& _aimid)

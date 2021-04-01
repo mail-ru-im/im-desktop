@@ -23,8 +23,8 @@ public:
         , zoomFactor_(_factor)
         , stepCount_(0)
     {
-        assert(!_propertyName.empty());
-        assert(zoomFactor_ > 0.0);
+        im_assert(!_propertyName.empty());
+        im_assert(zoomFactor_ > 0.0);
         if (zoomFactor_ <= 0.0)
             zoomFactor_ = 1.0; // adjust zoom factor to avoid zero division and negative values
 
@@ -36,7 +36,7 @@ ZoomAnimation::ZoomAnimation(QWidget* _viewer, double _factor, std::string_view 
     : QObject(_viewer)
     , d(new ZoomAnimationPrivate(this, _factor, _propertyName))
 {
-    assert(_viewer != nullptr);
+    im_assert(_viewer != nullptr);
     connect(d->timeLine_, &QTimeLine::valueChanged, this, qOverload<>(&ZoomAnimation::animate));
 }
 
@@ -46,7 +46,7 @@ ZoomAnimation::~ZoomAnimation()
 
 void ZoomAnimation::start()
 {
-    assert(parent() != nullptr);
+    im_assert(parent() != nullptr);
     if (!parent())
         return;
 
@@ -65,7 +65,7 @@ void ZoomAnimation::stop()
 
 void ZoomAnimation::animate()
 {
-    assert(parent() != nullptr);
+    im_assert(parent() != nullptr);
     QWidget* viewer = static_cast<QWidget*>(parent());
     if (Q_UNLIKELY(viewer == nullptr))
     {

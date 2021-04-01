@@ -32,7 +32,7 @@ public:
             animation_->setPropertyName(QByteArrayLiteral("maximumHeight"));
             break;
         default:
-            assert(false);
+            im_assert(false);
             break;
         }
     }
@@ -42,7 +42,7 @@ WidgetResizer::WidgetResizer(QWidget* _widget, Qt::Alignment _align, int _minimu
     : QObject(_widget)
     , d(new WidgetResizerPrivate(this))
 {
-    assert(_widget != nullptr);
+    im_assert(_widget != nullptr);
     d->initializeAnimation(_widget, _align, _minimum, _maximum);
 }
 
@@ -79,7 +79,7 @@ void WidgetResizer::slideIn()
     }
     else
     {
-        assert(d->animation_->targetObject() != nullptr);
+        im_assert(d->animation_->targetObject() != nullptr);
         d->animation_->targetObject()->setProperty(d->animation_->propertyName().constData(), d->animation_->endValue());
     }
 }
@@ -93,7 +93,7 @@ void WidgetResizer::slideOut()
     }
     else
     {
-        assert(d->animation_->targetObject() != nullptr);
+        im_assert(d->animation_->targetObject() != nullptr);
         d->animation_->targetObject()->setProperty(d->animation_->propertyName().constData(), d->animation_->startValue());
     }
 }

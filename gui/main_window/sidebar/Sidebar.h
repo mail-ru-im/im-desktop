@@ -81,6 +81,9 @@ namespace Ui
         void showAnimated();
         void hideAnimated();
 
+    private:
+        void moveToWindowEdge();
+
     private Q_SLOTS:
         void animate(const QVariant& _value);
         void onAnimationFinished();

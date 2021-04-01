@@ -116,7 +116,7 @@ namespace Ui
             const auto it = std::find_if(indexToType_.begin(), indexToType_.end(), [_type](auto x) { return x.second == _type; });
             if (it != indexToType_.end())
                 return it->first;
-            assert(false);
+            im_assert(false);
             return 0;
         }
     };
@@ -154,7 +154,7 @@ namespace Ui
             if (auto debugSettings = ui_->settingsList_->itemAt(ui_->getIndexByType(Utils::CommonSettingsType::CommonSettingsType_Debug)))
             {
                 debugSettings->setVisible(true);
-                if (const auto page = Utils::InterConnector::instance().getMainPage())
+                if (const auto page = Utils::InterConnector::instance().getMessengerPage())
                     page->settingsTabActivate(Utils::CommonSettingsType::CommonSettingsType_Debug);
             }
         });
@@ -370,7 +370,7 @@ namespace Ui
         const auto it = std::find_if(ui_->indexToType_.begin(), ui_->indexToType_.end(), [_index](auto x) { return x.first == _index; });
         if (it != ui_->indexToType_.end())
             return it->second;
-        assert(false);
+        im_assert(false);
         return Utils::CommonSettingsType::CommonSettingsType_General;
     }
 

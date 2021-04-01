@@ -247,7 +247,7 @@ namespace Ui
             break;
         case voip_proxy::kvoipDevTypeUndefined:
         default:
-            assert(false);
+            im_assert(false);
             return;
         }
 
@@ -334,7 +334,7 @@ namespace Ui
         case voip_proxy::kvoipDevTypeVideoCapture:  settingsName = ql1s(settings_webcam);     break;
         case voip_proxy::kvoipDevTypeUndefined:
         default:
-            assert(!"unexpected device type");
+            im_assert(!"unexpected device type");
             return;
         };
 
@@ -464,6 +464,7 @@ namespace Ui
     NotificationSettings::NotificationSettings(QWidget* _parent)
         : QWidget(_parent)
         , sounds_(nullptr)
+        , notifications_(nullptr)
     {
         connect(get_gui_settings(), &Ui::qt_gui_settings::changed, this, &NotificationSettings::value_changed);
     }

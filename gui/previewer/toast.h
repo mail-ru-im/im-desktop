@@ -173,6 +173,7 @@ namespace Utils
 
     //! Show text toast over video window, taking into account video contols panel presence
     void showToastOverVideoWindow(const QString& _text, int _maxLineCount = 1);
+    void hideVideoWindowToast();
 
     void showToastOverContactDialog(Ui::ToastBase* toast);
     void showTextToastOverContactDialog(const QString& _text, int _maxLineCount = 1); // show text toast over contactDialog

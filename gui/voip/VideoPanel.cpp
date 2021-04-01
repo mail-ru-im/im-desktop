@@ -21,61 +21,6 @@
 
 namespace
 {
-    auto getButtonSize() noexcept
-    {
-        return Utils::scale_value(QSize(70, 96));
-    }
-
-    auto getButtonCircleSize() noexcept
-    {
-        return Utils::scale_value(40);
-    }
-
-    auto getButtonIconSize() noexcept
-    {
-        return QSize(32, 32);
-    }
-
-    auto getMoreButtonSize() noexcept
-    {
-        return Utils::scale_value(20);
-    }
-
-    auto getMoreButtonBorder() noexcept
-    {
-        return Utils::scale_value(2);
-    }
-
-    auto getMoreButtonMarginLeft() noexcept
-    {
-        return Utils::scale_value(28);
-    }
-
-    auto getMoreButtonMarginTop() noexcept
-    {
-        return Utils::scale_value(26);
-    }
-
-    auto getMoreIconSize() noexcept
-    {
-        return Utils::scale_value(14);
-    }
-
-    auto getButtonTextFont()
-    {
-        return Fonts::appFontScaled(11, platform::is_apple() ? Fonts::FontWeight::Medium : Fonts::FontWeight::SemiBold);
-    }
-
-    auto getButtonCircleVerOffset() noexcept
-    {
-        return Utils::scale_value(12);
-    }
-
-    auto getButtonTextVerOffset() noexcept
-    {
-        return Utils::scale_value(60);
-    }
-
     auto getMenuIconSize() noexcept
     {
         return Utils::scale_value(QSize(20, 20));
@@ -163,9 +108,20 @@ namespace
         return _selected ? markSelected : mark;
     }
 
-    auto getShadowColor()
+    enum class CallType
     {
-        return QColor(0, 0, 0, 255 * 0.35);
+        Vcs,
+        PeerToPeer
+    };
+
+    auto addButtonLabel(CallType callType)
+    {
+        return callType == CallType::Vcs ? QT_TRANSLATE_NOOP("voip_video_panel", "Invite") : QT_TRANSLATE_NOOP("voip_video_panel", "Show\nparticipants");
+    }
+
+    auto addButtonIcon(CallType callType)
+    {
+        return callType == CallType::Vcs ? qsl(":/voip/call_share") : qsl(":/voip/show_participants");
     }
 }
 
@@ -404,6 +360,7 @@ namespace Ui
         , localVideoEnabled_(false)
         , isScreenSharingEnabled_(false)
         , isCameraEnabled_(true)
+        , isConferenceAll_(true)
         , isParentMinimizedFromHere_(false)
         , isBigConference_(false)
         , isMasksAllowed_(true)
@@ -470,7 +427,8 @@ namespace Ui
                                                 PanelButton::ButtonStyle::Transparent, false,
                                                 &VideoPanel::onShareScreen);
 
-        addButton_ = addAndCreateButton(QT_TRANSLATE_NOOP("voip_video_panel", "Invite"), qsl(":/voip/add_contact"), PanelButton::ButtonStyle::Transparent, false, &VideoPanel::addButtonClicked);
+        const auto callType = Ui::GetDispatcher()->getVoipController().isCallVCS() ?  CallType::Vcs : CallType::PeerToPeer;
+        addButton_ = addAndCreateButton(addButtonLabel(callType), addButtonIcon(callType), PanelButton::ButtonStyle::Transparent, false, &VideoPanel::addButtonClicked);
 
         moreButton_ = addAndCreateButton(QT_TRANSLATE_NOOP("voip_video_panel", "More"), qsl(":/voip/morewide_icon"),
 							             PanelButton::ButtonStyle::Transparent, false,
@@ -606,9 +564,6 @@ namespace Ui
         {
             switchShareScreen(0);
         }
-
-        if (isScreenSharingEnabled_)
-            Q_EMIT onShareScreenClickOn();
     }
 
     void VideoPanel::onVoipMediaLocalVideo(bool _enabled)
@@ -636,14 +591,13 @@ namespace Ui
 
     void VideoPanel::onVideoOnOffClicked()
     {
-        bool showPopup = false;
-        bool video = GetDispatcher()->getVoipController().checkPermissions(false, true, &showPopup);
-        if (showPopup)
+        bool video = GetDispatcher()->getVoipController().checkPermissions(false, true, true);
+        if (!video)
         {
             Q_EMIT needShowScreenPermissionsPopup(media::permissions::DeviceType::Camera);
             return;
         }
-        if (!video)
+        if (!Ui::GetDispatcher()->getVoipController().isCamPermissionGranted())
             return;
         if (!GetDispatcher()->getVoipController().isLocalCamAllowed())
         {
@@ -829,6 +783,12 @@ namespace Ui
             case MenuAction::GoToChat:
                 return qsl(":/context_menu/goto");
 
+            case MenuAction::ConferenceAllTheSame:
+                return qsl(":/context_menu/conference_all_icon");
+
+            case MenuAction::ConferenceOneIsBig:
+                return qsl(":/context_menu/conference_one_icon");
+
             case MenuAction::OpenMasks:
                 return qsl(":/settings/sticker");
 
@@ -860,6 +820,12 @@ namespace Ui
             case MenuAction::GoToChat:
                 return QT_TRANSLATE_NOOP("voip_video_panel", "Go to chat");
 
+            case MenuAction::ConferenceAllTheSame:
+                return QT_TRANSLATE_NOOP("voip_video_panel", "Show all");
+
+            case MenuAction::ConferenceOneIsBig:
+                return QT_TRANSLATE_NOOP("voip_video_panel", "Show one");
+
             case MenuAction::OpenMasks:
                 return QT_TRANSLATE_NOOP("voip_video_panel", "Open masks");
 
@@ -876,7 +842,7 @@ namespace Ui
                 return QT_TRANSLATE_NOOP("voip_video_panel", "Copy link");
 
             case MenuAction::InviteVCS:
-                return QT_TRANSLATE_NOOP("voip_video_panel", "Invite");
+                return addButtonLabel(CallType::Vcs);
 
             default:
                 Q_UNREACHABLE();
@@ -919,6 +885,7 @@ namespace Ui
         const auto switchSharingImpl = [this, &screens](unsigned int _index)
         {
             isScreenSharingEnabled_ = !isScreenSharingEnabled_;
+            Q_EMIT onShareScreenClick(isScreenSharingEnabled_);
             GetDispatcher()->getVoipController().switchShareScreen(!screens.empty() && _index < static_cast<unsigned int>(screens.size()) ? &screens[_index] : nullptr);
             updateVideoDeviceButtonsState();
         };
@@ -1000,9 +967,8 @@ namespace Ui
 
     bool VideoPanel::showPermissionPopup()
     {
-        bool showPopup = false;
-        Ui::GetDispatcher()->getVoipController().checkPermissions(true, false, &showPopup);
-        if (showPopup)
+        Ui::GetDispatcher()->getVoipController().checkPermissions(true, false, false);
+        if (!Ui::GetDispatcher()->getVoipController().isAudPermissionGranted())
         {
             Q_EMIT needShowScreenPermissionsPopup(media::permissions::DeviceType::Microphone);
             return true;
@@ -1018,9 +984,8 @@ namespace Ui
 
     void VideoPanel::updatePanelButtons()
     {
-        const auto isAddContact = !GetDispatcher()->getVoipController().isCallVCS() || GetDispatcher()->getVoipController().isCallPinnedRoom();
-        const auto icon = isAddContact ? qsl(":/voip/add_contact") : qsl(":/voip/call_share");
-        addButton_->updateStyle(PanelButton::ButtonStyle::Transparent, icon, QT_TRANSLATE_NOOP("voip_video_panel", "Invite"));
+        const auto callType = Ui::GetDispatcher()->getVoipController().isCallVCS() ? CallType::Vcs : CallType::PeerToPeer;
+        addButton_->updateStyle(PanelButton::ButtonStyle::Transparent, addButtonIcon(callType), addButtonLabel(callType));
     }
 
     void VideoPanel::showToast(ToastType _type)
@@ -1097,9 +1062,8 @@ namespace Ui
 
     void VideoPanel::onCaptureAudioOnOffClicked()
     {
-        bool showPopup = false;
-        GetDispatcher()->getVoipController().checkPermissions(true, false, &showPopup);
-        if (showPopup)
+        GetDispatcher()->getVoipController().checkPermissions(true, false, false);
+        if (!Ui::GetDispatcher()->getVoipController().isAudPermissionGranted())
         {
             Q_EMIT needShowScreenPermissionsPopup(media::permissions::DeviceType::Microphone);
             return;
@@ -1128,6 +1092,11 @@ namespace Ui
     bool VideoPanel::isPreventFadeOut() const
     {
         return menu_ && menu_->isActiveWindow();
+    }
+
+    void VideoPanel::changeConferenceMode(voip_manager::VideoLayout _layout)
+    {
+        isConferenceAll_ = _layout == voip_manager::AllTheSame;
     }
 
     void VideoPanel::callDestroyed()
@@ -1161,7 +1130,11 @@ namespace Ui
         if (!GetDispatcher()->getVoipController().isCallVCS() && (activeContact_.size() == 1 || GetDispatcher()->getVoipController().isCallPinnedRoom()))
             addMenuAction(MenuAction::GoToChat, &VideoPanel::onClickGoChat);
 
-        addMenuAction(MenuAction::OpenMasks, &VideoPanel::onClickOpenMasks);
+        if (!GetDispatcher()->getVoipController().isCallVCS())
+            addMenuAction(isConferenceAll_ ? MenuAction::ConferenceOneIsBig : MenuAction::ConferenceAllTheSame, &VideoPanel::onChangeConferenceMode);
+
+        if (!GetDispatcher()->getVoipController().isHideControlsWhenRemDesktopSharing())
+            addMenuAction(MenuAction::OpenMasks, &VideoPanel::onClickOpenMasks);
 
         if (GetDispatcher()->getVoipController().isCallVCS())
             addMenuAction(MenuAction::CopyVCSLink, &VideoPanel::onClickCopyVCSLink);
@@ -1169,6 +1142,12 @@ namespace Ui
         showMenuAtButton(moreButton_);
 
         resetPanelButtons(false);
+    }
+
+    void VideoPanel::onChangeConferenceMode()
+    {
+        isConferenceAll_ = !isConferenceAll_;
+        Q_EMIT updateConferenceMode(isConferenceAll_ ? voip_manager::AllTheSame : voip_manager::OneIsBig);
     }
 
     void VideoPanel::onClickSettings()
@@ -1212,6 +1191,8 @@ namespace Ui
         {
             isMasksAllowed_ = true;
         }
+        const auto isVcsCall = Ui::GetDispatcher()->getVoipController().isCallVCS();
+        addButton_->setCount(isVcsCall ? 0 : _contacts.contacts.size() + 1);
     }
 
     void VideoPanel::onClickCopyVCSLink()
@@ -1312,7 +1293,7 @@ namespace Ui
             case voip_proxy::kvoipDevTypeVideoCapture:  settingsName = ql1s(settings_webcam);      break;
             case voip_proxy::kvoipDevTypeUndefined:
             default:
-                assert(!"unexpected device type");
+                im_assert(!"unexpected device type");
                 return;
         };
 

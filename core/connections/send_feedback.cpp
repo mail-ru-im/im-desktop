@@ -63,10 +63,10 @@ void send_feedback::send(feedback_callback_t _callback)
             return;
 
         const auto success = (_code == curl_easy::completion_code::success && ptr_this->request_->get_response_code() == 200);
-        g_core->execute_core_context([_callback = std::move(_callback), success]()
+        g_core->execute_core_context({ [_callback = std::move(_callback), success] ()
         {
             _callback(success);
-        });
+        } });
 
         if (success && !ptr_this->log_.empty())
         {

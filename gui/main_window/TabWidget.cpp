@@ -4,6 +4,7 @@
 #include "TabBar.h"
 
 #include "../utils/utils.h"
+#include "../utils/features.h"
 #include "../utils/animations/SlideController.h"
 #include "styles/ThemeParameters.h"
 

@@ -423,7 +423,7 @@ namespace Styling::InputButtons::Default
 {
     void setColors(Ui::CustomButton* _button)
     {
-        assert(_button);
+        im_assert(_button);
         if (_button)
         {
             _button->setDefaultColor(defaultColor());
@@ -458,7 +458,7 @@ namespace Styling::InputButtons::Alternate
 {
     void setColors(Ui::CustomButton* _button)
     {
-        assert(_button);
+        im_assert(_button);
         if (_button)
         {
             _button->setDefaultColor(defaultColor());

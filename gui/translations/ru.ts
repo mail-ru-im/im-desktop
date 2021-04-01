@@ -3522,7 +3522,7 @@ You can leave your feedback or report an error here:</source>
         <translation>Стикер</translation>
     </message>
     <message>
-        <source>The message is not supported on your version of ICQ. Update the app to see the message</source>
+        <source>The message is not supported on your version. Update the app to see the message</source>
         <translation>Не удаётся отобразить сообщение в вашей версии приложения. Обновитесь</translation>
     </message>
 </context>
@@ -4704,6 +4704,122 @@ to contact status</source>
         <source>Send Statistic</source>
         <translation>Отправить статистику</translation>
     </message>
+    <message>
+        <source>Member limit exceeded (maximum %1)</source>
+        <translation>Превышен лимит участников (максимум %1)</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to open external link %1?</source>
+        <translation>Вы уверены, что хотите открыть внешнюю ссылку %1?</translation>
+    </message>
+    <message>
+        <source>Enable net compression</source>
+        <translation>Включить сжатие сетевых запросов</translation>
+    </message>
+    <message>
+        <source>Cannot remove %1</source>
+        <translation>Не удалось удалить %1</translation>
+    </message>
+    <message>
+        <source>Cannot block %1</source>
+        <translation>Не удалось заблокировать %1</translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1</source>
+        <translation>Не удалось разблокировать %1</translation>
+    </message>
+    <message>
+        <source>User not found</source>
+        <translation>Пользователь не найден</translation>
+    </message>
+    <message>
+        <source>User is already blocked</source>
+        <translation>Пользователь уже заблокирован</translation>
+    </message>
+    <message>
+        <source>User not blocked</source>
+        <translation>Пользователь не заблокирован</translation>
+    </message>
+    <message>
+        <source>Permission denied</source>
+        <translation>Доступ запрещен</translation>
+    </message>
+    <message>
+        <source>Cannot remove %1 contact</source>
+        <comment>1</comment>
+        <translation>Вы не можете удалить %1 участника</translation>
+    </message>
+    <message>
+        <source>Cannot remove %1 contacts</source>
+        <comment>2</comment>
+        <translation>Вы не можете удалить %1 участников</translation>
+    </message>
+    <message>
+        <source>Cannot remove %1 contacts</source>
+        <comment>5</comment>
+        <translation>Вы не можете удалить %1 участников</translation>
+    </message>
+    <message>
+        <source>Cannot remove %1 contacts</source>
+        <comment>21</comment>
+        <translation>Вы не можете удалить %1 участника</translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contact</source>
+        <comment>1</comment>
+        <translation>Вы не можете заблокировать %1 участника</translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contacts</source>
+        <comment>2</comment>
+        <translation>Вы не можете заблокировать %1 участников</translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contacts</source>
+        <comment>5</comment>
+        <translation>Вы не можете заблокировать %1 участников</translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contacts</source>
+        <comment>21</comment>
+        <translation>Вы не можете заблокировать %1 участника</translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contact</source>
+        <comment>1</comment>
+        <translation>Вы не можете разблокировать %1 участника</translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contacts</source>
+        <comment>2</comment>
+        <translation>Вы не можете разблокировать %1 участников</translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contacts</source>
+        <comment>5</comment>
+        <translation>Вы не можете разблокировать %1 участников</translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contacts</source>
+        <comment>21</comment>
+        <translation>Вы не можете разблокировать %1 участника</translation>
+    </message>
+    <message>
+        <source>Error removing federation user</source>
+        <translation>Ошибка при удалении пользователя федерации </translation>
+    </message>
+    <message>
+        <source>Error blocking federation user</source>
+        <translation>Ошибка при блокировке пользователя федерации</translation>
+    </message>
+    <message>
+        <source>Error unblocking federation user</source>
+        <translation>Ошибка при разблокировке пользователя федерации</translation>
+    </message>
+    <message>
+        <source>User not a member</source>
+        <translation>Пользователь не является участником данной группы</translation>
+    </message>
 </context>
 <context>
     <name>previewer</name>
@@ -4977,10 +5093,18 @@ to contact status</source>
         <translation>OK</translation>
     </message>
     <message>
-        <source> ﻿ ﻿— Custom statuses
-  ﻿— Bugfix and improvements </source>
-        <translation> ﻿ ﻿— Пользовательские статусы
-  ﻿— Исправления и улучшения </translation>
+        <source> ﻿—  Added display of full file name in the chat and in the chat gallery on hover
+ —  Added display of full username, chat or channel name on hover
+ —  Made the &quot;Show notifications when the application in focus&quot; setting in Settings → Notifications
+ —  Fixed crashes on Linux when playing some animated stickers
+ —  Removed the display of your video when watching a screen sharing in the call window
+ —  Other fixes and improvements </source>
+        <translation> — Добавили отображение полного имени файла в чате и в галерее чата при наведении курсора
+ — Добавили отображение полного имени пользователя, названия чата или канала при наведении курсора
+ — Сделали настройку "Показывать уведомления, когда приложение активно" в Настройки → Уведомления
+ — Исправили падения на Linux при проигрывании некоторых анимированных стикеров
+ — Убрали отображение своего видео при просмотре демонстрации экрана в окне звонка
+ — Другие исправления и улучшения</translation>
     </message>
 </context>
 <context>
@@ -5534,6 +5658,10 @@ to contact status</source>
         <source>Disable SMS notifications</source>
         <translation>Отключить SMS-оповещения</translation>
     </message>
+    <message>
+        <source>Show notifications when app in focus</source>
+        <translation>Показывать уведомления, когда приложение активно</translation>
+    </message>
 </context>
 <context>
     <name>settings_connection</name>
@@ -5735,10 +5863,6 @@ to contact status</source>
 </context>
 <context>
     <name>sidebar</name>
-    <message>
-        <source>Add to chat</source>
-        <translation>Добавить в чат</translation>
-    </message>
     <message>
         <source>Notifications</source>
         <translation>Уведомления</translation>
@@ -6125,6 +6249,14 @@ Please edit phone number and try again.</source>
         <source>All subscribers</source>
         <translation>Все подписчики</translation>
     </message>
+    <message>
+        <source>Back</source>
+        <translation>Назад</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Закрыть</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -6484,6 +6616,14 @@ Please edit phone number and try again.</source>
         <source>Calls</source>
         <translation>Звонки</translation>
     </message>
+    <message>
+        <source>Structure</source>
+        <translation>Структура</translation>
+    </message>
+    <message>
+        <source>Tasks</source>
+        <translation>Задачи</translation>
+    </message>
 </context>
 <context>
     <name>tab header</name>
@@ -6689,14 +6829,6 @@ Please edit phone number and try again.</source>
         <translation>Входящий звонок</translation>
     </message>
     <message>
-        <source>Add to call</source>
-        <translation>Добавить в звонок</translation>
-    </message>
-    <message>
-        <source>OTHERS</source>
-        <translation>ОСТАЛЬНЫЕ</translation>
-    </message>
-    <message>
         <source>Screen</source>
         <translation>Экран</translation>
     </message>
@@ -6741,10 +6873,6 @@ Please edit phone number and try again.</source>
         <translation>ВСЕ УЧАСТНИКИ ГРУППЫ</translation>
     </message>
     <message>
-        <source>CALL MEMBERS</source>
-        <translation>УЧАСТНИКИ ЗВОНКА</translation>
-    </message>
-    <message>
         <source>Minimize</source>
         <translation>Уменьшить</translation>
     </message>
@@ -6779,6 +6907,30 @@ with click</source>
     <message>
         <source>Busy</source>
         <translation>Занято</translation>
+    </message>
+    <message>
+        <source>Call members</source>
+        <translation>Участники звонка</translation>
+    </message>
+    <message>
+        <source>SHOW ALL</source>
+        <translation>ПОКАЗАТЬ ВСЕХ</translation>
+    </message>
+    <message>
+        <source>HIDE</source>
+        <translation>СВЕРНУТЬ</translation>
+    </message>
+    <message>
+        <source>IN CALL</source>
+        <translation>В ЗВОНКЕ</translation>
+    </message>
+    <message>
+        <source>In call</source>
+        <translation>В звонке</translation>
+    </message>
+    <message>
+        <source>CONTACTS</source>
+        <translation>КОНТАКТЫ</translation>
     </message>
 </context>
 <context>
@@ -6917,6 +7069,20 @@ Meeting</source>
     <message>
         <source>SHOW ALL</source>
         <translation>ПОКАЗАТЬ ВСЕХ</translation>
+    </message>
+    <message>
+        <source>Show
+participants</source>
+        <translation>Посмотреть
+участников</translation>
+    </message>
+    <message>
+        <source>Show all</source>
+        <translation>Показать всех</translation>
+    </message>
+    <message>
+        <source>Show one</source>
+        <translation>Увеличить на все окно</translation>
     </message>
 </context>
 <context>

@@ -88,9 +88,10 @@ namespace Ui
         void onMouseEnter();
         void onMouseLeave();
         void onkeyEscPressed();
+        void updateConferenceMode(voip_manager::VideoLayout _layout);
         void onShowMaskPanel();
         void onCameraClickOn();
-        void onShareScreenClickOn();
+        void onShareScreenClick(bool _on);
         void onGoToChatButton();
         void onMicrophoneClick();
         void onSpeakerClick();
@@ -120,6 +121,7 @@ namespace Ui
         void onVoipVolumeChanged(const std::string& _deviceType, int _vol);
 
         void onMoreButtonClicked();
+        void onChangeConferenceMode();
         void onClickSettings();
 
         void onClickOpenMasks();
@@ -149,9 +151,12 @@ namespace Ui
         bool isPreventFadeOut() const;
         void setPreventFadeIn(bool _doPrevent);
 
+        void changeConferenceMode(voip_manager::VideoLayout _layout);
+
         void callDestroyed();
 
         void showToast(const QString& _text, int _maxLineCount = 1);
+        void hideToast();
 
         bool showPermissionPopup();
 
@@ -163,6 +168,8 @@ namespace Ui
         enum class MenuAction
         {
             GoToChat,
+            ConferenceAllTheSame,
+            ConferenceOneIsBig,
             OpenMasks,
             AddUser,
             CallSettings,
@@ -210,7 +217,6 @@ namespace Ui
 
         void showToast(ToastType _type);
         void updateToastPosition();
-        void hideToast();
 
         struct DeviceInfo
         {
@@ -256,6 +262,7 @@ namespace Ui
         bool localVideoEnabled_;
         bool isScreenSharingEnabled_;
         bool isCameraEnabled_;
+        bool isConferenceAll_;
         bool isParentMinimizedFromHere_;
         bool isBigConference_;
         bool isMasksAllowed_;

@@ -798,6 +798,10 @@ static core::archive::message_pack make_pack(const coll_helper& _params)
     if (_params->is_value_exist("message"))
         message = _params.get_value_as_string("message");
 
+    core::archive::format_data message_format;
+    if (_params->is_value_exist("message_format"))
+        message_format.unserialize(_params, "message_format");
+
     if (core::configuration::get_app_config().is_crash_enabled() && message == "!crash")
     {
         throw new std::runtime_error("artificial crash");
@@ -866,6 +870,10 @@ static core::archive::message_pack make_pack(const coll_helper& _params)
     if (_params.is_value_exist("description"))
         description = _params.get_value_as_string("description");
 
+    core::archive::format_data description_format;
+    if (_params->is_value_exist("description_format"))
+        description_format.unserialize(_params, "description_format");
+
     std::string url;
     if (_params.is_value_exist("url"))
         url = _params.get_value_as_string("url");
@@ -914,25 +922,27 @@ static core::archive::message_pack make_pack(const coll_helper& _params)
             marker = std::move(marker_data);
     }
 
-    auto is_channel = false;
-    if (_params.is_value_exist("channel"))
-        is_channel = _params.get_value_as_bool("channel");
+    std::string chat_sender;
+    if (_params.is_value_exist("chat_sender"))
+        chat_sender = _params.get_value_as_string("chat_sender");
 
     core::archive::message_pack pack;
     pack.message_ = std::move(message);
+    pack.message_format_ = std::move(message_format);
     pack.quotes_ = std::move(quotes);
     pack.mentions_ = std::move(mentions);
     pack.internal_id_ = std::move(internal_id);
     pack.type_ = type;
     pack.message_time_ = time;
     pack.description_ = std::move(description);
+    pack.description_format_ = std::move(description_format);
     pack.url_ = std::move(url);
     pack.version_ = std::move(version);
     pack.shared_contact_ = std::move(shared_contact);
     pack.geo_ = std::move(geo);
     pack.poll_ = std::move(poll);
     pack.smartreply_marker_ = std::move(marker);
-    pack.channel_ = is_channel;
+    pack.chat_sender_ = chat_sender;
 
     return pack;
 }
@@ -1210,10 +1220,13 @@ void core::im_container::on_logout(int64_t _seq, coll_helper& _params)
 
         ptr_this->ims_.clear();
 
-        if (clear_data)
-            g_core->remove_local_data();
-
         g_core->update_gui_settings();
+
+        g_core->execute_core_context({ [clear_data]() // postpone deleting to avoid race with im dtor
+        {
+            if (clear_data)
+                g_core->remove_local_data();
+        } });
     };
 
     g_core->post_message_to_gui("need_login", 0, nullptr);
@@ -1606,6 +1619,9 @@ void im_container::on_upload_file_sharing(int64_t _seq, coll_helper& _params)
     const auto file_name = _params.get_value_as_string("file", "");
     const auto extension = _params.get_value_as_string("ext", "");
     const auto description = _params.get_value_as_string("description", "");
+    core::archive::format_data description_format;
+    if (_params->is_value_exist("description_format"))
+        description_format.unserialize(_params, "description_format");
 
     core::archive::quotes_vec quotes;
     if (_params->is_value_exist("quotes"))
@@ -1648,6 +1664,7 @@ void im_container::on_upload_file_sharing(int64_t _seq, coll_helper& _params)
         extension,
         quotes,
         description,
+        description_format,
         mentions,
         duration,
         strip_exif,
@@ -2564,6 +2581,7 @@ void im_container::on_change_app_config(const int64_t _seq, coll_helper& _params
     core::configuration::set_config_option(core::configuration::app_config::AppConfigOption::is_server_search_enabled, _params.get_value_as_bool("dev.server_search"));
     core::configuration::set_config_option(core::configuration::app_config::AppConfigOption::dev_id, std::string(_params.get_value_as_string("dev_id")));
     core::configuration::set_config_option(core::configuration::app_config::AppConfigOption::watch_gui_memory, _params.get_value_as_bool("dev.watch_gui_memory"));
+    core::configuration::set_config_option(core::configuration::app_config::AppConfigOption::net_compression, _params.get_value_as_bool("dev.net_compression"));
 
     const auto app_ini_path = utils::get_app_ini_path();
 

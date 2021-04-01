@@ -40,6 +40,7 @@ namespace Ui
         void onOpenCallClicked();
         void onResizeClicked();
         void onHangClicked();
+        void onShareScreenClick(bool _on);
 
     private Q_SLOTS:
         void onResizeButtonClicked();
@@ -61,8 +62,11 @@ namespace Ui
 
         void updatePosition(const QWidget& _parent) override;
 
+        void changeResizeButtonState();
+
     private:
         void updateVideoDeviceButtonsState();
+        void changeResizeButtonTooltip();
 
     protected:
         void changeEvent(QEvent* _e) override;
@@ -93,6 +97,24 @@ namespace Ui
         bool mouseUnderPanel_ : 1;
     };
 
+    class MiniWindowHeader : public MoveablePanel
+    {
+    public:
+        MiniWindowHeader(QWidget* _parent);
+        void updatePosition(const QWidget& _parent) override;
+        void setTitle(const QString& _title);
+        void setCollapsed(bool _collapsed);
+    protected:
+        void paintEvent(QPaintEvent* _event) override;
+        void resizeEvent(QResizeEvent* event) override;
+        bool uiWidgetIsActive() const override;
+    private:
+        void updateTitleOffsets();
+    private:
+        TextRendering::TextUnitPtr text_;
+        bool collapsed_;
+    };
+
     class DetachedVideoWindow : public QWidget
     {
         Q_OBJECT
@@ -114,6 +136,7 @@ namespace Ui
         void windowDidDeminiaturize();
         void needShowScreenPermissionsPopup(media::permissions::DeviceType type);
         void onMicrophoneClick();
+        void onShareScreenClick(bool _on);
 
     private Q_SLOTS:
         void onPanelMouseEnter();
@@ -152,11 +175,23 @@ namespace Ui
         quintptr getVideoFrameId() const;
         bool closedManualy();
 
-        void showFrame();
+        enum class WindowMode
+        {
+            Compact,
+            Full,
+            Current
+        };
+        void showFrame(WindowMode _mode = WindowMode::Current);
         void hideFrame();
 
         bool isMinimized() const;
         bool isMousePressed() const { return mousePressed_; };
+
+        void setWindowTitle(const QString& _title);
+        void setWindowMode(WindowMode _mode);
+        WindowMode getWindowMode() const { return mode_; }
+
+        void moveToCorner();
 
     private:
         ResizeEventFilter* eventFilter_;
@@ -166,6 +201,8 @@ namespace Ui
         bool closedManualy_;
         bool mousePressed_ = false;
         MiniWindowVideoPanel* videoPanel_;
+        MiniWindowHeader* header_;
+        std::vector<QPointer<BaseVideoPanel>> videoPanels_;
 
         std::unique_ptr<ShadowWindowParent> shadow_;
         platform_specific::GraphicsPanel* rootWidget_;
@@ -175,5 +212,7 @@ namespace Ui
 
         QPoint tooltipPos_;
         QTimer* tooltipTimer_;
+
+        WindowMode mode_;
     };
 }

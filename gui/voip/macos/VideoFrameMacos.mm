@@ -184,7 +184,7 @@ inline uint32_t ChangeBits(uint32_t currentBits, uint32_t flagsToChange, BOOL se
 
 void WindowListApplierFunction(const void *inputDictionary, void *context)
 {
-    assert(!!inputDictionary && !!context);
+    im_assert(!!inputDictionary && !!context);
     if (!inputDictionary || !context)
         return;
 
@@ -195,7 +195,7 @@ void WindowListApplierFunction(const void *inputDictionary, void *context)
     if (sharingState != kCGWindowSharingNone)
     {
         NSMutableDictionary *outputEntry = [NSMutableDictionary dictionary];
-        assert(!!outputEntry);
+        im_assert(!!outputEntry);
         if (!outputEntry)
             return;
 
@@ -233,15 +233,15 @@ void WindowListApplierFunction(const void *inputDictionary, void *context)
 
 void platform_macos::fadeIn(QWidget* wnd)
 {
-    assert(!!wnd);
+    im_assert(!!wnd);
     if (!wnd)
         return;
 
     NSView* view = (NSView*)wnd->winId();
-    assert(view);
+    im_assert(view);
 
     NSWindow* window = [view window];
-    assert(window);
+    im_assert(window);
 
     if ([[window animator] alphaValue] < 0.01f)
         [[window animator] setAlphaValue:1.0f];
@@ -249,15 +249,15 @@ void platform_macos::fadeIn(QWidget* wnd)
 
 void platform_macos::fadeOut(QWidget* wnd)
 {
-    assert(!!wnd);
+    im_assert(!!wnd);
     if (!wnd)
         return;
 
     NSView* view = (NSView*)wnd->winId();
-    assert(view);
+    im_assert(view);
 
     NSWindow* window = [view window];
-    assert(window);
+    im_assert(window);
 
     if ([[window animator] alphaValue] > 0.9f)
         [[window animator] setAlphaValue:0.0f];
@@ -266,20 +266,20 @@ void platform_macos::fadeOut(QWidget* wnd)
 void platform_macos::setPanelAttachedAsChild(bool attach, QWidget* parent, QWidget* child)
 {
     NSView* parentView = (NSView*)parent->winId();
-    assert(parentView);
+    im_assert(parentView);
     if (!parentView)
         return;
 
     NSWindow* parentWindow = [parentView window];
-    assert(parentWindow);
+    im_assert(parentWindow);
 
     NSView* childView = (NSView*)child->winId();
-    assert(childView);
+    im_assert(childView);
     if (!childView)
         return;
 
     NSWindow* childWindow = [childView window];
-    assert(childWindow);
+    im_assert(childWindow);
     if (!childWindow)
         return;
 
@@ -292,10 +292,10 @@ void platform_macos::setPanelAttachedAsChild(bool attach, QWidget* parent, QWidg
 void platform_macos::setWindowPosition(QWidget& widget, const QRect& widgetRect)
 {
     NSView* view = (NSView*)widget.winId();
-    assert(view);
+    im_assert(view);
 
     NSWindow* window = [view window];
-    assert(window);
+    im_assert(window);
 
     NSRect rect;
     rect.size.width  = widgetRect.width();
@@ -312,12 +312,12 @@ QRect platform_macos::getWidgetRect(const QWidget& widget)
     {
         // get parent window rect
         NSView* view = (NSView*)widget.winId();
-        assert(view);
+        im_assert(view);
         if (!view)
             return QRect();
 
         NSWindow* window = [view window];
-        assert(window);
+        im_assert(window);
         if (!window)
             return QRect();
 
@@ -326,33 +326,14 @@ QRect platform_macos::getWidgetRect(const QWidget& widget)
     return QRect(rect.origin.x, rect.origin.y, rect.size.width, rect.size.height);
 }
 
-int platform_macos::getWidgetHeaderHeight(const QWidget& widget)
-{
-    int res = 0;
-    // get parent window rect
-    NSView* view = (NSView*)widget.winId();
-    assert(view);
-    if (!view)
-        return 0;
-
-    NSWindow* window = [view window];
-    assert(window);
-    if (!window)
-        return 0;
-
-    CGFloat contentHeight = [window contentRectForFrameRect: window.frame].size.height;
-    res = int(window.frame.size.height - contentHeight);
-    return res;
-}
-
 void setAspectRatioForWindow(QWidget& wnd, float w, float h)
 {
     NSView* view = (NSView*)wnd.winId();
-    assert(view);
+    im_assert(view);
     if (view)
     {
         NSWindow* window = [view window];
-        assert(window);
+        im_assert(window);
         if (window)
         {
             if (w > 0.0f)
@@ -384,17 +365,17 @@ bool platform_macos::windowIsOnActiveSpace(QWidget* _widget)
 
 bool platform_macos::windowIsOverlapped(QWidget* _frame, const std::vector<QWidget*>& _exclude)
 {
-    assert(!!_frame);
+    im_assert(!!_frame);
     if (!_frame)
         return false;
 
     NSView* view = (NSView*)_frame->winId();
-    assert(!!view);
+    im_assert(!!view);
     if (!view)
         return false;
 
     NSWindow* window = [view window];
-    assert(!!window);
+    im_assert(!!window);
     if (!window)
         return false;
 
@@ -491,18 +472,18 @@ void platform_macos::playiTunes()
 void platform_macos::moveAboveParentWindow(QWidget& parent, QWidget& child)
 {
     NSView* parentView = (NSView*)parent.winId();
-    assert(parentView);
+    im_assert(parentView);
 
     NSWindow* window = [parentView window];
-    assert(window);
+    im_assert(window);
 
     NSView* childView = (NSView*)child.winId();
-    assert(childView);
+    im_assert(childView);
     if (!childView)
         return;
 
     NSWindow* childWnd = [childView window];
-    assert(childWnd);
+    im_assert(childWnd);
     if (!childWnd)
         return;
 
@@ -526,7 +507,7 @@ NSWindow* getNSWindow(QWidget& parentWindow)
 {
     NSWindow* res = nil;
     NSView* view = (NSView*)parentWindow.winId();
-    assert(view);
+    im_assert(view);
     if (view)
         res = [view window];
     return res;
@@ -535,7 +516,7 @@ NSWindow* getNSWindow(QWidget& parentWindow)
 platform_macos::FullScreenNotificaton::FullScreenNotificaton (QWidget& parentWindow) : _delegate(nil), _parentWindow(parentWindow)
 {
     NSWindow* window = getNSWindow(_parentWindow);
-    assert(!!window);
+    im_assert(!!window);
     if (window)
     {
         FullScreenDelegate* delegate = [[FullScreenDelegate alloc] init: this withOldDelegate: [window delegate]];
@@ -582,7 +563,7 @@ class GraphicsPanelMacosImpl : public platform_specific::GraphicsPanel {
     bool eventFilter(QObject *obj, QEvent *event) override;
 
     void enableMouseEvents(bool enabled) override;
-    void initNative(platform_specific::ViewResize _mode) override;
+    void initNative(platform_specific::ViewResize _mode, QSize _size = {}) override;
     void freeNative() override;
 
     void _setPanelsAttached(bool attach);
@@ -620,10 +601,10 @@ GraphicsPanelMacosImpl::GraphicsPanelMacosImpl(QWidget* parent, std::vector<QPoi
 
     {
         _parentView = (NSView*)(parent ? parent->winId() : winId());
-        assert(_parentView);
+        im_assert(_parentView);
 
         NSWindow* window = [_parentView window];
-        assert(window);
+        im_assert(window);
 
         if (!titleBar)
         {
@@ -661,12 +642,12 @@ WId GraphicsPanelMacosImpl::frameId() const {
 
 void GraphicsPanelMacosImpl::fullscreenModeChanged(bool fullscreen) {
     NSView* parentView = (NSView*)winId();
-    assert(parentView);
+    im_assert(parentView);
     if (!parentView)
         return;
 
     NSWindow* window = [parentView window];
-    assert(window);
+    im_assert(window);
     if (!window)
         return;
 }
@@ -693,7 +674,7 @@ void GraphicsPanelMacosImpl::_setPanelsAttached(bool attach)
     if (!parent())
         return;
     for (unsigned ix = 0; ix < _panels.size(); ix++) {
-        assert(_panels[ix]);
+        im_assert(_panels[ix]);
         if (!_panels[ix]) { continue; }
         setPanelAttachedAsChild(attach, parentWidget(), _panels[ix].data());
     }
@@ -889,7 +870,7 @@ void GraphicsPanelMacosImpl::enableMouseEvents(bool enable)
     enableMouseEvents_ = enable;
 }
 
-void GraphicsPanelMacosImpl::initNative(platform_specific::ViewResize _mode)
+void GraphicsPanelMacosImpl::initNative(platform_specific::ViewResize _mode, QSize)
 {
     if (_renderView)
         return;
@@ -898,13 +879,14 @@ void GraphicsPanelMacosImpl::initNative(platform_specific::ViewResize _mode)
     // and add 1px for correct interraction while _renderView is 'invisible'
     if (_mode == platform_specific::ViewResize::Adjust)
         frame.size.height = height() + Utils::scale_value(1);
-    _renderView = [[VOIPRenderViewOGL alloc] initWithFrame:frame];
+    
+    _renderView = [VOIPMTLRenderView isSupported] ?  [[VOIPMTLRenderView alloc] initWithFrame:frame] : [[VOIPRenderViewOGL alloc] initWithFrame:frame];
     [_parentView addSubview:_renderView];
 }
 
 void GraphicsPanelMacosImpl::freeNative()
 {
-    assert(_renderView);
+    im_assert(_renderView);
     if (!_renderView)
         return;
     [_renderView removeFromSuperview];
@@ -915,12 +897,12 @@ void GraphicsPanelMacosImpl::freeNative()
 void GraphicsPanelMacosImpl::setOpacity(double _opacity)
 {
     NSView* view = (NSView*)winId();
-    assert(view);
+    im_assert(view);
     if (!view)
         return;
 
     NSWindow* window = [view window];
-    assert(window);
+    im_assert(window);
     if (!window)
         return;
     [window setAlphaValue:_opacity];
@@ -930,18 +912,18 @@ void GraphicsPanelMacosImpl::setOpacity(double _opacity)
 
 platform_specific::GraphicsPanel* platform_macos::GraphicsPanelMacos::create(QWidget* parent, std::vector<QPointer<Ui::BaseVideoPanel>>& panels, bool primaryVideo, bool titleBar) {
 
-    IOPMAssertionID assertionID = 0;
+    IOPMAssertionID im_assertionID = 0;
     if (CGDisplayIsAsleep(CGMainDisplayID()))
     {
         CFStringRef reasonForActivity = CFSTR("ICQ Call is active");
-        IOPMAssertionDeclareUserActivity(reasonForActivity, kIOPMUserActiveLocal, &assertionID);
+        IOPMAssertionDeclareUserActivity(reasonForActivity, kIOPMUserActiveLocal, &im_assertionID);
         // Give 1s to monitor to turn on.
         QThread::msleep(1000);
     }
     platform_specific::GraphicsPanel* res = new platform_macos::GraphicsPanelMacosImpl(parent, panels, primaryVideo, titleBar);
-    if (assertionID)
+    if (im_assertionID)
     {
-        IOPMAssertionRelease((IOPMAssertionID)assertionID);
+        IOPMAssertionRelease((IOPMAssertionID)im_assertionID);
     }
     return res;
 }

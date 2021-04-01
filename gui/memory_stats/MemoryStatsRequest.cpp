@@ -44,7 +44,7 @@ bool RequestInfo::unserialize(const core::coll_helper &_coll)
     clear();
 
     core::iarray* requested_types = _coll.get_value_as_array("requested_types");
-    assert(requested_types);
+    im_assert(requested_types);
     if (!requested_types)
         return false;
 

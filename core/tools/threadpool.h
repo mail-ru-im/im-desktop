@@ -1,17 +1,16 @@
 #pragma once
 
+#include "../core.h"
 namespace core
 {
     namespace tools
     {
-        typedef std::unique_ptr<boost::stacktrace::stacktrace> core_stacktrace;
-
         class task
         {
         public:
             task();
 
-            task(std::function<void()> _action, const int64_t _id, std::string_view _name, std::chrono::steady_clock::time_point _time_stamp, std::function<bool()> _cancel);
+            task(stacked_task _action, const int64_t _id, std::string_view _name, std::chrono::steady_clock::time_point _time_stamp, std::function<bool()> _cancel);
 
             task(task&&) = default;
             task& operator=(task&&) = default;
@@ -24,22 +23,20 @@ namespace core
 
             operator bool() const noexcept;
 
-            const core_stacktrace& get_stack_trace() const;
+            stack_vec get_stack_trace() const;
 
         private:
 
-            std::function<void()> action_;
+            stacked_task action_;
             std::function<bool()> cancel_;
 
             int64_t id_;
-
-            core_stacktrace st_;
 
             std::string_view name_;
             std::chrono::steady_clock::time_point time_stamp_;
         };
 
-        typedef std::function<void(const std::chrono::milliseconds, const core_stacktrace&, std::string_view _name)> finish_action;
+        using finish_action = std::function<void(std::chrono::milliseconds, const stack_vec&, std::string_view _name)>;
 
         class threadpool : boost::noncopyable
         {
@@ -49,8 +46,6 @@ namespace core
 
         public:
 
-            typedef std::function<void()> task_action;
-
             explicit threadpool(
                 const std::string_view _name,
                 const size_t _count,
@@ -59,8 +54,8 @@ namespace core
 
             virtual ~threadpool();
 
-            bool push_back(task_action _task, int64_t _id = -1, std::string_view _name = {}, std::function<bool()> _cancel = []() { return false; });
-            bool push_front(task_action _task, int64_t _id = -1, std::string_view _name = {}, std::function<bool()> _cancel = []() { return false; });
+            bool push_back(stacked_task _task, int64_t _id = -1, std::string_view _name = {}, std::function<bool()> _cancel = []() { return false; });
+            bool push_front(stacked_task _task, int64_t _id = -1, std::string_view _name = {}, std::function<bool()> _cancel = []() { return false; });
 
             void raise_task(int64_t _id);
 

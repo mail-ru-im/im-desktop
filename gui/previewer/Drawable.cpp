@@ -225,7 +225,7 @@ void BLabel::draw(QPainter &_p)
 QAccessibleInterface* AccessibleButton::parent() const
 {
     auto result = QAccessible::queryAccessibleInterface(object()->parent());
-    assert(result);
+    im_assert(result);
     return result;
 }
 
@@ -233,7 +233,7 @@ QAccessible::State AccessibleButton::state() const
 {
     QAccessible::State state;
     auto button = qobject_cast<ButtonAccessible*>(object());
-    assert(button);
+    im_assert(button);
     if (button && !button->clickable())
         state.disabled = 1;
     return state;
@@ -242,11 +242,11 @@ QAccessible::State AccessibleButton::state() const
 QRect Ui::AccessibleButton::rect() const
 {
     auto button = qobject_cast<Ui::ButtonAccessible*>(object());
-    assert(button);
+    im_assert(button);
     if (button)
     {
         auto parentWidget = qobject_cast<QWidget*>(button->parent());
-        assert(parentWidget);
+        im_assert(parentWidget);
         if (parentWidget)
             return QRect(parentWidget->mapToGlobal(button->rect().topLeft()), button->rect().size());
     }

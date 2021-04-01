@@ -45,7 +45,7 @@ public:
 
     IItemBlockLayout* getBlockLayout() const override; // returns nullptr, since there is no layout
 
-    QString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
+    Data::FormattedString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
     QString getTextForCopy() const override;
     bool updateFriendly(const QString& _aimId, const QString& _friendly) override { return true; }
 
@@ -89,6 +89,8 @@ public:
 
     bool canStretchWithSender() const override;
 
+    const QString& getLink() const override;
+
     const QPixmap& getPreviewImage() const;
 
 protected:
@@ -96,6 +98,7 @@ protected:
     void initialize() override;
 
     void mouseMoveEvent(QMouseEvent* _event) override;
+    void leaveEvent(QEvent* _event) override;
 
     void onMenuCopyLink() override;
     void onMenuCopyFile() override;
@@ -194,6 +197,10 @@ public:
     void loadPreview();
     void loadFavicon();
 
+    virtual bool isOverLink(const QPoint&) const { return false; }
+    virtual bool needsTooltip() const { return false; }
+    virtual QRect tooltipRect() const { return QRect(); }
+
 Q_SIGNALS:
     void loaded();
 
@@ -246,6 +253,10 @@ public:
 
     void showControls() override;
     void hideControls() override;
+
+    bool isOverLink(const QPoint& _p) const override;
+    bool needsTooltip() const override;
+    QRect tooltipRect() const override;
 
 private:
     bool isGifArticle() const;
@@ -382,6 +393,10 @@ public:
 
     IItemBlock::MenuFlags menuFlags() const override;
 
+    bool isOverLink(const QPoint& _p) const override;
+    bool needsTooltip() const override;
+    QRect tooltipRect() const override;
+
 private:
     void initTextUnits();
 
@@ -452,6 +467,10 @@ public:
     void onVisibilityChanged(const bool _visible) override;
 
     IItemBlock::MenuFlags menuFlags() const override;
+
+    bool isOverLink(const QPoint& _p) const override;
+    bool needsTooltip() const override;
+    QRect tooltipRect() const override;
 
 private:
     void startAnimation();

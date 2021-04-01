@@ -427,14 +427,12 @@ void showAddUserToVideoConverenceDialog(QObject* _parent, QWidget* _parentWindow
     options.searchModel_ = &conferenceSearchModel;
     Ui::SelectionContactsForConference contactsWidget(
         &conferenceMembers,
-        QT_TRANSLATE_NOOP("voip_pages", "Add to call"),
+        QT_TRANSLATE_NOOP("voip_pages", "Call members"),
         _parentWindow,
         chatRoomCall,
         options);
 
-    const auto maxMembers = Ui::GetDispatcher()->getVoipController().maxVideoConferenceMembers() - 1
-        - Ui::GetDispatcher()->getVoipController().currentCallContacts().size();
-
+    const auto maxMembers = Ui::GetDispatcher()->getVoipController().maxVideoConferenceMembers();
     contactsWidget.setMaximumSelectedCount(maxMembers);
     _connectSignal(&contactsWidget);
 
@@ -454,7 +452,7 @@ void showAddUserToVideoConverenceDialog(QObject* _parent, QWidget* _parentWindow
     if (action == QDialog::Accepted)
     {
         for (const auto& contact : selectedContacts)
-            Ui::GetDispatcher()->getVoipController().setStartCall({ contact }, true, true, false);
+            Ui::GetDispatcher()->getVoipController().setStartCall({ contact }, false, true);
     }
 
     _disconnectSignal();

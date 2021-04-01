@@ -26,7 +26,7 @@ static int getGlyphIndex(const EmojiCode& code)
             if (glyphArray != NULL)
             {
                 CFIndex size = CFArrayGetCount(glyphArray);
-                assert (size == 1);
+                im_assert (size == 1);
 
                 for (CFIndex i = 0; i < size; ++i)
                 {

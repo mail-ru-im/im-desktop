@@ -27,7 +27,9 @@ Q_SIGNALS:
     void selectionChanged();
 
 public:
-    TextBlock(ComplexMessageItem *_parent, const QString& _text, const Ui::TextRendering::EmojiSizeType _emojiSizeType = Ui::TextRendering::EmojiSizeType::ALLOW_BIG);
+    TextBlock(ComplexMessageItem* _parent, const QString& _text, TextRendering::EmojiSizeType _emojiSizeType = TextRendering::EmojiSizeType::ALLOW_BIG);
+
+    TextBlock(ComplexMessageItem* _parent, const Data::FormattedStringView& _text, TextRendering::EmojiSizeType _emojiSizeType = TextRendering::EmojiSizeType::ALLOW_BIG);
 
     virtual ~TextBlock() override;
 
@@ -35,7 +37,7 @@ public:
 
     IItemBlockLayout* getBlockLayout() const override;
 
-    QString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
+    Data::FormattedString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
 
     bool updateFriendly(const QString& _aimId, const QString& _friendly) override;
 
@@ -75,7 +77,7 @@ public:
 
     QString getTextForCopy() const override;
 
-    QString getTextInstantEdit() const override;
+    Data::FormattedString getTextInstantEdit() const override;
 
     bool getTextStyle() const;
 
@@ -83,20 +85,28 @@ public:
 
     bool isOverLink(const QPoint& _mousePosGlobal) const override;
 
-    void setText(const QString& _text) override;
+    void setText(const Data::FormattedString& _text) override;
+
+    bool clickOnFirstLink() const;
 
     void setEmojiSizeType(const TextRendering::EmojiSizeType _emojiSizeType) override;
 
     void highlight(const highlightsV& _hl) override;
     void removeHighlight() override;
 
-    bool managesTime() const override { return true; }
+    bool managesTime() const override;
 
     void startSpellChecking() override;
 
     int effectiveBlockWidth() const override { return desiredWidth(); }
 
     void setSpellErrorsVisible(bool _visible) override;
+
+    bool needStretchToOthers() const override;
+
+    void stretchToWidth(const int _width) override;
+
+    bool isNeedCheckTimeShift() const override;
 
 protected:
     void drawBlock(QPainter &p, const QRect& _rect, const QColor& _quoteColor) override;
@@ -108,6 +118,7 @@ protected:
     void leaveEvent(QEvent *e) override;
 
 private:
+    void init(ComplexMessageItem* _parent);
     void reinit();
     void initTextUnit();
     void initTripleClickTimer();
@@ -131,6 +142,7 @@ private:
     QTimer* TripleClickTimer_ = nullptr;
     TextRendering::EmojiSizeType emojiSizeType_;
     bool needSpellCheck_ = false;
+    bool shouldParseMarkdown_;
 };
 
 UI_COMPLEX_MESSAGE_NS_END

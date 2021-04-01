@@ -124,7 +124,7 @@ void zstd_helper::start_auto_updater(std::weak_ptr<im_container> _im_cont)
 
     im_cont_ = _im_cont;
 
-    timer_id_ = g_core->add_timer([wr_this = weak_from_this()]()
+    timer_id_ = g_core->add_timer({ [wr_this = weak_from_this()] ()
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -133,7 +133,7 @@ void zstd_helper::start_auto_updater(std::weak_ptr<im_container> _im_cont)
         ptr_this->stop_auto_updater();
         ptr_this->update_dicts();
 
-        ptr_this->timer_id_ = g_core->add_timer([wr_this]()
+        ptr_this->timer_id_ = g_core->add_timer({ [wr_this]()
         {
             auto ptr_this = wr_this.lock();
             if (!ptr_this)
@@ -141,9 +141,9 @@ void zstd_helper::start_auto_updater(std::weak_ptr<im_container> _im_cont)
 
             ptr_this->update_dicts();
 
-        }, get_dict_update_interval());
+        } }, get_dict_update_interval());
 
-    }, get_delay_update_timeout());
+    } }, get_delay_update_timeout());
 
     write_to_log("start auto-update dictionaries\r\n" + get_dicts_list());
 }
@@ -176,7 +176,7 @@ void zstd_helper::reinit_dicts(std::string_view _fault_dict_name)
     if (!_fault_dict_name.empty())
         write_to_log(su::concat("failure ", _fault_dict_name, "\r\n", get_dicts_list()));
 
-    g_core->execute_core_context([wr_this = weak_from_this()]()
+    g_core->execute_core_context({ [wr_this = weak_from_this()] ()
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -187,7 +187,7 @@ void zstd_helper::reinit_dicts(std::string_view _fault_dict_name)
         ptr_this->is_reinited_ = false;
 
         write_to_log("reinitialization of dictionaries\r\n" + ptr_this->get_dicts_list());
-    });
+    } });
 }
 
 bool zstd_helper::is_dict_exist(std::string_view _dict_name) const

@@ -10,7 +10,7 @@ Ui::AvatarContainerWidget::AvatarContainerWidget(QWidget* _parent, int _avatarSi
     , xOffset_(_xOffset)
     , yOffset_(_yOffset)
 {
-    assert(avatarSize_ > 0);
+    im_assert(avatarSize_ > 0);
     connect(Logic::GetAvatarStorage(), &Logic::AvatarStorage::avatarChanged, this, &AvatarContainerWidget::avatarChanged);
 }
 
@@ -27,7 +27,7 @@ void Ui::AvatarContainerWidget::addAvatarTo(const std::string& _userId, std::map
 {
     if (avatarSize_ <= 0)
     {
-        assert(!"wrong avatar size");
+        im_assert(!"wrong avatar size");
         return;
     }
     bool isDefault = false;
@@ -142,7 +142,7 @@ void Ui::AvatarContainerWidget::paintEvent(QPaintEvent*)
 {
     QPainter painter(this);
 
-    assert(avatarRects_.size() <= avatars_.size());
+    im_assert(avatarRects_.size() <= avatars_.size());
     for (unsigned ix = 0; ix < avatarRects_.size(); ix++)
     {
         const QRect& rc = avatarRects_[ix];

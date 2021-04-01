@@ -78,6 +78,8 @@ constexpr bool settings_show_reactions_default() noexcept { return true; }
 constexpr bool settings_allow_statuses_default() noexcept { return true; }
 constexpr bool show_microphone_request_default() noexcept { return true; }
 
+constexpr bool settings_notify_new_messages_with_active_ui_default() noexcept { return false; }
+
 #define settings_microphone "microphone"
 #define settings_microphone_gain "microphone_gain"
 #define settings_speakers "speakers"
@@ -88,6 +90,7 @@ constexpr bool show_microphone_request_default() noexcept { return true; }
 #define settings_search_history_patterns "search_history_patterns"
 
 #define settings_notify_new_messages "notify_new_messages"
+#define settings_notify_new_messages_with_active_ui "notify_new_messages_with_active_ui"
 #define settings_notify_new_mail_messages "notify_new_mail_messages"
 #define settings_hide_message_notification "hide_message_notification"
 #define settings_alert_tray_icon "alert_tray_icon"

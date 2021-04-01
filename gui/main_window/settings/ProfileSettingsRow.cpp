@@ -388,7 +388,7 @@ namespace Ui
 
     void ProfileSettingsRow::onContextMenuItemClicked(QAction* _action)
     {
-        assert(hasNickname());
+        im_assert(hasNickname());
         const auto command = _action->data().toString();
 
         const QString link = (isEmailProfile() ? getProfileDomainAgent() : getProfileDomain()) % getNickname();

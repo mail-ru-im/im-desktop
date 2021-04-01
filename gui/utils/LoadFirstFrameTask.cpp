@@ -11,8 +11,8 @@ namespace Utils
     LoadFirstFrameTask::LoadFirstFrameTask(QString path)
         : Path_(std::move(path))
     {
-        assert(!Path_.isEmpty());
-        assert(QFileInfo::exists(Path_));
+        im_assert(!Path_.isEmpty());
+        im_assert(QFileInfo::exists(Path_));
     }
 
     LoadFirstFrameTask::~LoadFirstFrameTask() = default;
@@ -30,7 +30,7 @@ namespace Utils
         const auto dur = Ui::VideoContext::getDuration(Path_);
         const auto audio = Ui::VideoContext::getGotAudio(Path_);
 
-        assert(!frame.isNull());
+        im_assert(!frame.isNull());
 
         const auto frameSize = frame.size();
         if (Q_LIKELY(QCoreApplication::instance()))

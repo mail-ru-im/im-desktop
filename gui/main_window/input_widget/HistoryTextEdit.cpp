@@ -79,6 +79,7 @@ namespace Ui
         setEnterKeyPolicy(EnterKeyPolicy::FollowSettingsRules);
 
         document()->setDocumentMargin(0);
+        document()->documentLayout()->setPaintDevice(nullptr);//avoid unnecessary scaling performed by its own paintDevice
 
         setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         setTextInteractionFlags(Qt::TextEditable | Qt::TextEditorInteraction);
@@ -174,7 +175,7 @@ namespace Ui
                     return;
             }
 
-            if (auto mainPage = Utils::InterConnector::instance().getMainWindow()->getMainPage())
+            if (auto mainPage = Utils::InterConnector::instance().getMessengerPage())
             {
                 if (const auto suggest = mainPage->getStickersSuggest(); suggest && suggest->isTooltipVisible())
                 {
@@ -374,7 +375,7 @@ namespace Ui
 
     bool HistoryTextEdit::focusNextPrevChild(bool _next)
     {
-        if (const auto mainPage = Utils::InterConnector::instance().getMainWindow()->getMainPage())
+        if (const auto mainPage = Utils::InterConnector::instance().getMessengerPage())
         {
             if (const auto cd = mainPage->getContactDialog())
             {

@@ -20,7 +20,7 @@ public:
         if (!glfwInit())
         {
             fprintf(stderr, "error: glfw init failed\n");
-            assert(0);
+            im_assert(0);
         }
     }
     ~GLFWScope() { glfwTerminate(); }
@@ -42,9 +42,9 @@ platform_linux::GraphicsPanelLinux::~GraphicsPanelLinux()
         freeNative();
 }
 
-void platform_linux::GraphicsPanelLinux::initNative(platform_specific::ViewResize _mode)
+void platform_linux::GraphicsPanelLinux::initNative(platform_specific::ViewResize _mode, QSize _size)
 {
-    assert(!videoWindow_);
+    im_assert(!videoWindow_);
     if (videoWindow_)
         return;
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
@@ -54,8 +54,8 @@ void platform_linux::GraphicsPanelLinux::initNative(platform_specific::ViewResiz
     glfwWindowHint(GLFW_MOUSE_PASSTHRU, passMouseEvents ? GLFW_TRUE : GLFW_FALSE);
     std::lock_guard<std::mutex> lock(g_wnd_mutex);
     glfwSetRoot((void*)QWidget::winId());
-    QRect r = QHighDpi::toNativePixels(rect(), window()->windowHandle());
-    videoWindow_ = glfwCreateWindow(r.width(), r.height(), "Video", NULL, NULL);
+    auto s = QHighDpi::toNativePixels(_size.isEmpty() ? size() : _size, window()->windowHandle());
+    videoWindow_ = glfwCreateWindow(s.width(), s.height(), "Video", NULL, NULL);
     if (!videoWindow_)
         return;
     glfwMakeContextCurrent(videoWindow_);
@@ -65,14 +65,14 @@ void platform_linux::GraphicsPanelLinux::initNative(platform_specific::ViewResiz
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
         fprintf(stderr, "error: glad init failed\n");
-        assert(0);
+        im_assert(0);
     }
     glfwMakeContextCurrent(0);
 }
 
 void platform_linux::GraphicsPanelLinux::freeNative()
 {
-    assert(videoWindow_);
+    im_assert(videoWindow_);
     if (!videoWindow_)
         return;
     glfwDestroyWindow(videoWindow_);

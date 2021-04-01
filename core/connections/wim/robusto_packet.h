@@ -60,7 +60,6 @@ namespace core
 
             void set_robusto_params(const robusto_packet_params& _params);
             virtual bool is_post() const override { return true; }
-            virtual bool auto_resend_on_fail() const { return false; }
         };
 
     }

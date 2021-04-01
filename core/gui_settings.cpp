@@ -36,14 +36,14 @@ gui_settings::~gui_settings()
 
 void gui_settings::start_save()
 {
-    timer_ = g_core->add_timer([wr_this = weak_from_this()]
+    timer_ = g_core->add_timer({ [wr_this = weak_from_this()]
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
             return;
 
         ptr_this->save_if_needed();
-    }, std::chrono::seconds(10));
+    } }, std::chrono::seconds(10));
 }
 
 bool gui_settings::load()

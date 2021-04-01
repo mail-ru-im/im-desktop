@@ -29,6 +29,8 @@ namespace Logic
         QSize sizeHint(const QStyleOptionViewItem& _option, const QModelIndex& _index) const override;
         bool setHoveredSuggetRemove(const QModelIndex & _itemIndex);
 
+        bool needsTooltip(const QString& _aimId, const QModelIndex& _index, QPoint _posCursor = {}) const override;
+
     private:
         void drawContactOrChatItem(QPainter& _painter, const QStyleOptionViewItem& _option, const Data::AbstractSearchResultSptr& _item, const bool _isSelected) const;
         void drawMessageItem(QPainter& _painter, const QStyleOptionViewItem& _option, const Data::MessageSearchResultSptr& _item, const bool _isSelected) const;

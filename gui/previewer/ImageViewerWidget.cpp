@@ -142,7 +142,7 @@ void Previewer::ImageViewerWidget::reset()
 
 void Previewer::ImageViewerWidget::connectExternalWheelEvent(std::function<void(const QPoint&)> _func)
 {
-    assert(viewer_);
+    im_assert(viewer_);
     if (!viewer_)
         return;
 

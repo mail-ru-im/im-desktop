@@ -5,6 +5,7 @@
 #include "../../../types/StickerId.h"
 #include "../../../types/link_metadata.h"
 #include "../../../controls/TextUnit.h"
+#include "../../../utils/InterConnector.h"
 #include "SnippetBlock.h"
 
 #include "../HistoryControlPageItem.h"
@@ -78,30 +79,7 @@ Q_SIGNALS:
 
     void layoutChanged(QPrivateSignal) const;
 
-    void editWithCaption(
-        const int64_t _msgId,
-        const QString& _internalId,
-        const common::tools::patch_version& _patchVersion,
-        const QString& _url,
-        const QString& _description,
-        const Data::MentionMap& _mentions,
-        const Data::QuotesVec& _quotes,
-        qint32 _time,
-        const Data::FilesPlaceholderMap& _files,
-        MediaType _mediaType,
-        bool instantEdit);
-
-    void edit(
-        const int64_t _msgId,
-        const QString& _internalId,
-        const common::tools::patch_version& _patchVersion,
-        const QString& _text,
-        const Data::MentionMap& _mentions,
-        const Data::QuotesVec& _quotes,
-        qint32 _time,
-        const Data::FilesPlaceholderMap& _files,
-        MediaType _mediaType,
-        bool instantEdit);
+    void edit(const Data::MessageBuddySptr& _msg, MediaType _mediaType);
 
     void pinPreview(const QPixmap& _preview);
 
@@ -148,7 +126,7 @@ public:
         Formatted
     };
 
-    QString getSelectedText(const bool _isQuote, TextFormat _format = TextFormat::Formatted) const;
+    Data::FormattedString getSelectedText(const bool _isQuote, TextFormat _format = TextFormat::Formatted) const;
 
     const QString& getChatAimid() const;
 
@@ -218,7 +196,7 @@ public:
     Data::QuotesVec getQuotes(const bool _selectedTextOnly = true, const bool _isForward = false) const;
     Data::QuotesVec getQuotesForEdit() const;
 
-    void setSourceText(QString text);
+    void setSourceText(const Data::FormattedString& _text);
 
     void setQuoteSelection() override;
     void highlightText(const highlightsV& _highlights) override;
@@ -293,6 +271,8 @@ public:
 
     void setUrlAndDescription(const QString& _url, const QString& _description);
 
+    void setUrlAndDescription(const QString& _url, const Data::FormattedString& _description);
+
     bool hasCaption() const { return !Description_.isEmpty(); }
 
     int getSenderDesiredWidth() const noexcept;
@@ -325,6 +305,10 @@ public:
 
     QRect avatarRect() const override;
 
+    void fillGalleryData(Utils::GalleryData& _data);
+
+    virtual std::optional<Data::FileSharingMeta> getMeta(const QString& _id) const override;
+
 protected:
 
     void leaveEvent(QEvent *event) override;
@@ -355,9 +339,8 @@ public Q_SLOTS:
 
 private:
     void fillFilesPlaceholderMap();
-    void handleBotAction(const QString& _url, const QString& _text = QString(), bool _showAlert = false);
     void initButtonsTimerIfNeeded();
-    void startButtonsTimer(int _timeout);
+    void startButtonsTimer(std::chrono::milliseconds _timeout);
     void ensureButtonsAnimationInitialized();
 
     enum class InstantEdit
@@ -365,8 +348,8 @@ private:
         No,
         Yes
     };
-    void callEditingImpl(InstantEdit _mode);
-    QString getEditableText(InstantEdit _mode) const;
+    void callEditingImpl();
+    Data::FormattedString getEditableText(InstantEdit _mode) const;
 
     void cleanupMenu();
 
@@ -378,7 +361,7 @@ private:
 
     void drawButtons(QPainter &p, const QColor& quote_color);
 
-    QString getBlocksText(const IItemBlocksVec& _items, const bool _isSelected, TextFormat _format = TextFormat::Formatted) const;
+    Data::FormattedString getBlocksText(const IItemBlocksVec& _items, const bool _isSelected, TextFormat _format = TextFormat::Formatted) const;
 
     void drawGrid(QPainter &p);
 
@@ -438,6 +421,8 @@ private:
 
     void loadSnippetsMetaInfo();
 
+    void sendInstantEdit();
+
     QPixmap Avatar_;
 
     IItemBlocksVec Blocks_;
@@ -484,7 +469,7 @@ private:
     QVariantAnimation* shareButtonAnimation_;
     QGraphicsOpacityEffect* shareButtonOpacityEffect_;
 
-    QString SourceText_;
+    Data::FormattedString SourceText_;
 
     MessageTimeWidget* TimeWidget_;
     QVariantAnimation* timeAnimation_;
@@ -504,7 +489,7 @@ private:
 
     QPoint PressPoint_;
     QString Url_;
-    QString Description_;
+    Data::FormattedString Description_;
     bool isMediaOnly_;
 
     struct SnippetData

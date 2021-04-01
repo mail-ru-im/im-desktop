@@ -135,7 +135,7 @@ namespace core
                 ptr_this_mac->set_initial_connection_type(conn_type);
 
             };
-            g_core->execute_core_context(initial_setter);
+            g_core->execute_core_context({initial_setter});
 
         }
     }
@@ -202,7 +202,7 @@ namespace core
                     auto ptr_this_mac = std::static_pointer_cast<network_change_notifier_mac>(ptr_this);
                     ptr_this_mac->notify_of_ip_address_change();
                 };
-                g_core->execute_core_context(notify_task);
+                g_core->execute_core_context({notify_task});
                 return;
             }
         }
@@ -227,7 +227,7 @@ namespace core
             {
                 notifier_mac->notify_of_connection_type_change();
             };
-            g_core->execute_core_context(notify_task);
+            g_core->execute_core_context({notify_task});
         }
 
     }

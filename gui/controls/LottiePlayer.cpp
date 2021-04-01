@@ -112,8 +112,8 @@ namespace Ui
         : QObject(_parent)
         , d(std::make_unique<LottiePLayerPrivate>(this, _parent, _path, _rect, _preview))
     {
-        assert(parent());
-        assert(!_path.isEmpty());
+        im_assert(parent());
+        im_assert(!_path.isEmpty());
 
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::activationChanged, this, &LottiePlayer::onVisibilityChanged, Qt::UniqueConnection);
         _parent->installEventFilter(this);

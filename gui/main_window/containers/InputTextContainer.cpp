@@ -12,7 +12,7 @@ namespace Logic
 
     const InputText& InputTextContainer::getInputText(const QString& _contact) const
     {
-        assert(!_contact.isEmpty());
+        im_assert(!_contact.isEmpty());
         if (!_contact.isEmpty())
             if (auto it = inputTexts_.find(_contact); it != inputTexts_.end())
                 return it->second;
@@ -23,7 +23,7 @@ namespace Logic
 
     void InputTextContainer::setInputText(const QString& _contact, QString _text, int _pos)
     {
-        assert(!_contact.isEmpty());
+        im_assert(!_contact.isEmpty());
         if (!_contact.isEmpty())
             inputTexts_[_contact] = InputText(std::move(_text), _pos);
     }
@@ -35,7 +35,7 @@ namespace Logic
 
     void InputTextContainer::setText(const QString& _contact, QString _text)
     {
-        assert(!_contact.isEmpty());
+        im_assert(!_contact.isEmpty());
         if (!_contact.isEmpty())
             inputTexts_[_contact].text_ = std::move(_text);
     }
@@ -47,14 +47,14 @@ namespace Logic
 
     void InputTextContainer::setCursorPos(const QString& _contact, int _pos)
     {
-        assert(!_contact.isEmpty());
+        im_assert(!_contact.isEmpty());
         if (!_contact.isEmpty())
             inputTexts_[_contact].cursorPos_ = _pos;
     }
 
     void InputTextContainer::clear(const QString& _contact)
     {
-        assert(!_contact.isEmpty());
+        im_assert(!_contact.isEmpty());
         if (!_contact.isEmpty())
             if (auto it = inputTexts_.find(_contact); it != inputTexts_.end())
                 inputTexts_.erase(it);

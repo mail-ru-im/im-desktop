@@ -1,41 +1,42 @@
 #pragma once
 
 #include "controls/SimpleListWidget.h"
+#include "../controls/TextUnit.h"
 
 namespace Ui
 {
-    namespace TextRendering
+    class BaseBarItem : public SimpleListItem
     {
-        class TextUnit;
-    }
-
-    class TabItem : public SimpleListItem
-    {
-        Q_OBJECT;
+        Q_OBJECT
 
     public:
-        explicit TabItem(const QString& _iconPath, const QString& _iconActivePath, QWidget* _parent = nullptr);
-        ~TabItem();
+        explicit BaseBarItem(const QString& _iconPath, const QString& _iconActivePath, const QColor& _activeColor, const QColor& _hoveredColor, const QColor& _normalColor, QWidget* _parent = nullptr);
+        ~BaseBarItem();
 
         void setSelected(bool _value) override;
         bool isSelected() const override;
         void setBadgeText(const QString& _text);
         void setBadgeIcon(const QString& _icon);
-        void setName(const QString& _name);
+
+        virtual void setName(const QString& _name);
 
     protected:
-        void paintEvent(QPaintEvent* _event) override;
+
+        const QPixmap& activeIconPixmap() const;
+        const QPixmap& hoveredIconPixmap() const;
+        const QPixmap& normalIconPixmap() const;
 
     private:
-        void updateTextColor();
         void setBadgeFont(const QFont& _font);
 
-    private:
-        bool isSelected_;
-        QString name_;
+    protected:
         QString badgeText_;
-        QString badgeIcon_;
         QPixmap badgePixmap_;
+        std::unique_ptr<TextRendering::TextUnit> badgeTextUnit_;
+        QString name_;
+
+    private:
+        QString badgeIcon_;
 
         const QString iconPath_;
         const QString iconActivePath_;
@@ -44,22 +45,76 @@ namespace Ui
         const QPixmap hoveredIconPixmap_;
         const QPixmap normalIconPixmap_;
 
-        std::unique_ptr<TextRendering::TextUnit> nameTextUnit_;
-        std::unique_ptr<TextRendering::TextUnit> badgeTextUnit_;
+        bool isSelected_;
     };
 
-    class TabBar : public SimpleListWidget
+    class AppBarItem : public BaseBarItem
     {
-        Q_OBJECT;
+        Q_OBJECT
 
     public:
-        explicit TabBar(QWidget* _parent = nullptr);
-        ~TabBar();
+        explicit AppBarItem(const QString& _iconPath, const QString& _iconActivePath, QWidget* _parent = nullptr);
+        void setName(const QString& _name) override;
+
+    protected:
+        void paintEvent(QPaintEvent* _event) override;
+        QSize sizeHint() const override;
+
+    private Q_SLOTS:
+        void onTooltipTimer();
+        void onHoverChanged(bool _hovered);
+
+    private:
+        void showTooltip();
+        void hideTooltip();
+
+    private:
+        QTimer* tooltipTimer_;
+        bool tooltipVisible_;
+    };
+
+    class TabItem : public BaseBarItem
+    {
+        Q_OBJECT
+    public:
+        explicit TabItem(const QString& _iconPath, const QString& _iconActivePath, QWidget* _parent = nullptr);
+        void setSelected(bool _value) override;
+        void setName(const QString& _name) override;
+
+    protected:
+        void paintEvent(QPaintEvent* _event) override;
+
+    private:
+        void updateTextColor();
+
+    private:
+        std::unique_ptr<TextRendering::TextUnit> nameTextUnit_;
+    };
+
+
+    class BaseTabBar : public SimpleListWidget
+    {
+    public:
+        explicit BaseTabBar(Qt::Orientation _orientation, QWidget* _parent = nullptr);
 
         void setBadgeText(int _index, const QString& _text);
         void setBadgeIcon(int _index, const QString& _icon);
+    };
 
-        static int getDefaultHeight();
+    class AppsBar : public BaseTabBar
+    {
+        Q_OBJECT
+    public:
+        explicit AppsBar(QWidget* _parent = nullptr);
+
+    };
+
+    class TabBar : public BaseTabBar
+    {
+        Q_OBJECT
+    public:
+        explicit TabBar(QWidget* _parent = nullptr);
+        ~TabBar();
 
     protected:
         void paintEvent(QPaintEvent* _e) override;

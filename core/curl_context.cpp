@@ -28,21 +28,22 @@
 #include "zstd_helper.h"
 #endif // !STRIP_ZSTD
 
-
-const size_t MAX_LOG_DATA_SIZE = 10 * 1024 * 1024;
-const static auto FLUSH_STATS_TO_CORE_TIMEOUT =
-        #if defined(DEBUG)
-            std::chrono::seconds(30);
-        #else
-            std::chrono::minutes(3);
-        #endif
-const static auto SAVE_AGGREGATED_STATS_INTERVAL =
-        #if defined(DEBUG)
-            std::chrono::seconds(10);
-        #else
-            FLUSH_STATS_TO_CORE_TIMEOUT;
-        #endif
-
+namespace
+{
+    constexpr size_t MAX_LOG_DATA_SIZE = 10 * 1024 * 1024;
+    constexpr auto FLUSH_STATS_TO_CORE_TIMEOUT =
+#if defined(DEBUG)
+        std::chrono::seconds(30);
+#else
+        std::chrono::minutes(3);
+#endif
+    constexpr auto SAVE_AGGREGATED_STATS_INTERVAL =
+#if defined(DEBUG)
+        std::chrono::seconds(10);
+#else
+        FLUSH_STATS_TO_CORE_TIMEOUT;
+#endif
+}
 static size_t write_header_function(void *contents, size_t size, size_t nmemb, void *userp);
 static size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *userp);
 static int32_t progress_callback(void* ptr, double TotalToDownload, double NowDownloaded, double TotalToUpload, double NowUploaded);
@@ -207,13 +208,11 @@ bool core::curl_context::init_handler(CURL* _curl)
     curl_easy_setopt(_curl, CURLOPT_HTTP_VERSION, (is_http2_used ? CURL_HTTP_VERSION_2TLS : CURL_HTTP_VERSION_1_1));
 
     if (is_http2_used)
-        curl_easy_setopt(_curl, CURLOPT_PIPEWAIT, long(1));
+        curl_easy_setopt(_curl, CURLOPT_PIPEWAIT, 1L);
 
     curl_easy_setopt(_curl, CURLOPT_SSL_CTX_FUNCTION, ssl_ctx_callback);
 
     curl_easy_setopt(_curl, CURLOPT_SSL_VERIFYHOST, 2L);
-
-    curl_easy_setopt(_curl, CURLOPT_NOSIGNAL, 1L);
 
     curl_easy_setopt(_curl, CURLOPT_WRITEDATA, (void *)this);
     curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, write_memory_callback);
@@ -228,19 +227,22 @@ bool core::curl_context::init_handler(CURL* _curl)
     curl_easy_setopt(_curl, CURLOPT_TCP_KEEPINTVL, 5L);
     curl_easy_setopt(_curl, CURLOPT_NOSIGNAL, 1L);
 
-    if (use_curl_decompression_ || zstd_response_dict_.empty())
+    if (!environment::is_develop() || core::configuration::get_app_config().is_net_compression_enabled())
     {
-        use_curl_decompression_ = true;
-        curl_easy_setopt(_curl, CURLOPT_ACCEPT_ENCODING, get_data_compression_method_name(data_compression_method::gzip).data());
-    }
-    else
-    {
-        std::string accept_encoding = su::concat("Accept-Encoding: ", get_data_compression_method_name(data_compression_method::zstd),
-            ", ", get_data_compression_method_name(data_compression_method::gzip));
-        set_custom_header_param(std::move(accept_encoding));
+        if (use_curl_decompression_ || zstd_response_dict_.empty())
+        {
+            use_curl_decompression_ = true;
+            curl_easy_setopt(_curl, CURLOPT_ACCEPT_ENCODING, get_data_compression_method_name(data_compression_method::gzip).data());
+        }
+        else
+        {
+            std::string accept_encoding = su::concat("Accept-Encoding: ", get_data_compression_method_name(data_compression_method::zstd),
+                ", ", get_data_compression_method_name(data_compression_method::gzip));
+            set_custom_header_param(std::move(accept_encoding));
 
-        std::string response_dict_param  = su::concat(get_response_dict_header_attribut(), ": ", zstd_response_dict_);
-        set_custom_header_param(std::move(response_dict_param));
+            std::string response_dict_param = su::concat(get_response_dict_header_attribut(), ": ", zstd_response_dict_);
+            set_custom_header_param(std::move(response_dict_param));
+        }
     }
 
     curl_easy_setopt(_curl, CURLOPT_USERAGENT, user_agent_.c_str());
@@ -597,7 +599,7 @@ void core::curl_context::load_info(CURL* _curl, CURLcode _result)
 
     static std::once_flag flag;
     std::call_once(flag, []() {
-        g_core->add_timer([]
+        g_core->add_timer({ []
         {
             const auto stat_d = aggregator.release();
 
@@ -615,7 +617,7 @@ void core::curl_context::load_info(CURL* _curl, CURLcode _result)
                     (*stat_d).total_uploaded_);
             }
 
-        }, SAVE_AGGREGATED_STATS_INTERVAL);
+        } }, SAVE_AGGREGATED_STATS_INTERVAL);
     });
 
     if (g_core->is_im_stats_enabled() && is_send_im_stats())
@@ -734,7 +736,7 @@ void core::curl_context::write_log_message(std::string_view _result, std::chrono
     message << '\n';
     if (need_log_original_url_)
         message << "url: " << original_url_ << '\n';
-    message << "curl_easy_perform result is " << _result << '\n';
+    message << "curl_easy_perform result is " << _result << " " << normalized_url_ << '\n';
     message << "priority is " << priority_ << '\n';
 
     if (strlen(err_buf_) != 0)

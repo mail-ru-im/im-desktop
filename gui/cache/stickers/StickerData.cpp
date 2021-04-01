@@ -13,7 +13,7 @@ namespace Ui::Stickers
     {
         if (_path.isEmpty())
         {
-            assert(false);
+            im_assert(false);
             return;
         }
 
@@ -37,7 +37,7 @@ namespace Ui::Stickers
 
     void StickerData::setPixmap(QPixmap _pixmap)
     {
-        assert(!_pixmap.isNull());
+        im_assert(!_pixmap.isNull());
 
         Utils::check_pixel_ratio(_pixmap);
 
@@ -48,7 +48,7 @@ namespace Ui::Stickers
 
     const QPixmap& StickerData::getPixmap() const noexcept
     {
-        assert(isPixmap() || !isValid());
+        im_assert(isPixmap() || !isValid());
         if (auto dataPointer = std::get_if<QPixmap>(&data_))
         {
             return *dataPointer;
@@ -62,7 +62,7 @@ namespace Ui::Stickers
 
     const QString& StickerData::getLottiePath() const noexcept
     {
-        assert(isLottie() || !isValid());
+        im_assert(isLottie() || !isValid());
         if (auto dataPointer = std::get_if<QString>(&data_))
         {
             return *dataPointer;

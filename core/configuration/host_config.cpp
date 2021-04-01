@@ -267,6 +267,7 @@ void config::hosts::send_config_to_gui()
             return {};
         };
 
+        coll.set_value_as_string("baseBinary", get_value(host_url_type::base_binary));
         coll.set_value_as_string("filesParse", get_value(host_url_type::files_parse));
         coll.set_value_as_string("stickerShare", get_value(host_url_type::stickerpack_share));
         coll.set_value_as_string("profile", get_value(host_url_type::profile));
@@ -342,6 +343,13 @@ void config::hosts::load_external_config_from_url(std::string_view _url, load_ca
         {
             load_dns_cache();
             send_config_to_gui();
+            if (g_core)
+            {
+                g_core->execute_core_context({ []()
+                {
+                    g_core->try_send_crash_report(); // base url is received, try to send
+                } });
+            }
         }
         _callback(_error, std::move(_url));
     });

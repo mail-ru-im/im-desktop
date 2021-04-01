@@ -4,6 +4,7 @@
 #include "core_dispatcher.h"
 
 #include "main_window/MainPage.h"
+#include "main_window/AppsPage.h"
 #include "main_window/sidebar/SidebarUtils.h"
 #include "main_window/contact_list/ContactListModel.h"
 #include "main_window/contact_list/SelectionContactsForGroupChat.h"
@@ -20,6 +21,7 @@
 
 #include "styles/ThemeParameters.h"
 #include "utils/features.h"
+#include "utils/InterConnector.h"
 #include "previewer/toast.h"
 
 namespace
@@ -56,7 +58,7 @@ namespace
                 statVal = "no_one";
                 break;
             default:
-                assert(!"invalid value");
+                im_assert(!"invalid value");
                 break;
         }
         Ui::GetDispatcher()->post_stats_to_core(statName, { {"type", statVal } });
@@ -341,10 +343,10 @@ namespace Ui
             }
         };
 
-        MainPage::instance()->showSemiWindow();
+        Utils::InterConnector::instance().getAppsPage()->showSemiWindow();
         showList();
         Logic::GetPrivacySettingsContainer()->requestValues();
-        MainPage::instance()->hideSemiWindow();
+        Utils::InterConnector::instance().getAppsPage()->hideSemiWindow();
     }
 
     void PrivacySettingsWidget::updateDisallowLinkVisibility()

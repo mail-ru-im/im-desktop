@@ -120,9 +120,7 @@ class Set
     StickerData bigIcon_;
     QString storeId_;
     QString description_;
-    QString subtitle_;
     bool purchased_ = true;
-    bool user_ = true;
     bool lottie_ = false;
 
     stickersArray stickers_;
@@ -146,14 +144,8 @@ public:
     void setDescription(const QString& _description) { description_ = _description; }
     const QString& getDescription() const noexcept { return description_; }
 
-    void setSubtitle(const QString& _subtitle) { subtitle_ = _subtitle; }
-    const QString& getSubtitle() const noexcept { return subtitle_; }
-
     void setPurchased(const bool _purchased) { purchased_ = _purchased; }
     bool isPurchased() const noexcept { return purchased_; }
-
-    void setUser(const bool _user) { user_ = _user; }
-    bool isUser() const noexcept { return user_; }
 
     void setIcon(StickerData _data);
     const StickerData& getIcon() const;
@@ -296,11 +288,6 @@ public:
     const setsMap& getSetsTree() const;
     const setsMap& getStoreTree() const;
 
-    const QString& getTemplatePreviewBaseUrl() const;
-    const QString& getTemplateOriginalBaseUrl() const;
-
-    QString getTemplateSendBaseUrl() const;
-
 private:
     void startBatchLoadTimer();
     void loadStickerDataBatch();
@@ -322,10 +309,6 @@ private:
     StickersSuggests suggests_;
     SuggestsAliases aliases_;
 
-    QString templatePreviewBaseUrl_;
-    QString templateOriginalBaseUrl_;
-    QString templateSendBaseUrl_;
-
     StickerLoadDataV batchloadData_;
     QTimer* batchLoadTimer_ = nullptr;
 };
@@ -346,9 +329,7 @@ void setSetBigIcon(const core::coll_helper& _coll);
 stickerSptr getSticker(uint32_t _setId, uint32_t _stickerId);
 stickerSptr getSticker(const QString& _fsId);
 
-QString getPreviewBaseUrl();
-QString getOriginalBaseUrl();
-QString getSendBaseUrl();
+QString getSendUrl(const QString& _fsId);
 
 const setsIdsArray& getStickersSets();
 const setsIdsArray& getStoreStickersSets();
@@ -384,9 +365,6 @@ setSptr parseSet(const core::coll_helper& _coll_set);
 
 void addSet(setSptr _set);
 void addStickers(const std::vector<QString> &_fsIds, const QString &_text, const Stickers::SuggestType _type);
-
-bool isUserSet(const int32_t _setId);
-bool isPurchasedSet(const int32_t _setId);
 
 setSptr getSet(const int32_t _setId);
 setSptr getStoreSet(const int32_t _setId);

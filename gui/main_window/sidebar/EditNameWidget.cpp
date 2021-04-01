@@ -152,7 +152,7 @@ namespace Ui
 
     void EditNameWidget::setButtonsPair(const QPair<DialogButton*, DialogButton*> &_buttonsPair)
     {
-        assert(!okButton_ && !cancelButton_);
+        im_assert(!okButton_ && !cancelButton_);
 
         okButton_ = _buttonsPair.first;
         cancelButton_ = _buttonsPair.second;

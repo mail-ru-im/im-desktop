@@ -1,2 +1,6 @@
-﻿ ﻿— Custom statuses
- ﻿— Bugfix and improvements
+﻿—  Added display of full file name in the chat and in the chat gallery on hover
+—  Added display of full username, chat or channel name on hover
+—  Made the "Show notifications when the application in focus" setting in Settings → Notifications
+—  Fixed crashes on Linux when playing some animated stickers
+—  Removed the display of your video when watching a screen sharing in the call window
+—  Other fixes and improvements

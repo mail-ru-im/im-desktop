@@ -112,7 +112,7 @@ bool GuiMemoryMonitor::isRequestFinished(const Memory_Stats::RequestHandle &_req
 
 void GuiMemoryMonitor::asyncGetReportsFor(const Memory_Stats::RequestHandle &_req_handle)
 {
-    assert(request_reports_.count(_req_handle) == 0);
+    im_assert(request_reports_.count(_req_handle) == 0);
     request_reports_[_req_handle] = syncGetReportsFor(_req_handle.info_.req_types_);
 
     if (isRequestFinished(_req_handle.id_))
@@ -431,7 +431,7 @@ void GuiMemoryMonitor::writeLogMemoryReport(std::function<void()> _onComplete)
 //    report.addSubcategory("gallery_widget: img loaders", _img_loaders);
 
 //    auto historyControl = Utils::InterConnector::instance().getContactDialog()->getHistoryControl();
-//    assert(historyControl);
+//    im_assert(historyControl);
 //    if (historyControl)
 //    {
 //        auto pages = historyControl->allPages();

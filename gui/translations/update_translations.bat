@@ -12,5 +12,5 @@ SET EXT_LIB_VERS=%EXT_LIB_VERS:"=%
 set LIST_LANGS=(ru)
 
 for %%i in %LIST_LANGS% do (
-	call ..\..\external_%EXT_LIB_VERS%\qt\windows\bin\lupdate.exe .. ..\..\gui.shared -ts %%i.ts -noobsolete -source-language en -target-language %%i -locations none
+	call ..\..\external_%EXT_LIB_VERS%\qt\static\windows\bin\lupdate.exe .. ..\..\gui.shared -ts %%i.ts -noobsolete -source-language en -target-language %%i -locations none
 )

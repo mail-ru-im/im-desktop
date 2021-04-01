@@ -10,8 +10,8 @@ namespace Utils
         , size_(_size)
         , aspectMode_(_aspectMode)
     {
-        assert(!preview_.isNull());
-        assert(!size_.isEmpty());
+        im_assert(!preview_.isNull());
+        im_assert(!size_.isEmpty());
     }
 
     void ResizePixmapTask::run()

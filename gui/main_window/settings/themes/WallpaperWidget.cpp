@@ -39,7 +39,7 @@ namespace Ui
         , isSelected_(false)
         , wallpaper_(_wallpaper)
     {
-        assert(_wallpaper);
+        im_assert(_wallpaper);
 
         setFixedSize(getButtonSize());
 
@@ -65,7 +65,7 @@ namespace Ui
         {
             disconnect(&Styling::getThemesContainer(), &Styling::ThemesContainer::wallpaperPreviewAvailable, this, &WallpaperWidget::onPreviewAwailable);
 
-            assert(!wallpaper_->getPreviewImage().isNull());
+            im_assert(!wallpaper_->getPreviewImage().isNull());
             if (const auto preview = wallpaper_->getPreviewImage(); !preview.isNull())
                 setPreview(preview);
         }

@@ -193,6 +193,15 @@ namespace config
                 std::pair(features::show_sms_notify_setting, get_bool(it->value, "show_sms_notify_setting")),
                 std::pair(features::silent_message_delete, get_bool(it->value, "silent_message_delete")),
                 std::pair(features::remove_deleted_from_notifications, get_bool(it->value, "remove_deleted_from_notifications")),
+                std::pair(features::long_path_tooltip_enabled, get_bool(it->value, "long_path_tooltip_enabled")),
+                std::pair(features::installer_crash_send, get_bool(it->value, "installer_crash_send")),
+                std::pair(features::custom_statuses_enabled, get_bool(it->value, "custom_statuses_enabled")),
+                std::pair(features::formatting_in_bubbles, get_bool(it->value, "formatting_in_bubbles")),
+                std::pair(features::formatting_in_input, get_bool(it->value, "formatting_in_input")),
+                std::pair(features::apps_bar_visible, get_bool(it->value, "apps_bar_visible")),
+                std::pair(features::tab_bar_visible, get_bool(it->value, "tab_bar_visible")),
+                std::pair(features::status_in_apps_bar, get_bool(it->value, "status_in_apps_bar")),
+                std::pair(features::threads_enabled, get_bool(it->value, "threads_enabled")),
             };
 
             if (std::is_sorted(std::cbegin(res), std::cend(res), is_less_by_first))

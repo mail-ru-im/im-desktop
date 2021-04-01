@@ -78,7 +78,6 @@ namespace
 
     constexpr std::chrono::milliseconds animDuration = std::chrono::seconds(2);
     constexpr std::chrono::milliseconds animDownloadDelay = std::chrono::milliseconds(300);
-    constexpr std::chrono::milliseconds tooltipShowDelay() noexcept { return std::chrono::milliseconds(400); }
     constexpr auto QT_ANGLE_MULT = 16;
     constexpr double idleProgressValue = 0.75;
 }
@@ -139,7 +138,7 @@ namespace PttDetails
 
     void PlayButton::updateStyle()
     {
-        assert(!aimId_.isEmpty());
+        im_assert(!aimId_.isEmpty());
 
         const auto params = Styling::getParameters(aimId_);
         normal_  = params.getColor(Styling::StyleVariable::PRIMARY);
@@ -329,7 +328,7 @@ PttBlock::PttBlock(
     , progressText_(nullptr)
     , downloadAnimDelay_(nullptr)
 {
-    assert(_durationSec >= 0);
+    im_assert(_durationSec >= 0);
 
     if (!getParentComplexMessage()->isHeadless())
     {
@@ -371,7 +370,7 @@ PttBlock::PttBlock(ComplexMessageItem *_parent,
     , progressText_(nullptr)
     , downloadAnimDelay_(nullptr)
 {
-    assert(_durationSec >= 0);
+    im_assert(_durationSec >= 0);
 
     if (!getParentComplexMessage()->isHeadless())
     {
@@ -425,19 +424,19 @@ QSize PttBlock::getCtrlButtonSize() const
     return getButtonSize();
 }
 
-QString PttBlock::getSelectedText(const bool, const TextDestination) const
+Data::FormattedString PttBlock::getSelectedText(const bool, const TextDestination) const
 {
     QString result;
     result.reserve(512);
 
     if (FileSharingBlockBase::isSelected())
     {
-        result += FileSharingBlockBase::getSelectedText();
+        result += FileSharingBlockBase::getSelectedText().string();
         result += QChar::LineFeed;
     }
 
     if (decodedTextCtrl_)
-        result += decodedTextCtrl_->getSelectedText();
+        result += decodedTextCtrl_->getSelectedText().string();
 
     return result;
 }
@@ -464,7 +463,7 @@ bool PttBlock::isDecodedTextCollapsed() const
 
 void PttBlock::selectByPos(const QPoint& from, const QPoint& to, bool topToBottom)
 {
-    assert(to.y() >= from.y());
+    im_assert(to.y() >= from.y());
 
     if (!isDecodedTextVisible())
     {
@@ -508,8 +507,8 @@ void PttBlock::selectAll()
 
 void PttBlock::setCtrlButtonGeometry(const QRect &_rect)
 {
-    assert(!_rect.isEmpty());
-    assert(!getParentComplexMessage()->isHeadless());
+    im_assert(!_rect.isEmpty());
+    im_assert(!getParentComplexMessage()->isHeadless());
 
     buttonPlay_->move(_rect.topLeft());
     buttonPlay_->show();
@@ -644,6 +643,14 @@ void PttBlock::enterEvent(QEvent* _e)
     GenericBlock::enterEvent(_e);
 }
 
+void PttBlock::wheelEvent(QWheelEvent* _e)
+{
+    if constexpr (platform::is_apple())
+        Tooltip::hide();
+
+    GenericBlock::wheelEvent(_e);
+}
+
 void PttBlock::drawBlock(QPainter &_p, const QRect& _rect, const QColor& quote_color)
 {
     if (!isStandalone() && FileSharingBlockBase::isSelected())
@@ -685,7 +692,7 @@ void PttBlock::onDataTransferStarted()
 
 void PttBlock::showDownloadAnimation()
 {
-    assert((!getParentComplexMessage()->isHeadless()));
+    im_assert((!getParentComplexMessage()->isHeadless()));
 
     if (isFileDownloaded())
         return;
@@ -707,7 +714,7 @@ void PttBlock::onDataTransferStopped()
 
 void PttBlock::onDownloaded()
 {
-    assert(!getParentComplexMessage()->isHeadless());
+    im_assert(!getParentComplexMessage()->isHeadless());
 
     buttonPlay_->show();
 
@@ -782,17 +789,14 @@ void PttBlock::onMetainfoDownloaded()
     }
 }
 
-void PttBlock::onPreviewMetainfoDownloaded(const QString &_miniPreviewUri, const QString &_fullPreviewUri)
+void PttBlock::onPreviewMetainfoDownloaded()
 {
-    Q_UNUSED(_miniPreviewUri);
-    Q_UNUSED(_fullPreviewUri);
-
-    assert(!"you're not expected to be here");
+    im_assert(!"you're not expected to be here");
 }
 
 void PttBlock::connectSignals()
 {
-    assert(!getParentComplexMessage()->isHeadless());
+    im_assert(!getParentComplexMessage()->isHeadless());
 
     connect(buttonPlay_, &PttDetails::PlayButton::clicked, this, &PttBlock::onPlayButtonClicked);
     connect(buttonPlay_, &PttDetails::PlayButton::hoverChanged, this, &PttBlock::updateBulletHoveredState);
@@ -806,8 +810,8 @@ void PttBlock::connectSignals()
 
 void PttBlock::drawBubble(QPainter &_p, const QRect &_bubbleRect)
 {
-    assert(!_bubbleRect.isEmpty());
-    assert(!isStandalone());
+    im_assert(!_bubbleRect.isEmpty());
+    im_assert(!isStandalone());
 
     Utils::PainterSaver ps(_p);
     _p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
@@ -821,8 +825,8 @@ void PttBlock::drawBubble(QPainter &_p, const QRect &_bubbleRect)
 
 void PttBlock::drawDuration(QPainter &_p)
 {
-    assert(!durationText_.isEmpty());
-    assert(!getParentComplexMessage()->isHeadless());
+    im_assert(!durationText_.isEmpty());
+    im_assert(!getParentComplexMessage()->isHeadless());
 
     const auto durationLeftMargin = Utils::scale_value(12);
     const auto durationBaseline = Utils::scale_value(34);
@@ -838,15 +842,15 @@ void PttBlock::drawDuration(QPainter &_p)
     const auto secondsLeft = (durationMSec_ - playbackProgressMsec_);
     const QString text = (isPlaying() || isPaused()) ? formatDuration(secondsLeft) : (isPlayed_ ? durationText_ : durationText_ % ql1c(' ') % QChar(0x2022));
 
-    assert(!text.isEmpty());
+    im_assert(!text.isEmpty());
     _p.drawText(textX, textY, text);
 }
 
 void PttBlock::drawPlaybackProgress(QPainter &_p, const int32_t _progressMsec, const int32_t _durationMsec)
 {
-    assert(_progressMsec >= 0);
-    assert(_durationMsec > 0);
-    assert(!getParentComplexMessage()->isHeadless());
+    im_assert(_progressMsec >= 0);
+    im_assert(_durationMsec > 0);
+    im_assert(!getParentComplexMessage()->isHeadless());
 
     const auto leftMargin  = buttonPlay_->pos().x() + getButtonSize().width() + MessageStyle::getBubbleHorPadding();
     const auto rightMargin = (canShowButtonText() ? width() - pttLayout_->getTextButtonRect().left() : 0) + MessageStyle::getBubbleHorPadding();
@@ -895,16 +899,16 @@ void PttBlock::drawPlaybackProgress(QPainter &_p, const int32_t _progressMsec, c
 
 int32_t PttBlock::getPlaybackProgress() const
 {
-    assert(playbackProgressMsec_ >= 0);
-    assert(playbackProgressMsec_ < getMaxPttLength().count());
+    im_assert(playbackProgressMsec_ >= 0);
+    im_assert(playbackProgressMsec_ < getMaxPttLength().count());
 
     return playbackProgressMsec_;
 }
 
 void PttBlock::setPlaybackProgress(const int32_t _value)
 {
-    assert(_value >= 0);
-    assert(_value < getMaxPttLength().count());
+    im_assert(_value >= 0);
+    im_assert(_value < getMaxPttLength().count());
 
     playbackProgressMsec_ = _value;
 
@@ -953,7 +957,7 @@ bool PttBlock::isTextRequested() const
 
 void PttBlock::renderClipPaths(const QRect &_bubbleRect)
 {
-    assert(!_bubbleRect.isEmpty());
+    im_assert(!_bubbleRect.isEmpty());
     if (_bubbleRect.isEmpty())
         return;
 
@@ -967,7 +971,7 @@ void PttBlock::renderClipPaths(const QRect &_bubbleRect)
 
 void PttBlock::requestText()
 {
-    assert(textRequestId_ == -1);
+    im_assert(textRequestId_ == -1);
 
     textRequestId_ = GetDispatcher()->pttToText(getLink(), Utils::GetTranslator()->getLang());
 
@@ -1014,7 +1018,7 @@ void PttBlock::startPlayback()
 #ifndef STRIP_AV_MEDIA
     isPlayed_ = true;
 
-    assert(!isPlaying());
+    im_assert(!isPlaying());
     if (isPlaying())
         return;
 
@@ -1051,7 +1055,7 @@ void PttBlock::pausePlayback()
 
     playbackState_ = PlaybackState::Paused;
 
-    assert(playingId_ > 0);
+    im_assert(playingId_ > 0);
     GetSoundsManager()->pausePtt(playingId_);
 
     if (playbackProgressAnimation_)
@@ -1068,7 +1072,7 @@ void PttBlock::initPlaybackAnimation(AnimationState _state)
     playingId_ = GetSoundsManager()->playPtt(getFileLocalPath(), playingId_, durationMSec_, getPlaybackPercentProgress(bulletPos_));
     GetSoundsManager()->pausePtt(playingId_);
 
-    assert(durationMSec_ > 0);
+    im_assert(durationMSec_ > 0);
 
     if (!playbackProgressAnimation_)
     {
@@ -1101,7 +1105,7 @@ void PttBlock::updateButtonsStates()
 
 void PttBlock::updatePlayButtonState()
 {
-    assert(!getParentComplexMessage()->isHeadless());
+    im_assert(!getParentComplexMessage()->isHeadless());
 
     if (isPlaying())
         buttonPlay_->setState(PttDetails::PlayButton::ButtonState::pause);
@@ -1194,7 +1198,7 @@ bool PttBlock::isOutgoing() const
 
 bool PttBlock::canShowButtonText() const
 {
-    return recognize_ && config::get().is_on(config::features::ptt_recognition);
+    return Meta_.recognize_ && config::get().is_on(config::features::ptt_recognition);
 }
 
 bool PttBlock::checkButtonsHovered() const
@@ -1340,7 +1344,7 @@ void PttBlock::onPttText(qint64 _seq, int _error, QString _text, int _comeback)
     if (Utils::InterConnector::instance().isMultiselect())
         return;
 
-    assert(_seq > 0);
+    im_assert(_seq > 0);
 
     if (textRequestId_ != _seq)
     {

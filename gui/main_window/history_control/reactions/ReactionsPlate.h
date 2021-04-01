@@ -38,6 +38,7 @@ namespace Ui
         void mousePressEvent(QMouseEvent* _event) override;
         void mouseReleaseEvent(QMouseEvent* _event) override;
         void leaveEvent(QEvent* _event) override;
+        void wheelEvent(QWheelEvent* _event) override;
 
     private Q_SLOTS:
         void onMultiselectChanged();

@@ -7,13 +7,13 @@
 #include "../../controls/SemitransparentWindowAnimated.h"
 #include "../../utils/InterConnector.h"
 #include "../../utils/utils.h"
+#include "../../utils/features.h"
 #include "../../utils/animations/SlideController.h"
 #include "../../styles/ThemeParameters.h"
 #include "../MainPage.h"
 
 namespace
 {
-    constexpr int kSidebarWidth = 328;
     constexpr int kMaxCacheSize = 2;
     constexpr std::chrono::milliseconds kSlideDuration = std::chrono::milliseconds(125);
     constexpr std::chrono::milliseconds kFadeDuration = std::chrono::milliseconds(100);
@@ -185,7 +185,7 @@ namespace Ui
                     for (index = 0; index < n; ++index)
                         if (index != qptr_->currentIndex())
                             break;
-                    assert(index != n);
+                    im_assert(index != n);
                     removePage(index);
                 }
 
@@ -284,7 +284,7 @@ namespace Ui
 
         if (d->frameCountMode_ == FrameCountMode::_1)
         {
-            setFixedSize(d->semiWindow_->size());
+            setFixedHeight(d->semiWindow_->height());
             show();
             d->showPage();
             return;
@@ -325,6 +325,11 @@ namespace Ui
         d->animSidebar_->start();
     }
 
+    void Sidebar::moveToWindowEdge()
+    {
+        move(d->semiWindow_->width() - width(), 0);
+    }
+
     void Sidebar::animate(const QVariant& value)
     {
         if (d->frameCountMode_ == FrameCountMode::_1)
@@ -334,8 +339,8 @@ namespace Ui
         else
         {
             d->semiWindow_->updateSize();
-            move(d->semiWindow_->width() - value.toInt(), 0);
             setFixedWidth(value.toInt());
+            moveToWindowEdge();
         }
     }
 
@@ -369,7 +374,7 @@ namespace Ui
     {
         setCurrentIndex(_index);
         if (d->frameCountMode_ == FrameCountMode::_1)
-            setFixedSize(d->semiWindow_->size());
+            setFixedHeight(d->semiWindow_->height());
         else
             setFixedWidth(getDefaultWidth());
 
@@ -385,7 +390,8 @@ namespace Ui
     void Sidebar::updateSize()
     {
         d->semiWindow_->updateSize();
-        move(d->semiWindow_->width() - width(), 0);
+        if (d->frameCountMode_ == FrameCountMode::_2)
+            moveToWindowEdge();
         setFixedHeight(d->semiWindow_->height());
     }
 
@@ -402,7 +408,10 @@ namespace Ui
         d->needShadow_ = _value;
         const auto visible = isVisible();
         if (d->needShadow_)
+        {
             setParent(d->semiWindow_);
+            moveToWindowEdge();
+        }
 
         if (visible)
         {
@@ -415,7 +424,7 @@ namespace Ui
 
     int Sidebar::getDefaultWidth()
     {
-        return Utils::scale_value(kSidebarWidth);
+        return Features::isThreadsEnabled() ? Utils::scale_value(380) : Utils::scale_value(328);
     }
 
     QString Sidebar::getSelectedText() const

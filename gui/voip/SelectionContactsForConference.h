@@ -38,10 +38,10 @@ namespace Ui
         QRect getAvatarRect(const QModelIndex& _index);
 
     private:
-        ClickableWidget* membersLabelHost_;
+        QWidget* membersLabelHost_;
         QLabel* memberLabel_;
-        CustomButton* memberArrowDown_;
-        CustomButton* memberArrowUp_;
+        CustomButton* memberShowAll_;
+        CustomButton* memberHide_;
         ListViewWithTrScrollBar* conferenceContacts_;
         Logic::ChatMembersModel* conferenceMembersModel_;
     };

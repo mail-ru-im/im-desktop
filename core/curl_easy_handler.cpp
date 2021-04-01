@@ -143,17 +143,17 @@ namespace core
         else if (_priority <= core::highest_priority())
         {
             std::lock_guard<std::mutex> guard(top_priority_tasks_mutex_);
-            top_priority_tasks_->push_back(std::move(execute), _id);
+            top_priority_tasks_->push_back({ std::move(execute) }, _id);
         }
         else if (_priority <= default_priority())
         {
             std::lock_guard<std::mutex> guard(medium_priority_tasks_mutex_);
-            medium_priority_tasks_->push_back(std::move(execute), _id);
+            medium_priority_tasks_->push_back({ std::move(execute) }, _id);
         }
         else
         {
             std::lock_guard<std::mutex> guard(low_priority_tasks_mutext_);
-            low_priority_tasks_->push_back(std::move(execute), _id);
+            low_priority_tasks_->push_back({ std::move(execute) }, _id);
         }
     }
 

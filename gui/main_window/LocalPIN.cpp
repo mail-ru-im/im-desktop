@@ -429,7 +429,7 @@ void LocalPIN::lock()
     auto mainWindow = Utils::InterConnector::instance().getMainWindow();
     if (!mainWindow)
     {
-        assert(!"null MainWindow in LocalPIN");
+        im_assert(!"null MainWindow in LocalPIN");
         return;
     }
 
@@ -441,10 +441,10 @@ void LocalPIN::unlock()
     auto mainWindow = Utils::InterConnector::instance().getMainWindow();
     if (!mainWindow)
     {
-        assert(!"null MainWindow in LocalPIN");
+        im_assert(!"null MainWindow in LocalPIN");
         return;
     }
-    mainWindow->showMainPage();
+    mainWindow->showAppsPage();
 
     if (deferrredAction_)
     {

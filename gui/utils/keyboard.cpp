@@ -4,7 +4,7 @@ namespace Utils
 {
     bool keyEventCorrespondsToKeyComb(QKeyEvent *keyEvent, KeyCombination combination)
     {
-        assert(keyEvent);
+        im_assert(keyEvent);
         if (!keyEvent)
             return false;
 
@@ -18,7 +18,7 @@ namespace Utils
                    modifiers.testFlag(Qt::ShiftModifier);
             break;
         default:
-            assert(!"unhandled key combination, fix");
+            im_assert(!"unhandled key combination, fix");
         }
 
         return false;
@@ -34,7 +34,7 @@ namespace Utils
                    modifiers.testFlag(Qt::ShiftModifier);
             break;
         default:
-            assert(!"unhandled key combination for modifiers, fix");
+            im_assert(!"unhandled key combination for modifiers, fix");
         }
 
         return false;

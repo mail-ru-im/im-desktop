@@ -18,11 +18,6 @@
 #include "styles/ThemeParameters.h"
 #include "utils/utils.h"
 
-namespace
-{
-    constexpr std::chrono::milliseconds tooltipShowDelay() noexcept { return std::chrono::milliseconds(400); }
-}
-
 namespace Ui
 {
     HistogramContainer::HistogramContainer(QWidget* _parent)
@@ -43,7 +38,7 @@ namespace Ui
         : ClickableWidget(_parent)
         , durationCalc_(std::move(_durationCalc))
     {
-        assert(durationCalc_);
+        im_assert(durationCalc_);
         auto rootLayout = Utils::emptyHLayout(this);
         rootLayout->setSpacing(0);
 
@@ -78,13 +73,13 @@ namespace Ui
         rootLayout->setContentsMargins(buttonHorMargin, 0, durationText_->desiredWidth() + Utils::scale_value(16) + getHorSpacer(), 0);
 
         tooltipTimer_.setSingleShot(true);
-        tooltipTimer_.setInterval(tooltipShowDelay());
+        tooltipTimer_.setInterval(Tooltip::getDefaultShowDelay());
 
         connect(&tooltipTimer_, &QTimer::timeout, this, [this]()
-            {
-                if (isHovered() || underMouse_)
-                    showToolTip();
-            });
+        {
+            if (isHovered() || underMouse_)
+                showToolTip();
+        });
         connect(playButton_, &CustomButton::clicked, this, &HistogramPtt::onPlayButtonClicked);
 
         connect(this, &ClickableWidget::hoverChanged, this, &HistogramPtt::updateHover);

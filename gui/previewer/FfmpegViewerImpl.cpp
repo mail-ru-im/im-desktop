@@ -23,7 +23,7 @@ namespace
 
 std::unique_ptr<Previewer::AbstractViewer> Previewer::FFMpegViewer::create(const MediaData& _mediaData, const QSize& _viewportSize, QWidget* _parent, const bool _firstOpen)
 {
-    assert(_parent);
+    im_assert(_parent);
     auto viewer = std::unique_ptr<AbstractViewer>(new FFMpegViewer(_mediaData, _viewportSize, _parent, _firstOpen));
 
     return viewer;

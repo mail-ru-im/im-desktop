@@ -142,7 +142,6 @@ namespace Ui
         void searchEnd();
         void escapePressed();
         void enterPressed();
-        void recalcAvatarArea();
         void nameChanged();
         void containsPreCheckedMembers(const std::vector<QString>& _names);
 
@@ -186,7 +185,6 @@ namespace Ui
     protected:
         bool eventFilter(QObject* _obj, QEvent* _event) override;
 
-        int calcListHeight() const;
         bool isCheckboxesVisible() const;
         bool isShareModes() const;
         bool isCreateGroupMode() const;
@@ -195,7 +193,6 @@ namespace Ui
         bool isPopupWithCancelBtn() const;
 
         void updateFocus(bool _order);
-        void updateSpacer();
 
         void addAvatarToArea(const QString& _aimId);
         void removeAvatarFromArea(const QString& _aimId);
@@ -221,9 +218,6 @@ namespace Ui
         ContactListWidget* contactList_;
         std::unique_ptr<GeneralDialog> mainDialog_;
         QVBoxLayout* globalLayout_;
-        QWidget* clHost_;
-        QSpacerItem* clSpacer_;
-        QSpacerItem* clBottomSpacer_;
         int regim_;
         Logic::CustomAbstractListModel* chatMembersModel_;
         QWidget* mainWidget_;
@@ -242,8 +236,5 @@ namespace Ui
         QPixmap lastCroppedImage_;
 
         std::map<QWidget*, FocusPosition> focusWidget_;
-
-    private:
-        int bottomSpacerHeight() const;
     };
 }

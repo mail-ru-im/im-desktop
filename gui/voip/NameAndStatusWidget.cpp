@@ -124,14 +124,14 @@ void Ui::NameAndStatusWidget::setStatusProperty(const char* _propName, bool _val
 
 void Ui::NameAndStatusWidget::setName(const char* _name)
 {
-    assert(!!_name);
+    im_assert(!!_name);
     if (_name && name_)
         name_->setText(QString::fromUtf8(_name), TextEmojiAlign::allign_center);
 }
 
 void Ui::NameAndStatusWidget::setStatus(const char* _status)
 {
-    assert(!!_status);
+    im_assert(!!_status);
     if (_status && status_)
         status_->setText(QString::fromUtf8(_status));
 }

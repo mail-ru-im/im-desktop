@@ -148,21 +148,21 @@ QString convertPollQuoteText(const QString& _text) // replace media with placeho
             case TextChunk::Type::ProfileLink:
             case TextChunk::Type::ImageLink:
             case TextChunk::Type::Junk:
-                if (chunk.text_.startsWith(ql1c('\n')))
+                if (chunk.getPlainText().startsWith(u'\n'))
                     result += QChar::LineFeed;
-                else if(chunk.text_.startsWith(ql1c(' ')))
+                else if(chunk.getPlainText().startsWith(u' '))
                     result += QChar::Space;
 
-                result += QStringRef(&chunk.text_).trimmed();
+                result += chunk.getPlainText().trimmed().toString();
                 break;
 
             default:
-                assert(!"unknown chunk type");
-                result += chunk.text_;
+                im_assert(!"unknown chunk type");
+                result += chunk.getPlainText().toString();
                 break;
         }
 
-        if (chunk.text_.endsWith(ql1c('\n')))
+        if (chunk.getPlainText().endsWith(u'\n'))
             result += QChar::LineFeed;
 
         it.next();
@@ -183,7 +183,7 @@ SnippetBlock::EstimatedType estimatedTypeFromExtension(QStringView _extension)
     return SnippetBlock::EstimatedType::Article;
 }
 
-struct parseResult
+struct ParseResult
 {
     std::list<TextChunk> chunks;
     TextChunk snippet;
@@ -218,14 +218,13 @@ struct parseResult
     }
 };
 
-parseResult parseText(const QString& _text, const bool _allowSnippet, const bool _forcePreview)
-{
-    parseResult result;
 
+std::vector<QStringView> parseMarkdownForLinksToSkip(const QString& _text)
+{
     const auto sl = Ui::TextRendering::singleBackTick();
     const auto ml = Ui::TextRendering::tripleBackTick().toString();
 
-    std::vector<QStringView> toSkipLinks;
+    auto result = std::vector<QStringView>();
     const auto mcount = _text.count(ml);
     const auto scount = _text.count(sl);
     const QStringView textView = _text;
@@ -241,7 +240,7 @@ parseResult parseText(const QString& _text, const bool _allowSnippet, const bool
             const auto closingMD = openingMD + textView.mid(openingMD).indexOf(ml);
             if (openingMD != -1 && closingMD != -1 && closingMD > openingMD)
             {
-                toSkipLinks.push_back(textView.mid(openingMD, closingMD - openingMD));
+                result.push_back(textView.mid(openingMD, closingMD - openingMD));
                 idxBeg += closingMD + ml.size() + 1;
             }
             else
@@ -266,14 +265,14 @@ parseResult parseText(const QString& _text, const bool _allowSnippet, const bool
                     if (first == -1)
                     {
                         if (startsWith && endsWith && w.size() > 1)
-                            toSkipLinks.push_back(w);
+                            result.push_back(w);
                         else
                             first = i;
                     }
                     else
                     {
                         for (auto j = first; j <= i; ++j)
-                            toSkipLinks.push_back(words.at(j));
+                            result.push_back(words.at(j));
 
                         first = -1;
                     }
@@ -283,15 +282,22 @@ parseResult parseText(const QString& _text, const bool _allowSnippet, const bool
         }
     }
 
+    return result;
+}
+
+template <typename T>
+ParseResult parseTextCommon(const T& _text, const bool _allowSnippet, const bool _forcePreview, const std::vector<QStringView>& _linksToSkip)
+{
+    ParseResult result;
     ChunkIterator it(_text, getFixedUrls());
     while (it.hasNext())
     {
         auto chunk = it.current(_allowSnippet, _forcePreview);
-        if (!toSkipLinks.empty() && chunk.Type_ != TextChunk::Type::Text)
+        if (!_linksToSkip.empty() && chunk.Type_ != TextChunk::Type::Text)
         {
-            for (const auto& m : std::as_const(toSkipLinks))
+            for (const auto& m : std::as_const(_linksToSkip))
             {
-                if (m.contains(chunk.text_))
+                if (m.contains(chunk.getPlainText()))
                 {
                     chunk.Type_ = TextChunk::Type::Text;
                     break;
@@ -345,35 +351,50 @@ parseResult parseText(const QString& _text, const bool _allowSnippet, const bool
     return result;
 }
 
-parseResult parseQuote(const Data::Quote& _quote, const Data::MentionMap& _mentions, const bool _allowSnippet, const bool _forcePreview)
+ParseResult parseText(const Data::FormattedString& _text, const bool _allowSnippet, const bool _forcePreview)
 {
-    parseResult result;
+    return parseTextCommon(_text, _allowSnippet, _forcePreview, {});
+}
+
+
+ParseResult parseText(const QString& _text, const bool _allowSnippet, const bool _forcePreview)
+{
+    return parseTextCommon(_text, _allowSnippet, _forcePreview, parseMarkdownForLinksToSkip(_text));
+}
+
+ParseResult parseQuote(const Data::Quote& _quote, const Data::MentionMap& _mentions, const bool _allowSnippet, const bool _forcePreview)
+{
+    ParseResult result;
     const auto& text = _quote.text_;
 
     if (_quote.isSticker())
     {
-        TextChunk chunk(TextChunk::Type::Sticker, text, QString(), -1);
+        TextChunk chunk(TextChunk::Type::Sticker, text.string());
         chunk.Sticker_ = HistoryControl::StickerInfo::Make(_quote.setId_, _quote.stickerId_);
         result.chunks.emplace_back(std::move(chunk));
-    }
-    else if (text.startsWith(ql1c('>')))
-    {
-        result.chunks.emplace_back(TextChunk(TextChunk::Type::Text, text, QString(), -1));
     }
     else if (!_quote.description_.isEmpty())
     {
         result = parseText(_quote.url_, _allowSnippet, _forcePreview);
-        result.chunks.push_back(TextChunk(TextChunk::Type::Text, _quote.description_, QString(), -1));
+        result.chunks.push_back(TextChunk(_quote.description_));
+    }
+    else if (text.hasFormatting())
+    {
+        result = parseText(text, _allowSnippet, _forcePreview);
+    }
+    else if (text.startsWith(ql1c('>')))
+    {
+        result.chunks.emplace_back(TextChunk(TextChunk::Type::Text, text.string()));
     }
     else
     {
-        result = parseText(text, _allowSnippet, _forcePreview);
+        result = parseText(text.string(), _allowSnippet, _forcePreview);
     }
 
     result.sharedContact_ = _quote.sharedContact_;
     result.geo_ = _quote.geo_;
     result.poll_ = _quote.poll_;
-    result.sourceText_ = text;
+    result.sourceText_ = text.string();
 
     return result;
 }
@@ -385,7 +406,7 @@ enum class QuoteType
     Forward
 };
 
-std::vector<GenericBlock*> createBlocks(const parseResult& _parseRes, ComplexMessageItem* _parent, const int64_t _id, const int64_t _prev, int _quotesCount, QuoteType _quoteType = QuoteType::None)
+std::vector<GenericBlock*> createBlocks(const ParseResult& _parseRes, ComplexMessageItem* _parent, const int64_t _id, const int64_t _prev, int _quotesCount, QuoteType _quoteType = QuoteType::None)
 {
     std::vector<GenericBlock*> blocks;
     blocks.reserve(_parseRes.chunks.size());
@@ -393,6 +414,7 @@ std::vector<GenericBlock*> createBlocks(const parseResult& _parseRes, ComplexMes
     const auto isQuote = _quoteType == QuoteType::Quote;
     const auto isForward = _quoteType == QuoteType::Forward;
     const auto bigEmojiAllowed = !isQuote && !isForward && Ui::get_gui_settings()->get_value<bool>(settings_allow_big_emoji, settings_allow_big_emoji_default());
+	const auto emojiSizeType = bigEmojiAllowed ? TextRendering::EmojiSizeType::ALLOW_BIG : TextRendering::EmojiSizeType::REGULAR;
 
     if (_parseRes.poll_ && !isForward)
     {
@@ -406,19 +428,19 @@ std::vector<GenericBlock*> createBlocks(const parseResult& _parseRes, ComplexMes
         {
             case TextChunk::Type::Text:
             case TextChunk::Type::GenericLink:
-            {
-                if (!QStringView(chunk.text_).trimmed().isEmpty())
-                    blocks.push_back(new TextBlock(_parent, chunk.text_, bigEmojiAllowed ? TextRendering::EmojiSizeType::ALLOW_BIG: TextRendering::EmojiSizeType::REGULAR));
+                if (auto plainText = chunk.getPlainText(); !plainText.trimmed().isEmpty())
+                    blocks.emplace_back(new TextBlock(_parent, plainText.toString(), emojiSizeType));
                 break;
-            }
+
+            case TextChunk::Type::FormattedText:
+                if (auto text = chunk.getText(); !text.trimmed().isEmpty())
+                    blocks.emplace_back(new TextBlock(_parent, text, emojiSizeType));
+                break;
 
             case TextChunk::Type::ImageLink:
-            {
-                auto block = _parent->addSnippetBlock(chunk.text_, _parseRes.linkInsideText, estimatedTypeFromExtension(chunk.ImageType_), _quotesCount + blocks.size(), isQuote || isForward);
-                if (block)
+                if (auto block = _parent->addSnippetBlock(chunk.getPlainText().toString(), _parseRes.linkInsideText, estimatedTypeFromExtension(chunk.ImageType_), _quotesCount + blocks.size(), isQuote || isForward))
                     blocks.push_back(block);
                 break;
-            }
 
             case TextChunk::Type::FileSharingImage:
             case TextChunk::Type::FileSharingImageSticker:
@@ -429,12 +451,12 @@ std::vector<GenericBlock*> createBlocks(const parseResult& _parseRes, ComplexMes
             case TextChunk::Type::FileSharingLottieSticker:
             case TextChunk::Type::FileSharingGeneral:
                 blocks.push_back(chunk.FsInfo_ ? new FileSharingBlock(_parent, chunk.FsInfo_, getFileSharingContentType(chunk.Type_))
-                    : new FileSharingBlock(_parent, chunk.text_, getFileSharingContentType(chunk.Type_)));
+                    : new FileSharingBlock(_parent, chunk.getPlainText().toString(), getFileSharingContentType(chunk.Type_)));
                 break;
 
             case TextChunk::Type::FileSharingPtt:
                 blocks.push_back(chunk.FsInfo_ ? new PttBlock(_parent, chunk.FsInfo_, chunk.FsInfo_->duration() ? int32_t(*(chunk.FsInfo_->duration())) : chunk.DurationSec_, _id, _prev)
-                    : new PttBlock(_parent, chunk.text_, chunk.DurationSec_, _id, _prev));
+                    : new PttBlock(_parent, chunk.getPlainText().toString(), chunk.DurationSec_, _id, _prev));
                 break;
 
             case TextChunk::Type::Sticker:
@@ -442,14 +464,14 @@ std::vector<GenericBlock*> createBlocks(const parseResult& _parseRes, ComplexMes
                 break;
 
             case TextChunk::Type::ProfileLink:
-                blocks.push_back(new ProfileBlock(_parent, chunk.text_));
+                blocks.push_back(new ProfileBlock(_parent, chunk.getPlainText().toString()));
                 break;
 
             case TextChunk::Type::Junk:
                 break;
 
             default:
-                assert(!"unexpected chunk type");
+                im_assert(!"unexpected chunk type");
                 break;
         }
     }
@@ -458,7 +480,7 @@ std::vector<GenericBlock*> createBlocks(const parseResult& _parseRes, ComplexMes
     if (_parseRes.snippetsCount == 1 && _parseRes.mediaCount == 0)
     {
         const auto estimatedType = _parseRes.geo_ ? SnippetBlock::EstimatedType::Geo : SnippetBlock::EstimatedType::Article;
-        auto block = _parent->addSnippetBlock(_parseRes.snippet.text_, _parseRes.linkInsideText, estimatedType, _quotesCount + blocks.size(), isQuote || isForward);
+        auto block = _parent->addSnippetBlock(_parseRes.snippet.getPlainText().toString(), _parseRes.linkInsideText, estimatedType, _quotesCount + blocks.size(), isQuote || isForward);
         if (block)
             blocks.push_back(block);
     }
@@ -483,6 +505,7 @@ namespace ComplexMessageItemBuilder
         const auto id = _msg.Id_;
         const auto prev = _msg.Prev_;
         const auto& text = _msg.GetText();
+        const auto& formattedText = _msg.getFormattedText();
         const auto& description = _msg.GetDescription();
         const auto& mentions = _msg.Mentions_;
         const auto& quotes = _msg.Quotes_;
@@ -504,6 +527,8 @@ namespace ComplexMessageItemBuilder
             quote.isLastQuote_ = (i == quotesCount - 1);
             quote.mentions_ = mentions;
             quote.isSelectable_ = (quotesCount == 1);
+            if (!Features::isFormattingInBubblesEnabled())
+                quote.text_.clearFormat();
 
             const auto& parsedQuote = parseQuote(quote, mentions, allowSnippet, _forcePreview == ForcePreview::Yes);
             const auto parsedBlocks = createBlocks(parsedQuote, complexItem.get(), id, prev, 0, quote.isForward_ ? QuoteType::Forward : QuoteType::Quote);
@@ -526,7 +551,7 @@ namespace ComplexMessageItemBuilder
             TextChunk chunk(TextChunk::Type::Sticker, text, QString(), -1);
             chunk.Sticker_ = sticker;
 
-            parseResult res;
+            ParseResult res;
             res.chunks.push_back(std::move(chunk));
             messageBlocks = createBlocks(res, complexItem.get(), id, prev, quoteBlocks.size());
         }
@@ -576,14 +601,14 @@ namespace ComplexMessageItemBuilder
                 }
             }
 
-            TextChunk chunk(type, text, QString(), -1);
+            TextChunk chunk(type, text);
             chunk.FsInfo_ = filesharing;
 
-            parseResult res;
-            res.chunks.push_back(std::move(chunk));
+            ParseResult res;
+            res.chunks.emplace_back(std::move(chunk));
 
             if (!description.isEmpty())
-                res.chunks.push_back(TextChunk(TextChunk::Type::Text, description, QString(), -1));
+                res.chunks.emplace_back(description);
 
             messageBlocks = createBlocks(res, complexItem.get(), id, prev, quoteBlocks.size());
         }
@@ -592,7 +617,14 @@ namespace ComplexMessageItemBuilder
             if (!description.isEmpty())
             {
                 auto parsedMsg = parseText(_msg.GetUrl(), allowSnippet, _forcePreview == ForcePreview::Yes);
-                parsedMsg.chunks.push_back(TextChunk(TextChunk::Type::Text, description, QString(), -1));
+                parsedMsg.chunks.emplace_back(description);
+                messageBlocks = createBlocks(parsedMsg, complexItem.get(), id, prev, quoteBlocks.size());
+                hasTrailingLink = parsedMsg.hasTrailingLink;
+                hasLinkInText = parsedMsg.linkInsideText;
+            }
+            else if (Features::isFormattingInBubblesEnabled() && formattedText.hasFormatting())
+            {
+                const auto parsedMsg = parseText(formattedText, allowSnippet, _forcePreview == ForcePreview::Yes);
                 messageBlocks = createBlocks(parsedMsg, complexItem.get(), id, prev, quoteBlocks.size());
                 hasTrailingLink = parsedMsg.hasTrailingLink;
                 hasLinkInText = parsedMsg.linkInsideText;
@@ -600,7 +632,6 @@ namespace ComplexMessageItemBuilder
             else
             {
                 const auto parsedMsg = parseText(text, allowSnippet, _forcePreview == ForcePreview::Yes);
-
                 messageBlocks = createBlocks(parsedMsg, complexItem.get(), id, prev, quoteBlocks.size());
                 hasTrailingLink = parsedMsg.hasTrailingLink;
                 hasLinkInText = parsedMsg.linkInsideText;
@@ -630,7 +661,7 @@ namespace ComplexMessageItemBuilder
 
         if (!quoteBlocks.empty())
         {
-            QString sourceText;
+            Data::FormattedString sourceText;
             for (auto item : items)
                 sourceText += item->getSourceText();
 

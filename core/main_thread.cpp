@@ -10,16 +10,21 @@ using namespace core;
 main_thread::main_thread()
     : threadpool("core main", 1 )
 {
-    set_task_finish_callback([](const std::chrono::milliseconds _task_execute_time, const tools::core_stacktrace& _st, std::string_view _name)
+    set_task_finish_callback([](std::chrono::milliseconds _task_execute_time, const stack_vec& _st, std::string_view _name)
     {
-        if (_task_execute_time > std::chrono::milliseconds(200) && _st)
+        if (_task_execute_time > std::chrono::milliseconds(200) && !_st.empty())
         {
             std::stringstream ss;
             ss << "ATTENTION! Core locked, ";
             if (!_name.empty())
                 ss << "task name: " << _name << ", ";
             ss << _task_execute_time.count() << " milliseconds\r\n\r\n";
-            ss << *_st;
+
+            for (const auto& s : _st)
+            {
+                ss << *s;
+                ss << "\r\n - - - - - \r\n";
+            }
 
             g_core->write_string_to_network_log(ss.str());
         }
@@ -29,7 +34,7 @@ main_thread::main_thread()
 
 main_thread::~main_thread() = default;
 
-void main_thread::execute_core_context(std::function<void()> task)
+void main_thread::execute_core_context(stacked_task task)
 {
     push_back(std::move(task));
 }

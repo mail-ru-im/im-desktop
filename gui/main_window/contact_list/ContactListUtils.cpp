@@ -695,7 +695,7 @@ namespace Ui
         auto newBtn = qobject_cast<SearchCategoryButton*>(sender());
         if (!newBtn)
         {
-            assert(false);
+            im_assert(false);
             return;
         }
 

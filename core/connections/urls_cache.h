@@ -23,6 +23,7 @@ namespace core
             avatars,
             url_content,
             sticker,
+            wallpapers
         };
 
         enum class with_https

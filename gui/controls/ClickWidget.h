@@ -106,6 +106,8 @@ namespace Ui
         void setFont(const QFont& _font);
         void setLeftPadding(int _x);
 
+        bool isElided() const { return text_ && text_->isElided(); };
+
     protected:
         void paintEvent(QPaintEvent* _e) override;
         void resizeEvent(QResizeEvent* _e) override;

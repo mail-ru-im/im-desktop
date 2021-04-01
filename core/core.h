@@ -2,6 +2,7 @@
 #define __CORE_H__
 
 #pragma once
+#define BOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED
 
 #include "../corelib/core_face.h"
 #include "../common.shared/common_defs.h"
@@ -9,6 +10,7 @@
 #include "Voip/VoipManagerDefines.h"
 #include <stack>
 #include <optional>
+#include <boost/stacktrace.hpp>
 
 namespace coretools
 {
@@ -39,6 +41,27 @@ namespace core
     class hosts_config;
     class zstd_helper;
     class network_change_notifier;
+
+    using stack_ptr = std::shared_ptr<boost::stacktrace::stacktrace>;
+    using stack_vec = std::vector<stack_ptr>;
+
+    class stacked_task
+    {
+    public:
+        stacked_task() = default;
+
+        stacked_task(std::function<void()> _func);
+
+        operator bool() const noexcept;
+
+        void execute();
+
+        const stack_vec& get_stack() const;
+
+    private:
+        std::function<void()> func_;
+        stack_vec stack_;
+    };
 
     namespace update
     {
@@ -88,7 +111,9 @@ namespace core
         std::shared_ptr<core::stats::im_stats> im_stats_;
         std::shared_ptr<core::proxy_settings_manager> proxy_settings_manager_;
 
+#ifndef STRIP_NET_CHANGE_NOTIFY
         std::shared_ptr<core::network_change_notifier> network_change_notifier_;
+#endif //!STRIP_NET_CHANGE_NOTIFY
 
         std::shared_ptr<dump::report_sender> report_sender_;
 
@@ -160,13 +185,14 @@ namespace core
 
         void start(const common::core_gui_settings&);
         std::string get_uniq_device_id() const;
-        void execute_core_context(std::function<void()> _func);
+        void execute_core_context(stacked_task _func);
 
         void write_data_to_network_log(tools::binary_stream _data);
         void write_string_to_network_log(std::string_view _text);
         std::stack<std::wstring> network_log_file_names_history_copy();
 
-        uint32_t add_timer(std::function<void()> _func, std::chrono::milliseconds _timeout);
+        uint32_t add_timer(stacked_task _func, std::chrono::milliseconds _timeout);
+        uint32_t add_single_shot_timer(stacked_task _func, std::chrono::milliseconds _timeout);
         void stop_timer(uint32_t _id);
 
         std::shared_ptr<async_task_handlers> run_async(std::function<int32_t()> task);
@@ -274,6 +300,8 @@ namespace core
 
         void check_if_network_change_notifier_available();
         bool is_network_change_notifier_valid() const;
+
+        void try_send_crash_report();
 
 #ifndef STRIP_ZSTD
         const std::shared_ptr<zstd_helper>& get_zstd_helper() const;

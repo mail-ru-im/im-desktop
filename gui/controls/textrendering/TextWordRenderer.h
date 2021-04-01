@@ -80,11 +80,11 @@ namespace Ui
 
             ~TextWordRenderer();
 
-            void draw(const TextWord& _word, const bool _needsSpace = true);
+            void draw(const TextWord& _word, bool _needsSpace, bool _isLast);
             void setPoint(const QPointF& _point) { point_ = _point; }
 
         private:
-            void drawWord(const TextWord& _word, const bool _needsSpace);
+            void drawWord(const TextWord& _word, bool _needsSpace, bool _isLast);
             void drawEmoji(const TextWord& _word, const bool _needsSpace);
 
             enum class SpellError

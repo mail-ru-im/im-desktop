@@ -12,6 +12,7 @@
 
 #include "../FileSizeFormatter.h"
 #include "../MessageStyle.h"
+#include "../HistoryControlPage.h"
 
 
 #include "../../mediatype.h"
@@ -45,10 +46,8 @@ FileSharingBlockBase::FileSharingBlockBase(
     , BytesTransferred_(-1)
     , CopyFile_(false)
     , DownloadRequestId_(-1)
-    , LastModified_(-1)
     , FileMetaRequestId_(-1)
     , fileDirectLinkRequestId_(-1)
-    , FileSizeBytes_(-1)
     , IsSelected_(false)
     , Layout_(nullptr)
     , Link_(Utils::normalizeLink(_link).toString())
@@ -57,10 +56,6 @@ FileSharingBlockBase::FileSharingBlockBase(
     , inited_(false)
     , loadedFromLocal_(false)
     , dataTransferTimeout_(nullptr)
-    , savedByUser_(false)
-    , recognize_(false)
-    , gotAudio_(false)
-    , duration_(0)
 {
     Testing::setAccessibleName(this, u"AS HistoryPage messageFileSharing " % QString::number(_parent->getId()));
 }
@@ -135,32 +130,32 @@ Ui::MediaType FileSharingBlockBase::getMediaType() const
 
 IItemBlockLayout* FileSharingBlockBase::getBlockLayout() const
 {
-    assert(Layout_);
+    im_assert(Layout_);
     return Layout_;
 }
 
 QString FileSharingBlockBase::getProgressText() const
 {
-    assert(FileSizeBytes_ >= -1);
-    assert(BytesTransferred_ >= -1);
+    im_assert(Meta_.size_ >= -1);
+    im_assert(BytesTransferred_ >= -1);
 
-    const auto isInvalidProgressData = ((FileSizeBytes_ <= -1) || (BytesTransferred_ < -1));
+    const auto isInvalidProgressData = ((Meta_.size_ <= -1) || (BytesTransferred_ < -1));
     if (isInvalidProgressData)
     {
         return QString();
     }
 
-    return ::HistoryControl::formatProgressText(FileSizeBytes_, BytesTransferred_);
+    return ::HistoryControl::formatProgressText(Meta_.size_, BytesTransferred_);
 }
 
-QString FileSharingBlockBase::getSourceText() const
+Data::FormattedString FileSharingBlockBase::getSourceText() const
 {
     if (Link_.isEmpty())
-        return Link_;
+        return Data::FormattedString(Link_);
 
     const auto mediaType = getPlaceholderFormatText();
     const auto id = getFileSharingId();
-    return u'[' % mediaType % u": " % id % u']';
+    return QString(u'[' % mediaType % u": " % id % u']');
 }
 
 QString FileSharingBlockBase::getPlaceholderText() const
@@ -168,12 +163,12 @@ QString FileSharingBlockBase::getPlaceholderText() const
     return u'[' % QT_TRANSLATE_NOOP("placeholders", "Failed to download file or media") % u']';
 }
 
-QString FileSharingBlockBase::getSelectedText(const bool, const TextDestination) const
+Data::FormattedString FileSharingBlockBase::getSelectedText(const bool, const TextDestination) const
 {
     if (IsSelected_)
         return getSourceText();
 
-    return QString();
+    return {};
 }
 
 void FileSharingBlockBase::initialize()
@@ -202,22 +197,22 @@ bool FileSharingBlockBase::isSelected() const
 
 const QString& FileSharingBlockBase::getFileLocalPath() const
 {
-    return FileLocalPath_;
+    return Meta_.localPath_;
 }
 
 int64_t FileSharingBlockBase::getLastModified() const
 {
-    return LastModified_;
+    return Meta_.lastModified_;
 }
 
 const QString& FileSharingBlockBase::getFilename() const
 {
-    return Filename_;
+    return Meta_.filenameShort_;
 }
 
 IFileSharingBlockLayout* FileSharingBlockBase::getFileSharingLayout() const
 {
-    assert(Layout_);
+    im_assert(Layout_);
     return Layout_;
 }
 
@@ -228,9 +223,9 @@ QString FileSharingBlockBase::getFileSharingId() const
 
 int64_t FileSharingBlockBase::getFileSize() const
 {
-    assert(FileSizeBytes_ >= -1);
+    im_assert(Meta_.size_ >= -1);
 
-    return FileSizeBytes_;
+    return Meta_.size_;
 }
 
 int64_t FileSharingBlockBase::getBytesTransferred() const
@@ -250,17 +245,17 @@ const core::file_sharing_content_type& FileSharingBlockBase::getType() const
 
 const QString& FileSharingBlockBase::getDirectUri() const
 {
-    return directUri_;
+    return Meta_.downloadUri_;
 }
 
 bool FileSharingBlockBase::isFileDownloaded() const
 {
-    return !FileLocalPath_.isEmpty();
+    return !Meta_.localPath_.isEmpty();
 }
 
 bool FileSharingBlockBase::isFileDownloading() const
 {
-    assert(DownloadRequestId_ >= -1);
+    im_assert(DownloadRequestId_ >= -1);
 
     return DownloadRequestId_ > 0;
 }
@@ -299,7 +294,7 @@ Data::FilesPlaceholderMap FileSharingBlockBase::getFilePlaceholders()
 {
     Data::FilesPlaceholderMap files;
     if (const auto& link = getLink(); !link.isEmpty())
-        files.insert({ link, getSourceText() });
+        files.insert({ link, getSourceText().string() });
     return files;
 }
 
@@ -375,13 +370,13 @@ void FileSharingBlockBase::onMenuCopyFile()
 
 void FileSharingBlockBase::onMenuSaveFileAs()
 {
-    if (Filename_.isEmpty())
+    if (Meta_.filenameShort_.isEmpty())
     {
-        assert(!"no filename");
+        im_assert(!"no filename");
         return;
     }
 
-    QUrl urlParser(Filename_);
+    QUrl urlParser(Meta_.filenameShort_);
 
     Utils::saveAs(urlParser.fileName(), [weak_this = QPointer(this)](const QString& file, const QString& dir_result, bool _exportAsPng)
     {
@@ -409,11 +404,32 @@ void FileSharingBlockBase::requestMetainfo(const bool _isPreview)
         return;
 
     const auto& link = getLink();
+    const auto id = extractIdFromFileSharingUri(link);
+    if (auto page = Utils::InterConnector::instance().getHistoryPage(getChatAimid()))
+    {
+        auto meta = page->getMeta(id);
+        if (meta)
+        {
+            if (_isPreview)
+            {
+                if (Meta_.preview_.isNull())
+                    Meta_.preview_ = meta->preview_;
+
+                onPreviewMetainfoDownloadedSlot(PreviewMetaRequestId_, meta->miniPreviewUri_, meta->fullPreviewUri_);
+            }
+            else
+            {
+                onFileMetainfoDownloaded(FileMetaRequestId_, *meta);
+            }
+            return;
+        }
+    }
+
     qint64 requestId;
     if (_isPreview)
     {
         auto origMaxSize = -1;
-        if (const auto id = extractIdFromFileSharingUri(link); !id.isEmpty())
+        if (!id.isEmpty())
         {
             if (const auto originalSize = extractSizeFromFileSharingId(id); !originalSize.isEmpty())
                 origMaxSize = Utils::scale_bitmap(std::max(originalSize.width(), originalSize.height()));
@@ -426,11 +442,11 @@ void FileSharingBlockBase::requestMetainfo(const bool _isPreview)
         requestId = GetDispatcher()->downloadFileSharingMetainfo(link);
     }
 
-    assert(requestId > 0);
+    im_assert(requestId > 0);
 
     if (_isPreview)
     {
-        assert(PreviewMetaRequestId_ == -1);
+        im_assert(PreviewMetaRequestId_ == -1);
         PreviewMetaRequestId_ = requestId;
 
         __TRACE(
@@ -443,13 +459,13 @@ void FileSharingBlockBase::requestMetainfo(const bool _isPreview)
         return;
     }
 
-    assert(FileMetaRequestId_ == -1);
+    im_assert(FileMetaRequestId_ == -1);
     FileMetaRequestId_ = requestId;
 }
 
 void FileSharingBlockBase::setBlockLayout(IFileSharingBlockLayout* _layout)
 {
-    assert(_layout);
+    im_assert(_layout);
 
     if (Layout_)
         delete Layout_;
@@ -469,7 +485,7 @@ void FileSharingBlockBase::setSelected(const bool _isSelected)
 
 void FileSharingBlockBase::startDownloading(const bool _sendStats, const bool _forceRequestMetainfo, bool _highPriority)
 {
-    assert(!isFileDownloading());
+    im_assert(!isFileDownloading());
 
     if (_sendStats)
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::filesharing_download_file);
@@ -494,7 +510,7 @@ void FileSharingBlockBase::stopDataTransfer()
     }
     else if (isFileUploading())
     {
-        GetDispatcher()->abortSharedFileUploading(getChatAimid(), FileLocalPath_, uploadId_);
+        GetDispatcher()->abortSharedFileUploading(getChatAimid(), Meta_.localPath_, uploadId_);
         Q_EMIT removeMe();
     }
 
@@ -533,20 +549,20 @@ void FileSharingBlockBase::cancelRequests()
 
 void FileSharingBlockBase::setFileName(const QString& _filename)
 {
-    Filename_ = _filename;
+    Meta_.filenameShort_ = _filename;
 }
 
 void FileSharingBlockBase::setFileSize(int64_t _size)
 {
-    FileSizeBytes_ = _size;
+    Meta_.size_ = _size;
 }
 
 void FileSharingBlockBase::setLocalPath(const QString& _localPath)
 {
-    FileLocalPath_ = _localPath;
+    Meta_.localPath_ = _localPath;
     const QFileInfo f(_localPath);
-    FileSizeBytes_ = f.size();
-    LastModified_ = f.lastModified().toTime_t();
+    Meta_.size_ = f.size();
+    Meta_.lastModified_ = f.lastModified().toTime_t();
 }
 
 void FileSharingBlockBase::setLoadedFromLocal(bool _value)
@@ -562,6 +578,18 @@ void FileSharingBlockBase::setUploadId(const QString& _id)
 bool FileSharingBlockBase::isInited() const
 {
     return inited_;
+}
+
+std::optional<Data::FileSharingMeta> FileSharingBlockBase::getMeta(const QString& _id) const
+{
+    if (_id == getFileSharingId())
+    {
+        if (isPtt() && Meta_.duration_ == 0) // it's local info. we should request info from server to get duration and recognize flag
+            return std::nullopt;
+        if (Meta_.size_ != -1 || !Meta_.miniPreviewUri_.isEmpty() || !Meta_.fullPreviewUri_.isEmpty())
+            return Meta_;
+    }
+    return std::nullopt;
 }
 
 void FileSharingBlockBase::connectSignals()
@@ -650,7 +678,7 @@ void FileSharingBlockBase::onFileDownloaded(qint64 _seq, const Data::FileSharing
     if (_seq != DownloadRequestId_ && getLink() != _result.requestedUrl_)
         return;
 
-    assert(!_result.filename_.isEmpty());
+    im_assert(!_result.filename_.isEmpty());
 
     DownloadRequestId_ = -1;
 
@@ -658,13 +686,13 @@ void FileSharingBlockBase::onFileDownloaded(qint64 _seq, const Data::FileSharing
 
     SaveAs_.clear();
 
-    FileLocalPath_ = _result.filename_;
+    Meta_.localPath_ = _result.filename_;
 
     const QFileInfo f(_result.filename_);
-    FileSizeBytes_ = f.size();
-    LastModified_ = f.lastModified().toTime_t();
+    Meta_.size_ = f.size();
+    Meta_.lastModified_ = f.lastModified().toTime_t();
 
-    savedByUser_ = _result.savedByUser_;
+    Meta_.savedByUser_ = _result.savedByUser_;
 
     onDownloaded();
 
@@ -685,7 +713,7 @@ void FileSharingBlockBase::onFileDownloaded(qint64 _seq, const Data::FileSharing
 
 void FileSharingBlockBase::onFileDownloading(qint64 _seq, QString /*_rawUri*/, qint64 _bytesTransferred, qint64 _bytesTotal)
 {
-    assert(_bytesTotal > 0);
+    im_assert(_bytesTotal > 0);
 
     if (_seq != DownloadRequestId_)
         return;
@@ -702,17 +730,22 @@ void FileSharingBlockBase::onFileMetainfoDownloaded(qint64 _seq, const Data::Fil
     if (FileMetaRequestId_ != _seq)
         return;
 
-    FileMetaRequestId_ = -1;
-    FileSizeBytes_ = _meta.size_;
+    auto miniPreview = Meta_.miniPreviewUri_;
+    auto fullPreview = Meta_.fullPreviewUri_;
+    auto preview = Meta_.preview_;
 
-    FileLocalPath_ = _meta.localPath_;
-    Filename_ = _meta.filenameShort_;
-    directUri_ = _meta.downloadUri_;
-    savedByUser_ = _meta.savedByUser_;
-    duration_ = _meta.duration_;
-    gotAudio_ = _meta.gotAudio_;
-    recognize_ = _meta.recognize_;
-    LastModified_ = _meta.lastModified_;
+    Meta_ = _meta;
+
+    if (Meta_.miniPreviewUri_.isEmpty())
+        Meta_.miniPreviewUri_ = miniPreview;
+
+    if (Meta_.fullPreviewUri_.isEmpty())
+        Meta_.fullPreviewUri_ = fullPreview;
+
+    if (Meta_.preview_.isNull())
+        Meta_.preview_ = preview;
+
+    FileMetaRequestId_ = -1;
 
     onMetainfoDownloaded();
 
@@ -721,7 +754,7 @@ void FileSharingBlockBase::onFileMetainfoDownloaded(qint64 _seq, const Data::Fil
 
 void FileSharingBlockBase::onFileSharingError(qint64 _seq, QString /*_rawUri*/, qint32 _errorCode)
 {
-    assert(_seq > 0);
+    im_assert(_seq > 0);
 
     const auto isDownloadRequestFailed = (DownloadRequestId_ == _seq);
     if (isDownloadRequestFailed)
@@ -756,13 +789,14 @@ void FileSharingBlockBase::onPreviewMetainfoDownloadedSlot(qint64 _seq, QString 
     if (_seq != PreviewMetaRequestId_)
         return;
 
-    assert(isPreviewable());
-    assert(!_miniPreviewUri.isEmpty());
-    assert(!_fullPreviewUri.isEmpty());
+    im_assert(isPreviewable());
 
     clearPreviewMetaRequestId();
 
-    onPreviewMetainfoDownloaded(_miniPreviewUri, _fullPreviewUri);
+    Meta_.miniPreviewUri_ = _miniPreviewUri;
+    Meta_.fullPreviewUri_ = _fullPreviewUri;
+
+    onPreviewMetainfoDownloaded();
 }
 
 void FileSharingBlockBase::fileSharingUploadingProgress(const QString& _uploadingId, qint64 _bytesTransferred)
@@ -774,7 +808,7 @@ void FileSharingBlockBase::fileSharingUploadingProgress(const QString& _uploadin
 
     BytesTransferred_ = _bytesTransferred;
 
-    onDataTransfer(_bytesTransferred, FileSizeBytes_);
+    onDataTransfer(_bytesTransferred, Meta_.size_);
 }
 
 void FileSharingBlockBase::fileSharingUploadingResult(const QString& _seq, bool /*_success*/, const QString& localPath, const QString& _uri, int /*_contentType*/, qint64 /*_size*/, qint64 /*_lastModified*/, bool _isFileTooBig)
@@ -806,7 +840,7 @@ void FileSharingBlockBase::fileSharingUploadingResult(const QString& _seq, bool 
 IItemBlock::MenuFlags FileSharingBlockBase::getMenuFlags(QPoint _p) const
 {
     int flags = GenericBlock::getMenuFlags(_p);
-    if (savedByUser_ && QFileInfo::exists(FileLocalPath_))
+    if (Meta_.savedByUser_ && QFileInfo::exists(Meta_.localPath_))
         flags |= IItemBlock::MenuFlags::MenuFlagOpenFolder;
 
     return IItemBlock::MenuFlags(flags);

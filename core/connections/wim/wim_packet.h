@@ -112,8 +112,12 @@ namespace core
             wpie_error_user_blocked = 43,
 
             wpie_couldnt_resolve_host = 44,
-            wpie_error_add_member_no_rights = 45,
-            wpie_error_add_member_group_not_found = 46,
+            wpie_error_permission_denied = 45,
+            wpie_error_group_not_found = 46,
+
+            wpie_error_access_denied = 47,
+            wpie_error_user_captched = 48,
+            wpie_error_group_max_members = 49,
 
             wpie_client_http_error = 400,
             wpie_robusto_timeout = 500,
@@ -335,6 +339,7 @@ namespace core
             bool is_stopped() const;
 
             static bool needs_to_repeat_failed(int32_t _error) noexcept;
+            virtual bool auto_resend_on_fail() const { return false; }
 
             wim_packet(wim_packet_params _params);
             virtual ~wim_packet();

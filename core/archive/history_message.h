@@ -4,6 +4,7 @@
 
 #include "../../corelib/iserializable.h"
 #include "../../common.shared/patch_version.h"
+#include "../../common.shared/message_processing/text_formatting.h"
 
 #include "../connections/wim/persons.h"
 #include "poll.h"
@@ -414,6 +415,19 @@ namespace core
 
         using history_message_sptr = std::shared_ptr<class history_message>;
 
+        class format_data : public core::data::format::string_formatting
+        {
+        public:
+            format_data() = default;
+            format_data(const core::data::format::string_formatting& _data) { *static_cast<core::data::format::string_formatting*>(this) = _data; }
+            void serialize(icollection* _collection, std::string_view _name) const;
+            void serialize(tools::tlvpack& _pack) const;
+            void unserialize(const rapidjson::Value& _node);
+            bool unserialize(core::tools::tlvpack& _pack);
+            void unserialize(const coll_helper& _coll, std::string_view _name);
+        };
+        using format_data_uptr = std::unique_ptr<format_data>;
+
         class history_message
         {
             int64_t msgid_;
@@ -421,6 +435,7 @@ namespace core
             message_flags flags_;
             time_t time_;
             std::string text_;
+            format_data_uptr format_;
             int64_t data_offset_;
             uint32_t data_size_;
             std::string internal_id_;
@@ -437,6 +452,7 @@ namespace core
             mentions_map mentions_;
             snippets_vec snippets_;
             std::string description_;
+            format_data_uptr description_format_;
             std::string url_;
             shared_contact shared_contact_;
             geo geo_;
@@ -524,6 +540,10 @@ namespace core
             void set_text(std::string _text) noexcept;
             bool has_text() const noexcept;
 
+            bool has_format() const noexcept { return format_.operator bool(); }
+            void set_format(const core::data::format::string_formatting& _format);
+            const format_data get_format() const { return has_format() ? *format_ : format_data(); }
+
             archive::chat_data* get_chat_data() noexcept;
             const archive::chat_data* get_chat_data() const noexcept;
             void set_chat_data(const chat_data& _data);
@@ -539,7 +559,10 @@ namespace core
             void set_time(uint64_t time) { time_ = time; }
 
             void set_description(const std::string& _description) { description_ = _description; }
-            std::string description() const { return description_; }
+            const std::string& description() const { return description_; }
+            void set_description_format(const core::data::format::string_formatting& _format);
+
+            core::data::format::string_formatting description_format() const { return description_format_ ? *description_format_ : core::data::format::string_formatting(); }
 
             void set_url(const std::string& _url) { url_ = _url; }
             std::string url() const { return url_; }
@@ -612,6 +635,7 @@ namespace core
         class quote
         {
             std::string text_;
+            std::optional<format_data> format_;
             std::string sender_;
             std::string chat_;
             std::string chat_stamp_;
@@ -619,6 +643,7 @@ namespace core
             std::string senderFriendly_;
             std::string url_;
             std::string description_;
+            std::optional<format_data> description_format_;
             int32_t time_;
             int32_t setId_;
             int32_t stickerId_;
@@ -638,6 +663,7 @@ namespace core
             void unserialize(const core::tools::tlvpack &_pack);
 
             const std::string& get_text() const { return text_; }
+            const std::optional<format_data>& get_format() const { return format_; }
             const std::string& get_sender() const { return sender_; }
             const std::string& get_chat() const { return chat_; }
             const std::string& get_sender_friendly() const { return senderFriendly_; }
@@ -652,6 +678,7 @@ namespace core
             const std::string& get_chat_name() const { return chat_name_; }
             const std::string& get_url() const { return url_; }
             const std::string& get_description() const { return description_; }
+            format_data get_description_format() const { return description_format_ ? *description_format_ : format_data(); }
             const shared_contact& get_shared_contact() const { return shared_contact_; }
             const geo& get_geo() const { return geo_; }
             const poll& get_poll() const { return poll_; }

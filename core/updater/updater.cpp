@@ -82,11 +82,11 @@ namespace core
             : stop_(false)
             , thread_(nullptr)
         {
-            timer_id_ = g_core->add_timer([this]()
+            timer_id_ = g_core->add_timer({ [this]()
             {
                 check_if_need();
 
-            }, (build::is_debug() ? std::chrono::seconds(10) : std::chrono::minutes(10)));
+            } }, (build::is_debug() ? std::chrono::seconds(10) : std::chrono::minutes(10)));
 
             last_check_time_ = std::chrono::steady_clock::now() - check_period();
         }

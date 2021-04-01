@@ -484,7 +484,7 @@ StatusTooltipWidget::StatusTooltipWidget(const Statuses::Status& _status, QWidge
         description += ellipsis;
     }
 
-    d->description_ = new TextWidget(d->content_, description);
+    d->description_ = new TextWidget(d->content_, description, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
     d->description_->init(statusDescriptionFont(), descriptionFontColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
     d->description_->setMaxWidthAndResize(std::max(std::min(tooltipTextMaxWidth(), d->description_->getDesiredWidth()), tooltipTextMinWidth()));
 

@@ -70,6 +70,11 @@ namespace core
             return 1;
         }
 
+        [[nodiscard]] inline int32_t utf16_char_size(char16_t _c)
+        {
+            return (_c >= 0xd800 && _c < 0xdc00) ? 2 : 1;
+        }
+
         template<typename T>
         [[nodiscard]] std::vector<T> build_prefix(const std::vector<T>& _term)
         {

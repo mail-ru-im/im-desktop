@@ -144,6 +144,8 @@ namespace voip_manager
         //kNotificationType_ConnectionDestroyed,
         kNotificationType_MainVideoLayoutChanged,
         kNotificationType_ConfPeerDisconnected,
+
+        kNotificationType_HideControlsWhenRemDesktopSharing,
     };
 
     struct VoipProxySettings

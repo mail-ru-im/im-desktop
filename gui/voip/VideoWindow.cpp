@@ -243,7 +243,7 @@ Ui::VideoWindow::VideoWindow()
     callDescription.time = 0;
     buttonStatistic_ = std::make_unique<ButtonStatisticData>();
 #ifdef __APPLE__
-    headerHeight_ = platform_macos::getWidgetHeaderHeight(*this);
+    headerHeight_ = MacSupport::getWidgetHeaderHeight(*this);
 #endif
 #ifdef _WIN32
     header_ = new VideoWindowHeader(this);
@@ -338,7 +338,7 @@ Ui::VideoWindow::VideoWindow()
         connect(videoPanel_.get(), &VideoPanel::onShowMaskPanel, this, &VideoWindow::onShowMaskPanel);
         connect(videoPanel_.get(), &VideoPanel::closeActiveMask, this, &VideoWindow::onCloseActiveMask);
 
-        connect(videoPanel_.get(), &VideoPanel::onShareScreenClickOn, this, &VideoWindow::onScreenSharing);
+        connect(videoPanel_.get(), &VideoPanel::onShareScreenClick, this, &VideoWindow::onScreenSharing);
 
         connect(videoPanel_.get(), &VideoPanel::needShowScreenPermissionsPopup, this, &VideoWindow::showScreenPermissionsPopup);
 
@@ -346,6 +346,7 @@ Ui::VideoWindow::VideoWindow()
         connect(videoPanel_.get(), &VideoPanel::onGoToChatButton, this, [this]() {buttonStatistic_->buttonChat = true; });
         connect(videoPanel_.get(), &VideoPanel::onCameraClickOn, this, [this]() {buttonStatistic_->buttonCamera = true; });
 
+        connect(videoPanel_.get(), &VideoPanel::updateConferenceMode, this, &VideoWindow::updateConferenceMode);
         connect(videoPanel_.get(), &VideoPanel::addUserToConference, this, &VideoWindow::onAddUserClicked);
         connect(videoPanel_.get(), &VideoPanel::inviteVCSUrl, this, &VideoWindow::onInviteVCSUrl);
 
@@ -379,6 +380,13 @@ Ui::VideoWindow::VideoWindow()
     //QObject::connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipChangeWindowLayout, this, &VideoWindow::onVoipChangeWindowLayout, Qt::DirectConnection);
     connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipCallConnected, this, &VideoWindow::onVoipCallConnected);
     connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipMainVideoLayoutChanged, this, &VideoWindow::onVoipMainVideoLayoutChanged);
+    connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipHideControlsWhenRemDesktopSharing, this, [this](bool _hide)
+    {
+        if (_hide)
+            onCloseActiveMask();
+
+        checkPanelsVisibility();
+    });
 
 #ifdef _WIN32
     connect(header_, &VideoWindowHeader::onMinimized, this, &Ui::VideoWindow::onPanelClickedMinimize);
@@ -420,12 +428,14 @@ Ui::VideoWindow::VideoWindow()
 
     connect(detachedWnd_.get(), &DetachedVideoWindow::needShowScreenPermissionsPopup, this, &VideoWindow::showScreenPermissionsPopup);
     connect(detachedWnd_.get(), &DetachedVideoWindow::onMicrophoneClick, this, &VideoWindow::showMicroPermissionPopup);
+    connect(detachedWnd_.get(), &DetachedVideoWindow::onShareScreenClick, this, &VideoWindow::onScreenSharing);
 
     connect(GetSoundsManager(), &SoundsManager::deviceListChanged, this, [this]()
     {
         if (isActiveWindow() || Ui::GetDispatcher()->getVoipController().hasEstablishCall())
             checkMicroPermission();
     });
+    connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipMediaLocalAudio, this, &VideoWindow::onVoipMediaLocalAudio);
 
     showPanelTimer_.setInterval(getPanelHideTimeout());
 
@@ -613,7 +623,7 @@ void Ui::VideoWindow::checkOverlap()
 {
     if (!isVisible())
         return;
-    assert(rootWidget_ != nullptr);
+    im_assert(rootWidget_ != nullptr);
     if (!rootWidget_)
         return;
 
@@ -639,7 +649,15 @@ void Ui::VideoWindow::checkOverlap()
             if (!miniWindowShown)
             {
                 miniWindowShown = true;
-                detachedWnd_->showFrame();
+                if (isScreenSharingEnabled_)
+                {
+                    detachedWnd_->moveToCorner();
+                    detachedWnd_->showFrame(DetachedVideoWindow::WindowMode::Compact);
+                }
+                else
+                {
+                    detachedWnd_->showFrame();
+                }
             }
         }
         else
@@ -668,7 +686,6 @@ void Ui::VideoWindow::onVoipCallTimeChanged(unsigned _secElapsed, bool _hasCall)
     callDescription.time = _hasCall ? _secElapsed : 0;
     if (_hasCall)
         buttonStatistic_->currentTime = _secElapsed;
-    updateWindowTitle();
 }
 
 void Ui::VideoWindow::onPanelClickedMinimize()
@@ -683,7 +700,7 @@ void Ui::VideoWindow::onPanelClickedMaximize()
 
 void Ui::VideoWindow::hideFrame()
 {
-    assert(rootWidget_->frameId());
+    im_assert(rootWidget_->frameId());
     if (rootWidget_->frameId())
     {
         rootWidget_->enableMouseEvents(false);
@@ -695,7 +712,7 @@ void Ui::VideoWindow::hideFrame()
 void Ui::VideoWindow::showFrame()
 {
     rootWidget_->initNative();
-    assert(rootWidget_->frameId());
+    im_assert(rootWidget_->frameId());
     if (rootWidget_->frameId())
         Ui::GetDispatcher()->getVoipController().setWindowAdd((quintptr)rootWidget_->frameId(), "", true, false, 0);
 
@@ -706,30 +723,19 @@ void Ui::VideoWindow::showFrame()
 
     if constexpr (platform::is_apple())
         activateWindow();
-
-    if (microIssue_ == Ui::MicroIssue::Incoming)
-    {
-        if (platform::is_windows())
-            raiseWindow();
-
-        QTimer::singleShot(0, this, [pThis = QPointer(this)]()
-        {
-            if (!pThis)
-                return;
-
-            pThis->showPermissionPanel();
-        });
-    }
 }
 
 void Ui::VideoWindow::onVoipWindowRemoveComplete(quintptr _winId)
 {
     if (_winId == rootWidget_->frameId())
     {
-#ifndef __APPLE__
         // breaks mousePressEvent/mouseReleaseEvent events in VideoFrameMacos.mm on 2nd call
         rootWidget_->freeNative();
-#endif
+        if (permissonsChangeNotifier_)
+        {
+            permissonsChangeNotifier_->stop();
+            permissonsChangeNotifier_->deleteLater();
+        }
         Ui::GetDispatcher()->getVoipController().setRequestSettings(); // Trigger pending call accepts if any
         callMethodProxy(qsl("showNormal"));
         callMethodProxy(qsl("hide"));
@@ -740,7 +746,7 @@ void Ui::VideoWindow::updatePanels() const
 {
     if (!rootWidget_)
     {
-        assert(false);
+        im_assert(false);
         return;
     }
 
@@ -777,6 +783,20 @@ void Ui::VideoWindow::onVoipWindowAddComplete(quintptr _winId)
         if (videoPanel_)
             videoPanel_->updatePanelButtons();
         rootWidget_->enableMouseEvents(true);
+        // setup micro alert
+        if (microAlert_)
+            microAlert_->setState(Ui::MicroAlert::MicroAlertState::Full);
+        checkMicroPermission();
+        if constexpr (platform::is_windows())
+        {
+            permissonsChangeNotifier_ = new media::permissions::PermissonsChangeNotifier(this);
+            connect(permissonsChangeNotifier_, &media::permissions::PermissonsChangeNotifier::deviceChanged, this, [this](media::permissions::DeviceType _devType)
+            {
+                if (_devType == media::permissions::DeviceType::Microphone)
+                    checkMicroPermission();
+            });
+            permissonsChangeNotifier_->start();
+        }
     }
 }
 
@@ -913,7 +933,8 @@ void Ui::VideoWindow::checkPanelsVisibility(bool _forceHide /*= false*/)
     if (maskPanel_)
         maskPanel_->setVisible(maskPanelState != SMP_HIDE);
     if (gridButtonPanel_)
-        gridButtonPanel_->setVisible(!Ui::GetDispatcher()->getVoipController().isCallVCS());
+        gridButtonPanel_->setVisible(!Ui::GetDispatcher()->getVoipController().isCallVCS()
+                                     && !Ui::GetDispatcher()->getVoipController().isHideControlsWhenRemDesktopSharing());
     if (microAlert_)
         microAlert_->setVisible(microIssue_ != Ui::MicroIssue::None);
 
@@ -936,6 +957,9 @@ void Ui::VideoWindow::_switchFullscreen()
 
 void Ui::VideoWindow::onVoipCallNameChanged(const voip_manager::ContactsList& _contacts)
 {
+    if (!Ui::GetDispatcher()->getVoipController().isCallVCS())
+        setWindowTitle(QString(qsl("%1: %2")).arg(QT_TRANSLATE_NOOP("voip_pages", "In call")).arg(_contacts.contacts.size() + 1));
+
     if (_contacts.contacts.empty())
         return;
 
@@ -949,14 +973,10 @@ void Ui::VideoWindow::onVoipCallNameChanged(const voip_manager::ContactsList& _c
         currentContacts_ = _contacts.contacts;
     }
     callDescription.name = _contacts.conference_name;
+    if (Ui::GetDispatcher()->getVoipController().isCallVCS())
+        setWindowTitle(QString::fromStdString(callDescription.name));
     updateUserName();
     removeUnneededRemoteVideo();
-    //checkCurrentAspectState();
-}
-
-void Ui::VideoWindow::updateWindowTitle()
-{
-    setWindowTitle(QString::fromStdString(callDescription.name));
 }
 
 void Ui::VideoWindow::paintEvent(QPaintEvent *_e)
@@ -990,7 +1010,6 @@ void Ui::VideoWindow::closeEvent(QCloseEvent* _e)
 {
     _e->ignore();
     Ui::GetDispatcher()->getVoipController().setHangup();
-    updateHangUpState();
 }
 
 void Ui::VideoWindow::resizeEvent(QResizeEvent* _e)
@@ -1055,7 +1074,6 @@ void Ui::VideoWindow::onVoipCallDestroyed(const voip_manager::ContactEx& _contac
         videoPanel_->callDestroyed();
     if (gridButtonPanel_)
         gridButtonPanel_->setVisible(false);
-    updateHangUpState();
 
     currentContacts_.clear();
     sendStatistic();
@@ -1190,13 +1208,11 @@ void Ui::VideoWindow::updateUserName()
         for (const auto& x : currentContacts_)
             friendlyNames.push_back(Logic::GetFriendlyContainer()->getFriendly(QString::fromStdString(x.contact)).toStdString());
         callDescription.name = voip_proxy::VoipController::formatCallName(friendlyNames, QT_TRANSLATE_NOOP("voip_pages", "and").toUtf8().constData());
-        assert(!callDescription.name.empty());
+        im_assert(!callDescription.name.empty());
     }
 
     if (videoPanel_)
         videoPanel_->setContacts(currentContacts_, startTalking);
-
-    updateWindowTitle();
 }
 
 void Ui::VideoWindow::fadeInPanels(int kAnimationDefDuration)
@@ -1368,6 +1384,7 @@ void Ui::VideoWindow::onAddUserClicked()
     dialogParent.show();
 
     showAddUserToVideoConverenceDialogVideoWindow(this, &dialogParent);
+    Utils::hideVideoWindowToast();
 
     videoPanel_->setPreventFadeIn(false);
 
@@ -1383,6 +1400,7 @@ void  Ui::VideoWindow::onVoipMainVideoLayoutChanged(const voip_manager::MainVide
     {
         currentLayout_ = mainLayout;
         outgoingNotAccepted_ = (mainLayout.type == voip_manager::MVL_OUTGOING);
+        videoPanel_->changeConferenceMode(mainLayout.layout);
         gridButtonPanel_->changeConferenceMode(mainLayout.layout);
 #ifdef __APPLE__
         if (!platform_macos::windowIsOnActiveSpace(this))
@@ -1410,6 +1428,7 @@ void Ui::VideoWindow::setWindowTitle(const QString& text)
     header_->setTitle(text);
 #endif
     QWidget::setWindowTitle(text);
+    detachedWnd_->setWindowTitle(text);
 }
 
 void Ui::VideoWindow::onShowMaskPanel()
@@ -1500,8 +1519,9 @@ void Ui::VideoWindow::keyReleaseEvent(QKeyEvent* _e)
         Q_EMIT onEscPressed();
 }
 
-void Ui::VideoWindow::onScreenSharing()
+void Ui::VideoWindow::onScreenSharing(bool _on)
 {
+    isScreenSharingEnabled_ = _on;
     onSetContactPrimary();
     if (maskPanel_)
         maskPanel_->selectMask(nullptr);
@@ -1641,103 +1661,45 @@ void Ui::VideoWindow::showToast(const QString& _text, int _maxLineCount)
         videoPanel->showToast(_text, _maxLineCount);
 }
 
-void Ui::VideoWindow::setMicrophoneAlert(Ui::MicroIssue _issue)
+void Ui::VideoWindow::hideToast()
 {
-    microIssue_ = _issue;
-
-    if constexpr (platform::is_windows())
-    {
-        if (!permissonsChangeNotifier_)
-        {
-            permissonsChangeNotifier_ = new media::permissions::PermissonsChangeNotifier(this);
-            connect(permissonsChangeNotifier_, &media::permissions::PermissonsChangeNotifier::deviceChanged, this, [this](media::permissions::DeviceType _devType)
-            {
-                if (_devType == media::permissions::DeviceType::Microphone)
-                    checkMicroPermission();
-            });
-            permissonsChangeNotifier_->start();
-        }
-    }
-
-    if (microIssue_ == Ui::MicroIssue::None)
-        Ui::GetDispatcher()->getVoipController().updateMicrophoneButtonState(microIssue_);
-
-    if (microAlert_)
-        microAlert_->setState(Ui::MicroAlert::MicroAlertState::Full);
+    if (auto videoPanel = videoPanel_.get())
+        videoPanel->hideToast();
 }
 
-void Ui::VideoWindow::updateHangUpState()
-{
-    Q_EMIT aboutToHide();
-    microIssue_ = MicroIssue::None;
-    if (permissonsChangeNotifier_)
-    {
-        permissonsChangeNotifier_->stop();
-        permissonsChangeNotifier_->deleteLater();
-    }
-}
+ void Ui::VideoWindow::updateHangUpState()
+ {
+     Q_EMIT aboutToHide();
+     microIssue_ = MicroIssue::None;
+     if (permissonsChangeNotifier_)
+     {
+         permissonsChangeNotifier_->stop();
+         permissonsChangeNotifier_->deleteLater();
+     }
+ }
 
 void Ui::VideoWindow::checkMicroPermission()
 {
-    const auto p = media::permissions::checkPermission(media::permissions::DeviceType::Microphone);
-    if (p != media::permissions::Permission::Denied)
-    {
-        const auto keepState = (p == media::permissions::Permission::NotDetermined && microIssue_ == MicroIssue::Incoming);
-        microIssue_ = !ptt::AudioRecorder2::hasDevice()
-                        ? Ui::MicroIssue::NotFound
-                        : ( keepState ? microIssue_ : Ui::MicroIssue::None);
-    }
-    else
-    {
-        microIssue_ = Ui::MicroIssue::NoPermission;
-    }
-
+    Ui::GetDispatcher()->getVoipController().checkPermissions(true, false, false);
     updateMicroAlertState();
 }
 
 void Ui::VideoWindow::updateMicroAlertState()
 {
-    Ui::GetDispatcher()->getVoipController().updateMicrophoneButtonState(microIssue_);
-
+    if (Ui::GetDispatcher()->getVoipController().isAudPermissionGranted())
+        microIssue_ = !ptt::AudioRecorder2::hasDevice() ? Ui::MicroIssue::NotFound : Ui::MicroIssue::None;
+    else
+        microIssue_ = Ui::MicroIssue::NoPermission;
     if (microAlert_)
     {
         microAlert_->setIssue(microIssue_);
-        microAlert_->setVisible(microIssue_ != Ui::MicroIssue::None && isVisible() && !isMinimized());
+        microAlert_->setVisible(microIssue_ != Ui::MicroIssue::None);
     }
 }
 
-void Ui::VideoWindow::showPermissionPanel()
+void Ui::VideoWindow::onVoipMediaLocalAudio(bool _enabled)
 {
-    FullVideoWindowPanel dialogParent(this);
-
-    auto removePanel = [this, &dialogParent]()
-    {
-        videoPanel_->setPreventFadeIn(false);
-
-        // Remove panel from videowindow
-        eventFilter_->removePanel(&dialogParent);
-        const auto it = std::find(panels_.begin(), panels_.end(), &dialogParent);
-        if (it != panels_.end())
-            panels_.erase(it);
-        updatePanels();
-    };
-
-    connect(this, &VideoWindow::aboutToHide, &dialogParent, &FullVideoWindowPanel::aboutToHide);
-    connect(this, &VideoWindow::aboutToHide, this, [removePanel]() { removePanel(); });
-
-    // Correct attach to video window.
-    panels_.push_back(&dialogParent);
-    eventFilter_->addPanel(&dialogParent);
-    updatePanels();
-
-    videoPanel_->setPreventFadeIn(true);
-    videoPanel_->fadeOut(kAnimationDefDuration);
-
-    dialogParent.updatePosition(*this);
-    dialogParent.show();
-
-    Utils::checkMicroPermission(&dialogParent, Utils::MicroPermissionCallback());
-    removePanel();
+    updateMicroAlertState();
 }
 
 void Ui::VideoWindow::raiseWindow()

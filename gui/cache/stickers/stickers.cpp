@@ -35,15 +35,15 @@ std::unique_ptr<Cache> g_cache;
 
 stickerSptr createSticker(Data::StickerId _id)
 {
-    assert(!_id.isEmpty());
+    im_assert(!_id.isEmpty());
     if (_id.isEmpty())
         return {};
 
     if (_id.fsId_)
     {
-        assert(!_id.fsId_->isEmpty());
+        im_assert(!_id.fsId_->isEmpty());
         const auto type = ComplexMessage::extractContentTypeFromFileSharingId(*_id.fsId_);
-        assert(!type.is_undefined());
+        im_assert(!type.is_undefined());
 
         if (type.is_lottie())
             return std::make_shared<LottieSticker>(std::move(_id));
@@ -85,7 +85,7 @@ Sticker::Sticker(Data::StickerId _id, Type _type)
     : id_(std::move(_id))
     , type_(_type)
 {
-    assert(!id_.isEmpty());
+    im_assert(!id_.isEmpty());
 }
 
 void Sticker::clearCache()
@@ -106,7 +106,7 @@ void Sticker::lockCache(bool _lock)
 ImageSticker::ImageSticker(Data::StickerId _id, Type _type)
     : Sticker(std::move(_id), _type)
 {
-    assert(_type == Type::image || _type == Type::gif);
+    im_assert(_type == Type::image || _type == Type::gif);
 }
 
 const StickerData& ImageSticker::getData(core::sticker_size _size) const
@@ -133,9 +133,9 @@ const StickerData& ImageSticker::getData(core::sticker_size _size) const
 
 void ImageSticker::setData(core::sticker_size _size, StickerData _data)
 {
-    assert(_size > core::sticker_size::min);
-    assert(_size < core::sticker_size::max);
-    assert(_data.isPixmap());
+    im_assert(_size > core::sticker_size::min);
+    im_assert(_size < core::sticker_size::max);
+    im_assert(_data.isPixmap());
 
     images_[_size] = std::move(_data);
     setRequested(_size, false);
@@ -180,7 +180,7 @@ LottieSticker::LottieSticker(Data::StickerId _id)
 
 void LottieSticker::setData(core::sticker_size, StickerData _data)
 {
-    assert(_data.isLottie());
+    im_assert(_data.isLottie());
     data_ = std::move(_data);
     requested_ = false;
 }
@@ -192,7 +192,7 @@ void LottieSticker::clearCacheImpl()
 
 void Set::setStickerFailed(const int32_t _stickerId)
 {
-    assert(_stickerId >= 0);
+    im_assert(_stickerId >= 0);
     if (_stickerId < 0)
         return;
 
@@ -202,7 +202,7 @@ void Set::setStickerFailed(const int32_t _stickerId)
 
 void Set::setStickerData(const int32_t _stickerId, const core::sticker_size _size, StickerData _data)
 {
-    assert(_stickerId >= 0);
+    im_assert(_stickerId >= 0);
     if (_stickerId < 0)
         return;
 
@@ -212,8 +212,8 @@ void Set::setStickerData(const int32_t _stickerId, const core::sticker_size _siz
 
 const StickerData& Set::getStickerData(const int32_t _stickerId, const core::sticker_size _size)
 {
-    assert(_size > core::sticker_size::min);
-    assert(_size < core::sticker_size::max);
+    im_assert(_size > core::sticker_size::min);
+    im_assert(_size < core::sticker_size::max);
 
     auto sticker = getOrCreateSticker(_stickerId);
     const auto& data = sticker->getData(_size);
@@ -282,10 +282,8 @@ void Set::unserialize(const core::coll_helper& _coll)
     setName(QString::fromUtf8(_coll.get_value_as_string("name")));
     setStoreId(QString::fromUtf8(_coll.get_value_as_string("store_id")));
     setPurchased(_coll.get_value_as_bool("purchased"));
-    setUser(_coll.get_value_as_bool("usersticker"));
     setName(QString::fromUtf8(_coll.get_value_as_string("name")));
     setDescription(QString::fromUtf8(_coll.get_value_as_string("description")));
-    setSubtitle(QString::fromUtf8(_coll.get_value_as_string("subtitle")));
     lottie_ = _coll.get_value_as_bool("lottie");
 
     getCache().setSetIcon(_coll);
@@ -425,19 +423,9 @@ stickerSptr getSticker(const QString& _fsId)
     return getCache().getSticker(_fsId);
 }
 
-QString getPreviewBaseUrl()
+QString getSendUrl(const QString& _fsId)
 {
-    return getCache().getTemplatePreviewBaseUrl();
-}
-
-QString getOriginalBaseUrl()
-{
-    return getCache().getTemplateOriginalBaseUrl();
-}
-
-QString getSendBaseUrl()
-{
-    return getCache().getTemplateSendBaseUrl();
+    return u"https://" % Ui::getUrlConfig().getUrlFilesParser() % u'/' % _fsId;
 }
 
 Cache::Cache(QObject* _parent)
@@ -472,7 +460,7 @@ void Cache::setStickerData(const core::coll_helper& _coll)
     if (!sticker && !stickerSet)
     {
         if (error == 0)
-            assert(!"sticker error");
+            im_assert(!"sticker error");
         return;
     }
 
@@ -597,10 +585,6 @@ void Cache::setSetBigIcon(const core::coll_helper& _coll)
 
 void Cache::unserialize(const core::coll_helper &_coll)
 {
-    templateOriginalBaseUrl_ = QString::fromUtf8(_coll.get_value_as_string("template_url_original"));
-    templatePreviewBaseUrl_ = QString::fromUtf8(_coll.get_value_as_string("template_url_preview"));
-    templateSendBaseUrl_ = QString::fromUtf8(_coll.get_value_as_string("template_url_send"));
-
     if (!_coll->is_value_exist("sets"))
         return;
 
@@ -902,27 +886,6 @@ const setsMap &Cache::getStoreTree() const
     return storeTree_;
 }
 
-const QString& Cache::getTemplatePreviewBaseUrl() const
-{
-    assert(!templatePreviewBaseUrl_.isEmpty());
-    return templatePreviewBaseUrl_;
-}
-
-const QString& Cache::getTemplateOriginalBaseUrl() const
-{
-    assert(!templateOriginalBaseUrl_.isEmpty());
-    return templateOriginalBaseUrl_;
-}
-
-QString Cache::getTemplateSendBaseUrl() const
-{
-    assert(!templateSendBaseUrl_.isEmpty());
-    if (templateSendBaseUrl_.isEmpty())
-        return u"https://" % Ui::getUrlConfig().getUrlFilesParser() % u'/';
-
-    return templateSendBaseUrl_;
-}
-
 void Cache::startBatchLoadTimer()
 {
     if (!batchLoadTimer_)
@@ -982,7 +945,7 @@ int32_t getSetStickersCount(int32_t _setId)
     else if (searchSet = getCache().getStoreSet(_setId); searchSet)
         return searchSet->getCount();
 
-    assert(!"searchSet");
+    im_assert(!"searchSet");
     return 0;
 }
 
@@ -990,7 +953,7 @@ int32_t getStickerPosInSet(int32_t _setId, const QString& _fsId)
 {
     if (const auto searchSet = getCache().getSet(_setId); searchSet)
         return searchSet->getStickerPos(_fsId);
-    assert(!"searchSet");
+    im_assert(!"searchSet");
     return -1;
 }
 
@@ -1039,7 +1002,7 @@ const StickerData& getSetIcon(int32_t _setId)
     if (const auto s = getCache().getSet(_setId))
         return s->getIcon();
 
-    assert(!"searchSet");
+    im_assert(!"searchSet");
     return StickerData::invalid();
 }
 
@@ -1048,7 +1011,7 @@ const StickerData& getSetBigIcon(int32_t _setId)
     if (const auto searchSet = getCache().getSet(_setId); searchSet)
         return searchSet->getBigIcon();
 
-    assert(!"searchSet");
+    im_assert(!"searchSet");
     return StickerData::invalid();
 }
 
@@ -1073,7 +1036,7 @@ QString getSetName(int32_t _setId)
 {
     if (const auto searchSet = getCache().getSet(_setId); searchSet)
         return searchSet->getName();
-    assert(!"searchSet");
+    im_assert(!"searchSet");
     return QString();
 }
 
@@ -1158,21 +1121,6 @@ bool getSuggestWithSettings(const QString& _keyword, Suggest& _suggest)
         types.insert(SuggestType::suggestWord);
 
     return getCache().getSuggest(_keyword, _suggest, types);
-}
-
-bool isUserSet(const int32_t _setId)
-{
-    if (auto searchSet = getCache().getSet(_setId); searchSet)
-        return searchSet->isUser();
-    return true;
-}
-
-bool isPurchasedSet(const int32_t _setId)
-{
-    if (auto searchSet = getCache().getSet(_setId); searchSet)
-        return searchSet->isPurchased();
-
-    return true;
 }
 
 void resetCache()

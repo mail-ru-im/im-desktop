@@ -26,6 +26,8 @@
 #include "../../controls/ContextMenu.h"
 #include "../../controls/TooltipWidget.h"
 
+#include "../containers/FriendlyContainer.h"
+
 #include "../../controls/TransparentScrollBar.h"
 #include "../../controls/CustomButton.h"
 #include "../../controls/HorScrollableView.h"
@@ -176,6 +178,7 @@ namespace Ui
         , scrollMultipler_(1)
         , transitionLabel_(nullptr)
         , transitionAnim_(nullptr)
+        , tooltipTimer_(nullptr)
         , currentTab_(RECENTS)
         , prevTab_(RECENTS)
         , tapAndHold_(false)
@@ -1146,7 +1149,7 @@ namespace Ui
 
     void RecentsTab::connectSearchWidget(SearchWidget* _searchWidget)
     {
-        assert(_searchWidget);
+        im_assert(_searchWidget);
 
         getContactListWidget()->connectSearchWidget(_searchWidget);
 
@@ -1180,6 +1183,11 @@ namespace Ui
             transitionAnim_->stop();
         if (transitionLabel_)
             transitionLabel_->hide();
+    }
+
+    void RecentsTab::leaveEvent(QEvent*)
+    {
+        hideTooltip();
     }
 
     void RecentsTab::setSearchInAllDialogs()
@@ -1224,7 +1232,6 @@ namespace Ui
 
     void RecentsTab::recentsScrollActionTriggered(int value)
     {
-        Tooltip::hide();
         recentsView_->verticalScrollBar()->setSingleStep(Utils::scale_value(RECENTS_HEIGHT));
     }
 
@@ -1404,6 +1411,66 @@ namespace Ui
                 }, aimId, recentsView_->viewport(), recentsView_);
             }
         }
+
+        if (Features::longPathTooltipsAllowed())
+        {
+            const auto aimId = Logic::senderAimIdFromIndex(_index);
+            const auto isCompactMode = !get_gui_settings()->get_value<bool>(settings_show_last_message, true);
+            const auto posCursor = (isCompactMode || pictureOnlyView_) ? QPoint() : _pos;
+            const auto needTooltip = isUnknownsOpen() ? unknownsDelegate_->needsTooltip(aimId, _index, posCursor) : recentsDelegate_->needsTooltip(aimId, _index, posCursor);
+            if (needTooltip)
+            {
+                if (tooltipIndex_ != _index)
+                {
+                    tooltipIndex_ = _index;
+
+                    const auto aimId = Logic::senderAimIdFromIndex(_index);
+                    const auto rect = recentsView_->visualRect(_index);
+                    auto ttRect = QRect(recentsView_->mapToGlobal(rect.topLeft()), rect.size());
+                    auto name = Logic::GetFriendlyContainer()->getFriendly(aimId);
+                    const auto direction = rect.y() < 0 ? Tooltip::ArrowDirection::Up : Tooltip::ArrowDirection::Down;
+                    const auto arrowPosition = rect.y() < 0 ? Tooltip::ArrowPointPos::Bottom : Tooltip::ArrowPointPos::Top;
+                    showTooltip(std::move(name), ttRect, direction, arrowPosition);
+                }
+            }
+            else
+            {
+                hideTooltip();
+            }
+        }
+    }
+
+    void RecentsTab::showTooltip(QString _text, QRect _rect, Tooltip::ArrowDirection _arrowDir, Tooltip::ArrowPointPos _arrowPos)
+    {
+        Tooltip::hide();
+
+        if (!tooltipTimer_)
+        {
+            tooltipTimer_ = new QTimer(this);
+            tooltipTimer_->setInterval(Tooltip::getDefaultShowDelay());
+            tooltipTimer_->setSingleShot(true);
+        }
+        else
+        {
+            tooltipTimer_->stop();
+            tooltipTimer_->disconnect(this);
+        }
+
+        connect(tooltipTimer_, &QTimer::timeout, this, [text = std::move(_text), _rect, _arrowDir, _arrowPos]()
+        {
+            Tooltip::show(text, _rect, {}, _arrowDir, _arrowPos, {}, Tooltip::TooltipMode::Multiline);
+        });
+        tooltipTimer_->start();
+    }
+
+    void RecentsTab::hideTooltip()
+    {
+        tooltipIndex_ = {};
+
+        if (tooltipTimer_)
+            tooltipTimer_->stop();
+
+        Tooltip::hide();
     }
 
     void RecentsTab::switchToContactListWithHeaders(const SwichType _switchType)

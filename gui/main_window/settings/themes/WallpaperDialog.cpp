@@ -213,7 +213,7 @@ namespace Ui
 
     void DragOverlay::onResized(const QPixmap& _pixmap)
     {
-        assert(!_pixmap.isNull());
+        im_assert(!_pixmap.isNull());
         if (!_pixmap.isNull())
             Q_EMIT imageDropped(_pixmap, QPrivateSignal());
     }
@@ -430,7 +430,7 @@ namespace Ui
 
     void WallpaperSelectWidget::onFileSelected(const QString& _path)
     {
-        assert(!_path.isEmpty());
+        im_assert(!_path.isEmpty());
         if (_path.isEmpty())
             return;
 

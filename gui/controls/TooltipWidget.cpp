@@ -27,59 +27,59 @@ namespace
         return Styling::getParameters().getColor(Styling::StyleVariable::GHOST_SECONDARY);
     }
 
-    int getGradientWidth()
+    int getGradientWidth() noexcept
     {
         return Utils::scale_value(20);
     }
 
-    int getOutSpace()
+    int getOutSpace() noexcept
     {
         return Utils::scale_value(8);
     }
 
-    int getCloseButtonSize()
+    int getCloseButtonSize() noexcept
     {
         return Utils::scale_value(20);
     }
 
-    int getMinArrowOffset(bool _big)
+    int getMinArrowOffset(bool _big) noexcept
     {
         return _big ? Utils::scale_value(6) : Utils::scale_value(4);
     }
 
-    int getCloseButtonOffset()
+    int getCloseButtonOffset() noexcept
     {
         return Utils::scale_value(10);
     }
 
-    int getMaxTextTooltipHeight()
+    int getMaxTextTooltipHeight() noexcept
     {
         return Utils::scale_value(260);
     }
 
-    int getVerScrollbarWidth()
+    int getVerScrollbarWidth() noexcept
     {
         return Utils::scale_value(4);
     }
 
-    int getInvertedOffset()
+    int getInvertedOffset() noexcept
     {
         return Utils::scale_value(-4);
     }
 
-    int tooltipInterval()
+    constexpr int tooltipInterval() noexcept
     {
         return 500;
     }
 
-    int getMinWidth()
+    int getMinWidth() noexcept
     {
         return Utils::scale_value(36);
     }
 
-    constexpr int tooltipOffset() noexcept 
-    { 
-        return platform::is_apple() ? -1 : 0; 
+    constexpr int tooltipOffset() noexcept
+    {
+        return platform::is_apple() ? -1 : 0;
     }
 
     constexpr std::chrono::milliseconds getDurationAppear() noexcept { return std::chrono::milliseconds(200); }
@@ -90,27 +90,27 @@ namespace Tooltip
 {
     using namespace Ui;
 
-    int getCornerRadiusBig()
+    int getCornerRadiusBig() noexcept
     {
         return Utils::scale_value(6);
     }
 
-    int getArrowHeight()
+    int getArrowHeight() noexcept
     {
         return Utils::scale_value(4);
     }
 
-    int getShadowSize()
+    int getShadowSize() noexcept
     {
         return Utils::scale_value(8);
     }
 
-    int getDefaultArrowOffset()
+    int getDefaultArrowOffset() noexcept
     {
         return Utils::scale_value(20);
     }
 
-    int getMaxMentionTooltipHeight()
+    int getMaxMentionTooltipHeight() noexcept
     {
         return Utils::scale_value(240);
     }
@@ -120,7 +120,7 @@ namespace Tooltip
         return MessageStyle::getHistoryWidgetMaxWidth() + 2 * Tooltip::getShadowSize();
     }
 
-    int getMentionArrowOffset()
+    int getMentionArrowOffset() noexcept
     {
         return Utils::scale_value(10);
     }
@@ -145,7 +145,7 @@ namespace Tooltip
         static const auto arrowTop = Utils::renderSvgLayered(qsl(":/tooltip/tongue"), layers);
         static const auto arrowBottom = Utils::mirrorPixmapVer(arrowTop);
 
-        assert(_direction != ArrowDirection::Auto);
+        im_assert(_direction != ArrowDirection::Auto);
         const auto& arrowP = _direction == ArrowDirection::Up ? arrowTop : arrowBottom;
 
         const auto arrowH = _direction != ArrowDirection::None ? getArrowHeight() : 0;
@@ -222,7 +222,7 @@ namespace Tooltip
 
         if (_direction != ArrowDirection::None)
         {
-            assert(_direction != ArrowDirection::Auto);
+            im_assert(_direction != ArrowDirection::Auto);
 
             static const Utils::SvgLayers layers =
             {
@@ -240,6 +240,8 @@ namespace Tooltip
     }
 
     std::unique_ptr<TextTooltip> g_tooltip;
+    std::unique_ptr<TextTooltip> ml_tooltip;
+    Tooltip::TooltipMode currentMode = Tooltip::TooltipMode::Default;
 
     TextTooltip* getDefaultTooltip()
     {
@@ -254,9 +256,10 @@ namespace Tooltip
         g_tooltip.reset();
     }
 
-    void show(const QString& _text, const QRect& _objectRect, const QSize& _maxSize, ArrowDirection _direction, Tooltip::ArrowPointPos _arrowPos, const QRect& _boundingRect)
+    void show(const QString& _text, const QRect& _objectRect, const QSize& _maxSize, ArrowDirection _direction, Tooltip::ArrowPointPos _arrowPos, const QRect& _boundingRect, Tooltip::TooltipMode _mode)
     {
-        auto t = getDefaultTooltip();
+        TextTooltip* t = (_mode == Tooltip::TooltipMode::Default) ? getDefaultTooltip() : getDefaultMultilineTooltip();
+
         t->setPointWidth(_objectRect.width());
         QRect r;
         if (auto w = Utils::InterConnector::instance().getMainWindow())
@@ -268,17 +271,37 @@ namespace Tooltip
                 r = _boundingRect;
         }
 
-        t->showTooltip(_text, _objectRect, !_maxSize.isNull() ? _maxSize : QSize(-1, getMaxTextTooltipHeight()), r, _direction, _arrowPos);
+        currentMode = _mode;
+        t->showTooltip(_text, _objectRect, !_maxSize.isNull() ? _maxSize : QSize(-1, getMaxTextTooltipHeight()), r, _direction, _arrowPos, currentMode);
     }
 
     void forceShow(bool _force)
     {
-        getDefaultTooltip()->setForceShow(_force);
+        if (currentMode == Tooltip::TooltipMode::Default)
+            getDefaultTooltip()->setForceShow(_force);
+        else
+            getDefaultMultilineTooltip()->setForceShow(_force);
     }
 
     void hide()
     {
-        getDefaultTooltip()->hideTooltip(true);
+        if (currentMode == Tooltip::TooltipMode::Default)
+            getDefaultTooltip()->hideTooltip(true);
+        else
+            getDefaultMultilineTooltip()->hideTooltip(true);
+    }
+
+    TextTooltip* getDefaultMultilineTooltip()
+    {
+        if (!ml_tooltip)
+            ml_tooltip = std::make_unique<TextTooltip>(nullptr, true);
+
+        return ml_tooltip.get();
+    }
+
+    void resetDefaultMultilineTooltip()
+    {
+        ml_tooltip.reset();
     }
 
     QString text()
@@ -556,7 +579,7 @@ namespace Ui
 
             if (_direction == Tooltip::ArrowDirection::Up || (_direction == Tooltip::ArrowDirection::Auto && (_pos.y() - height() < topR.y())))
             {
-                yOffset = height() + pointWidth_ + Tooltip::getArrowHeight() - tooltipOffset();
+                yOffset = height();
                 arrowInverted_ = true;
             }
         }
@@ -574,6 +597,7 @@ namespace Ui
 
         gradientLeft_->setVisible(false);
         move(QPoint(xPos, _pos.y() - height() + yOffset));
+        update();
         return geometry();
     }
 
@@ -766,10 +790,15 @@ namespace Ui
         tooltip_->setPointWidth(_width);
     }
 
-    void TextTooltip::showTooltip(const QString& _text, const QRect& _objectRect, const QSize& _maxSize, const QRect& _rect, Tooltip::ArrowDirection _direction, Tooltip::ArrowPointPos _arrowPos)
+    void TextTooltip::showTooltip(const QString& _text, const QRect& _objectRect, const QSize& _maxSize, const QRect& _rect, Tooltip::ArrowDirection _direction, Tooltip::ArrowPointPos _arrowPos, Tooltip::TooltipMode _mode)
     {
         current_ = _text;
+        if (_mode == Tooltip::TooltipMode::Multiline)
+            text_->setMaxWidth(0);
         text_->setText(_text);
+        const auto& mltRect = _rect.isValid() ? _rect : _objectRect;
+        if (_mode == Tooltip::TooltipMode::Multiline && text_->width() >= mltRect.width() - 2 * getOutSpace())
+            text_->setMaxWidthAndResize(mltRect.width() - 4 * getOutSpace());
 
         QPoint p;
         switch (_arrowPos)

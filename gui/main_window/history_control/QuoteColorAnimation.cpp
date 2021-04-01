@@ -100,12 +100,12 @@ void QuoteColorAnimation::deactivate()
 
 void QuoteColorAnimation::setAimId(const QString& _aimId)
 {
-    assert(!_aimId.isEmpty());
+    im_assert(!_aimId.isEmpty());
     aimId_ = _aimId;
 }
 
 QColor QuoteColorAnimation::getStartColor() const
 {
-    assert(!aimId_.isEmpty());
+    im_assert(!aimId_.isEmpty());
     return Styling::getParameters(aimId_).getColor(Styling::StyleVariable::PRIMARY);
 }

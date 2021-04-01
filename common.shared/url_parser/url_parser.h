@@ -200,7 +200,7 @@ namespace common
 
             void add_fixed_urls(std::vector<compare_item>&& _items);
 
-        private:
+        protected:
 
             enum class fixed_urls_compare_state
             {
@@ -243,7 +243,7 @@ namespace common
             void start_fixed_urls_compare(states _fallback_state = states::host);
             fixed_urls_compare_state compare_fixed_urls(int _pos);
 
-        private:
+        protected:
 
             states state_;
 
@@ -288,6 +288,26 @@ namespace common
             int32_t tail_size_;
 
             std::vector<std::string> files_urls_;
+        };
+
+        class url_parser_utf16 : public url_parser
+        {
+        public:
+            url_parser_utf16(std::string_view _files_url);
+            url_parser_utf16(std::string_view _files_url, std::vector<std::string> _files_urls);
+            url_parser_utf16(std::vector<std::string> _files_urls);
+            void process(char16_t c);
+            void reset();
+
+            void process(char c) = delete;
+
+        protected:
+            void process();
+
+        protected:
+            std::array<char16_t, 2> char16_buf_ = { 0, 0 };
+            int32_t char16_pos_ = 0;
+            int32_t char16_size_ = 0;
         };
     }
 }

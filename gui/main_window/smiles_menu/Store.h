@@ -25,7 +25,6 @@ namespace Ui
             int32_t id_ = -1;
 
             QString name_;
-            QString subtitle_;
             QString storeId_;
             StickerData iconData_;
             bool purchased_ = false;
@@ -35,12 +34,10 @@ namespace Ui
             PackInfo(
                 const int32_t _id,
                 const QString& _name,
-                const QString& _subtitle,
                 const QString& _storeId,
                 bool _purchased)
                 : id_(_id)
                 , name_(_name)
-                , subtitle_(_subtitle)
                 , storeId_(_storeId)
                 , purchased_(_purchased)
             {
@@ -61,10 +58,9 @@ namespace Ui
                 QObject* parent,
                 const int32_t _id,
                 const QString& _name,
-                const QString& _subtitle,
                 const QString& _storeId,
                 bool _purchased)
-                : QObject(parent), PackInfo(_id, _name, _subtitle, _storeId, _purchased)
+                : QObject(parent), PackInfo(_id, _name, _storeId, _purchased)
             {
             }
 
@@ -95,7 +91,6 @@ namespace Ui
         protected:
             std::unique_ptr<PackInfoObject> info_;
             TextRendering::TextUnitPtr name_;
-            TextRendering::TextUnitPtr desc_;
 
             QPixmap icon_;
             LottiePlayer* lottie_ = nullptr;

@@ -13,14 +13,15 @@
 namespace
 {
     constexpr auto senderFontSize() { return 14; }
-}
 
+    constexpr auto textFontSize() { return platform::is_linux() ? 16 : 15; }
+}
 
 namespace Ui::MessageStyle
 {
     QFont getTextFont()
     {
-        constexpr int size = platform::is_linux() ? 16 : 15;
+        constexpr int size = textFontSize();
         auto font = Fonts::adjustedAppFont(size);
 
         if constexpr (platform::is_apple())
@@ -39,8 +40,12 @@ namespace Ui::MessageStyle
 
     QFont getTextMonospaceFont()
     {
-        constexpr int size = platform::is_apple() ? 16 : 15;
-        return Fonts::adjustedAppFont(size, Fonts::FontFamily::ROBOTO_MONO);
+        auto family = Fonts::FontFamily::MIN;
+        if constexpr (platform::is_apple())
+            family = Fonts::FontFamily::SF_MONO;
+        else
+            family = Fonts::FontFamily::ROBOTO_MONO;
+        return Fonts::adjustedAppFont(textFontSize() - 1, family);
     }
 
     QFont getImagePreviewLinkFont()
@@ -308,7 +313,7 @@ namespace Ui::MessageStyle
 
     int32_t roundTextWidthDown(const int32_t width)
     {
-        assert(width > 0);
+        im_assert(width > 0);
 
         return ((width / getTextWidthStep()) * getTextWidthStep());
     }

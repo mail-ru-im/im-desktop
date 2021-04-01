@@ -9,6 +9,7 @@ namespace Ui
 {
     void UrlConfig::updateUrls(const core::coll_helper& _coll)
     {
+        baseBinary_ = _coll.get<QString>("baseBinary");
         filesParse_ = _coll.get<QString>("filesParse");
         stickerShare_= _coll.get<QString>("stickerShare");
         profile_ = _coll.get<QString>("profile");
@@ -36,12 +37,12 @@ namespace Ui
         }
     }
 
-    const QVector<QString>& UrlConfig::getVCSUrls() const
+    const QVector<QString>& UrlConfig::getVCSUrls() const noexcept
     {
         return vcsUrls_;
     }
 
-    bool UrlConfig::isMailConfigPresent() const
+    bool UrlConfig::isMailConfigPresent() const noexcept
     {
         if (!config::get().is_on(config::features::external_url_config))
             return true;

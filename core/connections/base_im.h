@@ -64,12 +64,14 @@ namespace core
         struct message_pack
         {
             std::string message_;
+            core::data::format::string_formatting message_format_;
             quotes_vec quotes_;
             mentions_map mentions_;
             std::string internal_id_;
             core::message_type type_;
             uint64_t message_time_ = 0;
             std::string description_;
+            core::data::format::string_formatting description_format_;
             std::string url_;
             common::tools::patch_version version_;
             shared_contact shared_contact_;
@@ -77,6 +79,7 @@ namespace core
             poll poll_;
             smartreply::marker_opt smartreply_marker_;
             bool channel_ = false;
+            std::string chat_sender_;
         };
 
         struct delete_message_info
@@ -247,7 +250,7 @@ namespace core
         virtual void add_opened_dialog(const std::string& _contact) = 0;
         virtual void remove_opened_dialog(const std::string& _contact) = 0;
 
-        virtual void get_stickers_meta(int64_t _seq, const std::string& _size) = 0;
+        virtual void get_stickers_meta(int64_t _seq, std::string_view _size) = 0;
         virtual void get_sticker(const int64_t _seq, const int32_t _set_id, const int32_t _sticker_id, std::string_view _fs_id, const core::sticker_size _size) = 0;
         virtual void get_sticker_cancel(std::vector<std::string> _fs_ids, core::sticker_size _size) = 0;
         virtual void get_stickers_pack_info(const int64_t _seq, const int32_t _set_id, const std::string& _store_id, const std::string& _file_id) = 0;
@@ -394,6 +397,7 @@ namespace core
             const std::string& _extension,
             const core::archive::quotes_vec& _quotes,
             const std::string& _description,
+            const core::data::format::string_formatting& _description_format,
             const core::archive::mentions_map& _mentions,
             const std::optional<int64_t>& _duration,
             const bool _strip_exif,

@@ -154,7 +154,7 @@ namespace
         for (const auto& q : std::as_const(_msg->Quotes_))
         {
             if (!q.isSticker() && !q.text_.isEmpty())
-                parts.push_back(q.text_);
+                parts.push_back(Data::stubFromFormattedString(q.text_));
         }
 
         for (const auto& s : _msg->snippets_)
@@ -168,7 +168,7 @@ namespace
         }
 
         if (!_msg->IsSticker() && !_msg->GetSourceText().isEmpty())
-            parts.push_back(_msg->GetSourceText());
+            parts.push_back(Data::stubFromFormattedString(_msg->GetSourceText()));
 
         for (const auto& part: parts)
         {
@@ -187,7 +187,7 @@ namespace
             }
         }
 
-        return _msg->GetSourceText();
+        return Data::stubFromFormattedString(_msg->GetSourceText());
     }
 }
 
@@ -242,7 +242,7 @@ namespace Logic
             break;
 
         default:
-            assert(false);
+            im_assert(false);
             break;
         }
 
@@ -645,7 +645,7 @@ namespace Logic
         const auto item = _index.data(Qt::DisplayRole).value<Data::AbstractSearchResultSptr>();
         if (!item)
         {
-            assert(false);
+            im_assert(false);
             return QSize();
         }
 
@@ -656,7 +656,7 @@ namespace Logic
             const auto [isSelected, _] = getMouseState(_option, _index);
 
             const auto ci = getCachedItem(_option, msg, isSelected);
-            if (ci && ci->text_ && ci->text_->getLineCount() == 3)
+            if (ci && ci->text_ && ci->text_->getLinesCount() == 3)
                 height = Utils::scale_value(88);
             else
                 height = Ui::GetRecentsParams().itemHeight();
@@ -675,7 +675,7 @@ namespace Logic
             height = Utils::scale_value(48);
         }
 
-        assert(height > 0);
+        im_assert(height > 0);
         return QSize(_option.rect.width(), height);
     }
 
@@ -686,6 +686,21 @@ namespace Logic
 
         hoveredRemoveSuggestBtn_ = _itemIndex;
         return true;
+    }
+
+    bool SearchItemDelegate::needsTooltip(const QString& _aimId, const QModelIndex& _index, QPoint) const
+    {
+        auto item = _index.data(Qt::DisplayRole).value<Data::AbstractSearchResultSptr>();
+        if (!item)
+            return false;
+        if (item->isMessage())
+        {
+            const auto msg = std::static_pointer_cast<Data::SearchResultMessage>(item);
+            const auto it = messageCache_.find(msg->getMessageId());
+            return it != messageCache_.end() && it->second && it->second->name_->isElided();
+        }
+        const auto it = contactCache_.find(_aimId);
+        return it != contactCache_.end() && it->second && it->second->name_->isElided();
     }
 
     void SearchItemDelegate::setRegim(int)

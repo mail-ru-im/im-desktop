@@ -70,7 +70,7 @@ namespace Logic
                 }
                 else
                 {
-                    assert(!"unknown item");
+                    im_assert(!"unknown item");
                 }
 
                 if (Testing::isAccessibleRole(_role))
@@ -78,6 +78,9 @@ namespace Logic
 
                 return QVariant::fromValue(std::make_shared<Data::CallInfo>(info));
             }
+
+            if (Testing::isAccessibleRole(_role))
+                return QString(u"AS CallLog " % calls_[i - serviceItemsCount].VoipSid_);
 
             return QVariant::fromValue(std::make_shared<Data::CallInfo>(calls_[i - serviceItemsCount]));
         }

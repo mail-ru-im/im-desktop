@@ -38,14 +38,14 @@ std::shared_ptr<async_task_handlers> core::async_executer::run_async_function(st
 {
     auto handler = std::make_shared<async_task_handlers>();
 
-    push_back([f = std::move(func), handler]
+    push_back({ [f = std::move(func), handler]
     {
-        g_core->execute_core_context([handler, result = f()]
+        g_core->execute_core_context({ [handler, result = f()]
         {
             if (handler->on_result_)
                 handler->on_result_(result);
-        });
-    }, -1, std::move(_task_name), std::move(_cancel));
+        }});
+    } }, -1, std::move(_task_name), std::move(_cancel));
 
     return handler;
 }

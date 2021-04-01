@@ -253,6 +253,7 @@ namespace Ui
         {
             editButton_ = new HeaderTitleBarButton(this);
             editButton_->setDefaultImage(qsl(":/context_menu/edit"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY), headerIconSize);
+            editButton_->setCustomToolTip(QT_TRANSLATE_NOOP("context_menu", "Edit"));
             titleBar_->addButtonToRight(editButton_);
             connect(editButton_, &HeaderTitleBarButton::clicked, this, &UserProfile::editButtonClicked);
         }
@@ -557,13 +558,21 @@ namespace Ui
     void UserProfile::updateCloseButton()
     {
         QString iconPath;
+        QString tooltipText;
         if (frameCountMode_ != FrameCountMode::_1 && prevAimId_.isEmpty() && stackedWidget_->currentIndex() == main)
+        {
             iconPath = qsl(":/controls/close_icon");
+            tooltipText = QT_TRANSLATE_NOOP("sidebar", "Close");
+        }
         else
+        {
             iconPath = qsl(":/controls/back_icon");
+            tooltipText = QT_TRANSLATE_NOOP("sidebar", "Back");
+        }
 
         closeButton_->setDefaultImage(iconPath, Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
         closeButton_->setHoverImage(iconPath, Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER));
+        closeButton_->setCustomToolTip(tooltipText);
     }
 
     void UserProfile::updatePinButton()
@@ -641,7 +650,7 @@ namespace Ui
                 break;
 
             default:
-                assert(false);
+                im_assert(false);
         }
 
         gallery_->initFor(currentAimId_);
@@ -1051,8 +1060,14 @@ namespace Ui
     {
         setInfoPlaceholderVisible(false);
         controlsWidget_->setEnabled(true);
-        about_->setVisible(!userInfo_.about_.isEmpty());
-        about_->setText(userInfo_.about_);
+
+        const auto hasAbout = !userInfo_.about_.isEmpty();
+        if (hasAbout)
+        {
+            about_->setText(userInfo_.about_);
+            about_->disableCommandsInText();
+        }
+        about_->setVisible(hasAbout);
 
         if (Utils::isValidEmailAddress(currentAimId_))
         {
@@ -1330,7 +1345,6 @@ namespace Ui
         nick_->setVisible(false);
         email_->setVisible(false);
         phone_->setVisible(false);
-        about_->setVisible(false);
         share_->setVisible(false);
         about_->setVisible(false);
         pin_->setVisible(false);

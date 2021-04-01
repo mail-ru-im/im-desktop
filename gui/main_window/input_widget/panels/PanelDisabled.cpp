@@ -47,7 +47,7 @@ namespace Ui
             break;
 
         default:
-            assert(!"unknown state");
+            im_assert(!"unknown state");
             break;
         }
     }

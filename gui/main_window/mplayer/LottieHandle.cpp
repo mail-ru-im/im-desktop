@@ -26,7 +26,7 @@ namespace Ui
             ptr->ptr_  = rlottie::Animation::loadFromFile(_path.toStdString());
         }
 
-        assert(ptr);
+        im_assert(ptr);
         return LottieHandle(ptr);
     }
 

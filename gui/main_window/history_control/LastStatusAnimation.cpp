@@ -50,7 +50,7 @@ namespace Ui
         , pendingTimer_(new QTimer(this))
         , lastStatus_(LastStatus::None)
     {
-        assert(_parent);
+        im_assert(_parent);
 
         pendingTimer_->setSingleShot(true);
         pendingTimer_->setInterval(pendingTimeout);

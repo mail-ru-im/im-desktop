@@ -25,7 +25,7 @@ std::unique_ptr<RequestHandler> RequestHandlersFactory::handlerForRequest(const 
     case ServiceRequest::Type::SendLogsToUin:
     {
         auto uinRequest = std::dynamic_pointer_cast<SendLogsToUinRequest>(_request);
-        assert(uinRequest);
+        im_assert(uinRequest);
         if (!uinRequest)
             return nullptr;
 
@@ -35,7 +35,7 @@ std::unique_ptr<RequestHandler> RequestHandlersFactory::handlerForRequest(const 
     case ServiceRequest::Type::SendLogsToSupportServer:
     {
         auto toServerRequest = std::dynamic_pointer_cast<SendLogsToServerRequest>(_request);
-        assert(toServerRequest);
+        im_assert(toServerRequest);
         if (!toServerRequest)
             return nullptr;
 
@@ -45,14 +45,14 @@ std::unique_ptr<RequestHandler> RequestHandlersFactory::handlerForRequest(const 
     case ServiceRequest::Type::Internal:
     {
         auto internalRequest = std::dynamic_pointer_cast<InternalServiceRequest>(_request);
-        assert(internalRequest);
+        im_assert(internalRequest);
         if (!internalRequest)
             return nullptr;
         return std::make_unique<InternalServiceHandler>(std::move(internalRequest));
     }
         break;
     default:
-        assert(!"handle enum ServiceRequest::Type in handler factory");
+        im_assert(!"handle enum ServiceRequest::Type in handler factory");
     }
 
     return nullptr;

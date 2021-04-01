@@ -16,6 +16,7 @@
 #include "../../controls/GeneralDialog.h"
 #include "../../controls/ContactAvatarWidget.h"
 #include "../../controls/DialogButton.h"
+#include "../../controls/TooltipWidget.h"
 #include "../contact_list/AddContactDialogs.h"
 #include "previewer/toast.h"
 #include "../../styles/ThemeParameters.h"
@@ -427,6 +428,16 @@ void TransitProfileSharingWidget::paintEvent(QPaintEvent * _event)
 
 void TransitProfileSharingWidget::mouseMoveEvent(QMouseEvent* _event)
 {
+    if (Features::longPathTooltipsAllowed() && friendlyTextUnit_->isElided() && friendlyTextUnit_->contains(_event->pos()))
+    {
+        const auto topLeft = mapToGlobal(QPoint(0, friendlyTextUnit_->offsets().y()));
+        Tooltip::show(friendlyTextUnit_->getSourceText().string(), QRect(topLeft, QSize(width(), friendlyTextUnit_->cachedSize().height())));
+    }
+    else
+    {
+        Tooltip::hide();
+    }
+
     btnHovered_ = btnRect_.contains(_event->pos());
     setCursor( btnHovered_ ? Qt::PointingHandCursor : Qt::ArrowCursor);
     update();

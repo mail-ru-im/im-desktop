@@ -20,23 +20,24 @@
 
 UI_COMPLEX_MESSAGE_NS_BEGIN
 
-TextBlock::TextBlock(ComplexMessageItem* _parent, const QString& _text, const Ui::TextRendering::EmojiSizeType _emojiSizeType)
+TextBlock::TextBlock(ComplexMessageItem* _parent, const QString& _text, TextRendering::EmojiSizeType _emojiSizeType)
     : GenericBlock(_parent, _text, MenuFlags(MenuFlagCopyable), false)
     , Layout_(new TextBlockLayout())
     , emojiSizeType_(_emojiSizeType)
+    , shouldParseMarkdown_(true)
 {
-    assert(!_text.isEmpty());
-
-    Testing::setAccessibleName(this, u"AS HistoryPage messageText " % QString::number(_parent->getId()));
-
-    setLayout(Layout_);
-
-    connect(this, &TextBlock::selectionChanged, _parent, &ComplexMessageItem::selectionChanged);
-    connect(&Utils::InterConnector::instance(), &Utils::InterConnector::emojiSizeChanged, this, &TextBlock::adjustEmojiSize);
-
-    if (!_parent->isHeadless())
-        initTextUnit();
+    init(_parent);
 }
+
+TextBlock::TextBlock(ComplexMessageItem* _parent, const Data::FormattedStringView& _text, TextRendering::EmojiSizeType _emojiSizeType)
+    : GenericBlock(_parent, _text.toFormattedString(), MenuFlags(MenuFlagCopyable), false)
+    , Layout_(new TextBlockLayout())
+    , emojiSizeType_(_emojiSizeType)
+    , shouldParseMarkdown_(false)
+{
+    init(_parent);
+}
+
 
 TextBlock::~TextBlock() = default;
 
@@ -53,7 +54,7 @@ IItemBlockLayout* TextBlock::getBlockLayout() const
     return Layout_;
 }
 
-QString TextBlock::getSelectedText(const bool _isFullSelect, const TextDestination _dest) const
+Data::FormattedString TextBlock::getSelectedText(const bool _isFullSelect, const TextDestination _dest) const
 {
     if (textUnit_)
     {
@@ -65,7 +66,7 @@ QString TextBlock::getSelectedText(const bool _isFullSelect, const TextDestinati
         return textUnit_->getSelectedText(textType);
     }
 
-    return QString();
+    return {};
 }
 
 bool TextBlock::updateFriendly(const QString& _aimId, const QString& _friendly)
@@ -170,6 +171,36 @@ void TextBlock::setSpellErrorsVisible(bool _visible)
         reinit();
 }
 
+bool TextBlock::needStretchToOthers() const
+{
+    if (!textUnit_)
+        return false;
+
+    return textUnit_->mightStretchForLargerWidth();
+}
+
+void TextBlock::stretchToWidth(const int _width)
+{
+    auto rect = geometry();
+    if (_width == rect.width())
+        return;
+
+    rect.setWidth(_width);
+    setGeometry(rect);
+    if (textUnit_)
+        textUnit_->getHeight(_width, Ui::TextRendering::CallType::FORCE);
+}
+
+bool TextBlock::managesTime() const
+{
+    return !needStretchToOthers();
+}
+
+bool TextBlock::isNeedCheckTimeShift() const
+{
+    return false;
+}
+
 void TextBlock::drawBlock(QPainter& p, const QRect&, const QColor&)
 {
     if (!textUnit_)
@@ -207,6 +238,21 @@ void TextBlock::leaveEvent(QEvent *e)
     return GenericBlock::leaveEvent(e);
 }
 
+void TextBlock::init(ComplexMessageItem* _parent)
+{
+    im_assert(!GenericBlock::getSourceText().isEmpty());
+
+    Testing::setAccessibleName(this, u"AS HistoryPage messageText " % QString::number(_parent->getId()));
+
+    setLayout(Layout_);
+
+    connect(this, &TextBlock::selectionChanged, _parent, &ComplexMessageItem::selectionChanged);
+    connect(&Utils::InterConnector::instance(), &Utils::InterConnector::emojiSizeChanged, this, &TextBlock::adjustEmojiSize);
+
+    if (!_parent->isHeadless())
+        initTextUnit();
+}
+
 void TextBlock::reinit()
 {
     initTextUnit();
@@ -225,6 +271,7 @@ void TextBlock::initTextUnit()
     const auto linkStyle = Styling::getThemesContainer().getCurrentTheme()->isLinksUnderlined() ? TextRendering::LinksStyle::UNDERLINED : TextRendering::LinksStyle::PLAIN;
     textUnit_->init(MessageStyle::getTextFont()
                   , MessageStyle::getTextColor()
+                  , MessageStyle::getTextMonospaceFont()
                   , MessageStyle::getLinkColor()
                   , MessageStyle::getTextSelectionColor(getChatAimid())
                   , MessageStyle::getHighlightColor()
@@ -235,12 +282,13 @@ void TextBlock::initTextUnit()
                   , linkStyle);
 
     textUnit_->setHighlightedTextColor(MessageStyle::getHighlightTextColor());
-    textUnit_->markdown(MessageStyle::getTextMonospaceFont(), MessageStyle::getTextColor());
+    if (shouldParseMarkdown_)
+        textUnit_->markdown(MessageStyle::getTextMonospaceFont(), MessageStyle::getTextColor());
     textUnit_->setLineSpacing(MessageStyle::getTextLineSpacing());
 
     const auto& contact = getChatAimid();
-    const auto isCommandsEnabled = Logic::GetLastseenContainer()->isBot(contact) || Utils::isChat(contact);
-    if (!isCommandsEnabled)
+    const auto areCommandsEnabled = Logic::GetLastseenContainer()->isBot(contact) || Utils::isChat(contact);
+    if (!areCommandsEnabled)
         textUnit_->disableCommands();
 
     startSpellCheckingIfNeeded();
@@ -369,7 +417,7 @@ QString TextBlock::getTrimmedText() const
     if (textUnit_ && textUnit_->sourceModified())
         return textUnit_->getText();
 
-    return getSourceText();
+    return getSourceText().string();
 }
 
 int TextBlock::desiredWidth(int _w) const
@@ -379,7 +427,7 @@ int TextBlock::desiredWidth(int _w) const
         auto desired = textUnit_->desiredWidth();
 
         const auto cm = getParentComplexMessage();
-        if (cm && cm->isLastBlock(this) && textUnit_->getLineCount() > 0)
+        if (cm && managesTime() && cm->isLastBlock(this) && textUnit_->getLinesCount() > 0)
         {
             if (const auto timeWidget = cm->getTimeWidget())
             {
@@ -390,7 +438,7 @@ int TextBlock::desiredWidth(int _w) const
                 }
                 else
                 {
-                    if (textUnit_->getLineCount() == 1)
+                    if (textUnit_->getLinesCount() == 1)
                         desired += timeWidth;
                     else
                         desired = std::max(textUnit_->getLastLineWidth() + timeWidth, desired);
@@ -410,12 +458,12 @@ QString TextBlock::getTextForCopy() const
         return GenericBlock::getTextForCopy();
 
     if (textUnit_->sourceModified())
-        return textUnit_->getSourceText();
+        return Data::stubFromFormattedString(textUnit_->getSourceText());
     else
         return textUnit_->getText();
 }
 
-QString TextBlock::getTextInstantEdit() const
+Data::FormattedString TextBlock::getTextInstantEdit() const
 {
     if (!textUnit_)
         return GenericBlock::getTextInstantEdit();
@@ -438,7 +486,45 @@ bool TextBlock::isOverLink(const QPoint& _mousePosGlobal) const
     return textUnit_ && textUnit_->isOverLink(mapFromGlobal(_mousePosGlobal));
 }
 
-void TextBlock::setText(const QString& _text)
+bool TextBlock::clickOnFirstLink() const
+{
+    if (!textUnit_)
+        return false;
+
+    for (const auto& block : textUnit_->blocks())
+    {
+        if (block->getType() == TextRendering::BlockType::Text)
+        {
+            for (const auto& word : block->getWords())
+            {
+                if (word.isLink())
+                {
+                    word.clicked();
+                    return true;
+                }
+            }
+        }
+        if (block->getType() == TextRendering::BlockType::Paragraph)
+        {
+            if (auto paragraph = dynamic_cast<TextRendering::TextDrawingParagraph*>(block.get()))
+            for (const auto& b : paragraph->getBlocks())
+            {
+                for (const auto& word : b->getWords())
+                {
+                    if (word.isLink())
+                    {
+                        word.clicked();
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+void TextBlock::setText(const Data::FormattedString& _text)
 {
     setSourceText(_text);
     reinit();

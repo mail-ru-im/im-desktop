@@ -1,6 +1,7 @@
 #pragma once
 
 #include "packets/fetch.h"
+#include "dialog_holes.h"
 #include "../../archive/local_history.h"
 
 namespace core
@@ -8,7 +9,7 @@ namespace core
     namespace wim
     {
         void write_offset_in_log(time_t offset);
-        void write_ignore_download_holes(std::string_view contact, std::string_view reason);
+        void write_ignore_download_holes(std::string_view contact, std::string_view reason, std::optional<archive::archive_hole_error> _error = std::nullopt, const std::optional<holes::request>& _request = std::nullopt);
         class fetch;
         void write_time_offests_in_log(const std::shared_ptr<fetch>& packet);
         void write_files_error_in_log(std::string_view _func, int32_t _error);

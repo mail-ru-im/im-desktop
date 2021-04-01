@@ -66,7 +66,7 @@ namespace ptt
         static constexpr int channelsCount() noexcept { return 1; }
         static constexpr int bitesPerSample() noexcept { return sizeof(int16_t) * 8; }
 
-        static bool hasDevice(const char* deviceName = nullptr);
+        static bool hasDevice();
 
     private:
         void recordImpl();

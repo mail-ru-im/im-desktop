@@ -2,6 +2,7 @@
 
 #include "history/Message.h"
 #include "history/History.h"
+#include "../../types/filesharing_meta.h"
 
 namespace hist
 {
@@ -209,6 +210,8 @@ namespace Ui
 
         void setSmartreplyButton(QWidget* _button);
         void notifyQuotesResize();
+
+        std::optional<Data::FileSharingMeta> getMeta(const QString& _id) const;
 
     private:
 

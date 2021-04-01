@@ -283,6 +283,7 @@ namespace Ui
         opacityAnimation_->start();
 
         show();
+        raise();
     }
 
     void MentionCompleter::setArrowPosition(const QPoint& _pos)

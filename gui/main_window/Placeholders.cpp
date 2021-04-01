@@ -239,7 +239,7 @@ void RotatingSpinner::startAnimation(const QColor& _spinnerColor, const QColor& 
         mainColor_ = _spinnerColor;
     else
         mainColor_ = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
-    assert(mainColor_.alpha() == 255);
+    im_assert(mainColor_.alpha() == 255);
 
     if (_bgColor.isValid())
         bgColor_ = _bgColor;

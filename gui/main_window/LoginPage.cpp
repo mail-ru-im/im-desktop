@@ -1067,7 +1067,7 @@ namespace Ui
     {
         if (loggedIn_)
         {
-            assert(false);
+            im_assert(false);
             return;
         }
 
@@ -1387,7 +1387,7 @@ namespace Ui
             break;
 
         default:
-            assert(false);
+            im_assert(false);
             Utils::GetConfirmationWithOneButton(
                 QT_TRANSLATE_NOOP("login_page", "OK"),
                 QT_TRANSLATE_NOOP("login_page", "Unknown error. Contact system administrator"),
@@ -1713,7 +1713,7 @@ namespace Ui
 
     void Ui::EntryHintWidget::appendPhone(const QString & _text)
     {
-        const auto delim = (textUnit_->getLineCount() > 1) ? u' ' : u'\n';
+        const auto delim = (textUnit_->getLinesCount() > 1) ? u' ' : u'\n';
         textUnit_->setText(textUnit_->getText() % delim % _text);
         updateSize();
     }

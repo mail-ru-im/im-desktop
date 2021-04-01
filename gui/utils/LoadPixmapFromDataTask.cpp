@@ -12,7 +12,7 @@ namespace Utils
         : Stream_(stream)
         , maxSize_(_maxSize)
     {
-        assert(Stream_);
+        im_assert(Stream_);
 
         Stream_->addref();
     }
@@ -25,7 +25,7 @@ namespace Utils
     void LoadPixmapFromDataTask::run()
     {
         const auto size = Stream_->size();
-        assert(size > 0);
+        im_assert(size > 0);
 
         auto data = QByteArray::fromRawData((const char *)Stream_->read(size), (int)size);
         if (Q_UNLIKELY(!QCoreApplication::instance()))
@@ -50,7 +50,7 @@ namespace Utils
         : stream_(_stream),
           maxSize_(_maxSize)
     {
-        assert(stream_);
+        im_assert(stream_);
 
         stream_->addref();
     }
@@ -63,7 +63,7 @@ namespace Utils
     void LoadImageFromDataTask::run()
     {
         const auto size = stream_->size();
-        assert(size > 0);
+        im_assert(size > 0);
 
         auto data = QByteArray::fromRawData((const char *)stream_->read(size), (int)size);
 

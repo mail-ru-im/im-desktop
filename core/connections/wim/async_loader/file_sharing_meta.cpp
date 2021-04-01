@@ -66,7 +66,7 @@ core::wim::file_sharing_meta_uptr core::wim::file_sharing_meta::parse_json(InOut
     log << "file_sharing_meta: \n";
     log << "status: " << meta->status_code_ << '\n';
 
-    if (meta->status_code_ != 200)
+    if (meta->status_code_ != 20000 && meta->status_code_ != 200)
     {
         g_core->write_string_to_network_log(log.str());
         return meta;

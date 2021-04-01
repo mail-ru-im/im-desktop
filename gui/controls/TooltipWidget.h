@@ -30,20 +30,29 @@ namespace Tooltip
         Bottom
     };
 
-    int getCornerRadiusBig();
-    int getArrowHeight();
-    int getShadowSize();
-    int getDefaultArrowOffset();
-    int getMaxMentionTooltipHeight();
+    enum class TooltipMode
+    {
+        Default,
+        Multiline
+    };
+
+    int getCornerRadiusBig() noexcept;
+    int getArrowHeight() noexcept;
+    int getShadowSize() noexcept;
+    int getDefaultArrowOffset() noexcept;
+    int getMaxMentionTooltipHeight() noexcept;
     int getMaxMentionTooltipWidth();
-    int getMentionArrowOffset();
+    int getMentionArrowOffset() noexcept;
     void drawTooltip(QPainter& _p, const QRect& _tooltipRect, const int _arrowOffset, const ArrowDirection _direction);
     void drawBigTooltip(QPainter& _p, const QRect& _tooltipRect, const int _arrowOffset, const ArrowDirection _direction);
 
     Ui::TextTooltip* getDefaultTooltip();
     void resetDefaultTooltip();
 
-    void show(const QString& _text, const QRect& _objectRect, const QSize& _maxSize = QSize(0, 0), ArrowDirection _direction = ArrowDirection::Auto, Tooltip::ArrowPointPos _arrowPos = Tooltip::ArrowPointPos::Top, const QRect& _boundingRect = QRect());
+    Ui::TextTooltip* getDefaultMultilineTooltip();
+    void resetDefaultMultilineTooltip();
+
+    void show(const QString& _text, const QRect& _objectRect, const QSize& _maxSize = QSize(0, 0), ArrowDirection _direction = ArrowDirection::Auto, Tooltip::ArrowPointPos _arrowPos = Tooltip::ArrowPointPos::Top, const QRect& _boundingRect = QRect(), Tooltip::TooltipMode _mode = Tooltip::TooltipMode::Default);
     void forceShow(bool _force);
     void hide();
 
@@ -51,6 +60,11 @@ namespace Tooltip
     bool isVisible();
     bool canWheel();
     void wheel(QWheelEvent* _e);
+
+    constexpr inline std::chrono::milliseconds getDefaultShowDelay() noexcept
+    {
+        return std::chrono::milliseconds(400);
+    }
 }
 
 namespace Ui
@@ -193,7 +207,8 @@ namespace Ui
             const QSize& _maxSize,
             const QRect& _rect = QRect(),
             Tooltip::ArrowDirection _direction = Tooltip::ArrowDirection::Auto,
-            Tooltip::ArrowPointPos _arrowPos = Tooltip::ArrowPointPos::Top);
+            Tooltip::ArrowPointPos _arrowPos = Tooltip::ArrowPointPos::Top,
+            Tooltip::TooltipMode _mode = Tooltip::TooltipMode::Default);
         void hideTooltip(bool _force = false);
 
         QString getText() const;

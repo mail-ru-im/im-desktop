@@ -2,16 +2,15 @@
 #include "block_chat_member.h"
 
 #include "../../../http_request.h"
-#include "../../../tools/system.h"
-#include "../common.shared/json_unserialize_helpers.h"
+#include "tools/json_helper.h"
 
 using namespace core;
 using namespace wim;
 
 block_chat_member::block_chat_member(
     wim_packet_params _params,
-    const std::string& _aimid,
-    const std::string& _contact,
+    std::string_view _aimid,
+    std::string_view _contact,
     bool _block,
     bool _remove_messages)
     : robusto_packet(std::move(_params))
@@ -62,7 +61,43 @@ int32_t block_chat_member::init_request(const std::shared_ptr<core::http_request
     return 0;
 }
 
-int32_t block_chat_member::parse_response_data(const rapidjson::Value& _data)
+int32_t block_chat_member::parse_results(const rapidjson::Value& _node_results)
 {
+    if (get_status_code() == 20070)
+    {
+        const auto failures = _node_results.FindMember("failures");
+        if (failures != _node_results.MemberEnd() && failures->value.IsArray())
+        {
+            for (const auto& f : failures->value.GetArray())
+            {
+                if (std::string_view err; tools::unserialize_value(f, "error", err) && !err.empty())
+                    if (const auto failure = string_to_failure(err); failure != chat_member_failure::invalid)
+                        if (std::string_view id; tools::unserialize_value(f, "id", id) && !id.empty())
+                            failures_[failure].emplace_back(std::move(id));
+            }
+        }
+    }
+
     return 0;
+}
+
+int32_t block_chat_member::on_response_error_code()
+{
+    if (status_code_ == 40001)
+        return wpie_error_access_denied;
+    else if (status_code_ == 40002)
+        return wpie_error_user_blocked;
+    else if (block_ && status_code_ == 40003)
+        return wpie_error_group_max_members;
+    else if (status_code_ == 40101)
+        return wpie_error_user_captched;
+    else if (status_code_ == 40501)
+        return wpie_error_rate_limit;
+
+    return robusto_packet::on_response_error_code();
+}
+
+bool block_chat_member::is_status_code_ok() const
+{
+    return get_status_code() == 20070 || robusto_packet::is_status_code_ok();
 }

@@ -7,7 +7,7 @@ namespace HistoryControl
 
     QString formatFileSize(const int64_t size)
     {
-        assert(size >= 0);
+        im_assert(size >= 0);
 
         constexpr auto KiB = 1024;
         constexpr auto MiB = 1024 * KiB;
@@ -41,7 +41,7 @@ namespace HistoryControl
     {
         using namespace HistoryControl;
 
-        assert(bytesTransferred >= -1);
+        im_assert(bytesTransferred >= -1);
         if (bytesTransferred > 0)
             return formatFileSize(bytesTransferred) % QT_TRANSLATE_NOOP("chat_page", " of ") % formatFileSize(bytesTotal);
         return formatFileSize(bytesTotal);

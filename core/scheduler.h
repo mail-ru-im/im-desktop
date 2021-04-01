@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "core.h"
 namespace core
 {
     class async_executer;
@@ -14,7 +15,8 @@ namespace core
             std::chrono::steady_clock::time_point last_execute_time_;
             uint32_t id_ = 0;
             std::chrono::milliseconds timeout_ = std::chrono::milliseconds(0);
-            std::function<void()> function_;
+            stacked_task function_;
+            bool single_shot_ = false;
         };
 
         std::unique_ptr<std::thread> thread_;
@@ -24,9 +26,13 @@ namespace core
         std::condition_variable condition_;
         bool is_stop_;
 
+        uint32_t push_timer(stacked_task _function, std::chrono::milliseconds _timeout, bool _single_shot);
+
     public:
 
-        uint32_t push_timer(std::function<void()> _function, std::chrono::milliseconds _timeout);
+        uint32_t push_timer(stacked_task _function, std::chrono::milliseconds _timeout);
+        uint32_t push_single_shot_timer(stacked_task _function, std::chrono::milliseconds _timeout);
+
         void stop_timer(uint32_t _id);
 
         scheduler();

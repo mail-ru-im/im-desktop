@@ -174,6 +174,51 @@ namespace
         return parser.hasUrl() && parser.getUrl().type_ == common::tools::url::type::profile;
     }
 
+    void handleBotAction(const QString& _url, const QString& _text = {}, bool _showAlert = false)
+    {
+        if (!_url.isEmpty())
+        {
+            Utils::UrlParser parser;
+            parser.process(_url);
+            if (parser.hasUrl())
+            {
+                if (!isInternalUrl(_url))
+                {
+                    if (!_text.isEmpty())
+                    {
+                        if (Utils::GetConfirmationWithTwoButtons(QT_TRANSLATE_NOOP("bots", "Cancel"), QT_TRANSLATE_NOOP("bots", "Open link"),
+                            _text,
+                            QString(), nullptr))
+                        {
+                            Utils::openUrl(_url);
+                        }
+                    }
+                    else
+                    {
+                        if (Utils::GetConfirmationWithTwoButtons(QT_TRANSLATE_NOOP("bots", "Cancel"), QT_TRANSLATE_NOOP("bots", "Ok"),
+                            QT_TRANSLATE_NOOP("bots", "Are you sure you want to open an external link %1?").arg(_url), QString(), nullptr))
+                        {
+                            Utils::openUrl(_url);
+                        }
+                    }
+                }
+                else
+                {
+                    if (_showAlert && !_text.isEmpty())
+                        Utils::ShowBotAlert(_text);
+                    Utils::openUrl(_url);
+                }
+            }
+        }
+        else if (!_text.isEmpty())
+        {
+            if (_showAlert)
+                Utils::ShowBotAlert(_text);
+            else
+                Utils::showTextToastOverContactDialog(_text);
+        }
+    }
+
     constexpr auto BUTTON_ANIMATION_START_TIMEOUT = std::chrono::milliseconds(200);
 
     constexpr auto MAX_BUTTONS_IN_LINE = 8;
@@ -219,7 +264,7 @@ ComplexMessageItem::ComplexMessageItem(QWidget* _parent, const Data::MessageBudd
     , shareButton_(nullptr)
     , shareButtonAnimation_(nullptr)
     , shareButtonOpacityEffect_(nullptr)
-    , SourceText_(_msg.GetText())
+    , SourceText_(Features::isFormattingInBubblesEnabled() ? _msg.GetSourceText() : _msg.GetSourceText().string())
     , TimeWidget_(nullptr)
     , timeAnimation_(nullptr)
     , timeOpacityEffect_(nullptr)
@@ -234,9 +279,9 @@ ComplexMessageItem::ComplexMessageItem(QWidget* _parent, const Data::MessageBudd
     , buttonsUpdateTimer_(nullptr)
     , buttonsAnimation_(nullptr)
 {
-    assert(Id_ >= -1);
-    assert(!SenderAimid_.isEmpty());
-    assert(!ChatAimid_.isEmpty());
+    im_assert(Id_ >= -1);
+    im_assert(!SenderAimid_.isEmpty());
+    im_assert(!ChatAimid_.isEmpty());
 
     SenderAimidForDisplay_ = Logic::getContactListModel()->isChannel(ChatAimid_) ? ChatAimid_ : _msg.getSender();
     SenderFriendly_ = Logic::GetFriendlyContainer()->getFriendly(_msg.Chat_ ? SenderAimid_ : (_msg.IsOutgoing() ? Ui::MyInfo()->aimId() : _msg.AimId_));
@@ -246,7 +291,7 @@ ComplexMessageItem::ComplexMessageItem(QWidget* _parent, const Data::MessageBudd
 
     if (!isHeadless())
     {
-        assert(Date_.isValid());
+        im_assert(Date_.isValid());
     }
 
     setBuddy(_msg);
@@ -272,7 +317,7 @@ ComplexMessageItem::~ComplexMessageItem()
 
 void ComplexMessageItem::clearBlockSelection()
 {
-    assert(!Blocks_.empty());
+    im_assert(!Blocks_.empty());
 
     for (auto block : Blocks_)
         block->clearSelection();
@@ -291,7 +336,7 @@ void ComplexMessageItem::clearSelection(bool _keepSingleSelection)
 
 QString ComplexMessageItem::formatRecentsText() const
 {
-    assert(!Blocks_.empty());
+    im_assert(!Blocks_.empty());
 
     if (Blocks_.empty())
         return qsl("warning: invalid message block");
@@ -468,7 +513,7 @@ void ComplexMessageItem::updateFriendly(const QString& _aimId, const QString& _f
 
 PinPlaceholderType ComplexMessageItem::getPinPlaceholder() const
 {
-    assert(!Blocks_.empty());
+    im_assert(!Blocks_.empty());
 
     std::vector<PinPlaceholderType> types;
     types.reserve(Blocks_.size());
@@ -514,7 +559,7 @@ QString ComplexMessageItem::getFirstLink() const
         {
         case IItemBlock::ContentType::Link:
         case IItemBlock::ContentType::FileSharing:
-            return b->getSourceText();
+            return b->getSourceText().string();
 
         default:
             break;
@@ -553,9 +598,9 @@ QString ComplexMessageItem::getQuoteHeader() const
     return getSenderFriendly() % u" (" % QDateTime::fromSecsSinceEpoch(Time_).toString(u"dd.MM.yyyy hh:mm") % u"):\n";
 }
 
-QString ComplexMessageItem::getSelectedText(const bool _isQuote, TextFormat _format) const
+Data::FormattedString ComplexMessageItem::getSelectedText(const bool _isQuote, TextFormat _format) const
 {
-    QString text;
+    Data::FormattedString text;
     if (!isSelected())
         return text;
 
@@ -569,13 +614,19 @@ QString ComplexMessageItem::getSelectedText(const bool _isQuote, TextFormat _for
         if (!Blocks_.empty() && Blocks_.front()->getContentType() == IItemBlock::ContentType::DebugText)
         {
             const auto dest = _format == TextFormat::Raw ? IItemBlock::TextDestination::quote : IItemBlock::TextDestination::selection;
-            text += Blocks_.front()->getSelectedText(true, dest) % QChar::LineFeed;
+            text += Blocks_.front()->getSelectedText(true, dest);
+            text += QChar::LineFeed;
         }
 
         if (Blocks_.size() < 2 && !Description_.isEmpty())
-            text += Url_ % QChar::LineFeed % Description_;
+        {
+            text += Url_ % QChar::LineFeed;
+            text += Description_;
+        }
         else
+        {
             text += getBlocksText(Blocks_, false, _format);
+        }
 
         return text;
     }
@@ -596,13 +647,13 @@ const QString& ComplexMessageItem::getChatAimid() const
 
 QDate ComplexMessageItem::getDate() const
 {
-    assert(Date_.isValid());
+    im_assert(Date_.isValid());
     return Date_;
 }
 
 const QString& ComplexMessageItem::getSenderAimid() const
 {
-    assert(!SenderAimid_.isEmpty());
+    im_assert(!SenderAimid_.isEmpty());
     return SenderAimid_;
 }
 
@@ -615,7 +666,7 @@ bool ComplexMessageItem::isEditable() const
 {
     if (HistoryControlPageItem::isEditable())
     {
-        assert(!Blocks_.empty());
+        im_assert(!Blocks_.empty());
 
         auto textBlocks = 0;
         auto fileBlocks = 0;
@@ -810,12 +861,12 @@ void ComplexMessageItem::replaceBlockWithSourceText(IItemBlock *block, ReplaceRe
 
     if (iter == Blocks_.end())
     {
-        assert(!"block is missing");
+        im_assert(!"block is missing");
         return;
     }
 
     auto& existingBlock = *iter;
-    assert(existingBlock);
+    im_assert(existingBlock);
 
     auto textBlock = new TextBlock(this, (_reason == ReplaceReason::NoMeta)
                                                 ? existingBlock->getPlaceholderText()
@@ -851,7 +902,7 @@ void ComplexMessageItem::removeBlock(IItemBlock *block)
 
     if (iter == Blocks_.end())
     {
-        assert(!"block is missing");
+        im_assert(!"block is missing");
         return;
     }
 
@@ -868,8 +919,8 @@ void ComplexMessageItem::removeBlock(IItemBlock *block)
 
 void ComplexMessageItem::cleanupBlock(IItemBlock* _block)
 {
-    assert(_block);
-    assert(!Blocks_.empty());
+    im_assert(_block);
+    im_assert(!Blocks_.empty());
 
     const auto isMenuBlockReplaced = (MenuBlock_ == _block);
     if (isMenuBlockReplaced)
@@ -882,7 +933,7 @@ void ComplexMessageItem::cleanupBlock(IItemBlock* _block)
 
 void ComplexMessageItem::selectByPos(const QPoint& from, const QPoint& to, const QPoint& areaFrom, const QPoint& areaTo)
 {
-    assert(!Blocks_.empty());
+    im_assert(!Blocks_.empty());
 
     if (Utils::InterConnector::instance().isMultiselect())
         clearBlockSelection();
@@ -896,7 +947,7 @@ void ComplexMessageItem::selectByPos(const QPoint& from, const QPoint& to, const
 
     const auto &topPoint = (isSelectionTopToBottom ? from : to);
     const auto &bottomPoint = (isSelectionTopToBottom ? to : from);
-    assert(topPoint.y() <= bottomPoint.y());
+    im_assert(topPoint.y() <= bottomPoint.y());
 
     for (auto block : Blocks_)
     {
@@ -956,10 +1007,10 @@ void ComplexMessageItem::setHasSenderName(const bool _hasSender)
 
 void ComplexMessageItem::setItems(IItemBlocksVec blocks)
 {
-    assert(Blocks_.empty());
-    assert(!blocks.empty());
-    assert(!shareButton_);
-    assert(
+    im_assert(Blocks_.empty());
+    im_assert(!blocks.empty());
+    im_assert(!shareButton_);
+    im_assert(
         std::all_of(
             blocks.cbegin(),
             blocks.cend(),
@@ -995,8 +1046,8 @@ void ComplexMessageItem::setLastStatus(LastStatus _lastStatus)
 
 void ComplexMessageItem::setTime(const int32_t time)
 {
-    assert(time >= -1);
-    assert(Time_ == -1);
+    im_assert(time >= -1);
+    im_assert(Time_ == -1);
 
     Time_ = time;
 
@@ -1077,7 +1128,7 @@ void ComplexMessageItem::updateWith(ComplexMessageItem &_update)
 {
     if (_update.Id_ != -1 || (_update.Id_ == -1 && Id_ == -1))
     {
-        assert((Id_ == -1) || (Id_ == _update.Id_));
+        im_assert((Id_ == -1) || (Id_ == _update.Id_));
         Id_ = _update.Id_;
         PrevId_ = _update.PrevId_;
         internalId_ = _update.internalId_;
@@ -1085,6 +1136,7 @@ void ComplexMessageItem::updateWith(ComplexMessageItem &_update)
         mentions_ = _update.mentions_;
         SourceText_ = _update.SourceText_;
         SenderFriendly_ = _update.SenderFriendly_;
+        SenderAimid_ = _update.SenderAimid_;
 
         const auto editedChanged = _update.isEdited() != isEdited();
         const auto reactionsChanged = hasReactions() != _update.hasReactions();
@@ -1322,14 +1374,14 @@ void ComplexMessageItem::mouseReleaseEvent(QMouseEvent *event)
 
                         if (!btn.data_.url_.isEmpty())
                         {
-                            QTimer::singleShot(0, [this, &btn]() { handleBotAction(btn.data_.url_); });
+                            QTimer::singleShot(0, [url = btn.data_.url_]() { handleBotAction(url); });
                         }
                         else
                         {
                             btn.seq_ = Ui::GetDispatcher()->getBotCallbackAnswer(ChatAimid_, btn.data_.callbackData_, getId());
                             btn.pressTime_ = QDateTime::currentDateTime();
 
-                            startButtonsTimer(100);
+                            startButtonsTimer(std::chrono::milliseconds(100));
                             update();
                         }
                     }
@@ -1490,7 +1542,7 @@ void ComplexMessageItem::renderDebugInfo()
                 continue;
 
             auto dbgBlock = dynamic_cast<DebugTextBlock *>(block);
-            assert(dbgBlock);
+            im_assert(dbgBlock);
             if (!dbgBlock || dbgBlock->getSubtype() != DebugTextBlock::Subtype::MessageId)
                 continue;
 
@@ -1521,7 +1573,7 @@ void ComplexMessageItem::renderDebugInfo()
                 return true;
 
             auto dbgBlock = dynamic_cast<DebugTextBlock *>(block);
-            assert(dbgBlock);
+            im_assert(dbgBlock);
             if (!dbgBlock)
                 return true;
 
@@ -1574,7 +1626,7 @@ void ComplexMessageItem::paintEvent(QPaintEvent *event)
 
 void ComplexMessageItem::onAvatarChanged(const QString& aimId)
 {
-    assert(!SenderAimidForDisplay_.isEmpty());
+    im_assert(!SenderAimidForDisplay_.isEmpty());
 
     if (SenderAimidForDisplay_ != aimId || (!hasAvatar() && !needsAvatar()))
         return;
@@ -1595,7 +1647,7 @@ void ComplexMessageItem::onMenuItemTriggered(QAction *action)
 
         if (subCommand.isEmpty())
         {
-            assert(!"unknown subcommand");
+            im_assert(!"unknown subcommand");
             return;
         }
 
@@ -1639,7 +1691,7 @@ void ComplexMessageItem::onMenuItemTriggered(QAction *action)
 
         const auto guard = QPointer(this);
         if (MenuBlock_ && MenuBlock_->getContentType() != IItemBlock::ContentType::Sticker)
-            confirm = ReportMessage(getSenderAimid(), ChatAimid_, Id_, SourceText_);
+            confirm = ReportMessage(getSenderAimid(), ChatAimid_, Id_, Data::stubFromFormattedString(SourceText_));
         else
             confirm = ReportSticker(getSenderAimid(), isChat_ ? ChatAimid_ : QString(), MenuBlock_ ? MenuBlock_->getStickerId().toString() : QString());
 
@@ -1655,7 +1707,7 @@ void ComplexMessageItem::onMenuItemTriggered(QAction *action)
     {
         const auto is_shared = command == u"delete_all";
 
-        assert(!getSenderAimid().isEmpty());
+        im_assert(!getSenderAimid().isEmpty());
 
         const auto guard = QPointer(this);
 
@@ -1786,7 +1838,7 @@ void ComplexMessageItem::onBotCallbackAnswer(const int64_t _seq, const QString& 
                     continue;
                 }
 
-                QTimer::singleShot(0, [this, _url, text, _showAlert]() { handleBotAction(_url, text, _showAlert); });
+                QTimer::singleShot(0, [_url, text, _showAlert]() { handleBotAction(_url, text, _showAlert); });
 
                 btn.clearProgress();
             }
@@ -1830,7 +1882,7 @@ void ComplexMessageItem::updateButtons()
             if (buttonsAnimation_->state() != QAbstractAnimation::Running)
                 buttonsAnimation_->start();
         }
-        startButtonsTimer(hasAnimatingButtons ? 1000 : 100);
+        startButtonsTimer(hasAnimatingButtons ? std::chrono::seconds(1) : std::chrono::milliseconds(100));
     }
     else
     {
@@ -1841,54 +1893,12 @@ void ComplexMessageItem::updateButtons()
     update();
 }
 
-void ComplexMessageItem::callEditingImpl(InstantEdit _mode)
+void ComplexMessageItem::callEditingImpl()
 {
-    if (!Description_.isEmpty())
-    {
-        const auto description = [this](InstantEdit _mode)
-        {
-            if (_mode == InstantEdit::Yes)
-            {
-                for (const auto block : boost::adaptors::reverse(Blocks_))
-                {
-                    const auto type = block->getContentType();
-                    if (type == IItemBlock::ContentType::DebugText)
-                        continue;
-                    if (type == IItemBlock::ContentType::Text)
-                        return block->getTextInstantEdit();
-                }
-            }
-            return Description_;
-        };
-
-
-        Q_EMIT editWithCaption(
-            getId(),
-            getInternalId(),
-            version_,
-            Url_,
-            description(_mode),
-            getMentions(),
-            getQuotesForEdit(),
-            getTime(),
-            getFilesPlaceholders(),
-            getMediaType(),
-            _mode == InstantEdit::Yes);
-    }
-    else
-    {
-        Q_EMIT edit(
-            getId(),
-            getInternalId(),
-            version_,
-            getEditableText(_mode),
-            getMentions(),
-            getQuotesForEdit(),
-            getTime(),
-            getFilesPlaceholders(),
-            getMediaType(),
-            _mode == InstantEdit::Yes);
-    }
+    auto msg = std::make_shared<Data::MessageBuddy>(buddy());
+    msg->SetText(Data::stubFromFormattedString(getEditableText(InstantEdit::No)));
+    msg->Files_ = getFilesPlaceholders();
+    Q_EMIT edit(msg, getMediaType());
 }
 
 void ComplexMessageItem::cleanupMenu()
@@ -1916,7 +1926,7 @@ void ComplexMessageItem::connectSignals()
 
 bool ComplexMessageItem::containsShareableBlocks() const
 {
-    assert(!Blocks_.empty());
+    im_assert(!Blocks_.empty());
 
      return std::any_of(
          Blocks_.cbegin(),
@@ -1924,7 +1934,7 @@ bool ComplexMessageItem::containsShareableBlocks() const
          []
          (const IItemBlock *block)
          {
-             assert(block);
+             im_assert(block);
              return block->isSharingEnabled() || block->containsSharingBlock();
          });
 }
@@ -2111,9 +2121,9 @@ void ComplexMessageItem::drawButtons(QPainter &p, const QColor& quote_color)
     }
 }
 
-QString ComplexMessageItem::getBlocksText(const IItemBlocksVec& _items, const bool _isSelected, TextFormat _format) const
+Data::FormattedString ComplexMessageItem::getBlocksText(const IItemBlocksVec& _items, const bool _isSelected, TextFormat _format) const
 {
-    QString result;
+    Data::FormattedString result;
 
     // to reduce the number of reallocations
     result.reserve(1024);
@@ -2133,7 +2143,7 @@ QString ComplexMessageItem::getBlocksText(const IItemBlocksVec& _items, const bo
             : (_format == TextFormat::Raw && item->hasSourceText()) ? item->getSourceText()
                                                                     : item->getTextForCopy();
 
-        if (itemText.isEmpty() || (item->getContentType() == IItemBlock::ContentType::Link && result.contains(itemText)))
+        if (itemText.isEmpty() || (item->getContentType() == IItemBlock::ContentType::Link && result.string().contains(itemText.string())))
             continue;
 
         result += itemText;
@@ -2187,7 +2197,7 @@ QString ComplexMessageItem::getSenderFriendly() const
     if (Logic::getContactListModel()->isChannel(ChatAimid_))
         return Logic::GetFriendlyContainer()->getFriendly(ChatAimid_);
 
-    assert(!SenderFriendly_.isEmpty());
+    im_assert(!SenderFriendly_.isEmpty());
     return SenderFriendly_;
 }
 
@@ -2227,7 +2237,7 @@ Data::QuotesVec ComplexMessageItem::getQuotes(const bool _selectedTextOnly, cons
                 {
                     prevQuote.text_.reserve(prevQuote.text_.size() + quote.text_.size() + 1);
 
-                    if (!prevQuote.text_.endsWith(QChar::LineFeed) && !prevQuote.text_.endsWith(ql1c('\n')) && !quote.text_.startsWith(ql1c('\n')))
+                    if (!prevQuote.text_.endsWith(QChar::LineFeed) && !prevQuote.text_.endsWith(u'\n') && !quote.text_.startsWith(ql1c('\n')))
                         prevQuote.text_ += QChar::LineFeed;
 
                     prevQuote.text_ += quote.text_;
@@ -2259,15 +2269,15 @@ Data::QuotesVec ComplexMessageItem::getQuotesForEdit() const
     return quotes;
 }
 
-void ComplexMessageItem::setSourceText(QString text)
+void ComplexMessageItem::setSourceText(const Data::FormattedString& _text)
 {
-    SourceText_ = std::move(text);
+    SourceText_ = _text;
 }
 
 void ComplexMessageItem::initialize()
 {
-    assert(Layout_);
-    assert(!Blocks_.empty());
+    im_assert(Layout_);
+    im_assert(!Blocks_.empty());
 
     setMouseTracking(true);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
@@ -2398,51 +2408,6 @@ void ComplexMessageItem::fillFilesPlaceholderMap()
     }
 }
 
-void ComplexMessageItem::handleBotAction(const QString& _url, const QString& _text, bool _showAlert)
-{
-    if (!_url.isEmpty())
-    {
-        Utils::UrlParser parser;
-        parser.process(_url);
-        if (parser.hasUrl())
-        {
-            if (!isInternalUrl(_url))
-            {
-                if (!_text.isEmpty())
-                {
-                    if (Utils::GetConfirmationWithTwoButtons(QT_TRANSLATE_NOOP("bots", "Cancel"), QT_TRANSLATE_NOOP("bots", "Open link"),
-                        _text,
-                        QString(), nullptr))
-                    {
-                        Utils::openUrl(_url);
-                    }
-                }
-                else
-                {
-                    if (Utils::GetConfirmationWithTwoButtons(QT_TRANSLATE_NOOP("bots", "Cancel"), QT_TRANSLATE_NOOP("bots", "Ok"),
-                        QT_TRANSLATE_NOOP("bots", "Are you sure you want to open an external link %1?").arg(_url),QString(), nullptr))
-                    {
-                        Utils::openUrl(_url);
-                    }
-                }
-            }
-            else
-            {
-                if (_showAlert && !_text.isEmpty())
-                    Utils::ShowBotAlert(_text);
-                Utils::openUrl(_url);
-            }
-        }
-    }
-    else if (!_text.isEmpty())
-    {
-        if (_showAlert)
-            Utils::ShowBotAlert(_text);
-        else
-            Utils::showTextToastOverContactDialog(_text);
-    }
-}
-
 void ComplexMessageItem::initButtonsTimerIfNeeded()
 {
     if (!buttonsUpdateTimer_)
@@ -2453,7 +2418,7 @@ void ComplexMessageItem::initButtonsTimerIfNeeded()
     }
 }
 
-void ComplexMessageItem::startButtonsTimer(int _timeout)
+void ComplexMessageItem::startButtonsTimer(std::chrono::milliseconds _timeout)
 {
     initButtonsTimerIfNeeded();
     buttonsUpdateTimer_->start(_timeout);
@@ -2477,9 +2442,9 @@ const Data::FilesPlaceholderMap& ComplexMessageItem::getFilesPlaceholders() cons
     return files_;
 }
 
-QString ComplexMessageItem::getEditableText(InstantEdit _mode) const
+Data::FormattedString ComplexMessageItem::getEditableText(InstantEdit _mode) const
 {
-    using editPair = std::pair<IItemBlock::ContentType, QString>;
+    using editPair = std::pair<IItemBlock::ContentType, Data::FormattedString>;
     std::vector<editPair> pairs;
     pairs.reserve(Blocks_.size());
 
@@ -2506,7 +2471,7 @@ QString ComplexMessageItem::getEditableText(InstantEdit _mode) const
     for (const auto& [_, text] : pairs)
         resSize += text.size();
 
-    QString result;
+    Data::FormattedString result;
     result.reserve(resSize);
 
     for (size_t i = 0; i < pairs.size(); ++i)
@@ -2615,7 +2580,7 @@ void ComplexMessageItem::updateSize()
 
 void ComplexMessageItem::callEditing()
 {
-    callEditingImpl(InstantEdit::No);
+    callEditingImpl();
 }
 
 void ComplexMessageItem::setHasTrailingLink(const bool _hasLink)
@@ -2748,7 +2713,7 @@ bool ComplexMessageItem::isLastBlock(const IItemBlock* _block) const
 
 bool ComplexMessageItem::isOverAvatar(const QPoint &pos) const
 {
-    assert(Layout_);
+    im_assert(Layout_);
 
     if (hasAvatar() || needsAvatar())
         return Layout_->isOverAvatar(pos);
@@ -2878,7 +2843,7 @@ void ComplexMessageItem::onCopyMenuItem(ComplexMessageItem::MenuItemType type)
 
     if (isCopy)
     {
-        QString rawText;
+        Data::FormattedString rawText;
         rawText.reserve(1024);
 
         if (isQuote || isForward)
@@ -2889,11 +2854,12 @@ void ComplexMessageItem::onCopyMenuItem(ComplexMessageItem::MenuItemType type)
         else
             rawText += getBlocksText(Blocks_, false, TextFormat::Raw);
 
-        const auto text = !mentions_.empty() ? Utils::convertMentions(rawText, mentions_) : rawText;
+        const auto plainRawText = Data::stubFromFormattedString(rawText);
+        const auto text = !mentions_.empty() ? Utils::convertMentions(plainRawText, mentions_) : plainRawText;
         const auto placeholders = getFilesPlaceholders();
         auto dt = new QMimeData();
         dt->setText(text);
-        dt->setData(MimeData::getRawMimeType(), std::move(rawText).toUtf8());
+        dt->setData(MimeData::getRawMimeType(), text.toUtf8());
         dt->setData(MimeData::getFileMimeType(), MimeData::convertMapToArray(placeholders));
         dt->setData(MimeData::getMentionMimeType(), MimeData::convertMapToArray(mentions_));
         QApplication::clipboard()->setMimeData(dt);
@@ -2914,11 +2880,11 @@ void ComplexMessageItem::onCopyMenuItem(ComplexMessageItem::MenuItemType type)
 
 bool ComplexMessageItem::onDeveloperMenuItemTriggered(QStringView cmd)
 {
-    assert(!cmd.isEmpty());
+    im_assert(!cmd.isEmpty());
 
     if (!GetAppConfig().IsContextMenuFeaturesUnlocked())
     {
-        assert(!"developer context menu is not unlocked");
+        im_assert(!"developer context menu is not unlocked");
         return true;
     }
 
@@ -3050,7 +3016,7 @@ void ComplexMessageItem::trackMenu(const QPoint &globalPos)
             bool hasCopyableLink = false;
             auto selectedText = getSelectedText(false);
 
-            if (!link.isEmpty() && (selectedText == link || selectedText.isEmpty()))
+            if (!link.isEmpty() && (selectedText.string() == link || selectedText.isEmpty()))
             {
                 static const QRegularExpression re(
                     qsl("^mailto:"),
@@ -3232,7 +3198,7 @@ void ComplexMessageItem::trackMenu(const QPoint &globalPos)
                             return;
 
                         if (weakThis->MenuBlock_ && weakThis->MenuBlock_->replaceWordAt(word, s, globalPos))
-                            weakThis->callEditingImpl(InstantEdit::Yes);
+                            weakThis->sendInstantEdit();
                     });
 
                     suggestActions.push_back(a);
@@ -3421,7 +3387,10 @@ Data::Quote ComplexMessageItem::getQuoteFromBlock(IItemBlock* _block, const bool
     }
     else
     {
-        quote.text_ = _selectedTextOnly ? _block->getSelectedText(false, IItemBlock::TextDestination::quote) : _block->getSourceText();
+        quote.text_ = 
+            _selectedTextOnly
+            ? _block->getSelectedText(false, IItemBlock::TextDestination::quote)
+            : _block->getSourceText();
         quote.senderId_ = isOutgoing() ? MyInfo()->aimId() : _block->getSenderAimid();
         quote.chatId_ = getChatAimid();
         if (Logic::getContactListModel()->isChannel(quote.chatId_))
@@ -3587,6 +3556,25 @@ QRect ComplexMessageItem::avatarRect() const
     return Layout_->getAvatarRect();
 }
 
+void ComplexMessageItem::fillGalleryData(Utils::GalleryData& _data)
+{
+    _data.time_ = Time_;
+    _data.sender_ = isChat() ? SenderAimid_ : (isOutgoing() ? Ui::MyInfo()->aimId() : ChatAimid_);
+    _data.caption_ = Description_.string();
+}
+
+std::optional<Data::FileSharingMeta> ComplexMessageItem::getMeta(const QString& _id) const
+{
+    for (const auto& b : Blocks_)
+    {
+        auto meta = b->getMeta(_id);
+        if (meta)
+            return meta;
+    }
+
+    return std::nullopt;
+}
+
 void ComplexMessageItem::setTimeWidgetVisible(const bool _visible)
 {
     if (TimeWidget_)
@@ -3618,6 +3606,29 @@ void ComplexMessageItem::loadSnippetsMetaInfo()
     }
 }
 
+void ComplexMessageItem::sendInstantEdit()
+{
+    Data::MessageBuddy msg = buddy();
+
+    if (!Description_.isEmpty())
+    {
+        for (const auto block : boost::adaptors::reverse(Blocks_))
+        {
+            const auto type = block->getContentType();
+            if (type == IItemBlock::ContentType::DebugText)
+                continue;
+            if (type == IItemBlock::ContentType::Text)
+            {
+                msg.SetDescription(block->getTextInstantEdit());
+                break;
+            }
+        }
+    }
+
+    msg.SetText(getEditableText(InstantEdit::Yes));
+    GetDispatcher()->updateMessage(msg);
+}
+
 MessageTimeWidget* ComplexMessageItem::getTimeWidget() const
 {
     return TimeWidget_;
@@ -3630,6 +3641,12 @@ void ComplexMessageItem::cancelRequests()
 }
 
 void ComplexMessageItem::setUrlAndDescription(const QString& _url, const QString& _description)
+{
+    Url_ = _url;
+    Description_ = _description;
+}
+
+void ComplexMessageItem::setUrlAndDescription(const QString& _url, const Data::FormattedString& _description)
 {
     Url_ = _url;
     Description_ = _description;

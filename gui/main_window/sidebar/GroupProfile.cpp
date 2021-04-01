@@ -123,6 +123,11 @@ namespace
         return _info && _info->isChannel();
     }
 
+    QString addToChatText(const std::shared_ptr<Data::ChatInfo>& _info)
+    {
+        return isChannel(_info) ? QT_TRANSLATE_NOOP("sidebar", "Add to channel") : QT_TRANSLATE_NOOP("sidebar", "Add to group");
+    }
+
     QMap<QString, QVariant> makeData(const QString& command, const QString& aimId)
     {
         QMap<QString, QVariant> result;
@@ -285,6 +290,7 @@ namespace Ui
         {
             editButton_ = new HeaderTitleBarButton(this);
             editButton_->setDefaultImage(qsl(":/context_menu/edit"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY), headerIconSize);
+            editButton_->setCustomToolTip(QT_TRANSLATE_NOOP("context_menu", "Edit"));
             titleBar_->addButtonToRight(editButton_);
             connect(editButton_, &HeaderTitleBarButton::clicked, this, &GroupProfile::editButtonClicked);
         }
@@ -450,7 +456,7 @@ namespace Ui
             members_ = addMembersPlate(membersWidget_, membersLayout);
             connect(members_, &MembersPlate::searchClicked, this, &GroupProfile::searchMembersClicked);
 
-            addToChat_ = addButton(qsl(":/add_groupchat"), QT_TRANSLATE_NOOP("sidebar", "Add to chat"), membersWidget_, membersLayout);
+            addToChat_ = addButton(qsl(":/add_groupchat"), addToChatText({}), membersWidget_, membersLayout);
             connect(addToChat_, &SidebarButton::clicked, this, &GroupProfile::addToChatClicked);
 
             pendings_ = addButton(qsl(":/pending_icon"), QT_TRANSLATE_NOOP("sidebar", "Waiting for approval"), membersWidget_, membersLayout);
@@ -464,6 +470,8 @@ namespace Ui
             connect(shortMembersList_, &MembersWidget::selected, this, &GroupProfile::contactSelected);
             connect(shortMembersList_, &MembersWidget::removeClicked, this, &GroupProfile::contactRemoved);
             connect(shortMembersList_, &MembersWidget::moreClicked, this, &GroupProfile::contactMenuRequested);
+            if (auto scrollArea = qobject_cast<QScrollArea*>(_parent); scrollArea)
+                shortMembersList_->setScrollArea(scrollArea);
 
             admins_ = addButton(qsl(":/admins_icon"), QT_TRANSLATE_NOOP("sidebar", "Admins"), membersWidget_, membersLayout);
             connect(admins_, &SidebarButton::clicked, this, &GroupProfile::adminsClicked);
@@ -654,7 +662,7 @@ namespace Ui
     {
         share_->setText(isChannel(chatInfo_) ? QT_TRANSLATE_NOOP("sidebar", "Share channel") : QT_TRANSLATE_NOOP("sidebar", "Share group"));
         settings_->setText(isChannel(chatInfo_) ? QT_TRANSLATE_NOOP("sidebar", "Channel settings") : QT_TRANSLATE_NOOP("sidebar", "Group settings"));
-        addToChat_->setText(isChannel(chatInfo_) ? QT_TRANSLATE_NOOP("sidebar", "Add to channel") : QT_TRANSLATE_NOOP("sidebar", "Add to group"));
+        addToChat_->setText(addToChatText(chatInfo_));
         public_->setText(isChannel(chatInfo_) ? QT_TRANSLATE_NOOP("groupchats", "Public channel") : QT_TRANSLATE_NOOP("sidebar", "Public group"));
         const auto appName = config::get().string(config::values::product_name_full);
         const QString argName = QString::fromUtf8(appName.data(), appName.size());
@@ -702,10 +710,21 @@ namespace Ui
     void GroupProfile::updateCloseIcon()
     {
         const auto headerIconSize = QSize(ICON_SIZE, ICON_SIZE);
+        QString iconPath;
+        QString tooltipText;
         if (frameCountMode_ == FrameCountMode::_1 || stackedWidget_->currentIndex() != main)
-            closeButton_->setDefaultImage(qsl(":/controls/back_icon"), QColor(), headerIconSize);
+        {
+            iconPath = qsl(":/controls/back_icon");
+            tooltipText = QT_TRANSLATE_NOOP("sidebar", "Back");
+        }
         else
-            closeButton_->setDefaultImage(qsl(":/history_icon"), QColor(), headerIconSize);
+        {
+            iconPath = qsl(":/controls/close_icon");
+            tooltipText = QT_TRANSLATE_NOOP("sidebar", "Close");
+        }
+
+        closeButton_->setDefaultImage(iconPath, QColor(), headerIconSize);
+        closeButton_->setCustomToolTip(tooltipText);
         Styling::Buttons::setButtonDefaultColors(closeButton_);
     }
 
@@ -822,7 +841,7 @@ namespace Ui
             break;
 
         default:
-            assert(false);
+            im_assert(false);
         }
 
         gallery_->initFor(currentAimId_);
@@ -952,7 +971,7 @@ namespace Ui
         {
             mainAction_ = invite;
             mainActionButton_->setIcon(makeIcon(qsl(":/add_user_icon"), QSize(ICON_SIZE, ICON_SIZE)));
-            mainActionButton_->setText(chatIsChannel ? QT_TRANSLATE_NOOP("sidebar", "Add to channel") : QT_TRANSLATE_NOOP("sidebar", "Add to chat"));
+            mainActionButton_->setText(addToChatText(chatInfo_));
             mainActionButton_->show();
             if (chatIsChannel || chatInfo_->MembersCount_ < 2)
                 callButton_->hide();
@@ -1152,15 +1171,19 @@ namespace Ui
         initTexts();
         info_->setInfo(Utils::getMembersString(chatInfo_->MembersCount_, chatInfo_->isChannel()));
 
-        addToChat_->setText(isChannel(chatInfo_) ? QT_TRANSLATE_NOOP("sidebar", "Add to channel") : QT_TRANSLATE_NOOP("sidebar", "Add to chat"));
-
         if (!chatInfo_->About_.isEmpty())
+        {
             about_->setText(chatInfo_->About_);
+            about_->disableCommandsInText();
+        }
 
         if (!chatInfo_->Rules_.isEmpty())
+        {
             rules_->setText(chatInfo_->Rules_);
+            rules_->disableCommandsInText();
+        }
 
-        link_->setText(Utils::getDomainUrl() % ql1c('/') % chatInfo_->Stamp_, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+        link_->setText(Utils::getDomainUrl() % u'/' % chatInfo_->Stamp_, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
         link_->setVisible(chatInfo_->Public_ || isYouAdminOrModer(chatInfo_));
 
         share_->setVisible(chatInfo_->Public_ || isYouAdminOrModer(chatInfo_));
@@ -1436,7 +1459,7 @@ namespace Ui
         membersModel.loadChatContacts(currentAimId_);
 
         SelectContactsWidget selectMembersDialog(&membersModel, Logic::MembersWidgetRegim::SELECT_MEMBERS,
-                isChannel(chatInfo_) ? QT_TRANSLATE_NOOP("sidebar", "Add to channel") : QT_TRANSLATE_NOOP("sidebar", "Add to chat"),
+                addToChatText(chatInfo_),
                 QT_TRANSLATE_NOOP("popup_window", "Done"), this);
 
         if (selectMembersDialog.show() == QDialog::Accepted)
@@ -2195,7 +2218,7 @@ namespace Ui
 
     void GroupProfile::mousePressEvent(QMouseEvent* _event)
     {
-        auto pos = _event->pos();
+        auto pos = area_->widget()->mapFromParent(_event->pos());
         pos.ry() -= titleBar_->height();
         about_->text_->tryClearSelection(pos);
         rules_->text_->tryClearSelection(pos);

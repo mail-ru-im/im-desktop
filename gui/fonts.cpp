@@ -47,12 +47,12 @@ QFont appFont(const int32_t _sizePx, const FontWeight _weight, const FontAdjust 
 
 QFont appFont(const int32_t _sizePx, const FontFamily _family, const FontWeight _weight, const FontAdjust _adjust)
 {
-    assert(_sizePx > 0);
-    assert(_sizePx < 500);
-    assert(_family > FontFamily::MIN);
-    assert(_family < FontFamily::MAX);
-    assert(_weight > FontWeight::Min);
-    assert(_weight < FontWeight::Max);
+    im_assert(_sizePx > 0);
+    im_assert(_sizePx < 500);
+    im_assert(_family > FontFamily::MIN);
+    im_assert(_family < FontFamily::MAX);
+    im_assert(_weight > FontWeight::Min);
+    im_assert(_weight < FontWeight::Max);
 
     QFont result;
 
@@ -120,12 +120,12 @@ FontWeight defaultAppFontWeight()
 
 QString appFontFullQss(const int32_t _sizePx, const FontFamily _fontFamily, const FontWeight _fontWeight)
 {
-    assert(_sizePx > 0);
-    assert(_sizePx < 1000);
-    assert(_fontFamily > FontFamily::MIN);
-    assert(_fontFamily < FontFamily::MAX);
-    assert(_fontWeight > FontWeight::Min);
-    assert(_fontWeight < FontWeight::Max);
+    im_assert(_sizePx > 0);
+    im_assert(_sizePx < 1000);
+    im_assert(_fontFamily > FontFamily::MIN);
+    im_assert(_fontFamily < FontFamily::MAX);
+    im_assert(_fontWeight > FontWeight::Min);
+    im_assert(_fontWeight < FontWeight::Max);
 
 
     const auto weight = evalQssFontWeight(_fontFamily, _fontWeight);
@@ -142,8 +142,8 @@ QString appFontFullQss(const int32_t _sizePx, const FontFamily _fontFamily, cons
 
 QString appFontFamilyNameQss(const FontFamily _fontFamily, const FontWeight _fontWeight)
 {
-    assert(_fontFamily > FontFamily::MIN);
-    assert(_fontFamily < FontFamily::MAX);
+    im_assert(_fontFamily > FontFamily::MIN);
+    im_assert(_fontFamily < FontFamily::MAX);
 
     switch (_fontFamily)
     {
@@ -160,7 +160,7 @@ QString appFontFamilyNameQss(const FontFamily _fontFamily, const FontWeight _fon
             break;
     }
 
-    assert(!"unexpected font family");
+    im_assert(!"unexpected font family");
     return qsl("Comic Sans");
 }
 
@@ -171,7 +171,7 @@ QString appFontWeightQss(const FontWeight _weight)
     const auto iter = weightMap.find(_weight);
     if (iter == weightMap.end())
     {
-        assert(!"unknown font weight");
+        im_assert(!"unknown font weight");
         return defaultAppFontQssWeight();
     }
 
@@ -190,7 +190,7 @@ QString defaultAppFontQssWeight()
     const auto &weights = getCurrentWeightsMap();
 
     auto iter = weights.find(defaultAppFontWeight());
-    assert(iter != weights.end());
+    im_assert(iter != weights.end());
 
     return iter->second;
 }
@@ -239,7 +239,7 @@ FontWeight adjustFontWeight(const FontWeight _weight)
 {
     if (getFontBoldSetting())
     {
-        assert(_weight != FontWeight::Min && _weight != FontWeight::Max);
+        im_assert(_weight != FontWeight::Min && _weight != FontWeight::Max);
 
         switch (_weight)
         {
@@ -317,10 +317,10 @@ namespace
 
     QString evalQssFontWeight(const FontFamily _fontFamily, const FontWeight _fontWeight)
     {
-        assert(_fontFamily > FontFamily::MIN);
-        assert(_fontFamily < FontFamily::MAX);
-        assert(_fontWeight > FontWeight::Min);
-        assert(_fontWeight < FontWeight::Max);
+        im_assert(_fontFamily > FontFamily::MIN);
+        im_assert(_fontFamily < FontFamily::MAX);
+        im_assert(_fontWeight > FontWeight::Min);
+        im_assert(_fontWeight < FontWeight::Max);
 
         if (_fontFamily == FontFamily::SEGOE_UI)
         {
@@ -332,14 +332,14 @@ namespace
             return appFontWeightQss(_fontWeight);
         }
 
-        assert(!"unknown font family / style comnbination");
+        im_assert(!"unknown font family / style comnbination");
         return defaultAppFontQssWeight();
     }
 
     QString segoeUiFamilyName(const FontWeight _weight)
     {
-        assert(_weight > FontWeight::Min);
-        assert(_weight < FontWeight::Max);
+        im_assert(_weight > FontWeight::Min);
+        im_assert(_weight < FontWeight::Max);
 
         QString familyName;
         familyName.reserve(1024);
@@ -360,7 +360,7 @@ namespace
                 break;
 
             default:
-                assert(!"unknown font weight");
+                im_assert(!"unknown font weight");
                 break;
         }
 
@@ -369,8 +369,8 @@ namespace
 
     void applyFontFamily(const FontFamily _fontFamily, Out QFont &_font)
     {
-        assert(_fontFamily > FontFamily::MIN);
-        assert(_fontFamily < FontFamily::MAX);
+        im_assert(_fontFamily > FontFamily::MIN);
+        im_assert(_fontFamily < FontFamily::MAX);
 
         switch (_fontFamily)
         {
@@ -394,8 +394,12 @@ namespace
                 _font.setFamily(qsl("SF Pro Text"));
                 return;
 
+            case FontFamily::SF_MONO:
+                _font.setFamily(qsl("SF Mono"));
+                return;
+
             default:
-                assert(!"unexpected font family");
+                im_assert(!"unexpected font family");
                 return;
         }
     }
@@ -406,137 +410,150 @@ namespace
             int32_t _sizePx,
             Out QFont &_font)
     {
-        assert(_fontFamily > FontFamily::MIN);
-        assert(_fontFamily < FontFamily::MAX);
-        assert(_fontWeight > FontWeight::Min);
-        assert(_fontWeight < FontWeight::Max);
-        assert(_sizePx > 0);
-        assert(_sizePx < 1000);
+        im_assert(_fontFamily > FontFamily::MIN);
+        im_assert(_fontFamily < FontFamily::MAX);
+        im_assert(_fontWeight > FontWeight::Min);
+        im_assert(_fontWeight < FontWeight::Max);
+        im_assert(_sizePx > 0);
+        im_assert(_sizePx < 1000);
 
-        if (_fontFamily == FontFamily::SEGOE_UI)
+        switch (_fontFamily)
+        {
+        case FontFamily::SEGOE_UI:
         {
             switch (_fontWeight)
             {
-                case FontWeight::Light:
-                    _font.setFamily(qsl("Segoe UI Light"));
-                    return;
+            case FontWeight::Light:
+                _font.setFamily(qsl("Segoe UI Light"));
+                break;
 
-                case FontWeight::Normal:
-                    return;
+            case FontWeight::Normal:
+                break;
 
-                case FontWeight::SemiBold:
-                    _font.setFamily(qsl("Segoe UI Semibold"));
-                    return;
+            case FontWeight::SemiBold:
+                _font.setFamily(qsl("Segoe UI Semibold"));
+                break;
 
-                default:
-                    assert(!"unexpected font style");
-                    return;
+            default:
+                im_assert(!"unexpected font style");
             }
+            break;
         }
 
-
-        if (_fontFamily == FontFamily::SOURCE_SANS_PRO)
+        case FontFamily::SOURCE_SANS_PRO:
         {
             switch (_fontWeight)
             {
-                case FontWeight::Normal:
-                {
-                    _font.setWeight(QFont::Weight::Normal);
-                    return;
-                }
-                case FontWeight::Light:
-                {
-                    _font.setWeight(QFont::Weight::Light);
-                    return;
-                }
-                case FontWeight::Medium:
-                case FontWeight::SemiBold:
-                {
-                    if constexpr (platform::is_windows())
-                    {
-                        _font.setFamily(qsl("Source Sans Pro Semibold"));
-                    }
-                    else
-                    {
-                        _font.setWeight(QFont::Weight::DemiBold);
-                    }
-
-                    return;
-                }
-                case FontWeight::Bold:
-                {
-                    _font.setWeight(QFont::Weight::Bold);
-                    return;
-                }
-                default:
-                    break;
-            }
-
-            assert(!"unexpected font style");
-            return;
-        }
-
-        if (_fontFamily == FontFamily::SF_PRO_TEXT)
-        {
-            switch (_fontWeight)
-            {
-                case FontWeight::Normal:
-                {
-                    _font.setWeight(QFont::Weight::Normal);
-                    return;
-                }
-                case FontWeight::Light:
-                {
-                    _font.setWeight(QFont::Weight::Light);
-                    return;
-                }
-                case FontWeight::Medium:
-                {
-                    _font.setWeight(QFont::Weight::Medium);
-                    _font.setHintingPreference(QFont::PreferVerticalHinting);
-                    return;
-                }
-                case FontWeight::SemiBold:
-                {
-                    _font.setWeight(QFont::Weight::DemiBold);
-                    _font.setHintingPreference(QFont::PreferVerticalHinting);
-                    return;
-                }
-                case FontWeight::Bold:
-                {
-                    _font.setWeight(QFont::Weight::Bold);
-                    _font.setHintingPreference(QFont::PreferVerticalHinting);
-                    return;
-                }
-                default:
-                    break;
-            }
-        }
-
-        if (_fontFamily == FontFamily::ROBOTO_MONO)
-        {
-            if (_fontWeight == FontWeight::Medium)
+            case FontWeight::Normal:
+                _font.setWeight(QFont::Weight::Normal);
+                break;
+            case FontWeight::Light:
+                _font.setWeight(QFont::Weight::Light);
+                break;
+            case FontWeight::Medium:
+            case FontWeight::SemiBold:
             {
                 if constexpr (platform::is_windows())
-                    _font.setFamily(qsl("Roboto Mono Medium"));
+                    _font.setFamily(qsl("Source Sans Pro Semibold"));
                 else
-                    _font.setWeight(QFont::Weight::Medium);
+                    _font.setWeight(QFont::Weight::DemiBold);
+                break;
             }
-            else
-            {
-                _font.setWeight(QFont::Weight::Normal);
+            case FontWeight::Bold:
+                _font.setWeight(QFont::Weight::Bold);
+                break;
+            default:
+                im_assert(!"unexpected font style");
+                break;
             }
-            return;
+            break;
         }
 
-        if (_fontFamily == FontFamily::ROUNDED_MPLUS)
+        case FontFamily::SF_PRO_TEXT:
         {
-            _font.setWeight(QFont::Weight::Bold);
-            return;
+            switch (_fontWeight)
+            {
+            case FontWeight::Normal:
+                _font.setWeight(QFont::Weight::Normal);
+                break;
+            case FontWeight::Light:
+                _font.setWeight(QFont::Weight::Light);
+                break;
+            case FontWeight::Medium:
+                _font.setWeight(QFont::Weight::Medium);
+                _font.setHintingPreference(QFont::PreferVerticalHinting);
+                break;
+            case FontWeight::SemiBold:
+                _font.setWeight(QFont::Weight::DemiBold);
+                _font.setHintingPreference(QFont::PreferVerticalHinting);
+                break;
+            case FontWeight::Bold:
+                _font.setWeight(QFont::Weight::Bold);
+                _font.setHintingPreference(QFont::PreferVerticalHinting);
+                break;
+            default:
+                break;
+            }
+            break;
         }
 
-        assert(!"unexpected font family");
-        return;
+        case FontFamily::ROBOTO_MONO:
+        {
+            switch (_fontWeight)
+            {
+            case FontWeight::Light:
+                im_assert(!"unexpected font style");
+                [[fallthrough]];
+            case FontWeight::Normal:
+                _font.setWeight(QFont::Weight::Normal);
+                break;
+            case FontWeight::Medium:
+                _font.setWeight(QFont::Weight::Medium);
+                _font.setHintingPreference(QFont::PreferVerticalHinting);
+                break;
+            case FontWeight::SemiBold:
+                im_assert(!"unexpected font style");
+                [[fallthrough]];
+            case FontWeight::Bold:
+                _font.setWeight(QFont::Weight::Bold);
+                _font.setHintingPreference(QFont::PreferVerticalHinting);
+                break;
+            default:
+                break;
+            }
+            break;
+        }
+
+        case FontFamily::SF_MONO:
+        {
+            switch (_fontWeight)
+            {
+            case FontWeight::Light:
+            case FontWeight::Normal:
+            case FontWeight::Medium:
+                _font.setWeight(QFont::Weight::Medium);
+                _font.setHintingPreference(QFont::PreferVerticalHinting);
+                break;
+            case FontWeight::SemiBold:
+                im_assert(!"unexpected font style");
+                [[fallthrough]];
+            case FontWeight::Bold:
+                _font.setWeight(QFont::Weight::Bold);
+                _font.setHintingPreference(QFont::PreferVerticalHinting);
+                break;
+            default:
+                break;
+            }
+            break;
+        }
+
+        case FontFamily::ROUNDED_MPLUS:
+            _font.setWeight(QFont::Weight::Bold);
+            break;
+
+        default:
+            im_assert(!"unexpected font family");
+        }
     }
 }
 

@@ -185,7 +185,7 @@ namespace Ui
 
         if (_to != -1 && _to < _from)
         {
-            assert(!"invalid data");
+            im_assert(!"invalid data");
             return outString;
         }
 
@@ -405,7 +405,7 @@ namespace Ui
 
         auto nickPos = -1;
         auto nickRef = QStringRef(&text).trimmed();
-        if (nickRef.startsWith(ql1c('@')) && Utils::isNick(nickRef))
+        if (nickRef.startsWith(ql1c('@')) && Utils::isNick(nickRef.toString()))
             nickPos = pos + nickRef.position();
 
         if (nickPos >= 0)
@@ -700,7 +700,7 @@ namespace Ui
         if (!isCursorAtTheBeginning)
         {
             isCursorChanged = cursor.movePosition(QTextCursor::Start);
-            assert(isCursorChanged);
+            im_assert(isCursorChanged);
         }
 
         const auto isCursorAtThePos = (cursor.position() == posTo);

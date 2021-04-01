@@ -18,7 +18,7 @@ StickerBlockLayout::~StickerBlockLayout() = default;
 
 QSize StickerBlockLayout::blockSizeForMaxWidth(const int32_t maxWidth)
 {
-    assert(maxWidth > 0);
+    im_assert(maxWidth > 0);
 
     auto &block = *blockWidget<StickerBlock>();
 

@@ -319,9 +319,9 @@ namespace
 
     void Text2DocConverter::Convert(const QString &text, QTextCursor &cursor, const Text2DocHtmlMode htmlMode, const bool convertLinks, const bool breakDocument, const Text2HtmlUriCallback uriCallback, const Emoji::EmojiSizePx _emojiSize, const QTextCharFormat::VerticalAlignment _aligment)
     {
-        assert(!UriCallback_);
-        assert(htmlMode >= Text2DocHtmlMode::Min);
-        assert(htmlMode <= Text2DocHtmlMode::Max);
+        im_assert(!UriCallback_);
+        im_assert(htmlMode >= Text2DocHtmlMode::Min);
+        im_assert(htmlMode <= Text2DocHtmlMode::Max);
 
         Input_.setString((QString*)&text, QIODevice::ReadOnly);
         Writer_ = cursor;
@@ -529,7 +529,7 @@ namespace
 
             if (c1.isHighSurrogate())
             {
-                assert(!Input_.atEnd());
+                im_assert(!Input_.atEnd());
                 if (!Input_.atEnd())
                 {
                     QChar c2;
@@ -755,8 +755,8 @@ namespace
 
     bool Text2DocConverter::IsEos(const int offset) const
     {
-        assert(offset >= 0);
-        assert(Input_.string());
+        im_assert(offset >= 0);
+        im_assert(Input_.string());
 
         const auto &text = *Input_.string();
         return ((Input_.pos() + offset) >= text.length());
@@ -764,8 +764,8 @@ namespace
 
     bool Text2DocConverter::IsHtmlEscapingEnabled() const
     {
-        assert(HtmlMode_ >= Text2DocHtmlMode::Min);
-        assert(HtmlMode_ <= Text2DocHtmlMode::Max);
+        im_assert(HtmlMode_ >= Text2DocHtmlMode::Min);
+        im_assert(HtmlMode_ <= Text2DocHtmlMode::Max);
 
         return (HtmlMode_ == Text2DocHtmlMode::Escape);
     }
@@ -838,21 +838,21 @@ namespace
     void Text2DocConverter::PushInputCursor()
     {
         InputCursorStack_.push_back((int)Input_.pos());
-        assert(InputCursorStack_.size() < InputCursorStack_.capacity());
+        im_assert(InputCursorStack_.size() < InputCursorStack_.capacity());
     }
 
     void Text2DocConverter::PopInputCursor(const int steps)
     {
-        assert(!InputCursorStack_.empty());
-        assert(steps > 0);
-        assert(steps < 100);
+        im_assert(!InputCursorStack_.empty());
+        im_assert(steps > 0);
+        im_assert(steps < 100);
 
         const auto newSize = (InputCursorStack_.size() - (unsigned)steps);
         const auto storedPos = InputCursorStack_[newSize];
         InputCursorStack_.resize(newSize);
 
         const auto success = Input_.seek(storedPos);
-        assert(success);
+        im_assert(success);
         (void)success;
     }
 
@@ -868,7 +868,7 @@ namespace
 
     void Text2DocConverter::ReplaceEmoji(const Emoji::EmojiCode& _code, const Emoji::EmojiSizePx _emojiSize, const QTextCharFormat::VerticalAlignment _aligment)
     {
-        assert(!_code.isNull());
+        im_assert(!_code.isNull());
 
         FlushBuffers();
 
@@ -944,8 +944,8 @@ namespace
 {
     void ReplaceUrlSpec(const QString &url, QString &out, bool isWordWrapEnabled)
     {
-        assert(out.isEmpty());
-        assert(!url.isEmpty());
+        im_assert(out.isEmpty());
+        im_assert(!url.isEmpty());
 
         static const auto AMP_ENTITY = ql1s("&amp;");
 

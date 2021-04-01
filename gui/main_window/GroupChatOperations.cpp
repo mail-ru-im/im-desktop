@@ -622,7 +622,7 @@ namespace Ui
             auto member = _model->contains(_memberAimId);
             if (!member)
             {
-                assert(!"member not found in model, probably it need to refresh");
+                im_assert(!"member not found in model, probably it need to refresh");
                 return false;
             }
         }
@@ -709,7 +709,7 @@ namespace Ui
 
         if (_enableAuthorSetting)
         {
-            QString chatId = quotes.isEmpty() ? QString() : quotes.first().chatId_;
+            const auto chatId = quotes.isEmpty() ? QString() : quotes.first().chatId_;
 
             if (Utils::isChat(chatId))
             {
@@ -778,13 +778,13 @@ namespace Ui
         contactsArray->push_back(collection.create_qstring_value(_recieverAimId).get());
         collection.set_value_as_array("contacts", contactsArray.get());
 
-        collection.set_value_as_qstring("message", _contact.text_);
+        collection.set_value_as_qstring("message", Data::stubFromFormattedString(_contact.text_));
 
         if (_contact.sharedContact_)
             _contact.sharedContact_->serialize(collection.get());
 
         collection.set_value_as_qstring("url", _contact.url_);
-        collection.set_value_as_qstring("description", _contact.description_);
+        collection.set_value_as_qstring("description", _contact.description_.string());
 
         Data::serializeQuotes(collection, _quotes);
         Data::MentionMap mentions;
@@ -931,13 +931,12 @@ namespace Ui
                     val->set_as_collection(quoteCollection.get());
                     quotesArray->push_back(val.get());
 
-
                     if (_forwardSeparately == ForwardSeparately::Yes)
                     {
                         serializeMentions(collection, quote.mentions_);
-                        core::ifptr<core::iarray> quotesArray(collection->create_array());
-                        quotesArray->push_back(val.get());
-                        collection.set_value_as_array("quotes", quotesArray.get());
+                        core::ifptr<core::iarray> qs(collection->create_array());
+                        qs->push_back(val.get());
+                        collection.set_value_as_array("quotes", qs.get());
                         Ui::GetDispatcher()->post_message_to_core("send_message", collection.get());
 
                         collection = createCollection();
@@ -995,7 +994,8 @@ namespace Ui
                 }
                 else
                 {
-                    collection.set_value_as_qstring("message", Utils::replaceFilesPlaceholders(quote.text_, quote.files_));
+                    collection.set_value_as_qstring("message", Utils::replaceFilesPlaceholders(quote.text_.string(), quote.files_));
+                    Data::serializeFormat(quote.text_.formatting(), collection, "message_format");
                 }
 
                 if (quote.sharedContact_)
@@ -1008,7 +1008,9 @@ namespace Ui
                     quote.poll_->serialize(collection.get());
 
                 collection.set_value_as_qstring("url", quote.url_);
-                collection.set_value_as_qstring("description", quote.description_);
+                collection.set_value_as_qstring("description", quote.description_.string());
+                if (quote.description_.hasFormatting())
+                    Data::serializeFormat(quote.description_.formatting(), collection, "description_format");
 
                 Ui::GetDispatcher()->post_message_to_core("send_message", collection.get());
             }
@@ -1031,7 +1033,7 @@ namespace Ui
 #else
         const auto maxMembersToAdd = 1;
 #endif
-        assert(maxMembersToAdd >= 0);
+        im_assert(maxMembersToAdd >= 0);
 
         membersModel->setCheckedFirstMembers(maxMembersToAdd);
         membersModel->loadAllMembers();
@@ -1079,7 +1081,7 @@ namespace Ui
         }
         else
         {
-            callStarted = Ui::GetDispatcher()->getVoipController().setStartCall(contacts, isVideoCall, false, whereStr.c_str());
+            callStarted = Ui::GetDispatcher()->getVoipController().setStartCall(contacts, isVideoCall, false);
         }
 
         auto mainPage = MainPage::instance();

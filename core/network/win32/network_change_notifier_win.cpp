@@ -68,7 +68,7 @@ namespace core
         {
             ++sequential_failures_;
             // watch again ofter 500ms
-            timer_ = g_core->add_timer([wr_this = weak_from_this()]
+            timer_ = g_core->add_timer({ [wr_this = weak_from_this()]
             {
                 auto ptr_this = wr_this.lock();
                 if (!ptr_this)
@@ -77,20 +77,20 @@ namespace core
                 g_core->stop_timer(ptr_this_win->timer_);
                 ptr_this_win->timer_ = 0;
                 ptr_this_win->watch_for_address_change();
-            }, std::chrono::milliseconds(500));
+            } }, std::chrono::milliseconds(500));
             return;
         }
 
         if (sequential_failures_ > 0)
         {
-            g_core->execute_core_context([wr_this = weak_from_this()]
+            g_core->execute_core_context({ [wr_this = weak_from_this()]
             {
                 auto ptr_this = wr_this.lock();
                 if (!ptr_this)
                     return;
                 auto ptr_this_win = std::static_pointer_cast<network_change_notifier_win>(ptr_this);
                 ptr_this_win->notify();
-            });
+            } });
         }
 
         sequential_failures_ = 0;
@@ -120,14 +120,14 @@ namespace core
         if (!g_core)
             return;
         assert(!g_core->is_core_thread());
-        g_core->execute_core_context([param]
+        g_core->execute_core_context({ [param]
         {
             // ignore event when destroy network_change_notifier by omicron config
             if (!g_core->is_network_change_notifier_valid())
                 return;
             network_change_notifier_win* that = static_cast<network_change_notifier_win*>(param);
             that->on_signal();
-        });
+        } });
     }
 
     bool network_change_notifier_win::start_watch()
@@ -272,7 +272,7 @@ namespace core
         };
         if (delay_connection_type_timer_ != -1)
             g_core->stop_timer(delay_connection_type_timer_);
-        delay_connection_type_timer_ = g_core->add_timer(type_change_task, std::chrono::seconds(1));
+        delay_connection_type_timer_ = g_core->add_timer({ type_change_task }, std::chrono::seconds(1));
     }
 
 }

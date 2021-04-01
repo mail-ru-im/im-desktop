@@ -60,7 +60,7 @@ namespace Emoji
             //return std::all_of(code.begin(), code.end(), [](auto x) { return x == 0; }); c++20
         }
 
-        constexpr codePointType codepointAt(size_t idx) const noexcept { assert(idx >= 0 && idx < size()); return code[idx]; }
+        constexpr codePointType codepointAt(size_t idx) const noexcept { im_assert(idx >= 0 && idx < size()); return code[idx]; }
 
         std::size_t hash() const noexcept
         {
@@ -107,7 +107,7 @@ namespace Emoji
 
         constexpr EmojiCode chopped(size_t count) const noexcept
         {
-            assert(count < maxCodepoints);
+            im_assert(count < maxCodepoints);
             if (count == 0 || isNull())
                 return *this;
 
@@ -121,7 +121,7 @@ namespace Emoji
                 while (count--)
                     newCode[--currentSize] = 0;
                 auto res = EmojiCode(std::move(newCode));
-                assert(res.size() == currentSize);
+                im_assert(res.size() == currentSize);
                 return res;
             }
             return EmojiCode(0);
@@ -132,7 +132,7 @@ namespace Emoji
             if (a.isNull())
                 return EmojiCode(codePoint);
             const auto size = a.size();
-            assert(size < maxCodepoints);
+            im_assert(size < maxCodepoints);
             auto code = a.code;
             code[size] = codePoint;
             return EmojiCode(std::move(code));
@@ -185,7 +185,7 @@ namespace Emoji
             const auto ucs = str.toUcs4();
             if (ucs.size() > maxCodepoints)
             {
-                assert(!"EmojiCode: wrong str length");
+                im_assert(!"EmojiCode: wrong str length");
                 return code;
             }
             for (auto character : ucs)

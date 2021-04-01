@@ -32,7 +32,7 @@ namespace Ui
 
     void WidgetsNavigator::push(QWidget* _widget)
     {
-        assert(widgetToIndex_.count(_widget) != 0);
+        im_assert(widgetToIndex_.count(_widget) != 0);
         if (currentWidget() != _widget)
         {
             setCurrentWidget(_widget);

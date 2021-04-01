@@ -17,12 +17,12 @@ namespace core
             report_sender(std::string _login, bool _full_log);
             ~report_sender();
 
-            void send_report();
+            void send_report(std::string_view _base_url);
 
         private:
             void clear_report_folder();
             bool is_report_existed() const;
-            bool send(std::string_view _login, const proxy_settings& _proxy);
+            bool send(std::string_view _base_url, std::string_view _login, const proxy_settings& _proxy);
 			void insert_imstat_event();
             std::unique_ptr<async_executer> send_thread_;
             const std::string login_;

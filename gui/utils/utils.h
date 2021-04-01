@@ -31,8 +31,8 @@ namespace Utils
         enum class ExifOrientation;
     }
 
-    inline void ensureMainThread() { assert(qApp && QThread::currentThread() == qApp->thread()); }
-    inline void ensureNonMainThread() { assert(qApp && QThread::currentThread() != qApp->thread()); }
+    inline void ensureMainThread() { im_assert(qApp && QThread::currentThread() == qApp->thread()); }
+    inline void ensureNonMainThread() { im_assert(qApp && QThread::currentThread() != qApp->thread()); }
 
     QString getAppTitle();
     QString getVersionLabel();
@@ -41,6 +41,14 @@ namespace Utils
     struct QStringHasher
     {
         std::size_t operator()(const QString& _k) const noexcept
+        {
+            return qHash(_k);
+        }
+    };
+
+    struct QStringViewHasher
+    {
+        std::size_t operator()(QStringView _k) const noexcept
         {
             return qHash(_k);
         }
@@ -497,15 +505,20 @@ namespace Utils
     void openFileOrFolder(QStringView _path, OpenAt _openAt, OpenWithWarning _withWarning = OpenWithWarning::Yes);
 
     QString convertMentions(const QString& _source, const Data::MentionMap& _mentions);
+    Data::FormattedString convertMentions(const Data::FormattedString& _source, const Data::MentionMap& _mentions);
     QString convertFilesPlaceholders(const QStringRef& _source, const Data::FilesPlaceholderMap& _files);
     inline QString convertFilesPlaceholders(const QString& _source, const Data::FilesPlaceholderMap& _files)
     {
         return convertFilesPlaceholders(QStringRef(&_source), _files);
     }
-    QString replaceFilesPlaceholders(QString _text, const Data::FilesPlaceholderMap& _files);
-    QString setFilesPlaceholders(QString _text, const Data::FilesPlaceholderMap& _files);
 
-    bool isNick(const QStringRef& _text);
+    QString replaceFilesPlaceholders(QString _text, const Data::FilesPlaceholderMap& _files);
+    Data::FormattedString replaceFilesPlaceholders(const Data::FormattedString& _text, const Data::FilesPlaceholderMap& _files);
+
+    QString setFilesPlaceholders(QString _text, const Data::FilesPlaceholderMap& _files);
+    Data::FormattedString setFilesPlaceholders(const Data::FormattedString& _text, const Data::FilesPlaceholderMap& _files);
+
+    bool isNick(const QString& _text);
     QString makeNick(const QString& _text);
 
     bool isMentionLink(QStringView _url);
@@ -568,7 +581,7 @@ namespace Utils
     QPixmap getStatusBadge(const QString& _aimid, int _avatarSize);
     QPixmap getBotDefaultBadge(int _badgeSize);
     QPixmap getEmptyStatusBadge(StatusBadgeState _state, int _avatarSize);
-    void drawAvatarWithBadge(QPainter& _p, const QPoint& _topLeft, const QPixmap& _pm, const bool _isOfficial, const QPixmap& _status, const bool _isMuted, const bool _isSelected, const bool _isOnline, const bool _small_online);
+    void drawAvatarWithBadge(QPainter& _p, const QPoint& _topLeft, const QPixmap& _pm, const bool _isOfficial, const QPixmap& _status, const bool _isMuted, const bool _isSelected, const bool _isOnline, const bool _small_online, bool _withOverlay = false);
     void drawAvatarWithBadge(QPainter& _p, const QPoint& _topLeft, const QPixmap& _pm, const QString& _aimid, const bool _officialOnly = false, StatusBadgeState _state = StatusBadgeState::CanBeOff, const bool _isSelected = false, const bool _small_online = true);
     void drawAvatarWithoutBadge(QPainter& _p, const QPoint& _topLeft, const QPixmap& _pm, const QPixmap& _status = QPixmap());
 

@@ -196,7 +196,7 @@ namespace Ui
 
     QColor MessageTimeWidget::getTimeColor() const
     {
-        assert(!aimId_.isEmpty());
+        im_assert(!aimId_.isEmpty());
 
         auto var = Styling::StyleVariable::BASE_PRIMARY;
         if (withUnderlay_ || isSelected_)

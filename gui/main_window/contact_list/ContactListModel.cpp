@@ -123,7 +123,7 @@ namespace Logic
         const auto cont = contacts_[ndx].Get();
 
         if (Testing::isAccessibleRole(_r))
-            return cont->AimId_;
+            return QString(u"AS Contacts " % cont->AimId_);
 
         return QVariant::fromValue(cont);
     }
@@ -187,8 +187,8 @@ namespace Logic
                 return (int)contacts_.size();
             }
 
-            assert(!contains(_contact->AimId_));
-            assert(std::none_of(contacts_.begin(), contacts_.end(), [&a = _contact->AimId_](const auto& _c){ return a == _c.get_aimid(); }));
+            im_assert(!contains(_contact->AimId_));
+            im_assert(std::none_of(contacts_.begin(), contacts_.end(), [&a = _contact->AimId_](const auto& _c){ return a == _c.get_aimid(); }));
 
             contacts_.emplace_back(_contact);
 
@@ -216,8 +216,8 @@ namespace Logic
         indexes_.clear();
         for (const auto order_index : sorted_index_cl_)
         {
-            assert(std::count_if(contacts_.begin(), contacts_.end(), [&a = contacts_[order_index].get_aimid()](const auto& _c){ return a == _c.get_aimid(); }) == 1);
-            assert(!indexes_.contains(contacts_[order_index].get_aimid()));
+            im_assert(std::count_if(contacts_.begin(), contacts_.end(), [&a = contacts_[order_index].get_aimid()](const auto& _c){ return a == _c.get_aimid(); }) == 1);
+            im_assert(!indexes_.contains(contacts_[order_index].get_aimid()));
 
             indexes_.insert(contacts_[order_index].get_aimid(), i++);
         }
@@ -661,7 +661,7 @@ namespace Logic
             if constexpr (build::is_debug())
             {
                 for (int i = 1; i < topSortedCount_; ++i)
-                    assert(contacts_[_list[i]].get_outgoing_msg_count() <= contacts_[_list[i - 1]].get_outgoing_msg_count());
+                    im_assert(contacts_[_list[i]].get_outgoing_msg_count() <= contacts_[_list[i - 1]].get_outgoing_msg_count());
 
                 qCDebug(clModel) << topSortedCount_ << "top contacts:";
                 for (int i = 0; i < topSortedCount_; ++i)
@@ -1132,7 +1132,7 @@ namespace Logic
 
     int ContactListModel::getOrderIndexByAimid(const QString& _aimId) const
     {
-        assert(indexes_.size() == int(contacts_.size()));
+        im_assert(indexes_.size() == int(contacts_.size()));
 
         if (_aimId.isEmpty())
             return -1;

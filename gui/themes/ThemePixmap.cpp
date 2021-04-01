@@ -44,7 +44,7 @@ namespace
             }
 
             const auto emplaceResult = ResourcePaths_.emplace((int)resId, std::move(resPath));
-            assert(emplaceResult.second);
+            im_assert(emplaceResult.second);
         }
     }
 }
@@ -53,8 +53,8 @@ namespace Themes
 {
     const ThemePixmapSptr& GetPixmap(const PixmapResourceId id)
     {
-        assert(id > PixmapResourceId::Min);
-        assert(id < PixmapResourceId::Max);
+        im_assert(id > PixmapResourceId::Min);
+        im_assert(id < PixmapResourceId::Max);
 
         const auto iterCache = ResourcePixmaps_.find((int)id);
         if (iterCache != ResourcePixmaps_.end())
@@ -65,7 +65,7 @@ namespace Themes
         auto themePixmap = std::make_shared<ThemePixmap>(id);
 
         const auto result = ResourcePixmaps_.emplace((int)id, themePixmap);
-        assert(result.second);
+        im_assert(result.second);
 
         return result.first->second;
     }
@@ -73,8 +73,8 @@ namespace Themes
     ThemePixmap::ThemePixmap(const PixmapResourceId resourceId)
         : ResourceId_(resourceId)
     {
-        assert(ResourceId_ > PixmapResourceId::Min);
-        assert(ResourceId_ < PixmapResourceId::Max);
+        im_assert(ResourceId_ > PixmapResourceId::Min);
+        im_assert(ResourceId_ < PixmapResourceId::Max);
     }
 
     ThemePixmap::ThemePixmap(const QPixmap& _px)
@@ -92,8 +92,8 @@ namespace Themes
 
     void ThemePixmap::Draw(QPainter &p, const int32_t x, const int32_t y, const int32_t w, const int32_t h) const
     {
-        assert(w > 0);
-        assert(h > 0);
+        im_assert(w > 0);
+        im_assert(h > 0);
 
         PreparePixmap();
 
@@ -102,8 +102,8 @@ namespace Themes
 
     void ThemePixmap::Draw(QPainter &p, const QRect &r) const
     {
-        assert(r.width() > 0);
-        assert(r.height() > 0);
+        im_assert(r.width() > 0);
+        im_assert(r.height() > 0);
         PreparePixmap();
         p.drawPixmap(r, Pixmap_);
     }
@@ -159,13 +159,13 @@ namespace Themes
         const auto pathIter = ResourcePaths_.find((int)ResourceId_);
         if (pathIter == ResourcePaths_.end())
         {
-            assert(!"unknown resource identifier");
+            im_assert(!"unknown resource identifier");
             return;
         }
 
         Pixmap_.load(pathIter->second);
 
-        assert(!Pixmap_.isNull() || !"failed to load a pixmap from resources");
+        im_assert(!Pixmap_.isNull() || !"failed to load a pixmap from resources");
 
         Utils::check_pixel_ratio(Pixmap_);
     }

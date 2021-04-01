@@ -71,14 +71,14 @@ namespace core
         {
             auto handler = std::make_shared<t_async_task_handlers<T>>();
 
-            push_back([f = std::move(func), handler]
+            push_back({ [f = std::move(func), handler]
             {
-                g_core->execute_core_context([handler, result = f()]
+                g_core->execute_core_context({ [handler, result = f()]
                 {
                     if (handler->on_result_)
                         handler->on_result_(result);
-                });
-            }, -1, _task_name, std::move(_cancel));
+                }});
+            } }, -1, _task_name, std::move(_cancel));
 
             return handler;
         }

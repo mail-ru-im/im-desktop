@@ -5,6 +5,7 @@
 #include "../utils/utils.h"
 #include "../styles/ThemeParameters.h"
 #include "../main_window/GroupChatOperations.h"
+#include "../utils/features.h"
 
 using namespace Ui;
 
@@ -151,7 +152,8 @@ void StartCallButton::showContextMenu()
         {
             QMetaObject::invokeMethod(this, &StartCallButton::startVideoCall, Qt::QueuedConnection);
         });
-        menu_->addActionWithIcon(qsl(":/copy_link_icon"), QT_TRANSLATE_NOOP("tooltips", "Link to call"), this, &StartCallButton::createCallLink);
+        if (Features::isVcsCallByLinkEnabled())
+            menu_->addActionWithIcon(qsl(":/copy_link_icon"), QT_TRANSLATE_NOOP("tooltips", "Link to call"), this, &StartCallButton::createCallLink);
         menu_->invertRight(true);
 
         rotate(Ui::StartCallButton::RotateDirection::Left);

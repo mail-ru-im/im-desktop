@@ -20,7 +20,7 @@ namespace Utils
         {
             return translations_.strings_[key];
         }
-        assert(!">> TRANSLATIONS: unknown key");
+        im_assert(!">> TRANSLATIONS: unknown key");
         qWarning() << "TRANSLATIONS: unknown key" << key;
         return key;
     }

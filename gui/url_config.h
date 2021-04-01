@@ -13,19 +13,22 @@ namespace Ui
         UrlConfig() = default;
         void updateUrls(const core::coll_helper& _coll);
 
-    	[[nodiscard]] const QString& getUrlFilesParser() const { return filesParse_; }
-        [[nodiscard]] const QString& getUrlStickerShare() const { return stickerShare_; }
-        [[nodiscard]] const QString& getUrlProfile() const { return profile_; }
+    	[[nodiscard]] const QString& getUrlFilesParser() const noexcept { return filesParse_; }
+        [[nodiscard]] const QString& getUrlStickerShare() const noexcept { return stickerShare_; }
+        [[nodiscard]] const QString& getUrlProfile() const noexcept { return profile_; }
 
-        [[nodiscard]] const QString& getUrlMailAuth() const { return mailAuth_; }
-        [[nodiscard]] const QString& getUrlMailRedirect() const { return mailRedirect_; }
-        [[nodiscard]] const QString& getUrlMailWin() const { return mailWin_; }
-        [[nodiscard]] const QString& getUrlMailRead() const { return mailRead_; }
+        [[nodiscard]] const QString& getUrlMailAuth() const noexcept { return mailAuth_; }
+        [[nodiscard]] const QString& getUrlMailRedirect() const noexcept { return mailRedirect_; }
+        [[nodiscard]] const QString& getUrlMailWin() const noexcept { return mailWin_; }
+        [[nodiscard]] const QString& getUrlMailRead() const noexcept { return mailRead_; }
 
-        [[nodiscard]] const QString& getUrlAppUpdate() const { return appUpdate_; }
-        const QVector<QString>& getVCSUrls() const;
+        [[nodiscard]] const QString& getUrlAppUpdate() const noexcept { return appUpdate_; }
 
-    	bool isMailConfigPresent() const;
+        [[nodiscard]] const QString& getBaseBinary() const noexcept { return baseBinary_; }
+
+        const QVector<QString>& getVCSUrls() const noexcept;
+
+    	bool isMailConfigPresent() const noexcept;
 
     private:
         QString filesParse_;
@@ -38,6 +41,7 @@ namespace Ui
         QString mailRead_;
 
         QString appUpdate_;
+        QString baseBinary_;
 
         QVector<QString> vcsUrls_;
     };

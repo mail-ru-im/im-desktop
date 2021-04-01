@@ -141,9 +141,9 @@ namespace Ui
         , recvLastMessage_(false)
         , aimid_(_aimid)
     {
-        assert(parent);
-        assert(Layout_);
-        assert(typingWidget);
+        im_assert(parent);
+        im_assert(Layout_);
+        im_assert(typingWidget);
 
         setContentsMargins(0, 0, 0, 0);
         setLayout(Layout_);
@@ -458,6 +458,11 @@ namespace Ui
         pttProgress_.clear();
     }
 
+    std::optional<Data::FileSharingMeta> MessagesScrollArea::getMeta(const QString& _id) const
+    {
+        return Layout_->getMeta(_id);
+    }
+
     void MessagesScrollArea::onSelectionChanged(int _selectedCount)
     {
         if (_selectedCount > 0)
@@ -546,14 +551,14 @@ namespace Ui
         const auto scrollBounds = Layout_->getViewportScrollBounds();
 
         const auto scrollRange = (scrollBounds.second - scrollBounds.first);
-        assert(scrollRange >= 0);
+        im_assert(scrollRange >= 0);
 
         return (scrollRange > 0);
     }
 
     bool MessagesScrollArea::containsWidget(QWidget *widget) const
     {
-        assert(widget);
+        im_assert(widget);
 
         return Layout_->containsWidget(widget);
     }
@@ -568,7 +573,7 @@ namespace Ui
 
     void MessagesScrollArea::removeWidget(QWidget *widget)
     {
-        assert(widget);
+        im_assert(widget);
 
         eraseContact(widget);
 
@@ -626,7 +631,7 @@ namespace Ui
 
     void MessagesScrollArea::replaceWidget(const Logic::MessageKey &key, std::unique_ptr<QWidget> widget)
     {
-        assert(widget);
+        im_assert(widget);
 
         auto existingWidget = getItemByKey(key);
         if (!existingWidget)
@@ -658,7 +663,7 @@ namespace Ui
 
         QSignalBlocker blocker(Scrollbar_);
         updateScrollbar();
-        assert(!getIsSearch());
+        im_assert(!getIsSearch());
     }
 
     void MessagesScrollArea::updateItemKey(const Logic::MessageKey &key)
@@ -683,7 +688,7 @@ namespace Ui
         const auto viewportScrollBounds = Layout_->getViewportScrollBounds();
 
         auto scrollbarMaximum = (viewportScrollBounds.second - viewportScrollBounds.first);
-        assert(scrollbarMaximum >= 0);
+        im_assert(scrollbarMaximum >= 0);
         const auto canScroll = scrollbarMaximum > 0;
         const auto scrollbarVisible = canScroll;
 
@@ -730,7 +735,7 @@ namespace Ui
 
     void MessagesScrollArea::enumerateWidgets(const WidgetVisitor& visitor, const bool reversed) const
     {
-        assert(visitor);
+        im_assert(visitor);
         Layout_->enumerateWidgets(visitor, reversed);
     }
 
@@ -764,9 +769,9 @@ namespace Ui
         return Layout_->getItemsKeys();
     }
 
-    QString MessagesScrollArea::getSelectedText(TextFormat _format) const
+    Data::FormattedString MessagesScrollArea::getSelectedText(TextFormat _format) const
     {
-        QString result;
+        Data::FormattedString result;
         size_t i = 1;
         const auto mentions = _format == TextFormat::Raw ? Data::MentionMap() : getMentions();
         for (const auto& [_, info] : selected_)
@@ -840,11 +845,11 @@ namespace Ui
             return QVector<Logic::MessageKey>();
         const auto viewportTop = Layout_->getViewportAbsY() + Layout_->getBottomWidgetsHeight();
         const auto heightFromTopBoundToViewportTop = viewportTop - bounds.first;
-        //assert(heightFromTopBoundToViewportTop > 0);
+        //im_assert(heightFromTopBoundToViewportTop > 0);
 
         constexpr auto triggerThresholdK = triggerThreshold();
         const auto triggerThreshold = int32_t(minViewPortHeightForUnload() * triggerThresholdK);
-        assert(triggerThreshold > 0);
+        im_assert(triggerThreshold > 0);
 
         const auto triggerThreasholdNotReached = (heightFromTopBoundToViewportTop < triggerThreshold);
         if (triggerThreasholdNotReached)
@@ -852,7 +857,7 @@ namespace Ui
 
         constexpr auto unloadThresholdK = unloadThreshold();
         const auto unloadThreshold = int32_t(minViewPortHeightForUnload() * unloadThresholdK);
-        assert(unloadThreshold > 0);
+        im_assert(unloadThreshold > 0);
 
         return Layout_->getWidgetsOverBottomOffset(heightFromTopBoundToViewportTop - unloadThreshold);
     }
@@ -867,7 +872,7 @@ namespace Ui
 
         constexpr auto triggerThresholdK = triggerThreshold();
         const auto triggerThreshold = int32_t(minViewPortHeightForUnload() * triggerThresholdK);
-        assert(triggerThreshold > 0);
+        im_assert(triggerThreshold > 0);
 
         const auto triggerThreasholdNotReached = (heightFromBoundToViewportBottom < triggerThreshold);
         if (triggerThreasholdNotReached)
@@ -875,7 +880,7 @@ namespace Ui
 
         constexpr auto unloadThresholdK = unloadThreshold();
         const auto unloadThreshold = (int32_t)(minViewPortHeightForUnload() * unloadThresholdK);
-        assert(unloadThreshold > 0);
+        im_assert(unloadThreshold > 0);
 
         return Layout_->getWidgetsUnderBottomOffset(heightFromBoundToViewportBottom - unloadThreshold);
     }
@@ -930,12 +935,12 @@ namespace Ui
         }
 
         const auto bottomScrollStartPosition = height();
-        assert(bottomScrollStartPosition > 0);
+        im_assert(bottomScrollStartPosition > 0);
 
         const auto scrollDown = (mouseY >= bottomScrollStartPosition);
         if (scrollDown)
         {
-            assert(!scrollUp);
+            im_assert(!scrollUp);
 
             ScrollDistance_ = mouseY - bottomScrollStartPosition;
             startScrollAnimation(ScrollingMode::Selection);
@@ -1127,14 +1132,14 @@ namespace Ui
 
     void MessagesScrollArea::resumeVisibleItems()
     {
-        assert(Layout_);
+        im_assert(Layout_);
 
         Layout_->resumeVisibleItems();
     }
 
     void MessagesScrollArea::suspendVisibleItems()
     {
-        assert(Layout_);
+        im_assert(Layout_);
 
         Layout_->suspendVisibleItems();
     }
@@ -1171,7 +1176,7 @@ namespace Ui
 
                     const auto wheelMultiplier = -1;
                     const auto delta = (touchDelta * wheelMultiplier);
-                    assert(delta != 0);
+                    im_assert(delta != 0);
 
                     const auto wheelDirection = sign(delta);
 
@@ -1256,7 +1261,7 @@ namespace Ui
     {
         if (oldSize == newSize)
         {
-            assert(false);
+            im_assert(false);
         }
     }
 
@@ -1274,9 +1279,7 @@ namespace Ui
 
     void MessagesScrollArea::onSliderValue(int value)
     {
-        assert(value >= 0);
-
-        Tooltip::hide();
+        im_assert(value >= 0);
 
         const bool isAtBottom = isScrollAtBottom();
 
@@ -1361,7 +1364,7 @@ namespace Ui
 
     void MessagesScrollArea::applySelection(const bool forShift)
     {
-        assert(!LastMouseGlobalPos_.isNull());
+        im_assert(!LastMouseGlobalPos_.isNull());
 
         auto selectionBegin = Layout_->absolute2Viewport(SelectionBeginAbsPos_);
         auto selectionEnd = Layout_->absolute2Viewport(SelectionEndAbsPos_);
@@ -1516,7 +1519,7 @@ namespace Ui
 
         const auto directionAfter = evaluateWheelHistorySign();
 
-        assert(WheelEventsBuffer_.size() <= WHEEL_HISTORY_LIMIT);
+        im_assert(WheelEventsBuffer_.size() <= WHEEL_HISTORY_LIMIT);
         const auto isHistoryFilled = (WheelEventsBuffer_.size() == WHEEL_HISTORY_LIMIT);
 
         const auto isSignChanged = (
@@ -1529,8 +1532,8 @@ namespace Ui
 
     double MessagesScrollArea::evaluateScrollingVelocity() const
     {
-        assert(ScrollDistance_ != 0);
-        assert(std::abs(ScrollDistance_) <= getMaximumScrollDistance());
+        im_assert(ScrollDistance_ != 0);
+        im_assert(std::abs(ScrollDistance_) <= getMaximumScrollDistance());
 
         auto speed = scrollEasing(
             std::abs(ScrollDistance_),
@@ -1545,7 +1548,7 @@ namespace Ui
 
     double MessagesScrollArea::evaluateScrollingStep(const int64_t now) const
     {
-        assert(now > 0);
+        im_assert(now > 0);
 
         const auto timeDiff = (now - LastAnimationMoment_);
 
@@ -1580,8 +1583,8 @@ namespace Ui
 
     void MessagesScrollArea::startScrollAnimation(const ScrollingMode mode)
     {
-        assert(mode > ScrollingMode::Min);
-        assert(mode < ScrollingMode::Max);
+        im_assert(mode > ScrollingMode::Min);
+        im_assert(mode < ScrollingMode::Max);
 
         Mode_ = mode;
 
@@ -1592,7 +1595,7 @@ namespace Ui
 
         ScrollAnimationTimer_.start();
 
-        assert(LastAnimationMoment_ == MOMENT_UNINITIALIZED);
+        im_assert(LastAnimationMoment_ == MOMENT_UNINITIALIZED);
         LastAnimationMoment_ = QDateTime::currentMSecsSinceEpoch();
     }
 
@@ -1762,11 +1765,11 @@ namespace
 
     double cubicOut(const double scrollDistance, const double maxScrollDistance, const double minSpeed, const double maxSpeed)
     {
-        assert(maxScrollDistance > 0);
-        assert(std::abs(scrollDistance) <= maxScrollDistance);
-        assert(minSpeed >= 0);
-        assert(maxSpeed > 0);
-        assert(maxSpeed > minSpeed);
+        im_assert(maxScrollDistance > 0);
+        im_assert(std::abs(scrollDistance) <= maxScrollDistance);
+        im_assert(minSpeed >= 0);
+        im_assert(maxSpeed > 0);
+        im_assert(maxSpeed > minSpeed);
 
         // see http://gizma.com/easing/#cub2
 
@@ -1784,11 +1787,11 @@ namespace
 
     double expoOut(const double scrollDistance, const double maxScrollDistance, const double minSpeed, const double maxSpeed)
     {
-        assert(maxScrollDistance > 0);
-        assert(std::abs(scrollDistance) <= maxScrollDistance);
-        assert(minSpeed >= 0);
-        assert(maxSpeed > 0);
-        assert(maxSpeed > minSpeed);
+        im_assert(maxScrollDistance > 0);
+        im_assert(std::abs(scrollDistance) <= maxScrollDistance);
+        im_assert(minSpeed >= 0);
+        im_assert(maxSpeed > 0);
+        im_assert(maxSpeed > minSpeed);
 
         // see http://gizma.com/easing/#expo2
 

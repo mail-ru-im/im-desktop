@@ -33,13 +33,6 @@
     </message>
 </context>
 <context>
-    <name>QObject</name>
-    <message>
-        <source>Unable to start the server: %1.</source>
-        <translation>Unable to start the server: %1.</translation>
-    </message>
-</context>
-<context>
     <name>QWidgetTextControl</name>
     <message>
         <source>&amp;Undo</source>
@@ -3472,8 +3465,8 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
         <translation>Nálepka</translation>
     </message>
     <message>
-        <source>The message is not supported on your version of ICQ. Update the app to see the message</source>
-        <translation>Ve vaší verzi aplikace nelze zobrazit zprávu. Aktualizace</translation>
+        <source>The message is not supported on your version. Update the app to see the message</source>
+        <translation>Ve vaší verzi aplikace nelze zobrazit zprávu. Obnovit</translation>
     </message>
 </context>
 <context>
@@ -4592,6 +4585,62 @@ Kontakt</translation>
         <source>Send Statistic</source>
         <translation>Odeslat statistiky</translation>
     </message>
+    <message>
+        <source>Member limit exceeded (maximum %1)</source>
+        <translation>Byl překročen limit členství (max %1)</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to open external link %1?</source>
+        <translation>Opravdu chcete otevřít externí odkaz %1?</translation>
+    </message>
+    <message>
+        <source>Enable net compression</source>
+        <translation>Povolit kompresi síťových požadavků</translation>
+    </message>
+    <message>
+        <source>Cannot remove %1</source>
+        <translation>%1 nepodařilo smazat</translation>
+    </message>
+    <message>
+        <source>Cannot block %1</source>
+        <translation>Blokování %1</translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1</source>
+        <translation>%1nepodařilo odemknout</translation>
+    </message>
+    <message>
+        <source>User not found</source>
+        <translation>Uživatel nebyl nalezen</translation>
+    </message>
+    <message>
+        <source>User is already blocked</source>
+        <translation>Uživatel je již zablokován</translation>
+    </message>
+    <message>
+        <source>User not blocked</source>
+        <translation>Uživatel není blokován</translation>
+    </message>
+    <message>
+        <source>Permission denied</source>
+        <translation>Přístup odepřen</translation>
+    </message>
+    <message>
+        <source>Error removing federation user</source>
+        <translation>Chyba při mazání uživatele federace</translation>
+    </message>
+    <message>
+        <source>Error blocking federation user</source>
+        <translation>Chyba při blokování uživatele federace</translation>
+    </message>
+    <message>
+        <source>Error unblocking federation user</source>
+        <translation>Při odblokování uživatele federace došlo k chybě</translation>
+    </message>
+    <message>
+        <source>User not a member</source>
+        <translation>Uživatel není členem této skupiny</translation>
+    </message>
 </context>
 <context>
     <name>previewer</name>
@@ -5416,6 +5465,10 @@ Kontakt</translation>
         <source>Disable SMS notifications</source>
         <translation>Zakázat upozornění SMS</translation>
     </message>
+    <message>
+        <source>Show notifications when app in focus</source>
+        <translation>Zobrazit oznámení, když je aplikace aktivní</translation>
+    </message>
 </context>
 <context>
     <name>settings_connection</name>
@@ -5617,10 +5670,6 @@ Kontakt</translation>
 </context>
 <context>
     <name>sidebar</name>
-    <message>
-        <source>Add to chat</source>
-        <translation>Přidat do chatu</translation>
-    </message>
     <message>
         <source>Notifications</source>
         <translation>Oznámení</translation>
@@ -5967,6 +6016,14 @@ Uprav telefonní číslo a opakuj akci.</translation>
         <source>All subscribers</source>
         <translation>Všichni předplatitelé</translation>
     </message>
+    <message>
+        <source>Back</source>
+        <translation>Zadní</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Zavřít</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -6246,6 +6303,14 @@ Uprav telefonní číslo a opakuj akci.</translation>
         <source>Calls</source>
         <translation>Volání</translation>
     </message>
+    <message>
+        <source>Structure</source>
+        <translation>Struktura</translation>
+    </message>
+    <message>
+        <source>Tasks</source>
+        <translation>Úkoly</translation>
+    </message>
 </context>
 <context>
     <name>tab header</name>
@@ -6340,7 +6405,7 @@ Uprav telefonní číslo a opakuj akci.</translation>
     </message>
     <message>
         <source>There are no profiles or groups with this nickname</source>
-        <translation>Profil nebo skupina s takovou přezdívkou neexistuje</translation>
+        <translation>Profil nebo skupina s&#xa0;takovou přezdívkou neexistuje</translation>
     </message>
     <message>
         <source>Copied to clipboard</source>
@@ -6451,14 +6516,6 @@ Uprav telefonní číslo a opakuj akci.</translation>
         <translation>Příchozí hovor</translation>
     </message>
     <message>
-        <source>Add to call</source>
-        <translation>Přidat do hovoru</translation>
-    </message>
-    <message>
-        <source>OTHERS</source>
-        <translation>OSTATNÍ</translation>
-    </message>
-    <message>
         <source>Screen</source>
         <translation>Obrazovka</translation>
     </message>
@@ -6503,10 +6560,6 @@ Uprav telefonní číslo a opakuj akci.</translation>
         <translation>VŠECHNY ČLENOVÉ SKUPINY</translation>
     </message>
     <message>
-        <source>CALL MEMBERS</source>
-        <translation>ÚČASTNÍCI VOLÁNÍ</translation>
-    </message>
-    <message>
         <source>Minimize</source>
         <translation>Minimalizovat</translation>
     </message>
@@ -6541,6 +6594,30 @@ kliknutím</translation>
     <message>
         <source>Busy</source>
         <translation>Zaneprázdněný</translation>
+    </message>
+    <message>
+        <source>Call members</source>
+        <translation>Zavolejte účastníkům</translation>
+    </message>
+    <message>
+        <source>SHOW ALL</source>
+        <translation>UKÁZAT VŠE</translation>
+    </message>
+    <message>
+        <source>HIDE</source>
+        <translation>SKRÝT</translation>
+    </message>
+    <message>
+        <source>IN CALL</source>
+        <translation>V HOVORU</translation>
+    </message>
+    <message>
+        <source>In call</source>
+        <translation>Během hovoru</translation>
+    </message>
+    <message>
+        <source>CONTACTS</source>
+        <translation>KONTAKTY</translation>
     </message>
 </context>
 <context>
@@ -6679,6 +6756,20 @@ Meeting</source>
     <message>
         <source>SHOW ALL</source>
         <translation>UKÁZAT VŠE</translation>
+    </message>
+    <message>
+        <source>Show
+participants</source>
+        <translation>Koukni se
+účastníků</translation>
+    </message>
+    <message>
+        <source>Show all</source>
+        <translation>Zobrazit vše</translation>
+    </message>
+    <message>
+        <source>Show one</source>
+        <translation>Ukaž jeden</translation>
     </message>
 </context>
 <context>

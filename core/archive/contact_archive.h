@@ -13,6 +13,7 @@ namespace core
         class dlg_state;
         struct dlg_state_changes;
         class archive_hole;
+        enum class archive_hole_error;
         class archive_state;
         class image_data;
         class mentions_me;
@@ -75,7 +76,7 @@ namespace core
             void filter_deleted(std::vector<int64_t>& _ids) const;
 
             std::vector<int64_t> get_messages_for_update() const;
-            bool get_next_hole(int64_t _from, archive_hole& _hole, int64_t _depth) const;
+            archive::archive_hole_error get_next_hole(int64_t _from, archive_hole& _hole, int64_t _depth) const;
             int64_t validate_hole_request(const archive_hole& _hole, const int32_t _count) const;
 
             std::optional<std::string> get_locale() const;

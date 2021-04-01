@@ -94,6 +94,13 @@ namespace
                 pChatEvt->eventType() == core::chat_event_type::no_longer_stranger;
         return false;
     }
+
+#ifdef __APPLE__
+    QString getThemeForTray()
+    {
+        return MacSupport::themeTypeToString(MacSupport::currentThemeForTray());
+    }
+#endif
 }
 
 namespace Ui
@@ -169,6 +176,7 @@ namespace Ui
             {
                 clearNotifications(qsl("mail"));
             });
+            connect(&Utils::InterConnector::instance(), &Utils::InterConnector::trayIconThemeChanged, this, &TrayIcon::forceUpdateIcon);
 
             setVisible(get_gui_settings()->get_value(settings_show_in_menubar, false));
         }
@@ -253,7 +261,7 @@ namespace Ui
         if (state != u"offline")
             state = qsl("online");
 
-        const auto curTheme = MacSupport::currentTheme();
+        const auto curTheme = getThemeForTray();
         QString iconResource(ql1s(":/menubar/%1_%2%3_100").
             arg(state, curTheme, UnreadsCount_ > 0 ? ql1s("_unread") : QLatin1String())
         );
@@ -536,11 +544,12 @@ namespace Ui
 
         if (playNotification)
         {
+            const bool showWithActiveUI = get_gui_settings()->get_value<bool>(settings_notify_new_messages_with_active_ui, settings_notify_new_messages_with_active_ui_default());
 #ifndef STRIP_AV_MEDIA
 #ifdef __APPLE__
-            if (!MainWindow_->isUIActive() || MacSupport::previewIsShown())
+            if (!MainWindow_->isUIActive() || showWithActiveUI || MacSupport::previewIsShown())
 #else
-            if (!MainWindow_->isUIActive())
+            if (!MainWindow_->isUIActive() || showWithActiveUI)
 #endif //__APPLE__
                 GetSoundsManager()->playSound(SoundsManager::Sound::IncomingMessage);
 #endif // !STRIP_AV_MEDIA
@@ -726,6 +735,7 @@ namespace Ui
 
                         action = [_aimId]()
                         {
+                            Utils::InterConnector::instance().getMainWindow()->showMessengerPage();
                             if (_aimId != Logic::getContactListModel()->selectedContact())
                                 Utils::InterConnector::instance().getMainWindow()->skipRead();
 
@@ -751,7 +761,7 @@ namespace Ui
                     }
                     default:
                     {
-                        assert(false);
+                        im_assert(false);
                         return;
                     }
                 }
@@ -783,7 +793,7 @@ namespace Ui
             case AlertType::alertTypeMentionMe:
                 return qsl("mention");
             default:
-                assert(false);
+                im_assert(false);
                 return qsl("unknown");
         }
     }
@@ -829,7 +839,7 @@ namespace Ui
             alert = MentionAlert_;
             break;
         default:
-            assert(false);
+            im_assert(false);
             return;
         }
 
@@ -905,7 +915,7 @@ namespace Ui
     void TrayIcon::initEMailIcon()
     {
 #ifdef __APPLE__
-        emailIcon_ = QIcon(Utils::parse_image_name(ql1s(":/menubar/mail_%1_100")).arg(MacSupport::currentTheme()));
+        emailIcon_ = QIcon(Utils::parse_image_name(ql1s(":/menubar/mail_%1_100")).arg(getThemeForTray()));
 #else
         emailIcon_ = QIcon(qsl(":/resources/main_window/tray_email.ico"));
 #endif //__APPLE__
@@ -1038,17 +1048,19 @@ namespace Ui
 #endif
 
         const bool uiActive = isMail ? false : MainWindow_->isUIActive();
+        const bool showWithActiveUI = get_gui_settings()->get_value<bool>(settings_notify_new_messages_with_active_ui, settings_notify_new_messages_with_active_ui_default());
 
 #ifdef __APPLE__
         if (isMail)
-            return get_gui_settings()->get_value<bool>(settings_notify_new_mail_messages, true);
+            return showWithActiveUI || get_gui_settings()->get_value<bool>(settings_notify_new_mail_messages, true);
 
-        return trayCanShowMessages && (!uiActive || MacSupport::previewIsShown());
+        return trayCanShowMessages && (!uiActive || showWithActiveUI || MacSupport::previewIsShown());
 #else
-        if (platform::is_windows() && !canShowNotificationsWin())
-            return false;
+        if constexpr (platform::is_windows())
+            if (!canShowNotificationsWin())
+                return false;
 
-        return trayCanShowMessages && !uiActive;
+        return trayCanShowMessages && (!uiActive || showWithActiveUI);
 #endif
     }
 

@@ -46,7 +46,7 @@ namespace Logic
 
     Data::Friendly FriendlyContainer::getFriendly2(const QString& _aimid) const
     {
-        assert(!_aimid.isEmpty());
+        im_assert(!_aimid.isEmpty());
         Utils::ensureMainThread();
         if (const auto it = friendlyMap_.find(_aimid); it != friendlyMap_.end() && !it.value().name_.isEmpty())
             return it.value();

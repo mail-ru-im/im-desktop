@@ -41,6 +41,7 @@ namespace Ui
         void onToggleServerSearch(bool checked);
         void onToggleDevId(bool checked);
         void onToggleWatchGuiMemory(bool checked);
+        void onToggleNetCompression(bool checked);
 
     private:
         QVBoxLayout* mainLayout_ = nullptr;
@@ -58,6 +59,7 @@ namespace Ui
         Ui::SidebarCheckboxButton* devServerSearchCheckbox_ = nullptr;
         Ui::SidebarCheckboxButton* devCustomIdCheckbox_ = nullptr;
         Ui::SidebarCheckboxButton* watchGuiMemoryCheckbox_ = nullptr;
+        Ui::SidebarCheckboxButton* netCompressionCheckbox_ = nullptr;
 
         Ui::CustomButton* sendDevStatistic_ = nullptr;
 
@@ -65,5 +67,4 @@ namespace Ui
         GeneralCreator::DropperInfo cacheDialogsDropper_;
         std::unique_ptr<GeneralDialog>  mainDialog_;
     };
-
 }

@@ -91,7 +91,7 @@ namespace
         const auto makeIcon = [circle](const QString& _path, const QColor& _iconColor, const QColor& _bgColor)
         {
             const auto icon = Utils::renderSvg(_path, getIconSize() / 2, _iconColor);
-            assert(!icon.isNull());
+            im_assert(!icon.isNull());
 
             auto bg = circle(_bgColor);
             QPainter p(&bg);
@@ -248,14 +248,14 @@ namespace Ui
         , callButton_(new CallButton(this, eventInfo->getContactAimid(), isOutgoing()))
         , timeWidget_(new MessageTimeWidget(this))
     {
-        assert(EventInfo_);
-        assert(!friendlyName_.isEmpty());
+        im_assert(EventInfo_);
+        im_assert(!friendlyName_.isEmpty());
 
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
         if (!EventInfo_->isVisible())
         {
-            assert(!"invisible voip events are not allowed in history control");
+            im_assert(!"invisible voip events are not allowed in history control");
             setFixedHeight(0);
             return;
         }
@@ -399,7 +399,7 @@ namespace Ui
         if (!isOutgoing() && _value && isChat())
         {
             avatar_ = getAvatar(getContact(), friendlyName_, Utils::scale_bitmap(MessageStyle::getAvatarSize()));
-            assert(!avatar_.isNull());
+            im_assert(!avatar_.isNull());
         }
         else
         {
@@ -591,7 +591,7 @@ namespace Ui
 
     void VoipEventItem::init()
     {
-        assert(EventInfo_);
+        im_assert(EventInfo_);
         setContact(EventInfo_->getContactAimid());
 
         if (EventInfo_->hasDuration())
@@ -711,12 +711,12 @@ namespace Ui
         selectionArea = selectionArea.normalized();
 
         const auto selectionOverlap = globalWidgetRect.intersected(selectionArea);
-        assert(selectionOverlap.height() >= 0);
+        im_assert(selectionOverlap.height() >= 0);
 
         const auto widgetHeight = std::max(globalWidgetRect.height(), 1);
         const auto overlappedHeight = selectionOverlap.height();
         const auto overlapRatePercents = ((overlappedHeight * 100) / widgetHeight);
-        assert(overlapRatePercents >= 0);
+        im_assert(overlapRatePercents >= 0);
 
         const auto isSelected = (overlapRatePercents > 50);
         if (isSelected)
@@ -860,12 +860,12 @@ namespace Ui
 
     int VoipEventItem::getTextTopMargin() const
     {
-        return (text_->getLineCount() > 1 || duration_) ? Utils::scale_value(10) : Utils::scale_value(18);
+        return (text_->getLinesCount() > 1 || duration_) ? Utils::scale_value(10) : Utils::scale_value(18);
     }
 
     int VoipEventItem::getTextBottomMargin() const
     {
-        return (text_->getLineCount() > 1 || duration_) ? Utils::scale_value(16) : Utils::scale_value(20);
+        return (text_->getLinesCount() > 1 || duration_) ? Utils::scale_value(16) : Utils::scale_value(20);
     }
 
     QBrush VoipEventItem::drawBubble(QPainter& _p)
@@ -882,10 +882,10 @@ namespace Ui
                 flags |= (isOutgoing() ? Utils::RenderBubbleFlags::RightBottomSmall : Utils::RenderBubbleFlags::LeftBottomSmall);
 
             Bubble_ = Utils::renderMessageBubble(BubbleRect_, MessageStyle::getBorderRadius(), MessageStyle::getBorderRadiusSmall(), (Utils::RenderBubbleFlags)flags);
-            assert(!Bubble_.isEmpty());
+            im_assert(!Bubble_.isEmpty());
         }
 
-        assert(BubbleRect_.width() > 0);
+        im_assert(BubbleRect_.width() > 0);
 
         auto bodyBrush = Ui::MessageStyle::getBodyBrush(outgoing, getContact());
 
@@ -928,7 +928,7 @@ namespace Ui
         int i = 0;
         for (const auto& [_, avatar] : confMembers_)
         {
-            assert(!avatar.isNull());
+            im_assert(!avatar.isNull());
 
             const auto x = rMargin
                            - i * (confMemberSize() - confMemberOverlap())
@@ -983,8 +983,8 @@ namespace Ui
     {
 #ifndef STRIP_VOIP
         const auto &contactAimid = getContact();
-        assert(!contactAimid.isEmpty());
-        Ui::GetDispatcher()->getVoipController().setStartCall({ contactAimid }, EventInfo_->isVideoCall(), false, true, "ChatVideo");
+        im_assert(!contactAimid.isEmpty());
+        Ui::GetDispatcher()->getVoipController().setStartCall({ contactAimid }, EventInfo_->isVideoCall(), false);
 #endif
     }
 

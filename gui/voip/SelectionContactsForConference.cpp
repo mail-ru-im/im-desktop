@@ -33,6 +33,43 @@ namespace
     {
         return Utils::scale_value(12);
     }
+
+    QFont membersVisibilityLabelFont()
+    {
+        if constexpr (platform::is_apple())
+            return Fonts::appFontScaled(12, Fonts::FontFamily::SF_PRO_TEXT, Fonts::FontWeight::Normal);
+        else
+            return Fonts::appFontScaled(13, Fonts::FontFamily::SOURCE_SANS_PRO, Fonts::FontWeight::Normal);
+    }
+
+    QColor membersVisibilityLabelFontColor()
+    {
+        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY);
+    }
+
+    QColor membersVisibilityLabelFontColorHovered()
+    {
+        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_HOVER);
+    }
+
+    QColor membersVisibilityLabelFontColorPressed()
+    {
+        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_ACTIVE);
+    }
+
+    auto membersLabelFont()
+    {
+        if constexpr (platform::is_apple())
+            return Fonts::appFontScaled(12, Fonts::FontFamily::SF_PRO_TEXT, Fonts::FontWeight::SemiBold);
+        else
+            return Fonts::appFontScaled(13, Fonts::FontFamily::SOURCE_SANS_PRO, Fonts::FontWeight::SemiBold);
+    }
+
+    const QPixmap& crossIcon()
+    {
+        static const QPixmap cross(Utils::renderSvgScaled(qsl(":/controls/close_icon"), QSize(12, 12), QColor(u"#ffffff")));
+        return cross;
+    }
 }
 
 namespace Ui
@@ -41,33 +78,40 @@ namespace Ui
         : QWidget(_parent)
         , conferenceMembersModel_(_membersModel)
     {
-        membersLabelHost_ = new ClickableWidget(this);
-        membersLabelHost_->setContentsMargins(Utils::scale_value(16), Utils::scale_value(12), Utils::scale_value(20), Utils::scale_value(4));
+        setCursor(Qt::ArrowCursor);
+        membersLabelHost_ = new QWidget(this);
+        membersLabelHost_->setContentsMargins(Utils::scale_value(16), Utils::scale_value(12), Utils::scale_value(16), Utils::scale_value(4));
         Testing::setAccessibleName(membersLabelHost_, qsl("AS SelectionContactsForConference membersLabelHost"));
 
         memberLabel_ = new QLabel(getLabelCaption(), membersLabelHost_);
         memberLabel_->setContentsMargins(0, 0, 0, 0);
-        memberLabel_->setStyleSheet(u"color:" % Styling::getParameters().getColorHex(Styling::StyleVariable::TEXT_SOLID));
-        memberLabel_->setFont(Fonts::appFontScaled(12, Fonts::FontWeight::SemiBold));
+        memberLabel_->setStyleSheet(u"color:" % Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_PRIMARY));
+        memberLabel_->setFont(membersLabelFont());
         Testing::setAccessibleName(memberLabel_, qsl("AS SelectionContactsForConference memberLabel"));
 
-        memberArrowDown_ = new CustomButton(membersLabelHost_, qsl(":/controls/down_icon"), getArrowSize());
-        memberArrowDown_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        Testing::setAccessibleName(memberArrowDown_, qsl("AS SelectionContactsForConference memberExpand"));
-        Styling::Buttons::setButtonDefaultColors(memberArrowDown_);
+        memberShowAll_ = new CustomButton(membersLabelHost_);
+        memberShowAll_->setFont(membersVisibilityLabelFont());
+        memberShowAll_->setNormalTextColor(membersVisibilityLabelFontColor());
+        memberShowAll_->setHoveredTextColor(membersVisibilityLabelFontColorHovered());
+        memberShowAll_->setPressedTextColor(membersVisibilityLabelFontColorPressed());
+        memberShowAll_->setText(QT_TRANSLATE_NOOP("voip_pages", "SHOW ALL"));
+        memberShowAll_->setFixedWidth(QFontMetrics(membersVisibilityLabelFont()).horizontalAdvance(memberShowAll_->text()));
+        Testing::setAccessibleName(memberShowAll_, qsl("AS SelectionContactsForConference memberShowAll"));
 
-        memberArrowUp_ = new CustomButton(membersLabelHost_, qsl(":/controls/top_icon"), getArrowSize());
-        memberArrowUp_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        Testing::setAccessibleName(memberArrowUp_, qsl("AS SelectionContactsForConference memberFold"));
-        Styling::Buttons::setButtonDefaultColors(memberArrowUp_);
-        memberArrowUp_->hide();
+        memberHide_ = new CustomButton(membersLabelHost_);
+        memberHide_->setFont(membersVisibilityLabelFont());
+        memberHide_->setNormalTextColor(membersVisibilityLabelFontColor());
+        memberHide_->setHoveredTextColor(membersVisibilityLabelFontColorHovered());
+        memberHide_->setPressedTextColor(membersVisibilityLabelFontColorPressed());
+        memberHide_->setText(QT_TRANSLATE_NOOP("voip_pages", "HIDE"));
+        memberHide_->setFixedWidth(QFontMetrics(membersVisibilityLabelFont()).horizontalAdvance(memberHide_->text()));
+        Testing::setAccessibleName(memberHide_, qsl("AS SelectionContactsForConference memberHide"));
 
         auto membersLabelLayout = Utils::emptyHLayout(membersLabelHost_);
-        membersLabelLayout->addWidget(memberLabel_);
-        membersLabelLayout->addSpacing(Utils::scale_value(6));
-        membersLabelLayout->addWidget(memberArrowDown_, 0, Qt::AlignTop);
-        membersLabelLayout->addWidget(memberArrowUp_, 0, Qt::AlignTop);
+        membersLabelLayout->addWidget(memberLabel_, 0, Qt::AlignTop);
         membersLabelLayout->addStretch();
+        membersLabelLayout->addWidget(memberShowAll_, 0, Qt::AlignTop);
+        membersLabelLayout->addWidget(memberHide_, 0, Qt::AlignTop);
 
         auto clDelegate = new Logic::ContactListItemDelegate(this, Logic::MembersWidgetRegim::VIDEO_CONFERENCE, conferenceMembersModel_);
         conferenceContacts_ = CreateFocusableViewAndSetTrScrollBar(this);
@@ -78,7 +122,6 @@ namespace Ui
         conferenceContacts_->setUniformItemSizes(false);
         conferenceContacts_->setBatchSize(50);
         conferenceContacts_->setStyleSheet(qsl("background: transparent;"));
-        conferenceContacts_->setCursor(Qt::PointingHandCursor);
         conferenceContacts_->setMouseTracking(true);
         conferenceContacts_->setAcceptDrops(true);
         conferenceContacts_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -89,13 +132,14 @@ namespace Ui
         conferenceContacts_->setModel(conferenceMembersModel_);
         conferenceContacts_->setItemDelegate(clDelegate);
         conferenceContacts_->setContentsMargins(0, 0, 0, 0);
+        conferenceContacts_->setSelectByMouseHover(true);
         Testing::setAccessibleName(conferenceContacts_, qsl("AS SelectionContactsForConference conferenceContacts"));
 
-        auto othersLabel = new QLabel(_chatRoomCall ? QT_TRANSLATE_NOOP("voip_pages", "ALL GROUP MEMBERS") : QT_TRANSLATE_NOOP("voip_pages", "OTHERS"), this);
+        auto othersLabel = new QLabel(_chatRoomCall ? QT_TRANSLATE_NOOP("voip_pages", "ALL GROUP MEMBERS") : QT_TRANSLATE_NOOP("voip_pages", "CONTACTS"), this);
         othersLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
         othersLabel->setContentsMargins(Utils::scale_value(16), Utils::scale_value(12), Utils::scale_value(20), Utils::scale_value(4));
         othersLabel->setMinimumHeight(2 * Utils::scale_value(12) + Utils::scale_value(4)); //Qt ignores our Margins if zoom is 200%. This line fix this problem.
-        othersLabel->setStyleSheet(u"color:" % Styling::getParameters().getColorHex(Styling::StyleVariable::TEXT_SOLID));
+        othersLabel->setStyleSheet(u"color:" % Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_PRIMARY));
         othersLabel->setFont(Fonts::appFontScaled(12, Fonts::FontWeight::SemiBold));
         Testing::setAccessibleName(othersLabel, qsl("AS SelectionContactsForConference othersLabel"));
 
@@ -108,9 +152,8 @@ namespace Ui
 
         connect(conferenceContacts_, &FocusableListView::clicked, this, &CurrentConferenceMembers::itemClicked);
 
-        connect(membersLabelHost_, &ClickableWidget::clicked, this, &CurrentConferenceMembers::onMembersLabelClicked);
-        connect(memberArrowDown_, &CustomButton::clicked, this, &CurrentConferenceMembers::onMembersLabelClicked);
-        connect(memberArrowUp_,   &CustomButton::clicked, this, &CurrentConferenceMembers::onMembersLabelClicked);
+        connect(memberShowAll_, &CustomButton::clicked, this, &CurrentConferenceMembers::onMembersLabelClicked);
+        connect(memberHide_,   &CustomButton::clicked, this, &CurrentConferenceMembers::onMembersLabelClicked);
 
         connect(conferenceMembersModel_, &Logic::ChatMembersModel::dataChanged, this, [this](){ memberLabel_->setText(getLabelCaption()); });
         connect(conferenceContacts_, &ListViewWithTrScrollBar::mousePosChanged, this, &CurrentConferenceMembers::onMouseMoved);
@@ -159,17 +202,18 @@ namespace Ui
             conferenceContacts_->setFlow(QListView::LeftToRight);
             conferenceContacts_->setItemDelegate(new ContactListItemHorizontalDelegate(this));
 
-            memberArrowDown_->show();
-            memberArrowUp_->hide();
-        } else
+            memberShowAll_->show();
+            memberHide_->hide();
+        }
+        else
         {
             conferenceContacts_->setFlow(QListView::TopToBottom);
-            auto deleg = new Logic::ContactListItemDelegate(this, Logic::MembersWidgetRegim::VIDEO_CONFERENCE, conferenceMembersModel_);
+            auto deleg = new Logic::ContactListItemDelegate(this, Logic::MembersWidgetRegim::CURRENT_VIDEO_CONFERENCE, conferenceMembersModel_);
             deleg->setFixedWidth(conferenceContacts_->width());
             conferenceContacts_->setItemDelegate(deleg);
 
-            memberArrowDown_->hide();
-            memberArrowUp_->show();
+            memberShowAll_->hide();
+            memberHide_->show();
         }
 
         updateConferenceListSize();
@@ -186,10 +230,10 @@ namespace Ui
 
     QString CurrentConferenceMembers::getLabelCaption() const
     {
-        QString res = QT_TRANSLATE_NOOP("voip_pages", "CALL MEMBERS");
+        QString res = QT_TRANSLATE_NOOP("voip_pages", "IN CALL");
 
         const auto currentCount = conferenceMembersModel_->getMembersCount();
-        res = res % u" (" % QString::number(currentCount) % u'/' % QString::number(GetDispatcher()->getVoipController().maxVideoConferenceMembers()) % u')';
+        res = res % u": " % QString::number(currentCount);
 
         return res;
     }
@@ -359,10 +403,11 @@ namespace Ui
         bool isOfficial = false, isMuted = false, isOnline = false  ;
 
         const auto aimId = Logic::aimIdFromIndex(_index);
+        const auto isMyAimId = aimId == Ui::MyInfo()->aimId();
         if (!aimId.isEmpty())
         {
             isOfficial = Logic::GetFriendlyContainer()->getOfficial(aimId);
-            if (aimId != Ui::MyInfo()->aimId())
+            if (!isMyAimId)
                 isMuted = Logic::getContactListModel()->isMuted(aimId);
             isOnline = Logic::GetLastseenContainer()->isOnline(aimId);
         }
@@ -377,15 +422,30 @@ namespace Ui
             ::Ui::GetContactListParams().isCL());
 
         const auto contactList = ::Ui::GetContactListParams();
-        const QPoint pos(Utils::scale_value(16), contactList.getAvatarY());
+
+        const bool isHovered = _option.state & QStyle::State_MouseOver;
+
+        auto topLeft = _option.rect.topLeft();
+        topLeft.rx() -= Utils::scale_value(4);
+
+        const auto needRemoveCross = isHovered && !isMyAimId;
+        QPoint pos(Utils::scale_value(16), contactList.getAvatarY());
         {
             Utils::PainterSaver ps(*_painter);
             _painter->setRenderHints(QPainter::SmoothPixmapTransform | QPainter::Antialiasing | QPainter::TextAntialiasing);
-            auto topLeft = _option.rect.topLeft();
-            topLeft.rx() -= Utils::scale_value(4);
             _painter->translate(topLeft);
+            Utils::drawAvatarWithBadge(*_painter, pos, avatar, isOfficial, Utils::getStatusBadge(aimId, avatar.width()), isMuted, false, isOnline, true, needRemoveCross);
+        }
+        if (needRemoveCross)
+        {
+            Utils::PainterSaver ps(*_painter);
 
-            Utils::drawAvatarWithBadge(*_painter, pos, avatar, isOfficial, Utils::getStatusBadge(aimId, avatar.width()), isMuted, false, isOnline, true);
+            _painter->translate(topLeft);
+            const auto& cross = crossIcon();
+            const auto crossOffset = Utils::unscale_bitmap((avatar.width() - cross.width()) / 2);
+            pos.rx() += crossOffset;
+            pos.ry() += crossOffset;
+            _painter->drawPixmap(pos, cross);
         }
     }
 

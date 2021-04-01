@@ -149,7 +149,7 @@ namespace Ui
         connect(smilesMenu_, &Smiles::SmilesMenu::emojiSelected, this, &ContactDialog::emojiSelected);
         connect(smilesMenu_, &Smiles::SmilesMenu::scrolled, this, &ContactDialog::onSuggestHide, Qt::QueuedConnection);
 
-        assert(inputWidget_);
+        im_assert(inputWidget_);
         if (inputWidget_)
         {
             connect(smilesMenu_, &Smiles::SmilesMenu::visibilityChanged, inputWidget_, &InputWidget::onSmilesVisibilityChanged);
@@ -249,7 +249,7 @@ namespace Ui
 
     void ContactDialog::cancelSelection()
     {
-        assert(historyControlWidget_);
+        im_assert(historyControlWidget_);
         historyControlWidget_->cancelSelection();
     }
 
@@ -298,7 +298,7 @@ namespace Ui
             topWidget_->addWidget(_widget);
         }
 
-        assert(_widget == topWidgetsCache_[_aimId]);
+        im_assert(_widget == topWidgetsCache_[_aimId]);
 
         topWidget_->setCurrentWidget(topWidgetsCache_[_aimId]);
         topWidget_->show();
@@ -460,7 +460,7 @@ namespace Ui
 
     void ContactDialog::suggestedStickerSelected(const QString& _stickerId)
     {
-        assert(inputWidget_);
+        im_assert(inputWidget_);
         if (!inputWidget_)
             return;
 
@@ -729,7 +729,7 @@ namespace Ui
             areaRect.moveCenter(center);
         }
 
-        assert(inputWidget_);
+        im_assert(inputWidget_);
 
         const auto x = Utils::scale_value(52);
         const auto y = inputWidget_->pos().y() + Utils::scale_value(10);

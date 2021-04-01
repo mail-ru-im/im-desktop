@@ -55,7 +55,7 @@ std::unique_ptr<ServiceRequest> ServiceRequestsFactory::requestForUrl(const QStr
     const QString path = url.path();
     QStringRef pathRef(&path);
 
-    assert(host == url_command_service());
+    im_assert(host == url_command_service());
     if (host != url_command_service())
         return nullptr;
 
@@ -92,7 +92,7 @@ std::unique_ptr<ServiceRequest> ServiceRequestsFactory::requestForUrl(const QStr
         return std::make_unique<InternalServiceRequest>(serviceRequestId, InternalServiceRequest::CommandType::CheckForUpdate);
     }
 
-    assert(!"unknown service command");
+    im_assert(!"unknown service command");
     return nullptr;
 }
 

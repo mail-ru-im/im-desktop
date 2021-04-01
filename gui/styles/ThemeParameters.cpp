@@ -607,7 +607,7 @@ namespace Styling
     {
         void setButtonDefaultColors(Ui::CustomButton* _button)
         {
-            assert(_button);
+            im_assert(_button);
             if (_button)
             {
                 _button->setDefaultColor(defaultColor());

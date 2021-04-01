@@ -13,7 +13,6 @@
 
 const Ui::ComplexMessage::TextChunk Ui::ComplexMessage::TextChunk::Empty(Ui::ComplexMessage::TextChunk::Type::Undefined, QString(), QString(), -1);
 
-
 namespace
 {
     bool arePreviewsEnabled()
@@ -52,9 +51,18 @@ Ui::ComplexMessage::ChunkIterator::ChunkIterator(const QString &_text)
 }
 
 Ui::ComplexMessage::ChunkIterator::ChunkIterator(const QString& _text, FixedUrls&& _urls)
-    : tokenizer_(_text.toStdString()
+    : tokenizer_(_text.toStdU16String()
                , Ui::getUrlConfig().getUrlFilesParser().toStdString()
                , std::move(_urls))
+{
+}
+
+Ui::ComplexMessage::ChunkIterator::ChunkIterator(const Data::FormattedString& _text, FixedUrls&& _urls)
+    : tokenizer_(_text.string().toStdU16String()
+               , _text.formatting()
+               , Ui::getUrlConfig().getUrlFilesParser().toStdString()
+               , std::move(_urls))
+    , formattedText_(_text)
 {
 }
 
@@ -69,26 +77,50 @@ Ui::ComplexMessage::TextChunk Ui::ComplexMessage::ChunkIterator::current(bool _a
 
     if (token.type_ == common::tools::message_token::type::text)
     {
-        const auto& text = boost::get<std::string>(token.data_);
-        return TextChunk(TextChunk::Type::Text, QString::fromStdString(text), QString(), -1);
+        const auto& text = boost::get<common::tools::tokenizer_string>(token.data_);
+        auto sourceText = QString::fromStdU16String(text);
+        return TextChunk(TextChunk::Type::Text, std::move(sourceText));
+    }
+    else if (token.type_ == common::tools::message_token::type::formatted_text)
+    {
+        const auto& text = boost::get<common::tools::tokenizer_string>(token.data_);
+        auto sourceText = QString::fromStdU16String(text);
+        const auto textSize = sourceText.size();
+        im_assert(token.formatted_source_offset_ >= 0);
+        im_assert(token.formatted_source_offset_ < formattedText_.size());
+        auto view = formattedText_.mid(token.formatted_source_offset_, textSize);
+        return TextChunk(view);
     }
 
-    assert(token.type_ == common::tools::message_token::type::url);
+    im_assert(token.type_ == common::tools::message_token::type::url);
 
     const auto& url = boost::get<common::tools::url>(token.data_);
 
-    auto text = QString::fromStdString(url.original_);
+    auto linkText = QString::fromStdString(url.original_);
+    im_assert(!linkText.isEmpty());
+    auto linkTextView = decltype(formattedText_)();
 
     const auto forbidPreview = url.type_ == common::tools::url::type::site && !arePreviewsEnabled();
+    if (!formattedText_.isEmpty() && token.formatted_source_offset_ != -1)
+    {
+        const auto textSize = linkText.size();
+        im_assert(token.formatted_source_offset_ >= 0);
+        im_assert(token.formatted_source_offset_ + textSize <= formattedText_.size());
+        linkTextView = formattedText_.mid(token.formatted_source_offset_, textSize);
+        im_assert(!linkTextView.isEmpty());
+    }
 
     if (url.type_ != common::tools::url::type::filesharing &&
         url.type_ != common::tools::url::type::image &&
         url.type_ != common::tools::url::type::email &&
         url.type_ != common::tools::url::type::profile &&
-        !_allowSnipet || !isSnippetUrl(text) ||
+        !_allowSnipet || !isSnippetUrl(linkText) ||
         (forbidPreview && !_forcePreview && !isAlwaysWithPreview(url)))
     {
-        return TextChunk(TextChunk::Type::Text, std::move(text), QString(), -1);
+        if (linkTextView.isEmpty())
+            return TextChunk(TextChunk::Type::Text, std::move(linkText));
+        else
+            return TextChunk(linkTextView, TextChunk::Type::GenericLink);
     }
 
     switch (url.type_)
@@ -97,14 +129,14 @@ Ui::ComplexMessage::TextChunk Ui::ComplexMessage::ChunkIterator::current(bool _a
     case common::tools::url::type::video:
     {
         // spike for cloud.mail.ru, (temporary code)
-        if (shouldForceSnippetUrl(text))
-            return TextChunk(TextChunk::Type::GenericLink, std::move(text), QString(), -1);
+        if (shouldForceSnippetUrl(linkText))
+            return TextChunk(TextChunk::Type::GenericLink, std::move(linkText));
 
-        return TextChunk(TextChunk::Type::ImageLink, std::move(text), QString::fromLatin1(to_string(url.extension_)), -1);
+        return TextChunk(TextChunk::Type::ImageLink, std::move(linkText), QString::fromLatin1(to_string(url.extension_)), -1);
     }
     case common::tools::url::type::filesharing:
     {
-        const QString id = extractIdFromFileSharingUri(text);
+        const QString id = extractIdFromFileSharingUri(linkText);
         const auto content_type = extractContentTypeFromFileSharingId(id);
 
         auto Type = TextChunk::Type::FileSharingGeneral;
@@ -131,29 +163,34 @@ Ui::ComplexMessage::TextChunk Ui::ComplexMessage::ChunkIterator::current(bool _a
 
         const auto durationSec = extractDurationFromFileSharingId(id);
 
-        return TextChunk(Type, std::move(text), QString(), durationSec);
+        return TextChunk(Type, std::move(linkText), QString(), durationSec);
     }
     case common::tools::url::type::site:
+    {
+        if (url.has_prtocol())
         {
-            if (url.has_prtocol())
-                return TextChunk(TextChunk::Type::GenericLink, std::move(text), QString(), -1);
+            if (linkTextView.isEmpty())
+                return TextChunk(TextChunk::Type::GenericLink, std::move(linkText));
             else
-                return TextChunk(TextChunk::Type::Text, std::move(text), QString(), -1);
+                return TextChunk(linkTextView, TextChunk::Type::GenericLink);
+            }
+            else
+                return TextChunk(TextChunk::Type::Text, std::move(linkText));
         }
     case common::tools::url::type::email:
-        return TextChunk(TextChunk::Type::Text, std::move(text), QString(), -1);
+        return TextChunk(TextChunk::Type::Text, std::move(linkText));
     case common::tools::url::type::ftp:
-        return TextChunk(TextChunk::Type::GenericLink, std::move(text), QString(), -1);
+        return TextChunk(TextChunk::Type::GenericLink, std::move(linkText));
     case common::tools::url::type::icqprotocol:
-        return TextChunk(TextChunk::Type::GenericLink, std::move(text), QString(), -1);
+        return TextChunk(TextChunk::Type::GenericLink, std::move(linkText));
     case common::tools::url::type::profile:
-        return TextChunk(TextChunk::Type::ProfileLink, std::move(text), QString(), -1);
+        return TextChunk(TextChunk::Type::ProfileLink, std::move(linkText));
     default:
         break;
     }
 
-    assert(!"invalid url type");
-    return TextChunk(TextChunk::Type::Text, std::move(text), QString(), -1);
+    im_assert(!"invalid url type");
+    return TextChunk(TextChunk::Type::Text, std::move(linkText));
 }
 
 void Ui::ComplexMessage::ChunkIterator::next()
@@ -172,24 +209,46 @@ Ui::ComplexMessage::TextChunk::TextChunk(Type _type, QString _text, QString _ima
     , ImageType_(std::move(_imageType))
     , DurationSec_(_durationSec)
 {
-    assert(Type_ > Type::Min);
-    assert(Type_ < Type::Max);
-    assert((Type_ != Type::ImageLink) || !ImageType_.isEmpty());
-    assert(DurationSec_ >= -1);
+    im_assert(Type_ > Type::Min);
+    im_assert(Type_ < Type::Max);
+    im_assert((Type_ != Type::ImageLink) || !ImageType_.isEmpty());
+    im_assert(DurationSec_ >= -1);
+}
+
+Ui::ComplexMessage::TextChunk::TextChunk(const Data::FormattedStringView& _view, Type _type)
+    : TextChunk(_type, _view.string().toString(), {}, -1)
+{
+    formattedText_ = _view;
 }
 
 int32_t Ui::ComplexMessage::TextChunk::length() const
 {
-    return text_.length();
+    return getPlainText().length();
 }
 
-Ui::ComplexMessage::TextChunk Ui::ComplexMessage::TextChunk::mergeWith(const TextChunk &chunk) const
+Ui::ComplexMessage::TextChunk Ui::ComplexMessage::TextChunk::mergeWith(const TextChunk& _other) const
 {
-    if (Type_ != Type::Text && Type_ != Type::GenericLink)
+    if ((Type_ == Type::FormattedText && _other.Type_ == Type::FormattedText)
+     || (Type_ == Type::FormattedText && _other.Type_ == Type::GenericLink)
+     || (Type_ == Type::GenericLink && _other.Type_ == Type::FormattedText))
+    {
+        auto text = getText();
+        if (text.tryToAppend(_other.getText()))
+            return text;
         return TextChunk::Empty;
-
-    if (chunk.Type_ != Type::Text && chunk.Type_ != Type::GenericLink)
+    }
+    else if (Type_ != Type::Text && Type_ != Type::GenericLink)
+    {
         return TextChunk::Empty;
-
-    return TextChunk(Type::Text, text_ + chunk.text_, QString(), -1);
+    }
+    else if (_other.Type_ != Type::Text && _other.Type_ != Type::GenericLink)
+    {
+        return TextChunk::Empty;
+    }
+    else
+    {
+        auto textResult = getPlainText().toString();
+        textResult += _other.getPlainText().toString();
+        return TextChunk(Type::Text, std::move(textResult));
+    }
 }

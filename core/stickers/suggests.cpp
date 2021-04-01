@@ -82,7 +82,9 @@ bool suggests::unserialize(const rapidjson::Value& _node)
 {
     const auto parse_stickers = [this](const rapidjson::Value& _node_data, suggest_type _type)
     {
-        for (const auto& field : _node_data.GetObject())
+        const auto obj = _node_data.GetObject();
+        content_.reserve(content_.size() + obj.MemberCount());
+        for (const auto& field : obj)
         {
             if (!field.value.IsArray())
                 continue;
@@ -101,11 +103,11 @@ bool suggests::unserialize(const rapidjson::Value& _node)
     content_.clear();
     aliases_.clear();
 
-    if (const auto iter_data = _node.FindMember("emoji"); iter_data != _node.MemberEnd() && iter_data->value.IsObject())
-        parse_stickers(iter_data->value, suggest_type::suggest_emoji);
+    if (const auto it = _node.FindMember("emoji"); it != _node.MemberEnd() && it->value.IsObject())
+        parse_stickers(it->value, suggest_type::suggest_emoji);
 
-    if (const auto iter_words = _node.FindMember("words"); iter_words != _node.MemberEnd() && iter_words->value.IsObject())
-        parse_stickers(iter_words->value, suggest_type::suggest_word);
+    if (const auto it = _node.FindMember("tags"); it != _node.MemberEnd() && it->value.IsObject())
+        parse_stickers(it->value, suggest_type::suggest_word);
 
     if (const auto iter_alias = _node.FindMember("alias"); iter_alias != _node.MemberEnd() && iter_alias->value.IsObject())
     {

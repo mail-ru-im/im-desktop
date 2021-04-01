@@ -113,53 +113,12 @@ namespace Ui
         , textEdit_(_panelMain->getTextEdit())
         , panelMain_(_panelMain)
     {
-        assert(panelMain_);
-        assert(textEdit_);
+        im_assert(panelMain_);
+        im_assert(textEdit_);
 
         textEdit_->setParent(this);
         textEdit_->move(QPoint());
-
-        updateTextMargin();
-
-        auto connectToScreenDpiChanged = [this]()
-        {
-            const auto screens = QGuiApplication::screens();
-            for (const auto screen : screens)
-                connect(screen, &QScreen::logicalDotsPerInchChanged, this, &TextEditViewport::updateTextMargin, Qt::UniqueConnection);
-        };
-
-        connectToScreenDpiChanged();
-
-        connect(qApp, &QGuiApplication::screenAdded, this, connectToScreenDpiChanged);
-        connect(qApp, &QGuiApplication::primaryScreenChanged, this, &TextEditViewport::updateTextMargin);
-
-        if (auto mainWindow = Utils::InterConnector::instance().getMainWindow())
-            if (auto window = mainWindow->window())
-                connect(window->windowHandle(), &QWindow::screenChanged, this, &TextEditViewport::updateTextMargin);
-    }
-
-    void TextEditViewport::updateTextMargin()
-    {
-        qreal margin = (minHeight() - textEditMinHeight()) / 2;
-
-        if (const auto screen = Utils::mainWindowScreen())
-        {
-            if (const auto primaryScreen = QGuiApplication::primaryScreen())
-            {
-                const auto primaryScreenDpi = primaryScreen->logicalDotsPerInchY();
-                const auto localScreenDpi = screen->logicalDotsPerInchY();
-                if (primaryScreenDpi != localScreenDpi)
-                {
-                    // the margin is scaled to the local screen inside the document layout (the dpi of the primary screen is used)
-                    // when these dpi-values differ - correct the margin, this will give the margin required by design
-                    margin *= primaryScreenDpi / localScreenDpi;
-                    // remember the value to reverse convert the margin from the document
-                    textEdit_->setMarginScaleCorrection(localScreenDpi / primaryScreenDpi);
-                }
-            }
-        }
-
-        textEdit_->document()->setDocumentMargin(margin);
+        textEdit_->document()->setDocumentMargin((minHeight() - textEditMinHeight()) / 2);
     }
 
     void TextEditViewport::adjustHeight(const int _curEditHeight)
@@ -426,7 +385,7 @@ namespace Ui
 
     void InputPanelMain::setSubmitButton(SubmitButton* _button)
     {
-        assert(_button);
+        im_assert(_button);
         buttonSubmit_ = _button;
 
         setButtonsTabOrder();
@@ -633,8 +592,8 @@ namespace Ui
         QWidget* widgets[] = { buttonAttach_, textEdit_, buttonEmoji_, buttonSubmit_ };
         for (size_t i = 0; i < std::size(widgets) - 1; ++i)
         {
-            assert(widgets[i]);
-            assert(widgets[i + 1]);
+            im_assert(widgets[i]);
+            im_assert(widgets[i + 1]);
             setTabOrder(widgets[i], widgets[i + 1]);
         }
     }

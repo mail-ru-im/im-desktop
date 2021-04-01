@@ -34,6 +34,7 @@ namespace core
         class dlg_state;
         struct dlg_state_changes;
         class archive_hole;
+        enum class archive_hole_error;
         class not_sent_message;
         class pending_operations;
         class delete_message;
@@ -136,12 +137,12 @@ namespace core
 
         struct request_next_hole_handler
         {
-            using on_result_type = std::function<void(std::shared_ptr<archive_hole> _hole)>;
+            using on_result_type = std::function<void(std::shared_ptr<archive_hole> _hole, archive::archive_hole_error _error)>;
             on_result_type on_result;
 
             request_next_hole_handler()
             {
-                on_result = [](std::shared_ptr<archive_hole> _hole){};
+                on_result = [](std::shared_ptr<archive_hole> _hole, archive::archive_hole_error _error){};
             }
         };
 
@@ -321,7 +322,7 @@ namespace core
             {
                 on_result = [](bool _is_hole_requested) {};
             }
-        };  
+        };
 
         struct get_reactions_handler
         {
@@ -395,7 +396,13 @@ namespace core
             void filter_deleted(const std::string& _contact, /*in-out*/std::vector<int64_t>& _ids,/*out*/ bool& _first_load);
             history_block get_mentions(const std::string& _contact, bool& _first_load);
 
-            std::shared_ptr<archive_hole> get_next_hole(const std::string& _contact, int64_t _from, int64_t _depth = -1);
+            struct hole_result
+            {
+                std::shared_ptr<archive_hole> hole;
+                archive_hole_error error;
+            };
+
+            hole_result get_next_hole(const std::string& _contact, int64_t _from, int64_t _depth = -1);
             int64_t validate_hole_request(const std::string& _contact, const archive_hole& _hole_request, const int32_t _count);
 
             void update_history(

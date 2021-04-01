@@ -495,8 +495,10 @@
 #include "../gui.shared/TestingTools.h"
 
 #if !defined(_WIN32) && !defined(ABORT_ON_ASSERT) && defined(DEBUG)
-#define assert(condition) \
+#define im_assert(condition) \
 do { if(!(condition)){ std::cerr << "ASSERT FAILED: " << #condition << " " << __FILE__ << ":" << __LINE__ << std::endl; } } while (0)
+#else
+#define im_assert(condition) do { assert(condition); } while (0)
 #endif
 
 #ifndef STRIP_AV_MEDIA

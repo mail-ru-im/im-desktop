@@ -33,7 +33,7 @@ MessageItemMemMonitor::CategoriesArray MessageItemMemMonitor::getMessageItemsFoo
     for (auto messageItemObj: messageItemsWatcher()->allObjects())
     {
         auto messageItem = qobject_cast<Ui::ComplexMessage::ComplexMessageItem*>(messageItemObj);
-        assert(messageItem);
+        im_assert(messageItem);
         if (!messageItem)
             continue;
 
@@ -64,7 +64,7 @@ MessageItemMemMonitor::CategoriesArray MessageItemMemMonitor::getMessageItemsFoo
                     break;
                 }
 
-                assert(!"what else could it be");
+                im_assert(!"what else could it be");
             }
             case Ui::ComplexMessage::IItemBlock::ContentType::Sticker:
             {

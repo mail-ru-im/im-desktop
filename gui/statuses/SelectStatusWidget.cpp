@@ -388,13 +388,11 @@ SelectStatusWidget::SelectStatusWidget(QWidget* _parent)
     , d(std::make_unique<SelectStatusWidget_p>(this))
 {
     auto layout = Utils::emptyVLayout(this);
+    layout->setSizeConstraint(QLayout::SetMaximumSize);
 
     d->statusSelectionContent_ = new QWidget(this);
-    auto statusSelectionContentHContent = Utils::emptyHLayout(d->statusSelectionContent_);
-    const auto maxHeight = Ui::ItemLength(false, listHeightWindowHeightRatio(), 0, Utils::InterConnector::instance().getMainWindow());
-    auto statusSelectionContentVLayout = Utils::emptyVLayout();
-    statusSelectionContentHContent->addLayout(statusSelectionContentVLayout);
-    statusSelectionContentHContent->addSpacerItem(new QSpacerItem(0, maxHeight));
+    d->statusSelectionContent_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+    auto statusSelectionContentVLayout = Utils::emptyVLayout(d->statusSelectionContent_);
 
     auto label = new TextWidget(this, QT_TRANSLATE_NOOP("status_popup", "My status"));
     label->init(headerLabelFont(), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
@@ -478,7 +476,7 @@ SelectStatusWidget::SelectStatusWidget(QWidget* _parent)
     d->selectStatusLabel_->setFont(selectStatusFont());
     d->selectStatusLabel_->setNormalTextColor(selectStatusFontColor());
     d->selectStatusLabel_->setText(QT_TRANSLATE_NOOP("status_popup", "SELECT STATUS"));
-    d->selectStatusLabel_->setFixedWidth(QFontMetrics(selectStatusFont()).width(d->selectStatusLabel_->text()));
+    d->selectStatusLabel_->setFixedWidth(QFontMetrics(selectStatusFont()).horizontalAdvance(d->selectStatusLabel_->text()));
     d->selectStatusLabel_->setEnabled(false);
 
     d->searchLabel_ = new CustomButton(d->labelsWidget_);
@@ -487,7 +485,7 @@ SelectStatusWidget::SelectStatusWidget(QWidget* _parent)
     d->searchLabel_->setHoveredTextColor(searchLabelFontColorHovered());
     d->searchLabel_->setPressedTextColor(searchLabelFontColorPressed());
     d->searchLabel_->setText(QT_TRANSLATE_NOOP("status_popup", "Search"));
-    d->searchLabel_->setFixedWidth(QFontMetrics(searchLabelFont()).width(d->searchLabel_->text()));
+    d->searchLabel_->setFixedWidth(QFontMetrics(searchLabelFont()).horizontalAdvance(d->searchLabel_->text()));
     Testing::setAccessibleName(d->searchLabel_, qsl("AS SelectStatusWidget searchButton"));
 
     connect(d->searchLabel_, &CustomButton::clicked, this, &SelectStatusWidget::onSeachLabelClicked);

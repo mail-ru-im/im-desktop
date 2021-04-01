@@ -127,6 +127,7 @@ namespace voip_proxy
         void onVoipChangeWindowLayout(intptr_t hwnd, bool bTray, const std::string& layout);
         void onVoipMainVideoLayoutChanged(const voip_manager::MainVideoLayout&);
         void onVoipVideoDeviceSelected(const voip_proxy::device_desc& device);
+        void onVoipHideControlsWhenRemDesktopSharing(bool _hide);
 
     private Q_SLOTS:
         void _updateCallTime();
@@ -159,6 +160,8 @@ namespace voip_proxy
         // Map to store call termination reasons for groupcalls [reason, disconnected list]
         std::map<TermincationReasonGroup, std::vector<std::string>> disconnectedPeers_;
 
+        std::map<std::string, voip_manager::ContactEx> inCallsList_; // for better IMDESKTOP-15780 case when answer incoming from chat through join to this chat
+
         // For each device type.
         std::vector<device_desc> devices_[3];
         std::unordered_map<EvoipDevTypes, device_desc> activeDevices_;
@@ -177,6 +180,8 @@ namespace voip_proxy
 
         bool settingsLoaded_ = false;
         bool voipIsKilled_ = false; // Do we kill voip on exiting from programm.
+
+        bool hideControlsWhenRemDesktopSharing_ = false;
 
         enum UserBitmapParams
         {
@@ -219,15 +224,14 @@ namespace voip_proxy
         void setAvatars(int _size, const char* _contact, bool forPreview = false);
         void setWindowBackground(quintptr _hwnd);
 
-        bool checkPermissions(bool audio, bool video, bool *show_popup = nullptr);
-        bool setStartCall(const std::vector<QString>& _contacts, bool _video, bool _attach, bool _checkPermissions = true, const char* _where = nullptr);
+        bool checkPermissions(bool _audio, bool _video, bool _doRequest = true);
+        bool setStartCall(const std::vector<QString>& _contacts, bool _video, bool _attach);
         bool setStartChatRoomCall(const QStringView _chatId, const std::vector<QString>& _contacts, bool _video);
         bool setStartChatRoomCall(const QStringView _chatId, bool _video = false);
-        void setStartVCS(const char* _urlConference);
+        void setStartVCS(const QString &_urlConference);
         void setHangup();
         void setAcceptCall(const char* call_id, bool video);
         void setDecline(const char* call_id, const char* _contact, bool _busy, bool conference = false);
-        void updateMicrophoneButtonState(Ui::MicroIssue _issue);
 
         void setSwitchAPlaybackMute();
         void setSwitchACaptureMute();
@@ -259,6 +263,8 @@ namespace voip_proxy
         bool isLocalDesktopAllowed() const { return localDesktopAllowed_; }
         bool isAudPermissionGranted() const { return localAudPermission_; }
         bool isCamPermissionGranted() const { return localCamPermission_; }
+
+        bool isHideControlsWhenRemDesktopSharing() const { return hideControlsWhenRemDesktopSharing_; }
 
         bool isWebinar() const { return vcsWebinar_; }
         std::string getChatId() const {return chatId_; }

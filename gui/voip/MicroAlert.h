@@ -23,7 +23,6 @@ namespace Ui
     enum class MicroIssue
     {
         None,
-        Incoming,
         NoPermission,
         NotFound
     };
@@ -69,6 +68,5 @@ namespace Ui
 
 namespace Utils
 {
-    using MicroPermissionCallback = std::function<void(Ui::MicroIssue)>;
-    void checkMicroPermission(QWidget*, MicroPermissionCallback);
+    void showPermissionDialog(QWidget*);
 }

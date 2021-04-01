@@ -26,9 +26,9 @@ void DebugTextBlock::setMessageId(qint64 _id)
     id_ = _id;
 }
 
-QString DebugTextBlock::getSourceText() const
+Data::FormattedString DebugTextBlock::getSourceText() const
 {
-    return QString();
+    return {};
 }
 
 void DebugTextBlock::drawBlock(QPainter &_p, const QRect& _rect, const QColor& _quoteColor)
@@ -46,7 +46,7 @@ Data::Quote DebugTextBlock::getQuote() const
     return Data::Quote();
 }
 
-QString DebugTextBlock::getSelectedText(const bool _isFullSelect, const TextDestination) const
+Data::FormattedString DebugTextBlock::getSelectedText(const bool _isFullSelect, const TextDestination) const
 {
     return TextBlock::getSelectedText(_isFullSelect);
 }

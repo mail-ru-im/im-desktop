@@ -30,7 +30,7 @@ namespace
             QT_TRANSLATE_NOOP("settings", "vi"),
             QT_TRANSLATE_NOOP("settings", "es")
         };
-        assert(slist.size() == Utils::GetTranslator()->getLanguages().size());
+        im_assert(slist.size() == Utils::GetTranslator()->getLanguages().size());
         return slist;
     }
 
@@ -38,7 +38,7 @@ namespace
     {
         const auto& codes = Utils::GetTranslator()->getLanguages();
         const auto& strs = getLanguagesStrings();
-        assert(codes.size() == strs.size() && "Languages codes != Languages strings (1)");
+        im_assert(codes.size() == strs.size() && "Languages codes != Languages strings (1)");
         const auto it = std::find(codes.begin(), codes.end(), _code);
         if (it != codes.end())
             return strs[std::distance(codes.begin(), it)];
@@ -49,7 +49,7 @@ namespace
     {
         const auto& codes = Utils::GetTranslator()->getLanguages();
         const auto& strs = getLanguagesStrings();
-        assert(codes.size() == strs.size() && "Languages codes != Languages strings (2)");
+        im_assert(codes.size() == strs.size() && "Languages codes != Languages strings (2)");
         const auto it = std::find(strs.begin(), strs.end(), _str);
         if (it != strs.end())
             return codes[std::distance(strs.begin(), it)];

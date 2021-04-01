@@ -78,7 +78,7 @@ T* GenericBlockLayout::blockWidget() const
         "std::is_base_of<IItemBlock, T>::value");
 
     auto block = qobject_cast<T*>(parentWidget());
-    assert(block);
+    im_assert(block);
 
     return block;
 }

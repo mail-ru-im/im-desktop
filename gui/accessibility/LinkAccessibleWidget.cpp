@@ -10,7 +10,7 @@ namespace Ui::Accessibility
         QAccessibleInterface* result = nullptr;
         if (auto obj = object())
             result = QAccessible::queryAccessibleInterface(obj->parent());
-        assert(result);
+        im_assert(result);
         return result;
     }
 
@@ -28,14 +28,14 @@ namespace Ui::Accessibility
     QString AccessibleTextLink::text(QAccessible::Text t) const
     {
         auto linkObject = qobject_cast<LinkAccessibilityObject*>(object());
-        assert(linkObject);
+        im_assert(linkObject);
         return QAccessible::Text::Name == t ? u"AS TextUnit link" % QString::number(linkObject->idx_) : QString();
     }
 
     AccessibleLinkWidget::AccessibleLinkWidget(LinkAccessibleWidget* _widget)
         : QAccessibleWidget(_widget)
     {
-        assert(_widget->getTextUnit());
+        im_assert(_widget->getTextUnit());
     }
 
     int AccessibleLinkWidget::childCount() const
@@ -84,7 +84,7 @@ namespace Ui::Accessibility
         if (auto w = qobject_cast<Ui::LinkAccessibleWidget*>(object()))
             return w;
 
-        assert(false);
+        im_assert(false);
         return nullptr;
     }
 

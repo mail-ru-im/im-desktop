@@ -31,7 +31,7 @@ namespace Logic
             return QVariant();
 
         if (Testing::isAccessibleRole(_role))
-            return results_[cur]->getAccessibleName();
+            return QString(u"AS CountryList " % results_[cur]->getAccessibleName());
 
         return QVariant::fromValue(results_[cur]);
     }
@@ -226,7 +226,7 @@ namespace Logic
 
     Data::Country CountryListModel::getCountry(const QString & _name) const
     {
-        assert(!_name.isEmpty());
+        im_assert(!_name.isEmpty());
         const auto country = std::find_if(countries_.begin(), countries_.end(), [_name](const auto& c) { return c.name_ == _name; });
         if (country == countries_.end())
         {
@@ -239,7 +239,7 @@ namespace Logic
 
     Data::Country CountryListModel::getCountryByCode(const QString & _code) const
     {
-        assert(!_code.isEmpty());
+        im_assert(!_code.isEmpty());
         // CRUTCH: to avoid Kazakhstan
         if (_code == u"+7")
             return getCountry(QT_TRANSLATE_NOOP("countries", "Russia"));

@@ -7,7 +7,7 @@ namespace Utils
 
 void onGalleryMediaAction(bool _actionHappened, const std::string &_type, const QString& _aimid)
 {
-    assert(!_type.empty());
+    im_assert(!_type.empty());
     if (!_actionHappened || _type.empty())
         return;
 

@@ -178,7 +178,7 @@ namespace core
             static void fire_callback(loader_errors _error, transferred_data<T> _data, typename async_handler<T>::completion_callback_t _completion_callback)
             {
                 if (_completion_callback)
-                    g_core->execute_core_context([_error, _data = std::move(_data), _completion_callback = std::move(_completion_callback)]() { _completion_callback(_error, _data); });
+                    g_core->execute_core_context({ [_error, _data = std::move(_data), _completion_callback = std::move(_completion_callback)] () { _completion_callback(_error, _data); } });
             }
 
             void fire_chunks_callback(loader_errors _error, const std::string& _url);
@@ -213,15 +213,16 @@ namespace core
                             if (meta_info)
                             {
                                 const auto status_code = meta_info->get_status_code();
-                                if (status_code != 0)
+                                if (status_code != 0 && status_code != 20000 && status_code != 200)
                                 {
-                                    if (status_code == 1000)
+                                    const auto need_to_repeat = (status_code == 1000 || status_code == 20001);
+                                    if (need_to_repeat)
                                     {
-                                        g_core->write_string_to_network_log("download_metainfo's been delayed by the server. It's going to be repeated in 1 minute\r\n");
+                                        g_core->write_string_to_network_log("download_metainfo's been delayed by the server. It's going to be repeated\r\n");
                                         tools::system::delete_file(meta_path);
                                     }
 
-                                    fire_callback(status_code == 1000 ? loader_errors::come_back_later : loader_errors::http_client_error, transferred_data<T>(), _handler.completion_callback_);
+                                    fire_callback(need_to_repeat ? loader_errors::come_back_later : loader_errors::http_client_error, transferred_data<T>(), _handler.completion_callback_);
                                     return true;
                                 }
 

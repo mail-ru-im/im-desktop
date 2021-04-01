@@ -72,7 +72,7 @@ namespace
     QPoint mainWindowShift()
     {
         QPoint shift;
-        if (const auto mainPage = Utils::InterConnector::instance().getMainPage())
+        if (const auto mainPage = Utils::InterConnector::instance().getMessengerPage())
         {
             const auto frameCount = mainPage->getFrameCount();
             if (frameCount == FrameCountMode::_3)
@@ -973,9 +973,22 @@ void Utils::showToastOverMainWindow(const QString &_text, int _bottomOffset, int
 void Utils::showToastOverVideoWindow(const QString& _text, int _maxLineCount)
 {
 #ifndef STRIP_VOIP
-    if (auto mainPage = Utils::InterConnector::instance().getMainPage())
+    if (auto mainPage = Utils::InterConnector::instance().getMessengerPage())
+    {
         if (auto videoWindow = mainPage->getVideoWindow())
             videoWindow->showToast(_text);
+    }
+#endif
+}
+
+void Utils::hideVideoWindowToast()
+{
+#ifndef STRIP_VOIP
+    if (auto mainPage = Utils::InterConnector::instance().getMessengerPage())
+    {
+        if (auto videoWindow = mainPage->getVideoWindow())
+            videoWindow->hideToast();
+    }
 #endif
 }
 
@@ -984,8 +997,10 @@ void Utils::showToastOverContactDialog(ToastBase* _toast)
     const auto mainWindow = Utils::InterConnector::instance().getMainWindow();
     int inputHeight = 0;
     if (auto dialog = Utils::InterConnector::instance().getContactDialog())
+    {
         if (auto inputWidget = dialog->getInputWidget())
             inputHeight = inputWidget->height();
+    }
 
     _toast->setUseMainWindowShift(true);
 
@@ -1020,8 +1035,10 @@ void Utils::showCopiedToast(std::optional<std::chrono::milliseconds> _visibility
     const auto mainWindow = Utils::InterConnector::instance().getMainWindow();
     int inputHeight = 0;
     if (auto dialog = Utils::InterConnector::instance().getContactDialog())
+    {
         if (auto input = dialog->getInputWidget())
             inputHeight = input->height();
+    }
     const auto toast = new Ui::Toast(QT_TRANSLATE_NOOP("previewer", "Copied to clipboard"), mainWindow);
 
     if (_visibilityDuration.has_value())

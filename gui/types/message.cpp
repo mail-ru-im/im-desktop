@@ -24,17 +24,142 @@
 #include "../main_window/mediatype.h"
 #include "contact.h"
 
+namespace core_fmt = core::data::format;
+
 namespace
 {
     constexpr std::chrono::seconds timeDiffForIndent = std::chrono::minutes(10);
+
     bool isTimeGapBetween(const Data::MessageBuddy& _first, const Data::MessageBuddy& _second)
     {
         return std::abs(_first.GetTime() - _second.GetTime()) >= timeDiffForIndent.count();
     }
+
+    constexpr std::string_view c_format = "format";
+    constexpr std::string_view c_format_type = "type";
+    constexpr std::string_view c_format_bold = "bold";
+    constexpr std::string_view c_format_italic = "italic";
+    constexpr std::string_view c_format_underline = "underline";
+    constexpr std::string_view c_format_strikethrough = "strikethrough";
+    constexpr std::string_view c_format_link = "link";
+    constexpr std::string_view c_format_url = "url";
+    constexpr std::string_view c_format_mention = "mention";
+    constexpr std::string_view c_format_inline_code = "inline_code";
+    constexpr std::string_view c_format_pre = "pre";
+    constexpr std::string_view c_format_ordered_list = "ordered_list";
+    constexpr std::string_view c_format_unordered_list = "unordered_list";
+    constexpr std::string_view c_format_quote = "quote";
+    constexpr std::string_view c_format_offset = "offset";
+    constexpr std::string_view c_format_length = "length";
+    constexpr std::string_view c_format_data = "data";
+    constexpr std::string_view c_format_lang = "lang";
+
+    constexpr std::string_view c_coll_format = "format";
+    constexpr std::string_view c_coll_description_format = "description_format";
+
+    core::data::format::format_type read_format_type_from_string(std::string_view _name)
+    {
+        using namespace core::data::format;
+
+        if (_name == c_format_bold)
+            return format_type::bold;
+        else if (_name == c_format_italic)
+            return format_type::italic;
+        else if (_name == c_format_inline_code)
+            return format_type::inline_code;
+        else if (_name == c_format_underline)
+            return format_type::underline;
+        else if (_name == c_format_strikethrough)
+            return format_type::strikethrough;
+        else if (_name == c_format_link)
+            return format_type::link;
+        else if (_name == c_format_mention)
+            return format_type::mention;
+        else if (_name == c_format_pre)
+            return format_type::pre;
+        else if (_name == c_format_ordered_list)
+            return format_type::ordered_list;
+        else if (_name == c_format_unordered_list)
+            return format_type::unordered_list;
+        else if (_name == c_format_quote)
+            return format_type::quote;
+
+        im_assert(!"unknown format type name");
+        return format_type::none;;
+    }
+
+    core::data::format::string_formatting unserializeFormat(core::iarray* _array)
+    {
+        auto result = core_fmt::string_formatting();
+
+        for (auto i = 0; i < _array->size(); ++i)
+        {
+            auto coll = _array->get_at(i)->get_as_collection();
+            im_assert(coll);
+            if (coll)
+            {
+                core_fmt::format format;
+
+                auto v = coll->get_value(c_format_offset);
+                if (v)
+                    format.range_.offset_ = v->get_as_int();
+
+                if (v = coll->get_value(c_format_length); v)
+                    format.range_.length_ = v->get_as_int();
+
+                if (v = coll->get_value(c_format_type); v)
+                    format.type_ = static_cast<core_fmt::format_type>(v->get_as_uint());
+
+                if (coll->is_value_exist(c_format_data))
+                {
+                    if (v = coll->get_value(c_format_data); v)
+                        format.data_ = v->get_as_string();
+                }
+
+                result.add(std::move(format));
+            }
+        }
+        return result;
+    }
+
 }
 
 namespace Data
 {
+    const FormattedString FormattedStringView::emptyString;
+
+    void serializeFormat(const core::data::format::string_formatting& _format, core::coll_helper& _coll, std::string_view _name)
+    {
+        auto coll_format = core::coll_helper(_coll->create_collection(), true);
+
+        const auto& formats = _format.formats();
+        core::ifptr<core::iarray> array(_coll->create_array());
+        array->reserve(formats.size());
+        for (const auto& info : formats)
+        {
+            core::coll_helper coll_range(coll_format->create_collection(), true);
+            coll_range.set_value_as_uint(c_format_type, static_cast<uint32_t>(info.type_));
+            coll_range.set_value_as_int(c_format_offset, info.range_.offset_);
+            coll_range.set_value_as_int(c_format_length, info.range_.length_);
+            if (info.data_.has_value())
+                coll_range.set_value_as_string(c_format_data, *(info.data_));
+            core::ifptr<core::ivalue> value(coll_format->create_value());
+            value->set_as_collection(coll_range.get());
+            array->push_back(value.get());
+        }
+        _coll.set_value_as_array(_name, array.get());
+    }
+
+    QString stubFromFormattedString(const FormattedString& _string)
+    {
+        return _string.string();
+    }
+
+    void serializeFormat(const core::data::format::string_formatting& _format, core::icollection* _collection, std::string_view _name)
+    {
+        auto coll = core::coll_helper(_collection, false);
+        serializeFormat(_format, coll, _name);
+    }
 
     void SharedContactData::serialize(core::icollection *_collection) const
     {
@@ -151,7 +276,7 @@ namespace Data
 
     void MessageBuddy::ApplyModification(const MessageBuddy &modification)
     {
-        assert(modification.Id_ == Id_);
+        im_assert(modification.Id_ == Id_);
 
         EraseEventData();
 
@@ -168,7 +293,7 @@ namespace Data
         {
             const auto &chatEventInfo = *modification.GetChatEvent();
             const auto &eventText = chatEventInfo.formatEventText();
-            assert(!eventText.isEmpty());
+            im_assert(!eventText.isEmpty());
 
             SetText(eventText);
             SetChatEvent(modification.GetChatEvent());
@@ -179,7 +304,7 @@ namespace Data
             return;
         }
 
-        assert(!"unexpected modification type");
+        im_assert(!"unexpected modification type");
     }
 
     bool MessageBuddy::IsEmpty() const
@@ -205,8 +330,8 @@ namespace Data
 
     bool MessageBuddy::ContainsGif() const
     {
-        assert(Type_ > core::message_type::min);
-        assert(Type_ < core::message_type::max);
+        im_assert(Type_ > core::message_type::min);
+        im_assert(Type_ < core::message_type::max);
 
         if (FileSharing_)
             return FileSharing_->getContentType().is_gif();
@@ -216,8 +341,8 @@ namespace Data
 
     bool MessageBuddy::ContainsImage() const
     {
-        assert(Type_ > core::message_type::min);
-        assert(Type_ < core::message_type::max);
+        im_assert(Type_ > core::message_type::min);
+        im_assert(Type_ < core::message_type::max);
 
         if (FileSharing_)
             return FileSharing_->getContentType().is_image();
@@ -227,8 +352,8 @@ namespace Data
 
     bool MessageBuddy::ContainsVideo() const
     {
-        assert(Type_ > core::message_type::min);
-        assert(Type_ < core::message_type::max);
+        im_assert(Type_ > core::message_type::min);
+        im_assert(Type_ < core::message_type::max);
 
         if (FileSharing_)
             return FileSharing_->getContentType().is_video();
@@ -327,16 +452,16 @@ namespace Data
 
     bool MessageBuddy::IsBase() const
     {
-        assert(Type_ > core::message_type::min);
-        assert(Type_ < core::message_type::max);
+        im_assert(Type_ > core::message_type::min);
+        im_assert(Type_ < core::message_type::max);
 
         return (Type_ == core::message_type::base);
     }
 
     bool MessageBuddy::IsChatEvent() const
     {
-        assert(Type_ > core::message_type::min);
-        assert(Type_ < core::message_type::max);
+        im_assert(Type_ > core::message_type::min);
+        im_assert(Type_ < core::message_type::max);
 
         return (Type_ == core::message_type::chat_event);
     }
@@ -363,8 +488,8 @@ namespace Data
 
     bool MessageBuddy::IsFileSharing() const
     {
-        assert(Type_ > core::message_type::min);
-        assert(Type_ < core::message_type::max);
+        im_assert(Type_ > core::message_type::min);
+        im_assert(Type_ < core::message_type::max);
 
         return (Type_ == core::message_type::file_sharing);
     }
@@ -438,14 +563,14 @@ namespace Data
         return Sticker_;
     }
 
-    const QString& MessageBuddy::GetSourceText() const
+    const FormattedString& MessageBuddy::GetSourceText() const
     {
         return Text_;
     }
 
     QString MessageBuddy::GetText() const
     {
-        return (Sticker_ ? QT_TRANSLATE_NOOP("message", "Sticker") : Text_.trimmed());
+        return (Sticker_ ? QT_TRANSLATE_NOOP("message", "Sticker") : Text_.string().trimmed());
     }
 
     qint32 MessageBuddy::GetTime() const
@@ -455,15 +580,15 @@ namespace Data
 
     qint64 MessageBuddy::GetLastId() const
     {
-        assert(LastId_ >= -1);
+        im_assert(LastId_ >= -1);
 
         return LastId_;
     }
 
     core::message_type MessageBuddy::GetType() const
     {
-        assert(Type_ > core::message_type::min);
-        assert(Type_ < core::message_type::max);
+        im_assert(Type_ > core::message_type::min);
+        im_assert(Type_ < core::message_type::max);
 
         return Type_;
     }
@@ -516,7 +641,7 @@ namespace Data
 
     bool MessageBuddy::HasText() const
     {
-        return !Text_.isEmpty();
+        return !Text_.string().isEmpty();
     }
 
     void MessageBuddy::FillFrom(const MessageBuddy &buddy)
@@ -559,7 +684,7 @@ namespace Data
 
     void MessageBuddy::SetChatEvent(const HistoryControl::ChatEventInfoSptr& chatEvent)
     {
-        assert(!chatEvent || (!Sticker_ && !FileSharing_ && !VoipEvent_));
+        im_assert(!chatEvent || (!Sticker_ && !FileSharing_ && !VoipEvent_));
 
         ChatEvent_ = chatEvent;
     }
@@ -571,7 +696,7 @@ namespace Data
 
     void MessageBuddy::SetDate(const QDate &date)
     {
-        assert(date.isValid());
+        im_assert(date.isValid());
 
         Date_ = date;
     }
@@ -588,7 +713,7 @@ namespace Data
 
     void MessageBuddy::SetFileSharing(const HistoryControl::FileSharingInfoSptr& fileSharing)
     {
-        assert(!fileSharing || (!Sticker_ && !ChatEvent_ && !VoipEvent_));
+        im_assert(!fileSharing || (!Sticker_ && !ChatEvent_ && !VoipEvent_));
 
         FileSharing_ = fileSharing;
     }
@@ -620,14 +745,19 @@ namespace Data
 
     void MessageBuddy::SetLastId(const qint64 lastId)
     {
-        assert(lastId >= -1);
+        im_assert(lastId >= -1);
 
         LastId_ = lastId;
     }
 
-    void MessageBuddy::SetText(const QString &text)
+    //void MessageBuddy::SetText(const QString &text)
+    //{
+    //    Text_ = text;
+    //}
+
+    void MessageBuddy::SetText(const FormattedString& _text)
     {
-        Text_ = text;
+        Text_ = _text;
     }
 
     void MessageBuddy::SetTime(const qint32 time)
@@ -637,15 +767,15 @@ namespace Data
 
     void MessageBuddy::SetType(const core::message_type type)
     {
-        assert(type > core::message_type::min);
-        assert(type < core::message_type::max);
+        im_assert(type > core::message_type::min);
+        im_assert(type < core::message_type::max);
 
         Type_ = type;
     }
 
     void MessageBuddy::SetVoipEvent(const HistoryControl::VoipEventInfoSptr &voip)
     {
-        assert(!voip || (!Sticker_ && !ChatEvent_ && !FileSharing_));
+        im_assert(!voip || (!Sticker_ && !ChatEvent_ && !FileSharing_));
 
         VoipEvent_ = voip;
     }
@@ -669,12 +799,17 @@ namespace Data
 
     void MessageBuddy::SetDescription(const QString& _description)
     {
-        Desription_ = _description;
+        description_ = _description;
     }
 
-    const QString& MessageBuddy::GetDescription() const
+    void MessageBuddy::SetDescription(const FormattedString& _description)
     {
-        return Desription_;
+        description_ = _description;
+    }
+
+    const FormattedString& MessageBuddy::GetDescription() const
+    {
+        return description_;
     }
 
     void MessageBuddy::SetUrl(const QString& _url)
@@ -721,6 +856,45 @@ namespace Data
         return HideEdit_;
     }
 
+    void MessageBuddy::serialize(core::icollection* _collection) const
+    {
+        Ui::gui_coll_helper coll(_collection, false);
+
+        coll.set_value_as_qstring("message", Text_.string());
+        coll.set_value_as_qstring("description", description_.string());
+        coll.set_value_as_qstring("contact", AimId_);
+        coll.set_value_as_qstring("url", Url_);
+        coll.set_value_as_qstring("chat_sender", ChatSender_);
+
+        if (description_.hasFormatting())
+            Data::serializeFormat(description_.formatting(), coll, "description_format");
+
+        if (Id_ > 0)
+        {
+            coll.set_value_as_int64("msg_time", Time_);
+            coll.set_value_as_int64("id", Id_);
+        }
+
+        if (!InternalId_.isEmpty())
+            coll.set_value_as_qstring("internal_id", InternalId_);
+
+        if (!UpdatePatchVersion_.is_empty())
+        {
+            coll.set_value_as_string("update_patch_version", UpdatePatchVersion_.as_string());
+            coll.set_value_as_int("offline_version", UpdatePatchVersion_.get_offline_version());
+        }
+
+        serializeQuotes(coll, Quotes_);
+        serializeMentions(coll, Mentions_);
+
+        if (poll_)
+            poll_->serialize(_collection);
+        if (geo_)
+            geo_->serialize(_collection);
+        if (sharedContact_)
+            sharedContact_->serialize(_collection);
+    }
+
     void MessageBuddy::SetOutgoing(const bool isOutgoing)
     {
         Outgoing_ = isOutgoing;
@@ -728,9 +902,14 @@ namespace Data
 
     void MessageBuddy::SetSticker(const HistoryControl::StickerInfoSptr &sticker)
     {
-        assert(!sticker || (!FileSharing_ && !ChatEvent_));
+        im_assert(!sticker || (!FileSharing_ && !ChatEvent_));
 
         Sticker_ = sticker;
+    }
+
+    void MessageBuddy::SetFormatting(const core::data::format::string_formatting& _formatting)
+    {
+        Text_.setFormatting(_formatting);
     }
 
     const QString& DlgState::GetText() const
@@ -740,7 +919,7 @@ namespace Data
 
     bool DlgState::HasLastMsgId() const
     {
-        assert(LastMsgId_ >= -1);
+        im_assert(LastMsgId_ >= -1);
 
         return (LastMsgId_ > 0);
     }
@@ -790,6 +969,75 @@ namespace Data
         return res;
     }
 
+    bool FormattedString::operator!=(const FormattedString& _other)
+    {
+        // TODO-FORMAT-IMPLEMENT
+        return stubFromFormattedString(*this) != stubFromFormattedString(_other);
+    }
+
+    void FormattedString::chop(int _n)
+    {
+        _n = qBound(0, _n, string_.size());
+
+        const auto maxLength = string_.size() - _n;
+        for (auto& ft : format_.formats())
+        {
+            const auto numExcessing = std::max(0, ft.range_.offset_ + ft.range_.length_ - maxLength);
+            ft.range_.length_ -= numExcessing;
+        }
+        string_.chop(_n);
+    }
+
+    FormattedString& FormattedString::operator+=(const FormattedString& _other)
+    {
+        namespace fmt = core::data::format;
+
+        auto& fsThis = format_.formats();
+        const auto& fsOther = _other.formatting().formats();
+
+        for (auto newOne : fsOther)
+        {
+            newOne.range_.offset_ += string_.size();
+            auto didExtendExistingRange = false;
+            for (auto& oldOne : fsThis)
+            {
+                if (oldOne.type_ == newOne.type_)
+                {
+                    auto& r = oldOne.range_;
+                    if (r.offset_ + r.length_ == newOne.range_.offset_)
+                    {
+                        r.length_ += newOne.range_.length_;
+                        didExtendExistingRange = true;
+                        break;
+                    }
+                }
+            }
+            if (!didExtendExistingRange)
+                fsThis.push_back(newOne);
+        }
+
+        string_ += _other.string();
+
+        return *this;
+    }
+
+    FormattedString& FormattedString::operator+=(const FormattedStringView& _other)
+    {
+        *this += _other.toFormattedString();
+        return *this;
+    }
+
+    void FormattedString::setFormatting(const core::data::format::string_formatting& _formatting)
+    {
+        format_ = _formatting;
+        fixInvalidRanges();
+    }
+
+    void FormattedString::fixInvalidRanges()
+    {
+        format_.fix_invalid_ranges(string_.size());
+    }
+
     void serializeMentions(core::coll_helper& _collection, const Data::MentionMap& _mentions)
     {
         if (!_mentions.empty())
@@ -832,7 +1080,7 @@ namespace Data
 
     MessagesResult UnserializeMessageBuddies(core::coll_helper* helper, const QString &myAimid)
     {
-        assert(!myAimid.isEmpty());
+        im_assert(!myAimid.isEmpty());
 
         bool havePending = false;
         QString aimId = QString::fromUtf8(helper->get_value_as_string("contact"));
@@ -943,7 +1191,7 @@ namespace Data
         if (_msgColl->is_value_exist("unsupported") && _msgColl.get_value_as_bool("unsupported"))
         {
             const auto url = Features::updateAppUrl();
-            auto text = QT_TRANSLATE_NOOP("message", "The message is not supported on your version of ICQ. Update the app to see the message");
+            auto text = QT_TRANSLATE_NOOP("message", "The message is not supported on your version. Update the app to see the message");
             message->SetText(url.isEmpty() ? text : text % QChar::Space % url);
             message->SetUrl(QString());
             message->SetDescription(QString());
@@ -979,7 +1227,7 @@ namespace Data
 
         if (_msgColl.is_value_exist("chat_event"))
         {
-            assert(!message->IsChatEvent());
+            im_assert(!message->IsChatEvent());
 
             core::coll_helper chat_event(_msgColl.get_value_as_collection("chat_event"), false);
 
@@ -1023,7 +1271,22 @@ namespace Data
                     const auto friendly = Logic::GetFriendlyContainer()->getFriendly(currentAimId);
                     message->Mentions_.emplace(std::move(currentAimId), friendly);
                 }
+
             }
+        }
+
+        if (_msgColl->is_value_exist(c_coll_format) && !message->GetText().isEmpty())
+        {
+            auto iarray = _msgColl.get_value_as_array(c_coll_format);
+            if (auto formatting = unserializeFormat(iarray); !formatting.empty())
+                message->SetFormatting(formatting);
+        }
+
+        if (_msgColl->is_value_exist(c_coll_description_format) && !message->GetDescription().isEmpty())
+        {
+            auto iarray = _msgColl.get_value_as_array(c_coll_description_format);
+            if (auto formatting = unserializeFormat(iarray); !formatting.empty())
+                message->SetDescriptionFormat(formatting);
         }
 
         if (_msgColl->is_value_exist("snippets"))
@@ -1231,7 +1494,7 @@ namespace Data
     void Quote::serialize(core::icollection* _collection) const
     {
         Ui::gui_coll_helper coll(_collection, false);
-        coll.set_value_as_qstring("text", text_);
+        coll.set_value_as_qstring("text", text_.string());
         coll.set_value_as_qstring("sender", senderId_);
         coll.set_value_as_qstring("chatId", chatId_);
         coll.set_value_as_qstring("senderFriendly", senderFriendly_);
@@ -1243,7 +1506,7 @@ namespace Data
         coll.set_value_as_qstring("stamp", chatStamp_);
         coll.set_value_as_qstring("chatName", chatName_);
         coll.set_value_as_qstring("url", url_);
-        coll.set_value_as_qstring("description", description_);
+        coll.set_value_as_qstring("description", description_.string());
 
         if (sharedContact_)
             sharedContact_->serialize(_collection);
@@ -1253,6 +1516,12 @@ namespace Data
 
         if (poll_)
             poll_->serialize(_collection);
+
+        if (text_.hasFormatting())
+            serializeFormat(text_.formatting(), _collection, c_coll_format);
+
+        if (description_.hasFormatting())
+            serializeFormat(description_.formatting(), _collection, c_coll_description_format);
     }
 
     void Quote::unserialize(core::icollection* _collection)
@@ -1329,6 +1598,12 @@ namespace Data
             poll.unserialize(poll_coll);
             poll_ = std::move(poll);
         }
+
+        if (coll.is_value_exist(c_coll_format))
+            text_.setFormatting(unserializeFormat(coll.get_value_as_array(c_coll_format)));
+
+        if (coll.is_value_exist(c_coll_description_format))
+            description_.setFormatting(unserializeFormat(coll.get_value_as_array(c_coll_description_format)));
     }
 
     void UrlSnippet::unserialize(core::icollection * _collection)
@@ -1373,9 +1648,9 @@ namespace Data
         const qint64 _theirs_last_read,
         Out Data::MessageBuddies &messages)
     {
-        assert(!_aimId.isEmpty());
-        assert(!_myAimid.isEmpty());
-        assert(_msgArray);
+        im_assert(!_aimId.isEmpty());
+        im_assert(!_myAimid.isEmpty());
+        im_assert(_msgArray);
 
         __TRACE(
             "delivery",
@@ -1462,7 +1737,7 @@ namespace Data
         }
     }
 
-    QString CallInfo::getFriendly(bool _withNumbers) const
+    QString CallInfo::getFriendly() const
     {
         QString result;
 
@@ -1473,9 +1748,6 @@ namespace Data
         }
 
         result = result.mid(0, result.size() - 2);
-
-        if (count_ > 1 && _withNumbers)
-            result += qsl(" (%1)").arg(count_);
 
         return result;
     }
@@ -1524,6 +1796,11 @@ namespace Data
             return -1;
 
         return Messages_.begin()->get()->Time_;
+    }
+
+    int CallInfo::count() const
+    {
+        return count_;
     }
 
     bool CallInfo::isSingleItem() const
@@ -1592,5 +1869,152 @@ namespace Data
         }
 
         return result;
+    }
+
+    FormattedStringView::FormattedStringView(const FormattedString& _string, int _offset, int _size)
+        : string_(&_string)
+        , offset_(std::max(0, _offset))
+        , size_(_size)
+    {
+        im_assert(_offset >= 0);
+        im_assert(_size >= 0);
+
+        if (auto spaceLeft = string_->size() - _offset; spaceLeft < size_)
+            size_ = spaceLeft;
+    }
+
+    QStringView FormattedStringView::string() const
+    {
+        const auto fullView = QStringView(string_->string());
+        if (offset_ + size_ <= fullView.size())
+            return fullView.mid(offset_, size_);
+        return {};
+    }
+
+    bool FormattedStringView::hasFormatting() const
+    {
+        if (!string_->hasFormatting())
+            return false;
+
+        for (const auto& format : string_->formatting().formats())
+        {
+            if (cutRangeToFitView(format.range_).length_ > 0)
+                return true;
+        }
+        return false;
+    }
+
+    FormattedStringView FormattedStringView::trimmed() const
+    {
+        const auto str = string();
+
+        auto start = 0;
+        for (; start < str.size(); ++start)
+        {
+            if (!str.at(start).isSpace())
+                break;
+        }
+
+        auto last = size() - 1;
+        for (; last > start; --last)
+        {
+            if (!str.at(last).isSpace())
+                break;
+        }
+
+        const auto result = mid(start, last - start + 1);
+        im_assert(!result.string().startsWith(u' '));
+        im_assert(!result.string().endsWith(u' '));
+        return result;
+    }
+
+    std::vector<core_fmt::format> Data::FormattedStringView::getStyles() const
+    {
+        auto result = std::vector<core_fmt::format>();
+        for (const auto& info : string_->formatting().formats())
+        {
+            if (core_fmt::is_style(info.type_))
+            {
+                if (const auto range = cutRangeToFitView(info.range_); range.length_ > 0)
+                    result.emplace_back(info.type_, range, info.data_);
+            }
+        }
+        return result;
+    }
+
+    bool FormattedStringView::tryToAppend(const FormattedStringView& _other)
+    {
+        if (isEmpty())
+        {
+            *this = _other;
+            return true;
+        }
+
+        if (_other.isEmpty())
+            return true;
+
+        im_assert(_other.string_ == string_);
+        if (_other.string_ != string_)
+            return false;
+
+        if (const auto thisEnd = offset_ + size_; thisEnd == _other.offset_)
+        {
+            size_ += _other.size_;
+            return true;
+        }
+
+        return false;
+    }
+
+    bool FormattedStringView::tryToAppend(QChar _ch)
+    {
+        if (!string_
+            || (string_->size() < offset_ + size_ + 1)
+            || (string_->string().at(offset_ + size_) != _ch))
+        {
+            return false;
+        }
+
+        size_ += 1;
+        return true;
+    }
+
+    bool FormattedStringView::tryToAppend(QStringView _text)
+    {
+        if (!string_
+            || (string_->size() < offset_ + size_ + _text.size())
+            || (string_->string().midRef(offset_ + size_, _text.size()) != _text))
+        {
+            return false;
+        }
+
+        size_ += _text.size();
+        return true;
+    }
+
+    FormattedString FormattedStringView::toFormattedString() const
+    {
+        auto newFormat = core_fmt::string_formatting();
+
+        for (const auto& info : string_->formatting().formats())
+        {
+            if (const auto range = cutRangeToFitView(info.range_); range.length_ > 0)
+                newFormat.add({ info.type_, range, info.data_});
+        }
+
+        auto result = FormattedString(string().toString());
+        result.setFormatting(newFormat);
+        return result;
+    }
+
+    core_fmt::format_range FormattedStringView::cutRangeToFitView(core_fmt::format_range _range) const
+    {
+        im_assert(_range.offset_ >= 0);
+        im_assert(_range.length_ >= 0);
+        const auto left = std::max(offset_, _range.offset_);
+        const auto right = std::min(offset_ + size_, _range.offset_ + _range.length_);
+        _range.offset_ = left - offset_;
+        _range.length_ = std::max(0, right - left);
+        return _range;
     }
 }

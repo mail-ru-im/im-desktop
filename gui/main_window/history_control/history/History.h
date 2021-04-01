@@ -59,8 +59,8 @@ namespace hist
     class SimpleRecursiveLock
     {
     public:
-        void lock() noexcept { assert(counter >= 0); ++counter; }
-        void unlock() noexcept { --counter; assert(counter >= 0); }
+        void lock() noexcept { im_assert(counter >= 0); ++counter; }
+        void unlock() noexcept { --counter; im_assert(counter >= 0); }
         bool isLocked() const noexcept { return counter > 0; }
 
         SimpleRecursiveLock() = default;
@@ -312,7 +312,7 @@ namespace hist
 
             bool isEmpty() const noexcept { return !top && !bottom; }
 
-            void checkInvarinat() const { assert(top <= bottom && topPending <= bottomPending); }
+            void checkInvarinat() const { im_assert(top <= bottom && topPending <= bottomPending); }
 
             bool inBounds(qint64 _id) const noexcept { return !isEmpty() && _id <= *bottom && _id >= *top; }
             bool inBounds(const Logic::MessageKey& _key) const noexcept { return hasPendings() && *bottomPending <= _key && *topPending <= _key; }

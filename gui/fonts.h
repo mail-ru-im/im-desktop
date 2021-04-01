@@ -14,6 +14,7 @@ FONTS_NS_BEGIN
         ROUNDED_MPLUS,
         ROBOTO_MONO,
         SF_PRO_TEXT,
+        SF_MONO,
 
         MAX,
     };

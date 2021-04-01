@@ -14,7 +14,7 @@ namespace Ui
         class TextUnit;
     }
 
-    class BaseFileItem
+    class BaseFileItem : public SidebarListItem
     {
     public:
         virtual ~BaseFileItem() = default;
@@ -28,6 +28,7 @@ namespace Ui
         virtual qint64 getMsg() const { return 0; }
         virtual qint64 getSeq() const { return 0; }
         virtual QString getLink() const { return QString(); }
+        virtual QString getFilename() const { return QString(); }
         virtual QString sender() const { return QString(); }
         virtual time_t time() const { return 0; }
         virtual qint64 size() const { return 0; }
@@ -40,6 +41,7 @@ namespace Ui
         virtual bool isOverControl(const QPoint& _pos) { return false; }
         virtual bool isOverLink(const QPoint& _pos, const QPoint& _pos2) { return false; }
         virtual bool isOverIcon(const QPoint & _pos) { return false; }
+        virtual bool isOverFilename(const QPoint & _pos) const { return false; }
 
         virtual void setDownloading(bool _downloading) {}
         virtual bool isDownloading() const { return false; }
@@ -56,6 +58,9 @@ namespace Ui
         virtual ButtonState moreButtonState() const { return ButtonState::NORMAL; }
 
         virtual bool isDateItem() const { return false; }
+
+        virtual bool needsTooltip() const { return false; }
+        virtual QRect getTooltipRect() const { return QRect(); }
     };
 
     class DateFileItem : public BaseFileItem
@@ -93,6 +98,7 @@ namespace Ui
         qint64 getMsg() const override;
         qint64 getSeq() const override;
         QString getLink() const override;
+        QString getFilename() const override;
         QString sender() const override;
         time_t time() const override;
         qint64 size() const override;
@@ -105,6 +111,7 @@ namespace Ui
         bool isOverControl(const QPoint& _pos) override;
         bool isOverLink(const QPoint& _pos, const QPoint& _pos2) override;
         bool isOverIcon(const QPoint & _pos) override;
+        bool isOverFilename(const QPoint& _pos) const override;
 
         void setDownloading(bool _downloading) override;
         bool isDownloading() const override;
@@ -121,6 +128,9 @@ namespace Ui
         ButtonState moreButtonState() const override;
 
         bool isDateItem() const override { return false; }
+
+        virtual bool needsTooltip() const override;
+        virtual QRect getTooltipRect() const override;
 
     private:
         QString link_;
@@ -160,6 +170,7 @@ namespace Ui
         void initFor(const QString& _aimId) override;
         void processItems(const QVector<Data::DialogGalleryEntry>& _entries) override;
         void processUpdates(const QVector<Data::DialogGalleryEntry>& _entries) override;
+        void scrolled() override;
 
     protected:
         void paintEvent(QPaintEvent*) override;
@@ -178,6 +189,7 @@ namespace Ui
 
     private:
         void validateDates();
+        void updateTooltip(const std::unique_ptr<BaseFileItem>& _item, const QPoint& _p);
 
         void startDataTransferTimeoutTimer(qint64 _seq);
         void stopDataTransferTimeoutTimer(qint64 _seq);

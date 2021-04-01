@@ -6,14 +6,14 @@ UTILS_EXIF_NS_BEGIN
 
 void applyExifOrientation(const ExifOrientation orientation, InOut QPixmap &pixmap)
 {
-    assert(!pixmap.isNull());
+    im_assert(!pixmap.isNull());
 
     const auto isOrientationValid = (
         (orientation > ExifOrientation::Min) &&
         (orientation < ExifOrientation::Max));
     if (!isOrientationValid)
     {
-        assert(!"invalid orientation value");
+        im_assert(!"invalid orientation value");
         return;
     }
 
@@ -57,7 +57,7 @@ void applyExifOrientation(const ExifOrientation orientation, InOut QPixmap &pixm
             break;
 
         default:
-            assert(!"IP is not expected to be here");
+            im_assert(!"IP is not expected to be here");
             return;
     }
 

@@ -131,7 +131,7 @@ namespace Ui
 
     void ServiceMessageItem::drawOverlay(QPainter& _p)
     {
-        assert(false);
+        im_assert(false);
     }
 
     QFont ServiceMessageItem::getFont()
@@ -144,7 +144,7 @@ namespace Ui
 
     QColor ServiceMessageItem::getColor()
     {
-        assert(!getContact().isEmpty());
+        im_assert(!getContact().isEmpty());
 
         switch (type_)
         {
@@ -159,7 +159,7 @@ namespace Ui
             break;
         }
 
-        assert(!"invalid type!");
+        im_assert(!"invalid type!");
         return QColor();
     }
 
@@ -200,7 +200,7 @@ namespace Ui
 
         if (!messageUnit_)
         {
-            assert(!_message.isEmpty());
+            im_assert(!_message.isEmpty());
 
             messageUnit_ = TextRendering::MakeTextUnit(_message);
             messageUnit_->init(getFont(), getColor());

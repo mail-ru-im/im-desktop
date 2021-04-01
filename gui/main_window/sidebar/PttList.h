@@ -11,7 +11,7 @@ namespace Ui
         class TextUnit;
     }
 
-    class BasePttItem
+    class BasePttItem : public SidebarListItem
     {
     public:
         virtual ~BasePttItem() = default;
@@ -40,9 +40,9 @@ namespace Ui
         virtual void toggleTextVisible() {}
         virtual void setText(const QString& _text) {}
 
-        virtual bool playClicked(const QPoint&) const { return false; }
-        virtual bool pauseClicked(const QPoint&) const { return false; }
-        virtual bool textClicked(const QPoint&) const { return false; }
+        virtual bool isOverPlay(const QPoint&) const { return false; }
+        virtual bool isOverPause(const QPoint&) const { return false; }
+        virtual bool isOverTextButton(const QPoint&) const { return false; }
 
         virtual void setPlayState(const ButtonState& _state) {}
         virtual ButtonState playState() const { return ButtonState::NORMAL; }
@@ -121,9 +121,9 @@ namespace Ui
         virtual void toggleTextVisible() override;
         virtual void setText(const QString& _text) override;
 
-        virtual bool playClicked(const QPoint&) const override;
-        virtual bool pauseClicked(const QPoint&) const override;
-        virtual bool textClicked(const QPoint&) const override;
+        virtual bool isOverPlay(const QPoint&) const override;
+        virtual bool isOverPause(const QPoint&) const override;
+        virtual bool isOverTextButton(const QPoint&) const override;
 
         virtual void setPlayState(const ButtonState& _state) override;
         virtual ButtonState playState() const override;

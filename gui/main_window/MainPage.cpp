@@ -49,6 +49,7 @@
 #include "../controls/GeneralDialog.h"
 #include "../utils/InterConnector.h"
 #include "../utils/utils.h"
+#include "../utils/features.h"
 #include "../utils/log/log.h"
 #include "../utils/gui_metrics.h"
 #ifndef STRIP_VOIP
@@ -116,9 +117,9 @@ namespace
         return Utils::scale_value(660);
     }
 
-    int getFrame3MinWith() noexcept
+    int getFrame3MinWith()
     {
-        return Utils::scale_value(990);
+        return getFrame2MinWith() + Ui::Sidebar::getDefaultWidth();
     }
 
     QSize expandButtonSize() noexcept
@@ -189,12 +190,17 @@ namespace Ui
     std::unique_ptr<MainPage> MainPage::_instance;
     MainPage* MainPage::instance(QWidget* _parent)
     {
-        assert(_instance || _parent);
+        im_assert(_instance || _parent);
 
         if (!_instance)
             _instance.reset(new MainPage(_parent));
 
         return _instance.get();
+    }
+
+    bool MainPage::hasInstance()
+    {
+        return !!_instance;
     }
 
     void MainPage::reset()
@@ -232,16 +238,13 @@ namespace Ui
         , updaterButton_(nullptr)
         , NeedShowUnknownsHeader_(false)
         , currentTab_(RECENTS)
-        , isManualRecentsMiniMode_(get_gui_settings()->get_value(settings_recents_mini_mode, false))
+        , isManualRecentsMiniMode_(get_gui_settings()->get_value(settings_recents_mini_mode, false) && !Features::isAppsNavigationBarVisible())
         , frameCountMode_(FrameCountMode::_1)
         , oneFrameMode_(OneFrameMode::Tab)
         , prevOneFrameMode_(OneFrameMode::Tab)
         , moreMenu_(nullptr)
         , callsTabButton_(nullptr)
         , callLinkCreator_(nullptr)
-#ifndef STRIP_VOIP
-        , microIssue_(MicroIssue::None)
-#endif
     {
         if (isManualRecentsMiniMode_)
             leftPanelState_ = LeftPanelState::picture_only;
@@ -256,7 +259,7 @@ namespace Ui
 
         semiWindow_->setCloseWindowInfo({ Utils::CloseWindowInfo::Initiator::Unknown, Utils::CloseWindowInfo::Reason::Keep_Sidebar });
 
-        horizontalLayout_ = Utils::emptyHLayout(this);
+        auto horizontalLayout = Utils::emptyHLayout(this);
 
         contactsWidget_ = new QWidget();
 
@@ -435,20 +438,23 @@ namespace Ui
             clContainer_->setFixedWidth(getRecentMiniModeWidth());
         }
 
+        if (!Features::isTabBarVisible())
+            tabWidget_->hideTabbar();
+
         splitter_->setChildrenCollapsible(false);
 
         QObject::connect(splitter_, &Splitter::moved, this, [this, recentIdx = splitter_->count()](int desiredPos, int resultPos, int index)
         {
             if (index == recentIdx)
             {
-                if (desiredPos < getRecentMiniModeWidth() * 2)
+                if ((desiredPos < getRecentMiniModeWidth() * 2) && !Features::isAppsNavigationBarVisible())
                 {
                     isManualRecentsMiniMode_ = true;
                     setLeftPanelState(LeftPanelState::picture_only, false);
                     for_each([width = getRecentMiniModeWidth()](auto w) { w->setFixedWidth(width); }, /*topWidget_,*/ clContainer_);
                 }
                 else if ((width() > getFrame2MinWith() && !sidebar_->isVisible())
-                    || (width() > (getFrame2MinWith() + Sidebar::getDefaultWidth()) && sidebar_->isVisible()))
+                    || (width() > getFrame3MinWith() && sidebar_->isVisible()))
                 {
                     isManualRecentsMiniMode_ = false;
 
@@ -457,7 +463,8 @@ namespace Ui
                     for_each([width = getRecentsMinWidth()](auto w) { w->setMinimumWidth(width); }, /*topWidget_,*/ clContainer_);
                 }
             }
-            saveSplitterState();
+            // save after splitter internally updates state
+            QTimer::singleShot(0, this, &MainPage::saveSplitterState);
         });
 
         pagesLayout_->setContentsMargins(0, 0, 0, 0);
@@ -476,7 +483,7 @@ namespace Ui
         updateSplitterStretchFactors();
 
         Testing::setAccessibleName(splitter_, qsl("AS MainWindow splitView"));
-        horizontalLayout_->addWidget(splitter_);
+        horizontalLayout->addWidget(splitter_);
 
         setFocus();
 
@@ -670,10 +677,10 @@ namespace Ui
     void MainPage::switchToSidebarFrame()
     {
         setOneFrameMode(OneFrameMode::Sidebar);
-        insertSidebarToSplitter();
-        sidebar_->show();
         pagesContainer_->hide();
         clContainer_->hide();
+        insertSidebarToSplitter();
+        sidebar_->show();
         Q_EMIT Utils::InterConnector::instance().currentPageChanged();
         Q_EMIT Utils::InterConnector::instance().stopPttRecord();
     }
@@ -696,7 +703,7 @@ namespace Ui
             {
                 if (dialogIdLoader_.botParams_)
                 {
-                    assert(_info.isBot_);
+                    im_assert(_info.isBot_);
                     if (_info.isBot_)
                     {
                         Logic::GetLastseenContainer()->setContactBot(_info.sn_);
@@ -845,7 +852,7 @@ namespace Ui
 
     void MainPage::openDialogOrProfileById(const QString& _id, bool _forceDialogOpen, std::optional<QString> _botParams)
     {
-        assert(!_id.isEmpty());
+        im_assert(!_id.isEmpty());
 
         if (fastDropSearchEnabled())
             Q_EMIT Utils::InterConnector::instance().searchEnd();
@@ -879,19 +886,50 @@ namespace Ui
         }
     }
 
-    void MainPage::showAddMembersFailuresPopup(QString _chatAimId, std::map<core::add_member_failure, std::vector<QString>> _failures)
+    void MainPage::showChatMembersFailuresPopup(Utils::ChatMembersOperation _operation, QString _chatAimId, std::map<core::chat_member_failure, std::vector<QString>> _failures)
     {
         if (_failures.empty())
             return;
 
         const auto isChannel = Logic::getContactListModel()->isChannel(_chatAimId);
+
+        const auto federationError =
+            _operation == Utils::ChatMembersOperation::Remove
+            ? QT_TRANSLATE_NOOP("popup_window", "Error removing federation user")
+            : _operation == Utils::ChatMembersOperation::Block
+            ? QT_TRANSLATE_NOOP("popup_window", "Error blocking federation user")
+            : _operation == Utils::ChatMembersOperation::Unblock
+            ? QT_TRANSLATE_NOOP("popup_window", "Error unblocking federation user")
+            : QString();
+
+        auto correctFederationUserName = [](QStringView _user) -> QString
+        {
+            // i.ivanov@example.com#remote_federation -> i.ivanov@example.com (remote_federation)
+            const auto pos = _user.indexOf(u'#');
+            if (pos == -1)
+                return _user.toString();
+            return _user.mid(0, pos) % u" (" % _user.mid(pos + 1) % u')';
+        };
+
         if (_failures.size() == 1 && _failures.begin()->second.size() == 1)
         {
             const auto& [type, contacts] = *_failures.begin();
-            const auto friendly = Logic::GetFriendlyContainer()->getFriendly(contacts.front());
-            const auto cannotAdd = QT_TRANSLATE_NOOP("popup_window", "Cannot add %1").arg(friendly);
+            const auto friendly = correctFederationUserName(Logic::GetFriendlyContainer()->getFriendly(contacts.front()));
+            const auto cannotOperation =
+                _operation == Utils::ChatMembersOperation::Add
+                ? QT_TRANSLATE_NOOP("popup_window", "Cannot add %1").arg(friendly)
+                : _operation == Utils::ChatMembersOperation::Remove
+                ? QT_TRANSLATE_NOOP("popup_window", "Cannot remove %1").arg(friendly)
+                : _operation == Utils::ChatMembersOperation::Block
+                ? QT_TRANSLATE_NOOP("popup_window", "Cannot block %1").arg(friendly)
+                : _operation == Utils::ChatMembersOperation::Unblock
+                ? QT_TRANSLATE_NOOP("popup_window", "Cannot unblock %1").arg(friendly)
+                : QString();
 
-            if (type == core::add_member_failure::user_waiting_for_approve)
+            if (cannotOperation.isEmpty())
+                return;
+
+            if (type == core::chat_member_failure::user_waiting_for_approve)
             {
                 Utils::GetConfirmationWithOneButton(
                     QT_TRANSLATE_NOOP("popup_window", "OK"),
@@ -899,10 +937,10 @@ namespace Ui
                     QT_TRANSLATE_NOOP("popup_window", "Request for %1 was sent").arg(friendly),
                     nullptr);
             }
-            else if (type == core::add_member_failure::user_must_join_by_link)
+            else if (type == core::chat_member_failure::user_must_join_by_link)
             {
                 const auto stamp = Logic::getContactListModel()->getChatStamp(_chatAimId);
-                assert(!stamp.isEmpty());
+                im_assert(!stamp.isEmpty());
 
                 const auto link = stamp.isEmpty() ? QString() : QString(u"https://" % Utils::getDomainUrl() % u'/' % stamp);
                 const auto text = isChannel
@@ -913,7 +951,7 @@ namespace Ui
                     QT_TRANSLATE_NOOP("popup_window", "Cancel"),
                     QT_TRANSLATE_NOOP("popup_window", "Send"),
                     text,
-                    cannotAdd,
+                    cannotOperation,
                     nullptr);
 
                 if (confirmed)
@@ -925,7 +963,7 @@ namespace Ui
                     Utils::openDialogWithContact(contacts.front());
                 }
             }
-            else if (type == core::add_member_failure::user_blocked_confirmation_required)
+            else if (type == core::chat_member_failure::user_blocked_confirmation_required)
             {
                 const auto title = QT_TRANSLATE_NOOP("popup_window", "Add %1?").arg(friendly);
                 const auto text = isChannel
@@ -942,7 +980,7 @@ namespace Ui
                 if (confirmed)
                     postAddChatMembersToCore(_chatAimId, contacts, true);
             }
-            else if (type == core::add_member_failure::user_must_be_added_by_admin)
+            else if (type == core::chat_member_failure::user_must_be_added_by_admin)
             {
                 const auto text = isChannel
                     ? QT_TRANSLATE_NOOP("popup_window", "You cannot add this contact to channel, please ask admin to do that")
@@ -951,31 +989,79 @@ namespace Ui
                 Utils::GetConfirmationWithOneButton(
                     QT_TRANSLATE_NOOP("popup_window", "OK"),
                     text,
-                    cannotAdd,
+                    cannotOperation,
                     nullptr);
             }
-            else if (type == core::add_member_failure::user_captcha)
+            else if (type == core::chat_member_failure::user_captcha)
             {
                 Utils::GetConfirmationWithOneButton(
                     QT_TRANSLATE_NOOP("popup_window", "OK"),
                     QT_TRANSLATE_NOOP("popup_window", "Contact is banned in %1").arg(Utils::getAppTitle()),
-                    cannotAdd,
+                    cannotOperation,
                     nullptr);
             }
-            else if (type == core::add_member_failure::user_already_added)
+            else if (type == core::chat_member_failure::user_already_added)
             {
                 Utils::GetConfirmationWithOneButton(
                     QT_TRANSLATE_NOOP("popup_window", "OK"),
                     QT_TRANSLATE_NOOP("popup_window", "Contact is already added"),
-                    cannotAdd,
+                    cannotOperation,
                     nullptr);
             }
-            else if (type == core::add_member_failure::bot_setjoingroups_false)
+            else if (type == core::chat_member_failure::bot_setjoingroups_false)
             {
                 Utils::GetConfirmationWithOneButton(
                     QT_TRANSLATE_NOOP("popup_window", "OK"),
                     QT_TRANSLATE_NOOP("popup_window", "Bot can be added only by admin and if bot joining the groups was allowed by its creator"),
-                    cannotAdd,
+                    cannotOperation,
+                    nullptr);
+            }
+            else if (type == core::chat_member_failure::user_not_found)
+            {
+                Utils::GetConfirmationWithOneButton(
+                    QT_TRANSLATE_NOOP("popup_window", "OK"),
+                    QT_TRANSLATE_NOOP("popup_window", "User not found"),
+                    cannotOperation,
+                    nullptr);
+            }
+            else if (type == core::chat_member_failure::not_member)
+            {
+                Utils::GetConfirmationWithOneButton(
+                    QT_TRANSLATE_NOOP("popup_window", "OK"),
+                    QT_TRANSLATE_NOOP("popup_window", "User not a member"),
+                    cannotOperation,
+                    nullptr);
+            }
+            else if (type == core::chat_member_failure::user_is_blocked_already)
+            {
+                Utils::GetConfirmationWithOneButton(
+                    QT_TRANSLATE_NOOP("popup_window", "OK"),
+                    QT_TRANSLATE_NOOP("popup_window", "User is already blocked"),
+                    cannotOperation,
+                    nullptr);
+            }
+            else if (type == core::chat_member_failure::user_not_blocked)
+            {
+                Utils::GetConfirmationWithOneButton(
+                    QT_TRANSLATE_NOOP("popup_window", "OK"),
+                    QT_TRANSLATE_NOOP("popup_window", "User not blocked"),
+                    cannotOperation,
+                    nullptr);
+            }
+            else if (type == core::chat_member_failure::permission_denied)
+            {
+                Utils::GetConfirmationWithOneButton(
+                    QT_TRANSLATE_NOOP("popup_window", "OK"),
+                    QT_TRANSLATE_NOOP("popup_window", "Permission denied"),
+                    cannotOperation,
+                    nullptr);
+            }
+            else if (type == core::chat_member_failure::remote_federation_error && !federationError.isEmpty())
+            {
+                Utils::GetConfirmationWithOneButton(
+                    QT_TRANSLATE_NOOP("popup_window", "OK"),
+                    federationError,
+                    cannotOperation,
                     nullptr);
             }
         }
@@ -993,18 +1079,30 @@ namespace Ui
                 if (contacts.empty())
                     continue;
 
-                if (type == core::add_member_failure::user_waiting_for_approve)
+                if (type == core::chat_member_failure::user_waiting_for_approve)
                     message += makeText(0x23f0, QT_TRANSLATE_NOOP("popup_window", "Wait until admins approve join requests"));
-                else if (type == core::add_member_failure::user_must_join_by_link)
+                else if (type == core::chat_member_failure::user_must_join_by_link)
                     message += makeText(0x274c, QT_TRANSLATE_NOOP("popup_window", "Send them invite link"));
-                else if (type == core::add_member_failure::user_must_be_added_by_admin)
+                else if (type == core::chat_member_failure::user_must_be_added_by_admin)
                     message += makeText(0x1f44b, QT_TRANSLATE_NOOP("popup_window", "Ask admins to invite"));
-                else if (type == core::add_member_failure::user_captcha)
+                else if (type == core::chat_member_failure::user_captcha)
                     message += makeText(0x1f6ab, QT_TRANSLATE_NOOP("popup_window", "Contacts are banned in %1").arg(Utils::getAppTitle()));
-                else if (type == core::add_member_failure::user_already_added)
+                else if (type == core::chat_member_failure::user_already_added)
                     message += makeText(0x1f914, QT_TRANSLATE_NOOP("popup_window", "Contacts were already added"));
-                else if (type == core::add_member_failure::bot_setjoingroups_false)
+                else if (type == core::chat_member_failure::bot_setjoingroups_false)
                     message += makeText(0x1f916, QT_TRANSLATE_NOOP("popup_window", "Bot joining the groups was forbidden by its creator"));
+                else if (type == core::chat_member_failure::user_not_found)
+                    message += makeText(0x1f50d, QT_TRANSLATE_NOOP("popup_window", "User not found"));
+                else if (type == core::chat_member_failure::not_member)
+                    message += makeText(0x1f645, QT_TRANSLATE_NOOP("popup_window", "User not a member"));
+                else if (type == core::chat_member_failure::user_is_blocked_already)
+                    message += makeText(0x1f512, QT_TRANSLATE_NOOP("popup_window", "User is already blocked"));
+                else if (type == core::chat_member_failure::user_not_blocked)
+                    message += makeText(0x1f513, QT_TRANSLATE_NOOP("popup_window", "User not blocked"));
+                else if (type == core::chat_member_failure::permission_denied)
+                    message += makeText(0x1f6b7, QT_TRANSLATE_NOOP("popup_window", "Permission denied"));
+                else if (type == core::chat_member_failure::remote_federation_error && !federationError.isEmpty())
+                    message += makeText(0x1f6ab, federationError);
                 else
                     continue;
 
@@ -1012,7 +1110,7 @@ namespace Ui
 
                 message += qsl(": ");
                 for (const auto& c : contacts)
-                    message += Logic::GetFriendlyContainer()->getFriendly(c) % u", ";
+                    message += correctFederationUserName(Logic::GetFriendlyContainer()->getFriendly(c)) % u", ";
 
                 if (!message.isEmpty())
                     message.chop(2);
@@ -1025,12 +1123,48 @@ namespace Ui
 
             if (!message.isEmpty())
             {
+                QString titleForOneContact;
+                QString titleForTwoContacts;
+                QString titleForFiveContacts;
+                QString titleForTwentyOneContacts;
+                if (_operation == Utils::ChatMembersOperation::Add)
+                {
+                    titleForOneContact = QT_TRANSLATE_NOOP3("popup_window", "Cannot add %1 contact", "1");
+                    titleForTwoContacts = QT_TRANSLATE_NOOP3("popup_window", "Cannot add %1 contacts", "2");
+                    titleForFiveContacts = QT_TRANSLATE_NOOP3("popup_window", "Cannot add %1 contacts", "5");
+                    titleForTwentyOneContacts = QT_TRANSLATE_NOOP3("popup_window", "Cannot add %1 contacts", "21");
+                }
+                else if (_operation == Utils::ChatMembersOperation::Remove)
+                {
+                    titleForOneContact = QT_TRANSLATE_NOOP3("popup_window", "Cannot remove %1 contact", "1");
+                    titleForTwoContacts = QT_TRANSLATE_NOOP3("popup_window", "Cannot remove %1 contacts", "2");
+                    titleForFiveContacts = QT_TRANSLATE_NOOP3("popup_window", "Cannot remove %1 contacts", "5");
+                    titleForTwentyOneContacts = QT_TRANSLATE_NOOP3("popup_window", "Cannot remove %1 contacts", "21");
+                }
+                else if (_operation == Utils::ChatMembersOperation::Block)
+                {
+                    titleForOneContact = QT_TRANSLATE_NOOP3("popup_window", "Cannot block %1 contact", "1");
+                    titleForTwoContacts = QT_TRANSLATE_NOOP3("popup_window", "Cannot block %1 contacts", "2");
+                    titleForFiveContacts = QT_TRANSLATE_NOOP3("popup_window", "Cannot block %1 contacts", "5");
+                    titleForTwentyOneContacts = QT_TRANSLATE_NOOP3("popup_window", "Cannot block %1 contacts", "21");
+                }
+                else if (_operation == Utils::ChatMembersOperation::Unblock)
+                {
+                    titleForOneContact = QT_TRANSLATE_NOOP3("popup_window", "Cannot unblock %1 contact", "1");
+                    titleForTwoContacts = QT_TRANSLATE_NOOP3("popup_window", "Cannot unblock %1 contacts", "2");
+                    titleForFiveContacts = QT_TRANSLATE_NOOP3("popup_window", "Cannot unblock %1 contacts", "5");
+                    titleForTwentyOneContacts = QT_TRANSLATE_NOOP3("popup_window", "Cannot unblock %1 contacts", "21");
+                }
+
+                if (titleForOneContact.isEmpty() || titleForTwoContacts.isEmpty() || titleForFiveContacts.isEmpty() || titleForTwentyOneContacts.isEmpty())
+                    return;
+
                 const auto title = Utils::GetTranslator()->getNumberString(
                     totalCount,
-                    QT_TRANSLATE_NOOP3("popup_window", "Cannot add %1 contact", "1"),
-                    QT_TRANSLATE_NOOP3("popup_window", "Cannot add %1 contacts", "2"),
-                    QT_TRANSLATE_NOOP3("popup_window", "Cannot add %1 contacts", "5"),
-                    QT_TRANSLATE_NOOP3("popup_window", "Cannot add %1 contacts", "21")
+                    titleForOneContact,
+                    titleForTwoContacts,
+                    titleForFiveContacts,
+                    titleForTwentyOneContacts
                 ).arg(totalCount);
 
                 Utils::GetConfirmationWithOneButton(
@@ -1051,6 +1185,10 @@ namespace Ui
             {
                 setFrameCountMode(FrameCountMode::_1);
 
+                for_each([width = getFrame2MinWith() - 1](auto w) { w->setMaximumWidth(width); }, clContainer_);
+                for_each([width = getChatMinWidth()](auto w) { w->setMinimumWidth(width); }, clContainer_);
+                sidebar_->setWidth(newWidth);
+
                 switch (oneFrameMode_)
                 {
                 case OneFrameMode::Tab:
@@ -1070,9 +1208,6 @@ namespace Ui
                 break;
                 }
 
-                for_each([width = getFrame2MinWith() - 1](auto w) { w->setMaximumWidth(width); }, clContainer_);
-                for_each([width = getChatMinWidth()](auto w) { w->setMinimumWidth(width); }, clContainer_);
-                sidebar_->setWidth(newWidth);
             }
             else
             {
@@ -1307,7 +1442,7 @@ namespace Ui
 
     void MainPage::cancelSelection()
     {
-        assert(contactDialog_);
+        im_assert(contactDialog_);
         contactDialog_->cancelSelection();
     }
 
@@ -1361,7 +1496,7 @@ namespace Ui
 
     ContactDialog* MainPage::getContactDialog() const
     {
-        assert(contactDialog_);
+        im_assert(contactDialog_);
         return contactDialog_;
     }
 
@@ -1378,7 +1513,7 @@ namespace Ui
     static bool canOpenSidebarOutsideWithoutMove(int _sidebarWidth)
     {
         const auto availableGeometry = Utils::InterConnector::instance().getMainWindow()->screenGeometry();
-        const auto mainWindowGeometry = Utils::InterConnector::instance().getMainWindow()->geometry();
+        const auto& mainWindowGeometry = Utils::InterConnector::instance().getMainWindow()->geometry();
 
         return (availableGeometry.width() - mainWindowGeometry.topRight().x()) >= _sidebarWidth;
     }
@@ -1386,7 +1521,7 @@ namespace Ui
     static bool canOpenSidebarOutsideWithMove(int _sidebarWidth)
     {
         const auto availableGeometry = Utils::InterConnector::instance().getMainWindow()->screenGeometry();
-        const auto mainWindowGeometry = Utils::InterConnector::instance().getMainWindow()->geometry();
+        const auto& mainWindowGeometry = Utils::InterConnector::instance().getMainWindow()->geometry();
 
         return (availableGeometry.width() - mainWindowGeometry.width()) >= _sidebarWidth;
     }
@@ -1754,15 +1889,14 @@ namespace Ui
 #ifndef STRIP_VOIP
     void MainPage::onVoipCallIncoming(const std::string& call_id, const std::string& _contact, const std::string& call_type)
     {
-        assert(!call_id.empty() && !_contact.empty());
+        im_assert(!call_id.empty() && !_contact.empty());
         if (!call_id.empty() && !_contact.empty())
         {
-            videoWindowState_ = VideoWindowState::BlockedByCall;
             auto it = incomingCallWindows_.find(call_id);
             if (incomingCallWindows_.end() == it || !it->second)
             {
                 std::shared_ptr<IncomingCallWindow> window(new(std::nothrow) IncomingCallWindow(call_id, _contact, call_type));
-                assert(!!window);
+                im_assert(!!window);
                 if (!!window)
                 {
                     window->showFrame();
@@ -1774,22 +1908,20 @@ namespace Ui
                 std::shared_ptr<IncomingCallWindow> wnd = it->second;
                 wnd->showFrame();
             }
-
-            setMicroIssue(MicroIssue::Incoming);
         }
         Utils::InterConnector::instance().getMainWindow()->updateMainMenu();
     }
 
     void MainPage::destroyIncomingCallWindow(const std::string& call_id, const std::string& _contact)
     {
-        assert(!call_id.empty() && !_contact.empty());
+        im_assert(!call_id.empty() && !_contact.empty());
         if (!call_id.empty() && !_contact.empty())
         {
             auto it = incomingCallWindows_.find(call_id);
             if (incomingCallWindows_.end() != it)
             {
                 auto window = it->second;
-                assert(!!window);
+                im_assert(!!window);
                 if (!!window)
                     window->hideFrame();
             }
@@ -1802,15 +1934,11 @@ namespace Ui
         //destroy exactly when accept button pressed
         //destroyIncomingCallWindow(_contactEx.contact.call_id, _contactEx.contact.contact);
         Utils::InterConnector::instance().getMainWindow()->closeGallery();
-        videoWindowState_ = VideoWindowState::CanRaise;
-        if (media::permissions::checkPermission(media::permissions::DeviceType::Microphone) == media::permissions::Permission::Allowed)
-            setMicroIssue(MicroIssue::None);
     }
 
     void MainPage::onVoipCallDestroyed(const voip_manager::ContactEx& _contactEx)
     {
         destroyIncomingCallWindow(_contactEx.contact.call_id, _contactEx.contact.contact);
-        videoWindowState_ = VideoWindowState::CanRaise;
     }
 
     void MainPage::onVoipShowVideoWindow(bool _enabled)
@@ -1822,30 +1950,13 @@ namespace Ui
             Ui::GetDispatcher()->getVoipController().updateActivePeerList();
         }
 
-        auto startCallBack = [pThis = QPointer(this)](MicroIssue _issue)
-        {
-            if (!pThis || !pThis->videoWindow_)
-                return;
-
-            pThis->setMicroIssue(_issue);
-            pThis->videoWindow_->setMicrophoneAlert(_issue);
-            pThis->videoWindow_->showFrame();
-        };
-
         if (_enabled)
         {
-            if (videoWindowState_ == VideoWindowState::CanRaise)
-            {
-                if (microIssue_ == MicroIssue::NoPermission || microIssue_ == MicroIssue::Incoming)
-                    startCallBack(microIssue_);
-                else
-                    Utils::checkMicroPermission(Utils::InterConnector::instance().getMainWindow(), startCallBack);
-            }
+            videoWindow_->showFrame();
         }
         else
         {
-            if (videoWindow_)
-                videoWindow_->hideFrame();
+            videoWindow_->hideFrame();
 
             bool wndMinimized = false;
             bool wndHiden = false;
@@ -1857,19 +1968,6 @@ namespace Ui
 
             if (!Utils::foregroundWndIsFullscreened() && !wndMinimized && !wndHiden)
                 raise();
-
-            if (microIssue_ != MicroIssue::Incoming)
-            {
-                setMicroIssue(MicroIssue::NoPermission);
-                videoWindowState_ = VideoWindowState::CanRaise;
-                if (videoWindow_)
-                    videoWindow_->updateHangUpState();
-            }
-            else if (videoWindow_)
-            {
-                videoWindow_->setMicrophoneAlert(MicroIssue::Incoming);
-            }
-
         }
 
         Utils::InterConnector::instance().getMainWindow()->updateMainMenu();
@@ -1922,7 +2020,7 @@ namespace Ui
 
     void MainPage::recentsTabActivate(bool _selectUnread)
     {
-        assert(!!recentsTab_);
+        im_assert(!!recentsTab_);
         if (recentsTab_)
         {
             recentsTab_->changeTab(RECENTS);
@@ -1948,7 +2046,7 @@ namespace Ui
 
     void MainPage::selectRecentChat(const QString& _aimId)
     {
-        assert(recentsTab_);
+        im_assert(recentsTab_);
         if (recentsTab_ && !_aimId.isEmpty())
             recentsTab_->select(_aimId);
     }
@@ -2067,7 +2165,7 @@ namespace Ui
 
     void MainPage::setLeftPanelState(LeftPanelState _newState, bool _withAnimation, bool _for_search, bool _force)
     {
-        assert(_newState > LeftPanelState::min && _newState < LeftPanelState::max);
+        im_assert(_newState > LeftPanelState::min && _newState < LeftPanelState::max);
 
         if (leftPanelState_ == _newState && !_force)
             return;
@@ -2089,7 +2187,8 @@ namespace Ui
             recentsTab_->setPictureOnlyView(false);
             callsTab_->setPictureOnlyView(false);
             settingsTab_->setCompactMode(false);
-            tabWidget_->showTabbar();
+            if (Features::isTabBarVisible())
+                tabWidget_->showTabbar();
             if (updaterButton_)
                 updaterButton_->show();
             expandButton_->hide();
@@ -2139,7 +2238,7 @@ namespace Ui
         }
         else
         {
-            assert(false && "Left Panel state does not exist.");
+            im_assert(false && "Left Panel state does not exist.");
         }
         contactsTab_->setState(leftPanelState_);
         callsTab_->setState(leftPanelState_);
@@ -2420,35 +2519,18 @@ namespace Ui
         switch (tab)
         {
         case Tabs::Recents:
-        {
+        case Tabs::Contacts:
+        case Tabs::Calls:
             settingsHeader_->hide();
             pages_->setCurrentWidget(contactDialog_);
-        }
-        break;
+            break;
         case Tabs::Settings:
-        {
             setSidebarVisible(false);
             if (frameCountMode_ != FrameCountMode::_1)
                 selectSettings(settingsTab_->currentSettingsItem());
-        }
-        break;
-
-        case Tabs::Contacts:
-        {
-            settingsHeader_->hide();
-            pages_->setCurrentWidget(contactDialog_);
-        }
-        break;
-
-        case Tabs::Calls:
-        {
-            settingsHeader_->hide();
-            pages_->setCurrentWidget(contactDialog_);
-        }
-        break;
-
+            break;
         default:
-            assert(!"unsupported tab");
+            im_assert(!"unsupported tab");
             break;
         }
 
@@ -2496,7 +2578,7 @@ namespace Ui
         const auto it = std::find_if(indexToTabs_.begin(), indexToTabs_.end(), [_index](auto x) { return x.first == _index; });
         if (it != indexToTabs_.end())
             return it->second;
-        assert(false);
+        im_assert(false);
         return Tabs::Recents;
     }
 
@@ -2505,7 +2587,7 @@ namespace Ui
         const auto it = std::find_if(indexToTabs_.begin(), indexToTabs_.end(), [_tab](auto x) { return x.second == _tab; });
         if (it != indexToTabs_.end())
             return it->first;
-        assert(false);
+        im_assert(false);
         return 0;
     }
 
@@ -2587,13 +2669,4 @@ namespace Ui
         }
         QWidget::keyPressEvent(_e);
     }
-
-#ifndef STRIP_VOIP
-    void MainPage::setMicroIssue(MicroIssue _issue)
-    {
-        microIssue_ = _issue;
-        if (videoWindow_)
-            videoWindow_->setMicrophoneAlert(_issue);
-    }
-#endif
 }

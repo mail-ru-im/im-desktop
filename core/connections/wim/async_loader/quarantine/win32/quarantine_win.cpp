@@ -43,6 +43,8 @@ namespace core::wim::quarantine
             if (!_params.referrer_url.empty())
             {
                 identifier += "ReferrerUrl=";
+                if (_params.referrer_url.find("https://") == decltype(_params.referrer_url)::npos)
+                    identifier += "https://";
                 identifier += _params.referrer_url;
                 identifier += "\r\n";
             }

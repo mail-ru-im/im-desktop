@@ -44,27 +44,30 @@ namespace crash_system
 
         static reporter& instance();
 
-        static std::string submit_url(std::string_view _login)
+        static std::string submit_url(std::string_view _base_url, std::string_view _login)
         {
             std::string url;
 
-            url += "https://ub.icq.net/upload-crash/desktop/";
+            if (_base_url.find("https://") != 0)
+                url += "https://";
+            url += _base_url;
+            url += "/api/v1/files/crash/upload/desktop/";
             url += common::get_dev_id();
             url += '/';
             if (_login.empty())
-                url += "XXXXXXXX";
+                url += "no_user_id";
             else
                 url += _login;
 
             url += '/';
             url += core::tools::version_info().get_version();
-            url += "/";
+            url += '/';
 
             return url;
         }
 
 #ifdef __APPLE__
-        void init(std::string_view _dump_path, std::string_view _login, std::string_view _bundle_path);
+        void init(std::string_view _dump_path, std::string_view _base_url, std::string_view _login, std::string_view _bundle_path);
 #endif
 
     private:

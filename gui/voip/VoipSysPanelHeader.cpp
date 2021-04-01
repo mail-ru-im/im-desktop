@@ -124,7 +124,7 @@ Ui::IncomingCallControls::IncomingCallControls(QWidget* _parent)
         QLabel* label = NULL;
         const int labelTail = getLabel(buttonDesc.parent, buttonDesc.objectName.c_str(), buttonDesc.text.c_str(), &label);
 
-        assert(btn && label);
+        im_assert(btn && label);
         if (!btn || !label)
             continue;
         buttonDesc.tail = btnTail;// std::max(btnTail, labelTail);
@@ -165,9 +165,7 @@ Ui::IncomingCallControls::IncomingCallControls(QWidget* _parent)
     layoutTarget->addStretch(1);
 }
 
-Ui::IncomingCallControls::~IncomingCallControls()
-{
-}
+Ui::IncomingCallControls::~IncomingCallControls() = default;
 
 void Ui::IncomingCallControls::_onDecline()
 {
@@ -253,9 +251,7 @@ Ui::VoipSysPanelHeader::VoipSysPanelHeader(QWidget* _parent, int maxAvalibleWidt
     layout->addSpacing(Utils::scale_value(4));
 }
 
-Ui::VoipSysPanelHeader::~VoipSysPanelHeader()
-{
-}
+Ui::VoipSysPanelHeader::~VoipSysPanelHeader() = default;
 
 void Ui::VoipSysPanelHeader::enterEvent(QEvent* _e)
 {

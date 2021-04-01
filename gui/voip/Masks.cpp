@@ -20,7 +20,7 @@ const QString& voip_masks::Mask::id() const
 void voip_masks::Mask::setPreview(const QString _localPath)
 {
     preview_.load(_localPath);
-    assert(!_localPath.isEmpty());
+    im_assert(!_localPath.isEmpty());
     Q_EMIT previewLoaded();
 }
 

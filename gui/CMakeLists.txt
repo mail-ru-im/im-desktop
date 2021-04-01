@@ -713,7 +713,7 @@ if(APPLE)
 
     set(ICQ_PLIST "${ICQ_BUNDLE_DIR}/Info.plist")
     set(PLIST_BUDDY "/usr/libexec/PlistBuddy")
-    
+
     set(MACOSX_BUNDLE_INFO_PLIST "${PRODUCT_MAC}/Info.plist")
     SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${PRODUCT_MAC}/Info.plist")
 
@@ -725,6 +725,14 @@ if(APPLE)
     message(STATUS "-> copy ${PRODUCT_MAC}/Info.plist to ${ICQ_PLIST}")
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
             COMMAND cp -f "${PRODUCT_MAC}/Info.plist" ${ICQ_PLIST})
+
+    string(TIMESTAMP COPYRIGHT_YEAR "%Y")
+    message(STATUS "-> COPYRIGHT_YEAR = ${COPYRIGHT_YEAR}")
+    set(PLIST_COPYRIGHT_MESSAGE "Copyright © ${COPYRIGHT_YEAR} Mail.ru. All rights reserved.")
+
+    message(STATUS "-> plist Set :NSHumanReadableCopyright ${PLIST_COPYRIGHT_MESSAGE}")
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${PLIST_BUDDY} -c "Set :NSHumanReadableCopyright ${PLIST_COPYRIGHT_MESSAGE}" ${ICQ_PLIST} VERBATIM)
 
     message(STATUS "-> plist Set :LSMinimumSystemVersion ${CMAKE_OSX_DEPLOYMENT_TARGET}")
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
@@ -738,6 +746,11 @@ if(APPLE)
     message(STATUS "DIR ICQ_FRAMEWORKS_BUNDLE_DIR = ${ICQ_FRAMEWORKS_BUNDLE_DIR}")
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_FRAMEWORKS_BUNDLE_DIR})
+
+    set(ICQ_QT_BUNDLE_DIR "${ICQ_FRAMEWORKS_BUNDLE_DIR}/Qt")
+    message(STATUS "DIR ICQ_QT_BUNDLE_DIR = ${ICQ_QT_BUNDLE_DIR}")
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_QT_BUNDLE_DIR})
 
     message(STATUS "make_directory ${ICQ_PLUGINS_BUNDLE_DIR}")
     set(ICQ_PLUGINS_BUNDLE_DIR "${ICQ_BUNDLE_DIR}/PlugIns")
@@ -777,24 +790,74 @@ if(APPLE)
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_RESOURCES_BUNDLE_DIR})
 
-    if(ICQ_QT_DYNAMIC)
-        set(ICQ_PLUGINS_PLATFORMS_BUNDLE_DIR "${ICQ_PLUGINS_BUNDLE_DIR}/platforms")
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_PLUGINS_PLATFORMS_BUNDLE_DIR})
+    if(IM_QT_DYNAMIC)
+        if(APPLE)
+            set(ICQ_PLUGINS_PLATFORMS_BUNDLE_DIR "${ICQ_PLUGINS_BUNDLE_DIR}/platforms")
+            add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_PLUGINS_PLATFORMS_BUNDLE_DIR})
 
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND cp -f ${QT_PLUGINS_TO_COPY} ${ICQ_PLUGINS_PLATFORMS_BUNDLE_DIR})
+            set(ICQ_PLUGINS_IMAGE_BUNDLE_DIR "${ICQ_PLUGINS_BUNDLE_DIR}/imageformats")
+            add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_PLUGINS_IMAGE_BUNDLE_DIR})
 
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND cp -f ${QT_LIBRARIES_TO_COPY} ${ICQ_FRAMEWORKS_BUNDLE_DIR})
+            FOREACH(PLUGIN ${QT_IMAGE_PLUGINS_TO_COPY})
+                get_filename_component(FILE_NAME ${PLUGIN} NAME)
+                add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                    COMMAND cp -f ${PLUGIN} ${ICQ_PLUGINS_IMAGE_BUNDLE_DIR})
+                add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                    COMMAND install_name_tool -change ${FILE_NAME} @rpath/${FILE_NAME} ${ICQ_BUNDLE_DIR}/MacOS/${PROJECT_NAME})
+            ENDFOREACH()
 
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND install_name_tool -add_rpath @loader_path/../Frameworks ${ICQ_BUNDLE_DIR}/MacOS/${PROJECT_NAME})
+            FOREACH(PLUGIN ${QT_PLATFORMS_PLUGINS_TO_COPY})
+                get_filename_component(FILE_NAME ${PLUGIN} NAME)
+                add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                    COMMAND cp -f ${PLUGIN} ${ICQ_PLUGINS_PLATFORMS_BUNDLE_DIR})
+                add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                    COMMAND install_name_tool -change ${FILE_NAME} @rpath/${FILE_NAME} ${ICQ_BUNDLE_DIR}/MacOS/${PROJECT_NAME})
+            ENDFOREACH()
+
+            FOREACH(LIBEXEC ${QT_LIBEXEC_TO_COPY})
+                get_filename_component(LIBEXEC_NAME ${LIBEXEC} NAME)
+                add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                    COMMAND cp -f ${LIBEXEC} ${ICQ_BUNDLE_DIR}/MacOS)
+                add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                    COMMAND install_name_tool -add_rpath @loader_path/../Frameworks/Qt ${ICQ_BUNDLE_DIR}/MacOS/${LIBEXEC_NAME})
+            ENDFOREACH()
+
+            FOREACH(LIBRARY ${QT_LIBRARIES_TO_COPY})
+                get_filename_component(FILE_NAME ${LIBRARY} NAME)
+                set(ORIGINAL_FILE_NAME ${FILE_NAME})
+                string(REPLACE "${QT_LIB_EXT}" "5.${QT_LIB_EXT}" FILE_NAME ${FILE_NAME})
+                add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                    COMMAND cp -f ${LIBRARY} ${ICQ_QT_BUNDLE_DIR})
+                add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                    COMMAND install_name_tool -change @rpath/${FILE_NAME} @rpath/${ORIGINAL_FILE_NAME} ${ICQ_BUNDLE_DIR}/MacOS/${PROJECT_NAME})
+                FOREACH(LIBEXEC ${QT_LIBEXEC_TO_COPY})
+                    get_filename_component(LIBEXEC_NAME ${LIBEXEC} NAME)
+                    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                        COMMAND install_name_tool -change @rpath/${FILE_NAME} @rpath/${ORIGINAL_FILE_NAME} ${ICQ_BUNDLE_DIR}/MacOS/${LIBEXEC_NAME})
+                ENDFOREACH()
+            ENDFOREACH()
+
+            FOREACH(RESOURCE ${QT_RESOURCES_TO_COPY})
+                add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                    COMMAND cp -f -R ${RESOURCE} ${ICQ_BUNDLE_DIR}/Resources)
+            ENDFOREACH()
+
+            add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                COMMAND install_name_tool -add_rpath @loader_path/../Frameworks ${ICQ_BUNDLE_DIR}/MacOS/${PROJECT_NAME})
+            add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                COMMAND install_name_tool -add_rpath @loader_path/../Frameworks/Qt ${ICQ_BUNDLE_DIR}/MacOS/${PROJECT_NAME})
+            add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                COMMAND install_name_tool -add_rpath @loader_path/../PlugIns/imageformats ${ICQ_BUNDLE_DIR}/MacOS/${PROJECT_NAME})
+            add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                COMMAND install_name_tool -add_rpath @loader_path/../PlugIns/platforms ${ICQ_BUNDLE_DIR}/MacOS/${PROJECT_NAME})
 
             if(IM_AUTO_TESTING)
-            add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-                COMMAND install_name_tool -change "@rpath/XCTest.framework/Versions/A/XCTest" "@executable_path/../Frameworks/XCTest.framework/XCTest" ${ICQ_BUNDLE_DIR}/MacOS/${PROJECT_NAME})
+                add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                    COMMAND install_name_tool -change "@rpath/XCTest.framework/Versions/A/XCTest" "@executable_path/../Frameworks/XCTest.framework/XCTest" ${ICQ_BUNDLE_DIR}/MacOS/${PROJECT_NAME})
             endif()
+        endif()
     endif()
 
     # rename bundle

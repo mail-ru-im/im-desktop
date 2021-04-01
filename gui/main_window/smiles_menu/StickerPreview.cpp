@@ -246,7 +246,7 @@ namespace Ui::Smiles
             }
             else
             {
-                loader_ = std::make_unique<Utils::FileSharingLoader>(Stickers::getSendBaseUrl() % stickerId_);
+                loader_ = std::make_unique<Utils::FileSharingLoader>(Stickers::getSendUrl(stickerId_));
                 connect(loader_.get(), &Utils::FileSharingLoader::fileLoaded, this, &StickerPreview::onAnimatedStickerLoaded);
                 loader_->load();
             }

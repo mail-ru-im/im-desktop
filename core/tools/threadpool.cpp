@@ -19,21 +19,19 @@ task::task()
 {
 }
 
-task::task(std::function<void()> _action, int64_t _id, std::string_view _name, std::chrono::steady_clock::time_point _time_stamp, std::function<bool()> _cancel)
+task::task(stacked_task _action, int64_t _id, std::string_view _name, std::chrono::steady_clock::time_point _time_stamp, std::function<bool()> _cancel)
     : action_(std::move(_action))
     , cancel_(std::move(_cancel))
     , id_(_id)
     , name_(_name)
     , time_stamp_(_time_stamp)
 {
-    if constexpr (build::is_debug() || platform::is_apple())
-        st_ = std::make_unique<boost::stacktrace::stacktrace>();
 }
 
 void task::execute()
 {
     if (!cancel_ || !cancel_())
-        action_();
+        action_.execute();
 }
 
 int64_t task::get_id() const noexcept
@@ -56,9 +54,9 @@ task::operator bool() const noexcept
     return action_.operator bool();
 }
 
-const std::unique_ptr<boost::stacktrace::stacktrace>& task::get_stack_trace() const
+stack_vec task::get_stack_trace() const
 {
-    return st_;
+    return action_.get_stack();
 }
 
 threadpool::threadpool(
@@ -67,7 +65,7 @@ threadpool::threadpool(
     std::function<void()> _on_thread_exit,
     bool _task_trace)
 
-    : on_task_finish_([](const std::chrono::milliseconds, const core_stacktrace&, std::string_view) {})
+    : on_task_finish_([](std::chrono::milliseconds, const stack_vec&, std::string_view) {})
     , stop_(false)
     , task_trace_(_task_trace)
 {
@@ -197,7 +195,7 @@ threadpool::~threadpool()
 
 }
 
-bool threadpool::push_back(task_action _task, int64_t _id, std::string_view _name, std::function<bool()> _cancel)
+bool threadpool::push_back(stacked_task _task, int64_t _id, std::string_view _name, std::function<bool()> _cancel)
 {
     {
         std::unique_lock<std::mutex> lock(queue_mutex_);
@@ -239,7 +237,7 @@ void threadpool::raise_task(int64_t _id)
         tasks_.push_front(std::move(tmp));
 }
 
-bool threadpool::push_front(task_action _task, int64_t _id, std::string_view _name, std::function<bool()> _cancel)
+bool threadpool::push_front(stacked_task _task, int64_t _id, std::string_view _name, std::function<bool()> _cancel)
 {
     {
         std::unique_lock<std::mutex> lock(queue_mutex_);

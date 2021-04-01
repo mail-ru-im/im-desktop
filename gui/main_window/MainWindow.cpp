@@ -4,6 +4,7 @@
 #include "ContactDialog.h"
 #include "LoginPage.h"
 #include "MainPage.h"
+#include "AppsPage.h"
 #include "controls/GeneralDialog.h"
 #include "contact_list/ContactListModel.h"
 #include "contact_list/RecentsModel.h"
@@ -27,6 +28,7 @@
 #include "tray/TrayIcon.h"
 #include "../gui_settings.h"
 #include "../app_config.h"
+#include "../url_config.h"
 #include "../controls/MainStackedWidget.h"
 
 #include "controls/TooltipWidget.h"
@@ -35,6 +37,7 @@
 #include "../controls/CustomButton.h"
 #include "../previewer/GalleryWidget.h"
 #include "../utils/utils.h"
+#include "../utils/features.h"
 #include "../utils/InterConnector.h"
 #include "../utils/gui_metrics.h"
 #include "../utils/SearchPatternHistory.h"
@@ -208,7 +211,7 @@ namespace
         return Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
     }
 
-    QSize getTitleButtonOriginalSize()
+    QSize getTitleButtonOriginalSize() noexcept
     {
         return { 44, 28 };
     }
@@ -233,9 +236,26 @@ namespace
         return std::chrono::minutes(1);
     }
 
-    auto getErrorToastOffset()
+    auto getErrorToastOffset() noexcept
     {
         return Utils::scale_value(10);
+    }
+
+    auto minimumWindowWidth()
+    {
+        const auto windowWidth = Utils::scale_value(380);
+        return Features::isAppsNavigationBarVisible() ? (Ui::AppsNavigationBar::defaultWidth() + windowWidth) : windowWidth;
+    }
+
+    auto defaultWindowWidth()
+    {
+        const auto windowWidth = Utils::scale_value(1000);
+        return Features::isAppsNavigationBarVisible() ? (Ui::AppsNavigationBar::defaultWidth() + windowWidth) : windowWidth;
+    }
+
+    auto defaultWindowHeight() noexcept
+    {
+        return Utils::scale_value(600);
     }
 
     QString makeTitle()
@@ -295,6 +315,26 @@ namespace
         QTimer trimTimer_;
     } memoryTrimmer;
 #endif
+
+#ifndef STRIP_CRASH_HANDLER
+#ifdef __APPLE__
+    void initCrashpad(std::string_view _baseUrl, std::string_view _login)
+    {
+        static std::once_flag flag;
+        auto initImpl = [_baseUrl, _login]()
+        {
+            const auto productPath = config::get().string(config::values::product_path_mac);
+            const QString dumpPath = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)
+                % u'/' % QString::fromUtf8(productPath.data(), productPath.size()) % u"/Dumps";
+
+            QDir().mkpath(dumpPath);
+
+            crash_system::reporter::instance().init(dumpPath.toStdString(), _baseUrl, _login, MacSupport::bundleDir().toStdString());
+        };
+        std::call_once(flag, initImpl);
+    }
+#endif //STRIP_CRASH_HANDLER
+#endif // __APPLE__
 }
 
 namespace Ui
@@ -538,14 +578,14 @@ namespace Ui
 
     void MainWindow::setFocusOnInput()
     {
-        if (mainPage_)
-            mainPage_->setFocusOnInput();
+        if (MainPage::hasInstance())
+            MainPage::instance()->setFocusOnInput();
     }
 
     void MainWindow::onSendMessage(const QString& contact)
     {
-        if (mainPage_)
-            mainPage_->onSendMessage(contact);
+        if (MainPage::hasInstance())
+            MainPage::instance()->onSendMessage(contact);
     }
 
     int MainWindow::getTitleHeight() const
@@ -560,11 +600,11 @@ namespace Ui
 
     void MainWindow::lock()
     {
-        if (!mainPage_) // init mainpage to show it faster after unlock
+        if (!appsPage_) // init main page to show it faster after unlock
         {
-            mainPage_ = MainPage::instance(this);
-            Testing::setAccessibleName(mainPage_, qsl("AS MainPage"));
-            stackedWidget_->addWidget(mainPage_);
+            appsPage_ = new AppsPage(this);
+            Testing::setAccessibleName(appsPage_, qsl("AS AppsPage"));
+            stackedWidget_->addWidget(appsPage_);
         }
 
         if (!localPINWidget_)
@@ -584,7 +624,7 @@ namespace Ui
     }
 
     MainWindow::MainWindow(QApplication* _app, const bool _hasValidLogin, const bool _locked, const QString& _validOrFirstLogin)
-        : mainPage_(nullptr)
+        : appsPage_(nullptr)
         , loginPage_(nullptr)
         , gdprPage_(nullptr)
         , app_(_app)
@@ -609,6 +649,7 @@ namespace Ui
         , uiActiveMainWindow_(false)
         , maximizeLater_(false)
         , localPINWidget_(nullptr)
+        , validOrFirstLogin_(_validOrFirstLogin)
     {
         auto scopedExit = Utils::ScopeExitT([this]() { inCtor_ = false; });
         Utils::InterConnector::instance().setMainWindow(this);
@@ -626,15 +667,23 @@ namespace Ui
         if (!GetAppConfig().IsSysCrashHandleEnabled())
         {
 #ifdef __APPLE__
-            const auto productPath = config::get().string(config::values::product_path_mac);
-            const QString dumpPath = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)
-                % u'/' % QString::fromUtf8(productPath.data(), productPath.size()) % u"/Dumps";
 
-            QDir().mkpath(dumpPath);
-
-            crash_system::reporter::instance().init(dumpPath.toStdString(), _validOrFirstLogin.toStdString(), MacSupport::bundleDir().toStdString());
-            getMacSupport()->enableMacCrashReport();
-            getMacSupport()->postCrashStatsIfNedded();
+            if (!config::get().is_on(config::features::external_url_config))
+            {
+                initCrashpad(config::get().url(config::urls::base_binary), validOrFirstLogin_.toStdString());
+            }
+            else if (const auto& baseBinary = getUrlConfig().getBaseBinary(); !baseBinary.isEmpty())
+            {
+                initCrashpad(baseBinary.toStdString(), validOrFirstLogin_.toStdString());
+            }
+            else
+            {
+                connect(Ui::GetDispatcher(), &Ui::core_dispatcher::externalUrlConfigUpdated, this, [validOrFirstLogin_ = validOrFirstLogin_]()
+                {
+                    if (const auto& baseBinary = getUrlConfig().getBaseBinary(); !baseBinary.isEmpty())
+                        initCrashpad(baseBinary.toStdString(), validOrFirstLogin_.toStdString());
+                });
+            }
 #elif __linux__
             crash_system::reporter::instance();
 #endif // __APPLE__
@@ -746,7 +795,7 @@ namespace Ui
         else if (!get_gui_settings()->get_value(settings_keep_logged_in, settings_keep_logged_in_default()) || !_hasValidLogin)
             showLoginPage(false);
         else
-            showMainPage();
+            showAppsPage();
 
         auto filterAddIgnoreWidget = [this](auto _widget)
         {
@@ -806,9 +855,9 @@ namespace Ui
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::activateNextUnread, this, &MainWindow::activateNextUnread);
 
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::noPagesInDialogHistory, this, [this]() {
-            if (mainPage_ && mainPage_->isOneFrameTab())
+            if (auto mainPage = MainPage::instance(); mainPage->isOneFrameTab())
             {
-                mainPage_->update();
+                mainPage->update();
                 setFocus();
             }
         });
@@ -880,7 +929,7 @@ namespace Ui
     MainWindow::~MainWindow()
     {
         Tooltip::resetDefaultTooltip();
-        resetMainPage();
+        Tooltip::resetDefaultMultilineTooltip();
 
         app_->removeNativeEventFilter(this);
         app_->removeEventFilter(this);
@@ -1047,12 +1096,19 @@ namespace Ui
         return uiActiveMainWindow_;
     }
 
-    bool MainWindow::isMainPage() const
+    bool MainWindow::isAppsPage() const
     {
-        if (mainPage_ == nullptr)
-            return false;
+        return appsPage_ && stackedWidget_->currentWidget() == appsPage_;
+    }
 
-        return mainPage_->isContactDialog();
+    bool MainWindow::isMessengerPage() const
+    {
+        return isAppsPage() && appsPage_->isMessengerPage();
+    }
+
+    bool MainWindow::isMessengerPageContactDialog() const
+    {
+        return isAppsPage() && appsPage_->isContactDialog();
     }
 
     int MainWindow::getScreen() const
@@ -1078,7 +1134,7 @@ namespace Ui
     int MainWindow::getMinWindowWidth() const
     {
         const auto screenWidth = screenAvailableGeometry().width();
-        return std::min(Utils::scale_value(380), screenWidth - getWindowMarginOnScreen() * 2);
+        return std::min(minimumWindowWidth(), screenWidth - getWindowMarginOnScreen() * 2);
     }
 
     int MainWindow::getMinWindowHeight() const
@@ -1090,7 +1146,7 @@ namespace Ui
     QRect MainWindow::getDefaultWindowSize() const
     {
         auto available = screenAvailableGeometry();
-        const auto defaultSize = QRect(available.x(), available.y(), Utils::scale_value(1000), Utils::scale_value(600));
+        const auto defaultSize = QRect(available.x(), available.y(), defaultWindowWidth(), defaultWindowHeight());
         if (!available.contains(defaultSize))
         {
             const auto margin = getWindowMarginOnScreen();
@@ -1129,15 +1185,20 @@ namespace Ui
 
     HistoryControlPage* MainWindow::getHistoryPage(const QString& _aimId) const
     {
-        if (mainPage_)
-            return mainPage_->getHistoryPage(_aimId);
+        if (MainPage::hasInstance())
+            return MainPage::instance()->getHistoryPage(_aimId);
         else
             return nullptr;
     }
 
-    MainPage* MainWindow::getMainPage() const
+    MainPage* MainWindow::getMessengerPage() const
     {
-        return mainPage_;
+        return appsPage_ ? appsPage_->messengerPage() : nullptr;
+    }
+
+    AppsPage* MainWindow::getAppsPage() const
+    {
+        return appsPage_;
     }
 
     QLabel* MainWindow::getWindowLogo() const
@@ -1147,44 +1208,44 @@ namespace Ui
 
     void MainWindow::showSidebar(const QString& _aimId)
     {
-        if (mainPage_)
-            mainPage_->showSidebar(_aimId);
+        if (MainPage::hasInstance())
+            MainPage::instance()->showSidebar(_aimId);
     }
 
     void MainWindow::showSidebarWithParams(const QString& _aimId, SidebarParams _params)
     {
-        if (mainPage_)
-            mainPage_->showSidebarWithParams(_aimId, std::move(_params));
+        if (MainPage::hasInstance())
+            MainPage::instance()->showSidebarWithParams(_aimId, std::move(_params));
     }
 
     void MainWindow::showMembersInSidebar(const QString& _aimId)
     {
-        if (mainPage_)
-            mainPage_->showMembersInSidebar(_aimId);
+        if (MainPage::hasInstance())
+            MainPage::instance()->showMembersInSidebar(_aimId);
     }
 
     void MainWindow::setSidebarVisible(const Utils::SidebarVisibilityParams& _params)
     {
-        if (mainPage_)
-            mainPage_->setSidebarVisible(_params);
+        if (MainPage::hasInstance())
+            MainPage::instance()->setSidebarVisible(_params);
     }
 
     bool MainWindow::isSidebarVisible() const
     {
-        return mainPage_ && mainPage_->isSidebarVisible();
+        return MainPage::hasInstance() && MainPage::instance()->isSidebarVisible();
     }
 
     void MainWindow::restoreSidebar()
     {
-        if (mainPage_)
-            mainPage_->restoreSidebar();
+        if (MainPage::hasInstance())
+            MainPage::instance()->restoreSidebar();
     }
 
     void MainWindow::notifyWindowActive(const bool _active)
     {
-        if (isMainPage() && mainPage_)
+        if (appsPage_->isContactDialog())
         {
-            mainPage_->notifyApplicationWindowActive(_active);
+            MainPage::instance()->notifyApplicationWindowActive(_active);
         }
 
         windowActive_ = _active;
@@ -1226,25 +1287,26 @@ namespace Ui
 
     void MainWindow::onEscPressed(const QString& _aimId, const bool _autorepeat)
     {
-        if (!mainPage_)
+        if (!MainPage::hasInstance())
             return;
 
-        const auto histPage = mainPage_->getHistoryPage(_aimId);
-        const auto contDialog = mainPage_->getContactDialog();
+        auto mainPage = MainPage::instance();
+        const auto histPage = mainPage->getHistoryPage(_aimId);
+        const auto contDialog = mainPage->getContactDialog();
         const auto isReplying = contDialog && contDialog->isReplyingToMessage();
 
-        if (mainPage_->isNavigatingInRecents())
+        if (mainPage->isNavigatingInRecents())
         {
-            mainPage_->stopNavigatingInRecents();
+            mainPage->stopNavigatingInRecents();
 
             if (_aimId.isEmpty())
                 setFocus();
             else
                 setFocusOnInput();
         }
-        else if (mainPage_->isSuggestVisible())
+        else if (mainPage->isSuggestVisible())
         {
-            mainPage_->hideSuggest();
+            mainPage->hideSuggest();
         }
         else if (contDialog && contDialog->isShowingSmileMenu())
         {
@@ -1258,7 +1320,7 @@ namespace Ui
         {
             AttachFilePopup::hidePopup();
         }
-        else if (histPage && histPage->isSmartrepliesVisible() && !isReplying && !(mainPage_->isSidebarVisible() && !mainPage_->isSideBarInSplitter()))
+        else if (histPage && histPage->isSmartrepliesVisible() && !isReplying && !(mainPage->isSidebarVisible() && !mainPage->isSideBarInSplitter()))
         {
             histPage->hideSmartreplies();
         }
@@ -1274,9 +1336,9 @@ namespace Ui
         {
             contDialog->dropReply();
         }
-        else if (mainPage_->isSidebarVisible())
+        else if (mainPage->isSidebarVisible())
         {
-            mainPage_->setSidebarVisible(false);
+            mainPage->setSidebarVisible(false);
         }
         else if (!_autorepeat)
         {
@@ -1286,18 +1348,18 @@ namespace Ui
                 cur->clearFocus();
                 setFocusOnInput();
             }
-            else if (mainPage_->isSearchActive())
+            else if (mainPage->isSearchActive())
             {
-                mainPage_->openRecents();
+                mainPage->openRecents();
             }
             else if (_aimId.isEmpty())
             {
                  if (get_gui_settings()->get_value<bool>(settings_fast_drop_search_results, settings_fast_drop_search_default()))
-                    mainPage_->setSearchFocus();
+                    mainPage->setSearchFocus();
             }
             else
             {
-                mainPage_->closeAndHighlightDialog();
+                mainPage->closeAndHighlightDialog();
             }
         }
     }
@@ -1305,7 +1367,7 @@ namespace Ui
     void MainWindow::updateWindowTitle()
     {
         auto title = makeTitle();
-        if (mainPage_ && stackedWidget_->currentWidget() == mainPage_ && get_gui_settings()->get_value<bool>(settings_show_unreads_in_title, false))
+        if (stackedWidget_->currentWidget() == appsPage_ && get_gui_settings()->get_value<bool>(settings_show_unreads_in_title, false))
         {
             const auto unreads = Logic::getRecentsModel()->totalUnreads() + Logic::getUnknownsModel()->totalUnreads();
             if (unreads > 0)
@@ -1497,7 +1559,7 @@ namespace Ui
             if (Shadow_)
                 SetWindowPos((HWND)Shadow_->winId(), (HWND)winId(), 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
             trayIcon_->hideAlerts();
-            if (!SkipRead_ && isMainPage())
+            if (!SkipRead_ && isMessengerPageContactDialog())
             {
                 Logic::getRecentsModel()->sendLastRead();
                 Logic::getUnknownsModel()->sendLastRead();
@@ -1784,7 +1846,7 @@ namespace Ui
             {
                 userActivity();
 
-                if (mainPage_ && stackedWidget_->currentWidget() == mainPage_ && !mainPage_->isSemiWindowVisible())
+                if (isAppsPage() && MainPage::hasInstance() && !MainPage::instance()->isSemiWindowVisible())
                 {
                     const auto keyEvent = static_cast<QKeyEvent*>(_event);
                     const auto isSearchWidgetActive = (qobject_cast<Ui::SearchEdit*>(QApplication::focusWidget()) != nullptr);
@@ -1838,12 +1900,12 @@ namespace Ui
                             const auto setToInput =
                                 tabForward &&
                                 !Logic::getContactListModel()->selectedContact().isEmpty() &&
-                                mainPage_->getContactDialog()->canSetFocusOnInput();
+                                MainPage::instance()->getContactDialog()->canSetFocusOnInput();
 
                             if (setToInput)
-                                mainPage_->getContactDialog()->setFocusOnInputFirstFocusable();
+                                MainPage::instance()->getContactDialog()->setFocusOnInputFirstFocusable();
                             else
-                                mainPage_->setSearchTabFocus();
+                                MainPage::instance()->setSearchTabFocus();
 
                             return true;
                         }
@@ -1862,7 +1924,7 @@ namespace Ui
                             return true;
                     }
                 }
-                if (Statuses::isStatusEnabled() && mainPage_ && stackedWidget_->currentWidget() == mainPage_)
+                if (Statuses::isStatusEnabled() && isMessengerPage())
                 {
                     if (const auto keyEvent = static_cast<QKeyEvent*>(_event); keyEvent->key() == Qt::Key_S && (keyEvent->modifiers() & Qt::ControlModifier))
                     {
@@ -1912,7 +1974,7 @@ namespace Ui
     {
         QMainWindow::enterEvent(_event);
 
-        if (platform::is_apple() &&  qApp->activeWindow() != this && (mainPage_ == nullptr || !mainPage_->isVideoWindowActive()))
+        if (platform::is_apple() &&  qApp->activeWindow() != this && (!MainPage::hasInstance() || !MainPage::instance()->isVideoWindowActive()))
             qApp->setActiveWindow(this);
         updateMainMenu();
         Q_EMIT Utils::InterConnector::instance().historyControlPageFocusIn(Logic::getContactListModel()->selectedContact());
@@ -2047,11 +2109,11 @@ namespace Ui
 
     void MainWindow::keyPressEvent(QKeyEvent* _event)
     {
-        if (qobject_cast<MainPage*>(stackedWidget_->currentWidget()))
+        if (isMessengerPage())
         {
             const auto& aimId = Logic::getContactListModel()->selectedContact();
 
-            if (mainPage_ && !mainPage_->isSemiWindowVisible())
+            if (MainPage::hasInstance() && !MainPage::instance()->isSemiWindowVisible())
             {
                 const auto searchCode = get_gui_settings()->get_value<int>(settings_shortcuts_search_action, static_cast<int>(ShortcutsSearchAction::Default));
                 const auto searchAct = static_cast<ShortcutsSearchAction>(searchCode);
@@ -2072,20 +2134,20 @@ namespace Ui
                 }
             }
 
-            if (mainPage_ && _event->modifiers() == Qt::ControlModifier && _event->key() == Qt::Key_W)
+            if (MainPage::hasInstance() && _event->modifiers() == Qt::ControlModifier && _event->key() == Qt::Key_W)
             {
                 activateShortcutsClose();
             }
-            else if (mainPage_ && _event->modifiers() == Qt::ControlModifier && _event->key() == Qt::Key_R)
+            else if (MainPage::hasInstance() && _event->modifiers() == Qt::ControlModifier && _event->key() == Qt::Key_R)
             {
                 Logic::getRecentsModel()->markAllRead();
             }
             else if (_event->key() == Qt::Key_Escape)
             {
-                if (mainPage_ && mainPage_->isInSettingsTab())
+                if (MainPage::hasInstance() && MainPage::instance()->isInSettingsTab())
                 {
-                    if (mainPage_->isOneFrameTab())
-                        mainPage_->selectRecentsTab();
+                    if (MainPage::instance()->isOneFrameTab())
+                        MainPage::instance()->selectRecentsTab();
                     else
                         Q_EMIT Utils::InterConnector::instance().myProfileBack();
                 }
@@ -2113,7 +2175,7 @@ namespace Ui
                     contDialog->startPttRecordingLock();
             }
 
-            if (mainPage_ && !mainPage_->isSearchActive() && qApp->focusObject() == this)
+            if (MainPage::hasInstance() && !MainPage::instance()->isSearchActive() && qApp->focusObject() == this)
             {
                 if (_event->key() == Qt::Key_Down)
                     Q_EMIT downKeyPressed(QPrivateSignal());
@@ -2123,7 +2185,7 @@ namespace Ui
                     Q_EMIT enterKeyPressed(QPrivateSignal());
             }
 
-            if (mainPage_ && !mainPage_->isSemiWindowVisible())
+            if (MainPage::hasInstance() && !MainPage::instance()->isSemiWindowVisible())
             {
                 auto nextChatSequence = false;
                 auto prevChatSequence = false;
@@ -2152,7 +2214,10 @@ namespace Ui
                 if (_event->modifiers() == Qt::ControlModifier && _event->key() == Qt::Key_F4)
                     Logic::getRecentsModel()->hideChat(aimId);
             }
+        }
 
+        if (isAppsPage())
+        {
             if (_event->modifiers() == Qt::ControlModifier && _event->key() == Qt::Key_L && LocalPIN::instance()->enabled())
                 LocalPIN::instance()->lock();
         }
@@ -2219,21 +2284,25 @@ namespace Ui
 
     void MainWindow::initSizes(bool _needShow)
     {
+        setMinimumHeight(getMinWindowHeight());
+        setMinimumWidth(getMinWindowWidth());
+
         const auto defaultWindowRect = getDefaultWindowGeometry();
-        auto mainRect = Ui::get_gui_settings()->get_value(settings_main_window_rect, defaultWindowRect);
+        auto mainRect = Ui::get_gui_settings()->get_value(settings_main_window_rect, QRect());
+        if (mainRect.isNull())
+        {
+            mainRect = defaultWindowRect;
+            get_gui_settings()->set_value(settings_main_window_rect, mainRect);
+        }
 
         if constexpr (!platform::is_windows())
         {
-            const int screenCount = QDesktopWidget().screenCount();
-
             bool intersects = false;
-
-            for (int i = 0; i < screenCount; ++i)
+            const auto screens = QGuiApplication::screens();
+            for (const auto screen : screens)
             {
-                QRect screenGeometry = QDesktopWidget().screenGeometry(i);
-
-                QRect intersectedRect = screenGeometry.intersected(mainRect);
-
+                auto screenGeometry = screen->availableGeometry();
+                auto intersectedRect = screenGeometry.intersected(mainRect);
                 if (intersectedRect.width() > Utils::scale_value(50) && intersectedRect.height() > Utils::scale_value(50))
                 {
                     intersects = true;
@@ -2244,13 +2313,10 @@ namespace Ui
             if (!intersects)
                 mainRect = defaultWindowRect;
 
+            move(mainRect.left(), mainRect.top());
             resize(mainRect.width(), mainRect.height());
         }
-
-        setMinimumHeight(getMinWindowHeight());
-        setMinimumWidth(getMinWindowWidth());
-
-        if constexpr (platform::is_windows())
+        else
         {
             const auto desktopGeometry = availableVirtualGeometry();
 
@@ -2292,10 +2358,6 @@ namespace Ui
                 QTimer::singleShot(0, this, [this, mainRect]() { setGeometry(mainRect); });
             else
                 setGeometry(mainRect);
-        }
-        else
-        {
-            move(mainRect.left(), mainRect.top());
         }
     }
 
@@ -2343,17 +2405,27 @@ namespace Ui
         return mainWidget_;
     }
 
-    void MainWindow::resize(int w, int h)
+    void MainWindow::resize(int _w, int _h)
     {
-        const auto geometry = screenGeometry();
+        const auto geometry = screenAvailableGeometry();
 
-        if (geometry.width() < w)
-            w = geometry.width();
+        if (geometry.width() < _w)
+            _w = geometry.width();
 
-        if (geometry.height() < h)
-            h = geometry.height();
+        if (geometry.height() < _h)
+            _h = geometry.height();
 
-        return QMainWindow::resize(w, h);
+#ifdef __APPLE__
+        // workaround for setting the correct maximized window size (not full screen) after initialization
+        // if try to set the correct size the window will expand beyond the boundaries of the screen,
+        // but in this case the final window size will be correct
+        const auto windowTitleHeight = MacSupport::getWidgetHeaderHeight(*this);
+        const auto availableClientAreaHeight = geometry.height() - windowTitleHeight;
+        if (_h >= availableClientAreaHeight)
+            _h = availableClientAreaHeight - 1;
+#endif
+
+        return QMainWindow::resize(_w, _h);
     }
 
     void MainWindow::showMaximized()
@@ -2481,7 +2553,7 @@ namespace Ui
                 return;
             }
 
-            if (mainPage_ && mainPage_->isVideoWindowActive())
+            if (MainPage::hasInstance() && MainPage::instance()->isVideoWindowActive())
                 return;
         }
 
@@ -2490,10 +2562,10 @@ namespace Ui
         case ShortcutsCloseAction::RollUpWindowAndChat:
             Q_EMIT Utils::InterConnector::instance().closeAnyPopupMenu();
             Q_EMIT Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
-            if (mainPage_)
+            if (MainPage::hasInstance())
             {
                 Logic::getContactListModel()->setCurrent(QString(), -1);
-                mainPage_->update();
+                MainPage::instance()->update();
                 setFocus();
             }
             [[fallthrough]];
@@ -2551,7 +2623,7 @@ namespace Ui
 
                 trayIcon_->hideAlerts();
 
-                if (!SkipRead_ && isMainPage())
+                if (!SkipRead_ && isMessengerPageContactDialog())
                 {
                     Logic::getRecentsModel()->sendLastRead();
                     Logic::getUnknownsModel()->sendLastRead();
@@ -2565,17 +2637,11 @@ namespace Ui
                     updateWhenUserInactiveTimer_->start();
             }
 
-            if (mainPage_)
-                mainPage_->notifyUIActive(uiActive_);
+            if (MainPage::hasInstance())
+                MainPage::instance()->notifyUIActive(uiActive_);
         }
 
         isFirst = false;
-    }
-
-    void MainWindow::resetMainPage()
-    {
-        MainPage::reset();
-        mainPage_ = nullptr;
     }
 
     void MainWindow::userActivityTimer()
@@ -2620,9 +2686,9 @@ namespace Ui
     {
         if constexpr (platform::is_apple())
         {
-            if (mainPage_ && mainPage_->isVideoWindowActive() && !mainPage_->isVideoWindowMinimized())
+            if (MainPage::hasInstance() && MainPage::instance()->isVideoWindowActive() && !MainPage::instance()->isVideoWindowMinimized())
             {
-                mainPage_->minimizeVideoWindow();
+                MainPage::instance()->minimizeVideoWindow();
                 return;
             }
 
@@ -2667,8 +2733,8 @@ namespace Ui
 
         notifyWindowActive(false);
 
-        if (mainPage_ && mainPage_->isVideoWindowOn() && !mainPage_->isVideoWindowMinimized())
-            mainPage_->showVideoWindow();
+        if (MainPage::hasInstance() && MainPage::instance()->isVideoWindowOn() && !MainPage::instance()->isVideoWindowMinimized())
+            MainPage::instance()->showVideoWindow();
         updateMainMenu();
     }
 
@@ -2699,12 +2765,9 @@ namespace Ui
 
     void MainWindow::clear_global_objects()
     {
-        // delete main page
-        if (mainPage_)
-        {
-            stackedWidget_->removeWidget(mainPage_);
-            resetMainPage();
-        }
+        // delete messenger & super app page page
+        if (appsPage_)
+            appsPage_->resetMessengerPage();
 
         Logic::ResetMentionModel();
         Logic::ResetContactListModel();
@@ -2747,7 +2810,7 @@ namespace Ui
                 Testing::setAccessibleName(loginPage_, qsl("AS LoginPage"));
                 stackedWidget_->addWidget(loginPage_);
 
-                connect(loginPage_, &LoginPage::loggedIn, this, &MainWindow::showMainPage);
+                connect(loginPage_, &LoginPage::loggedIn, this, &MainWindow::showAppsPage);
 
 #ifndef STRIP_VOIP
                 if (callStatsMgr_)
@@ -2769,20 +2832,30 @@ namespace Ui
             showLoginPageInternal();
     }
 
-    void MainWindow::showMainPage()
+    void MainWindow::showAppsPage()
     {
         connect(MyInfo(), &my_info::needGDPR, this, &MainWindow::showGDPRPage, Qt::UniqueConnection);
 
-        if (!mainPage_)
+        if (!appsPage_)
         {
-            mainPage_ = MainPage::instance(this);
-            Testing::setAccessibleName(mainPage_, qsl("AS MainPage"));
-            stackedWidget_->addWidget(mainPage_);
+            appsPage_ = new AppsPage(this);
+            Testing::setAccessibleName(appsPage_, qsl("AS AppsPage"));
+            stackedWidget_->addWidget(appsPage_);
+        }
+        else
+        {
+            appsPage_->prepareForShow();
         }
 #ifdef __APPLE__
         getMacSupport()->createMenuBar(false);
 #endif
-        setCurrentWidget(mainPage_);
+        setCurrentWidget(appsPage_);
+    }
+
+    void MainWindow::showMessengerPage()
+    {
+        showAppsPage();
+        appsPage_->showMessengerPage();
     }
 
     void MainWindow::showGDPRPage()
@@ -2812,7 +2885,7 @@ namespace Ui
                 Testing::setAccessibleName(gdprPage_, qsl("AS GDPR"));
                 stackedWidget_->addWidget(gdprPage_);
 
-                connect(gdprPage_, &TermsPrivacyWidget::agreementAccepted, this, &MainWindow::showMainPage);
+                connect(gdprPage_, &TermsPrivacyWidget::agreementAccepted, this, &MainWindow::showAppsPage);
             }
 
             setCurrentWidget(gdprPage_);
@@ -2941,56 +3014,57 @@ namespace Ui
 
     void MainWindow::activateNextUnread()
     {
-        if (mainPage_)
+        if (MainPage::hasInstance())
         {
             activate();
             closePopups({ Utils::CloseWindowInfo::Initiator::Unknown, Utils::CloseWindowInfo::Reason::Keep_Sidebar });
-            mainPage_->recentsTabActivate(true);
+            MainPage::instance()->recentsTabActivate(true);
         }
     }
 
     void MainWindow::activateNextChat()
     {
-        if (mainPage_)
+        if (MainPage::hasInstance())
         {
             activate();
-            mainPage_->nextChat();
+            MainPage::instance()->nextChat();
         }
     }
 
     void MainWindow::activatePrevChat()
     {
-        if (mainPage_)
+        if (MainPage::hasInstance())
         {
             activate();
-            mainPage_->prevChat();
+            MainPage::instance()->prevChat();
         }
     }
 
     void MainWindow::activateAbout()
     {
-        if (mainPage_)
+        if (MainPage::hasInstance())
         {
             activate();
-            mainPage_->settingsTabActivate(Utils::CommonSettingsType::CommonSettingsType_About);
+            MainPage::instance()->settingsTabActivate(Utils::CommonSettingsType::CommonSettingsType_About);
         }
     }
 
     void MainWindow::activateProfile()
     {
-        if (mainPage_)
+        if (MainPage::hasInstance())
         {
             activate();
-            mainPage_->settingsTabActivate(Utils::CommonSettingsType::CommonSettingsType_Profile);
+            showMessengerPage();
+            MainPage::instance()->settingsTabActivate(Utils::CommonSettingsType::CommonSettingsType_Profile);
         }
     }
 
     void MainWindow::activateSettings()
     {
-        if (mainPage_)
+        if (MainPage::hasInstance())
         {
             activate();
-            mainPage_->settingsClicked();
+            MainPage::instance()->settingsClicked();
         }
     }
 
@@ -3067,7 +3141,7 @@ namespace Ui
 #ifdef __APPLE__
             MacSupport::showEmojiPanel();
 #else
-            getMainPage()->getContactDialog()->onSmilesMenu();
+            MainPage::instance()->getContactDialog()->onSmilesMenu();
 #endif
         }
     }
@@ -3127,15 +3201,15 @@ namespace Ui
     {
         if (isActive())
         {
-            if (mainPage_ && mainPage_->isVideoWindowOn())
-                mainPage_->showVideoWindow();
+            if (MainPage::hasInstance() && MainPage::instance()->isVideoWindowOn())
+                MainPage::instance()->showVideoWindow();
             activate();
         }
         else
         {
             activate();
-            if (mainPage_ && mainPage_->isVideoWindowOn())
-                mainPage_->showVideoWindow();
+            if (MainPage::hasInstance() && MainPage::instance()->isVideoWindowOn())
+                MainPage::instance()->showVideoWindow();
         }
 
     }
@@ -3143,12 +3217,13 @@ namespace Ui
     void MainWindow::zoomWindow()
     {
 #ifdef __APPLE__
-        if (mainPage_ && mainPage_->isVideoWindowActive())
+        if (MainPage::hasInstance() && MainPage::instance()->isVideoWindowActive())
         {
-            if (mainPage_->isVideoWindowMaximized())
-                mainPage_->showVideoWindow();
+            auto mainPage = MainPage::instance();
+            if (mainPage->isVideoWindowMaximized())
+                mainPage->showVideoWindow();
             else
-                mainPage_->maximizeVideoWindow();
+                mainPage->maximizeVideoWindow();
             return;
         }
 

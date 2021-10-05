@@ -1,9 +1,20 @@
 #pragma once
 
+namespace Ui
+{
+    enum class ReactionsPlateType;
+    enum class FileStatus;
+}
+
+namespace Styling
+{
+    enum class StyleVariable;
+}
+
 namespace Ui::MessageStyle
 {
     QFont getTextFont();
-    int getTextLineSpacing();
+    int getTextLineSpacing() noexcept;
     QFont getTextMonospaceFont();
     QFont getImagePreviewLinkFont();
 
@@ -26,25 +37,25 @@ namespace Ui::MessageStyle
 
     QColor getBorderColor();
 
-    int getBorderWidth();
+    int getBorderWidth() noexcept;
 
     QBrush getBodyBrush(const bool isOutgoing, const QString& _aimId);
 
-    int32_t getMinBubbleHeight();
+    int32_t getMinBubbleHeight() noexcept;
 
-    int32_t getBorderRadius();
+    int32_t getBorderRadius() noexcept;
 
-    int32_t getBorderRadiusSmall();
+    int32_t getBorderRadiusSmall() noexcept;
 
-    int32_t getTopMargin(const bool hasTopMargin);
+    int32_t getTopMargin(const bool hasTopMargin) noexcept;
 
-    int32_t getRightBubbleMargin();
+    int32_t getRightBubbleMargin(const QString& _aimId);
 
-    int32_t getLeftBubbleMargin();
+    int32_t getLeftBubbleMargin() noexcept;
 
     int32_t getLeftMargin(const bool _isOutgoing, const int _width);
 
-    int32_t getRightMargin(const bool _isOutgoing, const int _width);
+    int32_t getRightMargin(const bool _isOutgoing, const int _width, const QString& _aimId);
 
     int32_t getSenderTopPadding();
     int32_t getSenderBaseline();
@@ -135,9 +146,17 @@ namespace Ui::MessageStyle
 
     int32_t getProgressTextRectVMargin();
 
-    int fiveHeadsWidth();
-    int fourHeadsWidth();
-    int threeHeadsWidth();
+    constexpr int getSingleHeadWidthUnscaled() noexcept { return 20; }
+
+    constexpr int getHeadsWidthUnscaled(int _numHeads) noexcept
+    {
+        if (_numHeads < 3 || _numHeads > 5)
+            im_assert(!"number of heads are supposed to be within [3;5] range");
+
+        return 400 + _numHeads * getSingleHeadWidthUnscaled();
+    }
+
+    int getHeadsWidth(int _numHeads) noexcept;
 
     int32_t getBlocksSeparatorVertMargins();
     int getDragDistance();
@@ -148,6 +167,12 @@ namespace Ui::MessageStyle
     std::chrono::milliseconds getHiddenControlsAnimationTime();
 
     int getMessageMaxWidth();
+
+    QColor getBlockedFileIconBackground(bool _isOutgoing);
+    QColor getBlockedFileIconColor(bool _isOutgoing);
+
+    QColor getFileStatusIconBackground(FileStatus _status, bool _isOutgoing);
+    Styling::StyleVariable getFileStatusIconColor(FileStatus _status, bool _isOutgoing) noexcept;
 
     namespace Preview
     {
@@ -267,12 +292,16 @@ namespace Ui::MessageStyle
         QFont getDurationFont();
     }
 
-    namespace Reactions
+    namespace Plates
     {
         int32_t plateHeight();
         int32_t plateYOffset();
         int32_t mediaPlateYOffset();
         int32_t shadowHeight();
         QSize addReactionButtonSize();
+        int32_t plateHeightWithShadow(Ui::ReactionsPlateType _type);
+        int32_t plateOffsetY(Ui::ReactionsPlateType _type);
+        int32_t plateOffsetX();
+        int32_t borderRadius();
     }
 }

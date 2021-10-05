@@ -328,4 +328,8 @@ namespace spellcheck
             return platform_->checkText(text);
         return {};
     }
+
+    void SpellCheckerImpl::updateKeyboardLanguages()
+    {
+    }
 }

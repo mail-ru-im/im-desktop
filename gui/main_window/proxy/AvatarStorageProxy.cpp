@@ -3,19 +3,29 @@
 #include "AvatarStorageProxy.h"
 #include "cache/avatars/AvatarStorage.h"
 #include "../contact_list/FavoritesUtils.h"
+#include "../contact_list/ServiceContacts.h"
 #include "utils/utils.h"
 #include "my_info.h"
 
 namespace
 {
     using PixmapCache = std::unordered_map<int, QPixmap>;
-    std::unordered_map<int, QPixmap> g_favoritesAvatarsCache;
+    PixmapCache g_favoritesAvatarsCache;
+    std::unordered_map<QString, PixmapCache, Utils::QStringHasher> g_serviceAvatarsCache;
 
     QPixmap getFavoritesAvatarFromCache(int _sizePx)
     {
         auto& cached = g_favoritesAvatarsCache[_sizePx];
         if (cached.isNull())
             cached = Favorites::avatar(_sizePx);
+        return cached;
+    }
+
+    QPixmap getServiceAvatarFromCache(const QString& _contactId, int _sizePx)
+    {
+        auto& cached = g_serviceAvatarsCache[_contactId][_sizePx];
+        if (cached.isNull())
+            cached = ServiceContacts::avatar(_contactId, _sizePx);
         return cached;
     }
 }
@@ -27,6 +37,8 @@ QPixmap AvatarStorageProxy::Get(const QString& _aimId, const QString& _displayNa
 {
     if (flags_ & ReplaceFavorites && Favorites::isFavorites(_aimId))
         return getFavoritesAvatarFromCache(_sizePx);
+    if (flags_ & ReplaceService && ServiceContacts::isServiceContact(_aimId))
+        return getServiceAvatarFromCache(_aimId, _sizePx);
 
     return GetAvatarStorage()->Get(_aimId, _displayName, _sizePx, _isDefault, _regenerate);
 }
@@ -35,6 +47,8 @@ QPixmap AvatarStorageProxy::GetRounded(const QString& _aimId, const QString& _di
 {
     if (flags_ & ReplaceFavorites && Favorites::isFavorites(_aimId))
         return getFavoritesAvatarFromCache(_sizePx);
+    if (flags_ & ReplaceService && ServiceContacts::isServiceContact(_aimId))
+        return getServiceAvatarFromCache(_aimId, _sizePx);
 
     return GetAvatarStorage()->GetRounded(_aimId, _displayName, _sizePx, _isDefault, _regenerate, _mini_icons);
 }

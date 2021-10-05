@@ -45,6 +45,29 @@ namespace Ui
         virtual bool needsTooltip(QPoint _posCursor = {}) const { return false; }
     };
 
+    class PinnedServiceItem : public RecentItemBase
+    {
+        Q_OBJECT
+    public:
+        PinnedServiceItem(const Data::DlgState& _state);
+        ~PinnedServiceItem();
+
+    protected:
+        void draw(
+            QPainter& _p,
+            const QRect& _rect,
+            const Ui::ViewParams& _viewParams,
+            const bool _isSelected,
+            const bool _isHovered,
+            const bool _isDrag,
+            const bool _isKeyboardFocused) override;
+
+    private:
+        ::Ui::TextRendering::TextUnitPtr text_;
+        Data::DlgState::PinnedServiceItemType type_;
+        int unreadCount_;
+        int unreadMentionsCount_;
+    };
 
     //////////////////////////////////////////////////////////////////////////
     // RecentItemService
@@ -137,6 +160,8 @@ namespace Ui
         int messageNameWidth_;
 
         ::Ui::TextRendering::TextUnitPtr time_;
+
+        bool draft_ = false;
 
         const QString state_;
 

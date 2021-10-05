@@ -8,6 +8,7 @@
 
 #include "../connections/wim/persons.h"
 #include "poll.h"
+#include "../tasks/task.h"
 #include "reactions.h"
 
 namespace core
@@ -102,19 +103,21 @@ namespace core
 
         class message_header
         {
-            int64_t id_;
+            int64_t id_ = -1;
             uint8_t version_;
             message_flags flags_;
-            uint64_t time_;
-            int64_t prev_id_;
-            int64_t data_offset_;
-            uint32_t data_size_;
+            uint64_t time_ = 0;
+            int64_t prev_id_ = -1;
+            int64_t data_offset_ = -1;
+            uint32_t data_size_ = 0;
 
             common::tools::patch_version update_patch_version_;
 
-            bool has_shared_contact_with_sn_;
-            bool has_poll_with_id_;
-            bool has_reactions_;
+            bool has_shared_contact_with_sn_ = false;
+            bool has_poll_with_id_ = false;
+            bool has_task_with_id_ = false;
+            bool has_reactions_ = false;
+            bool has_thread_ = false;
 
             message_header_vec modifications_;
 
@@ -132,7 +135,9 @@ namespace core
                 common::tools::patch_version patch_,
                 bool _shared_contact_with_sn,
                 bool _has_poll_with_id,
-                bool _has_reactions);
+                bool _has_task_with_id,
+                bool _has_reactions,
+                bool _has_thread);
 
             message_header(message_header&&) = default;
             message_header(const message_header&) = default;
@@ -186,7 +191,9 @@ namespace core
 
             bool has_shared_contact_with_sn() const noexcept;
             bool has_poll_with_id() const noexcept;
+            bool has_task_with_id() const noexcept;
             bool has_reactions() const noexcept;
+            bool has_thread() const noexcept;
 
             friend bool operator<(const message_header& _header1, const message_header& _header2) noexcept
             {
@@ -342,6 +349,7 @@ namespace core
             static chat_event_data_sptr make_generic_event(std::string _text);
             static chat_event_data_sptr make_status_reply_event(const rapidjson::Value& _node);
             static chat_event_data_sptr make_custom_status_reply_event(const rapidjson::Value& _node);
+            static chat_event_data_sptr make_task_change_event(const rapidjson::Value& _node);
 
             void apply_persons(const archive::persons_map &_persons);
             bool contents_equal(const chat_event_data& _rhs) const;
@@ -362,6 +370,7 @@ namespace core
             void deserialize_mchat_members(const tools::tlvpack &_pack);
             void deserialize_mchat_members_aimids(const tools::tlvpack &_pack);
             void deserialize_status_reply(const tools::tlvpack& _pack);
+            void deserialize_task_change(const tools::tlvpack& _pack);
 
             chat_event_type get_type() const;
             bool has_generic_text() const;
@@ -377,6 +386,8 @@ namespace core
             void serialize_mchat_members_aimids(Out tools::tlvpack &_pack) const;
             void serialize_status_reply(Out coll_helper& _coll) const;
             void serialize_status_reply(Out tools::tlvpack& _pack) const;
+            void serialize_task_change(Out coll_helper& _coll) const;
+            void serialize_task_change(Out tools::tlvpack& _pack) const;
 
             chat_event_type type_;
             bool is_captcha_present_;
@@ -400,6 +411,7 @@ namespace core
                 std::string new_stamp_;
                 bool new_join_moderation_;
                 bool new_public_;
+                bool new_trust_required_;
             } chat_;
 
             struct
@@ -410,19 +422,25 @@ namespace core
                 std::string owner_status_descriprion_;
             } status_reply_;
 
+            struct
+            {
+                std::string editor_;
+                core::tasks::task_change change_;
+            } task_;
+
             std::string generic_;
         };
 
         using history_message_sptr = std::shared_ptr<class history_message>;
 
-        class format_data : public core::data::format::string_formatting
+        class format_data : public core::data::format
         {
         public:
             format_data() = default;
-            format_data(const core::data::format::string_formatting& _data) { *static_cast<core::data::format::string_formatting*>(this) = _data; }
+            format_data(const core::data::format& _data) { *static_cast<core::data::format*>(this) = _data; }
             void serialize(icollection* _collection, std::string_view _name) const;
             void serialize(tools::tlvpack& _pack) const;
-            void unserialize(const rapidjson::Value& _node);
+            rapidjson::Value serialize(rapidjson_allocator& _a) const { return core::data::format::serialize(_a); }
             bool unserialize(core::tools::tlvpack& _pack);
             void unserialize(const coll_helper& _coll, std::string_view _name);
         };
@@ -457,6 +475,7 @@ namespace core
             shared_contact shared_contact_;
             geo geo_;
             poll poll_;
+            core::tasks::task task_;
             std::string json_;
             std::string sender_aimid_;
             bool unsupported_;
@@ -464,6 +483,7 @@ namespace core
             std::vector<std::vector<button_data>> buttons_;
             std::string buttons_json_;
             reactions reactions_;
+            std::string thread_id_;
 
             void copy(const history_message& _message);
 
@@ -541,7 +561,7 @@ namespace core
             bool has_text() const noexcept;
 
             bool has_format() const noexcept { return format_.operator bool(); }
-            void set_format(const core::data::format::string_formatting& _format);
+            void set_format(const core::data::format& _format);
             const format_data get_format() const { return has_format() ? *format_ : format_data(); }
 
             archive::chat_data* get_chat_data() noexcept;
@@ -560,9 +580,9 @@ namespace core
 
             void set_description(const std::string& _description) { description_ = _description; }
             const std::string& description() const { return description_; }
-            void set_description_format(const core::data::format::string_formatting& _format);
+            void set_description_format(const core::data::format& _format);
 
-            core::data::format::string_formatting description_format() const { return description_format_ ? *description_format_ : core::data::format::string_formatting(); }
+            core::data::format description_format() const { return description_format_ ? *description_format_ : core::data::format(); }
 
             void set_url(const std::string& _url) { url_ = _url; }
             std::string url() const { return url_; }
@@ -623,13 +643,23 @@ namespace core
             void set_poll(const poll& _poll);
             const poll& get_poll() const;
 
-            void set_poll_id(const std::string& _poll_id);
+            void set_poll_id(std::string_view _poll_id);
+
+            void set_task(const core::tasks::task& _task);
+            const core::tasks::task& get_task() const;
+
+            void set_task_id(std::string_view _task_id);
 
             bool has_shared_contact_with_sn() const;
             bool has_poll_with_id() const;
+            bool has_task_with_id() const;
             bool has_reactions() const;
+            bool has_thread() const;
 
             const reactions& get_reactions() const;
+
+            const std::string& get_thread_id() const;
+            void set_thread_id(const std::string& _thread_id);
         };
 
         class quote
@@ -652,6 +682,7 @@ namespace core
             shared_contact shared_contact_;
             geo geo_;
             poll poll_;
+            core::tasks::task task_;
 
         public:
             quote();
@@ -682,6 +713,7 @@ namespace core
             const shared_contact& get_shared_contact() const { return shared_contact_; }
             const geo& get_geo() const { return geo_; }
             const poll& get_poll() const { return poll_; }
+            const core::tasks::task& get_task() const { return task_; }
         };
 
         class url_snippet
@@ -707,5 +739,7 @@ namespace core
             std::string title_;
             std::string description_;
         };
+
+        void serialize_message_quotes(const quotes_vec& _quotes, rapidjson::Document& _doc, rapidjson_allocator& _a);
     }
 }

@@ -63,7 +63,7 @@ int32_t search_chat_members::init_request(const std::shared_ptr<core::http_reque
 
 int32_t search_chat_members::parse_results(const rapidjson::Value& _node_results)
 {
-    if (get_status_code() == robusto_protocol_error::reset_search_page)
+    if (get_status_code() == robusto_protocol_error::reset_page)
         reset_pages_ = true;
 
     if (result_.unserialize(_node_results) != 0)
@@ -84,5 +84,5 @@ int32_t search_chat_members::on_response_error_code()
 
 bool search_chat_members::is_status_code_ok() const
 {
-    return get_status_code() == robusto_protocol_error::reset_search_page || robusto_packet::is_status_code_ok();
+    return get_status_code() == robusto_protocol_error::reset_page || robusto_packet::is_status_code_ok();
 }

@@ -1,5 +1,6 @@
 #include "stdafx.h"
 
+#include "Sidebar.h"
 #include "SidebarUtils.h"
 #include "ImageVideoList.h"
 
@@ -38,51 +39,52 @@
 #include "../../utils/Text2DocConverter.h"
 #include "../../styles/ThemeParameters.h"
 #include "previewer/toast.h"
+#include "types/chat.h"
 
 namespace
 {
-    const int EDIT_AVATAR_SIZE = 100;
-    const int EDIT_FONT_SIZE = 16;
-    const int EDIT_HOR_OFFSET = 20;
-    const int EDIT_VER_OFFSET = 24;
-    const int EDIT_MAX_ENTER_HEIGHT = 100;
+    constexpr int EDIT_AVATAR_SIZE = 100;
+    constexpr int EDIT_FONT_SIZE = 16;
+    constexpr int EDIT_HOR_OFFSET = 20;
+    constexpr int EDIT_VER_OFFSET = 24;
+    constexpr int EDIT_MAX_ENTER_HEIGHT = 100;
 
-    const auto HOR_OFFSET = 16;
-    const auto BUTTON_HOR_OFFSET = 20;
-    const auto AVATAR_NAME_OFFSET = 12;
-    const auto ICON_SIZE = 20;
-    const auto ICON_OFFSET = 4;
-    const auto AVATAR_INFO_HEIGHT = 84;
-    const auto INFO_HEADER_BOTTOM_MARGIN = 4;
-    const auto INFO_TEXT_BOTTOM_MARGIN = 12;
-    const auto BUTTON_HEIGHT = 36;
-    const auto COLORED_BUTTON_HEIGHT = 40;
-    const auto BUTTON_ICON_SIZE = 20;
-    const auto GALLERY_PREVIEW_SIZE = 52;
-    const auto GALLERY_PREVIEW_COUNT = 5;
-    const auto GALLERY_WIDGET_HEIGHT = 80;
-    const auto GALLERY_WIDGET_MARGIN_LEFT = HOR_OFFSET;
-    const auto GALLERY_WIDGET_MARGIN_TOP = 8;
-    const auto GALLERY_WIDGET_MARGIN_RIGHT = HOR_OFFSET;
-    const auto GALLERY_WIDGET_MARGIN_BOTTOM = 20;
-    const auto GALLERY_WIDGET_SPACING = 8;
-    const auto MEMBERS_LEFT_MARGIN = HOR_OFFSET;
-    const auto MEMBERS_RIGHT_MARGIN = HOR_OFFSET;
-    const auto MEMBERS_TOP_MARGIN = 6;
-    const auto MEMBERS_BOTTOM_MARGIN = 20;
-    const auto COLORED_BUTTON_TEXT_OFFSET = 8;
-    const auto COLORED_BUTTON_BOTTOM_OFFSET = 20;
-    const auto MAX_INFO_LINES_COUNT = 4;
-    const auto SPACER_HEIGHT = 8;
-    const auto SPACER_MARGIN = 8;
-    const auto CLICKABLE_AVATAR_INFO_OFFSET = 8;
-    const auto NAME_OFFSET = 2;
-    const auto MEMBERS_WIDGET_BOTTOM_OFFSET = 8;
+    constexpr auto HOR_OFFSET = 16;
+    constexpr auto BUTTON_HOR_OFFSET = 20;
+    constexpr auto AVATAR_NAME_OFFSET = 12;
+    constexpr auto ICON_SIZE = 20;
+    constexpr auto ICON_OFFSET = 4;
+    constexpr auto AVATAR_INFO_HEIGHT = 84;
+    constexpr auto INFO_HEADER_BOTTOM_MARGIN = 4;
+    constexpr auto INFO_TEXT_BOTTOM_MARGIN = 12;
+    constexpr auto BUTTON_HEIGHT = 36;
+    constexpr auto COLORED_BUTTON_HEIGHT = 40;
+    constexpr auto BUTTON_ICON_SIZE = 20;
+    constexpr auto GALLERY_PREVIEW_SIZE = 52;
+    constexpr auto GALLERY_PREVIEW_COUNT = 5;
+    constexpr auto GALLERY_WIDGET_HEIGHT = 80;
+    constexpr auto GALLERY_WIDGET_MARGIN_LEFT = HOR_OFFSET;
+    constexpr auto GALLERY_WIDGET_MARGIN_TOP = 8;
+    constexpr auto GALLERY_WIDGET_MARGIN_RIGHT = HOR_OFFSET;
+    constexpr auto GALLERY_WIDGET_MARGIN_BOTTOM = 20;
+    constexpr auto GALLERY_WIDGET_SPACING = 8;
+    constexpr auto MEMBERS_LEFT_MARGIN = HOR_OFFSET;
+    constexpr auto MEMBERS_RIGHT_MARGIN = HOR_OFFSET;
+    constexpr auto MEMBERS_TOP_MARGIN = 6;
+    constexpr auto MEMBERS_BOTTOM_MARGIN = 20;
+    constexpr auto COLORED_BUTTON_TEXT_OFFSET = 8;
+    constexpr auto COLORED_BUTTON_BOTTOM_OFFSET = 20;
+    constexpr auto MAX_INFO_LINES_COUNT = 4;
+    constexpr auto SPACER_HEIGHT = 8;
+    constexpr auto SPACER_MARGIN = 8;
+    constexpr auto CLICKABLE_AVATAR_INFO_OFFSET = 8;
+    constexpr auto NAME_OFFSET = 2;
+    constexpr auto MEMBERS_WIDGET_BOTTOM_OFFSET = 8;
 
-    const int BLOCK_AND_DELETE_HOR_OFFSET = 16;
-    const int BLOCK_AND_DELETE_TOP_OFFSET = 16;
-    const int BLOCK_AND_DELETE_ADD_OFFSET = 6;
-    const int BLOCK_AND_DELETE_BOTTOM_OFFSET = 16;
+    constexpr int BLOCK_AND_DELETE_HOR_OFFSET = 16;
+    constexpr int BLOCK_AND_DELETE_TOP_OFFSET = 16;
+    constexpr int BLOCK_AND_DELETE_ADD_OFFSET = 6;
+    constexpr int BLOCK_AND_DELETE_BOTTOM_OFFSET = 16;
 
     QMap<QString, QVariant> makeData(const QString& _command, qint64 _msg, const QString& _link, const QString& _sender, time_t _time)
     {
@@ -319,9 +321,7 @@ namespace Ui
         if (isEnabled_)
         {
             if (Utils::clicked(clickedPoint_, _event->pos()))
-            {
                 Q_EMIT clicked(QPrivateSignal());
-            }
             isActive_ = false;
             update();
         }
@@ -379,6 +379,7 @@ namespace Ui
             return;
 
         checkbox_->setChecked(_checked);
+        Q_EMIT checked(_checked, QPrivateSignal());
         update();
     }
 
@@ -393,6 +394,11 @@ namespace Ui
         checkbox_->setEnabled(_isEnabled);
     }
 
+    void SidebarCheckboxButton::setCheckValidator(std::function<bool(bool)> _validatorFunc)
+    {
+        checkValidator_ = std::move(_validatorFunc);
+    }
+
     void SidebarCheckboxButton::resizeEvent(QResizeEvent* _event)
     {
         checkbox_->move(width() - margins_.right() - checkbox_->width(), height() / 2 - checkbox_->height() / 2);
@@ -402,18 +408,24 @@ namespace Ui
 
     void SidebarCheckboxButton::mousePressEvent(QMouseEvent* _event)
     {
-        if (isEnabled_)
-            clickedPoint_ = _event->pos();
-
+        clickedPoint_ = _event->pos();
         SidebarButton::mousePressEvent(_event);
     }
 
     void SidebarCheckboxButton::mouseReleaseEvent(QMouseEvent* _event)
     {
-        if (isEnabled_ && Utils::clicked(clickedPoint_, _event->pos()))
+        if (Utils::clicked(clickedPoint_, _event->pos()))
         {
-            setChecked(!isChecked());
-            Q_EMIT checked(checkbox_->isChecked(), QPrivateSignal());
+            if (isEnabled_)
+            {
+                const auto desired = !isChecked();
+                const auto newValue = checkValidator_ ? checkValidator_(desired) : desired;
+                setChecked(newValue);
+            }
+            else
+            {
+                Q_EMIT disabledClicked(QPrivateSignal());
+            }
         }
         SidebarButton::mouseReleaseEvent(_event);
     }
@@ -938,8 +950,9 @@ namespace Ui
     {
         if (pressed_ && hoverEnabled_ && rect_.contains(_pos))
         {
-            auto w = new StatusPopup(status_, nullptr);
-            GeneralDialog d(w, Utils::InterConnector::instance().getMainWindow(), false, false);
+            GeneralDialog::Options opt;
+            opt.fixedSize_ = false;
+            GeneralDialog d(new StatusPopup(status_, nullptr), Utils::InterConnector::instance().getMainWindow(), opt);
             d.setTransparentBackground(true);
             d.setShadow(false);
 
@@ -1382,51 +1395,18 @@ namespace Ui
     {
         const auto pos = _event->pos();
 
-        if (Utils::clicked(selectFrom_, pos) || text_->isSelected() || (collapsed_ && collapsedText_->isSelected()))
+        if (_event->button() == Qt::LeftButton)
         {
-            if (_event->button() == Qt::LeftButton)
+            if (Utils::clicked(selectFrom_, pos) || text_->isSelected() || (collapsed_ && collapsedText_->isSelected()))
             {
                 selectFrom_ = QPoint();
                 selectTo_ = QPoint();
-            }
 
-            if (maxLinesCount_ != -1 && collapsed_ && readMore_->contains(pos))
-            {
-                collapsed_ = false;
-                updateSize();
-                update();
-            }
-            else
-            {
-                if (_event->button() == Qt::RightButton)
+                if (maxLinesCount_ != -1 && collapsed_ && readMore_->contains(pos))
                 {
-                    ContextMenu* menu = nullptr;
-                    if (menu_)
-                    {
-                        menu = menu_;
-                    }
-                    else if (copyable_)
-                    {
-                        menu = new ContextMenu(this);
-
-                        QMap<QString, QVariant> data;
-                        data[qsl("command")] = qsl("copy");
-                        data[qsl("text")] = isTextField_ && text_->isSelected() ? text_->getSelectedText().string() : text_->getText();
-
-                        menu->addActionWithIcon(qsl(":/copy_icon"), QT_TRANSLATE_NOOP("sidebar", "Copy"), data);
-
-                        connect(menu, &ContextMenu::triggered, this, &TextLabel::menuAction);
-                        connect(menu, &ContextMenu::triggered, menu, &ContextMenu::deleteLater, Qt::QueuedConnection);
-                        connect(menu, &ContextMenu::aboutToHide, menu, &ContextMenu::deleteLater, Qt::QueuedConnection);
-                    }
-
-                    if (menu)
-                    {
-                        if (pos.x() >= width() / 2)
-                            menu->invertRight(true);
-
-                        menu->popup(QCursor::pos());
-                    }
+                    collapsed_ = false;
+                    updateSize();
+                    update();
                 }
                 else
                 {
@@ -1435,7 +1415,7 @@ namespace Ui
                     {
                         auto copyRect = QRect(width() - Utils::scale_value(ICON_SIZE) * (onlyCopyButton_ ? 2 : 4), margins_.top(), Utils::scale_value(ICON_SIZE), Utils::scale_value(ICON_SIZE));
                         if (copyRect.contains(pos) && !std::exchange(buttonWasClicked, true))
-                            Q_EMIT copyClicked(Data::stubFromFormattedString(text_->getSourceText()), QPrivateSignal());
+                            Q_EMIT copyClicked(text_->getSourceText().string(), QPrivateSignal());
 
                         auto shareRect = QRect(width() - Utils::scale_value(ICON_SIZE) * 2, margins_.top(), Utils::scale_value(ICON_SIZE), Utils::scale_value(ICON_SIZE));
                         if (!onlyCopyButton_ && shareRect.contains(pos) && !std::exchange(buttonWasClicked, true))
@@ -1460,15 +1440,43 @@ namespace Ui
                     }
                 }
             }
-        }
-        else if (_event->button() == Qt::LeftButton)
-        {
-            selectTo_ = pos;
-            if (isTextField_)
+            else
             {
-                selectText(selectFrom_, selectTo_);
-                selectFrom_ = QPoint();
-                selectTo_ = QPoint();
+                selectTo_ = pos;
+                if (isTextField_)
+                {
+                    selectText(selectFrom_, selectTo_);
+                    selectFrom_ = QPoint();
+                    selectTo_ = QPoint();
+                }
+            }
+        }
+        else if (_event->button() == Qt::RightButton)
+        {
+            ContextMenu* menu = nullptr;
+            if (menu_)
+            {
+                menu = menu_;
+            }
+            else if (copyable_)
+            {
+                menu = new ContextMenu(this);
+
+                QMap<QString, QVariant> data;
+                data[qsl("command")] = qsl("copy");
+                data[qsl("text")] = isTextField_ && text_->isSelected() ? text_->getSelectedText().string() : text_->getText();
+
+                menu->addActionWithIcon(qsl(":/copy_icon"), QT_TRANSLATE_NOOP("sidebar", "Copy"), data);
+
+                connect(menu, &ContextMenu::triggered, this, &TextLabel::menuAction);
+                connect(menu, &ContextMenu::triggered, menu, &ContextMenu::deleteLater, Qt::QueuedConnection);
+                connect(menu, &ContextMenu::aboutToHide, menu, &ContextMenu::deleteLater, Qt::QueuedConnection);
+            }
+
+            if (menu)
+            {
+                menu->showAtLeft(pos.x() >= width() / 2);
+                menu->popup(QCursor::pos());
             }
         }
 
@@ -1503,7 +1511,7 @@ namespace Ui
                 selectTo_ = pos;
                 selectText(selectFrom_, selectTo_);
             }
-            setCursor(isOnText && selectFrom_.isNull() ? Qt::PointingHandCursor : Qt::ArrowCursor);
+            setCursor((isOnText && selectFrom_.isNull()) ? Qt::PointingHandCursor : Qt::ArrowCursor);
             Tooltip::hide();
         }
 
@@ -2453,6 +2461,7 @@ namespace Ui
             auto hLayout = Utils::emptyHLayout(widget);
             hLayout->setAlignment(Qt::AlignHCenter);
             avatar_ = new ContactAvatarWidget(this, _aimid, _name, Utils::scale_value(EDIT_AVATAR_SIZE), true);
+            Testing::setAccessibleName(avatar_, qsl("AS EditWidget avatar"));
             avatar_->SetMode(Ui::ContactAvatarWidget::Mode::ChangeAvatar);
             connect(avatar_, &Ui::ContactAvatarWidget::avatarDidEdit, this, [this]() { avatarChanged_ = true; });
             hLayout->addWidget(avatar_);
@@ -2471,6 +2480,7 @@ namespace Ui
             auto hLayout = Utils::emptyHLayout(widget);
             hLayout->setAlignment(Qt::AlignHCenter);
             name_ = new Ui::TextEditEx(this, Fonts::appFontScaled(EDIT_FONT_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), true, true);
+            Testing::setAccessibleName(name_, qsl("AS EditWidget nickName"));
             Utils::ApplyStyle(name_, Styling::getParameters().getTextEditCommonQss(true));
             name_->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
             name_->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
@@ -2500,6 +2510,7 @@ namespace Ui
             auto hLayout = Utils::emptyHLayout(widget);
             hLayout->setAlignment(Qt::AlignHCenter);
             description_ = new Ui::TextEditEx(this, Fonts::appFontScaled(EDIT_FONT_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), true, true);
+            Testing::setAccessibleName(description_, qsl("AS EditWidget description"));
             Utils::ApplyStyle(description_, Styling::getParameters().getTextEditCommonQss(true));
             description_->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
             description_->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
@@ -2529,6 +2540,7 @@ namespace Ui
             auto hLayout = Utils::emptyHLayout(widget);
             hLayout->setAlignment(Qt::AlignHCenter);
             rules_ = new Ui::TextEditEx(this, Fonts::appFontScaled(EDIT_FONT_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), true, true);
+            Testing::setAccessibleName(rules_, qsl("AS EditWidget rules"));
             Utils::ApplyStyle(rules_, Styling::getParameters().getTextEditCommonQss(true));
             rules_->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
             rules_->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
@@ -2906,6 +2918,33 @@ namespace Ui
         galleryFiles_->setCounter(_files);
         galleryLinks_->setCounter(_links);
         galleryPtt_->setCounter(_ptt);
+    }
+
+    void GalleryPopup::setCounters(const Data::DialogGalleryState& _state)
+    {
+        setCounters(
+            countForType(_state, MediaContentType::ImageVideo),
+            countForType(_state, MediaContentType::Video),
+            countForType(_state, MediaContentType::Files),
+            countForType(_state, MediaContentType::Links),
+            countForType(_state, MediaContentType::Voice)
+        );
+    }
+
+    int GalleryPopup::horOffset()
+    {
+        return Utils::scale_value(8);
+    }
+
+    int GalleryPopup::verOffset()
+    {
+        return Utils::scale_value(52);
+    }
+
+    int GalleryPopup::itemsCount() const
+    {
+        const auto items = findChildren<SidebarButton*>();
+        return std::count_if(items.begin(), items.end(), [this](auto _item) { return _item->isVisibleTo(this); });
     }
 
     BlockAndDeleteWidget::BlockAndDeleteWidget(QWidget* _parent, const QString& _friendly, const QString& _chatAimid)

@@ -12,17 +12,34 @@
 #include "../containers/FriendlyContainer.h"
 #include "../containers/StatusContainer.h"
 #include "../../utils/InterConnector.h"
+#include "../../utils/features.h"
 #include "../../utils/stat_utils.h"
 #include "../../gui_settings.h"
+#include "../../types/thread.h"
 #include "FavoritesUtils.h"
+#include "ServiceContacts.h"
 
 
 namespace
 {
     auto isEqualDlgState = [](const auto& _aimId)
     {
-        return [&_aimId](const auto& dlgState) { return _aimId == dlgState.AimId_; };
+        return [&_aimId](const auto& _dlgState) { return _aimId == _dlgState.AimId_; };
     };
+
+    QString accessibleName(const Data::DlgState& _dlgState)
+    {
+        return u"AS Recents " % _dlgState.AimId_;
+    }
+
+    auto favoritesDlgState()
+    {
+        Data::DlgState s;
+        s.AimId_ = Ui::MyInfo()->aimId();
+        s.setPinnedServiceItemType(Data::DlgState::PinnedServiceItemType::Favorites);
+        s.SetText(Ui::MyInfo()->friendly());
+        return s;
+    }
 }
 
 
@@ -52,6 +69,8 @@ namespace Logic
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::dlgStates, this, &RecentsModel::dlgStates);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::messageBuddies, this, &RecentsModel::messageBuddies);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::messagesEmpty, this, &RecentsModel::messagesEmpty);
+        connect(Ui::GetDispatcher(), &Ui::core_dispatcher::unreadThreadCount, this, &RecentsModel::onUnreadThreadsCount);
+        connect(Ui::GetDispatcher(), &Ui::core_dispatcher::threadUpdates, this, &RecentsModel::onThreadUpdates);
 
         connect(Logic::getContactListModel(), &Logic::ContactListModel::contactChanged, this, &RecentsModel::contactChanged);
         connect(Logic::getContactListModel(), &Logic::ContactListModel::selectedContactChanged, this, &RecentsModel::contactChanged);
@@ -65,6 +84,10 @@ namespace Logic
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::typingStatus, this, &RecentsModel::typingStatus);
 
         scheduleRefreshTimer();
+
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated, this, &RecentsModel::initPinnedItemsIndexes);
+        connect(Ui::GetDispatcher(), &Ui::core_dispatcher::externalUrlConfigUpdated, this, &RecentsModel::initPinnedItemsIndexes);
+        initPinnedItemsIndexes();
     }
 
     int RecentsModel::rowCount(const QModelIndex &) const
@@ -90,37 +113,13 @@ namespace Logic
         if (cur >= rowCount(i))
             return QVariant();
 
-        if (cur == getPinnedHeaderIndex())
+        const auto serviceDlgState = serviceItemByIndex(cur);
+        if (serviceDlgState)
         {
-            const static auto st = []() {
-                Data::DlgState s;
-                s.AimId_ = qsl("~pinned~");
-                s.SetText(QT_TRANSLATE_NOOP("contact_list", "PINNED"));
-                return s;
-            }();
+            if (Testing::isAccessibleRole(r))
+                return accessibleName(*serviceDlgState);
 
-            return QVariant::fromValue(st);
-        }
-        else if (cur == getUnimportantHeaderIndex())
-        {
-            const static auto st = []() {
-                Data::DlgState s;
-                s.AimId_ = qsl("~unimportant~");
-                s.SetText(QT_TRANSLATE_NOOP("contact_list", "UNIMPORTANT"));
-                return s;
-            }();
-
-            return QVariant::fromValue(st);
-        }
-        else if (cur == getRecentsHeaderIndex())
-        {
-            const static auto st = []() {
-                Data::DlgState s;
-                s.AimId_ = qsl("~recents~");
-                s.SetText(QT_TRANSLATE_NOOP("contact_list", "RECENTS"));
-                return s;
-            }();
-            return QVariant::fromValue(st);
+            return QVariant::fromValue(*serviceDlgState);
         }
 
         cur = correctIndex(cur);
@@ -131,7 +130,7 @@ namespace Logic
         const Data::DlgState& cont = Dialogs_[cur];
 
         if (Testing::isAccessibleRole(r))
-            return QString(u"AS Recents " % cont.AimId_);
+            return accessibleName(cont);
 
         return QVariant::fromValue(cont);
     }
@@ -180,7 +179,7 @@ namespace Logic
         }
     }
 
-    void RecentsModel::activeDialogHide(const QString& _aimId)
+    void RecentsModel::activeDialogHide(const QString& _aimId, Ui::ClosePage _closePage)
     {
         auto iter = std::find_if(Dialogs_.begin(), Dialogs_.end(), isEqualDlgState(_aimId));
         if (iter == Dialogs_.end())
@@ -199,8 +198,8 @@ namespace Logic
 
         makeIndexes();
 
-        if (Logic::getContactListModel()->selectedContact() == _aimId)
-            Logic::getContactListModel()->setCurrent(QString(), -1, true);
+        if (_closePage == Ui::ClosePage::Yes && Logic::getContactListModel()->selectedContact() == _aimId)
+            Utils::InterConnector::instance().closeDialog();
         if (Dialogs_.empty() && !Logic::getUnknownsModel()->itemsCount())
             Q_EMIT Utils::InterConnector::instance().showRecentsPlaceholder();
 
@@ -213,13 +212,19 @@ namespace Logic
     {
         auto updatedItems = 0;
 
-        const auto curSelected = Logic::getContactListModel()->selectedContact();
         const auto w = Utils::InterConnector::instance().getMainWindow();
         const auto mainPageOpened = w && w->isUIActive() && w->isMessengerPageContactDialog();
 
-        auto processDlgState = [this, &curSelected, &updatedItems, mainPageOpened](const auto& dlgState)
+        auto processDlgState = [this, &updatedItems, mainPageOpened](const auto& dlgState)
         {
-            if (dlgState.noRecentsUpdate_)
+            const auto pinnedServiceFavorite = Favorites::isFavorites(dlgState.AimId_) && Features::isRecentsPinnedItemsEnabled();
+            const auto noUpdate =
+                dlgState.noRecentsUpdate_ ||
+                dlgState.hasParentTopic() ||
+                Logic::getContactListModel()->isThread(dlgState.AimId_) ||
+                pinnedServiceFavorite;
+
+            if (noUpdate)
             {
                 auto iter = std::find_if(HiddenDialogs_.begin(), HiddenDialogs_.end(), isEqualDlgState(dlgState.AimId_));
                 if (iter != HiddenDialogs_.end())
@@ -235,32 +240,36 @@ namespace Logic
                     HiddenDialogs_.push_back(dlgState);
                 }
 
-                if (mainPageOpened && dlgState.AimId_ == curSelected)
+                if (mainPageOpened && Utils::InterConnector::instance().isHistoryPageVisible(dlgState.AimId_))
                     sendLastRead(dlgState.AimId_);
+
+                if (dlgState.hasParentTopic())
+                    Logic::getContactListModel()->markAsThread(dlgState.AimId_, Data::MessageParentTopic::getChat(*dlgState.parentTopic_));
 
                 Q_EMIT updated();
                 return;
             }
 
+            im_assert(!Logic::getContactListModel()->isThread(dlgState.AimId_));
+
             auto iter = std::find_if(Dialogs_.begin(), Dialogs_.end(), isEqualDlgState(dlgState.AimId_));
 
-            if (!dlgState.Chat_)
+            if (!dlgState.Chat_ && dlgState.isSuspicious_)
             {
-                if (dlgState.isSuspicious_)
+                if (iter != Dialogs_.end())
                 {
-                    if (iter != Dialogs_.end())
-                    {
-                        Dialogs_.erase(iter);
-                        ++updatedItems;
+                    Dialogs_.erase(iter);
+                    ++updatedItems;
 
-                        if (dlgState.AimId_ == curSelected)
-                            Q_EMIT Utils::InterConnector::instance().unknownsGoSeeThem();
-                    }
-
-                    return;
+                    if (dlgState.AimId_ == Logic::getContactListModel()->selectedContact())
+                        Q_EMIT Utils::InterConnector::instance().unknownsGoSeeThem();
                 }
+
+                return;
             }
 
+            if (dlgState.lastMessage_)
+                Logic::getContactListModel()->markAsThread(dlgState.lastMessage_->threadData_.id_, Data::MessageParentTopic::getChat(dlgState.lastMessage_->threadData_.parentTopic_));
 
             Logic::getContactListModel()->setContactVisible(dlgState.AimId_, !dlgState.isStranger_);
 
@@ -283,7 +292,7 @@ namespace Logic
                 const auto prevYoursLastRead = curDlgState.YoursLastRead_;
                 const auto prevTime = curDlgState.Time_;
 
-                bool fChanged = curDlgState.PinnedTime_ != dlgState.PinnedTime_;
+                const bool fChanged = curDlgState.PinnedTime_ != dlgState.PinnedTime_;
                 if (fChanged)
                 {
                     if (dlgState.PinnedTime_ != -1 && curDlgState.PinnedTime_ == -1)
@@ -292,7 +301,7 @@ namespace Logic
                         --PinnedCount_;
                 }
 
-                bool uChanged = curDlgState.UnimportantTime_ != dlgState.UnimportantTime_;
+                const bool uChanged = curDlgState.UnimportantTime_ != dlgState.UnimportantTime_;
                 if (uChanged)
                 {
                     if (dlgState.UnimportantTime_ != -1)
@@ -304,7 +313,9 @@ namespace Logic
 #ifdef DEBUG
                 const auto prevState = curDlgState;
 #endif // DEBUG
+                const auto serviceType = curDlgState.pinnedServiceItemType();
                 curDlgState = dlgState;
+                curDlgState.setPinnedServiceItemType(serviceType);
 
                 if (fChanged)
                     Q_EMIT favoriteChanged(dlgState.AimId_);
@@ -355,7 +366,7 @@ namespace Logic
                 if (keepPrevTime)
                     curDlgState.Time_ = prevTime;
             }
-            else if (!dlgState.GetText().isEmpty() || dlgState.PinnedTime_ != -1 || dlgState.UnimportantTime_ != -1)
+            else if (!dlgState.GetText().isEmpty() || !dlgState.draftText_.isEmpty() || dlgState.PinnedTime_ != -1 || dlgState.UnimportantTime_ != -1)
             {
                 ++updatedItems;
 
@@ -371,15 +382,14 @@ namespace Logic
                     Q_EMIT unimportantChanged(dlgState.AimId_);
                 }
 
-                auto newDlgState = dlgState;
+                Dialogs_.push_back(dlgState);
 
-                Dialogs_.push_back(newDlgState);
 
                 if (Dialogs_.size() == 1)
                     Q_EMIT Utils::InterConnector::instance().hideRecentsPlaceholder();
             }
 
-            if (mainPageOpened && dlgState.AimId_ == curSelected)
+            if (mainPageOpened && Utils::InterConnector::instance().isHistoryPageVisible(dlgState.AimId_))
                 sendLastRead(dlgState.AimId_);
 
             Q_EMIT dlgStateChanged(dlgState);
@@ -388,7 +398,7 @@ namespace Logic
         for (const auto& dlgState : _states)
             processDlgState(dlgState);
 
-        if (!_states.empty() && !Favorites::pinnedOnStart())
+        if (!_states.empty() && !Favorites::pinnedOnStart() && !Features::isRecentsPinnedItemsEnabled())
         {
             Ui::GetDispatcher()->pinContact(Favorites::aimId(), true);
             Favorites::setPinnedOnStart(true);
@@ -469,7 +479,11 @@ namespace Logic
             if (first.PinnedTime_ == -1 && second.PinnedTime_ == -1)
             {
                 if (first.UnimportantTime_ == -1 && second.UnimportantTime_ == -1)
-                    return first.Time_ > second.Time_;
+                {
+                    auto firstTime = std::max(first.draft_.serverTimestamp_, first.serverTime_);
+                    auto secondTime = std::max(second.draft_.serverTimestamp_, second.serverTime_);
+                    return firstTime > secondTime;
+                }
 
                 if (first.UnimportantTime_ == -1)
                     return false;
@@ -507,7 +521,7 @@ namespace Logic
 
     void RecentsModel::contactRemoved(const QString& _aimId)
     {
-        activeDialogHide(_aimId);
+        activeDialogHide(_aimId, Ui::ClosePage::Yes);
     }
 
     void RecentsModel::refresh()
@@ -542,22 +556,85 @@ namespace Logic
         Q_EMIT dataChanged(index(0), index(getVisibleIndex(int(dist))));
     }
 
-    Data::DlgState RecentsModel::getDlgState(const QString& aimId, bool fromDialog)
+    void RecentsModel::onUnreadThreadsCount(int _unreadCount, int _unreadMentionsCount)
+    {
+        threadsFeed_.unreadCount_ = _unreadCount;
+        threadsFeed_.unreadMentionsCount_ = _unreadMentionsCount;
+
+        if (const auto idx = threadsItemIndex(); idx >= 0)
+        {
+            const auto state = serviceItemByIndex(idx);
+            if (state)
+                Q_EMIT dlgStateChanged(*state);
+
+            const auto modelIdx = index(getVisibleIndex(idx));
+            Q_EMIT dataChanged(modelIdx, modelIdx);
+        }
+    }
+
+    void RecentsModel::onThreadUpdates(const Data::ThreadUpdates& _updates)
+    {
+        if (!Features::isThreadsEnabled())
+            return;
+
+        const auto w = Utils::InterConnector::instance().getMainWindow();
+        const auto mainPageOpened = w && w->isUIActive() && w->isMessengerPageContactDialog();
+
+        for (const auto& [_, upd] : _updates.messages_)
+        {
+            Logic::getContactListModel()->markAsThread(upd->threadId_, Data::MessageParentTopic::getChat(upd->parent_));
+
+            if (upd->yoursLastRead_ < 0 && upd->yoursLastReadMention_ < 0)
+                continue;
+
+            if (auto it = std::find_if(HiddenDialogs_.begin(), HiddenDialogs_.end(), isEqualDlgState(upd->threadId_)); it != HiddenDialogs_.end())
+            {
+                it->UnreadCount_ = upd->unreadMessages_;
+                it->unreadMentionsCount_ = upd->unreadMentionsMe_;
+                it->LastReadMention_ = upd->yoursLastReadMention_;
+
+                if (it->YoursLastRead_ != upd->yoursLastRead_)
+                    Q_EMIT readStateChanged(upd->threadId_);
+                it->YoursLastRead_ = upd->yoursLastRead_;
+
+                if (mainPageOpened && Utils::InterConnector::instance().isHistoryPageVisible(upd->threadId_))
+                    sendLastRead(upd->threadId_);
+            }
+            else
+            {
+                Data::DlgState state;
+                state.AimId_ = upd->threadId_;
+                state.Chat_ = true;
+                state.noRecentsUpdate_ = true;
+                state.UnreadCount_ = upd->unreadMessages_;
+                state.unreadMentionsCount_ = upd->unreadMentionsMe_;
+                state.LastReadMention_ = upd->yoursLastReadMention_;
+                state.YoursLastRead_ = upd->yoursLastRead_;
+                state.parentTopic_ = upd->parent_;
+
+                HiddenDialogs_.emplace_back(std::move(state));
+            }
+        }
+    }
+
+    Data::DlgState RecentsModel::getDlgState(const QString& _aimId, bool _fromDialog)
     {
         Data::DlgState state;
-        auto getState = [&aimId](auto& dialogs) -> std::optional<Data::DlgState>
+        auto getState = [&_aimId](auto& dialogs) -> std::optional<Data::DlgState>
         {
-            if (const auto iter = std::find_if(dialogs.cbegin(), dialogs.cend(), isEqualDlgState(aimId)); iter != dialogs.cend())
+            if (const auto iter = std::find_if(dialogs.cbegin(), dialogs.cend(), isEqualDlgState(_aimId)); iter != dialogs.cend())
                 return *iter;
             return std::nullopt;
         };
-        if (auto d = getState(Dialogs_))
+        if (Features::isRecentsPinnedItemsEnabled() && Favorites::isFavorites(_aimId))
+            state = favoritesDlgState();
+        else if (auto d = getState(Dialogs_))
             state = std::move(*d);
         else if (auto h = getState(HiddenDialogs_))
             state = std::move(*h);
 
-        if (fromDialog)
-            sendLastRead(aimId);
+        if (_fromDialog)
+            sendLastRead(_aimId);
 
         return state;
     }
@@ -585,7 +662,8 @@ namespace Logic
 
     void RecentsModel::sendLastRead(const QString& _aimId, bool force, ReadMode _mode)
     {
-        if (const auto searchedAimId = _aimId.isEmpty() ? Logic::getContactListModel()->selectedContact() : _aimId; force && !searchedAimId.isEmpty())
+        const auto& searchedAimId = _aimId.isEmpty() ? Logic::getContactListModel()->selectedContact() : _aimId;
+        if (force && !searchedAimId.isEmpty())
         {
             auto sendLastReadImpl = [&searchedAimId, _mode](auto& dialogs) -> std::optional<int>
             {
@@ -593,13 +671,7 @@ namespace Logic
                 if (iter != dialogs.end() && (iter->UnreadCount_ != 0 || iter->YoursLastRead_ < iter->LastMsgId_))
                 {
                     iter->UnreadCount_ = 0;
-
-                    Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-                    collection.set_value_as_qstring("contact", searchedAimId);
-                    collection.set_value_as_int64("message", iter->LastMsgId_);
-                    if (_mode == ReadMode::ReadAll)
-                        collection.set_value_as_bool("read_all", true);
-                    Ui::GetDispatcher()->post_message_to_core("dlg_state/set_last_read", collection.get());
+                    Ui::GetDispatcher()->setLastRead(searchedAimId, iter->LastMsgId_, _mode == ReadMode::ReadAll ? Ui::core_dispatcher::ReadAll::Yes : Ui::core_dispatcher::ReadAll::No);
 
                     return int(std::distance(dialogs.begin(), iter));
                 }
@@ -639,11 +711,7 @@ namespace Logic
                     readCnt += iter->UnreadCount_;
                     ++readChatsCnt;
 
-                    Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-                    collection.set_value_as_qstring("contact", iter->AimId_);
-                    collection.set_value_as_int64("message", iter->LastMsgId_);
-                    collection.set_value_as_bool("read_all", true);
-                    Ui::GetDispatcher()->post_message_to_core("dlg_state/set_last_read", collection.get());
+                    Ui::GetDispatcher()->setLastRead(iter->AimId_, iter->LastMsgId_, Ui::core_dispatcher::ReadAll::Yes);
 
                     const auto ind = std::distance(Dialogs_.begin(), iter);
                     const auto idx = index(getVisibleIndex(int(ind)));
@@ -662,7 +730,7 @@ namespace Logic
 
     void RecentsModel::setAttention(const QString& _aimId, const bool _value)
     {
-        const auto searchedAimId = _aimId.isEmpty() ? Logic::getContactListModel()->selectedContact() : _aimId;
+        const auto& searchedAimId = _aimId.isEmpty() ? Logic::getContactListModel()->selectedContact() : _aimId;
         if (const auto iter = std::find_if(Dialogs_.begin(), Dialogs_.end(), isEqualDlgState(searchedAimId)); iter != Dialogs_.end())
         {
             iter->Attention_ = _value;
@@ -741,20 +809,29 @@ namespace Logic
 
     bool RecentsModel::isServiceItem(const QModelIndex& _index) const
     {
-        auto row = _index.row();
-        return row == getPinnedHeaderIndex() || row == getRecentsHeaderIndex() || row == getUnimportantHeaderIndex();
+        const auto serviceItems = std::array{ getPinnedHeaderIndex(), getRecentsHeaderIndex(), getUnimportantHeaderIndex() };
+        return std::any_of(serviceItems.cbegin(), serviceItems.cend(), [row = _index.row()](int _index) { return row == _index; });
     }
 
     bool RecentsModel::isClickableItem(const QModelIndex& _index) const
     {
-        auto row = _index.row();
-        return row != getRecentsHeaderIndex();
+        return _index.row() != getRecentsHeaderIndex();
+    }
+
+    bool Logic::RecentsModel::isDropableItem(const QModelIndex& _index) const
+    {
+        const auto serviceItems = std::array{ getPinnedHeaderIndex(), getRecentsHeaderIndex(), getUnimportantHeaderIndex(), scheduledMessagesItemIndex(), threadsItemIndex(), remindersItemIndex() };
+        return std::none_of(serviceItems.cbegin(), serviceItems.cend(), [row = _index.row()](int _i) { return row == _i; });
+    }
+
+    bool RecentsModel::isPinnedServiceItem(const QModelIndex& _index) const
+    {
+        return _index.row() < pinnedServiceItemsCount();
     }
 
     bool RecentsModel::isPinnedGroupButton(const QModelIndex& i) const
     {
-        int r = i.row();
-        return r == getPinnedHeaderIndex();
+        return i.row() == getPinnedHeaderIndex();
     }
 
     bool RecentsModel::isPinnedVisible() const
@@ -1033,6 +1110,16 @@ namespace Logic
         return 0;
     }
 
+    int RecentsModel::getUnreadThreadsCount() const
+    {
+        return threadsFeed_.unreadCount_;
+    }
+
+    int RecentsModel::getUnreadThreadsMentionsCount() const
+    {
+        return threadsFeed_.unreadMentionsCount_;
+    }
+
     int32_t RecentsModel::getTime(const QString & _aimId) const
     {
         if (const auto it = std::find_if(Dialogs_.begin(), Dialogs_.end(), isEqualDlgState(_aimId)); it != Dialogs_.end())
@@ -1043,18 +1130,23 @@ namespace Logic
 
     int RecentsModel::correctIndex(int i) const
     {
-        if (i == getPinnedHeaderIndex() || i == getRecentsHeaderIndex() || i == getUnimportantHeaderIndex())
+        const auto uninportantHeaderIndex = getUnimportantHeaderIndex();
+        const auto recentsHeaderIndex = getRecentsHeaderIndex();
+        const auto pinnedHeaderIndex = getPinnedHeaderIndex();
+        if (i == pinnedHeaderIndex || i == recentsHeaderIndex || i == uninportantHeaderIndex || i == pinnedFavoritesIndex())
             return i;
 
         auto result = i;
-        if (PinnedCount_ != 0 || UnimportantCount_ != 0)
+        if (PinnedCount_ != 0 || UnimportantCount_ != 0 || pinnedServiceItemsCount() != 0)
         {
-            if (i < getRecentsHeaderIndex())
+            if (i < recentsHeaderIndex)
             {
-                if (UnimportantCount_ != 0 && PinnedCount_ != 0 && i > getUnimportantHeaderIndex())
-                    result = i - 2;
-                else
-                    result = i - 1;
+                if (UnimportantCount_ != 0 && i > uninportantHeaderIndex)
+                    --result;
+                if (PinnedCount_ != 0 && i > pinnedHeaderIndex)
+                    --result;
+
+                result -= pinnedServiceItemsCount();
             }
             else
             {
@@ -1064,7 +1156,7 @@ namespace Logic
             if (!PinnedVisible_)
                 result += PinnedCount_;
 
-            if (!UnimportantVisible_ && i > getUnimportantHeaderIndex())
+            if (!UnimportantVisible_ && i > uninportantHeaderIndex)
                 result += UnimportantCount_;
         }
 
@@ -1081,7 +1173,7 @@ namespace Logic
             if (!PinnedVisible_)
                 return -1;
             else
-                return i + 1;
+                return i + 1 + pinnedServiceItemsCount();
         }
 
         if (Dialogs_[i].UnimportantTime_ != -1)
@@ -1089,11 +1181,11 @@ namespace Logic
             if (!UnimportantVisible_)
                 return -1;
 
-            return (PinnedCount_ ? i + 2 : i + 1) - (PinnedVisible_ ? 0 : PinnedCount_);
+            return (PinnedCount_ ? i + 2 : i + 1) - (PinnedVisible_ ? 0 : PinnedCount_) + pinnedServiceItemsCount();
         }
 
         if (UnimportantCount_ == 0 && PinnedCount_ == 0)
-            return i;
+            return i + getVisibleServiceItems();
 
         const auto result = i + getVisibleServiceItems() - (PinnedVisible_ ? 0 : PinnedCount_) - (UnimportantVisible_ ? 0 : UnimportantCount_);
         return result;
@@ -1111,7 +1203,7 @@ namespace Logic
 
     int RecentsModel::getPinnedHeaderIndex() const
     {
-        return PinnedCount_ ? 0 : -1;
+        return PinnedCount_ ? pinnedServiceItemsCount() : -1;
     }
 
     int RecentsModel::getUnimportantHeaderIndex() const
@@ -1120,17 +1212,18 @@ namespace Logic
             return -1;
 
         if (!PinnedCount_)
-            return 0;
+            return pinnedServiceItemsCount();
 
-        return visiblePinnedContacts() + 1;
+        return pinnedServiceItemsCount() + visiblePinnedContacts() + 1; // 1 - pinned header
     }
 
     int RecentsModel::getRecentsHeaderIndex() const
     {
-        if (!PinnedCount_ && !UnimportantCount_)
+        const auto pinnedServiceItems = pinnedServiceItemsCount();
+        if (!PinnedCount_ && !UnimportantCount_ && !pinnedServiceItems)
             return -1;
 
-        auto i = 0;
+        auto i = pinnedServiceItems;
         if (PinnedCount_)
             ++i;
         if (UnimportantCount_)
@@ -1141,16 +1234,156 @@ namespace Logic
 
     int RecentsModel::getVisibleServiceItems() const
     {
-        auto result = 0;
+        auto result = pinnedServiceItemsCount();
 
         if (PinnedCount_)
             ++result;
         if (UnimportantCount_)
             ++result;
         if (result > 0)
-            ++result;
+            ++result; // recents header
 
         return result;
+    }
+
+    std::optional<Data::DlgState> RecentsModel::serviceItemByIndex(int _index) const
+    {
+        if (_index == pinnedFavoritesIndex())
+        {
+            return favoritesDlgState();
+        }
+        else if (_index == scheduledMessagesItemIndex())
+        {
+            Data::DlgState s;
+            s.AimId_ = qsl("~scheduled~");
+            s.setPinnedServiceItemType(Data::DlgState::PinnedServiceItemType::ScheduledMessages);
+            s.SetText(QT_TRANSLATE_NOOP("contact_list", "Scheduled"));
+            return std::optional<Data::DlgState>(std::move(s));
+        }
+        else if (_index == threadsItemIndex())
+        {
+            Data::DlgState s;
+            s.AimId_ = qsl("~threads~");
+            s.SetText(ServiceContacts::contactName(ServiceContacts::ContactType::ThreadsFeed));
+            s.setPinnedServiceItemType(Data::DlgState::PinnedServiceItemType::Threads);
+            s.UnreadCount_ = threadsFeed_.unreadCount_;
+            s.unreadMentionsCount_ = threadsFeed_.unreadMentionsCount_;
+            return std::optional<Data::DlgState>(std::move(s));
+        }
+        else if (_index == remindersItemIndex())
+        {
+            Data::DlgState s;
+            s.AimId_ = qsl("~reminders~");
+            s.SetText(QT_TRANSLATE_NOOP("contact_list", "Reminders"));
+            s.setPinnedServiceItemType(Data::DlgState::PinnedServiceItemType::Reminders);
+            return std::optional<Data::DlgState>(std::move(s));
+        }
+        else if (_index == getPinnedHeaderIndex())
+        {
+            Data::DlgState s;
+            s.AimId_ = qsl("~pinned~");
+            s.SetText(QT_TRANSLATE_NOOP("contact_list", "PINNED"));
+            return std::optional<Data::DlgState>(std::move(s));
+        }
+        else if (_index == getUnimportantHeaderIndex())
+        {
+            Data::DlgState s;
+            s.AimId_ = qsl("~unimportant~");
+            s.SetText(QT_TRANSLATE_NOOP("contact_list", "UNIMPORTANT"));
+            return std::optional<Data::DlgState>(std::move(s));
+        }
+        else if (_index == getRecentsHeaderIndex())
+        {
+            Data::DlgState s;
+            s.AimId_ = qsl("~recents~");
+            s.SetText(QT_TRANSLATE_NOOP("contact_list", "RECENTS"));
+            return std::optional<Data::DlgState>(std::move(s));
+        }
+        return {};
+    }
+
+    void RecentsModel::initPinnedItemsIndexes()
+    {
+        pinnedItemsIndexes_.clear();
+
+        if (Features::isRecentsPinnedItemsEnabled())
+        {
+            auto index = 0;
+            auto addItem = [&index, this](auto _item)
+            {
+                pinnedItemsIndexes_[_item] = index++;
+            };
+
+            addItem(Data::DlgState::PinnedServiceItemType::Favorites);
+
+            if (Features::isScheduledMessagesEnabled())
+                addItem(Data::DlgState::PinnedServiceItemType::ScheduledMessages);
+            if (Features::isThreadsEnabled())
+                addItem(Data::DlgState::PinnedServiceItemType::Threads);
+            if (Features::isRemindersEnabled())
+                addItem(Data::DlgState::PinnedServiceItemType::Reminders);
+
+            const auto it = std::find_if(Dialogs_.begin(), Dialogs_.end(), isEqualDlgState(Favorites::aimId()));
+            if (it != Dialogs_.end())
+            {
+                if (it->PinnedTime_ != -1)
+                    --PinnedCount_;
+                if (it->UnimportantTime_ != -1)
+                    --UnimportantCount_;
+                const auto hidden = std::find_if(HiddenDialogs_.begin(), HiddenDialogs_.end(), isEqualDlgState(Favorites::aimId()));
+                if (hidden == HiddenDialogs_.end())
+                    HiddenDialogs_.push_back(*it);
+                Dialogs_.erase(it);
+            }
+        }
+        else
+        {
+            const auto it = std::find_if(HiddenDialogs_.begin(), HiddenDialogs_.end(), isEqualDlgState(Favorites::aimId()));
+            if (it != HiddenDialogs_.end())
+            {
+                if (it->PinnedTime_ != -1)
+                    ++PinnedCount_;
+                if (it->UnimportantTime_ != -1)
+                    ++UnimportantCount_;
+                const auto dialog = std::find_if(Dialogs_.begin(), Dialogs_.end(), isEqualDlgState(Favorites::aimId()));
+                if (dialog == Dialogs_.end())
+                    Dialogs_.push_back(*it);
+                HiddenDialogs_.erase(it);
+            }
+        }
+
+        sortDialogs();
+        refresh();
+    }
+
+    int Logic::RecentsModel::pinnedServiceItemsCount() const
+    {
+        return pinnedItemsIndexes_.size();
+    }
+
+    int Logic::RecentsModel::pinnedServiceItemIndex(Data::DlgState::PinnedServiceItemType _type) const
+    {
+        return pinnedItemsIndexes_.count(_type) ? pinnedItemsIndexes_.at(_type) : -1;
+    }
+
+    int Logic::RecentsModel::pinnedFavoritesIndex() const
+    {
+        return pinnedServiceItemIndex(Data::DlgState::PinnedServiceItemType::Favorites);
+    }
+
+    int Logic::RecentsModel::scheduledMessagesItemIndex() const
+    {
+        return pinnedServiceItemIndex(Data::DlgState::PinnedServiceItemType::ScheduledMessages);
+    }
+
+    int Logic::RecentsModel::threadsItemIndex() const
+    {
+        return pinnedServiceItemIndex(Data::DlgState::PinnedServiceItemType::Threads);
+    }
+
+    int Logic::RecentsModel::remindersItemIndex() const
+    {
+        return pinnedServiceItemIndex(Data::DlgState::PinnedServiceItemType::Reminders);
     }
 
     std::vector<QString> RecentsModel::getSortedRecentsContacts() const
@@ -1220,16 +1453,14 @@ namespace Logic
 
     void RecentsModel::requestFavoritesLastMessage()
     {
-        Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-        collection.set_value_as_qstring("contact", Favorites::aimId());
-        collection.set_value_as_int64("from", -1);
-        collection.set_value_as_int64("count_early", -1);
-        collection.set_value_as_int64("count_later", -1);
-        collection.set_value_as_bool("need_prefetch", true);
-        collection.set_value_as_bool("is_first_request", true);
-        collection.set_value_as_bool("after_search", false);
-
-        favoritesLastMessageSeq_ = Ui::GetDispatcher()->post_message_to_core("archive/messages/get", collection.get());
+        Ui::core_dispatcher::GetHistoryParams params;
+        params.from_ = -1;
+        params.early_ = -1;
+        params.later_ = -1;
+        params.needPrefetch_ = true;
+        params.firstRequest_ = true;
+        params.afterSearch_ = false;
+        favoritesLastMessageSeq_ = Ui::GetDispatcher()->getHistory(Favorites::aimId(), params);
     }
 
     bool RecentsModel::isSpecialAndHidden(const Data::DlgState& _s) const

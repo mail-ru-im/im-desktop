@@ -12,6 +12,18 @@
 
 #include "../../libomicron/include/omicron/omicron.h"
 
+#include "../configuration/app_config.h"
+
+namespace
+{
+    bool myteam_config_or_omicron_feature_enabled(config::features _feature, const char* _omicron_key)
+    {
+        const auto config_value = config::get().is_on(_feature);
+        const auto omicron_value = omicronlib::_o(_omicron_key, config_value);
+        return config::is_overridden(_feature) ? config_value || omicron_value : omicron_value;
+    }
+}
+
 namespace features
 {
     int get_zstd_compression_level()
@@ -23,7 +35,7 @@ namespace features
     bool is_zstd_request_enabled()
     {
 #ifndef STRIP_ZSTD
-        static const auto default_value = config::get().is_on(config::features::zstd_request_enabled);
+        const auto default_value = config::get().is_on(config::features::zstd_request_enabled) && core::configuration::get_app_config().is_net_compression_enabled();
         return omicronlib::_o(omicron::keys::im_zstd_dict_request_enabled, default_value);
 #else
         return false;
@@ -33,7 +45,7 @@ namespace features
     bool is_zstd_response_enabled()
     {
 #ifndef STRIP_ZSTD
-        static const auto default_value = config::get().is_on(config::features::zstd_response_enabled);
+        const auto default_value = config::get().is_on(config::features::zstd_response_enabled) && core::configuration::get_app_config().is_net_compression_enabled();
         return omicronlib::_o(omicron::keys::im_zstd_dict_response_enabled, default_value);
 #else
         return false;
@@ -59,6 +71,16 @@ namespace features
         return omicronlib::_o(omicron::keys::im_zstd_dict_response, default_link);
     }
 #endif // !STRIP_ZSTD
+
+    bool smartreply_suggests_stickers_enabled()
+    {
+        return myteam_config_or_omicron_feature_enabled(config::features::smartreply_suggests_stickers, omicron::keys::smartreply_suggests_stickers);
+    }
+
+    bool smartreply_suggests_text_enabled()
+    {
+        return myteam_config_or_omicron_feature_enabled(config::features::smartreply_suggests_text, omicron::keys::smartreply_suggests_text);
+    }
 
     bool is_fetch_hotstart_enabled()
     {
@@ -119,9 +141,24 @@ namespace features
 
     bool is_silent_delete_enabled()
     {
-        auto value = config::get().is_on(config::features::silent_message_delete);
-        value = config::is_overridden(config::features::silent_message_delete) ? value : omicronlib::_o(omicron::keys::silent_message_delete, value);
-        return value;
+        return myteam_config_or_omicron_feature_enabled(config::features::silent_message_delete, omicron::keys::silent_message_delete);
+    }
+
+    bool is_url_ftp_protocols_allowed()
+    {
+        static const auto default_value = config::get().is_on(config::features::url_ftp_protocols_allowed);
+        return omicronlib::_o(omicron::keys::url_ftp_protocols_allowed, default_value);
+    }
+
+    bool is_draft_enabled()
+    {
+        return omicronlib::_o(omicron::keys::draft_enabled, config::get().is_on(config::features::draft_enabled));
+    }
+
+    int draft_maximum_length()
+    {
+        const auto default_value = config::get().number<int64_t>(config::values::draft_max_len).value_or(feature::default_draft_max_len());
+        return omicronlib::_o(omicron::keys::draft_max_len, default_value);
     }
 
     std::chrono::seconds get_link_metainfo_repeat_interval()
@@ -137,5 +174,41 @@ namespace features
     std::chrono::milliseconds get_preview_repeat_interval()
     {
         return std::chrono::milliseconds(omicronlib::_o(omicron::keys::preview_repeat_interval, 1000));
+    }
+
+    std::chrono::seconds get_oauth2_refresh_interval()
+    {
+        return std::chrono::seconds(omicronlib::_o(omicron::keys::oauth2_refresh_interval, 604800)); // 604800 secs = 7 days
+    }
+
+    bool is_oauth2_login_allowed()
+    {
+        return omicronlib::_o(omicron::keys::login_by_oauth2_allowed, config::get().is_on(config::features::login_by_oauth2_allowed));
+    }
+
+    std::chrono::seconds task_cache_lifetime()
+    {
+        constexpr std::chrono::seconds default_duration = std::chrono::hours(24*7);
+        return std::chrono::seconds(omicronlib::_o(omicron::keys::task_cache_lifetime, default_duration.count()));
+    }
+
+    bool is_threads_enabled()
+    {
+        return myteam_config_or_omicron_feature_enabled(config::features::threads_enabled, omicron::keys::threads_enabled);
+    }
+
+    bool is_restricted_files_enabled()
+    {
+        return myteam_config_or_omicron_feature_enabled(config::features::restricted_files_enabled, omicron::keys::restricted_files_enabled);
+    }
+
+    bool trust_status_default()
+    {
+        return !is_restricted_files_enabled();
+    }
+
+    bool is_antivirus_check_enabled()
+    {
+        return myteam_config_or_omicron_feature_enabled(config::features::antivirus_check_enabled, omicron::keys::antivirus_check_enabled);
     }
 }

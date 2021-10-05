@@ -8,6 +8,8 @@
 
 namespace Utils
 {
+    struct FileSharingId;
+
     class UrlParser
     {
     public:
@@ -25,7 +27,7 @@ namespace Utils
 
         void reset();
 
-        QString getFilesharingId() const;
+        FileSharingId getFilesharingId() const;
 
         static const std::vector<std::string>& additionalFsUrls();
 

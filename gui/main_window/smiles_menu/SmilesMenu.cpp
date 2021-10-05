@@ -3,11 +3,9 @@
 
 #include "toolbar.h"
 #include "StickerPreview.h"
-#include "../ContactDialog.h"
-#include "../input_widget/InputWidget.h"
 #include "../input_widget/InputWidgetUtils.h"
-#include "../contact_list/ContactListModel.h"
 #include "../history_control/HistoryControlPage.h"
+#include "../history_control/complex_message/FileSharingUtils.h"
 #include "../MainWindow.h"
 #include "../../core_dispatcher.h"
 #include "../../gui_settings.h"
@@ -45,20 +43,17 @@ namespace
 
     qint32 getEmojiItemSize() noexcept
     {
-        constexpr auto EMOJI_ITEM_SIZE = 44;
-        return Utils::scale_value(EMOJI_ITEM_SIZE);
+        return Utils::scale_value(44);
     }
 
     qint32 getStickerItemSize_() noexcept
     {
-        constexpr auto STICKER_ITEM_SIZE = 68;
-        return Utils::scale_value(STICKER_ITEM_SIZE);
+        return Utils::scale_value(68);
     }
 
     qint32 getStickerSize_() noexcept
     {
-        constexpr auto STICKER_SIZE = 60;
-        return Utils::scale_value(STICKER_SIZE);
+        return Utils::scale_value(60);
     }
 
     qint32 getPackHeaderHeight()
@@ -69,6 +64,11 @@ namespace
     auto recentsSettingsDelimiter()
     {
         return ql1c(';');
+    }
+
+    auto recentsSettingsSourceDelimiter()
+    {
+        return ql1c(',');
     }
 
     QSize gifLabelSize()
@@ -887,7 +887,7 @@ namespace Ui
     }
 
 
-    StickerWidget::StickerWidget(QWidget* _parent, const QString& _stickerId, int _itemSize, int _stickerSize)
+    StickerWidget::StickerWidget(QWidget* _parent, const Utils::FileSharingId& _stickerId, int _itemSize, int _stickerSize)
         : QWidget(_parent)
         , stickerId_(_stickerId)
         , stickerSize_(_stickerSize)
@@ -985,7 +985,7 @@ namespace Ui
         , rowCount_(0)
         , stickerSize_(_stickerSize)
         , itemSize_(_itemSize)
-        , hoveredSticker_(-1, QString())
+        , hoveredSticker_(-1, {})
         , keyboardActive_(false)
     {
         if (_trasparentForMouse)
@@ -1033,7 +1033,7 @@ namespace Ui
 
         const auto widgets = findChildren<StickerWidget*>();
 
-        std::vector<QString> toCancel;
+        std::vector<Utils::FileSharingId> toCancel;
         toCancel.reserve(widgets.size());
         for (auto w : widgets)
         {
@@ -1083,17 +1083,17 @@ namespace Ui
         return needHeight_;
     }
 
-    int32_t StickersTable::getStickerPosInSet(const QString& _stickerId) const
+    int32_t StickersTable::getStickerPosInSet(const Utils::FileSharingId& _stickerId) const
     {
         return Stickers::getStickerPosInSet(stickersSetId_, _stickerId);
     }
 
-    const stickersArray& StickersTable::getStickerIds() const
+    const Ui::Stickers::stickersArray& StickersTable::getStickerIds() const
     {
         return Stickers::getStickers(stickersSetId_);
     }
 
-    void StickersTable::onStickerUpdated(int32_t _setId, const QString& _stickerId)
+    void StickersTable::onStickerUpdated(int32_t _setId, const Utils::FileSharingId& _stickerId)
     {
         redrawSticker(_setId, _stickerId);
     }
@@ -1147,7 +1147,7 @@ namespace Ui
         }
     }
 
-    std::pair<int32_t, QString> StickersTable::getStickerFromPos(const QPoint& _pos) const
+    std::pair<int32_t, Utils::FileSharingId> StickersTable::getStickerFromPos(const QPoint& _pos) const
     {
         const auto& stickersList = getStickerIds();
 
@@ -1157,7 +1157,7 @@ namespace Ui
                 return std::make_pair(stickersSetId_, stickersList[i]);
         }
 
-        return std::make_pair(-1, QString());
+        return std::make_pair(-1, Utils::FileSharingId());
     }
 
     void StickersTable::selectFirst()
@@ -1180,12 +1180,12 @@ namespace Ui
 
     bool StickersTable::hasSelection() const
     {
-        return !getSelected().second.isEmpty();
+        return !getSelected().second.fileId.isEmpty();
     }
 
     int StickersTable::selectedItemColumn() const
     {
-        if (const auto sel = getSelected(); !sel.second.isEmpty())
+        if (const auto sel = getSelected(); !sel.second.fileId.isEmpty())
         {
             const auto& stickersList = getStickerIds();
             auto it = std::find_if(stickersList.begin(), stickersList.end(), [&sel](const auto _s) { return _s == sel.second; });
@@ -1233,7 +1233,7 @@ namespace Ui
         const auto widgets = findChildren<StickerWidget*>();
         if (!widgets.isEmpty())
         {
-            std::vector<QString> toCancel;
+            std::vector<Utils::FileSharingId> toCancel;
             toCancel.reserve(widgets.size());
             for (auto w : widgets)
                 toCancel.push_back(w->getId());
@@ -1268,7 +1268,7 @@ namespace Ui
 
     bool StickersTable::selectRight()
     {
-        if (const auto sel = getSelected(); !sel.second.isEmpty())
+        if (const auto sel = getSelected(); !sel.second.fileId.isEmpty())
         {
             const auto& stickersList = getStickerIds();
             auto it = std::find_if(stickersList.begin(), stickersList.end(), [&sel](const auto _s) { return _s == sel.second; });
@@ -1289,7 +1289,7 @@ namespace Ui
 
     bool StickersTable::selectLeft()
     {
-        if (const auto sel = getSelected(); !sel.second.isEmpty())
+        if (const auto sel = getSelected(); !sel.second.fileId.isEmpty())
         {
             const auto& stickersList = getStickerIds();
             auto it = std::find_if(stickersList.begin(), stickersList.end(), [&sel](const auto _s) { return _s == sel.second; });
@@ -1306,7 +1306,7 @@ namespace Ui
 
     bool StickersTable::selectUp()
     {
-        if (const auto sel = getSelected(); !sel.second.isEmpty())
+        if (const auto sel = getSelected(); !sel.second.fileId.isEmpty())
         {
             const auto& stickersList = getStickerIds();
             auto it = std::find_if(stickersList.begin(), stickersList.end(), [&sel](const auto _s) { return _s == sel.second; });
@@ -1327,7 +1327,7 @@ namespace Ui
 
     bool StickersTable::selectDown()
     {
-        if (const auto sel = getSelected(); !sel.second.isEmpty())
+        if (const auto sel = getSelected(); !sel.second.fileId.isEmpty())
         {
             const auto& stickersList = getStickerIds();
             auto it = std::find_if(stickersList.begin(), stickersList.end(), [&sel](const auto _s) { return _s == sel.second; });
@@ -1357,12 +1357,12 @@ namespace Ui
         return false;
     }
 
-    std::pair<int32_t, QString> StickersTable::getSelected() const
+    std::pair<int32_t, Utils::FileSharingId> StickersTable::getSelected() const
     {
         return hoveredSticker_;
     }
 
-    void StickersTable::setSelected(const std::pair<int32_t, QString>& _sticker)
+    void StickersTable::setSelected(const std::pair<int32_t, Utils::FileSharingId>& _sticker)
     {
         const auto prevHovered = hoveredSticker_;
 
@@ -1374,7 +1374,7 @@ namespace Ui
 
     bool StickersTable::sendSelected()
     {
-        if (const auto sel = getSelected(); !sel.second.isEmpty())
+        if (const auto sel = getSelected(); !sel.second.fileId.isEmpty())
         {
             Q_EMIT stickerSelected(sel.second);
             return true;
@@ -1382,7 +1382,7 @@ namespace Ui
         return false;
     }
 
-    void StickersTable::clearIfNotSelected(const QString& _stickerId)
+    void StickersTable::clearIfNotSelected(const Utils::FileSharingId& _stickerId)
     {
         if (hasSelection() && getSelected().second != _stickerId)
             clearSelection();
@@ -1390,7 +1390,7 @@ namespace Ui
 
     void StickersTable::clearSelection()
     {
-        setSelected({ -1, QString() });
+        setSelected({ -1, {} });
     }
 
     void StickersTable::mouseReleaseEventInternal(const QPoint& _pos)
@@ -1399,13 +1399,13 @@ namespace Ui
             longtapTimer_->stop();
 
         const auto sticker = getStickerFromPos(_pos);
-        if (!sticker.second.isEmpty())
+        if (!sticker.second.fileId.isEmpty())
             Q_EMIT stickerSelected(sticker.second);
     }
 
-    void StickersTable::redrawSticker(const int32_t _setId, const QString& _stickerId)
+    void StickersTable::redrawSticker(const int32_t _setId, const Utils::FileSharingId& _stickerId)
     {
-        if (!_stickerId.isEmpty())
+        if (!_stickerId.fileId.isEmpty())
         {
             if (const auto stickerPosInSet = getStickerPosInSet(_stickerId); stickerPosInSet >= 0)
                 if (auto item = layout_->itemAt(stickerPosInSet))
@@ -1456,7 +1456,7 @@ namespace Ui
             redrawSticker(sticker.first, sticker.second);
             redrawSticker(prevSticker.first, prevSticker.second);
 
-            if (!sticker.second.isEmpty())
+            if (!sticker.second.fileId.isEmpty())
                 Q_EMIT stickerHovered(sticker.first, sticker.second);
         }
     }
@@ -1471,13 +1471,13 @@ namespace Ui
     {
         const auto pos = mapFromGlobal(QCursor::pos());
         const auto sticker = getStickerFromPos(pos);
-        if (!sticker.second.isEmpty())
+        if (!sticker.second.fileId.isEmpty())
             Q_EMIT stickerPreview(sticker.second);
     }
 
     void StickersTable::mousePressEventInternal(const QPoint& _pos)
     {
-        if (const auto sticker = getStickerFromPos(_pos); !sticker.second.isEmpty())
+        if (const auto sticker = getStickerFromPos(_pos); !sticker.second.fileId.isEmpty())
         {
             if (!longtapTimer_)
             {
@@ -1500,12 +1500,12 @@ namespace Ui
     {
     }
 
-    int32_t RecentsStickersTable::getStickerPosInSet(const QString& _stickerId) const
+    int32_t RecentsStickersTable::getStickerPosInSet(const Utils::FileSharingId& _stickerId) const
     {
         return Utils::indexOf(recentStickersArray_.begin(), recentStickersArray_.end(), _stickerId);
     }
 
-    const stickersArray& RecentsStickersTable::getStickerIds() const
+    const Ui::Stickers::stickersArray& RecentsStickersTable::getStickerIds() const
     {
         return recentStickersArray_;
     }
@@ -1520,7 +1520,7 @@ namespace Ui
 
     bool RecentsStickersTable::selectRight()
     {
-        if (const auto sel = getSelected(); !sel.second.isEmpty())
+        if (const auto sel = getSelected(); !sel.second.fileId.isEmpty())
         {
             if (rowCount_ * columnCount_ < max_stickers_count && getStickerPosInSet(sel.second) >= rowCount_ * columnCount_ - 1)
                 return false;
@@ -1532,7 +1532,7 @@ namespace Ui
 
     bool RecentsStickersTable::selectDown()
     {
-        if (const auto sel = getSelected(); !sel.second.isEmpty())
+        if (const auto sel = getSelected(); !sel.second.fileId.isEmpty())
         {
             if (getStickerPosInSet(sel.second) / columnCount_ == rowCount_ - 1)
                 return false;
@@ -1578,7 +1578,7 @@ namespace Ui
 
         if (resized)
         {
-            if (const auto sel = getSelected(); !sel.second.isEmpty())
+            if (const auto sel = getSelected(); !sel.second.fileId.isEmpty())
             {
                 if (rowCount_ * columnCount_ < max_stickers_count && getStickerPosInSet(sel.second) >= rowCount_ * columnCount_ - 1)
                     selectLast();
@@ -1593,7 +1593,7 @@ namespace Ui
         recentStickersArray_.clear();
     }
 
-    bool RecentsStickersTable::addSticker(const QString& _stickerId)
+    bool RecentsStickersTable::addSticker(const Utils::FileSharingId& _stickerId)
     {
         for (auto iter = recentStickersArray_.begin(); iter != recentStickersArray_.end(); ++iter)
         {
@@ -1669,18 +1669,18 @@ namespace Ui
         setTables_[_setId] = stickersView;
         Utils::grabTouchWidget(stickersView);
 
-        connect(stickersView, &StickersTable::stickerSelected, this, [this](const QString& _stickerId)
+        connect(stickersView, &StickersTable::stickerSelected, this, [this](const Utils::FileSharingId& _stickerId)
         {
             Q_EMIT stickerSelected(_stickerId);
             GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::sticker_sent_from_picker);
         });
 
-        connect(stickersView, &StickersTable::stickerHovered, this, [this](int32_t _setId, const QString& _stickerId)
+        connect(stickersView, &StickersTable::stickerHovered, this, [this](int32_t _setId, const Utils::FileSharingId& _stickerId)
         {
             Q_EMIT stickerHovered(_setId, _stickerId);
         });
 
-        connect(stickersView, &StickersTable::stickerPreview, this, [this](const QString& _stickerId)
+        connect(stickersView, &StickersTable::stickerPreview, this, [this](const Utils::FileSharingId& _stickerId)
         {
             previewActive_ = true;
             Q_EMIT stickerPreview(-1, _stickerId);
@@ -1723,7 +1723,7 @@ namespace Ui
         toolbar_->Clear();
     }
 
-    void StickersWidget::onStickerUpdated(int32_t _setId, const QString& _stickerId)
+    void StickersWidget::onStickerUpdated(int32_t _setId, const Utils::FileSharingId& _stickerId)
     {
         auto iterSet = setTables_.find(_setId);
         if (iterSet == setTables_.end())
@@ -1739,7 +1739,7 @@ namespace Ui
         Q_EMIT stickerPreviewClose();
     }
 
-    void StickersWidget::scrollToSticker(int32_t _setId, const QString& _stickerId)
+    void StickersWidget::scrollToSticker(int32_t _setId, const Utils::FileSharingId& _stickerId)
     {
         auto iterSet = setTables_.find(_setId);
         if (iterSet == setTables_.end())
@@ -1878,18 +1878,18 @@ namespace Ui
             sendEmoji(_index, EmojiSendSource::click);
         });
 
-        connect(stickersView_, &RecentsStickersTable::stickerSelected, this, [this](const QString& _stickerId)
+        connect(stickersView_, &RecentsStickersTable::stickerSelected, this, [this](const Utils::FileSharingId& _stickerId)
         {
             Q_EMIT stickerSelected(_stickerId);
             GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::sticker_sent_from_recents);
         });
 
-        connect(stickersView_, &RecentsStickersTable::stickerHovered, this, [this](qint32 _setId, const QString& _stickerId)
+        connect(stickersView_, &RecentsStickersTable::stickerHovered, this, [this](qint32 _setId, const Utils::FileSharingId& _stickerId)
         {
             Q_EMIT stickerHovered(_setId, _stickerId);
         });
 
-        connect(stickersView_, &RecentsStickersTable::stickerPreview, this, [this](const QString& _stickerId)
+        connect(stickersView_, &RecentsStickersTable::stickerPreview, this, [this](const Utils::FileSharingId& _stickerId)
         {
             previewActive_ = true;
             Q_EMIT stickerPreview(-1, _stickerId);
@@ -1898,7 +1898,7 @@ namespace Ui
         connect(emojiView_, &EmojiTableView::mouseMoved, this, &RecentsWidget::emojiMouseMoved);
     }
 
-    void RecentsWidget::addSticker(const QString& _stickerId)
+    void RecentsWidget::addSticker(const Utils::FileSharingId& _stickerId)
     {
         addStickers({ _stickerId });
     }
@@ -1911,10 +1911,10 @@ namespace Ui
         vStickers.reserve(recentsStickers.size());
 
         for (const auto& s : recentsStickers)
-            if (!s.isEmpty())
-                vStickers.push_back(s);
+            if (!s.fileId.isEmpty())
+                vStickers.push_back(s.fileId % recentsSettingsSourceDelimiter() % (s.sourceId ? *s.sourceId : QString()));
 
-        get_gui_settings()->set_value<QString>(settings_recents_fs_stickers, vStickers.join(recentsSettingsDelimiter()));
+        get_gui_settings()->set_value<QString>(Ui::Stickers::recentsStickerSettingsPath().data(), vStickers.join(recentsSettingsDelimiter()));
     }
 
     void RecentsWidget::onStickerMigration(const std::vector<Ui::Stickers::stickerSptr>& _stickers)
@@ -1926,7 +1926,7 @@ namespace Ui
 
         if (!sticks.empty() && (sticks.size() % 2 == 0))
         {
-            std::vector<QString> fs_stickers;
+            std::vector<Utils::FileSharingId> fs_stickers;
             fs_stickers.reserve(sticks.size() / 2);
             for (size_t i = 0; i < sticks.size(); i += 2)
             {
@@ -1951,16 +1951,30 @@ namespace Ui
         if (!sticks.empty() && (sticks.size() % 2 == 0))
             GetDispatcher()->getFsStickersByIds(sticks);
 
-        const auto stikersFromSettings = get_gui_settings()->get_value<QString>(settings_recents_fs_stickers, QString());
+
+        auto stikersFromSettings = get_gui_settings()->get_value<QString>(Ui::Stickers::recentsStickerSettingsPath().data(), QString());
+        if (stikersFromSettings.isEmpty())
+        {
+            // migrate recent stickers from old version
+            stikersFromSettings = get_gui_settings()->get_value<QString>(settings_recents_fs_stickers, QString());
+            get_gui_settings()->set_value<QString>(settings_recents_fs_stickers, QString());
+        }
         if (stikersFromSettings.isEmpty())
             return;
 
-        const auto stickers = stikersFromSettings.splitRef(recentsSettingsDelimiter(), QString::SkipEmptyParts);
+        const auto stickers = stikersFromSettings.splitRef(recentsSettingsDelimiter(), Qt::SkipEmptyParts);
 
-        std::vector<QString> fs_stickers;
+        std::vector<Utils::FileSharingId> fs_stickers;
         fs_stickers.reserve(stickers.size());
         for (const auto& s : boost::adaptors::reverse(stickers))
-            fs_stickers.emplace_back(s.toString());
+        {
+            const auto stickerData = s.split(recentsSettingsSourceDelimiter(), QString::SkipEmptyParts);
+            const auto size = stickerData.size();
+            if (size == 1)
+                fs_stickers.push_back({ stickerData.at(0).toString(), std::nullopt });
+            else if (size == 2)
+                fs_stickers.push_back({ stickerData.at(0).toString(), stickerData.at(1).toString() });
+        }
         addStickers(fs_stickers);
     }
 
@@ -1994,12 +2008,12 @@ namespace Ui
         for (const auto& x : std::as_const(emojis_))
             str << x.fullCodePoints.serialize2();
 
-        get_gui_settings()->set_value<QString>(settings_recents_emojis2, str.join(ql1c(';')));
+        get_gui_settings()->set_value<QString>(settings_recents_emojis2, str.join(recentsSettingsDelimiter()));
     }
 
     bool RecentsWidget::selectionInStickers() const
     {
-        return stickersView_ && !stickersView_->getSelected().second.isEmpty();
+        return stickersView_ && !stickersView_->getSelected().second.fileId.isEmpty();
     }
 
     bool RecentsWidget::sendSelectedEmoji()
@@ -2031,7 +2045,7 @@ namespace Ui
         }
     }
 
-    void RecentsWidget::addStickers(const std::vector<QString>& _stickers)
+    void RecentsWidget::addStickers(const std::vector<Utils::FileSharingId>& _stickers)
     {
         if (_stickers.empty())
             return;
@@ -2042,7 +2056,7 @@ namespace Ui
         auto added = false;
         for (const auto& s : _stickers)
         {
-            if (!s.isEmpty())
+            if (!s.fileId.isEmpty())
             {
                 const auto sticker = Stickers::getSticker(s);
                 const auto isLottie = sticker && sticker->isLottie();
@@ -2065,7 +2079,7 @@ namespace Ui
         if (const auto emojis = get_gui_settings()->get_value<QString>(settings_recents_emojis2, QString()); !emojis.isEmpty())
         {
             init();
-            const auto split = emojis.splitRef(ql1c(';'), QString::SkipEmptyParts);
+            const auto split = emojis.splitRef(recentsSettingsDelimiter(), Qt::SkipEmptyParts);
 
             for (const auto& str : split)
             {
@@ -2081,7 +2095,7 @@ namespace Ui
             emojiView_->onEmojiAdded();
     }
 
-    void RecentsWidget::onStickerUpdated(int32_t _setId, const QString& _stickerId)
+    void RecentsWidget::onStickerUpdated(int32_t _setId, const Utils::FileSharingId& _stickerId)
     {
         if (stickersView_)
             stickersView_->onStickerUpdated(_setId, _stickerId);
@@ -2107,7 +2121,7 @@ namespace Ui
     {
         if (stickersView_ && emojiView_)
         {
-            if (!stickersView_->getSelected().second.isEmpty())
+            if (!stickersView_->getSelected().second.fileId.isEmpty())
             {
                 emojiView_->clearSelection();
                 return stickersView_->selectUp();
@@ -2290,7 +2304,7 @@ namespace Ui
             emojiView_->clearSelection();
     }
 
-    void RecentsWidget::clearIfNotSelected(const QString& _stickerId)
+    void RecentsWidget::clearIfNotSelected(const Utils::FileSharingId& _stickerId)
     {
         if (stickersView_)
             stickersView_->clearIfNotSelected(_stickerId);
@@ -2399,25 +2413,10 @@ namespace Ui
     //////////////////////////////////////////////////////////////////////////
     // SmilesMenu class
     //////////////////////////////////////////////////////////////////////////
-    SmilesMenu::SmilesMenu(QWidget* _parent)
-        : QFrame(_parent)
-        , topToolbar_(nullptr)
-        , bottomToolbar_(nullptr)
-        , viewArea_(nullptr)
-        , viewAreaLayout_(nullptr)
-        , recentsView_(nullptr)
-        , emojiView_(nullptr)
-        , stickersView_(nullptr)
-        , stickerPreview_(nullptr)
-        , animHeight_(nullptr)
-        , animScroll_(nullptr)
-        , topSpacer_(nullptr)
-        , isVisible_(false)
-        , blockToolbarSwitch_(false)
-        , currentHeight_(0)
-        , setFocusToButton_(false)
+    SmilesMenu::SmilesMenu(QWidget* _parent, const QString& _aimId)
+        : QWidget(_parent)
         , lottieAllowed_(Features::isAnimatedStickersInPickerAllowed())
-        , drawTopBorder_(true)
+        , aimId_(_aimId)
     {
         setContentsMargins(0, pickerTopBorderWidth(), 0, 0);
         rootVerticalLayout_ = Utils::emptyVLayout(this);
@@ -2473,7 +2472,7 @@ namespace Ui
         if (reason != Qt::FocusReason::ActiveWindowFocusReason)
             hideAnimated();
 
-        QFrame::focusOutEvent(_event);
+        QWidget::focusOutEvent(_event);
     }
 
     void SmilesMenu::showAnimated()
@@ -2494,67 +2493,53 @@ namespace Ui
 
     void SmilesMenu::showHideAnimated(const bool _fromKeyboard)
     {
-        if (const auto page = Utils::InterConnector::instance().getHistoryPage(Logic::getContactListModel()->selectedContact()))
-        {
-            isVisible_ = !isVisible_;
+        im_assert(!aimId_.isEmpty());
 
+        isVisible_ = !isVisible_;
+
+        auto pickerHeight = getDefaultPickerHeight();
+        if (const auto page = Utils::InterConnector::instance().getHistoryPage(aimId_))
+        {
             const auto messagesAreaHeight = page->getMessagesAreaHeight();
-            const auto pickerHeight =
-                ((messagesAreaHeight - getDefaultPickerHeight()) > getMinimalMessagesAreaHeight())
-                ? getDefaultPickerHeight()
-                : messagesAreaHeight - getMinimalMessagesAreaHeight();
-
-            const auto startValue = isVisible_ ? 0 : pickerHeight;
-            const auto endValue = isVisible_ ? pickerHeight : 0;
-
-            if (!animHeight_)
-            {
-                animHeight_ = new QPropertyAnimation(this, QByteArrayLiteral("currentHeight"), this);
-                animHeight_->setEasingCurve(QEasingCurve::InQuad);
-
-                constexpr std::chrono::milliseconds duration(200);
-                animHeight_->setDuration(duration.count());
-
-                connect(animHeight_, &QPropertyAnimation::finished, this, [this]()
-                {
-                    if (!isVisible_)
-                        clearCache();
-                });
-            }
-
-            animHeight_->stop();
-            animHeight_->setStartValue(startValue);
-            animHeight_->setEndValue(endValue);
-            animHeight_->start();
-
-            if (isVisible_)
-            {
-                auto conn = std::make_shared<QMetaObject::Connection>();
-                *conn = connect(animHeight_, &QPropertyAnimation::finished, this, [this, conn, _fromKeyboard]()
-                {
-                    if (_fromKeyboard)
-                    {
-                        if (!hasSelection())
-                            selectFirst();
-                        ensureSelectedVisible();
-                    }
-                    disconnect(*conn);
-                });
-            }
-            else if (setFocusToButton_)
-            {
-                setFocusToButton_ = false;
-
-                if (const auto dialog = Utils::InterConnector::instance().getContactDialog())
-                    if (const auto input = dialog->getInputWidget())
-                        input->setFocusOnEmoji();
-            }
+            pickerHeight = ((messagesAreaHeight - getDefaultPickerHeight()) > getMinimalMessagesAreaHeight()) ? getDefaultPickerHeight() : messagesAreaHeight - getMinimalMessagesAreaHeight();
         }
-        else
+
+        const auto startValue = isVisible_ ? 0 : pickerHeight;
+        const auto endValue = isVisible_ ? pickerHeight : 0;
+
+        if (!animHeight_)
         {
-            isVisible_ = false;
-            setCurrentHeight(0);
-            clearCache();
+            animHeight_ = new QPropertyAnimation(this, QByteArrayLiteral("currentHeight"), this);
+            animHeight_->setEasingCurve(QEasingCurve::InQuad);
+
+            constexpr std::chrono::milliseconds duration(200);
+            animHeight_->setDuration(duration.count());
+
+            connect(animHeight_, &QPropertyAnimation::finished, this, [this]()
+            {
+                if (!isVisible_)
+                    clearCache();
+            });
+        }
+
+        animHeight_->stop();
+        animHeight_->setStartValue(startValue);
+        animHeight_->setEndValue(endValue);
+        animHeight_->start();
+
+        if (isVisible_)
+        {
+            auto conn = std::make_shared<QMetaObject::Connection>();
+            *conn = connect(animHeight_, &QPropertyAnimation::finished, this, [this, conn, _fromKeyboard]()
+            {
+                if (_fromKeyboard)
+                {
+                    if (!hasSelection())
+                        selectFirst();
+                    ensureSelectedVisible();
+                }
+                disconnect(*conn);
+            });
         }
 
         Q_EMIT visibilityChanged(isVisible_, QPrivateSignal());
@@ -2598,14 +2583,14 @@ namespace Ui
             Q_EMIT emojiSelected(_emoji.fullCodePoints, _pos);
         });
 
-        connect(recentsView_, &RecentsWidget::stickerSelected, this, [this](const QString& _stickerId)
+        connect(recentsView_, &RecentsWidget::stickerSelected, this, [this](const Utils::FileSharingId& _stickerId)
         {
             Q_EMIT stickerSelected(_stickerId);
         });
 
         connect(recentsView_, &RecentsWidget::stickerHovered, this, &SmilesMenu::onStickerHovered);
 
-        connect(recentsView_, &RecentsWidget::stickerPreview, this, [this](qint32 _setId, const QString& _stickerId)
+        connect(recentsView_, &RecentsWidget::stickerPreview, this, [this](qint32 _setId, const Utils::FileSharingId& _stickerId)
         {
             showStickerPreview(_setId, _stickerId);
         });
@@ -2757,6 +2742,11 @@ namespace Ui
         stickersView_->setVisible(_visible);
     }
 
+    void SmilesMenu::setAddButtonVisible(bool _visible)
+    {
+        topToolbar_->setAddButtonVisible(_visible);
+    }
+
     void SmilesMenu::setHorizontalMargins(int _margin)
     {
         viewAreaLayout_->setContentsMargins(_margin, 0, _margin, 0);
@@ -2778,6 +2768,11 @@ namespace Ui
     {
         topSpacer_->changeSize(0, _spacing);
         viewAreaLayout_->invalidate();
+    }
+
+    void Smiles::SmilesMenu::setPreviewAreaAdditions(QMargins _margins)
+    {
+        previewMargins_ = std::move(_margins);
     }
 
     bool SmilesMenu::sendSelectedItem()
@@ -2877,7 +2872,7 @@ namespace Ui
         stickersView_->init();
     }
 
-    void SmilesMenu::stickerEvent(const qint32 _error, const qint32 _setId, const QString& _stickerId)
+    void SmilesMenu::stickerEvent(const qint32 _error, const qint32 _setId, const Utils::FileSharingId& _stickerId)
     {
         stickersView_->onStickerUpdated(_setId, _stickerId);
         recentsView_->onStickerUpdated(_setId, _stickerId);
@@ -2887,9 +2882,9 @@ namespace Ui
     {
         connect(Ui::GetDispatcher(), &core_dispatcher::onStickers, this, &SmilesMenu::stickersMetaEvent);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated, this, &SmilesMenu::onOmicronUpdate);
-        connect(&Stickers::getCache(), &Stickers::Cache::stickerUpdated, this, [this](qint32 _error, const QString& _stickerId, qint32 _setId) { stickerEvent(_error, _setId, _stickerId); });
+        connect(&Stickers::getCache(), &Stickers::Cache::stickerUpdated, this, [this](qint32 _error, const Utils::FileSharingId& _stickerId, qint32 _setId) { stickerEvent(_error, _setId, _stickerId); });
 
-        connect(stickersView_, &StickersWidget::stickerSelected, this, [this](const QString& _stickerId)
+        connect(stickersView_, &StickersWidget::stickerSelected, this, [this](const Utils::FileSharingId& _stickerId)
         {
             Q_EMIT stickerSelected(_stickerId);
 
@@ -2898,7 +2893,7 @@ namespace Ui
 
         connect(stickersView_, &StickersWidget::stickerHovered, this, &SmilesMenu::onStickerHovered);
 
-        connect(stickersView_, &StickersWidget::stickerPreview, this, [this](qint32 _setId, const QString& _stickerId)
+        connect(stickersView_, &StickersWidget::stickerPreview, this, [this](qint32 _setId, const Utils::FileSharingId& _stickerId)
         {
             showStickerPreview(_setId, _stickerId);
         });
@@ -2914,7 +2909,7 @@ namespace Ui
         });
     }
 
-    void SmilesMenu::addStickerToRecents(const qint32 _setId, const QString& _stickerId)
+    void SmilesMenu::addStickerToRecents(const qint32 _setId, const Utils::FileSharingId& _stickerId)
     {
         recentsView_->addSticker(_stickerId);
     }
@@ -2922,7 +2917,6 @@ namespace Ui
     void SmilesMenu::InitSelector()
     {
         topToolbar_ = new Toolbar(this, Toolbar::buttonsAlign::left);
-        topToolbar_->addButtonStore();
         recentsView_ = new RecentsWidget(this);
         emojiView_ = new EmojisWidget(this);
 
@@ -3068,25 +3062,18 @@ namespace Ui
         emojiView_->selectFirstButton();
     }
 
-    void SmilesMenu::showStickerPreview(const int32_t _setId, const QString& _stickerId)
+    void SmilesMenu::showStickerPreview(const int32_t _setId, const Utils::FileSharingId& _stickerId)
     {
         if (!stickerPreview_)
         {
-            auto mainWindow = Utils::InterConnector::instance().getMainWindow();
-            stickerPreview_ = new StickerPreview(mainWindow, _setId, _stickerId, StickerPreview::Context::Picker);
+            stickerPreview_ = new StickerPreview(window(), _setId, _stickerId, StickerPreview::Context::Picker);
 
-            QObject::connect(stickerPreview_, &StickerPreview::needClose, this, [this]()
-            {
-                recentsView_->resetPreview();
-                stickersView_->resetPreview();
+            // !!! must be Qt::QueuedConnection
+            connect(stickerPreview_, &StickerPreview::needClose, recentsView_, &RecentsWidget::resetPreview, Qt::QueuedConnection);
+            connect(stickerPreview_, &StickerPreview::needClose, stickersView_, &StickersWidget::resetPreview, Qt::QueuedConnection);
 
-            }, Qt::QueuedConnection); // !!! must be Qt::QueuedConnection
-
-            // to show preview over input widget
-            const auto inputWidget = Utils::InterConnector::instance().getContactDialog()->getInputWidget();
-            auto previewRect = rect();
-            previewRect.setHeight(previewRect.height() + inputWidget->height());
-            previewRect.moveTo(mapTo(mainWindow, previewRect.topLeft()));
+            auto previewRect = rect().marginsAdded(previewMargins_);
+            previewRect.moveTo(mapTo(window(), previewRect.topLeft()));
 
             stickerPreview_->setGeometry(previewRect);
             stickerPreview_->show();
@@ -3096,13 +3083,13 @@ namespace Ui
         }
     }
 
-    void SmilesMenu::updateStickerPreview(const int32_t _setId, const QString& _stickerId)
+    void SmilesMenu::updateStickerPreview(const int32_t _setId, const Utils::FileSharingId& _stickerId)
     {
         if (stickerPreview_)
             stickerPreview_->showSticker(_stickerId);
     }
 
-    void SmilesMenu::onStickerHovered(const int32_t _setId, const QString& _stickerId)
+    void SmilesMenu::onStickerHovered(const int32_t _setId, const Utils::FileSharingId& _stickerId)
     {
         emojiView_->getView()->clearSelection();
 
@@ -3293,12 +3280,6 @@ namespace Ui
             else
                 selectPrevTable();
 
-            _event->accept();
-        }
-        else if (_event->key() == Qt::Key_Escape)
-        {
-            setFocusToButton_ = true;
-            hideAnimated();
             _event->accept();
         }
     }

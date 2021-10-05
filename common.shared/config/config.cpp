@@ -58,6 +58,7 @@ namespace config
                 std::pair(urls::profile, get_string(it->value, "profile")),
                 std::pair(urls::profile_agent, get_string(it->value, "profile_agent")),
                 std::pair(urls::auth_mail_ru, get_string(it->value, "auth_mail_ru")),
+                std::pair(urls::oauth2_mail_ru, get_string(it->value, "oauth2_mail_ru")),
                 std::pair(urls::r_mail_ru, get_string(it->value, "r_mail_ru")),
                 std::pair(urls::win_mail_ru, get_string(it->value, "win_mail_ru")),
                 std::pair(urls::read_msg, get_string(it->value, "read_msg")),
@@ -145,6 +146,7 @@ namespace config
                 std::pair(features::login_by_phone_allowed, get_bool(it->value, "login_by_phone_allowed")),
                 std::pair(features::login_by_mail_default, get_bool(it->value, "login_by_mail_default")),
                 std::pair(features::login_by_uin_allowed, get_bool(it->value, "login_by_uin_allowed")),
+                std::pair(features::login_by_oauth2_allowed, get_bool(it->value, "login_by_oauth2_allowed")),
                 std::pair(features::forgot_password, get_bool(it->value, "forgot_password")),
                 std::pair(features::explained_forgot_password, get_bool(it->value, "explained_forgot_password")),
                 std::pair(features::unknown_contacts, get_bool(it->value, "unknown_contacts")),
@@ -154,7 +156,7 @@ namespace config
                 std::pair(features::changeable_name, get_bool(it->value, "changeable_name")),
                 std::pair(features::avatar_change_allowed, get_bool(it->value, "avatar_change_allowed")),
                 std::pair(features::beta_update, get_bool(it->value, "beta_update")),
-                std::pair(features::ssl_verify_peer, get_bool(it->value, "ssl_verify_peer")),
+                std::pair(features::ssl_verify, get_bool(it->value, "ssl_verify")),
                 std::pair(features::profile_agent_as_domain_url, get_bool(it->value, "profile_agent_as_domain_url")),
                 std::pair(features::need_gdpr_window, get_bool(it->value, "need_gdpr_window")),
                 std::pair(features::need_introduce_window, get_bool(it->value, "need_introduce_window")),
@@ -198,10 +200,28 @@ namespace config
                 std::pair(features::custom_statuses_enabled, get_bool(it->value, "custom_statuses_enabled")),
                 std::pair(features::formatting_in_bubbles, get_bool(it->value, "formatting_in_bubbles")),
                 std::pair(features::formatting_in_input, get_bool(it->value, "formatting_in_input")),
-                std::pair(features::apps_bar_visible, get_bool(it->value, "apps_bar_visible")),
-                std::pair(features::tab_bar_visible, get_bool(it->value, "tab_bar_visible")),
+                std::pair(features::apps_bar_enabled, get_bool(it->value, "apps_bar_enabled")),
                 std::pair(features::status_in_apps_bar, get_bool(it->value, "status_in_apps_bar")),
+                std::pair(features::scheduled_messages_enabled, get_bool(it->value, "scheduled_messages_enabled")),
                 std::pair(features::threads_enabled, get_bool(it->value, "threads_enabled")),
+                std::pair(features::reminders_enabled, get_bool(it->value, "reminders_enabled")),
+                std::pair(features::support_shared_federation_stickerpacks, get_bool(it->value, "support_shared_federation_stickerpacks")),
+                std::pair(features::url_ftp_protocols_allowed, get_bool(it->value, "url_ftp_protocols_allowed")),
+                std::pair(features::organization_structure_enabled, get_bool(it->value, "organization_structure_enabled")),
+                std::pair(features::tasks_enabled, get_bool(it->value, "tasks_enabled")),
+                std::pair(features::draft_enabled, get_bool(it->value, "draft_enabled")),
+                std::pair(features::message_corner_menu, get_bool(it->value, "message_corner_menu")),
+                std::pair(features::task_creation_in_chat_enabled, get_bool(it->value, "task_creation_in_chat_enabled")),
+                std::pair(features::smartreply_suggests_feature_enabled, get_bool(it->value, "smartreply_suggests_feature_enabled")),
+                std::pair(features::smartreply_suggests_text, get_bool(it->value, "smartreply_suggests_text")),
+                std::pair(features::smartreply_suggests_stickers, get_bool(it->value, "smartreply_suggests_stickers")),
+                std::pair(features::smartreply_suggests_for_quotes, get_bool(it->value, "smartreply_suggests_for_quotes")),
+                std::pair(features::compact_mode_by_default, get_bool(it->value, "compact_mode_by_default")),
+                std::pair(features::expanded_gallery, get_bool(it->value, "expanded_gallery")),
+                std::pair(features::restricted_files_enabled, get_bool(it->value, "restricted_files_enabled")),
+                std::pair(features::antivirus_check_enabled, get_bool(it->value, "antivirus_check_enabled")),
+                std::pair(features::antivirus_check_progress_visible, get_bool(it->value, "antivirus_check_progress_visible")),
+                std::pair(features::calendar_enabled, get_bool(it->value, "calendar_enabled")),
             };
 
             if (std::is_sorted(std::cbegin(res), std::cend(res), is_less_by_first))
@@ -223,6 +243,8 @@ namespace config
                 std::pair(values::app_name_mac, get_string(it->value, "app_name_mac")),
                 std::pair(values::app_name_linux, get_string(it->value, "app_name_linux")),
                 std::pair(values::user_agent_app_name, get_string(it->value, "user_agent_app_name")),
+                std::pair(values::client_b64, get_string(it->value, "client_b64")),
+                std::pair(values::client_id, get_string(it->value, "client_id")),
                 std::pair(values::client_rapi, get_string(it->value, "client_rapi")),
                 std::pair(values::product_name, get_string(it->value, "product_name")),
                 std::pair(values::product_name_short, get_string(it->value, "product_name_short")),
@@ -237,7 +259,6 @@ namespace config
                 std::pair(values::installer_exe_win, get_string(it->value, "installer_exe_win")),
                 std::pair(values::installer_hkey_class_win, get_string(it->value, "installer_hkey_class_win")),
                 std::pair(values::installer_main_instance_mutex_win, get_string(it->value, "installer_main_instance_mutex_win")),
-                std::pair(values::updater_main_instance_mutex_win, get_string(it->value, "updater_main_instance_mutex_win")),
                 std::pair(values::company_name, get_string(it->value, "company_name")),
                 std::pair(values::app_user_model_win, get_string(it->value, "app_user_model_win")),
                 std::pair(values::feedback_version_id, get_string(it->value, "feedback_version_id")),
@@ -266,6 +287,11 @@ namespace config
                 std::pair(values::mytracker_app_id_mac, get_string(it->value, "mytracker_app_id_mac")),
                 std::pair(values::mytracker_app_id_linux, get_string(it->value, "mytracker_app_id_linux")),
                 std::pair(values::status_banner_emoji_csv, get_string(it->value, "status_banner_emoji_csv")),
+                std::pair(values::draft_timeout_sec, get_int64(it->value, "draft_timeout")),
+                std::pair(values::draft_max_len, get_int64(it->value, "draft_max_len")),
+                std::pair(values::smartreply_suggests_click_hide_timeout, get_int64(it->value, "smartreply_suggests_click_hide_timeout")),
+                std::pair(values::smartreply_suggests_msgid_cache_size, get_int64(it->value, "smartreply_suggests_msgid_cache_size")),
+                std::pair(values::base_retry_interval_sec, get_int64(it->value, "base_retry_interval_sec")),
             };
 
             if (std::is_sorted(std::cbegin(res), std::cend(res), is_less_by_first))
@@ -422,20 +448,23 @@ namespace config
         auto local_config = configuration(config_json(), false);
 
 #ifdef SUPPORT_EXTERNAL_CONFIG
-        if (auto v = local_config.value(platform::is_apple() ? values::product_path_mac : values::product_path); auto path = std::get_if<std::string>(&v))
+        if (!environment::is_release())
         {
-            auto debug_config_path = core::utils::get_product_data_path(core::tools::from_utf8(*path));
-
-            boost::system::error_code error_code;
-            const auto extrenal_config_file_name = boost::filesystem::canonical(debug_config_path, Out error_code) / L"config.json";
-
-            if (error_code == boost::system::errc::success)
+            if (const auto v = local_config.value(platform::is_apple() ? values::product_path_mac : values::product_path); const auto path = std::get_if<std::string>(&v))
             {
-                if (core::tools::binary_stream bstream; bstream.load_from_file(extrenal_config_file_name.wstring()))
+                const auto debug_config_path = core::utils::get_product_data_path(core::tools::from_utf8(*path));
+
+                boost::system::error_code error_code;
+                const auto extrenal_config_file_name = boost::filesystem::canonical(debug_config_path, Out error_code) / L"config.json";
+
+                if (boost::system::errc::success == error_code)
                 {
-                    const auto size = bstream.available();
-                    if (auto extrernal_config = configuration(std::string_view(bstream.read(size), size_t(size)), true); extrernal_config.is_valid())
-                        return extrernal_config;
+                    if (core::tools::binary_stream bstream; bstream.load_from_file(extrenal_config_file_name.wstring()))
+                    {
+                        const auto size = bstream.available();
+                        if (auto extrernal_config = configuration(std::string_view(bstream.read(size), size_t(size)), true); extrernal_config.is_valid())
+                            return extrernal_config;
+                    }
                 }
             }
         }

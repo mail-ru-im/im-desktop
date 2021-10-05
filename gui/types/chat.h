@@ -61,10 +61,18 @@ namespace Data
         bool Live_ = false;
         bool Controlled_ = false;
         bool YouMember_ = false;
+        bool trustRequired_ = false;
 
         QVector<ChatMemberInfo> Members_;
 
         bool isChannel() const { return DefaultRole_ == u"readonly"; }
+
+        static bool areYouMember(const std::shared_ptr<Data::ChatInfo>& _info);
+        static bool areYouAdmin(const std::shared_ptr<Data::ChatInfo>& _info);
+        static bool areYouModer(const std::shared_ptr<Data::ChatInfo>& _info);
+        static bool areYouAdminOrModer(const std::shared_ptr<Data::ChatInfo>& _info);
+        static bool isChatControlled(const std::shared_ptr<Data::ChatInfo>& _info);
+        static bool isChannel(const std::shared_ptr<Data::ChatInfo>& _info);
     };
 
     QVector<ChatMemberInfo> UnserializeChatMembers(core::coll_helper* helper, const QString& _creator = QString());
@@ -119,14 +127,14 @@ namespace Data
 
     struct DialogGalleryState
     {
-        bool isEmpty() const { return images_count_ == 0 && videos_count == 0 && files_count == 0 && links_count == 0 && ptt_count == 0; }
+        bool isEmpty() const { return imagesCount_ == 0 && videosCount_ == 0 && filesCount_ == 0 && linksCount_ == 0 && pttCount_ == 0; }
 
-        int images_count_ = 0;
-        int videos_count = 0;
-        int files_count = 0;
-        int links_count = 0;
-        int ptt_count = 0;
-        int audio_count = 0;
+        int imagesCount_ = 0;
+        int videosCount_ = 0;
+        int filesCount_ = 0;
+        int linksCount_ = 0;
+        int pttCount_ = 0;
+        int audioCount_ = 0;
     };
 
     DialogGalleryState UnserializeDialogGalleryState(core::coll_helper* _helper);

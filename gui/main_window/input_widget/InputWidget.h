@@ -5,6 +5,9 @@
 
 #include "InputWidgetUtils.h"
 #include "FileToSend.h"
+#include "InputWidgetState.h"
+
+#include "main_window/EscapeCancellable.h"
 
 namespace Emoji
 {
@@ -27,10 +30,13 @@ namespace ptt
 namespace Utils
 {
     class CallLinkCreator;
+    struct FileSharingId;
 }
 
 namespace Ui
 {
+    class HistoryControlPage;
+    class ThreadFeedItem;
     class MentionCompleter;
     class SubmitButton;
 
@@ -54,16 +60,8 @@ namespace Ui
     enum class DisabledPanelState;
     enum class ClickType;
     enum class ConferenceType;
-
-    enum class InputView
-    {
-        Default,
-        Readonly,
-        Disabled,
-        Edit,
-        Ptt,
-        Multiselect,
-    };
+    enum class AttachMediaType;
+    enum class ClosePage;
 
     enum class FileSource
     {
@@ -71,61 +69,7 @@ namespace Ui
         CopyPaste
     };
 
-    struct InputWidgetState
-    {
-        Data::QuotesVec quotes_;
-        Data::MentionMap mentions_;
-        Data::FilesPlaceholderMap files_;
-
-        FilesToSend filesToSend_;
-        QString description_;
-
-        struct
-        {
-            Data::MessageBuddySptr message_;
-            QString buffer_;
-            MediaType type_;
-            QString editableText_;
-        } edit_;
-
-        bool canBeEmpty_ = false;
-        bool sendAsFile_ = false;
-
-        InputView view_ = InputView::Default;
-        std::vector<InputView> viewHistory_;
-        int mentionSignIndex_ = -1;
-
-        bool msgHistoryReady_ = false;
-
-        void clear(const InputView _newView = InputView::Default)
-        {
-            quotes_.clear();
-            mentions_.clear();
-            filesToSend_.clear();
-            description_.clear();
-            edit_.message_.reset();
-            edit_.buffer_.clear();
-            edit_.type_ = MediaType::noMedia;
-            edit_.editableText_.clear();
-            view_ = _newView;
-            viewHistory_.clear();
-            mentionSignIndex_ = -1;
-            canBeEmpty_ = false;
-            sendAsFile_ = false;
-        }
-
-        bool isDisabled() const noexcept
-        {
-            return view_ == InputView::Disabled || view_ == InputView::Readonly;
-        }
-
-        bool hasQuotes() const
-        {
-            return !quotes_.isEmpty();
-        }
-    };
-
-    class InputWidget : public QWidget
+    class InputWidget : public QWidget, public IEscapeCancellable
     {
         Q_OBJECT
 
@@ -133,22 +77,23 @@ namespace Ui
         void mentionSignPressed(const QString& _dialogAimId);
         void smilesMenuSignal(const bool _fromKeyboard, QPrivateSignal) const;
         void sendMessage(const QString&);
+        void editFocusIn();
         void editFocusOut();
         void inputTyped();
         void needSuggets(const QString _forText, const QPoint _pos, QPrivateSignal) const;
         void hideSuggets();
-        void resized();
-        void needClearQuotes();
-        void quotesDropped(QPrivateSignal) const;
-        void quotesAdded(QPrivateSignal) const;
+        void viewChanged(InputView _view, QPrivateSignal) const;
+
+        void quotesCountChanged(int _count, QPrivateSignal) const;
+        void heightChanged();
 
     public:
         void quote(const Data::QuotesVec& _quotes);
-        void contactSelected(const QString& _contact);
         void insertEmoji(const Emoji::EmojiCode& _code, const QPoint _pt);
-        void sendSticker(const QString& _stickerId);
+        void sendSticker(const Utils::FileSharingId& _stickerId);
         void onSmilesVisibilityChanged(const bool _isVisible);
         void insertMention(const QString& _aimId, const QString& _friendly);
+        void mentionCompleterResults(int _count);
         void messageIdsFetched(const QString& _aimId, const Data::MessageBuddies&);
 
         void onHistoryReady(const QString& _contact);
@@ -165,6 +110,8 @@ namespace Ui
 
     public Q_SLOTS:
         void clearInputText();
+        void onMultiselectChanged();
+        void onDraftVersionCancelled();
 
     private:
         enum class InstantEdit
@@ -199,24 +146,30 @@ namespace Ui
 
         void goToEditedMessage();
 
-        void hideAndRemoveDialog(const QString& _contact);
-
         void onSuggestTimeout();
 
         void onNickInserted(const int _atSignPos, const QString& _nick);
         void insertFiles();
         void onContactChanged(const QString& _contact);
         void ignoreListChanged();
-        void multiselectChanged();
         void onRecvPermitDeny();
 
-        void onRequestedStickerSuggests(const QVector<QString>& _suggests);
+        void onRequestedStickerSuggests(const QString& _contact, const QVector<Utils::FileSharingId>& _suggests);
         void onQuotesHeightChanged();
 
+        void onDraft(const QString& _contact, const Data::Draft& _draft);
+        void onDraftTimer();
+        void onDraftVersionAccepted();
+
+        void onFilesWidgetOpened(const QString& _contact);
+
+        void forceUpdateView();
+
     public:
-        InputWidget(QWidget* _parent, BackgroundWidget* _bg);
+        InputWidget(const QString& _contact, QWidget* _parent, InputFeatures _features = defaultInputFeatures(), BackgroundWidget* _bg = nullptr);
         ~InputWidget();
 
+        void setThreadParentChat(const QString& _aimId);
         void setFocusOnFirstFocusable();
         void setFocusOnInput();
         void setFocusOnEmoji();
@@ -224,20 +177,15 @@ namespace Ui
 
         void edit(const Data::MessageBuddySptr& _msg, MediaType _mediaType);
 
-        void loadInputText();
-        void setInputText(const QString& _text, int _pos = -1);
-        QString getInputText() const;
+        Data::FString getInputText() const;
 
-        const Data::MentionMap& getInputMentions() const;
-        const Data::QuotesVec& getInputQuotes();
-        const Data::FilesPlaceholderMap& getInputFiles() const;
         int getQuotesCount() const;
 
         bool isInputEmpty() const;
         bool isEditing() const;
         bool isReplying() const;
+        bool isDraftVersionVisible() const;
         bool isRecordingPtt() const;
-        bool isRecordingPtt(const QString& _contact) const;
         bool tryPlayPttRecord();
         bool tryPausePttRecord();
 
@@ -252,43 +200,58 @@ namespace Ui
         void closePttPanel();
         void dropReply();
 
-        void hideAndClear();
         QPoint tooltipArrowPosition() const;
 
         void updateStyle();
+
+        void onAttachMedia(AttachMediaType _mediaType);
 
         void onAttachPhotoVideo();
         void onAttachFile();
         void onAttachCamera();
         void onAttachContact();
+        void onAttachTask();
         void onAttachPtt();
         void onAttachPoll();
         void onAttachCallByLink();
         void onAttachWebinar();
 
-        QRect getAttachFileButtonRect() const;
-
         void updateBackground();
         bool canSetFocus() const;
 
         bool hasServerSuggests() const;
-        bool isServerSuggest(const QString& _stickerId) const;
+        bool isServerSuggest(const Utils::FileSharingId& _stickerId) const;
         void clearLastSuggests();
 
         bool hasSelection() const;
+
+        void setHistoryControlPage(HistoryControlPage* _page);
+        void setThreadFeedItem(ThreadFeedItem* _thread);
+        void setMentionCompleter(MentionCompleter* _completer);
+        void setParentForPopup(QWidget* _parent);
+
+        void onPageLeave();
+
+        void setActive(bool _active);
+        bool isActive() const { return active_; }
 
     protected:
         void keyPressEvent(QKeyEvent * _e) override;
         void keyReleaseEvent(QKeyEvent * _e) override;
         void resizeEvent(QResizeEvent*) override;
         void showEvent(QShowEvent*) override;
+        void childEvent(QChildEvent* _event) override;
+        bool eventFilter(QObject* _obj, QEvent* _event) override;
 
     private:
+        void setInitialState();
+
+        void loadInputText();
+        void setInputText(const Data::FString& _text, std::optional<int> _cursorPos = {});
+
         void updateBackgroundGeometry();
 
         void setEditView();
-
-        bool isAllAttachmentsEmpty(const QString& _contact) const;
 
         bool shouldOfferMentions() const;
         void requestStickerSuggests();
@@ -302,7 +265,6 @@ namespace Ui
         InputWidgetState& currentState();
         const InputWidgetState& currentState() const;
         InputView currentView() const;
-        InputView currentView(const QString& _contact) const;
 
         void updateMentionCompleterState(const bool _force = false);
 
@@ -336,7 +298,7 @@ namespace Ui
 
         void sendFiles(const FileSource _source = FileSource::CopyPaste);
 
-        void notifyDialogAboutSend(const QString& _contact);
+        void notifyDialogAboutSend();
 
         void sendStatsIfNeeded() const;
 
@@ -375,12 +337,11 @@ namespace Ui
         void sendPttImpl(ptt::StatInfo&&);
         std::optional<PttMode> getPttMode() const noexcept;
 
-        void needToStopPtt();
         void removePttRecord();
 
-        void onPttReady(const QString& _contact, const QString& _file, std::chrono::seconds _duration, const ptt::StatInfo& _stat);
-        void onPttRemoved(const QString& _contact);
-        void onPttStateChanged(const QString& _contact, ptt::State2 _state);
+        void onPttReady(const QString& _file, std::chrono::seconds _duration, const ptt::StatInfo& _stat);
+        void onPttRemoved();
+        void onPttStateChanged(ptt::State2 _state);
         void disablePttCircleHover();
 
         void showQuotes();
@@ -398,58 +359,91 @@ namespace Ui
 
         void createConference(ConferenceType _type);
 
-        Data::MessageBuddy makeMessage(QString _text) const;
-        Data::MentionMap makeMentions(QStringView _text) const;
+        enum class SyncDraft
+        {
+            No,
+            Yes
+        };
+
+        void saveDraft(SyncDraft _sync = SyncDraft::No);
+        void clearDraft();
+        void applyDraft(const Data::Draft& _draft);
+        void startDraftTimer();
+        void stopDraftTimer();
+        void requestDraft();
+
+        Data::MessageBuddy makeMessage(Data::FStringView _text) const;
+        Data::MentionMap makeMentions(Data::FStringView _text) const;
+
+        void transitionInit();
+        void transitionCacheCurrent();
+        void transitionAnimate(int _fromHeight, int _targetHeight);
+
+        void activateParentLayout();
+
+        bool showMentionCompleter(const QString& _initialPattern, const QPoint& _pos);
+        void hideMentionCompleter();
+
+        bool isSuggestsEnabled() const;
+        bool isPttEnabled() const;
+
+        void setHistoryControlPageToEdit();
+        void setThreadFeedItemToEdit();
+
+        void cancelDraftVersionByEdit();
+
 
     private:
         std::optional<PttMode> pttMode_;
 
         QString contact_;
+        QString threadParentChat_;
 
-        InputBgWidget* bgWidget_;
+        InputBgWidget* bgWidget_ = nullptr;
 
-        QuotesWidget* quotesWidget_;
-        QStackedWidget* stackWidget_;
+        QuotesWidget* quotesWidget_ = nullptr;
+        QStackedWidget* stackWidget_ = nullptr;
 
-        InputPanelMain* panelMain_;
-        InputPanelDisabled* panelDisabled_;
-        InputPanelReadonly* panelReadonly_;
+        InputPanelMain* panelMain_ = nullptr;
+        InputPanelDisabled* panelDisabled_ = nullptr;
+        InputPanelReadonly* panelReadonly_ = nullptr;
 #ifndef STRIP_AV_MEDIA
-        InputPanelPtt* panelPtt_;
+        InputPanelPtt* panelPtt_ = nullptr;
 #endif // !STRIP_AV_MEDIA
-        InputPanelMultiselect* panelMultiselect_;
+        InputPanelMultiselect* panelMultiselect_ = nullptr;
 
-        PttLock* pttLock_;
+        PttLock* pttLock_ = nullptr;
 
-        HistoryTextEdit* textEdit_;
-        SubmitButton* buttonSubmit_;
+        HistoryTextEdit* textEdit_ = nullptr;
+        SubmitButton* buttonSubmit_ = nullptr;
 
-        QPixmap bg_;
-
-        std::map<QString, InputWidgetState> states_;
+        InputStatePtr state_;
 
         QPoint suggestPos_;
-        QTimer* suggestTimer_;
+        QPoint emojiPos_;
+        QTimer* suggestTimer_ = nullptr;
 
         bool isExternalPaste_ = false;
         bool canLockPtt_ = false;
 
-        SelectContactsWidget* selectContactsWidget_;
+        SelectContactsWidget* selectContactsWidget_ = nullptr;
 
-        QLabel* transitionLabel_;
-        struct TransitionAnimation : public QVariantAnimation
-        {
-            TransitionAnimation(QObject* parent = nullptr) : QVariantAnimation(parent) { }
-            int currentHeight_;
-            int targetHeight_;
-            QGraphicsOpacityEffect* targetEffect_;
-        } * transitionAnim_;
+        QLabel* transitionLabel_ = nullptr;
+        TransitionAnimation* transitionAnim_ = nullptr;
 
         bool setFocusToSubmit_ = false;
 
         bool suggestRequested_ = false;
-        std::vector<QString> lastRequestedSuggests_;
+        std::vector<Utils::FileSharingId> lastRequestedSuggests_;
 
-        Utils::CallLinkCreator* callLinkCreator_;
+        Utils::CallLinkCreator* callLinkCreator_ = nullptr;
+
+        InputFeatures features_;
+
+        HistoryControlPage* historyPage_ = nullptr;
+        ThreadFeedItem* threadFeedItem_ = nullptr;
+        MentionCompleter* mentionCompleter_ = nullptr;
+        QTimer* draftTimer_ = nullptr;
+        bool active_;
     };
 }

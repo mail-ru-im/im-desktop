@@ -18,9 +18,10 @@ namespace core
             std::string phoneNumber_;
             uint32_t	flags_ = 0;
             std::string	largeIconId_;
+            user_agreement_info user_agreement_info_;
             bool hasMail_ = false;
             bool official_ = false;
-            user_agreement_info user_agreement_info_;
+            bool trusted_ = false;
 
         public:
             my_info();
@@ -39,6 +40,9 @@ namespace core
             const std::string& get_nick() const { return nick_; }
             const std::string& get_phone_number() const { return phoneNumber_; }
             const user_agreement_info& get_user_agreement_info() const { return user_agreement_info_; }
+
+            bool is_trusted() const noexcept { return trusted_; }
+            void set_trusted(bool _trusted) { trusted_ = _trusted; }
 
             bool operator==(const my_info& _right) const;
             bool operator!=(const my_info& _right) const;

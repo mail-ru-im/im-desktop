@@ -33,6 +33,7 @@ namespace
         network_request_id = 5,
         deleted = 6,
         delete_op = 7,
+        draft_delete_time = 8,
 
         max
     };
@@ -57,7 +58,7 @@ not_sent_message_sptr not_sent_message::make(const not_sent_message_sptr& _messa
 not_sent_message_sptr not_sent_message::make(
     const std::string& _aimid,
     std::string _message,
-    core::data::format::string_formatting _message_format,
+    core::data::format _message_format,
     const message_type _type,
     const uint64_t _message_time,
     std::string _internal_id)
@@ -71,13 +72,13 @@ not_sent_message_sptr not_sent_message::make_outgoing_file_sharing(
     const std::string& _local_path,
     const core::archive::quotes_vec& _quotes,
     const std::string& _description,
-    const core::data::format::string_formatting& _description_format,
+    const core::data::format& _description_format,
     const core::archive::mentions_map& _mentions,
     const std::optional<int64_t>& _duration)
 {
-    assert(!_aimid.empty());
-    assert(_message_time > 0);
-    assert(!_local_path.empty());
+    im_assert(!_aimid.empty());
+    im_assert(_message_time > 0);
+    im_assert(!_local_path.empty());
 
     not_sent_message_sptr not_sent(
         new not_sent_message(
@@ -106,9 +107,9 @@ not_sent_message_sptr not_sent_message::make_incoming_file_sharing(
     const std::string& _uri,
     std::string _internal_id)
 {
-    assert(!_aimid.empty());
-    assert(_message_time > 0);
-    assert(!_internal_id.empty());
+    im_assert(!_aimid.empty());
+    im_assert(_message_time > 0);
+    im_assert(!_internal_id.empty());
 
     not_sent_message_sptr not_sent(
         new not_sent_message(_aimid, _uri, {}, message_type::file_sharing, _message_time, std::move(_internal_id))
@@ -134,7 +135,7 @@ not_sent_message::not_sent_message()
 not_sent_message::not_sent_message(
     const std::string& _aimid,
     std::string _message,
-    core::data::format::string_formatting _message_format,
+    core::data::format _message_format,
     const message_type _type,
     const uint64_t _message_time,
     std::string&& _internal_id)
@@ -174,7 +175,7 @@ not_sent_message::~not_sent_message()
 
 void not_sent_message::copy_from(const not_sent_message_sptr& _message)
 {
-    assert(_message);
+    im_assert(_message);
 
     aimid_ = _message->aimid_;
     duplicated_ = _message->duplicated_;
@@ -184,6 +185,7 @@ void not_sent_message::copy_from(const not_sent_message_sptr& _message)
     network_request_id_ = _message->network_request_id_;
     deleted_ = _message->deleted_;
     delete_operation_ = _message->delete_operation_;
+    draft_delete_time_ = _message->draft_delete_time_;
 }
 
 const history_message_sptr& not_sent_message::get_message() const
@@ -193,7 +195,7 @@ const history_message_sptr& not_sent_message::get_message() const
 
 const std::string& not_sent_message::get_aimid() const
 {
-    assert(!aimid_.empty());
+    im_assert(!aimid_.empty());
     return aimid_;
 }
 
@@ -205,7 +207,7 @@ const std::string& not_sent_message::get_internal_id() const
 const std::string& not_sent_message::get_file_sharing_local_path() const
 {
     static const std::string empty;
-    assert(message_);
+    im_assert(message_);
     return message_ && message_->get_file_sharing_data() ? message_->get_file_sharing_data()->get_local_path() : empty;
 }
 
@@ -242,7 +244,7 @@ int64_t core::archive::not_sent_message::get_updated_id() const
 bool not_sent_message::is_ready_to_send() const
 {
     const auto &message = get_message();
-    assert(message);
+    im_assert(message);
 
     if (duplicated_)
     {
@@ -266,6 +268,8 @@ void not_sent_message::serialize(core::tools::tlvpack& _pack) const
     _pack.push_child(tools::tlv(not_sent_message_fields::network_request_id, network_request_id_));
     _pack.push_child(tools::tlv(not_sent_message_fields::deleted, deleted_));
     _pack.push_child(tools::tlv(not_sent_message_fields::delete_op, (int32_t) delete_operation_));
+    if (draft_delete_time_)
+        _pack.push_child(tools::tlv(not_sent_message_fields::draft_delete_time, *draft_delete_time_));
 
     core::tools::binary_stream bs_message;
     message_->serialize(bs_message);
@@ -286,6 +290,7 @@ bool not_sent_message::unserialize(const core::tools::tlvpack& _pack)
     auto tlv_network_request_id = _pack.get_item(not_sent_message_fields::network_request_id);
     auto tlv_deleted = _pack.get_item(not_sent_message_fields::deleted);
     auto tlv_delete_operation = _pack.get_item(not_sent_message_fields::delete_op);
+    auto tlv_draft_delete_time = _pack.get_item(not_sent_message_fields::draft_delete_time);
 
     if (!tlv_message || !tlv_aimid)
         return false;
@@ -316,6 +321,9 @@ bool not_sent_message::unserialize(const core::tools::tlvpack& _pack)
     {
         delete_operation_ = (delete_operation) tlv_delete_operation->get_value<int32_t>();
     }
+
+    if (tlv_draft_delete_time)
+        draft_delete_time_.emplace(tlv_draft_delete_time->get_value<int64_t>());
 
     core::tools::binary_stream stream = tlv_message->get_value<core::tools::binary_stream>();
     return !message_->unserialize(stream);
@@ -408,7 +416,7 @@ void not_sent_message::set_description(const std::string& _description)
     message_->set_description(_description);
 }
 
-void not_sent_message::set_description_format(const core::data::format::string_formatting& _description_format)
+void not_sent_message::set_description_format(const core::data::format& _description_format)
 {
     message_->set_description_format(_description_format);
 }
@@ -440,13 +448,13 @@ const core::archive::shared_contact& not_sent_message::get_shared_contact() cons
 
 std::optional<int64_t> core::archive::not_sent_message::get_duration() const
 {
-    assert(message_);
+    im_assert(message_);
     return message_ && message_->get_file_sharing_data() ? message_->get_file_sharing_data()->get_duration() : std::nullopt;
 }
 
 std::optional<file_sharing_base_content_type> core::archive::not_sent_message::get_base_content_type() const
 {
-    assert(message_);
+    im_assert(message_);
     return message_ && message_->get_file_sharing_data() ? message_->get_file_sharing_data()->get_base_content_type() : std::nullopt;
 }
 
@@ -470,6 +478,16 @@ const core::archive::poll not_sent_message::get_poll() const
     return message_->get_poll();
 }
 
+void core::archive::not_sent_message::set_task(const core::tasks::task& _task)
+{
+    message_->set_task(_task);
+}
+
+const core::tasks::task& core::archive::not_sent_message::get_task() const
+{
+    return message_->get_task();
+}
+
 void not_sent_message::set_smartreply_marker(const smartreply::marker_opt& _marker)
 {
     smartreply_marker_ = _marker;
@@ -478,6 +496,16 @@ void not_sent_message::set_smartreply_marker(const smartreply::marker_opt& _mark
 const smartreply::marker_opt& core::archive::not_sent_message::get_smartreply_marker() const
 {
     return smartreply_marker_;
+}
+
+void not_sent_message::set_draft_delete_time(const std::optional<int64_t>& _draft_delete_time)
+{
+    draft_delete_time_ = _draft_delete_time;
+}
+
+const std::optional<int64_t>& not_sent_message::get_draft_delete_time() const
+{
+    return draft_delete_time_;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -549,7 +577,7 @@ std::unique_ptr<delete_message> delete_message::make(const core::tools::tlvpack&
 
     if (operation <= delete_operation::min || operation >= delete_operation::max)
     {
-        assert(false);
+        im_assert(false);
         return nullptr;
     }
 
@@ -574,7 +602,7 @@ pending_operations::~pending_operations() = default;
 
 void pending_operations::insert_message(const std::string& _aimid, const not_sent_message_sptr &_message)
 {
-    assert(_message);
+    im_assert(_message);
 
     auto &contact_messages = pending_messages_[_aimid];
 
@@ -587,7 +615,7 @@ void pending_operations::insert_message(const std::string& _aimid, const not_sen
             continue;
         }
 
-        assert(!"not sent message already exist");
+        im_assert(!"not sent message already exist");
         existing_message = _message;
         was_updated = true;
         break;
@@ -609,8 +637,8 @@ void pending_operations::insert_message(const std::string& _aimid, const not_sen
 
 bool pending_operations::update_message_if_exist(const std::string &_aimid, const not_sent_message_sptr &_message)
 {
-    assert(!_aimid.empty());
-    assert(_message);
+    im_assert(!_aimid.empty());
+    im_assert(_message);
 
     auto iter_messages = pending_messages_.find(_aimid);
     if (iter_messages == pending_messages_.end())
@@ -702,8 +730,8 @@ void pending_operations::drop(const std::string& _aimid)
 
 message_stat_time_v pending_operations::remove(const std::string &_aimid, const bool _remove_if_modified, const history_block_sptr &_data)
 {
-    assert(!_aimid.empty());
-    assert(_data);
+    im_assert(!_aimid.empty());
+    im_assert(_data);
 
     message_stat_time_v stats;
 

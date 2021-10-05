@@ -23,7 +23,7 @@ set_stickers_order_packet::~set_stickers_order_packet() = default;
 int32_t set_stickers_order_packet::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::map<std::string, std::string> params;
-    params["a"] = escape_symbols(params_.a_token_);
+    params["aimsid"] = escape_symbols(params_.aimsid_);
     params["f"] = "json";
     params["k"] = params_.dev_id_;
     params["platform"] = utils::get_protocol_platform_string();

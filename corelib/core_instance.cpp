@@ -15,7 +15,7 @@ core::core_instance::core_instance()
 
     if (g_core)
     {
-        assert(!"core must be single");
+        im_assert(!"core must be single");
     }
 
     g_core = std::make_unique<core::core_dispatcher>();

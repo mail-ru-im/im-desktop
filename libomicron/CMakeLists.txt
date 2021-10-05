@@ -30,7 +30,11 @@ project(libomicron
     VERSION ${LIB_VERSION_STRING}
     LANGUAGES CXX)
 
-message(STATUS "SUBPROJECT is ${CMAKE_PROJECT_NAME}")
+message(STATUS "")
+message(STATUS "[CMAKE]")
+message(STATUS "[CMAKE] including <libomicron/CMakeLists.txt>")
+message(STATUS "[CMAKE]")
+message(STATUS "[INFO] SUBPROJECT is ${CMAKE_PROJECT_NAME}")
 
 option(OMICRON_USE_LIBCURL "Use libcurl for downloading." ON)
 option(OMICRON_BUILD_TESTS "Build libomicron tests." OFF)
@@ -58,11 +62,10 @@ set_source_group("sources" "${SUBPROJECT_ROOT}" ${SUBPROJECT_SOURCES} ${SUBPROJE
 include_directories(${SUBPROJECT_ROOT}/include)
 include_directories(${SUBPROJECT_ROOT}/src)
 
+# -------------------------- rapidjson ----------------------------------------
 add_definitions(-DRAPIDJSON_HAS_STDSTRING=1)
-# set(RAPID_JSON_DIR "${ICQ_EXTERNAL}/rapidjson-master")
-# include_directories(${RAPID_JSON_DIR}/include)
-message(STATUS "[include] include_directories(${ICQ_RAPID_JSON}/include)")
-include_directories(${ICQ_RAPID_JSON}/include)
+set_include_var(OMICRON_RAPID_JSON "${pkg_src_rapidjson_location}/include")
+
 
 if(OMICRON_USE_LIBCURL)
     add_definitions(-DOMICRON_USE_LIBCURL)

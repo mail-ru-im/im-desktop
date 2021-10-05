@@ -1,5 +1,6 @@
 #include "stdafx.h"
 
+#include "core_dispatcher.h"
 #include "HistoryControlPageItem.h"
 #include "../../gui_settings.h"
 #include "../../utils/utils.h"
@@ -9,16 +10,21 @@
 #include "../../styles/ThemeParameters.h"
 #include "../contact_list/ContactListModel.h"
 #include "../contact_list/FavoritesUtils.h"
+#include "../contact_list/ServiceContacts.h"
 #include "../containers/FriendlyContainer.h"
+#include "../containers/ThreadSubContainer.h"
 #include "../MainPage.h"
-#include "../ContactDialog.h"
+#include "core_dispatcher.h"
 #include "MessageStyle.h"
 #include "LastStatusAnimation.h"
 #include "statuses/StatusTooltip.h"
 #include "statuses/StatusUtils.h"
 #include "main_window/containers/StatusContainer.h"
-#include "main_window/history_control/HistoryControlPage.h"
 #include "main_window/history_control/MessagesScrollArea.h"
+#include "main_window/history_control/ThreadPlate.h"
+#include "utils/features.h"
+#include "main_window/history_control/reactions/AddReactionPlate.h"
+#include "corner_menu/CornerMenu.h"
 
 #include "ServiceMessageItem.h"
 
@@ -28,13 +34,18 @@ namespace
     constexpr int ADD_OFFSET = 10;
     constexpr int MULTISELECT_MARK_SIZE = 20;
     constexpr int MULTISELECT_MARK_OFFSET = 12;
+
+    constexpr int cornerMenuHorOffset = 4;
+    constexpr int cornerMenuHorOffsetOverflow = 12;
+    constexpr int cornerMenuVerOffsetMediaOverflow = 30;
+    constexpr int scrollbarWidth = 12;
+    constexpr auto cornerMenuHoverDelay = std::chrono::milliseconds(50);
 }
 
 namespace Ui
 {
     HistoryControlPageItem::HistoryControlPageItem(QWidget *parent)
         : QWidget(parent)
-        , QuoteAnimation_(parent)
         , isChat_(false)
         , Selected_(false)
         , HasTopMargin_(false)
@@ -63,11 +74,13 @@ namespace Ui
         , nextHasSenderName_(false)
         , nextIsOutgoing_(false)
         , initialized_(false)
+        , threadUpdateData_{ std::make_shared<Data::ThreadUpdate>() }
     {
+        QuoteAnimation_ = new QuoteColorAnimation(this);
         connect(Logic::GetAvatarStorage(), &Logic::AvatarStorage::avatarChanged, this, &HistoryControlPageItem::avatarChanged);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiselectSpaceClicked, this, [this]
         {
-            if (Utils::InterConnector::instance().isMultiselect() && Utils::InterConnector::instance().currentMultiselectMessage() == getId())
+            if (Utils::InterConnector::instance().isMultiselect(aimId_) && Utils::InterConnector::instance().currentMultiselectMessage() == getId())
             {
                 setSelected(!isSelected());
                 if (isSelected())
@@ -76,7 +89,7 @@ namespace Ui
             }
         });
 
-        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::selectionStateChanged, this, [this] (qint64 _id, const QString& _internalId, bool _selected)
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::selectionStateChanged, this, [this] (const QString&, qint64 _id, const QString& _internalId, bool _selected)
         {
             if (prev_.getId() == _id && prev_.getInternalId() == _internalId)
             {
@@ -111,20 +124,32 @@ namespace Ui
 
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiselectChanged, this, [this]
         {
-            if (!Utils::InterConnector::instance().isMultiselect(aimId_))
+            const auto sel = Utils::InterConnector::instance().isMultiselect(aimId_);
+            if (!sel)
                 selectionCenter_ = 0;
+
+            if (threadPlate_)
+                threadPlate_->setVisible(!sel);
+
+            hideCornerMenuForce();
         });
 
         connect(get_gui_settings(), &qt_gui_settings::changed, this, [this](const QString& _key)
         {
             if (_key == ql1s(settings_show_reactions))
-                onReactionsEnabledChanged();
+                onConfigChanged();
         });
 
-        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated,
-                this, &HistoryControlPageItem::onReactionsEnabledChanged);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated, this, &HistoryControlPageItem::onConfigChanged);
+        connect(GetDispatcher(), &core_dispatcher::externalUrlConfigUpdated, this, &HistoryControlPageItem::onConfigChanged);
 
         setMouseTracking(true);
+    }
+
+    HistoryControlPageItem::~HistoryControlPageItem()
+    {
+        if (hasThread() && !isHeadless())
+            Logic::ThreadSubContainer::instance().unsubscribe(getThreadId());
     }
 
     bool HistoryControlPageItem::isOutgoingPosition() const
@@ -139,7 +164,7 @@ namespace Ui
 
         Selected_ = false;
         Q_EMIT selectionChanged();
-        Q_EMIT Utils::InterConnector::instance().updateSelectedCount();
+        Q_EMIT Utils::InterConnector::instance().updateSelectedCount(aimId_);
     }
 
     bool HistoryControlPageItem::hasAvatar() const
@@ -170,8 +195,8 @@ namespace Ui
 
         if (prevState != _isSelected)
         {
-            Q_EMIT Utils::InterConnector::instance().selectionStateChanged(getId(), getInternalId(), Selected_);
-            Q_EMIT Utils::InterConnector::instance().updateSelectedCount();
+            Q_EMIT Utils::InterConnector::instance().selectionStateChanged(aimId_, getId(), getInternalId(), Selected_);
+            Q_EMIT Utils::InterConnector::instance().updateSelectedCount(aimId_);
         }
     }
 
@@ -183,8 +208,6 @@ namespace Ui
         HasTopMargin_ = value;
 
         updateSize();
-        updateGeometry();
-        update();
     }
 
     void HistoryControlPageItem::selectByPos(const QPoint&, const QPoint&, const QPoint&, const QPoint&)
@@ -222,13 +245,13 @@ namespace Ui
         HasAvatar_ = value;
         HasAvatarSet_ = true;
 
-        updateGeometry();
+        updateSize();
     }
 
     void HistoryControlPageItem::setHasSenderName(const bool _hasSender)
     {
-        hasSenderName_ = _hasSender;
-        updateGeometry();
+        if (std::exchange(hasSenderName_, _hasSender) != _hasSender)
+            updateSize();
     }
 
     void HistoryControlPageItem::setChainedToPrev(const bool _isChained)
@@ -238,7 +261,7 @@ namespace Ui
             isChainedToPrev_ = _isChained;
 
             onChainsChanged();
-            updateGeometry();
+            updateSize();
         }
     }
 
@@ -250,8 +273,6 @@ namespace Ui
 
             onChainsChanged();
             updateSize();
-            updateGeometry();
-            update();
         }
     }
 
@@ -275,7 +296,15 @@ namespace Ui
         im_assert(aimId_.isEmpty());
 
         aimId_ = _aimId;
-        QuoteAnimation_.setAimId(_aimId);
+        QuoteAnimation_->setAimId(_aimId);
+    }
+
+    const QString& HistoryControlPageItem::getPageId() const
+    {
+        if (isThreadFeedMessage())
+            return ServiceContacts::contactId(ServiceContacts::ContactType::ThreadsFeed);
+
+        return aimId_;
     }
 
     void HistoryControlPageItem::setSender(const QString& /*_sender*/)
@@ -302,7 +331,7 @@ namespace Ui
 
             lastStatusAnimation_->drawLastStatus(
                 _p,
-                rc.right() - MessageStyle::getRightBubbleMargin() - _rightPadding + MessageStyle::getLastStatusLeftMargin(),
+                rc.right() - MessageStyle::getRightBubbleMargin(aimId_) - _rightPadding + MessageStyle::getLastStatusLeftMargin(),
                 rc.bottom() - iconSize.height() - _bottomPadding - bottomOffset(),
                 iconSize.width(),
                 iconSize.height());
@@ -315,11 +344,12 @@ namespace Ui
             return 5;
 
         const auto w = width();
-        if (w >= MessageStyle::fiveHeadsWidth())
-            return 5;
 
-        if (w >= MessageStyle::fourHeadsWidth())
-            return 4;
+        for (auto i = 5; i >= 4; --i)
+        {
+            if (w >= MessageStyle::getHeadsWidth(i))
+                return i;
+        }
 
         return 3;
     }
@@ -340,7 +370,6 @@ namespace Ui
             for (auto& h : heads_)
                 h.adding_ = false;
 
-            updateGeometry();
             updateSize();
         });
     }
@@ -361,7 +390,6 @@ namespace Ui
                 [](const auto& x) { return x.removing_; }),
                 heads_.end());
 
-            updateGeometry();
             updateSize();
         });
     }
@@ -376,12 +404,223 @@ namespace Ui
         heightAnimation_->setEndValue(ANIM_MAX_VALUE);
         heightAnimation_->setDuration(200);
         heightAnimation_->setEasingCurve(QEasingCurve::OutExpo);
-        connect(heightAnimation_, &QVariantAnimation::valueChanged, this, [this](const QVariant&)
+        connect(heightAnimation_, &QVariantAnimation::valueChanged, this, &HistoryControlPageItem::updateSize);
+    }
+
+    void HistoryControlPageItem::updateThreadSubscription()
+    {
+        const auto canSub = supportsOverlays() && !isHeadless();
+        const auto conn =
+            canSub &&
+            Features::isThreadsEnabled() &&
+            (isThreadFeedMessage() || (Utils::isChat(aimId_) && !Logic::getContactListModel()->isThread(aimId_)));
+
+        if (conn)
+            connect(GetDispatcher(), &core_dispatcher::threadUpdates, this, &HistoryControlPageItem::onThreadUpdates, Qt::UniqueConnection);
+        else
+            disconnect(GetDispatcher(), &core_dispatcher::threadUpdates, this, &HistoryControlPageItem::onThreadUpdates);
+
+        if (canSub && hasThread())
+            Logic::ThreadSubContainer::instance().subscribe(getThreadId());
+    }
+
+    void HistoryControlPageItem::onThreadUpdates(const Data::ThreadUpdates& _updates)
+    {
+        if (buddy().task_)
+            return;
+        if (const auto it = _updates.messages_.find(getThreadMsgId()); it != _updates.messages_.end())
+            applyThreadUpdate(it->second);
+    }
+
+    void HistoryControlPageItem::initializeReactionsPlate()
+    {
+        if (!supportsOverlays())
+            return;
+
+        if (!reactions_ && MessageReactions::enabled())
         {
-            updateGeometry();
-            update();
-            updateSize();
+            reactions_ = std::make_unique<MessageReactions>(this);
+
+            if (!Features::isMessageCornerMenuEnabled())
+                reactions_->initAddReactionButton();
+
+            if (const auto& reactions = buddy().reactions_; reactions && reactions->exist_)
+                reactions_->subscribe();
+
+            if (threadPlate_)
+                connect(reactions_.get(), &MessageReactions::platePositionChanged, threadPlate_, &ThreadPlate::updatePosition, Qt::UniqueConnection);
+        }
+    }
+
+    void HistoryControlPageItem::initializeCornerMenu()
+    {
+        if (!supportsOverlays() || !Features::isMessageCornerMenuEnabled() || cornerMenu_)
+            return;
+
+        const auto buttons = getCornerMenuButtons();
+        if (buttons.empty())
+            return;
+
+        cornerMenu_ = new CornerMenu(this);
+        connect(cornerMenu_, &CornerMenu::buttonClicked, this, &HistoryControlPageItem::onCornerMenuClicked);
+        connect(cornerMenu_, &CornerMenu::hidden, cornerMenu_, &CornerMenu::deleteLater);
+        connect(cornerMenu_, &CornerMenu::mouseLeft, this, [this]()
+        {
+            QTimer::singleShot(cornerMenuHoverDelay, this, [this]() { checkCornerMenuNeeded(QCursor::pos()); });
         });
+
+        for (auto btn : buttons)
+            cornerMenu_->addButton(btn);
+
+        positionCornerMenu();
+    }
+
+    bool HistoryControlPageItem::hasReactionButton() const
+    {
+        auto reactionButtonAllowed = [this]()
+        {
+            const auto role = Logic::getContactListModel()->getYourRole(aimId_);
+            const auto notAllowed = (role.isEmpty() && Utils::isChat(aimId_)) || role == u"notamember" || (role == u"readonly" && !Logic::getContactListModel()->isChannel(aimId_));
+            return !notAllowed;
+        };
+
+        return MessageReactions::enabled()
+            && !Utils::InterConnector::instance().isMultiselect(aimId_)
+            && !buddy().IsPending()
+            && !isThreadFeedMessage()
+            && (Logic::getContactListModel()->isThread(aimId_) || reactionButtonAllowed());
+    }
+
+    bool HistoryControlPageItem::hasThreadButton() const
+    {
+        return canBeThreadParent()
+            && Utils::isChat(aimId_)
+            && Features::isThreadsEnabled()
+            && !Utils::InterConnector::instance().isMultiselect(aimId_)
+            && !buddy().IsPending()
+            && Logic::getContactListModel()->contains(aimId_)
+            && !Logic::getContactListModel()->isThread(aimId_)
+            && Logic::getContactListModel()->areYouAllowedToWriteInThreads(aimId_);
+    }
+
+    QRect HistoryControlPageItem::getCornerMenuRect() const
+    {
+        const auto buttons = getCornerMenuButtons();
+        const auto r = cornerMenuContentRect();
+        const auto s = CornerMenu::calcSize(buttons.size());
+
+        const auto outgoing = isOutgoingPosition();
+        const auto availableWidth = outgoing ? r.left() : (width() - r.right());
+        const auto horMargin = Utils::scale_value(cornerMenuHorOffset);
+        const auto scrollWidth = outgoing ? 0 : Utils::scale_value(scrollbarWidth);
+        const auto fitInWidth = availableWidth - s.width() - 2 * horMargin - scrollWidth >= 0;
+        const auto singleMedia = isSingleMedia();
+
+        const auto x = [fitInWidth, &s, &r, horMargin, scrollWidth, singleMedia, outgoing, this]()
+        {
+            const auto edge = outgoing ? horMargin : (width() - s.width() - horMargin - scrollWidth);
+
+            if (outgoing)
+                return std::max(r.left() - s.width() - horMargin, edge);
+            else if (singleMedia && !fitInWidth)
+                return std::min(r.right() + 1 - (s.width() - Utils::scale_value(cornerMenuHorOffsetOverflow)), edge);
+            else
+                return std::min(r.right() + 1 + horMargin, edge);
+        }();
+
+        const auto y = [fitInWidth, &s, &r, singleMedia, outgoing]()
+        {
+            const auto base = r.bottom() + 1 - s.height();
+            const auto adjust = (singleMedia && !fitInWidth && !outgoing)
+                ? Utils::scale_value(cornerMenuVerOffsetMediaOverflow)
+                : 0;
+            return base - adjust;
+        }();
+
+        return { { x - CornerMenu::shadowOffset(), y - CornerMenu::shadowOffset() }, s };
+    }
+
+    bool HistoryControlPageItem::isInCornerMenuHoverArea(const QPoint& _pos) const
+    {
+        if (!Features::isMessageCornerMenuEnabled())
+            return false;
+
+        if (Utils::InterConnector::instance().isMultiselect(aimId_))
+            return false;
+
+        const auto contentRect = cornerMenuContentRect();
+        const auto menuRect = getCornerMenuRect();
+        const auto area = contentRect.united(menuRect);
+        return area.contains(_pos);
+    }
+
+    std::vector<MenuButtonType> HistoryControlPageItem::getCornerMenuButtons() const
+    {
+        std::vector<MenuButtonType> buttons;
+        if (hasReactionButton())
+            buttons.push_back(MenuButtonType::Reaction);
+        if (hasThreadButton())
+            buttons.push_back(MenuButtonType::Thread);
+
+        if (isOutgoingPosition())
+            std::reverse(buttons.begin(), buttons.end());
+
+        return buttons;
+    }
+
+    void HistoryControlPageItem::positionCornerMenu()
+    {
+        if (cornerMenu_)
+        {
+            if (const auto r = getCornerMenuRect(); r.isValid())
+            {
+                cornerMenu_->move(r.topLeft());
+                cornerMenu_->raise();
+            }
+        }
+    }
+
+    void HistoryControlPageItem::onCornerMenuClicked(MenuButtonType _type)
+    {
+        im_assert(cornerMenu_);
+        if (_type == MenuButtonType::Reaction)
+        {
+            auto updateBtnState = [this, _type](auto _plateVisible)
+            {
+                if (cornerMenu_)
+                {
+                    cornerMenu_->setForceVisible(_plateVisible);
+                    cornerMenu_->setButtonSelected(_type, _plateVisible);
+                    cornerMenu_->updateHoverState();
+                }
+            };
+
+            auto plate = MessageReactions::createAddReactionPlate(this, reactions_.get());
+            connect(plate, &AddReactionPlate::plateShown, this, [updateBtnState]()
+            {
+                updateBtnState(true);
+            });
+            connect(plate, &AddReactionPlate::plateCloseStarted, this, [this]()
+            {
+                if (cornerMenu_)
+                    cornerMenu_->setForceVisible(false);
+            });
+            connect(plate, &AddReactionPlate::plateCloseFinished, this, [this, updateBtnState]()
+            {
+                updateBtnState(false);
+                checkCornerMenuNeeded(QCursor::pos());
+            });
+
+            if (const auto btnRectGlobal = cornerMenu_->getButtonRect(_type); btnRectGlobal.isValid())
+            {
+                const auto btnTopCenter = btnRectGlobal.center() - QPoint(0, btnRectGlobal.height() / 2);
+                plate->showOverButton(btnTopCenter);
+            }
+        }
+        else if (_type == MenuButtonType::Thread)
+        {
+            openThread();
+        }
     }
 
     void HistoryControlPageItem::avatarChanged(const QString& _aimid)
@@ -390,31 +629,104 @@ namespace Ui
             update();
     }
 
-    void HistoryControlPageItem::onReactionsEnabledChanged()
+    void HistoryControlPageItem::onConfigChanged()
     {
-        if (!supportsReactions())
+        updateThreadSubscription();
+
+        if (!supportsOverlays())
             return;
 
-        if (MessageReactions::enabled() && !reactions_)
+        if (MessageReactions::enabled())
         {
-            reactions_ = std::make_unique<MessageReactions>(this);
-
-            if (msg_.reactions_ && msg_.reactions_->exist_)
-                reactions_->subscribe();
+            initializeReactionsPlate();
         }
-        else if (!MessageReactions::enabled())
+        else if (reactions_)
         {
-            if (reactions_)
-                reactions_->deleteControls();
-
+            reactions_->deleteControls();
             reactions_.reset();
-            updateSize();
         }
+
+        updateSize();
+    }
+
+    void HistoryControlPageItem::openThread() const
+    {
+        auto& interConnector = Utils::InterConnector::instance();
+        if (hasThread() && interConnector.getSidebarAimid().contains(getThreadId()) && interConnector.isSidebarVisible())
+            Q_EMIT interConnector.setSidebarVisible(false);
+        else
+            Q_EMIT interConnector.openThread(getThreadId(), getThreadMsgId(), getPageId());
+    }
+
+    void HistoryControlPageItem::applyThreadUpdate(const std::shared_ptr<Data::ThreadUpdate>& _update)
+    {
+        setThreadId(_update->threadId_);
+
+        threadUpdateData_ = _update;
+
+        if (!threadPlate_ && threadUpdateData_->repliesCount_ > 0 && supportsOverlays() && Features::isThreadsEnabled())
+        {
+            threadPlate_ = new ThreadPlate(this);
+            connect(threadPlate_, &ThreadPlate::clicked, this, &HistoryControlPageItem::openThread);
+            Testing::setAccessibleName(threadPlate_, u"AS ThreadPlate " % QString::number(getId()));
+
+            if (reactions_)
+                connect(reactions_.get(), &MessageReactions::platePositionChanged, threadPlate_, &ThreadPlate::updatePosition, Qt::UniqueConnection);
+
+            threadPlate_->show();
+            updateSize();
+            onSizeChanged();
+        }
+
+        if (threadPlate_)
+            threadPlate_->updateWith(threadUpdateData_);
+    }
+
+    std::shared_ptr<Data::ThreadUpdate> HistoryControlPageItem::getthreadUpdate() const
+    {
+        return threadUpdateData_;
+    }
+
+    bool HistoryControlPageItem::hasThread() const
+    {
+        return !getThreadId().isEmpty();
+    }
+
+    bool HistoryControlPageItem::hasThreadWithReplies() const
+    {
+        if (hasThread() && threadUpdateData_->repliesCount_ > 0)
+            return true;
+        if (const auto parentTopic = buddy().threadData_.parentTopic_; parentTopic && (Data::ParentTopic::Type::message == parentTopic->type_))
+        {
+            const auto messageParentTopic = std::static_pointer_cast<Data::MessageParentTopic>(std::move(parentTopic));
+            return isThreadFeedMessage() && !messageParentTopic->chat_.isEmpty();
+        }
+        return false;
+    }
+
+    const QString& HistoryControlPageItem::getThreadId() const
+    {
+        return buddy().threadData_.id_;
+    }
+
+    void HistoryControlPageItem::setThreadId(const QString& _threadId)
+    {
+        buddy().threadData_.id_ = _threadId;
+    }
+
+    bool HistoryControlPageItem::isHeadless() const
+    {
+        return parentWidget() == nullptr;
+    }
+
+    bool HistoryControlPageItem::isThreadFeedMessage() const
+    {
+        return buddy().threadData_.threadFeedMessage_;
     }
 
     void HistoryControlPageItem::drawLastStatusIcon(QPainter& _p,  LastStatus _lastStatus, const QString& _aimid, const QString& _friendly, int _rightPadding)
     {
-        if (!heads_.isEmpty() || Utils::InterConnector::instance().isMultiselect())
+        if (!heads_.isEmpty() || Utils::InterConnector::instance().isMultiselect(aimId_))
             return;
 
         switch (lastStatus_)
@@ -434,7 +746,7 @@ namespace Ui
 
     void HistoryControlPageItem::mouseMoveEvent(QMouseEvent* e)
     {
-        if (Utils::InterConnector::instance().isMultiselect())
+        if (Utils::InterConnector::instance().isMultiselect(aimId_))
         {
             if (isMultiselectEnabled())
                 setCursor(Qt::PointingHandCursor);
@@ -445,6 +757,8 @@ namespace Ui
                 setCursor(Qt::PointingHandCursor);
         }
 
+        checkCornerMenuNeeded(mapToGlobal(e->pos()));
+
         if (reactions_)
             reactions_->onMouseMove(e->pos());
 
@@ -452,16 +766,16 @@ namespace Ui
         {
             const auto tooltipRect = avatarRect();
 
-            if (!Utils::InterConnector::instance().isMultiselect() && (hasAvatar() || needsAvatar()) && tooltipRect.contains(e->pos()))
+            if (!Utils::InterConnector::instance().isMultiselect(aimId_) && (hasAvatar() || needsAvatar()) && tooltipRect.contains(e->pos()))
             {
                 StatusTooltip::instance()->objectHovered([this]()
                 {
-                    if (Utils::InterConnector::instance().isMultiselect())
+                    if (Utils::InterConnector::instance().isMultiselect(aimId_))
                         return QRect();
 
                     const auto rect = avatarRect();
                     return QRect(mapToGlobal(rect.topLeft()), rect.size());
-                }, msg_.GetChatSender(), this, Utils::InterConnector::instance().getHistoryPage(aimId_)->scrollArea());
+                }, msg_.GetChatSender(), this, window());
             }
         }
 
@@ -483,7 +797,7 @@ namespace Ui
         const auto pos = e->pos();
         if (Utils::clicked(pressPoint, pos))
         {
-            if (Utils::InterConnector::instance().isMultiselect() && isMultiselectEnabled())
+            if (isMultiselectEnabled() && Utils::InterConnector::instance().isMultiselect(aimId_))
             {
                 if (e->button() == Qt::LeftButton)
                 {
@@ -500,7 +814,7 @@ namespace Ui
             }
         }
 
-        if (!Utils::InterConnector::instance().isMultiselect() && reactions_)
+        if (reactions_ && !Utils::InterConnector::instance().isMultiselect(aimId_))
             reactions_->onMouseRelease(pos);
 
         return QWidget::mouseReleaseEvent(e);
@@ -509,11 +823,16 @@ namespace Ui
     void HistoryControlPageItem::enterEvent(QEvent* _event)
     {
         Utils::InterConnector::instance().setCurrentMultiselectMessage(isMultiselectEnabled() ? getId() : -1);
+
+        checkCornerMenuNeeded(QCursor::pos());
+
         QWidget::enterEvent(_event);
     }
 
     void HistoryControlPageItem::leaveEvent(QEvent* _event)
     {
+        setCornerMenuVisible(false);
+
         if (reactions_)
             reactions_->onMouseLeave();
 
@@ -526,6 +845,20 @@ namespace Ui
             Tooltip::hide();
 
         QWidget::wheelEvent(_event);
+    }
+
+    void HistoryControlPageItem::resizeEvent(QResizeEvent* _event)
+    {
+        if (cornerMenu_)
+            cornerMenu_->updateHoverState();
+        QWidget::resizeEvent(_event);
+    }
+
+    void HistoryControlPageItem::moveEvent(QMoveEvent* _event)
+    {
+        checkCornerMenuNeeded(QCursor::pos());
+
+        QWidget::moveEvent(_event);
     }
 
     bool HistoryControlPageItem::showHeadsTooltip(const QRect& _rc, const QPoint& _pos)
@@ -592,7 +925,7 @@ namespace Ui
 
     bool HistoryControlPageItem::handleSelectByPos(const QPoint& from, const QPoint& to, const QPoint& areaFrom, const QPoint& areaTo)
     {
-        if (Utils::InterConnector::instance().isMultiselect())
+        if (Utils::InterConnector::instance().isMultiselect(aimId_))
         {
             if (prevFrom_ != areaFrom && prevTo_ != areaTo)
             {
@@ -628,19 +961,43 @@ namespace Ui
 
     void HistoryControlPageItem::initialize()
     {
-        if (supportsReactions() && MessageReactions::enabled())
+        initializeReactionsPlate();
+        updateThreadSubscription();
+    }
+
+    int64_t HistoryControlPageItem::getThreadMsgId() const
+    {
+        if (isThreadFeedMessage())
         {
-            reactions_ = std::make_unique<MessageReactions>(this);
-            const auto& reactions = buddy().reactions_;
-            if (reactions && reactions->exist_)
-                reactions_->subscribe();
+            if (const auto parentTopic = buddy().threadData_.parentTopic_; parentTopic && (Data::ParentTopic::Type::message == parentTopic->type_))
+            {
+                const auto messageParentTopic = std::static_pointer_cast<Data::MessageParentTopic>(parentTopic);
+                return messageParentTopic->msgId_;
+            }
         }
+        return getId();
+    }
+
+    void HistoryControlPageItem::copyPlates(const HistoryControlPageItem* _other)
+    {
+        if (!_other)
+            return;
+
+        if (_other->reactions_)
+            setReactions(_other->reactions_->getReactions());
+        if (_other->hasThread())
+            applyThreadUpdate(_other->threadUpdateData_);
     }
 
     void HistoryControlPageItem::onSizeChanged()
     {
+        if (threadPlate_)
+            threadPlate_->updatePosition();
+
         if (reactions_)
             reactions_->onMessageSizeChanged();
+
+        positionCornerMenu();
     }
 
     ReactionsPlateType HistoryControlPageItem::reactionsPlateType() const
@@ -661,6 +1018,14 @@ namespace Ui
         return QRect();
     }
 
+    QRect HistoryControlPageItem::threadPlateRect() const
+    {
+        if (threadPlate_)
+            return threadPlate_->geometry();
+
+        return QRect();
+    }
+
     bool HistoryControlPageItem::hasHeads() const noexcept
     {
         return !heads_.isEmpty();
@@ -668,14 +1033,7 @@ namespace Ui
 
     bool HistoryControlPageItem::headsAtBottom() const
     {
-        if (isOutgoing())
-            return true;
-
-        auto dialog = Utils::InterConnector::instance().getContactDialog();
-        if (!dialog)
-            return false;
-
-        return dialog->width() < Utils::scale_value(460);
+        return isOutgoing() || width() < MessageStyle::getHeadsWidth(3);
     }
 
     QMap<QString, QVariant> HistoryControlPageItem::makeData(const QString& _command, const QString& _arg)
@@ -701,7 +1059,7 @@ namespace Ui
 
     bool HistoryControlPageItem::isContextMenuReplyOnly() const noexcept
     {
-        return Utils::InterConnector::instance().isRecordingPtt();
+        return Utils::InterConnector::instance().isRecordingPtt(aimId_);
     }
 
     void HistoryControlPageItem::setSelectionCenter(int _center)
@@ -722,25 +1080,36 @@ namespace Ui
 
     bool HistoryControlPageItem::isEditable() const
     {
-        const auto channelAdmin = Logic::getContactListModel()->isChannel(aimId_) && Logic::getContactListModel()->isYouAdmin(aimId_);
-        const auto readOnlyChannel = Logic::getContactListModel()->isChannel(aimId_) && Logic::getContactListModel()->isReadonly(aimId_);
+        const auto isChannel = Logic::getContactListModel()->isChannel(aimId_);
+        const auto channelAdmin = isChannel && Logic::getContactListModel()->areYouAdmin(aimId_);
+        const auto readOnlyChannel = isChannel && Logic::getContactListModel()->isReadonly(aimId_);
         return !readOnlyChannel && (isOutgoing() || channelAdmin);
     }
 
     void HistoryControlPageItem::setNextHasSenderName(bool _nextHasSenderName)
     {
-        nextHasSenderName_ = _nextHasSenderName;
-        updateSize();
+        if (std::exchange(nextHasSenderName_, _nextHasSenderName) != _nextHasSenderName)
+            updateSize();
     }
 
     void HistoryControlPageItem::setBuddy(const Data::MessageBuddy& _msg)
     {
-        const auto reactionsAdedd = (!msg_.reactions_ || !msg_.reactions_->exist_) && _msg.reactions_ && _msg.reactions_->exist_;
+        const auto reactionsAdded = (!msg_.reactions_ || !msg_.reactions_->exist_) && _msg.reactions_ && _msg.reactions_->exist_;
+        auto threadData = msg_.threadData_;
+        const auto threadIdChanged = getThreadId() != _msg.threadData_.id_ && !_msg.threadData_.id_.isEmpty();
 
         msg_ = _msg;
+        if (!threadIdChanged && threadData.threadFeedMessage_ == msg_.threadData_.threadFeedMessage_)
+            msg_.threadData_ = threadData;
 
-        if (reactions_ && initialized_ && reactionsAdedd)
+        if (reactions_ && initialized_ && reactionsAdded)
+        {
             reactions_->subscribe();
+            updateSize();
+        }
+
+        if (threadIdChanged)
+            updateThreadSubscription();
     }
 
     const Data::MessageBuddy& HistoryControlPageItem::buddy() const
@@ -760,8 +1129,8 @@ namespace Ui
 
     void HistoryControlPageItem::setNextIsOutgoing(bool _nextIsOutgoing)
     {
-        nextIsOutgoing_ = _nextIsOutgoing;
-        updateSize();
+        if (std::exchange(nextIsOutgoing_, _nextIsOutgoing) != _nextIsOutgoing)
+            updateSize();
     }
 
     bool HistoryControlPageItem::nextIsOutgoing() const
@@ -770,6 +1139,11 @@ namespace Ui
     }
 
     QRect HistoryControlPageItem::messageRect() const
+    {
+        return QRect();
+    }
+
+    QRect HistoryControlPageItem::cornerMenuContentRect() const
     {
         return QRect();
     }
@@ -868,7 +1242,7 @@ namespace Ui
 
     void HistoryControlPageItem::drawHeads(QPainter& _p) const
     {
-        if (heads_.isEmpty() || Utils::InterConnector::instance().isMultiselect() || Favorites::isFavorites(aimId_))
+        if (heads_.isEmpty() || Utils::InterConnector::instance().isMultiselect(aimId_) || Favorites::isFavorites(aimId_))
             return;
 
         const QRect rc = rect();
@@ -917,7 +1291,6 @@ namespace Ui
                 avatar = Logic::GetAvatarStorage()->GetRounded(heads_[i].aimid_, heads_[i].friendly_, size, isDefault, false, false);
 
             auto margin = xMargin;
-            const auto isAddAnimationRunning = addAnimation_ && addAnimation_->state() == QAbstractAnimation::State::Running;
             if (heads_[i].adding_ && isAddAnimationRunning && i != maxCount)
             {
                 _p.setOpacity(curAdd);
@@ -1042,30 +1415,31 @@ namespace Ui
         {
             margin += MessageStyle::getLastReadAvatarSize() + MessageStyle::getLastReadAvatarOffset();
         }
-        else if (isChat() && isOutgoing() && !nextIsOutgoing())
+        else if (isChat() && isOutgoingPosition() && !nextIsOutgoing() && !isThreadFeedMessage())
         {
-            auto single = false;
-            auto dialog = Utils::InterConnector::instance().getContactDialog();
-            if (dialog)
-                single = dialog->width() < Utils::scale_value(460);
-
+            const auto single = width() < MessageStyle::getHeadsWidth(3);
             margin += single ? MessageStyle::getTopMargin(true) : (MessageStyle::getLastReadAvatarSize() + MessageStyle::getLastReadAvatarOffset());
         }
 
-        auto reactionsMargin = 0;
+        auto plateMargin = 0;
 
         const auto emptyReactions = reactions_ && !reactions_->hasReactions();
+        const auto hasPlate = reactions_ && !reactions_->getReactions().isEmpty();
 
-        if (hasReactions() && !emptyReactions && MessageReactions::enabled())
+        const auto hasPlateMargin =
+            (Features::isThreadsEnabled() && hasThreadWithReplies()) ||
+            (MessageReactions::enabled() && hasPlate && !emptyReactions);
+
+        if (hasPlateMargin)
         {
-            reactionsMargin += MessageStyle::Reactions::plateHeight();
+            plateMargin += MessageStyle::Plates::plateHeight();
             if (reactionsPlateType() == ReactionsPlateType::Media)
-                reactionsMargin += MessageStyle::Reactions::mediaPlateYOffset();
+                plateMargin += MessageStyle::Plates::mediaPlateYOffset();
             else
-                reactionsMargin += MessageStyle::Reactions::plateYOffset() + MessageStyle::Reactions::shadowHeight();
+                plateMargin += MessageStyle::Plates::plateYOffset() + MessageStyle::Plates::shadowHeight();
         }
 
-        return margin + reactionsMargin;
+        return margin + plateMargin;
     }
 
     void HistoryControlPageItem::setHeads(const Data::HeadsVector& _heads)
@@ -1089,8 +1463,6 @@ namespace Ui
         }
 
         updateSize();
-        updateGeometry();
-        update();
     }
 
     void HistoryControlPageItem::addHeads(const Data::HeadsVector& _heads)
@@ -1130,7 +1502,7 @@ namespace Ui
         }
 
 
-        updateGeometry();
+        updateSize();
         update();
     }
 
@@ -1168,7 +1540,7 @@ namespace Ui
             }
         }
 
-        updateGeometry();
+        updateSize();
         update();
     }
 
@@ -1177,9 +1549,16 @@ namespace Ui
         return Data::isSameHeads(heads_, _heads);
     }
 
+    void HistoryControlPageItem::initSize()
+    {
+        updateSize();
+    }
+
     void HistoryControlPageItem::updateSize()
     {
+        updateGeometry();
         resize(size());
+        update();
     }
 
     void HistoryControlPageItem::setIsChat(bool _isChat)
@@ -1202,6 +1581,54 @@ namespace Ui
         {
             if (lastStatusAnimation_)
                 lastStatusAnimation_->hideStatus();
+        }
+    }
+
+    void HistoryControlPageItem::hideCornerMenuForce()
+    {
+        if (cornerMenu_)
+            cornerMenu_->forceHide();
+    }
+
+    void HistoryControlPageItem::setCornerMenuVisible(bool _visible)
+    {
+        if (_visible)
+        {
+            initializeCornerMenu();
+            if (cornerMenu_)
+                cornerMenu_->showAnimated();
+        }
+        else if (cornerMenu_)
+        {
+            cornerMenu_->hideAnimated();
+        }
+    }
+
+    void HistoryControlPageItem::checkCornerMenuNeeded(const QPoint& _pos)
+    {
+        if (isInCornerMenuHoverArea(mapFromGlobal(_pos)))
+        {
+            if (!cornerMenu_)
+            {
+                if (!cornerMenuHoverTimer_)
+                {
+                    cornerMenuHoverTimer_ = new QTimer(this);
+                    cornerMenuHoverTimer_->setSingleShot(true);
+                    cornerMenuHoverTimer_->setInterval(cornerMenuHoverDelay);
+                    connect(cornerMenuHoverTimer_, &QTimer::timeout, this, [this]()
+                    {
+                        if (isInCornerMenuHoverArea(mapFromGlobal(QCursor::pos())) && !cornerMenu_)
+                            setCornerMenuVisible(true);
+                    });
+                }
+
+                if (!cornerMenuHoverTimer_->isActive())
+                    cornerMenuHoverTimer_->start();
+            }
+        }
+        else
+        {
+            setCornerMenuVisible(false);
         }
     }
 

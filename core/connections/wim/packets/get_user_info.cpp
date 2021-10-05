@@ -14,7 +14,7 @@ get_user_info::get_user_info(
     : robusto_packet(std::move(_params))
     , contact_aimid_(_contact_aimid)
 {
-    assert(!contact_aimid_.empty());
+    im_assert(!contact_aimid_.empty());
 }
 
 user_info get_user_info::get_info() const
@@ -34,7 +34,7 @@ std::string_view get_user_info::get_method() const
 
 int32_t get_user_info::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
-    assert(_request);
+    im_assert(_request);
 
     rapidjson::Document doc(rapidjson::Type::kObjectType);
     auto& a = doc.GetAllocator();

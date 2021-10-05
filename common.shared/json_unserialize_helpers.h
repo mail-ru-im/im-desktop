@@ -6,7 +6,7 @@
 #include <string>
 #include <string_view>
 
-namespace common::json
+namespace common { namespace json
 {
     template <typename T>
     inline std::string rapidjson_get_string(const T& value) { return std::string(value.GetString(), value.GetStringLength()); }
@@ -19,9 +19,9 @@ namespace common::json
 
     template <>
     inline std::string_view rapidjson_get_string_view<rapidjson::StringBuffer>(const rapidjson::StringBuffer& value) { return std::string_view(value.GetString(), value.GetSize()); }
-}
+}} 
 
-namespace common::json
+namespace common { namespace json
 {
     inline auto make_string_ref(std::string_view str)
     {
@@ -31,7 +31,7 @@ namespace common::json
     inline namespace v2
     {
         template <class T>
-        auto get_value(const rapidjson::Value& _node, std::string_view _name) -> std::optional<T> = delete;
+        auto get_value(const rapidjson::Value& _node, std::string_view _name)->std::optional<T> = delete;
     }
 
     template <>
@@ -134,4 +134,4 @@ namespace common::json
 
         return {};
     }
-}
+}}

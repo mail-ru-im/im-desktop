@@ -4,6 +4,7 @@
 #include "../../types/message.h"
 #include "types/filesharing_meta.h"
 #include "types/filesharing_download_result.h"
+#include "../history_control/FileStatus.h"
 
 namespace Ui
 {
@@ -42,6 +43,7 @@ namespace Ui
         virtual bool isOverLink(const QPoint& _pos, const QPoint& _pos2) { return false; }
         virtual bool isOverIcon(const QPoint & _pos) { return false; }
         virtual bool isOverFilename(const QPoint & _pos) const { return false; }
+        virtual bool isOverStatus(const QPoint& _pos) const { return false; }
 
         virtual void setDownloading(bool _downloading) {}
         virtual bool isDownloading() const { return false; }
@@ -61,6 +63,12 @@ namespace Ui
 
         virtual bool needsTooltip() const { return false; }
         virtual QRect getTooltipRect() const { return QRect(); }
+
+        virtual void setFileStatus(FileStatus _status) {}
+        virtual FileStatus getFileStatus() const { return FileStatus::NoStatus; }
+
+        virtual QRect getMoreButtonRect() const { return {}; }
+        virtual QRect getStatusRect() const { return {}; }
     };
 
     class DateFileItem : public BaseFileItem
@@ -112,6 +120,7 @@ namespace Ui
         bool isOverLink(const QPoint& _pos, const QPoint& _pos2) override;
         bool isOverIcon(const QPoint & _pos) override;
         bool isOverFilename(const QPoint& _pos) const override;
+        bool isOverStatus(const QPoint& _pos) const override;
 
         void setDownloading(bool _downloading) override;
         bool isDownloading() const override;
@@ -132,12 +141,21 @@ namespace Ui
         virtual bool needsTooltip() const override;
         virtual QRect getTooltipRect() const override;
 
+        void setFileStatus(FileStatus _status) override;
+        FileStatus getFileStatus() const override { return status_; }
+
+        QRect getMoreButtonRect() const override;
+        QRect getStatusRect() const override;
+
+    private:
+        void elide(const std::unique_ptr<TextRendering::TextUnit>& _unit, int _addedWidth = 0);
+
     private:
         QString link_;
         std::unique_ptr<TextRendering::TextUnit> name_;
         std::unique_ptr<TextRendering::TextUnit> size_;
         std::unique_ptr<TextRendering::TextUnit> date_;
-        std::unique_ptr<TextRendering::TextUnit> friedly_;
+        std::unique_ptr<TextRendering::TextUnit> friendly_;
         std::unique_ptr<TextRendering::TextUnit> showInFolder_;
         int height_;
         int width_;
@@ -157,8 +175,8 @@ namespace Ui
         time_t time_;
         qint64 sizet_;
         qint64 lastModified_;
-        QPixmap more_;
         ButtonState moreState_;
+        FileStatus status_;
     };
 
     class FilesList : public MediaContentWidget
@@ -189,7 +207,7 @@ namespace Ui
 
     private:
         void validateDates();
-        void updateTooltip(const std::unique_ptr<BaseFileItem>& _item, const QPoint& _p);
+        void updateTooltip(const std::unique_ptr<BaseFileItem>& _item, const QPoint& _pos, int _h);
 
         void startDataTransferTimeoutTimer(qint64 _seq);
         void stopDataTransferTimeoutTimer(qint64 _seq);

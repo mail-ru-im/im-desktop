@@ -24,15 +24,13 @@ public:
 
     IItemBlockLayout* getBlockLayout() const override;
 
-    Data::FormattedString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
+    Data::FString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
 
     bool isAllSelected() const override { return isSelected(); }
 
     QRect setBlockGeometry(const QRect &ltr) override;
 
-    Data::FormattedString getSourceText() const override;
-
-    bool updateFriendly(const QString& _aimId, const QString& _friendly) override;
+    Data::FString getSourceText() const override;
 
     QString formatRecentsText() const override;
 
@@ -61,7 +59,7 @@ protected:
 
 
 private Q_SLOTS:
-    void onSticker(const qint32 _error, const QString&, qint32 _setId, qint32 _stickerId);
+    void onSticker(const qint32 _error, const Utils::FileSharingId&, qint32 _setId, qint32 _stickerId);
 
     void onStickers();
 

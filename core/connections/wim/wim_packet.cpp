@@ -4,7 +4,7 @@
 
 #include "../../http_request.h"
 #include "../../tools/hmac_sha_base64.h"
-#include "../../tools/json_helper.h"
+#include "../../../common.shared/json_helper.h"
 #include "../../log/log.h"
 #include "../../utils.h"
 #include "../common.shared/config/config.h"
@@ -59,7 +59,7 @@ int32_t wim_packet::execute()
         return err;
 
     auto response = std::static_pointer_cast<tools::binary_stream>(request->get_response());
-    assert(response);
+    im_assert(response);
     err = parse_response(response);
     if (err != 0 && g_core->is_im_stats_enabled())
     {
@@ -79,7 +79,7 @@ int32_t wim_packet::execute()
 
 void wim_packet::execute_async(handler_t _handler)
 {
-    assert(support_async_execution() || support_partially_async_execution());
+    im_assert(support_async_execution() || support_partially_async_execution());
 
     auto request = std::make_shared<core::http_request_simple>(params_.proxy_, utils::get_user_agent(params_.aimid_), get_priority(), params_.stop_handler_);
 
@@ -102,7 +102,7 @@ void wim_packet::execute_async(handler_t _handler)
         }
 
         auto response = std::static_pointer_cast<tools::binary_stream>(request->get_response());
-        assert(response);
+        im_assert(response);
         const auto err = ptr_this->parse_response(response);
         if (err != 0 && g_core->is_im_stats_enabled())
         {
@@ -133,7 +133,7 @@ bool wim_packet::is_stopped() const
 
 bool core::wim::wim_packet::has_valid_token() const
 {
-    return !params_.a_token_.empty();
+    return !params_.aimsid_.empty();
 }
 
 bool wim_packet::needs_to_repeat_failed(int32_t _error) noexcept
@@ -259,7 +259,7 @@ std::optional<wim_protocol_internal_error> wim_packet::get_error(curl_easy::comp
 
 void wim_packet::load_response_str(const char* buf, size_t size)
 {
-    assert(buf && size);
+    im_assert(buf && size);
     if (buf && size)
     {
         response_str_.assign(buf, size);
@@ -446,37 +446,6 @@ std::string wim_packet::escape_symbols_data(std::string_view _data)
     return res;
 }
 
-std::string wim_packet::detect_digest(std::string_view hashed_data, std::string_view session_key)
-{
-    if (hashed_data.empty() || session_key.empty())
-    {
-        assert(false);
-        return std::string();
-    }
-
-    std::vector<uint8_t> hash_data_vector(hashed_data.size());
-    memcpy(&hash_data_vector[0], hashed_data.data(), hashed_data.size());
-
-    std::vector<uint8_t> session_key_vector(session_key.size());
-    memcpy(&session_key_vector[0], session_key.data(), session_key.size());
-
-    return core::tools::base64::hmac_base64(hash_data_vector, session_key_vector);
-}
-
-
-std::string wim_packet::get_url_sign_impl(std::string_view _host, std::string_view _query_string, const wim_packet_params& _wim_params,  bool _post_method, bool make_escape_symbols/* = true*/)
-{
-    const std::string_view http_method = _post_method ? "POST" : "GET";
-    std::string hash_data;
-
-    if (make_escape_symbols)
-        hash_data = su::concat(http_method, '&', escape_symbols(_host), '&', escape_symbols(_query_string));
-    else
-        hash_data = su::concat(http_method, '&', _host, '&', _query_string);
-
-    return detect_digest(hash_data, _wim_params.session_key_);
-}
-
 int32_t wim_packet::parse_response_data(const rapidjson::Value& _data)
 {
     return 0;
@@ -529,9 +498,15 @@ std::string wim_packet::extract_etag() const
     return std::string();
 }
 
-bool wim_packet::is_network_error_or_canceled(const int32_t _error) noexcept
+bool wim_packet::is_network_error(const int32_t _error) noexcept
 {
     return wim_protocol_internal_error::wpie_network_error == _error
+        || wim_protocol_internal_error::wpie_couldnt_resolve_host == _error;
+}
+
+bool wim_packet::is_network_error_or_canceled(const int32_t _error) noexcept
+{
+    return is_network_error(_error)
         || wim_protocol_internal_error::wpie_error_resend == _error
         || wim_protocol_internal_error::wpie_error_task_canceled == _error;
 }
@@ -543,14 +518,14 @@ bool wim_packet::is_timeout_error(const int32_t _error) noexcept
 
 void log_replace_functor::add_marker(std::string_view _marker, ranges_evaluator _re)
 {
-    assert(!_marker.empty());
+    im_assert(!_marker.empty());
     if (!_marker.empty())
         markers_.push_back(std::make_pair(su::concat(_marker, '='), std::move(_re)));
 }
 
 void log_replace_functor::add_url_marker(std::string_view _marker, ranges_evaluator _re)
 {
-    assert(!_marker.empty());
+    im_assert(!_marker.empty());
     if (!_marker.empty())
         markers_.push_back(std::make_pair(std::string(_marker), std::move(_re)));
 }
@@ -838,7 +813,7 @@ log_replace_functor::ranges poll_responses_ranges_evaluator::operator()(std::str
     } state = look_for_array_close_bracket;
 
     auto read_symbol = [end = s.cend()](auto& it)->std::string_view{
-        assert(it != end);
+        im_assert(it != end);
         const auto step = *it == '%' ? 3 : 1;
         return std::string_view(&(*it), step);
     };
@@ -862,7 +837,7 @@ log_replace_functor::ranges poll_responses_ranges_evaluator::operator()(std::str
         }
         else if (look_for_string_close_quote == state && symbol == quote)
         {
-            assert(!result.empty());
+            im_assert(!result.empty());
             if (result.empty())
                 break;
             result.back().second = std::distance(begin, it - symbol.size()) - 1;

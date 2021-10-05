@@ -472,7 +472,7 @@ namespace Ui
 
             if (drawStatus)
             {
-                contactStatus_->elide(maxWidth, TextRendering::ElideType::FAST);
+                contactStatus_->elide(maxWidth);
                 contactStatus_->setOffsets(contactList.getContactNameX(params_.leftMargin_), _y + contactName_->cachedSize().height() + Utils::scale_value(8));
                 contactStatus_->draw(_painter, TextRendering::VerPosition::MIDDLE);
             }
@@ -508,7 +508,7 @@ namespace Ui
 
         auto role_right_offset = 0;
 
-        const auto isSelectRegim = IsSelectMembers(regim) || Logic::is_share_regims(regim) || regim == Logic::MembersWidgetRegim::SHARE_CONTACT;
+        const auto isSelectRegim = IsSelectMembers(regim) || Logic::is_share_regims(regim) || regim == Logic::MembersWidgetRegim::SHARE_CONTACT || regim == Logic::MembersWidgetRegim::TASK_ASSIGNEE;
         const auto isCurVideoConf = regim == Logic::MembersWidgetRegim::CURRENT_VIDEO_CONFERENCE;
         auto contactNameY = 0;
         if (regim == Logic::MembersWidgetRegim::COMMON_CHATS || (item_.HasStatus() && !isFavorites && !isCurVideoConf))
@@ -874,7 +874,6 @@ namespace Logic
                 }
             }
         }
-
         return QSize(width, Ui::GetContactListParams().itemHeight());
     }
 

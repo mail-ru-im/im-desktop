@@ -14,7 +14,7 @@ set_attention_attribute::set_attention_attribute(wim_packet_params _params, std:
     contact_(_contact),
     value_(_value)
 {
-    assert(!contact_.empty());
+    im_assert(!contact_.empty());
 }
 
 set_attention_attribute::~set_attention_attribute()

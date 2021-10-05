@@ -97,7 +97,6 @@ namespace Ui
 
     void ChatPlaceholderAvatar::updatePixmap()
     {
-        im_assert(state_ != PlaceholderState::hidden);
         if (state_ == PlaceholderState::hidden)
             return;
 
@@ -219,9 +218,9 @@ namespace Ui
         const auto color = ChatEventItem::getTextColor(contact);
         for (const auto& c : captions_)
         {
-            auto text = TextRendering::MakeTextUnit(c.caption_, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
-            text->init(ChatEventItem::getTextFont(), color, color, QColor(), QColor(), TextRendering::HorAligment::CENTER);
-            text->markdown(ChatEventItem::getTextFontBold(), color);
+            auto text = TextRendering::MakeTextUnit(Data::FString(c.caption_), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS,
+                TextRendering::ProcessLineFeeds::KEEP_LINE_FEEDS, TextRendering::EmojiSizeType::REGULAR, ParseBackticksPolicy::ParseSingles);
+            text->init(ChatEventItem::getTextFont(), color, ChatEventItem::getTextFontBold(), color, QColor(), QColor(), TextRendering::HorAligment::CENTER);
 
             auto item = new ChatEventItem(this, std::move(text));
             item->setContact(contact);

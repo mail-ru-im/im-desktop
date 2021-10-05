@@ -26,13 +26,21 @@ namespace Ui
 
         void setActive(const bool _isActive);
         bool isActive() const;
+
+        void setSpinning(bool _on);
+        bool isSpinning() const;
+
         bool isHovered() const;
         bool isPressed() const;
 
         void setIconAlignment(const Qt::Alignment _flags);
         void setIconOffsets(const int _horOffset, const int _verOffset);
 
-        void setBackgroundColor(const QColor& _color);
+        void setBackgroundNormal(const QBrush& _color);
+        void setBackgroundDisabled(const QBrush& _color);
+        void setBackgroundHovered(const QBrush& _color);
+        void setBackgroundPressed(const QBrush& _color);
+
         void setTextColor(const QColor& _color);
         void setNormalTextColor(const QColor& _color);
         void setHoveredTextColor(const QColor& _color);
@@ -51,6 +59,7 @@ namespace Ui
         void setActiveImage(const QString& _svgPath,   const QColor& _color = QColor(), const QSize& _size = QSize());
         void setDisabledImage(const QString& _svgPath, const QColor& _color = QColor(), const QSize& _size = QSize());
         void setPressedImage(const QString& _svgPath,  const QColor& _color = QColor(), const QSize& _size = QSize());
+        void setSpinnerImage(const QString& _svgPath,  const QColor& _color = QColor(), const QSize& _size = QSize());
         void clearIcon();
 
         void setCustomToolTip(const QString& _toopTip);
@@ -96,14 +105,20 @@ namespace Ui
         QPixmap pixmapDisabled_;
         QPixmap pixmapPressed_;
         QPixmap pixmapOverlay_;
+        QPixmap pixmapSpinner_;
 
-        QColor bgColor_;
+        QBrush backgroundBrushNormal_;
+        QBrush backgroundBrushDisabled_;
+        QBrush backgroundBrushHovered_;
+        QBrush backgroundBrushPressed_;
+
         QColor textColor_;
         QColor textColorNormal_;
         QColor textColorHovered_;
         QColor textColorPressed_;
         Qt::Alignment textAlign_;
         int textOffsetLeft_;
+        int spinAngle_;
 
         QString svgPath_;
         QSize svgSize_;
@@ -128,6 +143,7 @@ namespace Ui
 
         QColor focusColor_;
         QVariantAnimation* animFocus_;
+        QTimer* spinTimer_;
     };
 
     class RoundButton : public ClickableWidget
@@ -140,6 +156,10 @@ namespace Ui
         void setTextColor(const QColor& _color);
         void setText(const QString& _text, int _size = 12);
         void setIcon(const QString& _iconPath, int _size = 0);
+        void setIcon(QStringView _iconPath, int _size = 0)
+        {
+            setIcon(_iconPath.toString(), _size);
+        }
         void setIcon(const QPixmap& _icon);
 
         void forceHover(bool _force);

@@ -3,6 +3,8 @@
 #include "types/message.h"
 #include "../InputWidgetUtils.h"
 
+#include "main_window/EscapeCancellable.h"
+
 namespace Ui
 {
     class EditMessageWidget;
@@ -10,8 +12,11 @@ namespace Ui
     class CustomButton;
     class SubmitButton;
     class AttachFileButton;
+    class AttachFilePopup;
     class InputPanelMain;
+    class DraftVersionWidget;
     enum class ClickType;
+    enum class AttachMediaType;
 
     class TextEditViewport : public QWidget
     {
@@ -40,27 +45,29 @@ namespace Ui
         Q_OBJECT
 
     public:
-        InputSide(QWidget* _parent);
-
         enum class SideState
         {
             Minimized,
             Normal
         };
+
+        InputSide(QWidget* _parent, SideState _initialState = SideState::Normal);
+
         SideState getState() const noexcept;
 
         void resizeAnimated(const SideState _state);
 
     private:
         int getStateWidth(const SideState _state) const;
+        void initAnimation();
 
     private:
-        QVariantAnimation* anim_;
-        SideState state_;
+        QVariantAnimation* anim_ = nullptr;
+        SideState state_ = SideState::Normal;
     };
 
 
-    class InputPanelMain : public QWidget, public StyledInputElement
+    class InputPanelMain : public QWidget, public StyledInputElement, public IEscapeCancellable
     {
         Q_OBJECT
 
@@ -68,16 +75,21 @@ namespace Ui
         void editedMessageClicked(QPrivateSignal) const;
         void editCancelClicked(QPrivateSignal) const;
         void emojiButtonClicked(const bool _fromKeyboard, QPrivateSignal) const;
+        void attachMedia(AttachMediaType _mediaType, QPrivateSignal) const;
+        void draftVersionAccepted(QPrivateSignal);
+        void draftVersionCancelled(QPrivateSignal);
 
         void panelHeightChanged(const int _height, QPrivateSignal) const;
 
     public:
-        InputPanelMain(QWidget* _parent, SubmitButton* _submit);
+        InputPanelMain(QWidget* _parent, SubmitButton* _submit, InputFeatures _features);
         ~InputPanelMain();
 
         void setSubmitButton(SubmitButton* _button);
 
         void showEdit(Data::MessageBuddySptr _message, const MediaType _type);
+        void cancelEdit();
+        void showDraftVersion(const Data::Draft& _draft);
         void hidePopups();
 
         void setFocusOnInput();
@@ -97,6 +109,12 @@ namespace Ui
         void setUnderQuote(const bool _underQuote);
 
         void forceSendButton(const bool _value);
+
+        void hideAttachPopup();
+
+        bool isDraftVersionVisible() const;
+
+        void setParentForPopup(QWidget* _parent);
 
     private:
         void onAttachClicked(const ClickType _type);
@@ -119,39 +137,51 @@ namespace Ui
 
         void setCurrentTopWidget(QWidget* _widget);
 
-        void setSideStates(const InputSide::SideState _stateLeft, const InputSide::SideState _stateRight);
-        void setLeftSideState(const InputSide::SideState _state);
-        void setRightSideState(const InputSide::SideState _state);
+        void setLeftSideState(InputSide::SideState _state);
+        void setRightSideState(InputSide::SideState _state);
+        void checkHideSubmit();
 
         void editContentChanged();
         void scrollToBottomIfNeeded();
 
         void setButtonsTabOrder();
 
+        void initResizeAnimation();
+        void initAttachPopup();
+
+        bool isAttachEnabled() const;
+        bool isPttEnabled() const;
+
     protected:
         void updateStyleImpl(const InputStyleMode _mode) override;
+        void hideEvent(QHideEvent* _e) override;
 
     private:
-        QWidget* topHost_;
-        QWidget* currentTopWidget_;
+        QWidget* topHost_ = nullptr;
+        QWidget* currentTopWidget_ = nullptr;
 
-        QWidget* bottomHost_;
-        InputSide* leftSide_;
-        InputSide* rightSide_;
+        QWidget* bottomHost_ = nullptr;
+        InputSide* leftSide_ = nullptr;
+        InputSide* rightSide_ = nullptr;
 
-        QWidget* emptyTop_;
-        EditMessageWidget* edit_;
+        QWidget* emptyTop_ = nullptr;
+        EditMessageWidget* edit_ = nullptr;
+        DraftVersionWidget* draftVersionWidget_ = nullptr;
 
-        TextEditViewport* editViewport_;
-        HistoryTextEdit* textEdit_;
+        TextEditViewport* editViewport_ = nullptr;
+        HistoryTextEdit* textEdit_ = nullptr;
 
-        AttachFileButton* buttonAttach_;
-        CustomButton* buttonEmoji_;
+        AttachFileButton* buttonAttach_ = nullptr;
+        CustomButton* buttonEmoji_ = nullptr;
 
-        SubmitButton* buttonSubmit_;
+        SubmitButton* buttonSubmit_ = nullptr;
 
-        QVariantAnimation* animResize_;
-        int curEditHeight_;
-        bool forceSendButton_;
+        QVariantAnimation* animResize_ = nullptr;
+        int curEditHeight_ = 0;
+        bool forceSendButton_ = false;
+        InputFeatures features_;
+
+        AttachFilePopup* attachPopup_ = nullptr;
+        QWidget* parentForPopup_ = nullptr;
     };
 }

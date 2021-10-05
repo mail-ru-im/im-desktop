@@ -703,6 +703,21 @@ void GeneralSettingsWidget::Creator::initShortcuts(ShortcutsSettings* _parent)
                     keys);
             }
         }
+        {
+            auto [videoCallWindowW, videoCallWindowL] = shortcutBlock(QT_TRANSLATE_NOOP("settings", "Call window"));
+            {
+                QString keys;
+                if constexpr (platform::is_apple())
+                    keys = KeySymbols::Mac::shift % KeySymbols::Mac::command % u"A";
+                else
+                    keys = qsl("Ctrl + Shift + A");
+
+                GeneralCreator::addHotkeyInfo(
+                    videoCallWindowW, videoCallWindowL,
+                    QT_TRANSLATE_NOOP("shortcuts", "Switch microphone state"),
+                    keys);
+            }
+        }
     }
 }
 /*
@@ -730,4 +745,5 @@ Cmd+ArrowUp/Ctrl+ArrowUp - Move to the beginning of the paragraph
 Cmd+ArrowDown/Ctrl+ArrowDown - Move to the end of the paragraph
 Option+ArrowLeft/Ctrl+ArrowLeft - Move to the beginning of the word
 Option+ArrowRight/Ctrl+ArrowRight - Move to the end of the word
+Cmd+Shist+A/Ctrl+Shist+A - switch microphone state in call window
 */

@@ -36,7 +36,7 @@ public:
 
     bool updateFriendly(const QString& _aimId, const QString& _friendly) override;
 
-    Data::FormattedString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
+    Data::FString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
 
     bool isSelected() const override;
 
@@ -66,7 +66,7 @@ public:
 
     QString getTextForCopy() const override;
 
-    Data::FormattedString getSourceText() const override;
+    Data::FString getSourceText() const override;
 
     QString formatRecentsText() const override;
 
@@ -90,7 +90,7 @@ public:
 
     int desiredWidth(int _width = 0) const override;
 
-    QString linkAtPos(const QPoint& pos) const override;
+    Data::LinkInfo linkAtPos(const QPoint& pos) const override;
 
     bool clicked(const QPoint& _p) override;
     void doubleClicked(const QPoint& _p, std::function<void(bool)> _callback = std::function<void(bool)>()) override;
@@ -110,6 +110,9 @@ public:
 
     int effectiveBlockWidth() const override;
 
+    void updateFileStatus(FileStatus _status) override;
+    bool isBlockedFileSharing() const override;
+
 protected:
     void drawBlock(QPainter &p, const QRect& _rect, const QColor& _quoteColor) override;
 
@@ -119,6 +122,7 @@ protected:
 
 private:
     bool quoteOnly() const;
+    bool isQuoteInteractive() const;
     QString getQuoteHeader() const;
     QColor getSenderColor() const;
     int32_t getLeftOffset() const;

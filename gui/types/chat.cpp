@@ -3,6 +3,9 @@
 
 #include "../../corelib/collection_helper.h"
 
+#include "my_info.h"
+#include "utils/features.h"
+
 namespace Data
 {
     QVector<ChatMemberInfo> UnserializeChatMembers(core::coll_helper* helper, const QString& _creator)
@@ -58,6 +61,7 @@ namespace Data
         info.Live_ = helper->get_value_as_bool("live");
         info.Controlled_ = helper->get_value_as_bool("controlled");
         info.ApprovedJoin_ = helper->get_value_as_bool("joinModeration");
+        info.trustRequired_ = helper->get_value_as_bool("trustRequired") && Features::isRestrictedFilesEnabled();
         info.Members_ = UnserializeChatMembers(helper, info.Creator_);
         return info;
     }
@@ -129,13 +133,49 @@ namespace Data
     DialogGalleryState UnserializeDialogGalleryState(core::coll_helper* _helper)
     {
         DialogGalleryState state;
-        state.images_count_ = _helper->get_value_as_int("images");
-        state.videos_count = _helper->get_value_as_int("videos");
-        state.files_count = _helper->get_value_as_int("files");
-        state.links_count = _helper->get_value_as_int("links");
-        state.ptt_count = _helper->get_value_as_int("ptt");
-        state.audio_count = _helper->get_value_as_int("audio");
+        state.imagesCount_ = _helper->get_value_as_int("images");
+        state.videosCount_ = _helper->get_value_as_int("videos");
+        state.filesCount_ = _helper->get_value_as_int("files");
+        state.linksCount_ = _helper->get_value_as_int("links");
+        state.pttCount_ = _helper->get_value_as_int("ptt");
+        state.audioCount_ = _helper->get_value_as_int("audio");
 
         return state;
+    }
+
+    bool ChatInfo::areYouMember(const std::shared_ptr<Data::ChatInfo>& _info)
+    {
+        if (!_info)
+            return false;
+
+        return _info->YouMember_ || (!_info->YourRole_.isEmpty() && _info->YourRole_ != u"notamember" && _info->YourRole_ != u"pending");
+    }
+
+    bool ChatInfo::areYouAdmin(const std::shared_ptr<Data::ChatInfo>& _info)
+    {
+        if (!_info)
+            return false;
+
+        return _info->YourRole_ == u"admin" || _info->Creator_ == Ui::MyInfo()->aimId();
+    }
+
+    bool ChatInfo::areYouModer(const std::shared_ptr<Data::ChatInfo>& _info)
+    {
+        return _info && _info->YourRole_ == u"moder";
+    }
+
+    bool ChatInfo::areYouAdminOrModer(const std::shared_ptr<Data::ChatInfo>& _info)
+    {
+        return areYouAdmin(_info) || areYouModer(_info);
+    }
+
+    bool ChatInfo::isChatControlled(const std::shared_ptr<Data::ChatInfo>& _info)
+    {
+        return _info && _info->Controlled_;
+    }
+
+    bool ChatInfo::isChannel(const std::shared_ptr<Data::ChatInfo>& _info)
+    {
+        return _info && _info->isChannel();
     }
 }

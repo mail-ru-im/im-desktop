@@ -2,7 +2,7 @@
 #include "suggest_group_nick.h"
 
 #include "../../../http_request.h"
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 
 using namespace core;
 using namespace wim;

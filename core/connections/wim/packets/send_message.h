@@ -41,7 +41,7 @@ namespace core
 
             std::string aimid_;
             std::string message_text_;
-            core::data::format::string_formatting message_format_;
+            core::data::format message_format_;
 
             uint32_t sms_error_;
             uint32_t sms_count_;
@@ -51,6 +51,7 @@ namespace core
             int64_t hist_msg_id_;
             int64_t before_hist_msg_id;
             std::string poll_id_;
+            std::string task_id_;
 
             bool duplicate_;
 
@@ -58,13 +59,16 @@ namespace core
             core::archive::mentions_map mentions_;
 
             std::string description_;
-            core::data::format::string_formatting description_format_;
+            core::data::format description_format_;
             std::string url_;
 
             core::archive::shared_contact shared_contact_;
             core::archive::geo geo_;
             core::archive::poll poll_;
+            core::tasks::task task_;
             smartreply::marker_opt smartreply_marker_;
+
+            std::optional<int64_t> draft_delete_time_;
 
         public:
 
@@ -81,6 +85,7 @@ namespace core
             bool is_duplicate() const { return duplicate_; }
 
             const std::string& get_poll_id() const { return poll_id_; }
+            const std::string& get_task_id() const { return task_id_; }
 
             send_message(wim_packet_params _params,
                 const int64_t _updated_id,
@@ -88,16 +93,18 @@ namespace core
                 const std::string& _internal_id,
                 const std::string& _aimid,
                 const std::string& _message_text,
-                const core::data::format::string_formatting& _message_format,
+                const core::data::format& _message_format,
                 const core::archive::quotes_vec& _quotes,
                 const core::archive::mentions_map& _mentions,
                 const std::string& _description,
-                const core::data::format::string_formatting& _description_format,
+                const core::data::format& _description_format,
                 const std::string& _url,
                 const core::archive::shared_contact& _shared_contact,
                 const core::archive::geo& _geo,
                 const core::archive::poll& _poll,
-                const smartreply::marker_opt& _smartreply_marker);
+                const core::tasks::task& _task,
+                const smartreply::marker_opt& _smartreply_marker,
+                const std::optional<int64_t>& _draft_delete_time);
 
             virtual ~send_message();
 

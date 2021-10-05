@@ -21,7 +21,7 @@ namespace core
 
     void network_change_notifier_linux::init()
     {
-        assert(g_core->is_core_thread());
+        im_assert(g_core->is_core_thread());
         network_change_notifier::init();
         auto address_change_callback = [wr_this = weak_from_this()]()
         {

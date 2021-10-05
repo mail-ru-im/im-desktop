@@ -47,7 +47,7 @@ std::thread::id main_thread::get_core_thread_id() const
     }
     else
     {
-        assert(thread_ids.size() == 1);
+        im_assert(thread_ids.size() == 1);
         return std::thread::id(); // nobody
     }
 }

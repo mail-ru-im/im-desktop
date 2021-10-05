@@ -11,7 +11,7 @@
 #include <vector>
 #include <condition_variable>
 #ifdef USE_RAPIDJSON
-#include "tools/json_helper.h"
+#include "../common.shared/json_helper.h"
 #else
 #include <nlohmann/json.hpp>
 

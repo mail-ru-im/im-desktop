@@ -19,7 +19,8 @@ namespace Ui
         void elide(const int _width);
         void updateAvatar();
 
-        const QString& getAimId() const { return aimId_; }
+        const QString& getAimId() const noexcept { return aimId_; }
+        const QString& getChatId() const noexcept { return chatId_; }
         qint64 getMsgId() const noexcept { return msgId_; }
 
         void setUnderMouse(const bool _value) { underMouse_ = _value; }
@@ -33,6 +34,7 @@ namespace Ui
         qint64 msgId_ = -1;
 
         QString aimId_;
+        QString chatId_;
         QPixmap avatar_;
         TextRendering::TextUnitPtr textUnit_;
     };

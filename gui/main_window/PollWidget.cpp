@@ -18,7 +18,9 @@
 #include "PollWidget.h"
 #include "omicron/omicron_helper.h"
 #include "../common.shared/omicron_keys.h"
-#include "../main_window/MainWindow.h"
+#include "main_window/MainWindow.h"
+#include "main_window/contact_list/ContactListModel.h"
+#include "main_window/history_control/ThreadPlate.h"
 
 namespace
 {
@@ -134,10 +136,21 @@ PollWidget::PollWidget(const QString& _contact, QWidget* _parent)
     auto layout = Utils::emptyVLayout(this);
     layout->setContentsMargins(commonPollsMargin(), commonPollsMargin(), 0, bottomPollsMargin());
 
-    auto header = new TextWidget(this, QT_TRANSLATE_NOOP("poll", "Create poll"));
-    header->init(Fonts::appFontScaled(24, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+    auto headerLayout = Utils::emptyHLayout();
+    {
+        auto header = new TextWidget(this, QT_TRANSLATE_NOOP("poll", "Create poll"));
+        header->init(Fonts::appFontScaled(24, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        headerLayout->addWidget(header, 0, Qt::AlignLeft);
 
-    layout->addWidget(header);
+        if (Logic::getContactListModel()->isThread(_contact))
+        {
+            headerLayout->addSpacing(commonPollsMargin());
+            headerLayout->addWidget(ThreadPlate::plateForPopup(this), 0, Qt::AlignRight);
+            headerLayout->addSpacing(commonPollsMargin());
+        }
+    }
+
+    layout->addLayout(headerLayout);
     layout->addSpacing(Utils::scale_value(16));
 
     auto content = new QWidget(this);
@@ -244,6 +257,16 @@ void PollWidget::setInputData(const QString& _text, const Data::QuotesVec& _quot
     d->question_->moveCursor(QTextCursor::End);
 }
 
+QString PollWidget::getInputText() const
+{
+    return d->question_->getPlainText();
+}
+
+int PollWidget::getCursorPos() const
+{
+    return d->question_->textCursor().position();
+}
+
 void PollWidget::onAdd()
 {
     d->list_->addItem();
@@ -282,12 +305,12 @@ void PollWidget::onSend()
     core_dispatcher::MessageData messageData;
     messageData.mentions_ = std::move(d->inputData_.mentions_);
     messageData.quotes_ = std::move(d->inputData_.quotes_);
-    messageData.text_ = Utils::replaceFilesPlaceholders(d->question_->getPlainText(), Data::FilesPlaceholderMap());
+    messageData.text_ = Utils::replaceFilesPlaceholders(d->question_->getPlainText(), {});
     messageData.poll_ = std::move(poll);
 
     GetDispatcher()->sendMessageToContact(d->contact_, std::move(messageData));
 
-    Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::polls_create, { { "from", "plus" }, {"chat_type", Ui::getStatsChatType()} });
+    Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::polls_create, { { "from", "plus" }, {"chat_type", Ui::getStatsChatType(d->contact_)} });
 
     Q_EMIT Utils::InterConnector::instance().acceptGeneralDialog();
     close();

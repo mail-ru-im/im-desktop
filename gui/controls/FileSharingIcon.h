@@ -9,7 +9,7 @@ namespace Ui
         Q_OBJECT
 
     public:
-        FileSharingIcon(QWidget* _parent = nullptr);
+        FileSharingIcon(bool _isOutgoing, QWidget* _parent = nullptr);
         ~FileSharingIcon();
 
         void setBytes(const int64_t _bytesTotal, const int64_t _bytesCurrent);
@@ -23,6 +23,7 @@ namespace Ui
 
         static QPixmap getIcon(const QString& _fileName);
         static QColor getFillColor(const QString& _fileName);
+        static QSize getIconSize();
 
         void startAnimation();
         void stopAnimation();
@@ -30,19 +31,31 @@ namespace Ui
 
         void onVisibilityChanged(const bool _isVisible);
 
+        enum class BlockReason
+        {
+            NoBlock,
+            Antivirus,
+            TrustCheck,
+        };
+        void setBlocked(BlockReason _reason);
+
     protected:
         void paintEvent(QPaintEvent*) override;
 
     private:
         bool isFileDownloading() const;
         bool isFileDownloaded() const;
+        void initAnimation();
 
+    private:
+        QPixmap overrideIcon_;
         QPixmap fileType_;
         QColor iconColor_;
 
-        int64_t bytesTotal_;
-        int64_t bytesCurrent_;
+        int64_t bytesTotal_ = 0;
+        int64_t bytesCurrent_ = 0;
 
-        QVariantAnimation* anim_;
+        QVariantAnimation* anim_ = nullptr;
+        bool isOutgoing_ = false;
     };
 }

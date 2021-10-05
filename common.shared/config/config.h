@@ -38,6 +38,7 @@ namespace config
         login_by_phone_allowed,
         login_by_mail_default,
         login_by_uin_allowed,
+        login_by_oauth2_allowed,
         forgot_password,
         explained_forgot_password,
         unknown_contacts,
@@ -47,7 +48,7 @@ namespace config
         changeable_name,
         avatar_change_allowed,
         beta_update,
-        ssl_verify_peer,
+        ssl_verify,
         profile_agent_as_domain_url,
         need_gdpr_window,
         need_introduce_window,
@@ -91,10 +92,28 @@ namespace config
         custom_statuses_enabled,
         formatting_in_bubbles,
         formatting_in_input,
-        apps_bar_visible,
-        tab_bar_visible,
+        apps_bar_enabled,
         status_in_apps_bar,
+        scheduled_messages_enabled,
         threads_enabled,
+        reminders_enabled,
+        support_shared_federation_stickerpacks,
+        url_ftp_protocols_allowed,
+        organization_structure_enabled,
+        tasks_enabled,
+        draft_enabled,
+        message_corner_menu,
+        task_creation_in_chat_enabled,
+        smartreply_suggests_feature_enabled,
+        smartreply_suggests_text,
+        smartreply_suggests_stickers,
+        smartreply_suggests_for_quotes,
+        compact_mode_by_default,
+        expanded_gallery,
+        restricted_files_enabled,
+        antivirus_check_enabled,
+        antivirus_check_progress_visible,
+        calendar_enabled,
 
         max_size
     };
@@ -107,6 +126,7 @@ namespace config
         profile,
         profile_agent,
         auth_mail_ru,
+        oauth2_mail_ru,
         r_mail_ru,
         win_mail_ru,
         read_msg,
@@ -154,6 +174,8 @@ namespace config
         app_name_mac,
         app_name_linux,
         user_agent_app_name,
+        client_b64,
+        client_id,
         client_rapi,
         product_name,
         product_name_short,
@@ -168,7 +190,6 @@ namespace config
         installer_exe_win,
         installer_hkey_class_win,
         installer_main_instance_mutex_win,
-        updater_main_instance_mutex_win,
         company_name,
         app_user_model_win,
         feedback_version_id,
@@ -197,6 +218,11 @@ namespace config
         mytracker_app_id_mac,
         mytracker_app_id_linux,
         status_banner_emoji_csv,
+        draft_timeout_sec,
+        draft_max_len,
+        smartreply_suggests_click_hide_timeout,
+        smartreply_suggests_msgid_cache_size,
+        base_retry_interval_sec,
 
         max_size
     };
@@ -275,7 +301,7 @@ namespace config
             translations_array translations;
         } c_;
 
-        bool is_debug_ = false;
+        const bool is_debug_ = false;
         bool is_valid_ = false;
 
         std::unique_ptr<common::tools::spin_lock> spin_lock_;

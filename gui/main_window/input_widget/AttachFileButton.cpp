@@ -3,7 +3,6 @@
 #include "AttachFileButton.h"
 
 #include "utils/utils.h"
-#include "utils/InterConnector.h"
 #include "styles/ThemeParameters.h"
 
 namespace
@@ -60,7 +59,6 @@ namespace Ui
         , isActive_(false)
     {
         connect(this, &AttachFileButton::hoverChanged, this, qOverload<>(&AttachFileButton::update));
-        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::attachFilePopupVisiblityChanged, this, &AttachFileButton::onAttachVisibleChanged);
 
         anim_->setDuration(animDuration().count());
         anim_->setEasingCurve(QEasingCurve::InOutSine);

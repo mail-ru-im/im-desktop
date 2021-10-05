@@ -1,5 +1,7 @@
 #include "stdafx.h"
 
+#include <rapidjson/writer.h>
+
 #include "exif.h"
 #include "utils.h"
 #include "features.h"
@@ -23,7 +25,7 @@
 #include "../controls/CheckboxList.h"
 #include "../controls/textrendering/TextRendering.h"
 #include "../controls/CallLinkWidget.h"
-#include "../main_window/ContactDialog.h"
+#include "../controls/UrlEditDialog.h"
 #include "../main_window/MainPage.h"
 #include "../main_window/MainWindow.h"
 #include "../main_window/GroupChatOperations.h"
@@ -39,6 +41,7 @@
 #include "../main_window/containers/StatusContainer.h"
 #include "../styles/ThemesContainer.h"
 #include "../styles/ThemeParameters.h"
+#include "DrawUtils.h"
 #include "../../common.shared/version_info.h"
 #include "../../common.shared/config/config.h"
 #include "previewer/toast.h"
@@ -76,6 +79,8 @@ namespace
     const int small_online_size = 12;
 
     static constexpr std::string_view base64_encoded_image_signature = "data:image/";
+
+    constexpr int getUrlInDialogElideSize() noexcept { return 140; }
 
     constexpr QColor colorTable3[][3] =
     {
@@ -235,23 +240,28 @@ namespace
             return u' ';
         return QChar(Result);
     }
+#endif //_WIN32
 
-    bool isExeExtensions(QStringView _ext)
+#ifndef __APPLE__
+    bool isDangerousExtensions(QStringView _ext)
     {
-        const static std::vector<QStringView> exe =
+        const static std::vector<QStringView> extensions =
         {
+#ifdef _WIN32
             u"scr", u"exe", u"chm", u"cmd", u"pif", u"bat", u"vbs", u"jar", u"ade", u"adp", u"com", u"cpl",
             u"hta", u"ins", u"isp", u"jse", u"lib", u"lnk", u"mde", u"msc", u"msp", u"mst", u"sct", u"shb",
             u"sys", u"vb", u"vbe", u"vxd", u"wsc", u"wsf", u"wsh", u"reg", u"rgs", u"inf", u"msi", u"dll",
             u"cpl", u"job", u"ws", u"vbscript", u"gadget", u"shb", u"shs", u"sct", u"isu", u"inx", u"app", u"ipa",
             u"apk", u"rpm", u"apt", u"deb", u"dmg", u"action", u"command", u"xpi", u"crx", u"js", u"scf", u"url",
             u"ace"
+#else
+            u"desktop"
+#endif
         };
 
-        return std::any_of(exe.begin(), exe.end(), [_ext](auto x) { return _ext.compare(x, Qt::CaseInsensitive) == 0; });
+        return std::any_of(extensions.cbegin(), extensions.cend(), [_ext](auto x) { return _ext.compare(x, Qt::CaseInsensitive) == 0; });
     }
-
-#endif //_WIN32
+#endif
 
     QString msgIdFromUidl(const QString& uidl)
     {
@@ -439,11 +449,6 @@ namespace
         return badges;
     };
 
-    constexpr auto getToastVisibilityDuration() noexcept
-    {
-        return std::chrono::milliseconds(1000);
-    }
-
     constexpr std::chrono::milliseconds getLoaderOverlayDelay()
     {
         return std::chrono::milliseconds(100);
@@ -453,6 +458,78 @@ namespace
         return Styling::getParameters().getColor(Styling::StyleVariable::GHOST_PRIMARY);
     }
 }
+
+
+namespace Debug
+{
+    void debugFormattedText(QMimeData* _mime)
+    {
+        if constexpr (!build::is_debug())
+            return;
+
+        if (const auto rawText = _mime->data(MimeData::getRawMimeType()); !rawText.isEmpty())
+            qDebug() << qsl("\ntext: %1").arg(QString::fromUtf8(rawText));
+
+        if (_mime->hasFormat(MimeData::getTextFormatMimeType()))
+        {
+            if (const auto rawText = _mime->data(MimeData::getTextFormatMimeType()); !rawText.isEmpty())
+                qDebug() << QString::fromUtf8(rawText);
+        }
+    }
+
+    void dumpQtEvent(QEvent* _event, QStringView _context)
+    {
+#ifdef _DEBUG
+        switch (_event->type())
+        {
+            case QEvent::Type::UpdateRequest:
+            case QEvent::Type::Polish:
+            case QEvent::Type::Paint:
+
+            case QEvent::Type::Timer:
+
+            case QEvent::Type::InputMethodQuery:
+
+            case QEvent::Type::MouseMove:
+            case QEvent::Type::NonClientAreaMouseMove:
+            case QEvent::Type::CursorChange:
+            case QEvent::Type::HoverMove:
+
+            case QEvent::Type::WindowActivate:
+            case QEvent::Type::WindowDeactivate:
+            case QEvent::Type::ActivationChange:
+
+            case QEvent::Type::FocusIn:
+            case QEvent::Type::FocusOut:
+            case QEvent::Type::FocusAboutToChange:
+            case QEvent::Type::Enter:
+            case QEvent::Type::Leave:
+
+            case QEvent::Type::MetaCall:
+            case QEvent::Type::HelpRequest:
+            case QEvent::Type::ToolTip:
+            case QEvent::Type::PaletteChange:
+            case QEvent::Type::ActionChanged:
+            case QEvent::Type::LayoutRequest:
+
+                return;
+
+            default:
+                ;
+        }
+
+        auto deb = qDebug();
+        deb << QDateTime::currentDateTime().toString(u"mm:ss.zzz");
+        if (!_context.isEmpty())
+            deb << _context;
+        deb << _event;
+#else
+        Q_UNUSED(_event)
+        Q_UNUSED(_context)
+#endif
+    }
+}
+
 
 namespace Utils
 {
@@ -464,7 +541,7 @@ namespace Utils
 
     QString getVersionLabel()
     {
-#if defined(GIT_COMMIT_HASH) &&  defined(GIT_BRANCH_NAME) && defined(BUILD_TIME)
+#if defined(GIT_COMMIT_HASH) && defined(GIT_BRANCH_NAME) && defined(BUILD_TIME)
         return getAppTitle() % u' ' % QString::fromStdString(core::tools::version_info().get_version_with_patch()) % u" (" % ql1s(GIT_COMMIT_HASH) % u", " % ql1s(GIT_BRANCH_NAME) % u") " % ql1s(BUILD_TIME);
 #else
         return getAppTitle() % u" (" % QString::fromStdString(core::tools::version_info().get_version_with_patch()) % u')';
@@ -974,7 +1051,7 @@ namespace Utils
             im_assert(_widget->autoFillBackground());
 
             auto pal = _widget->palette();
-            pal.setColor(QPalette::Background, _color);
+            pal.setColor(QPalette::Window, _color);
             _widget->setPalette(pal);
             _widget->update();
         }
@@ -1961,7 +2038,7 @@ namespace Utils
         props.emplace_back("Settings_Send_By", keyToSend.toStdString());
 
         //Interface settings
-        props.emplace_back("Settings_Compact_Recents", std::to_string(Ui::get_gui_settings()->get_value<bool>(settings_show_last_message, true)));
+        props.emplace_back("Settings_Compact_Recents", std::to_string(Ui::get_gui_settings()->get_value<bool>(settings_show_last_message, !config::get().is_on(config::features::compact_mode_by_default))));
         props.emplace_back("Settings_Scale", std::to_string(Utils::getScaleCoefficient()));
         props.emplace_back("Settings_Language", Ui::get_gui_settings()->get_value(settings_language, QString()).toUpper().toStdString());
 
@@ -2117,6 +2194,15 @@ namespace Utils
         return result;
     }
 
+    bool UrlEditor(QWidget* _parent, QStringView _linkDisplayName, InOut QString& _url)
+    {
+        auto dialog = Ui::UrlEditDialog::create(Utils::InterConnector::instance().getMainWindow(), _parent, _linkDisplayName, _url);
+        const auto result = dialog->showInCenter();
+        if (result)
+            _url = dialog->getUrl();
+        return result;
+    }
+
     static std::unique_ptr<Ui::GeneralDialog> getConfirmationDialogImpl(
         const QString& _buttonLeftText,
         const QString& _buttonRightText,
@@ -2128,7 +2214,9 @@ namespace Utils
     {
         auto parent = _parent ? _parent : (_mainWindow ? _mainWindow : Utils::InterConnector::instance().getMainWindow());
 
-        auto dialog = std::make_unique<Ui::GeneralDialog>(nullptr, parent, false, true, true, _withSemiwindow);
+        Ui::GeneralDialog::Options opt;
+        opt.withSemiwindow_ = _withSemiwindow;
+        auto dialog = std::make_unique<Ui::GeneralDialog>(nullptr, parent, opt);
         if (!_labelText.isEmpty())
             dialog->addLabel(_labelText);
 
@@ -2176,7 +2264,9 @@ namespace Utils
     {
         auto parent = _parent ? _parent : (_mainWindow ? _mainWindow : Utils::InterConnector::instance().getMainWindow());
 
-        Ui::GeneralDialog dialog(nullptr, parent, false, true, true, _withSemiwindow);
+        Ui::GeneralDialog::Options opt;
+        opt.withSemiwindow_ = _withSemiwindow;
+        Ui::GeneralDialog dialog(nullptr, parent, opt);
         if (!_labelText.isEmpty())
             dialog.addLabel(_labelText);
 
@@ -2205,7 +2295,7 @@ namespace Utils
 
     void ShowBotAlert(const QString& _alertText)
     {
-        Ui::GeneralDialog dialog(nullptr, Utils::InterConnector::instance().getMainWindow(), false, true, true, true);
+        Ui::GeneralDialog dialog(nullptr, Utils::InterConnector::instance().getMainWindow());
 
         dialog.addText(_alertText, Utils::scale_value(12), Fonts::appFontScaled(21), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
         dialog.addAcceptButton(QT_TRANSLATE_NOOP("bots", "Ok"), true);
@@ -2306,6 +2396,20 @@ namespace Utils
                 return qsl("NTLM");
             default:
                 return QString();
+        }
+    }
+
+    QNetworkProxy::ProxyType ProxySettings::proxyType(core::proxy_type _type)
+    {
+        switch (_type)
+        {
+        case core::proxy_type::http_proxy:
+            return QNetworkProxy::ProxyType::HttpProxy;
+        case core::proxy_type::socks4:
+        case core::proxy_type::socks5:
+            return QNetworkProxy::ProxyType::Socks5Proxy;
+        default:
+            return QNetworkProxy::ProxyType::NoProxy;
         }
     }
 
@@ -2588,7 +2692,7 @@ namespace Utils
         QDrag *drag = new QDrag(&(Utils::InterConnector::instance()));
 
         QMimeData *mimeData = new QMimeData();
-        mimeData->setProperty("icq", true);
+        mimeData->setProperty(mimetype_marker(), true);
 
         mimeData->setUrls({ _url });
         drag->setMimeData(mimeData);
@@ -2659,9 +2763,8 @@ namespace Utils
             }
         }
 
-        const auto text = mimedata->text();
-
-        QUrl url(text);
+        const auto text = mimedata->text().trimmed();
+        QUrl url(text, QUrl::ParsingMode::StrictMode);
         return !text.isEmpty() && (!url.isValid() || url.host().isEmpty());
     }
 
@@ -2713,17 +2816,9 @@ namespace Utils
         core::tools::version_info infoCurrent;
         const auto buildStr = QString::number(infoCurrent.get_build());
         const auto langStr = Utils::GetTranslator()->getLang();
-
-        QString url;
-
-        if (!mailId.isEmpty())
-        {
-            url = getMailOpenUrl().arg(email, mrimKey, buildStr, langStr, msgIdFromUidl(mailId));
-        }
-        else
-        {
-            url = getMailUrl().arg(email, mrimKey, buildStr, langStr);
-        }
+        const auto url = mailId.isEmpty()
+            ? getMailUrl().arg(email, mrimKey, buildStr, langStr)
+            : getMailOpenUrl().arg(email, mrimKey, buildStr, langStr, msgIdFromUidl(mailId));
 
         QDesktopServices::openUrl(url);
 
@@ -3262,11 +3357,38 @@ namespace Utils
         return result;
     }
 
-    void openUrl(QStringView _url)
+    QStringView extractAimIdFromMention(QStringView _mention)
+    {
+        im_assert(isMentionLink(_mention));
+        return _mention.mid(_mention.indexOf(u'[') + 1, _mention.size() - 3);
+    }
+
+    static bool openConfirmDialog(const QString& _label, const QString& _infoText, bool _isSelected, const QString& _setting)
+    {
+        auto widget = new Utils::CheckableInfoWidget(nullptr);
+        widget->setCheckBoxText(QT_TRANSLATE_NOOP("popup_window", "Don't ask me again"));
+        widget->setCheckBoxChecked(_isSelected);
+        widget->setInfoText(_infoText);
+
+        Ui::GeneralDialog generalDialog(widget, Utils::InterConnector::instance().getMainWindow());
+        generalDialog.addLabel(_label);
+        generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "Yes"), true);
+        
+        const auto isConfirmed = generalDialog.showInCenter();
+        if (isConfirmed)
+        {
+            if (widget->isChecked())
+                Ui::get_gui_settings()->set_value<bool>(_setting, true);
+        }
+
+        return isConfirmed;
+    }
+
+    void openUrl(QStringView _url, OpenUrlConfirm _confirm)
     {
         if (Utils::isMentionLink(_url))
         {
-            const auto aimId = _url.mid(_url.indexOf(u'[') + 1, _url.size() - 3);
+            const auto aimId = extractAimIdFromMention(_url);
             if (!aimId.isEmpty())
             {
                 std::string resStr;
@@ -3291,39 +3413,57 @@ namespace Utils
 
         const auto url = _url.toString();
         if (const auto command = UrlCommandBuilder::makeCommand(url, UrlCommandBuilder::Context::Internal); command->isValid())
+        {
             command->execute();
+        }
         else
-            QDesktopServices::openUrl(url);
+        {
+            auto openWithoutWarning = []()
+            {
+                return Ui::get_gui_settings()->get_value<bool>(settings_open_external_link_without_warning, settings_open_external_link_without_warning_default());
+            };
+
+            auto isConfirmed = true;
+            if (_confirm == OpenUrlConfirm::Yes && !openWithoutWarning())
+            {
+                auto elidedUrl = url;
+                if (elidedUrl.size() > getUrlInDialogElideSize())
+                    elidedUrl = elidedUrl.mid(0, getUrlInDialogElideSize()) % u"...";
+
+                isConfirmed = openConfirmDialog(QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to open an external link?"),
+                                                elidedUrl,
+                                                settings_open_external_link_without_warning_default(),
+                                                qsl(settings_open_external_link_without_warning));
+            }
+
+            if (isConfirmed && !QDesktopServices::openUrl(QUrl(url, QUrl::TolerantMode)))
+                Utils::showTextToastOverContactDialog(QT_TRANSLATE_NOOP("toast", "Unable to open invalid url \"%1\"").arg(url));
+        }
     }
 
-    void openFileOrFolder(QStringView _path, OpenAt _openAt, OpenWithWarning _withWarning)
+    void openFileOrFolder(const QString& _chatAimId, QStringView _path, OpenAt _openAt, OpenWithWarning _withWarning)
     {
-        const auto dialog = Utils::InterConnector::instance().getContactDialog();
-        const auto chatAimId = dialog ? dialog->currentAimId() : QString();
-        auto isPublic = true;
+        const auto isPublic = Logic::getContactListModel()->isPublic(_chatAimId);
+        const auto isStranger = _chatAimId.isEmpty() || Logic::getRecentsModel()->isStranger(_chatAimId) || Logic::getRecentsModel()->isSuspicious(_chatAimId);
+        const auto openFile = Features::opensOnClick() && (_openAt == OpenAt::Launcher) && !isPublic && !isStranger;
 
-        if (!chatAimId.isEmpty())
-            if (const auto& contactItem = Logic::getContactListModel()->getContactItem(chatAimId); contactItem)
-                isPublic = contactItem->is_public();
-
-        const auto isStranger = chatAimId.isEmpty()
-                                ? true
-                                : (Logic::getRecentsModel()->isStranger(chatAimId)
-                                  || Logic::getRecentsModel()->isSuspicious(chatAimId));
-
-        const auto openFile = dialog
-                            && Features::opensOnClick()
-                            && (_openAt == OpenAt::Launcher)
-                            && !isPublic && !isStranger;
-#ifdef _WIN32
-
+#ifdef __APPLE__
+        if (openFile)
+            MacSupport::openFile(_path.toString());
+        else
+            MacSupport::openFinder(_path.toString());
+#else
         const auto pathString = _path.toString();
         auto nativePath = QDir::toNativeSeparators(pathString);
         if (openFile)
         {
             auto exeFile = [&nativePath]()
             {
+#ifdef _WIN32
                 ShellExecute(0, L"open", nativePath.toStdWString().c_str(), 0, 0, SW_SHOWNORMAL);
+#else
+                QDesktopServices::openUrl(QString(u"file:///" % nativePath));
+#endif
             };
 
             auto isAvailableWithoutWarning = []()
@@ -3331,52 +3471,128 @@ namespace Utils
                 return Ui::get_gui_settings()->get_value<bool>(settings_exec_files_without_warning, settings_exec_files_without_warning_default());
             };
 
-            if (_withWarning == OpenWithWarning::No || isAvailableWithoutWarning() || !isExeExtensions(QFileInfo(pathString).suffix()))
+            auto isConfirmed = true;
+            if (_withWarning == OpenWithWarning::Yes && !isAvailableWithoutWarning() && isDangerousExtensions(QFileInfo(pathString).suffix()))
             {
+                isConfirmed = openConfirmDialog(QT_TRANSLATE_NOOP("popup_window", "Run this file?"),
+                                                QT_TRANSLATE_NOOP("popup_window", "This file may be unsafe"),
+                                                settings_exec_files_without_warning_default(),
+                                                qsl(settings_exec_files_without_warning));
+                
+            }
+
+            if (isConfirmed)
                 exeFile();
+        }
+        else
+        {
+#ifdef _WIN32
+            nativePath = nativePath.replace(u'"', ql1s("\"\""));
+            ShellExecute(0, 0, L"explorer", ql1s("/select,\"%1\"").arg(nativePath).toStdWString().c_str(), 0, SW_SHOWNORMAL);
+#else
+            QDir dir(nativePath);
+            dir.cdUp();
+            QDesktopServices::openUrl(QUrl::fromLocalFile(dir.absolutePath()));
+#endif
+        }
+#endif // __APPLE__
+    }
+
+    void convertMentionsToFriendlyPlainText(Data::FString& _source, const Data::MentionMap& _mentions)
+    {
+        convertMentions(_source, [&_mentions](const auto& _ft, Data::FStringView _view)
+        {
+            const auto aimId = Utils::extractAimIdFromMention(_view.string());
+            if (const auto it = _mentions.find(aimId); it != _mentions.end())
+                return _view.replaceByString(it->second, false);
+            else
+                return _view.toFString();
+        });
+    }
+
+    static void replaceTextWithinMarkersByFormat(Data::FString& _text, QStringView _marker, core::data::format_type _type)
+    {
+        using ftype = core::data::format_type;
+        const auto markerSize = _marker.size();
+
+        const auto view = Data::FStringView(_text);
+        Data::FString::Builder builder;
+        auto offset = 0;
+        while (offset < view.size())
+        {
+            const auto start = view.indexOf(_marker, offset);
+            if (start == -1)
+                break;
+
+            auto end = view.indexOf(_marker, start + markerSize);
+            if (-1 == end)
+                break;
+            end += markerSize;
+
+            const auto viewWithMarkers = view.mid(start, end - start);
+            const auto innerView = viewWithMarkers.mid(markerSize, viewWithMarkers.size() - 2 * markerSize);
+            if (innerView.isEmpty() || viewWithMarkers.isAnyOf({ftype::monospace, ftype::pre}))
+            {
+                builder %= view.mid(offset, end - offset);
             }
             else
             {
-                auto w = new Utils::CheckableInfoWidget(nullptr);
-                w->setCheckBoxText(QT_TRANSLATE_NOOP("popup_window", "Don't ask me again"));
-                w->setCheckBoxChecked(settings_exec_files_without_warning_default());
-                w->setInfoText(QT_TRANSLATE_NOOP("popup_window", "This file may be unsafe"));
+                if (offset < start)
+                    builder %= view.mid(offset, start - offset);
 
-                Ui::GeneralDialog generalDialog(w, Utils::InterConnector::instance().getMainWindow());
-                generalDialog.addLabel(QT_TRANSLATE_NOOP("popup_window", "Run this file?"));
-                generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "Yes"), true);
-                if (generalDialog.showInCenter())
-                {
-                    if (w->isChecked())
-                        Ui::get_gui_settings()->set_value<bool>(settings_exec_files_without_warning, true);
-                    exeFile();
-                }
+                auto part = innerView.toFString();
+                part.addFormat(_type);
+                builder %= std::move(part);
             }
+
+            offset = end;
         }
-        else
+        if (offset > 0 && offset < view.size())
+            builder %= Data::FStringView(_text, offset, view.size() - offset);
+
+        if (!builder.isEmpty())
+            _text = builder.finalize();
+    }
+
+    void convertOldStyleMarkdownToFormats(Data::FString& _text, Ui::ParseBackticksPolicy _backticksPolicy)
+    {
+        using Policy = Ui::ParseBackticksPolicy;
+        // Before formatting was introduced client supported displaying text in single and
+        // triple backticks as monospaced (aka partial markdown support). These are to be supported still
+        using ftype = core::data::format_type;
+
+        if (_text.isEmpty() || _text.containsAnyFormatExceptFor(ftype::mention))
+            return;
+
+        if (_backticksPolicy == Policy::ParseTriples || _backticksPolicy == Policy::ParseSinglesAndTriples)
+            replaceTextWithinMarkersByFormat(_text, Data::tripleBackTick(), ftype::pre);
+        if (_backticksPolicy == Policy::ParseSingles || _backticksPolicy == Policy::ParseSinglesAndTriples)
+            replaceTextWithinMarkersByFormat(_text, QString(Data::singleBackTick()), ftype::monospace);
+    }
+
+    void convertMentions(
+        Data::FString& _source,
+        std::function<Data::FString(const core::data::range_format&, Data::FStringView)> _converter)
+    {
+        const auto sourceView = Data::FStringView(_source);
+        Data::FString::Builder builder;
+        int start = 0;
+        for (const auto& _ft : _source.formatting().formats())
         {
-            nativePath = nativePath.replace(u'"', ql1s("\"\""));
-            ShellExecute(0, 0, L"explorer", ql1s("/select,\"%1\"").arg(nativePath).toStdWString().c_str(), 0, SW_SHOWNORMAL);
+            if (_ft.type_ != core::data::format_type::mention)
+                continue;
+
+            const auto [offset, length] = _ft.range_;
+
+            builder %= sourceView.mid(start, offset - start);
+            builder %= _converter(_ft, sourceView.mid(offset, length));
+
+            start = offset + length;
         }
-#else
-#ifdef __APPLE__
-        if (openFile)
-            MacSupport::openFile(_path.toString());
-        else
-            MacSupport::openFinder(_path.toString());
-#else
-        if (openFile)
-        {
-            QDesktopServices::openUrl(QString(u"file:///" % _path));
-        }
-        else
-        {
-            QDir dir(_path.toString());
-            dir.cdUp();
-            QDesktopServices::openUrl(QUrl::fromLocalFile(dir.absolutePath()));
-        }
-#endif // __APPLE__
-#endif //_WIN32
+        if (start < sourceView.size())
+            builder %= sourceView.mid(start, sourceView.size() - start);
+
+        _source = builder.finalize();
     }
 
     QString convertMentions(const QString& _source, const Data::MentionMap& _mentions)
@@ -3422,13 +3638,22 @@ namespace Utils
         return _source;
     }
 
-    Data::FormattedString convertMentions(const Data::FormattedString& _source, const Data::MentionMap& _mentions)
+    void convertMentions(Data::FString& _source, const Data::MentionMap& _mentions)
     {
-        // TODO-FORMAT-IMPLEMENT
-        if (_source.hasFormatting())
-            return _source;
-        else
-            return convertMentions(_source.string(), _mentions);
+        if (_mentions.empty() || _source.isEmpty())
+            return;
+
+        if (!_source.hasFormatting())
+            _source = convertMentions(_source.string(), _mentions);
+
+        convertMentions(_source, [&_mentions](const auto& _ft, Data::FStringView _view)
+        {
+            const auto aimId = Utils::extractAimIdFromMention(_view.string());
+            if (const auto it = _mentions.find(aimId); it != _mentions.end())
+                return _view.replaceByString(it->second);
+            else
+                return _view.toFString();
+        });
     }
 
     QString convertFilesPlaceholders(const QStringRef& _source, const Data::FilesPlaceholderMap& _files)
@@ -3474,23 +3699,76 @@ namespace Utils
         return _source.toString();
     }
 
-    QString setFilesPlaceholders(QString _text, const Data::FilesPlaceholderMap & _files)
+    void convertFilesPlaceholders(Data::FString& _source, const Data::FilesPlaceholderMap& _files)
+    {
+        if (_files.empty() || _source.isEmpty())
+            return;
+
+        if (!_source.hasFormatting())
+            _source = convertFilesPlaceholders(_source.string(), _files);
+
+        auto ranges = std::vector<core::data::range>();
+        {
+            int i = 0;
+            while (i < _source.size())
+            {
+                const auto leftBracketPos = _source.indexOf(u'[', i);
+                if (leftBracketPos == -1)
+                    break;
+                const auto rightBracketPos = _source.indexOf(u']', leftBracketPos);
+                if (rightBracketPos == -1)
+                    break;
+                ranges.push_back({ leftBracketPos, rightBracketPos - leftBracketPos + 1 });
+                i = rightBracketPos + 1;
+            }
+        }
+
+        const auto sourceView = Data::FStringView(_source);
+        Data::FString::Builder builder;
+        int start = 0;
+        for (const auto& [offset, length] : ranges)
+        {
+            const auto placeholder = sourceView.mid(offset, length);
+            builder %= sourceView.mid(start, offset - start);
+            if (const auto it = _files.find(placeholder.string()); it != _files.end() && !placeholder.hasFormatting())
+            {
+                const auto hasLineFeedBefore = offset > 0 && sourceView.at(offset - 1) == QChar::LineFeed;
+                const auto hasLineFeedAfter = offset + length < sourceView.size() && sourceView.at(offset + length) == QChar::LineFeed;
+                if (!hasLineFeedBefore)
+                    builder %= qsl("\n");
+                builder %= it->second;
+                if (!hasLineFeedAfter)
+                    builder %= qsl("\n");
+            }
+            else
+            {
+                builder %= placeholder;
+            }
+
+            start = offset + length;
+        }
+        if (start < sourceView.size())
+            builder %= sourceView.mid(start, sourceView.size() - start);
+
+        _source = builder.finalize();
+    }
+
+    QString setFilesPlaceholders(QString _text, const Data::FilesPlaceholderMap& _files)
     {
         for (const auto& p : _files)
             _text.replace(p.first, p.second);
         return _text;
     }
 
-    Data::FormattedString setFilesPlaceholders(const Data::FormattedString& _text, const Data::FilesPlaceholderMap& _files)
+    Data::FString setFilesPlaceholders(const Data::FString& _text, const Data::FilesPlaceholderMap& _files)
     {
-        // TODO-FORMAT-IMPLEMENT
         if (_text.hasFormatting())
             return _text;
         else
             return setFilesPlaceholders(_text.string(), _files);
     }
 
-    bool isNick(const QString& _text)
+    bool isNick(QStringView _text)
     {
         // match alphanumeric str with @, starting with a-zA-Z
         static const QRegularExpression re(qsl("^@[a-zA-Z0-9][a-zA-Z0-9._]*$"), QRegularExpression::UseUnicodePropertiesOption);
@@ -3507,7 +3785,7 @@ namespace Utils
         return _url.startsWith(u"@[") && _url.endsWith(u']');
     }
 
-    bool isContainsMentionLink(QStringView _text)
+    bool doesContainMentionLink(QStringView _text)
     {
         if (const auto idxStart = _text.indexOf(u"@["); idxStart >= 0)
         {
@@ -3567,7 +3845,12 @@ namespace Utils
         }
         else
         {
-            if (isChat(_contact) || Logic::getContactListModel()->contains(_contact))
+            /*We open a dialog with the user if:
+            -is this a chat or have we already corresponded with this contact
+            - when you click on head, the call comes from the thread from tasks page, and not head from the messenger*/
+            const auto* contactModel = Logic::getContactListModel();
+            const auto isMessenger = InterConnector::instance().getMainWindow()->isMessengerPageContactDialog();
+            if ((isChat(_contact) || contactModel->contains(_contact)) && (!isMessenger || contactModel->selectedContact() != _contact))
             {
                 openDialogWithContact(_contact);
                 return OpenDOPResult::dialog;
@@ -3580,12 +3863,11 @@ namespace Utils
         }
     }
 
-    void openDialogWithContact(const QString& _contact, qint64 _id, bool _sel, std::function<void(Ui::HistoryControlPage*)> _getPageCallback)
+    void openDialogWithContact(const QString& _contact, qint64 _id, bool _sel, std::function<void(Ui::PageBase*)> _getPageCallback)
     {
         Logic::GetFriendlyContainer()->updateFriendly(_contact);
         Q_EMIT Utils::InterConnector::instance().addPageToDialogHistory(Logic::getContactListModel()->selectedContact());
-        Utils::InterConnector::instance().getMainWindow()->showMessengerPage();
-        Logic::getContactListModel()->setCurrent(_contact, _id, _sel, _getPageCallback);
+        Utils::InterConnector::instance().openDialog(_contact, _id, _sel, _getPageCallback);
     }
 
     bool clicked(const QPoint& _prev, const QPoint& _cur, int dragDistance)
@@ -3639,7 +3921,7 @@ namespace Utils
         _p.drawArc(rectangle, stA, spA);
     }
 
-    int getShadowMargin()
+    int getShadowMargin() noexcept
     {
         return Utils::scale_value(2);
     }
@@ -3661,6 +3943,43 @@ namespace Utils
 
         _p.fillPath(_bubble.translated(0, shadowMargin), shadowColor);
         _p.fillPath(_bubble.translated(0, shadowMargin/2), QColor(0, 0, 0, 255 * 0.08));
+    }
+
+    QColor plateShadowColor() noexcept
+    {
+        return QColor(0, 0, 0, 255);
+    }
+
+    constexpr double plateShadowColorAlpha()
+    {
+        return 0.12;
+    }
+
+    QColor plateShadowColorWithAlpha(double _opacity)
+    {
+        auto color = plateShadowColor();
+        color.setAlphaF(plateShadowColorAlpha() * _opacity);
+        return color;
+    }
+
+    QGraphicsDropShadowEffect* initPlateShadowEffect(QWidget* _parent, double _opacity)
+    {
+        auto shadow = new QGraphicsDropShadowEffect(_parent);
+        shadow->setBlurRadius(8);
+        shadow->setOffset(0, Utils::scale_value(1));
+        shadow->setColor(plateShadowColorWithAlpha(_opacity));
+        return shadow;
+    }
+
+    void drawPlateSolidShadow(QPainter& _p, const QPainterPath& _path)
+    {
+        const auto shadowHeight = Utils::scale_value(1);
+
+        Utils::ShadowLayer layer;
+        layer.color_ = QColor(17, 32, 55, 255 * 0.05);
+        layer.yOffset_ = shadowHeight;
+
+        Utils::drawLayeredShadow(_p, _path, { layer });
     }
 
     QSize avatarWithBadgeSize(const int _avatarWidthScaled)
@@ -4078,7 +4397,7 @@ namespace Utils
 
     void CheckableInfoWidget::setInfoText(const QString& _text, QColor _color)
     {
-        label_ = Ui::TextRendering::MakeTextUnit(_text);
+        label_ = Ui::TextRendering::MakeTextUnit(_text, Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS);       
         label_->init(Fonts::appFontScaled(15), _color.isValid() ? _color : Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
     }
 
@@ -4597,7 +4916,8 @@ namespace Utils
             else
             {
                 Ui::GetDispatcher()->sendMessageToContact(aimId_, _url);
-                Utils::openDialogWithContact(aimId_);
+                if (!Logic::getContactListModel()->isThread(aimId_))
+                    Utils::openDialogWithContact(aimId_);
             }
         }
     }
@@ -4630,15 +4950,11 @@ void Logic::updatePlaceholders(const std::vector<Placeholder>& _locations)
     }
 }
 
-QString Utils::replaceFilesPlaceholders(QString _text, const Data::FilesPlaceholderMap& _files)
+//! Append links to the map
+static void extractFilesharingLinks(const QString& _text, Data::FilesPlaceholderMap& _files)
 {
-    std::map<QString, QString, Utils::StringComparator> allFiles;
-    for (const auto& [link, ph] : _files)
-        allFiles[ph] = link;
-
     const auto& placeholders = MimeData::getFilesPlaceholderList();
-
-    const QString filesHost = u"https://" % Ui::getUrlConfig().getUrlFilesParser() % u'/';
+    const auto filesHost = QString(u"https://" % Ui::getUrlConfig().getUrlFilesParser() % u'/');
     int idx = 0;
     while (idx != -1)
     {
@@ -4664,7 +4980,7 @@ QString Utils::replaceFilesPlaceholders(QString _text, const Data::FilesPlacehol
                 if (id.size() == Features::getFsIDLength())
                 {
                     auto fileText = QStringView(_text).mid(idx, idxSpace + idxEnd + 1).toString();
-                    allFiles[std::move(fileText)] = filesHost % id;
+                    _files[std::move(fileText)] = filesHost % id;
                 }
             }
             idx += idxSpace + idxEnd;
@@ -4674,6 +4990,26 @@ QString Utils::replaceFilesPlaceholders(QString _text, const Data::FilesPlacehol
             ++idx;
         }
     }
+}
+
+void Utils::replaceFilesPlaceholders(Data::FString& _text, const Data::FilesPlaceholderMap& _files)
+{
+    if (!_text.hasFormatting())
+        _text = replaceFilesPlaceholders(_text.string(), _files);
+
+    Data::FilesPlaceholderMap allFiles;
+    for (const auto& [link, ph] : _files)
+        allFiles[ph] = link;
+    extractFilesharingLinks(_text.string(), allFiles);
+    convertFilesPlaceholders(_text, allFiles);
+}
+
+QString Utils::replaceFilesPlaceholders(QString _text, const Data::FilesPlaceholderMap& _files)
+{
+    Data::FilesPlaceholderMap allFiles;
+    for (const auto& [link, ph] : _files)
+        allFiles[ph] = link;
+    extractFilesharingLinks(_text, allFiles);
 
     for (const auto& [ph, link] : allFiles)
     {
@@ -4684,69 +5020,24 @@ QString Utils::replaceFilesPlaceholders(QString _text, const Data::FilesPlacehol
         if (idxPl == -1)
             continue;
 
-        auto isMarkdown = [_text](const int idxPl)
-        {
-            const auto M_MARK = Ui::TextRendering::tripleBackTick().toString();
-            const auto S_MARK = Ui::TextRendering::singleBackTick();
-
-            const auto partBefore = _text.leftRef(idxPl);
-            const auto partAfter = _text.midRef(idxPl);
-
-            const auto idxSMLast = partBefore.lastIndexOf(S_MARK);
-            const auto idxSMFirstAfter = partAfter.indexOf(S_MARK);
-            const auto hasLineFeed = partBefore.mid(idxSMLast).contains(QChar::LineFeed)
-                                     || (idxSMFirstAfter != -1 && partAfter.left(idxSMFirstAfter).contains(QChar::LineFeed));
-
-            const auto countSMBefore = partBefore.count(S_MARK);
-            const auto countSMAfter = partAfter.count(S_MARK);
-            const auto countMMBefore = partBefore.count(M_MARK);
-            const auto countMMAfter = partAfter.count(M_MARK);
-
-            const auto smClosed = countSMBefore % 2 == 0 || countSMAfter == 0 || hasLineFeed;
-            const auto mmClosed = countMMBefore % 2 == 0 || countMMAfter == 0;
-
-            const auto closedMD = smClosed && mmClosed;
-
-            return !closedMD;
-        };
-
         while (idxPl != -1 && idxPl < _text.size())
         {
-            const auto isMD = isMarkdown(idxPl);
-            if (!isMD)
+            if (idxPl > 0 && !_text.at(idxPl - 1).isSpace())
             {
-                if (idxPl > 0 && !_text.at(idxPl - 1).isSpace())
-                {
-                    _text.insert(idxPl, QChar::LineFeed);
-                    ++idxPl;
-                }
+                _text.insert(idxPl, QChar::LineFeed);
+                ++idxPl;
+            }
 
-                _text.replace(idxPl, ph.size(), link);
-                if (const auto pos = idxPl + link.size(); pos < _text.size() && !_text.at(pos).isSpace())
-                    _text.insert(pos, QChar::LineFeed);
-                idxPl = _text.indexOf(ph);
-            }
-            else
-            {
-                if (const auto phIdx = _text.midRef(idxPl + ph.size()).indexOf(ph); phIdx > 0)
-                    idxPl += phIdx;
-                else
-                    break;
-            }
+            _text.replace(idxPl, ph.size(), link);
+            if (const auto pos = idxPl + link.size(); pos < _text.size() && !_text.at(pos).isSpace())
+                _text.insert(pos, QChar::LineFeed);
+            idxPl = _text.indexOf(ph);
         }
     }
 
     return _text;
 }
 
-Data::FormattedString Utils::replaceFilesPlaceholders(const Data::FormattedString& _text, const Data::FilesPlaceholderMap& _files)
-{
-    // TODO-FORMAT-IMPLEMENT
-    if (_text.hasFormatting())
-        return _text;
-    else
-        return replaceFilesPlaceholders(_text.string(), _files);
-}
 
 namespace MimeData
 {
@@ -4794,24 +5085,31 @@ namespace MimeData
         return res;
     }
 
-    void copyMimeData(const Ui::MessagesScrollArea &_area)
+    void copyMimeData(const Ui::MessagesScrollArea& _area)
     {
-        if (auto rawText = Data::stubFromFormattedString(_area.getSelectedText(Ui::MessagesScrollArea::TextFormat::Raw)); !rawText.isEmpty())
+        if (auto text = _area.getSelectedText(Ui::MessagesScrollArea::TextFormat::Raw); !text.isEmpty())
         {
             const auto placeholders = _area.getFilesPlaceholders();
             const auto mentions = _area.getMentions();
-            const auto text = Data::stubFromFormattedString(_area.getSelectedText());
 
-            auto dt = new QMimeData();
-            dt->setText(text);
-            dt->setData(getRawMimeType(), std::move(rawText).toUtf8());
-            dt->setData(getFileMimeType(), convertMapToArray(placeholders));
-            dt->setData(getMentionMimeType(), convertMapToArray(mentions));
-
-            QApplication::clipboard()->setMimeData(dt);
-
-            Utils::showCopiedToast(getToastVisibilityDuration());
+            QApplication::clipboard()->setMimeData(toMimeData(std::move(text), mentions, placeholders));
+            Utils::showCopiedToast();
         }
+    }
+
+    QByteArray serializeTextFormatAsJson(const core::data::format& _format)
+    {
+        rapidjson::Document doc(rapidjson::Type::kObjectType);
+        auto& a = doc.GetAllocator();
+
+        auto value = _format.serialize(a);
+        doc.AddMember("format", value, a);
+
+        rapidjson::StringBuffer buffer;
+        rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+        doc.Accept(writer);
+
+        return QByteArray(buffer.GetString(), buffer.GetSize());
     }
 
     const std::vector<QStringView>& getFilesPlaceholderList()
@@ -4836,6 +5134,29 @@ namespace MimeData
         return placeholders;
     }
 
+    QMimeData* toMimeData(Data::FString&& _text, const Data::MentionMap& _mentions, const Data::FilesPlaceholderMap& _files)
+    {
+        auto dt = new QMimeData();
+
+        {
+            auto plainText = Utils::convertMentions(_text.string(), _mentions);
+            plainText = Utils::convertFilesPlaceholders(plainText, _files);
+            dt->setText(plainText);
+        }
+
+        dt->setData(getRawMimeType(), _text.string().toUtf8());
+        if (_text.hasFormatting())
+            dt->setData(getTextFormatMimeType(), MimeData::serializeTextFormatAsJson(_text.formatting()));
+
+        if (!_mentions.empty())
+            dt->setData(getMentionMimeType(), MimeData::convertMapToArray(_mentions));
+
+        if (!_files.empty())
+            dt->setData(MimeData::getFileMimeType(), MimeData::convertMapToArray(_files));
+
+        return dt;
+    }
+
     QString getMentionMimeType()
     {
         return qsl("icq/mentions");
@@ -4849,6 +5170,11 @@ namespace MimeData
     QString getFileMimeType()
     {
         return qsl("icq/files");
+    }
+
+    QString getTextFormatMimeType()
+    {
+        return qsl("icq/textFormat");
     }
 }
 
@@ -4953,3 +5279,4 @@ namespace FileSharing
         return types[static_cast<size_t>(_fileType)].second;
     }
 }
+

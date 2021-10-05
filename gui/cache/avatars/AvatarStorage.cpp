@@ -312,13 +312,13 @@ namespace Logic
     void AvatarStorage::cleanup()
     {
         const QDateTime now = QDateTime::currentDateTime();
-        auto historyPage = Utils::InterConnector::instance().getHistoryPage(Logic::getContactListModel()->selectedContact());
+        const auto pages = Utils::InterConnector::instance().getVisibleHistoryPages();
         for (auto iter = TimesCache_.begin(); iter != TimesCache_.end();)
         {
             if (iter->second.msecsTo(now) >= CLEANUP_TIMEOUT.count())
             {
                 const auto& aimId = iter->first;
-                if (Logic::getContactListModel()->contains(aimId) || (historyPage && historyPage->contains(aimId)))
+                if (Logic::getContactListModel()->contains(aimId) || std::any_of(pages.begin(), pages.end(), [&aimId](auto p) { return p->contains(aimId); }))
                 {
                     iter->second = now;
                     ++iter;

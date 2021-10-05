@@ -39,6 +39,7 @@
         <file alias="message_type_video_icon">resources/message_type_video_icon.svg</file>
         <file alias="message_type_contact_icon">resources/message_type_contact_icon.svg</file>
         <file alias="message_type_poll_icon">resources/message_type_poll_icon.svg</file>
+        <file alias="message_type_task_icon">resources/message_type_task_icon.svg</file>
         <file alias="mute_icon">resources/mute_icon.svg</file>
         <file alias="notify_icon">resources/notify_icon.svg</file>
         <file alias="official_icon">resources/official_icon.svg</file>
@@ -123,10 +124,16 @@
         <file alias="webinar">resources/webinar_icon.svg</file>
         <file alias="groupcall">resources/groupcall.svg</file>
         <file alias="reaction_icon">resources/reaction_icon.svg</file>
+        <file alias="reaction_icon_filled">resources/reaction_icon_filled.svg</file>
+        <file alias="thread_icon">resources/thread_icon.svg</file>
+        <file alias="thread_icon_filled">resources/thread_icon_filled.svg</file>
         <file alias="arrow_small">resources/arrow_small.svg</file>
         <file alias="add_emoji_icon">resources/add_emoji_icon.svg</file>
         <file alias="edit_icon">resources/edit_icon.svg</file>
         <file alias="edit_icon_filled">resources/edit_icon_filled.svg</file>
+        <file alias="oauth2_logo">resources/oauth2.svg</file>
+        <file alias="logo_icon">resources/logo_icon.svg</file>
+        <file alias="spin_icon">resources/spin_icon.svg</file>
     </qresource>
     <qresource prefix="/input">
         <file alias="add">resources/input/add_member.svg</file>
@@ -140,6 +147,7 @@
         <file alias="attach_ptt">resources/input/attach_ptt.svg</file>
         <file alias="expand_attach">resources/input/expand_attach.svg</file>
 		<file alias="attach_contact">resources/input/attach_contact.svg</file>
+		<file alias="attach_task">resources/input/ic_task.svg</file>
 		<file alias="attach_camera">resources/input/attach_camera.svg</file>
 		<file alias="attach_poll">resources/input/attach_poll.svg</file>
 		<file alias="webinar">resources/input/ic_webinar_fill_line.svg</file>
@@ -169,8 +177,16 @@
         <file alias="text">resources/file_sharing/content_filetype_text.svg</file>
         <file alias="word">resources/file_sharing/content_filetype_word.svg</file>
         <file alias="powerpoint">resources/file_sharing/content_filetype_powerpoint.svg</file>
+        <file alias="blocked">resources/file_sharing/content_filetype_blocked.svg</file>
         <file alias="cancel_icon">resources/gallery/cancel_icon.svg</file>
 		<file alias="download_icon">resources/gallery/download_icon.svg</file>
+        <file alias="status_blocked">resources/file_sharing/blocked_file.svg</file>
+        <file alias="status_av_ok">resources/file_sharing/virus_checked.svg</file>
+        <file alias="status_av_infected">resources/file_sharing/virus_infected.svg</file>
+        <file alias="status_av_pending">resources/file_sharing/virus_waiting.svg</file>
+        <file alias="status_av_inprogress">resources/file_sharing/virus_searching.svg</file>
+        <file alias="status_av_blocked">resources/file_sharing/virus_blocked.svg</file>
+        <file alias="status_av_nocheck">resources/file_sharing/virus_nocheck.svg</file>
     </qresource>
     <qresource prefix="/avatar_badges">
         <file alias="official_32">resources/avatar_badges/official_32.svg</file>
@@ -234,6 +250,8 @@
         <file alias="SFProText_MediumItalic">resources/fonts/SFProText-MediumItalic.ttf</file>
         <file alias="SFProText_SemiBoldItalic">resources/fonts/SFProText-SemiboldItalic.ttf</file>
         <file alias="SFProText_BoldItalic">resources/fonts/SFProText-BoldItalic.ttf</file>
+        <file alias="SFMono_Regular">resources/fonts/SF-Mono-Regular.otf</file>
+        <file alias="SFMono_RegularItalic">resources/fonts/SF-Mono-RegularItalic.otf</file>
         <file alias="SFMono_Medium">resources/fonts/SF-Mono-Medium.otf</file>
         <file alias="SFMono_MediumItalic">resources/fonts/SF-Mono-MediumItalic.otf</file>
         <file alias="SFMono_Bold">resources/fonts/SF-Mono-Bold.otf</file>
@@ -324,6 +342,8 @@
     </qresource>
     <qresource prefix="/contact_list">
         <file alias="favorites_avatar">resources/contact_list/favorites_avatar.svg</file>
+        <file alias="scheduled">resources/contact_list/ic_calendar.svg</file>
+        <file alias="reminders">resources/contact_list/ic_notification.svg</file>
     </qresource>
     <qresource prefix="/themes/stickers">
         <file alias="ghost_sticker">resources/placeholders/ghost_sticker.svg</file>
@@ -807,6 +827,10 @@
         <file alias="restore_button_active">resources/main_window/restore_button_active.svg</file>
         <file alias="restore_button_hover">resources/main_window/restore_button_hover.svg</file>
     </qresource>
+    <qresource prefix="/calendar">
+        <file alias="month_back_button">resources/calendar/month_back_button.svg</file>
+        <file alias="month_forward_button">resources/calendar/month_forward_button.svg</file>
+    </qresource>
     <qresource prefix="/context_menu">
         <file alias="admin">resources/context_menu/king_icon.svg</file>
         <file alias="admin_off">resources/context_menu/king_off_icon.svg</file>
@@ -823,6 +847,16 @@
         <file alias="forward">resources/context_menu/forward_icon.svg</file>
         <file alias="ignore">resources/context_menu/ignore_icon.svg</file>
         <file alias="link">resources/context_menu/link_icon.svg</file>
+        <file alias="bold">resources/context_menu/bold_icon.svg</file>
+        <file alias="italic">resources/context_menu/italic_icon.svg</file>
+        <file alias="underline">resources/context_menu/underline_icon.svg</file>
+        <file alias="monospace">resources/context_menu/monospace_icon.svg</file>
+        <file alias="unordered_list">resources/context_menu/unordered_list_icon.svg</file>
+        <file alias="ordered_list">resources/context_menu/ordered_list_icon.svg</file>
+        <file alias="quote">resources/context_menu/quote_icon.svg</file>
+        <file alias="code">resources/context_menu/code_icon.svg</file>
+        <file alias="strikethrough">resources/context_menu/strikethrough_icon.svg</file>
+        <file alias="clear">resources/context_menu/clear_format_icon.svg</file>
         <file alias="mention">resources/context_menu/mention_icon.svg</file>
         <file alias="mute">resources/context_menu/mute_icon.svg</file>
         <file alias="mute_off">resources/context_menu/unmute_icon.svg</file>
@@ -875,6 +909,8 @@
         <file alias="tasks_active">resources/tabs/ic_tasks_fill.svg</file>
         <file alias="structure">resources/tabs/ic_structure.svg</file>
         <file alias="structure_active">resources/tabs/ic_structure_fill.svg</file>
+        <file alias="calendar">resources/tabs/ic_calendar.svg</file>
+        <file alias="calendar_active">resources/tabs/ic_calendar_fill.svg</file>
     </qresource>
     <qresource prefix="/header">
         <file alias="add_user">resources/header/add_user_line_icon.svg</file>
@@ -883,6 +919,7 @@
         <file alias="mail">resources/header/envelope_line_icon.svg</file>
         <file alias="new_user">resources/header/new_user_line_icon.svg</file>
         <file alias="call">resources/header/call_icon.svg</file>
+        <file alias="gallery">resources/header/gallery.svg</file>
     </qresource>
     <qresource prefix="/poll">
         <file alias="poll_icon">resources/poll/poll_icon.svg</file>
@@ -892,5 +929,9 @@
         <file alias="default_statuses">resources/statuses/statuses.json</file>
         <file alias="default_statuses_eng">resources/statuses/statuses_eng.json</file>
         <file alias="empty_status_icon">resources/statuses/empty_status.svg</file>
+    </qresource>
+    <qresource prefix="/task">
+        <file alias="no_assignee_icon">resources/task/no_assignee.svg</file>
+        <file alias="status_arrow">resources/task/status_arrow.svg</file>
     </qresource>
 </RCC>

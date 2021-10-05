@@ -112,7 +112,7 @@ namespace Ui
             QColor linkColor_;
 
             QVarLengthArray<TextWordRendererPrivate::TextPart, TextWordRendererPrivate::preallocTextPartsCount> textParts_;
-            int addSpace_;
+            double addSpace_;
 
             std::unique_ptr<TextWordRenderer_p> d;
         };

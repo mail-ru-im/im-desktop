@@ -3,8 +3,14 @@
 #include "CustomAbstractListModel.h"
 #include "ContactItem.h"
 #include "types/chat.h"
+#include "types/thread.h"
 
 Q_DECLARE_LOGGING_CATEGORY(clModel)
+
+namespace Utils
+{
+    class InterConnector;
+}
 
 namespace core
 {
@@ -13,7 +19,7 @@ namespace core
 
 namespace Ui
 {
-    class HistoryControlPage;
+    class PageBase;
 }
 
 namespace Data
@@ -45,6 +51,7 @@ namespace Logic
         bool joinModeration_ = false;
         bool public_ = false;
         bool channel_ = false;
+        bool trustRequired_ = false;
     };
 
     class ContactListModel : public CustomAbstractListModel
@@ -65,7 +72,7 @@ namespace Logic
         void liveChatRemoved(const QString&);
         void switchTab(const QString&);
         void ignore_contact(const QString&);
-        void youRoleChanged(const QString&);
+        void yourRoleChanged(const QString&);
         void contactAdd(const QString&);
         void contactRename(const QString&);
 
@@ -76,6 +83,8 @@ namespace Logic
         void contactRemoved(const QString&);
         void outgoingMsgCount(const QString& _aimid, const int _count);
         void dialogGalleryState(const QString& _aimId, const Data::DialogGalleryState& _state);
+        void onThreadUpdates(const Data::ThreadUpdates& _updates);
+        void messageBuddies(const Data::MessageBuddies& _buddies);
 
     public Q_SLOTS:
         void chatInfo(qint64, const std::shared_ptr<Data::ChatInfo>&, const int _requestMembersLimit);
@@ -98,9 +107,7 @@ namespace Logic
 
         ContactItem* getContactItem(const QString& _aimId);
         QString getAimidByABName(const QString& _name);
-        void setCurrentCallbackHappened(Ui::HistoryControlPage* _page);
-
-        void setCurrent(const QString& _aimId, qint64 id, bool _select = false, std::function<void(Ui::HistoryControlPage*)> _getPageCallback = {}, bool _ignoreScroll = false);
+        void setCurrentCallbackHappened(Ui::PageBase* _page);
 
         const ContactItem* getContactItem(const QString& _aimId) const;
 
@@ -121,15 +128,16 @@ namespace Logic
         void addContactToCL(const QString& _aimId, std::function<void(bool)> _callBack = {});
         void ignoreContact(const QString& _aimId, bool _ignore);
         bool ignoreContactWithConfirm(const QString& _aimId);
-        bool isYouAdmin(const QString& _aimId) const;
+        bool areYouAdmin(const QString& _aimId) const;
         QString getYourRole(const QString& _aimId) const;
         void setYourRole(const QString& _aimId, const QString& _role);
         void removeContactFromCL(const QString& _aimId);
         void renameContact(const QString& _aimId, const QString& _friendly, std::function<void(bool)> _callBack = {});
         void static getIgnoreList();
 
-        bool youAreNotAMember(const QString& _aimid) const;
-        bool isYouBlocked(const QString& _aimId) const;
+        bool areYouNotAMember(const QString& _aimid) const;
+        bool areYouBlocked(const QString& _aimId) const;
+        bool areYouAllowedToWriteInThreads(const QString& _aimId) const;
 
         void removeContactsFromModel(const QVector<QString>& _vcontacts, bool _emit = true);
         void removeTemporaryContactsFromModel();
@@ -158,8 +166,14 @@ namespace Logic
         bool isChannel(const QString& _aimId) const;
         bool isReadonly(const QString& _aimId) const; // no write access to this chat, for channel check use isChannel
         bool isJoinModeration(const QString& _aimId) const;
+        bool isTrustRequired(const QString& _aimId) const;
 
-        const Data::DialogGalleryState& getGalleryState(const QString& _aimid) const;
+        enum class RequestIfEmpty
+        {
+            No,
+            Yes,
+        };
+        const Data::DialogGalleryState& getGalleryState(const QString& _aimid, RequestIfEmpty _request = RequestIfEmpty::Yes) const;
 
         QString getChatStamp(const QString& _aimid) const;
         QString getChatName(const QString& _aimid) const;
@@ -172,8 +186,12 @@ namespace Logic
 
         void emitContactChanged(const QString& _aimId) const;
 
+        bool isThread(const QString& _aimId) const;
+        void markAsThread(const QString& _threadId, const QString& _parentChatId);
+        std::optional<QString> getThreadParent(const QString& _threadId) const;
+
     private:
-        std::function<void(Ui::HistoryControlPage*)> gotPageCallback_;
+        void setCurrent(const QString& _aimId, qint64 _id = -1, bool _select = true, std::function<void(Ui::PageBase*)> _getPageCallback = {}, bool _ignoreScroll = false);
         void rebuildIndex();
         void rebuildVisibleIndex();
         int addItem(Data::ContactPtr _contact, QVector<QString>& _removed, const bool _updatePlaceholder = true);
@@ -190,6 +208,7 @@ namespace Logic
 
         bool isGroupsEnabled() const;
 
+        std::function<void(Ui::PageBase*)> gotPageCallback_;
         std::vector<ContactItem> contacts_;
         std::vector<int> sorted_index_cl_;
         QHash<QString, int> indexes_;
@@ -214,6 +233,9 @@ namespace Logic
         QMap<QString, CachedChatData> chatsCache_;
         std::vector<QString> notAMemberChats_;
         std::vector<QString> youBlockedChats_;
+        std::unordered_map<QString, QString> threads_; // threadId, parentChatId
+
+        friend class Utils::InterConnector;
     };
 
     ContactListModel* getContactListModel();

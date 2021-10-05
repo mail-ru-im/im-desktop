@@ -23,7 +23,7 @@ namespace core::wim
 
         rapidjson::Value node_params(rapidjson::Type::kObjectType);
 
-        assert(settings_.has_values_set());
+        im_assert(settings_.has_values_set());
         settings_.serialize(node_params, a);
 
         doc.AddMember("params", std::move(node_params), a);

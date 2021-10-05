@@ -17,9 +17,8 @@ namespace Ui
         QStackedWidget::insertWidget(_index, _widget);
 
         if (widgetsAddedOrderByIndexes_.count(_index) == 0)
-        {
             widgetsAddedOrderByIndexes_.insert(std::make_pair(_index, std::vector<QWidget*>()));
-        }
+
         widgetsAddedOrderByIndexes_[_index].push_back(_widget);
     }
 
@@ -43,23 +42,18 @@ namespace Ui
     QWidget* WidgetsNavigator::getFirstWidget() const
     {
         if (widgetsAddedOrderByIndexes_.empty())
-        {
             return nullptr;
-        }
         else
-        {
             return *(widgetsAddedOrderByIndexes_.begin()->second.begin());
-        }
     }
 
     void WidgetsNavigator::pop()
     {
         if (!history_.empty())
             history_.pop();
+
         if (!history_.empty())
-        {
             setCurrentWidget(history_.top());
-        }
         else
             setCurrentWidget(getFirstWidget());
     }
@@ -81,9 +75,7 @@ namespace Ui
                 auto& widgetsByIndex = widgetsAddedOrderByIndexes_[indexToDelete];
                 widgetsByIndex.erase(std::remove(widgetsByIndex.begin(), widgetsByIndex.end(), _widget), widgetsByIndex.end());
                 if (widgetsByIndex.empty())
-                {
                     widgetsAddedOrderByIndexes_.erase(indexToDelete);
-                }
             }
             widgetToIndex_.erase(_widget);
         }

@@ -275,7 +275,7 @@ void statistics::serialize_mytracker(tools::binary_stream& _bs) const
 
 bool unserialize_props(tools::tlvpack& prop_pack, event_props_type* props)
 {
-    assert(!!props);
+    im_assert(!!props);
 
     for (auto tlv_prop_val = prop_pack.get_first(); tlv_prop_val; tlv_prop_val = prop_pack.get_next())
     {
@@ -284,7 +284,7 @@ bool unserialize_props(tools::tlvpack& prop_pack, event_props_type* props)
         tools::tlvpack pack_val;
         if (!pack_val.unserialize(val_data))
         {
-            assert(false);
+            im_assert(false);
             return false;
         }
 
@@ -293,7 +293,7 @@ bool unserialize_props(tools::tlvpack& prop_pack, event_props_type* props)
 
         if (!tlv_event_name || !tlv_event_value)
         {
-            assert(false);
+            im_assert(false);
             return false;
         }
 
@@ -326,7 +326,7 @@ bool statistics::unserialize_mytracker(tools::binary_stream& _bs)
 
         if (!curr_event_name)
         {
-            assert(false);
+            im_assert(false);
             return false;
         }
         const auto name = curr_event_name->get_value<stats_event_names>();
@@ -334,19 +334,19 @@ bool statistics::unserialize_mytracker(tools::binary_stream& _bs)
         const auto tlv_event_id = pack_val.get_item(statistics_info_types::event_id);
         if (!tlv_event_time || !tlv_event_id)
         {
-            assert(false);
+            im_assert(false);
             return false;
         }
 
         event_props_type props;
         const auto tlv_prop_pack = pack_val.get_item(statistics_info_types::event_props);
-        assert(tlv_prop_pack);
+        im_assert(tlv_prop_pack);
         if (tlv_prop_pack)
         {
             auto prop_pack = tlv_prop_pack->get_value<tools::tlvpack>();
             if (!unserialize_props(prop_pack, &props))
             {
-                assert(false);
+                im_assert(false);
                 return false;
             }
         }
@@ -776,7 +776,7 @@ void statistics::increment_event_prop(stats_event_names _event_name,
                                       ValueType _value)
 {
     static_assert(std::is_integral<ValueType>::value);
-    assert(is_accumulated_event(_event_name));
+    im_assert(is_accumulated_event(_event_name));
 
     auto cnt = 0;
 
@@ -855,8 +855,8 @@ void prepare_props_for_traffic(event_props_type& _props, const statistics::disk_
 {
     long long downloaded = 0, uploaded = 0;
 
-    assert(has_property(_props, "download"));
-    assert(has_property(_props, "upload"));
+    im_assert(has_property(_props, "download"));
+    im_assert(has_property(_props, "upload"));
 
     const auto d_p = get_property(_props, "download");
     const auto u_p = get_property(_props, "upload");

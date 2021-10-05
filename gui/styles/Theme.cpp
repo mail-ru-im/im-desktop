@@ -19,7 +19,7 @@ namespace
 
     QColor invalidColor()
     {
-        static QColor clr("#ffee00");
+        static const QColor clr("#ffee00");
         return clr;
     }
 
@@ -74,11 +74,17 @@ namespace Styling
         }
     }
 
+    void Style::setProperty(const StyleVariable _var, Property _property)
+    {
+        properties_[_var] = std::move(_property);
+    }
+
     QColor Style::getColor(const StyleVariable _variable) const
     {
         if (const auto propIterator = getPropertyIt(_variable); propIterator != properties_.end())
             return propIterator->second.getColor();
 
+        //im_assert(!"Cannot find style color");
         return invalidColor();
     }
 
@@ -86,6 +92,7 @@ namespace Styling
         : id_(qsl("default"))
         , name_(qsl("Noname"))
         , underlinedLinks_(false)
+        , isDark_(false)
     {
     }
 
@@ -117,6 +124,7 @@ namespace Styling
         JsonUtils::unserialize_value(_node, "id", id_);
         JsonUtils::unserialize_value(_node, "name", name_);
         JsonUtils::unserialize_value(_node, "underline", underlinedLinks_);
+        JsonUtils::unserialize_value(_node, "dark", isDark_);
 
         unserializeWallpaperId(_node, "defaultWallpaper", defaultWallpaperId_.id_);
     }

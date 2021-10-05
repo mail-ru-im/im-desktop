@@ -42,8 +42,8 @@ namespace
 
     std::string_view get_path_suffix(const path_type _type)
     {
-        assert(_type > path_type::min);
-        assert(_type < path_type::max);
+        im_assert(_type > path_type::min);
+        im_assert(_type < path_type::max);
 
         switch (_type)
         {
@@ -58,7 +58,7 @@ namespace
             break;
 
         default:
-            assert(!"unexpected path type");
+            im_assert(!"unexpected path type");
             break;
         }
         return {};
@@ -66,7 +66,7 @@ namespace
 
     std::string get_filename_in_cache(std::string_view _uri)
     {
-        assert(!_uri.empty());
+        im_assert(!_uri.empty());
 
         return core::tools::md5(
             _uri.data(),
@@ -77,10 +77,10 @@ namespace
 
 std::wstring get_path_in_cache(const std::wstring& _cache_dir, std::string_view _uri, const path_type _path_type)
 {
-    assert(!_cache_dir.empty());
-    assert(!_uri.empty());
-    assert(_path_type > path_type::min);
-    assert(_path_type < path_type::max);
+    im_assert(!_cache_dir.empty());
+    im_assert(!_uri.empty());
+    im_assert(_path_type > path_type::min);
+    im_assert(_path_type < path_type::max);
 
     boost::filesystem::wpath path(_cache_dir);
 
@@ -94,7 +94,7 @@ std::wstring get_path_in_cache(const std::wstring& _cache_dir, std::string_view 
 
     if (_path_type == path_type::link_meta)
     {
-        assert(!append_extension);
+        im_assert(!append_extension);
         filename += ".json";
     }
 
@@ -105,8 +105,8 @@ std::wstring get_path_in_cache(const std::wstring& _cache_dir, std::string_view 
 
 preview_proxy::link_meta_uptr load_link_meta_from_file(const std::wstring &_path, const std::string &_uri)
 {
-    assert(!_path.empty());
-    assert(!_uri.empty());
+    im_assert(!_path.empty());
+    im_assert(!_uri.empty());
 
     tools::binary_stream json_file;
     if (!json_file.load_from_file(_path))
@@ -133,19 +133,13 @@ preview_proxy::link_meta_uptr load_link_meta_from_file(const std::wstring &_path
 
 std::string sign_loader_uri(std::string_view _host, const wim_packet_params &_params, str_2_str_map _extra)
 {
-    assert(!_host.empty());
+    im_assert(!_host.empty());
 
     str_2_str_map p;
 
-    // todo: remove when /misc/preview/getPreview will work without 'a'
-    const time_t ts = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) - _params.time_offset_;
-    p["a"] = _params.a_token_;
-    p["ts"] = std::to_string(ts);
-    // !!!
-
     p["aimsid"] = wim_packet::escape_symbols(_params.aimsid_);
-    p["k"] = _params.dev_id_;
-    p["client"] = "icq";
+    p["k"] = _params.dev_id_; // TODO maybe drop
+    p["client"] = "icq"; // TODO maybe drop
 
     p.merge(std::move(_extra));
 

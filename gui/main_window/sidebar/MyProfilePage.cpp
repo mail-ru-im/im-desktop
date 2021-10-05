@@ -7,7 +7,6 @@
 
 #include "../common.shared/config/config.h"
 
-#include "../MainPage.h"
 #include "../MainWindow.h"
 #include "../PhoneWidget.h"
 #include "../contact_list/ContactListModel.h"
@@ -433,7 +432,7 @@ namespace Ui
             auto title = Features::titleAttachPhoneNumberPopup();
 
             auto phoneWidget = new PhoneWidget(0, PhoneWidgetState::ENTER_PHONE_STATE, title, text, true, Ui::AttachState::NEED_PHONE);
-            auto attachPhoneDialog = std::make_unique<GeneralDialog>(phoneWidget, Utils::InterConnector::instance().getMainWindow(), false, true, true);
+            auto attachPhoneDialog = std::make_unique<GeneralDialog>(phoneWidget, Utils::InterConnector::instance().getMainWindow());
             QObject::connect(phoneWidget, &PhoneWidget::requestClose, attachPhoneDialog.get(), &GeneralDialog::acceptDialog);
             attachPhoneDialog->showInCenter();
             return;
@@ -786,10 +785,10 @@ namespace Ui
         auto form = new EditNameWidget(this, {firstName_, lastName_});
 
         Ui::GeneralDialog::Options options;
-        options.preferredSize_ = QSize(form->width(), -1);
-        options.ignoreRejectDlgPairs_.emplace_back(Utils::CloseWindowInfo::Initiator::MacEventFilter, Utils::CloseWindowInfo::Reason::MacEventFilter);
+        options.preferredWidth_ = form->width();
+        options.ignoredInfos_.emplace_back(Utils::CloseWindowInfo::Initiator::MacEventFilter, Utils::CloseWindowInfo::Reason::MacEventFilter);
 
-        auto gd = std::make_unique<Ui::GeneralDialog>(form, Utils::InterConnector::instance().getMainWindow(), false, true, true, true, options);
+        auto gd = std::make_unique<Ui::GeneralDialog>(form, Utils::InterConnector::instance().getMainWindow(), options);
         gd->setIgnoredKeys({Qt::Key_Return, Qt::Key_Enter});
 
         connect(form, &EditNameWidget::changed, this, [this, form]()
@@ -817,10 +816,10 @@ namespace Ui
         auto form = new EditDescriptionWidget(this, { aboutMe_->getInfoStr() });
 
         Ui::GeneralDialog::Options options;
-        options.preferredSize_ = QSize(form->width(), -1);
-        options.ignoreRejectDlgPairs_.emplace_back(Utils::CloseWindowInfo::Initiator::MacEventFilter, Utils::CloseWindowInfo::Reason::MacEventFilter);
+        options.preferredWidth_ = form->width();
+        options.ignoredInfos_.emplace_back(Utils::CloseWindowInfo::Initiator::MacEventFilter, Utils::CloseWindowInfo::Reason::MacEventFilter);
 
-        auto gd = std::make_unique<Ui::GeneralDialog>(form, Utils::InterConnector::instance().getMainWindow(), false, true, true, true, options);
+        auto gd = std::make_unique<Ui::GeneralDialog>(form, Utils::InterConnector::instance().getMainWindow(), options);
         gd->setIgnoredKeys({ Qt::Key_Return, Qt::Key_Enter });
 
         connect(form, &EditDescriptionWidget::changed, this, [this, form]()

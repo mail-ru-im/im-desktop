@@ -7,6 +7,7 @@ namespace Ui
 {
     class HistoryControlPageItem;
     class ReactionsPlate;
+    class AddReactionPlate;
     class AddReactionButton;
     class PlateWithShadow;
 
@@ -32,6 +33,8 @@ namespace Ui
         ~MessageReactions();
 
         void setReactions(const Data::Reactions& _reactions);
+        const Data::Reactions& getReactions() const;
+
         void setOutgoing(bool _outgoing);
         void subscribe();
 
@@ -48,20 +51,25 @@ namespace Ui
 
         void deleteControls();
 
+        void initAddReactionButton();
+
         static bool enabled();
+        static AddReactionPlate* createAddReactionPlate(const HistoryControlPageItem* const _item, const MessageReactions* const _reactions);
+
+    public Q_SLOTS:
+        void onAddReactionClicked(const QString& _reaction);
+        void onRemoveReactionClicked();
 
     Q_SIGNALS:
-        void update();
+        void platePositionChanged();
 
     private Q_SLOTS:
         void onReactionButtonClicked();
         void onReactionClicked(const QString& _reaction);
-        void onAddReactionClicked(const QString& _reaction);
-        void onRemoveReactionClicked();
         void onReactionAddResult(int64_t _seq, const Data::Reactions& _reactions, bool _success);
         void onReactionRemoveResult(int64_t _seq, bool _success);
 
     private:
         std::unique_ptr<MessageReactions_p> d;
-    };      
+    };
 }

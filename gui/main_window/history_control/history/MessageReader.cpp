@@ -138,21 +138,21 @@ namespace hist
             else
                 onReadAllMentionsLess(_messageId, true);
 
-            const auto lastReadMention = std::max(lastReads_.mention, dlgState.LastReadMention_);
+            const auto lastReadMention = std::max(lastReads_.mention_, dlgState.LastReadMention_);
             const auto yoursLastRead = dlgState.YoursLastRead_;
             const auto needResetUnreadCount = (dlgState.UnreadCount_ != 0 && yoursLastRead == _messageId);
             if (yoursLastRead < _messageId || needResetUnreadCount)
             {
-                if (std::min(lastReads_.mention, lastReads_.text) < _messageId || needResetUnreadCount)
+                if (std::min(lastReads_.mention_, lastReads_.text_) < _messageId || needResetUnreadCount)
                 {
-                    lastReads_.mention = std::max({ _messageId, lastReads_.mention, lastReads_.text });
-                    lastReads_.text = lastReads_.mention;
-                    sendPartialLastRead(lastReads_.text);
+                    lastReads_.mention_ = std::max({ _messageId, lastReads_.mention_, lastReads_.text_ });
+                    lastReads_.text_ = lastReads_.mention_;
+                    sendPartialLastRead(lastReads_.text_);
                 }
             }
             else if (lastReadMention < _messageId)
             {
-                lastReads_.mention = _messageId;
+                lastReads_.mention_ = _messageId;
                 sendLastReadMention(_messageId);
             }
         }
@@ -160,8 +160,15 @@ namespace hist
 
     void MessageReader::setDlgState(const Data::DlgState& _dlgState)
     {
-        lastReads_.mention = _dlgState.LastReadMention_;
-        lastReads_.text = _dlgState.YoursLastRead_;
+        lastReads_.mention_ = std::max(lastReads_.mention_, _dlgState.LastReadMention_);
+        lastReads_.text_ = _dlgState.YoursLastRead_;
+
+        std::call_once(lastReads_.flag_, [this]()
+        {
+            if (lastReads_.mention_ == -1)
+                lastReads_.mention_ = lastReads_.text_;
+        });
+
         if (_dlgState.unreadMentionsCount_ == 0)
             onReadAllMentions();
     }

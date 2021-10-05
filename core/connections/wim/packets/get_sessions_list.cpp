@@ -2,7 +2,7 @@
 
 #include "get_sessions_list.h"
 #include "../../../http_request.h"
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 
 using namespace core;
 using namespace wim;
@@ -46,15 +46,15 @@ int32_t get_sessions_list::parse_results(const rapidjson::Value& _node_results)
         info.unserialize(session);
         if (info.hash_.empty())
         {
-            assert(false);
+            im_assert(false);
             continue;
         }
 
         sessions_.push_back(std::move(info));
     }
 
-    assert(!sessions_.empty());
-    assert(std::count_if(sessions_.begin(), sessions_.end(), [](const auto& s) { return s.is_current_; }) == 1);
+    im_assert(!sessions_.empty());
+    im_assert(std::count_if(sessions_.begin(), sessions_.end(), [](const auto& s) { return s.is_current_; }) == 1);
 
     return sessions_.empty() ? -1 : 0;
 }

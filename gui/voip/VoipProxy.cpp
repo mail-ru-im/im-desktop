@@ -739,6 +739,11 @@ void voip_proxy::VoipController::handlePacket(core::coll_helper& _collParams)
     {
         const bool enabled = _collParams.get_value_as_bool("enable");
         Q_EMIT onVoipMaskEngineEnable(enabled);
+    }
+    else if (sigType == "voice_detect")
+    {
+        const bool enabled = _collParams.get_value_as_bool("param");
+        Q_EMIT onVoipVoiceEnable(enabled);
     } else if (sigType == "layout_changed")
     {
         bool bTray = _collParams.get_value_as_bool("tray");
@@ -1374,6 +1379,37 @@ std::optional<voip_proxy::device_desc> voip_proxy::VoipController::activeDevice(
     return std::nullopt;
 }
 
+bool voip_proxy::VoipController::hasActiveAudioCaptureDevice() const
+{
+    if (const auto it = activeDevices_.find(kvoipDevTypeAudioCapture); it != activeDevices_.end())
+    {
+        const auto& device = it->second;
+        const auto& devices = deviceList(kvoipDevTypeAudioCapture);
+
+        // found "default" device on macos
+        // this is bug here: activeDevices_[] does not updates when macos change default device
+        // it contain previous default device name as is "default (My BT headphones)"
+        constexpr const char defaultStr[] = "default";
+        constexpr const size_t defaultStrLen = sizeof(defaultStr) - 1;
+        if (device.uid.compare(0, defaultStrLen, defaultStr, defaultStrLen) == 0)
+        {
+            return std::any_of(devices.begin(), devices.end(), [defaultStr, defaultStrLen](const auto& dev)
+            {
+                return dev.uid.compare(0, defaultStrLen, defaultStr, defaultStrLen) != 0;
+            });
+        }
+        else
+        {
+            return std::any_of(devices.begin(), devices.end(), [&uid = device.uid](const auto& dev)
+            {
+                return uid == dev.uid;
+            });
+        }
+
+    }
+    return false;
+}
+
 void voip_proxy::VoipController::setWindowVideoLayout(quintptr _hwnd, voip_manager::VideoLayout& layout)
 {
     Ui::gui_coll_helper collection(dispatcher_.create_collection(), true);
@@ -1447,7 +1483,7 @@ void voip_proxy::VoipController::openChat(const QString& contact)
         wnd->activate();
         wnd->showMessengerPage();
     }
-    Logic::getContactListModel()->setCurrent(contact, -1, true);
+    Utils::InterConnector::instance().openDialog(contact);
 }
 
 void voip_proxy::VoipController::switchShareScreen(voip_proxy::device_desc const * _description)

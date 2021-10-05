@@ -11,16 +11,12 @@ namespace
 
     constexpr std::chrono::milliseconds tooltipShowDelay() noexcept { return 400ms; }
     constexpr std::chrono::milliseconds focusInAnimDuration() noexcept { return 50ms; }
+    constexpr std::chrono::milliseconds spinFrameRate() noexcept { return 16ms; }
 
-    int getMargin()
-    {
-        return Utils::scale_value(8);
-    }
-
-    int getBubbleCornerRadius()
-    {
-        return Utils::scale_value(18);
-    }
+    const int getMargin() noexcept { return Utils::scale_value(8); }
+    const int getBubbleCornerRadius() noexcept { return Utils::scale_value(18); }
+    const int textIconSpacing() noexcept { return Utils::scale_value(4); }
+    constexpr QSize buttonIconSize() noexcept { return QSize(32, 32); }
 
     void drawBubble(QPainter& _p, const QRect& _widgetRect, const QColor& _color, const int _topMargin, const int _botMargin, const int _radius)
     {
@@ -41,16 +37,6 @@ namespace
         _p.setCompositionMode(QPainter::CompositionMode_Source);
         _p.fillPath(path, _color);
     }
-
-    QSize buttonIconSize()
-    {
-        return QSize(32, 32);
-    }
-
-    int textIconSpacing()
-    {
-        return Utils::scale_value(4);
-    }
 }
 
 namespace Ui
@@ -59,6 +45,7 @@ namespace Ui
         : QAbstractButton(_parent)
         , textAlign_(Qt::AlignCenter)
         , textOffsetLeft_(0)
+        , spinAngle_(0)
         , offsetHor_(0)
         , offsetVer_(0)
         , align_(Qt::AlignCenter)
@@ -70,7 +57,13 @@ namespace Ui
         , bgRect_(rect())
         , shape_(ButtonShape::RECTANGLE)
         , animFocus_(new QVariantAnimation(this))
+        , spinTimer_(new QTimer(this))
     {
+        backgroundBrushNormal_ = Qt::transparent;
+        backgroundBrushDisabled_ = Qt::transparent;
+        backgroundBrushHovered_ = Qt::transparent;
+        backgroundBrushPressed_ = Qt::transparent;
+
         if (!_svgName.isEmpty())
             setDefaultImage(_svgName, _defaultColor, _iconSize);
 
@@ -95,6 +88,10 @@ namespace Ui
         animFocus_->setDuration(focusInAnimDuration().count());
         animFocus_->setEasingCurve(QEasingCurve::InOutSine);
         connect(animFocus_, &QVariantAnimation::valueChanged, this, qOverload<>(&CustomButton::update));
+
+        spinTimer_->setInterval(spinFrameRate());
+        connect(spinTimer_, &QTimer::timeout, this, [this]() { spinAngle_ = ((spinAngle_ + 6) % 360); update(); });
+
     }
 
     void CustomButton::paintEvent(QPaintEvent* _e)
@@ -102,21 +99,28 @@ namespace Ui
         QPainter p(this);
         p.setRenderHints(QPainter::TextAntialiasing | QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
 
-        if (bgColor_.isValid())
+        QBrush brush;
+        if (!isEnabled())
+            brush = backgroundBrushDisabled_;
+        else if (isPressed())
+            brush = backgroundBrushPressed_;
+        else if (isHovered())
+            brush = backgroundBrushHovered_;
+        else
+            brush = backgroundBrushNormal_;
+
+        if (shape_ == ButtonShape::ROUNDED_RECTANGLE)
         {
-            if (shape_ == ButtonShape::ROUNDED_RECTANGLE)
-            {
-                p.setBrush(bgColor_);
-                auto pen = QPen(bgColor_, 0);
-                p.setPen(pen);
-                const auto radius = bgRect_.height() / 2;
-                p.drawRoundedRect(bgRect_, radius, radius);
-            }
-            else
-            {
-                p.fillRect(bgRect_, bgColor_);
-            }
+            p.setBrush(brush);
+            p.setPen(QPen(brush.color(), 0));
+            const auto radius = bgRect_.height() / 2;
+            p.drawRoundedRect(bgRect_, radius, radius);
         }
+        else
+        {
+            p.fillRect(bgRect_, brush);
+        }
+
 
         const auto isAnimRunning = animFocus_->state() == QAbstractAnimation::State::Running;
         if (focusColor_.isValid() && (isAnimRunning || hasFocus()))
@@ -145,7 +149,9 @@ namespace Ui
             }
         }
 
-        if (forceHover_)
+        if (isSpinning() && !pixmapSpinner_.isNull())
+            pixmapToDraw_ = pixmapSpinner_;
+        else if (forceHover_)
             pixmapToDraw_ = pixmapHover_;
         else if (!isEnabled() && !pixmapDisabled_.isNull())
             pixmapToDraw_ = pixmapDisabled_;
@@ -157,7 +163,6 @@ namespace Ui
             pixmapToDraw_ = pixmapHover_;
         else
             pixmapToDraw_ = pixmapDefault_;
-
 
         if (pixmapToDraw_.isNull())
             return;
@@ -183,7 +188,23 @@ namespace Ui
         x += offsetHor_;
         y += offsetVer_;
 
-        p.drawPixmap(x, y, pixmapToDraw_);
+
+        if (isSpinning())
+        {
+            const QPointF center(iconSize().width() * 0.5, iconSize().height() * 0.5);
+
+            Utils::PainterSaver paintGuard(p);
+            p.translate(x, y);
+            p.translate(center);
+            p.rotate(spinAngle_);
+            p.translate(-center);
+            p.drawPixmap(0, 0, pixmapToDraw_);
+        }
+        else
+        {
+            p.drawPixmap(x, y, pixmapToDraw_);
+        }
+
         if (!pixmapOverlay_.isNull())
             p.drawPixmap(overlayCenterPos_ - QPoint(pixmapOverlay_.size().width()/2, pixmapOverlay_.size().height()/2), pixmapOverlay_);
     }
@@ -300,6 +321,19 @@ namespace Ui
         update();
     }
 
+    void CustomButton::setSpinning(bool _on)
+    {
+        if (_on)
+            spinTimer_->start();
+        else
+            spinTimer_->stop();
+    }
+
+    bool CustomButton::isSpinning() const
+    {
+        return spinTimer_->isActive();
+    }
+
     void CustomButton::setActive(const bool _isActive)
     {
         active_ = _isActive;
@@ -325,9 +359,27 @@ namespace Ui
         return pressed_;
     }
 
-    void CustomButton::setBackgroundColor(const QColor& _color)
+    void CustomButton::setBackgroundNormal(const QBrush& _brush)
     {
-        bgColor_ = _color;
+        backgroundBrushNormal_ = _brush;
+        update();
+    }
+
+    void CustomButton::setBackgroundDisabled(const QBrush& _brush)
+    {
+        backgroundBrushDisabled_ = _brush;
+        update();
+    }
+
+    void CustomButton::setBackgroundHovered(const QBrush& _brush)
+    {
+        backgroundBrushHovered_ = _brush;
+        update();
+    }
+
+    void CustomButton::setBackgroundPressed(const QBrush& _brush)
+    {
+        backgroundBrushPressed_ = _brush;
         update();
     }
 
@@ -530,6 +582,11 @@ namespace Ui
     {
         pixmapPressed_ = getPixmap(_svgPath, _color, _size);
         update();
+    }
+
+    void CustomButton::setSpinnerImage(const QString& _svgPath, const QColor& _color, const QSize& _size)
+    {
+        pixmapSpinner_ = getPixmap(_svgPath, _color, _size);
     }
 
     void CustomButton::clearIcon()

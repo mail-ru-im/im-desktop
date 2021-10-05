@@ -124,6 +124,7 @@ namespace voip_proxy
         //void onVoipUpdateCipherState(const voip_manager::CipherState& _state);
         //void onVoipMinimalBandwidthChanged(bool _enable);
         void onVoipMaskEngineEnable(bool _enable);
+        void onVoipVoiceEnable(bool _enable);
         void onVoipChangeWindowLayout(intptr_t hwnd, bool bTray, const std::string& layout);
         void onVoipMainVideoLayoutChanged(const voip_manager::MainVideoLayout&);
         void onVoipVideoDeviceSelected(const voip_proxy::device_desc& device);
@@ -276,6 +277,7 @@ namespace voip_proxy
         const std::vector<device_desc>& deviceList(EvoipDevTypes type) const;
         std::optional<device_desc> activeDevice(EvoipDevTypes type) const;
         const std::vector<voip_manager::Contact>& currentCallContacts() const;
+        bool hasActiveAudioCaptureDevice() const;
 
         bool hasEstablishCall() const; // @return true is any of users are accepted call.
         int maxVideoConferenceMembers() const;

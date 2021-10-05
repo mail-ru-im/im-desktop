@@ -42,7 +42,10 @@ public:
 
     QPoint getInitialTimePosition() const;
 
-    void setCustomBubbleBlockHorPadding(const int32_t _padding);
+    int32_t getBubbleLeftPadding() const;
+    int32_t getBubbleRightPadding() const;
+
+    void updateSize(int _width);
 
 private:
     QRect evaluateAvatarRect(const QRect& _widgetContentLtr) const;
@@ -92,7 +95,8 @@ private:
 
     QPoint initialTimePosition_;
 
-    int32_t bubbleBlockHorPadding_;
+    int32_t bubbleBlockHorLeftPadding_;
+    int32_t bubbleBlockHorRightPadding_;
 };
 
 UI_COMPLEX_MESSAGE_NS_END

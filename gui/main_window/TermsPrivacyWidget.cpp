@@ -12,7 +12,6 @@
 #include "fonts.h"
 #include "styles/ThemeParameters.h"
 #include "core_dispatcher.h"
-#include "AcceptAgreementInfo.h"
 #include "../gui_settings.h"
 #include "../../common.shared/config/config.h"
 #if defined(__APPLE__)
@@ -203,26 +202,19 @@ TermsPrivacyWidget::~TermsPrivacyWidget() = default;
 
 void TermsPrivacyWidget::onAgreeClicked()
 {
-    AcceptParams params;
-    params.accepted_ = true;
-
     GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::gdpr_accept_start);
 
-    Q_EMIT agreementAccepted(params);
+    Q_EMIT agreementAccepted();
 
 #if defined(__APPLE__)
     macMenuBlocker_->unblock();
 #endif
 }
 
-void TermsPrivacyWidget::reportAgreementAccepted(const TermsPrivacyWidget::AcceptParams &_acceptParams)
+void TermsPrivacyWidget::reportAgreementAccepted()
 {
     // report to core
     gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-    collection.set_value_as_int("accept_flag", static_cast<int32_t>(_acceptParams.accepted_ ? AcceptAgreementInfo::AgreementAction::Accept
-        : AcceptAgreementInfo::AgreementAction::Ignore));
-    collection.set_value_as_bool("reset", false);
-
     GetDispatcher()->post_message_to_core("agreement/gdpr", collection.get());
     GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::gdpr_accept_update);
 }

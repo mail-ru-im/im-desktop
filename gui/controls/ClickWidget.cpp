@@ -247,7 +247,7 @@ namespace Ui
 
     void ClickableWidget::onTooltipTimer()
     {
-        if (isHovered() || hasFocus())
+        if ((isHovered() || hasFocus()) && rect().contains(mapFromGlobal(QCursor::pos())))
             showToolTip();
     }
 
@@ -261,7 +261,7 @@ namespace Ui
         if (canShowTooltip())
         {
             const auto r = rect();
-            Tooltip::show(getTooltipText(), QRect(mapToGlobal(r.topLeft()), r.size()), {0, 0}, Tooltip::ArrowDirection::Down, Tooltip::ArrowPointPos::Top, {}, Tooltip::TooltipMode::Multiline);
+            Tooltip::show(getTooltipText(), QRect(mapToGlobal(r.topLeft()), r.size()), {0, 0}, Tooltip::ArrowDirection::Down, Tooltip::ArrowPointPos::Top, {}, Tooltip::TooltipMode::Multiline, tooltipHasParent_ ? parentWidget() : nullptr);
         }
     }
 
@@ -305,7 +305,7 @@ namespace Ui
     {
     }
 
-    void ClickableTextWidget::setText(const QString& _text)
+    void ClickableTextWidget::setText(const Data::FString& _text)
     {
         text_->setText(_text);
         text_->setOffsets(leftPadding_, height() / 2);
@@ -343,7 +343,7 @@ namespace Ui
         if (leftPadding_ != _x)
         {
             leftPadding_ = _x;
-            setText(Data::stubFromFormattedString(text_->getSourceText()));
+            setText(text_->getSourceText());
         }
     }
 

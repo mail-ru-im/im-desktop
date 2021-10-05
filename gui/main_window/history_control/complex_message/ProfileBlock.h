@@ -29,8 +29,6 @@ public:
 
     bool isAllSelected() const override { return isSelected(); }
 
-    bool updateFriendly(const QString& _aimId, const QString& _friendly) override { return true; }
-
     void updateStyle() override {}
     void updateFonts() override;
 
@@ -52,6 +50,8 @@ public:
 
     bool isNeedCheckTimeShift() const override { return true; }
     bool needStretchToOthers() const override { return true; };
+
+    ContentType getContentType() const override { return ContentType::Profile; }
 
 protected Q_SLOTS:
     void onAvatarChanged(const QString& aimId);
@@ -111,7 +111,7 @@ public:
     ~ProfileBlock() override;
 
     static QString extractProfileId(const QString& _link);
-    Data::FormattedString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
+    Data::FString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
 
 protected:
     QString getButtonText() const override;
@@ -142,10 +142,10 @@ public:
     PhoneProfileBlock(ComplexMessageItem *_parent, const QString& _name, const QString& _phone, const QString& _sn);
     ~PhoneProfileBlock() override;
 
-    Data::FormattedString getSourceText() const override;
+    Data::FString getSourceText() const override;
     QString getTextForCopy() const override;
 
-    Data::FormattedString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
+    Data::FString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
 
     bool hasSourceText() const override { return false; }
 

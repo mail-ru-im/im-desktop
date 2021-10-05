@@ -385,9 +385,144 @@ You can leave your feedback or report an error here:</source>
         <source>You are not a member of this chat or you was banned to write</source>
         <translation>لست عضوا في الدردشة أو لا يسمح لك بالكتابة</translation>
     </message>
+</context>
+<context>
+    <name>calendar</name>
     <message>
-        <source>Are you sure you want to open an external link %1?</source>
-        <translation>هل تريد بالتأكيد فتح الارتباط الخارجي %1 ؟</translation>
+        <source>Mon</source>
+        <translation>الإثنين</translation>
+    </message>
+    <message>
+        <source>Tue</source>
+        <translation>دبليو</translation>
+    </message>
+    <message>
+        <source>Wed</source>
+        <translation>تزوج</translation>
+    </message>
+    <message>
+        <source>Thu</source>
+        <translation>NS</translation>
+    </message>
+    <message>
+        <source>Fri</source>
+        <translation>الجمعة</translation>
+    </message>
+    <message>
+        <source>Sat</source>
+        <translation>جلس</translation>
+    </message>
+    <message>
+        <source>Sun</source>
+        <translation>الشمس</translation>
+    </message>
+    <message>
+        <source>January</source>
+        <translation>كانون الثاني</translation>
+    </message>
+    <message>
+        <source>Febuary</source>
+        <translation>شهر فبراير</translation>
+    </message>
+    <message>
+        <source>March</source>
+        <translation>مارس</translation>
+    </message>
+    <message>
+        <source>April</source>
+        <translation>أبريل</translation>
+    </message>
+    <message>
+        <source>May</source>
+        <translation>قد</translation>
+    </message>
+    <message>
+        <source>June</source>
+        <translation>يونيو</translation>
+    </message>
+    <message>
+        <source>July</source>
+        <translation>تموز</translation>
+    </message>
+    <message>
+        <source>August</source>
+        <translation>شهر اغسطس</translation>
+    </message>
+    <message>
+        <source>September</source>
+        <translation>سبتمبر</translation>
+    </message>
+    <message>
+        <source>October</source>
+        <translation>اكتوبر</translation>
+    </message>
+    <message>
+        <source>November</source>
+        <translation>شهر نوفمبر</translation>
+    </message>
+    <message>
+        <source>December</source>
+        <translation>ديسمبر</translation>
+    </message>
+    <message>
+        <source>Jan</source>
+        <translation>يناير</translation>
+    </message>
+    <message>
+        <source>Feb</source>
+        <translation>فبراير</translation>
+    </message>
+    <message>
+        <source>Mar</source>
+        <translation>مارثا</translation>
+    </message>
+    <message>
+        <source>Apr</source>
+        <translation>أبريل</translation>
+    </message>
+    <message>
+        <source>Jun</source>
+        <translation>يونيو</translation>
+    </message>
+    <message>
+        <source>Jul</source>
+        <translation>تموز</translation>
+    </message>
+    <message>
+        <source>Aug</source>
+        <translation>أغسطس</translation>
+    </message>
+    <message>
+        <source>Sep</source>
+        <translation>سبتمبر</translation>
+    </message>
+    <message>
+        <source>Oct</source>
+        <translation>أكتوبر</translation>
+    </message>
+    <message>
+        <source>Nov</source>
+        <translation>نوفمبر</translation>
+    </message>
+    <message>
+        <source>Dec</source>
+        <translation>ديسمبر</translation>
+    </message>
+    <message>
+        <source>Today</source>
+        <translation>اليوم</translation>
+    </message>
+    <message>
+        <source>Tomorrow</source>
+        <translation>غدا</translation>
+    </message>
+    <message>
+        <source>MayS</source>
+        <translation>قد</translation>
+    </message>
+    <message>
+        <source>%1. d, yyyy</source>
+        <translation>%1. d, yyyy</translation>
     </message>
 </context>
 <context>
@@ -988,6 +1123,22 @@ You can leave your feedback or report an error here:</source>
 %3
 %4 %5</translation>
     </message>
+    <message>
+        <source>%1 changed task title to &quot;%2&quot;</source>
+        <translation>%1 بتغيير نص المهمة إلى &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed task deadline to %2</source>
+        <translation>%1 بتغيير الموعد النهائي إلى %2</translation>
+    </message>
+    <message>
+        <source>%1 changed task assignee to &quot;%2&quot;</source>
+        <translation>%1 بتغيير الفنان إلى &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>Task status changed to &quot;%1&quot;</source>
+        <translation>تم تغيير حالة المهمة إلى &quot;%1&quot;</translation>
+    </message>
 </context>
 <context>
     <name>chat_page</name>
@@ -1054,6 +1205,22 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Message sent</source>
         <translation>تم الارسال</translation>
+    </message>
+    <message>
+        <source>Access limited</source>
+        <translation>الوصول محدود</translation>
+    </message>
+    <message>
+        <source>File is not available</source>
+        <translation>الملف غير متاح</translation>
+    </message>
+    <message>
+        <source>Filesharing Id copied to clipboard</source>
+        <translation>تم نسخ معرف مشاركة الملفات</translation>
+    </message>
+    <message>
+        <source>Filesharing link copied to clipboard</source>
+        <translation>تم نسخ رابط لمشاركة الملفات</translation>
     </message>
 </context>
 <context>
@@ -1176,6 +1343,30 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>PINNED</source>
         <translation>ثابتة</translation>
+    </message>
+    <message>
+        <source>Threads</source>
+        <translation>المواضيعᵝ</translation>
+    </message>
+    <message>
+        <source>Reminders</source>
+        <translation>تذكير</translation>
+    </message>
+    <message>
+        <source>Scheduled</source>
+        <translation>مخطط</translation>
+    </message>
+    <message>
+        <source>Draft</source>
+        <translation>مسودة</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation>مهمة</translation>
+    </message>
+    <message>
+        <source>Tasks</source>
+        <translation>مهام</translation>
     </message>
 </context>
 <context>
@@ -1612,6 +1803,58 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Copy session info</source>
         <translation>نسخ معلومات الجلسة</translation>
+    </message>
+    <message>
+        <source>Bold</source>
+        <translation>دهني</translation>
+    </message>
+    <message>
+        <source>Italic</source>
+        <translation>مائل</translation>
+    </message>
+    <message>
+        <source>Underline</source>
+        <translation>مسطر</translation>
+    </message>
+    <message>
+        <source>Strike through</source>
+        <translation>شطب</translation>
+    </message>
+    <message>
+        <source>Monospace</source>
+        <translation>أحادي المسافة</translation>
+    </message>
+    <message>
+        <source>Create link</source>
+        <translation>إضافة رابط</translation>
+    </message>
+    <message>
+        <source>Clear format</source>
+        <translation>أنماط واضحة</translation>
+    </message>
+    <message>
+        <source>Format</source>
+        <translation>تنسيق</translation>
+    </message>
+    <message>
+        <source>Edit task</source>
+        <translation>تغيير المهمة</translation>
+    </message>
+    <message>
+        <source>List</source>
+        <translation>قائمة</translation>
+    </message>
+    <message>
+        <source>Ordered list</source>
+        <translation>قائمة مرقمة</translation>
+    </message>
+    <message>
+        <source>Quote</source>
+        <translation>اقتبس</translation>
+    </message>
+    <message>
+        <source>Code</source>
+        <translation>الرمز</translation>
     </message>
 </context>
 <context>
@@ -2648,6 +2891,21 @@ You can leave your feedback or report an error here:</source>
     </message>
 </context>
 <context>
+    <name>draft</name>
+    <message>
+        <source>Apply draft</source>
+        <translation>تطبيق المسودة</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>إلغاء</translation>
+    </message>
+    <message>
+        <source>Apply another draft version?</source>
+        <translation>هل ترغب في استخدام نسخة مختلفة من المسودة؟</translation>
+    </message>
+</context>
+<context>
     <name>favorites</name>
     <message>
         <source>
@@ -2754,10 +3012,10 @@ You can leave your feedback or report an error here:</source>
     </message>
 </context>
 <context>
-    <name>generic_block</name>
+    <name>groupchat</name>
     <message>
-        <source>Copied to clipboard</source>
-        <translation>نسخ إلى الحافظة</translation>
+        <source>To replies</source>
+        <translation>في الإجابات</translation>
     </message>
 </context>
 <context>
@@ -2850,6 +3108,20 @@ You can leave your feedback or report an error here:</source>
         <source>You are not a subscriber of this channel</source>
         <translation>أنت لست مشترك في هذه القناة</translation>
     </message>
+    <message>
+        <source>File access restrictions</source>
+        <translation>قيود الوصول إلى الملفات</translation>
+    </message>
+    <message>
+        <source>Restrict file access to trusted devices only
+Only for private groups
+
+This option cannot be disabled</source>
+        <translation>السماح بالوصول إلى الملفات للأجهزة الموثوقة فقط
+للمجموعات غير العامة فقط
+
+من المستحيل تعطيل الإعداد</translation>
+    </message>
 </context>
 <context>
     <name>head</name>
@@ -2879,6 +3151,30 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Please select a chat to start messaging</source>
         <translation>يُرجى تحديد دردشة لبدء المراسلة</translation>
+    </message>
+    <message>
+        <source>Create a call</source>
+        <translation>إنشاء مكالمة</translation>
+    </message>
+    <message>
+        <source>No time limit</source>
+        <translation>لا يوجد حد زمني</translation>
+    </message>
+    <message>
+        <source>Status is set automatically during call</source>
+        <translation>يُظهر Autostatus من المتصل بالمكالمة</translation>
+    </message>
+    <message>
+        <source>Advantages of calls in Myteam</source>
+        <translation>فوائد الاتصال بـ Myteam</translation>
+    </message>
+    <message>
+        <source>Group calls up to %1 participants</source>
+        <translation>مكالمات جماعية تصل إلى %1 شخص</translation>
+    </message>
+    <message>
+        <source>Return to call in chat in one click</source>
+        <translation>العودة إلى المكالمة في الدردشة بنقرة واحدة</translation>
     </message>
 </context>
 <context>
@@ -3046,6 +3342,10 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Cancel request</source>
         <translation>إلغاء الطلب</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation>مهمة</translation>
     </message>
 </context>
 <context>
@@ -3287,6 +3587,10 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Wrong password</source>
         <translation>كلمة مرور خاطئة</translation>
+    </message>
+    <message>
+        <source>Sign in with Mail.ru</source>
+        <translation>تسجيل الدخول مع Mail.ru</translation>
     </message>
 </context>
 <context>
@@ -3942,10 +4246,6 @@ to contact status</source>
         <translation>هل تريد بالتأكيد مغادرة الدردشة؟</translation>
     </message>
     <message>
-        <source>Contact name</source>
-        <translation>اسم جهة الاتصال</translation>
-    </message>
-    <message>
         <source>Sign out</source>
         <translation>تسجيل الخروج</translation>
     </message>
@@ -4586,8 +4886,16 @@ to contact status</source>
         <translation>تم تجاوز حد العضوية (بحد أقصى %1)</translation>
     </message>
     <message>
-        <source>Are you sure you want to open external link %1?</source>
-        <translation>هل تريد بالتأكيد فتح الارتباط الخارجي %1؟</translation>
+        <source>Are you sure you want to open an external link?</source>
+        <translation>هل أنت متأكد أنك تريد فتح ارتباط خارجي؟</translation>
+    </message>
+    <message>
+        <source>Add link</source>
+        <translation>إضافة رابط</translation>
+    </message>
+    <message>
+        <source>The link will be displayed as &quot;%1&quot;</source>
+        <translation>سيتم عرض الارتباط كـ &quot;%1&quot;</translation>
     </message>
     <message>
         <source>Enable net compression</source>
@@ -4636,6 +4944,38 @@ to contact status</source>
     <message>
         <source>User not a member</source>
         <translation>المستخدم ليس عضوا في هذه المجموعة</translation>
+    </message>
+    <message>
+        <source>Link</source>
+        <translation>نهاية لهذه الغاية</translation>
+    </message>
+    <message>
+        <source>Invalid url</source>
+        <translation>ليس رابط</translation>
+    </message>
+    <message>
+        <source>Opening or downloading files will be possible from trusted device only
+
+%1 It will be impossible to disable this setting!</source>
+        <translation>لن يكون فتح الملفات أو تنزيلها ممكنًا إلا من جهاز موثوق به
+
+%1 لا يمكن تعطيل الإعداد!</translation>
+    </message>
+    <message>
+        <source>File access will be restricted</source>
+        <translation>سيكون الوصول إلى الملفات محدودًا</translation>
+    </message>
+    <message>
+        <source>Only chat members can view replies</source>
+        <translation>يمكن لأعضاء المجموعة فقط عرض الردود</translation>
+    </message>
+    <message>
+        <source>Show seconds in time picker</source>
+        <translation>عرض الثواني في منتقي الوقت</translation>
+    </message>
+    <message>
+        <source>Only channel subscribers can view replies</source>
+        <translation>يمكن للمشتركين في القناة فقط عرض الردود</translation>
     </message>
 </context>
 <context>
@@ -5418,6 +5758,10 @@ to contact status</source>
         <translation>لا تسأل عند تشغيل الملفات القابلة للتنفيذ</translation>
     </message>
     <message>
+        <source>Do not ask when opening external links</source>
+        <translation>لا تسأل عند فتح روابط خارجية</translation>
+    </message>
+    <message>
         <source>Use system spell checker</source>
         <translation>تدقيق إملائي للنظام</translation>
     </message>
@@ -5464,6 +5808,14 @@ to contact status</source>
     <message>
         <source>Show notifications when app in focus</source>
         <translation>إظهار الإخطارات عندما يكون التطبيق نشطًا</translation>
+    </message>
+    <message>
+        <source>Call window</source>
+        <translation>نافذة الاتصال</translation>
+    </message>
+    <message>
+        <source>Warn about disabled microphone</source>
+        <translation>تحذير بشأن الميكروفون مكتوم الصوت</translation>
     </message>
 </context>
 <context>
@@ -5662,6 +6014,10 @@ to contact status</source>
     <message>
         <source>Set status</source>
         <translation>تعيين الحالة</translation>
+    </message>
+    <message>
+        <source>Switch microphone state</source>
+        <translation>تغيير حالة الميكروفون</translation>
     </message>
 </context>
 <context>
@@ -6020,6 +6376,14 @@ Please edit phone number and try again.</source>
         <source>Close</source>
         <translation>قريب</translation>
     </message>
+    <message>
+        <source>Cannot be disabled due to security reasons</source>
+        <translation>لأسباب أمنية ، لا يمكن تعطيل الإعداد</translation>
+    </message>
+    <message>
+        <source>Replies</source>
+        <translation>الإجابات</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -6056,10 +6420,6 @@ Please edit phone number and try again.</source>
     <message>
         <source>File</source>
         <translation>ملف</translation>
-    </message>
-    <message>
-        <source>Copied to clipboard</source>
-        <translation>نسخ إلى الحافظة</translation>
     </message>
     <message>
         <source>Location</source>
@@ -6209,22 +6569,6 @@ Please edit phone number and try again.</source>
         <source>Status duration</source>
         <translation>فترة صلاحية الحالة</translation>
     </message>
-    <message>
-        <source>Date</source>
-        <translation>تاريخ</translation>
-    </message>
-    <message>
-        <source>dd.mm.yyyy</source>
-        <translation>dd.mm.yyyy</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>زمن</translation>
-    </message>
-    <message>
-        <source>hh:mm</source>
-        <translation>hh:mm</translation>
-    </message>
 </context>
 <context>
     <name>stickers</name>
@@ -6276,6 +6620,10 @@ Please edit phone number and try again.</source>
         <source>Cancel</source>
         <translation>إلغاء</translation>
     </message>
+    <message>
+        <source>Stickerpack is not available</source>
+        <translation>Stickerpack غير متوفر</translation>
+    </message>
 </context>
 <context>
     <name>tab</name>
@@ -6300,12 +6648,12 @@ Please edit phone number and try again.</source>
         <translation>المكالمات</translation>
     </message>
     <message>
-        <source>Structure</source>
-        <translation>بنية</translation>
-    </message>
-    <message>
         <source>Tasks</source>
         <translation>مهام</translation>
+    </message>
+    <message>
+        <source>Calendar</source>
+        <translation>التقويم</translation>
     </message>
 </context>
 <context>
@@ -6333,6 +6681,101 @@ Please edit phone number and try again.</source>
     <message>
         <source>Group call</source>
         <translation>مكالمة جماعية</translation>
+    </message>
+</context>
+<context>
+    <name>task</name>
+    <message>
+        <source>In progress</source>
+        <translation>في العمل</translation>
+    </message>
+    <message>
+        <source>Ready</source>
+        <translation>منجز</translation>
+    </message>
+    <message>
+        <source>Rejected</source>
+        <translation>مرفوض</translation>
+    </message>
+    <message>
+        <source>Closed</source>
+        <translation>مغلق</translation>
+    </message>
+    <message>
+        <source>New</source>
+        <translation>ليصنع</translation>
+    </message>
+    <message>
+        <source>No assignee</source>
+        <translation>بدون عازف</translation>
+    </message>
+</context>
+<context>
+    <name>task_block</name>
+    <message>
+        <source>Not assigned</source>
+        <translation>غيرمعتمد</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation>مهمة</translation>
+    </message>
+    <message>
+        <source>Task Id copied to clipboard</source>
+        <translation>تم نسخ معرّف المهمة</translation>
+    </message>
+    <message>
+        <source>Not set</source>
+        <translation>غيرمعتمد</translation>
+    </message>
+    <message>
+        <source>Task edit: an error occured</source>
+        <translation>تعديل المهمة: حدث خطأ</translation>
+    </message>
+</context>
+<context>
+    <name>task_popup</name>
+    <message>
+        <source>Edit task</source>
+        <translation>تغيير مهمة</translation>
+    </message>
+    <message>
+        <source>Create task</source>
+        <translation>إنشاء مهمة</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>اسم</translation>
+    </message>
+    <message>
+        <source>Maximum length - %1 symbols</source>
+        <translation>أقصى طول - %1 حرفًا</translation>
+    </message>
+    <message>
+        <source>Assignee</source>
+        <translation>المنفذ</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>إلغاء</translation>
+    </message>
+    <message>
+        <source>Ok</source>
+        <translation>نعم</translation>
+    </message>
+    <message>
+        <source>Create</source>
+        <translation>إنشاء</translation>
+    </message>
+    <message>
+        <source>User with this name
+not found</source>
+        <translation>المستخدم مع هذا
+الاسم غير موجود</translation>
+    </message>
+    <message>
+        <source>No deadline</source>
+        <translation>لا يوجد موعد نهائي</translation>
     </message>
 </context>
 <context>
@@ -6364,6 +6807,21 @@ Please edit phone number and try again.</source>
     <message>
         <source>Welcome to ICQ New</source>
         <translation>مرحبًا بك في ICQ جديد</translation>
+    </message>
+</context>
+<context>
+    <name>threads_feed</name>
+    <message>
+        <source>There is no threads</source>
+        <translation>لا توجد مواضيع</translation>
+    </message>
+    <message>
+        <source>Threads you subscribed for will be here</source>
+        <translation>سيتم عرض المواضيع التي اشتركت فيها هنا.</translation>
+    </message>
+    <message>
+        <source>Replies</source>
+        <translation>الإجابات</translation>
     </message>
 </context>
 <context>
@@ -6415,6 +6873,42 @@ Please edit phone number and try again.</source>
         <source>You are not a member or banned to write in this group</source>
         <translation>لست عضوا في الدردشة أو لا يسمح لك بالكتابة</translation>
     </message>
+    <message>
+        <source>Unable to open invalid url &quot;%1&quot;</source>
+        <translation>غير قادر على فتح العنوان غير صالح %1</translation>
+    </message>
+    <message>
+        <source>Error occurred while opening the replies</source>
+        <translation>حدث خطأ أثناء فتح الردود</translation>
+    </message>
+    <message>
+        <source>Administrator has set the restrictions on access to files</source>
+        <translation>وضع مسؤول المجموعة قيودًا على الوصول إلى الملفات</translation>
+    </message>
+    <message>
+        <source>Awaiting antivirus check, patience</source>
+        <translation>نحن في انتظار فحص مكافحة الفيروسات ، الصبر</translation>
+    </message>
+    <message>
+        <source>Antivirus check in progress, patience</source>
+        <translation>فحص مكافحة الفيروسات قيد التقدم ، والصبر</translation>
+    </message>
+    <message>
+        <source>File is blocked by the antivirus</source>
+        <translation>تم حظر الملف بواسطة برنامج مكافحة الفيروسات</translation>
+    </message>
+    <message>
+        <source>Checked</source>
+        <translation>فحصت</translation>
+    </message>
+    <message>
+        <source>No access. You may not have enough rights</source>
+        <translation>ممنوع الدخول. قد لا يكون لديك حقوق كافية</translation>
+    </message>
+    <message>
+        <source>File not checked (and never will be). Available to download</source>
+        <translation>لم يتم التحقق من الملف (ولن يتم التحقق منه). نأمل أن تستمتع هذا المعرض</translation>
+    </message>
 </context>
 <context>
     <name>tooltips</name>
@@ -6457,6 +6951,14 @@ Please edit phone number and try again.</source>
     <message>
         <source>Link to call</source>
         <translation>رابط الاتصال</translation>
+    </message>
+    <message>
+        <source>Chat gallery</source>
+        <translation>معرض الدردشة</translation>
+    </message>
+    <message>
+        <source>Refresh</source>
+        <translation>ينعش</translation>
     </message>
 </context>
 <context>
@@ -6592,6 +7094,18 @@ with click</source>
         <translation>مشغول</translation>
     </message>
     <message>
+        <source>Hold Space key for temporary unmute</source>
+        <translation>اضغط مع الاستمرار على مفتاح المسافة لإلغاء كتم صوت الميكروفون مؤقتًا</translation>
+    </message>
+    <message>
+        <source>Microphone disabled</source>
+        <translation>الميكروفون متوقف</translation>
+    </message>
+    <message>
+        <source>Microphone enabled</source>
+        <translation>الميكروفون قيد التشغيل</translation>
+    </message>
+    <message>
         <source>Call members</source>
         <translation>اتصل بالمشاركين</translation>
     </message>
@@ -6614,6 +7128,16 @@ with click</source>
     <message>
         <source>CONTACTS</source>
         <translation>جهات الاتصال</translation>
+    </message>
+    <message>
+        <source>You are muted now
+Press %1 to unmute your microphone
+
+Press and hold Space key for temporarily unmute</source>
+        <translation>الآن الميكروفون مغلق
+اضغط على %1 لتشغيل الميكروفون
+
+اضغط مع الاستمرار على مفتاح المسافة لإلغاء كتم صوت الميكروفون مؤقتًا</translation>
     </message>
 </context>
 <context>

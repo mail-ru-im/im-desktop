@@ -101,10 +101,13 @@ namespace Ui
         void mouseMoveEvent(QMouseEvent* _event) override;
         void mousePressEvent(QMouseEvent* _event) override;
         void mouseReleaseEvent(QMouseEvent* _event) override;
+        void leaveEvent(QEvent* _event) override;
+        void enterEvent(QEvent* _event) override;
 
     private:
         void addButtonImpl(HeaderTitleBarButton* _button);
         void updateSpacers();
+        void updateCursor();
 
     private:
         QGridLayout* mainLayout_;

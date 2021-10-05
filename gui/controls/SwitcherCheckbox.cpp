@@ -6,7 +6,7 @@
 
 namespace
 {
-    QSize getSize()
+    QSize getSize() noexcept
     {
         return Utils::scale_value(QSize(36, 20));
     }
@@ -23,6 +23,10 @@ namespace
         return pm;
     }
 
+    constexpr double disabledAlpha() noexcept
+    {
+        return 0.4;
+    }
 }
 
 namespace Ui
@@ -43,6 +47,10 @@ namespace Ui
         const auto y = (height() - pm.height() / Utils::scale_bitmap_ratio()) / 2;
 
         QPainter p(this);
+
+        if (!isEnabled())
+            p.setOpacity(disabledAlpha());
+
         p.drawPixmap(x, y, pm);
     }
 

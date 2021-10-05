@@ -45,7 +45,8 @@ namespace core
             return;
         }
 
-        result(ctx->execute_handler(_curl), ctx->is_resolve_failed());
+        auto err = ctx->execute_handler(_curl);
+        result(err, ctx->is_resolve_failed());
         curl_easy_reset(_curl);
     }
 

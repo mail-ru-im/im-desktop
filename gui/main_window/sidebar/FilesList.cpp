@@ -27,22 +27,22 @@
 
 namespace
 {
-    const int VER_OFFSET = 8;
-    const int ICON_VER_OFFSET = 12;
-    const int HOR_OFFSET = 16;
-    const int RIGHT_OFFSET = 40;
-    const int MORE_BUTTON_SIZE = 20;
-    const int PREVIEW_SIZE = 44;
-    const int PREVIEW_RIGHT_OFFSET = 12;
-    const int NAME_OFFSET = 0;
-    const int DATE_OFFSET = 0;
-    const int SHOW_IN_FOLDER_OFFSET = 8;
-    const int BUTTON_SIZE = 20;
-    const int DATE_TOP_OFFSET = 12;
-    const int DATE_BOTTOM_OFFSET = 8;
-    const int DATE_LEFT_OFFSET = 4;
+    constexpr int VER_OFFSET = 8;
+    constexpr int ICON_VER_OFFSET = 12;
+    constexpr int HOR_OFFSET = 16;
+    constexpr int RIGHT_OFFSET = 40;
+    constexpr int MORE_BUTTON_SIZE = 20;
+    constexpr int PREVIEW_SIZE = 44;
+    constexpr int PREVIEW_RIGHT_OFFSET = 12;
+    constexpr int NAME_OFFSET = 0;
+    constexpr int DATE_OFFSET = 0;
+    constexpr int SHOW_IN_FOLDER_OFFSET = 8;
+    constexpr int BUTTON_SIZE = 20;
+    constexpr int DATE_TOP_OFFSET = 12;
+    constexpr int DATE_BOTTOM_OFFSET = 8;
+    constexpr int DATE_LEFT_OFFSET = 4;
 
-    const std::string MediaTypeName("File");
+    constexpr std::string_view MediaTypeName("File");
 
     constexpr std::chrono::milliseconds getDataTransferTimeout() noexcept
     {
@@ -52,6 +52,39 @@ namespace
     QRect iconRect() noexcept
     {
         return Utils::scale_value(QRect(HOR_OFFSET, ICON_VER_OFFSET, PREVIEW_SIZE, PREVIEW_SIZE));
+    }
+
+    const QPixmap& getMoreIcon(Ui::ButtonState _state)
+    {
+        if (_state == Ui::ButtonState::HIDDEN)
+        {
+            static const QPixmap empty;
+            return empty;
+        }
+
+        static std::unordered_map<Ui::ButtonState, QPixmap> cache;
+        auto& icon = cache[_state];
+        if (icon.isNull())
+        {
+            QColor color;
+            switch (_state)
+            {
+            case Ui::ButtonState::NORMAL:
+                color = Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY);
+                break;
+            case Ui::ButtonState::HOVERED:
+                color = Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER);
+                break;
+            case Ui::ButtonState::PRESSED:
+                color = Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_ACTIVE);
+                break;
+            default:
+                break;
+            }
+            icon = Utils::renderSvgScaled(qsl(":/controls/more_vertical"), { MORE_BUTTON_SIZE, MORE_BUTTON_SIZE }, color);
+        }
+
+        return icon;
     }
 }
 
@@ -113,20 +146,21 @@ namespace Ui
         , time_(_time)
         , sizet_(0)
         , lastModified_(0)
+        , status_(FileStatus::NoStatus)
     {
         height_ = QFontMetrics(Fonts::appFontScaled(16)).height();
         height_ += QFontMetrics(Fonts::appFontScaled(12)).height();
 
-        date_ = Ui::TextRendering::MakeTextUnit(_date, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
+        date_ = Ui::TextRendering::MakeTextUnit(_date, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
         date_->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
         date_->evaluateDesiredSize();
 
-        friedly_ = Ui::TextRendering::MakeTextUnit(Logic::GetFriendlyContainer()->getFriendly(sender_), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        friedly_->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
-        friedly_->evaluateDesiredSize();
-        friedly_->elide(width_ - Utils::scale_value(HOR_OFFSET + RIGHT_OFFSET + PREVIEW_SIZE + PREVIEW_RIGHT_OFFSET + DATE_LEFT_OFFSET) - date_->cachedSize().width());
+        friendly_ = Ui::TextRendering::MakeTextUnit(Logic::GetFriendlyContainer()->getFriendly(sender_), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
+        friendly_->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY), {}, {}, {}, TextRendering::HorAligment::LEFT, 1);
+        friendly_->evaluateDesiredSize();
+        elide(friendly_, Utils::scale_value(DATE_LEFT_OFFSET) - date_->getLastLineWidth());
 
-        showInFolder_ = Ui::TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("chat_page", "Show in folder"), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
+        showInFolder_ = Ui::TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("chat_page", "Show in folder"), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
         showInFolder_->init(Fonts::appFontScaled(12), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_INVERSE));
         showInFolder_->evaluateDesiredSize();
 
@@ -139,9 +173,9 @@ namespace Ui
 
     void FileItem::draw(QPainter& _p, const QRect& _rect, double _progress)
     {
-        _p.setRenderHints(QPainter::Antialiasing);
-        if (!more_.isNull())
-            _p.drawPixmap(width_ - Utils::scale_value(RIGHT_OFFSET) / 2 - Utils::scale_value(MORE_BUTTON_SIZE) / 2, height_ / 2 - Utils::scale_value(MORE_BUTTON_SIZE) / 2 + _rect.y(), more_);
+        Utils::PainterSaver ps(_p);
+        _p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
+        _p.translate(_rect.topLeft());
 
         if (localPath_.isEmpty())
         {
@@ -150,38 +184,42 @@ namespace Ui
             const auto progress = total_ == 0 ? 0 : std::max((double)transferred_ / (double)total_, 0.03);
             const auto progressAngle = (int)std::ceil(progress * 360 * QT_ANGLE_MULT);
 
-            auto r = QRect(Utils::scale_value(HOR_OFFSET), Utils::scale_value(ICON_VER_OFFSET) + _rect.y(), Utils::scale_value(PREVIEW_SIZE), Utils::scale_value(PREVIEW_SIZE));
-            auto r2 = QRect(Utils::scale_value(HOR_OFFSET) + Utils::scale_value(4), Utils::scale_value(ICON_VER_OFFSET) + _rect.y() + Utils::scale_value(4), Utils::scale_value(PREVIEW_SIZE) - Utils::scale_value(8), Utils::scale_value(PREVIEW_SIZE) - Utils::scale_value(8));
+            const auto r = QRect(Utils::scale_value(HOR_OFFSET), Utils::scale_value(ICON_VER_OFFSET), Utils::scale_value(PREVIEW_SIZE), Utils::scale_value(PREVIEW_SIZE));
+            const auto r2 = QRect(Utils::scale_value(HOR_OFFSET) + Utils::scale_value(4), Utils::scale_value(ICON_VER_OFFSET) + Utils::scale_value(4), Utils::scale_value(PREVIEW_SIZE) - Utils::scale_value(8), Utils::scale_value(PREVIEW_SIZE) - Utils::scale_value(8));
 
-            static auto download_icon = Utils::renderSvgScaled(qsl(":/filesharing/download_icon"), QSize(BUTTON_SIZE, BUTTON_SIZE), QColor(u"#ffffff"));
-            static auto cancel_icon = Utils::renderSvgScaled(qsl(":/filesharing/cancel_icon"), QSize(BUTTON_SIZE, BUTTON_SIZE), QColor(u"#ffffff"));
-
-            Utils::PainterSaver p(_p);
+            Utils::PainterSaver ps2(_p);
             _p.setBrush(FileSharingIcon::getFillColor(filename_));
             _p.setPen(Qt::transparent);
             _p.drawEllipse(r);
+
             if (downloading_)
             {
                 auto p = QPen(QColor(u"#ffffff"), Utils::scale_value(2));
                 _p.setPen(p);
                 _p.drawArc(r2, -baseAngle, -progressAngle);
-                _p.drawPixmap(Utils::scale_value(HOR_OFFSET + PREVIEW_SIZE / 2) - cancel_icon.width() / 2 / Utils::scale_bitmap_ratio(), Utils::scale_value(ICON_VER_OFFSET + PREVIEW_SIZE / 2) - cancel_icon.height() / 2 / Utils::scale_bitmap_ratio() + _rect.y(), cancel_icon);
             }
-            else
-            {
-                _p.drawPixmap(Utils::scale_value(HOR_OFFSET + PREVIEW_SIZE / 2) - download_icon.width() / 2 / Utils::scale_bitmap_ratio(), Utils::scale_value(ICON_VER_OFFSET + PREVIEW_SIZE / 2) - download_icon.height() / 2 / Utils::scale_bitmap_ratio() + _rect.y(), download_icon);
-            }
+
+            static const auto downloadIcon = Utils::renderSvgScaled(qsl(":/filesharing/download_icon"), QSize(BUTTON_SIZE, BUTTON_SIZE), QColor(u"#ffffff"));
+            static const auto cancelIcon = Utils::renderSvgScaled(qsl(":/filesharing/cancel_icon"), QSize(BUTTON_SIZE, BUTTON_SIZE), QColor(u"#ffffff"));
+            const auto& icon = downloading_ ? cancelIcon : downloadIcon;
+            _p.drawPixmap(Utils::scale_value(HOR_OFFSET + PREVIEW_SIZE / 2) - icon.width() / 2 / Utils::scale_bitmap_ratio(), Utils::scale_value(ICON_VER_OFFSET + PREVIEW_SIZE / 2) - icon.height() / 2 / Utils::scale_bitmap_ratio(), icon);
         }
         else
         {
             if (!fileType_.isNull())
-                _p.drawPixmap(Utils::scale_value(HOR_OFFSET), Utils::scale_value(ICON_VER_OFFSET) + _rect.y(), fileType_);
+                _p.drawPixmap(Utils::scale_value(HOR_OFFSET), Utils::scale_value(ICON_VER_OFFSET), fileType_);
         }
+
+        if (status_ != FileStatus::NoStatus)
+            _p.drawPixmap(getStatusRect(), getFileStatusIcon(status_, Styling::StyleVariable::BASE_PRIMARY));
+
+        if (moreState_ != ButtonState::HIDDEN)
+            _p.drawPixmap(getMoreButtonRect(), getMoreIcon(moreState_));
 
         auto offset = 0;
         if (name_)
         {
-            name_->setOffsets(Utils::scale_value(HOR_OFFSET + PREVIEW_SIZE + PREVIEW_RIGHT_OFFSET), Utils::scale_value(VER_OFFSET) + _rect.y());
+            name_->setOffsets(Utils::scale_value(HOR_OFFSET + PREVIEW_SIZE + PREVIEW_RIGHT_OFFSET), Utils::scale_value(VER_OFFSET));
             name_->draw(_p);
             offset += name_->cachedSize().height();
             offset += Utils::scale_value(NAME_OFFSET);
@@ -189,12 +227,12 @@ namespace Ui
 
         if (size_)
         {
-            size_->setOffsets(Utils::scale_value(HOR_OFFSET + PREVIEW_SIZE + PREVIEW_RIGHT_OFFSET), Utils::scale_value(VER_OFFSET + NAME_OFFSET) + name_->cachedSize().height() + _rect.y());
+            size_->setOffsets(Utils::scale_value(HOR_OFFSET + PREVIEW_SIZE + PREVIEW_RIGHT_OFFSET), Utils::scale_value(VER_OFFSET + NAME_OFFSET) + name_->cachedSize().height());
             size_->draw(_p);
 
             if (!localPath_.isEmpty())
             {
-                showInFolder_->setOffsets(Utils::scale_value(HOR_OFFSET + PREVIEW_SIZE + PREVIEW_RIGHT_OFFSET + SHOW_IN_FOLDER_OFFSET) + size_->cachedSize().width(), Utils::scale_value(VER_OFFSET + NAME_OFFSET) + name_->cachedSize().height() + _rect.y());
+                showInFolder_->setOffsets(Utils::scale_value(HOR_OFFSET + PREVIEW_SIZE + PREVIEW_RIGHT_OFFSET + SHOW_IN_FOLDER_OFFSET) + size_->getLastLineWidth(), Utils::scale_value(VER_OFFSET + NAME_OFFSET) + name_->cachedSize().height());
                 showInFolder_->draw(_p);
             }
 
@@ -202,10 +240,10 @@ namespace Ui
             offset += Utils::scale_value(DATE_OFFSET);
         }
 
-        friedly_->setOffsets(Utils::scale_value(HOR_OFFSET + PREVIEW_SIZE + PREVIEW_RIGHT_OFFSET), Utils::scale_value(VER_OFFSET) + offset + _rect.y());
-        friedly_->draw(_p);
+        friendly_->setOffsets(Utils::scale_value(HOR_OFFSET + PREVIEW_SIZE + PREVIEW_RIGHT_OFFSET), Utils::scale_value(VER_OFFSET) + offset);
+        friendly_->draw(_p);
 
-        date_->setOffsets(width_ - Utils::scale_value(RIGHT_OFFSET) - date_->cachedSize().width(), Utils::scale_value(VER_OFFSET) + offset + _rect.y());
+        date_->setOffsets(width_ - Utils::scale_value(RIGHT_OFFSET) - date_->getLastLineWidth(), Utils::scale_value(VER_OFFSET) + offset);
         date_->draw(_p);
 
         markDrew();
@@ -222,12 +260,9 @@ namespace Ui
             return;
 
         width_ = _width;
-        if (name_)
-            name_->elide(width_ - Utils::scale_value(HOR_OFFSET + RIGHT_OFFSET + PREVIEW_SIZE + PREVIEW_RIGHT_OFFSET));
-        if (size_)
-            size_->elide(width_ - Utils::scale_value(HOR_OFFSET + RIGHT_OFFSET + PREVIEW_SIZE + PREVIEW_RIGHT_OFFSET));
-        if (friedly_)
-            friedly_->elide(width_ - Utils::scale_value(HOR_OFFSET + RIGHT_OFFSET + PREVIEW_SIZE + PREVIEW_RIGHT_OFFSET + DATE_LEFT_OFFSET) - date_->cachedSize().width());
+        elide(name_);
+        elide(size_);
+        elide(friendly_, Utils::scale_value(DATE_LEFT_OFFSET) - date_->getLastLineWidth());
     }
 
     void FileItem::setReqId(qint64 _id)
@@ -282,10 +317,10 @@ namespace Ui
 
     void FileItem::setFilename(const QString& _name)
     {
-        name_ = Ui::TextRendering::MakeTextUnit(_name, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        name_->init(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        name_ = Ui::TextRendering::MakeTextUnit(_name, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
+        name_->init(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), {}, {}, {}, TextRendering::HorAligment::LEFT, 1);
         name_->evaluateDesiredSize();
-        name_->elide(width_ - Utils::scale_value(HOR_OFFSET + RIGHT_OFFSET + PREVIEW_SIZE + PREVIEW_RIGHT_OFFSET));
+        elide(name_);
 
         filename_ = _name;
 
@@ -295,10 +330,10 @@ namespace Ui
     void FileItem::setFilesize(qint64 _size)
     {
         sizet_ = _size;
-        size_ = Ui::TextRendering::MakeTextUnit(HistoryControl::formatFileSize(_size), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        size_->init(Fonts::appFontScaled(12), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        size_ = Ui::TextRendering::MakeTextUnit(HistoryControl::formatFileSize(_size), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
+        size_->init(Fonts::appFontScaled(12), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), {}, {}, {}, TextRendering::HorAligment::LEFT, 1);
         size_->evaluateDesiredSize();
-        size_->elide(width_ - Utils::scale_value(HOR_OFFSET + RIGHT_OFFSET + PREVIEW_SIZE + PREVIEW_RIGHT_OFFSET));
+        elide(size_);
     }
 
     void FileItem::setLastModified(qint64 _lastModified)
@@ -322,7 +357,7 @@ namespace Ui
         return !localPath_.isEmpty() && (showInFolder_->contains(_pos) || r.contains(_pos2) || (name_ && name_->contains(_pos)));
     }
 
-    bool FileItem::isOverIcon(const QPoint & _pos)
+    bool FileItem::isOverIcon(const QPoint& _pos)
     {
         if (!isDrew())
             return false;
@@ -333,6 +368,11 @@ namespace Ui
     bool FileItem::isOverFilename(const QPoint& _pos) const
     {
         return name_ && name_->contains(_pos);
+    }
+
+    bool FileItem::isOverStatus(const QPoint& _pos) const
+    {
+        return getStatusRect().contains(_pos);
     }
 
     void FileItem::setDownloading(bool _downloading)
@@ -387,38 +427,14 @@ namespace Ui
     void FileItem::setMoreButtonState(const ButtonState& _state)
     {
         moreState_ = _state;
-
-        if (_state == ButtonState::HIDDEN)
-        {
-            more_ = QPixmap();
-            return;
-        }
-
-        QColor color;
-        switch (_state)
-        {
-        case ButtonState::NORMAL:
-            color = Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY);
-            break;
-        case ButtonState::HOVERED:
-            color = Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER);
-            break;
-        case ButtonState::PRESSED:
-            color = Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_ACTIVE);
-            break;
-        default:
-            break;
-        }
-
-        more_ = Utils::renderSvgScaled(qsl(":/controls/more_vertical"), QSize(MORE_BUTTON_SIZE, MORE_BUTTON_SIZE), color);
     }
 
     bool FileItem::isOverMoreButton(const QPoint& _pos, int _h) const
     {
         if (!isDrew())
             return false;
-        auto r = QRect(width_ - Utils::scale_value(RIGHT_OFFSET) / 2 - Utils::scale_value(MORE_BUTTON_SIZE) / 2, _h + height_ / 2 - Utils::scale_value(MORE_BUTTON_SIZE) / 2, Utils::scale_value(MORE_BUTTON_SIZE), Utils::scale_value(MORE_BUTTON_SIZE));
-        return r.contains(_pos);
+
+        return getMoreButtonRect().translated(0, _h).contains(_pos);
     }
 
     ButtonState FileItem::moreButtonState() const
@@ -436,8 +452,39 @@ namespace Ui
         return QRect(0, name_->offsets().y(), width_, name_->cachedSize().height());
     }
 
+    void FileItem::setFileStatus(FileStatus _status)
+    {
+        status_ = _status;
+    }
+
+    void FileItem::elide(const std::unique_ptr<TextRendering::TextUnit>& _unit, int _addedWidth)
+    {
+        if (_unit)
+            _unit->getHeight(width_ - Utils::scale_value(HOR_OFFSET + RIGHT_OFFSET + PREVIEW_SIZE + PREVIEW_RIGHT_OFFSET) + _addedWidth);
+    }
+
+    QRect FileItem::getMoreButtonRect() const
+    {
+        const auto btnSize = Utils::scale_value(QSize(MORE_BUTTON_SIZE, MORE_BUTTON_SIZE));
+        const auto x = width_ - Utils::scale_value(RIGHT_OFFSET) / 2 - btnSize.width() / 2;
+        const auto y = status_ == FileStatus::NoStatus
+            ? (height_ - btnSize.height()) / 2
+            : Utils::scale_value(VER_OFFSET) * 2 + getFileStatusIconSize().height();
+        return QRect({ x, y }, btnSize);
+    }
+
+    QRect FileItem::getStatusRect() const
+    {
+        if (status_ == FileStatus::NoStatus)
+            return {};
+
+        const auto x = width_ - Utils::scale_value(RIGHT_OFFSET) / 2 - getFileStatusIconSize().width() / 2;
+        const auto y = Utils::scale_value(VER_OFFSET);
+        return { QPoint(x, y), getFileStatusIconSize() };
+    }
+
     FilesList::FilesList(QWidget* _parent)
-        : MediaContentWidget(Type::Files, _parent)
+        : MediaContentWidget(MediaContentType::Files, _parent)
         , anim_(new QVariantAnimation(this))
     {
         connect(Ui::GetDispatcher(), &core_dispatcher::fileSharingFileMetainfoDownloaded, this, &FilesList::fileSharingFileMetainfoDownloaded);
@@ -475,6 +522,8 @@ namespace Ui
 
     void FilesList::processItems(const QVector<Data::DialogGalleryEntry>& _entries)
     {
+        const auto blocked = Logic::getContactListModel()->isTrustRequired(aimId_);
+
         auto h = height();
         for (const auto& e : _entries)
         {
@@ -485,14 +534,17 @@ namespace Ui
             if (!isFilesharing)
                 continue;
 
-            auto reqId = GetDispatcher()->downloadFileSharingMetainfo(e.url_);
+            const auto reqId = GetDispatcher()->downloadFileSharingMetainfo(e.url_);
 
-            auto time = QDateTime::fromSecsSinceEpoch(e.time_);
+            const auto time = QDateTime::fromSecsSinceEpoch(e.time_);
             auto item = std::make_unique<FileItem>(e.url_, formatTimeStr(time), e.msg_id_, e.seq_, e.outgoing_, e.sender_, e.time_, width());
             h += item->getHeight();
 
             RequestIds_.push_back(reqId);
             item->setReqId(reqId);
+
+            if (blocked)
+                item->setFileStatus(FileStatus::Blocked);
 
             Items_.push_back(std::move(item));
         }
@@ -502,6 +554,8 @@ namespace Ui
 
     void FilesList::processUpdates(const QVector<Data::DialogGalleryEntry>& _entries)
     {
+        const auto blocked = Logic::getContactListModel()->isTrustRequired(aimId_);
+
         auto h = height();
         for (const auto& e : _entries)
         {
@@ -549,6 +603,9 @@ namespace Ui
             RequestIds_.push_back(reqId);
             item->setReqId(reqId);
 
+            if (blocked)
+                item->setFileStatus(FileStatus::Blocked);
+
             Items_.insert(iter, std::move(item));
         }
         setFixedHeight(h);
@@ -591,19 +648,11 @@ namespace Ui
         auto h = 0;
         for (auto& i : Items_)
         {
-            if (i->isOverDate(_event->pos()))
-            {
-                i->setDateState(false, true);
-            }
-            else
-            {
-                i->setDateState(false, false);
-            }
+            const auto posRel = _event->pos() - QPoint(0, h);
+            i->setDateState(false, i->isOverDate(posRel));
 
             if (i->isOverMoreButton(_event->pos(), h))
-            {
                 i->setMoreButtonState(ButtonState::PRESSED);
-            }
 
             h += i->getHeight();
         }
@@ -625,17 +674,18 @@ namespace Ui
 
         if (Utils::clicked(pos_, _event->pos()))
         {
+            const auto downloadAllowed = !Logic::getContactListModel()->isTrustRequired(aimId_) || MyInfo()->isTrusted();
+
             auto h = 0, j = 0;
             for (auto& i : Items_)
             {
-                auto r = QRect(0, h, width(), i->getHeight());
+                const auto r = QRect(0, h, width(), i->getHeight());
+                const auto posRel = _event->pos() - QPoint(0, h);
                 if (r.contains(_event->pos()))
                 {
                     cont.happened();
 
-                    auto p = _event->pos();
-                    p.setY(p.y() - h);
-                    if (i->isOverControl(p))
+                    if (i->isOverControl(posRel))
                     {
                         if (i->isDownloading())
                         {
@@ -648,15 +698,19 @@ namespace Ui
 
                             update();
                         }
-                        else
+                        else if (downloadAllowed)
                         {
                             auto reqId = Ui::GetDispatcher()->downloadSharedFile(aimId_, i->getLink(), false, QString(), true);
                             Downloading_.push_back(reqId);
                             i->setReqId(reqId);
                             startDataTransferTimeoutTimer(reqId);
                         }
+                        else
+                        {
+                            showFileStatusToast(i->getFileStatus());
+                        }
                     }
-                    else if (i->isOverLink(_event->pos(), p))
+                    else if (i->isOverLink(_event->pos(), posRel))
                     {
 #ifdef _WIN32
                         QFileInfo f(i->getLocalPath());
@@ -672,11 +726,11 @@ namespace Ui
                         }
 #endif //_WIN32
                         const auto path = i->getLocalPath();
-                        const auto openAt = i->isOverIcon(p) ? Utils::OpenAt::Launcher : Utils::OpenAt::Folder;
-                        Utils::openFileOrFolder(path, openAt);
+                        const auto openAt = i->isOverIcon(posRel) ? Utils::OpenAt::Launcher : Utils::OpenAt::Folder;
+                        Utils::openFileOrFolder(aimId_, path, openAt);
                     }
                 }
-                if (i->isOverDate(_event->pos()))
+                if (i->isOverDate(posRel))
                 {
                     Q_EMIT Logic::getContactListModel()->select(aimId_, i->getMsg(), Logic::UpdateChatSelection::No);
                     i->setDateState(true, false);
@@ -713,21 +767,25 @@ namespace Ui
         const auto pos = _event->pos();
         for (auto& i : Items_)
         {
-            auto r = QRect(0, h, width(), i->getHeight());
+            const auto r = QRect(0, h, width(), i->getHeight());
+            const auto posRel = pos - QPoint(0, h);
             if (r.contains(pos))
             {
-                auto p = pos;
-                p.setY(p.y() - h);
-                if (i->isOverControl(p) || i->isOverLink(pos, p))
+                if (i->isOverControl(posRel) || i->isOverLink(pos, posRel))
                     point = true;
 
-                if (Features::longPathTooltipsAllowed() && i->needsTooltip())
+                const auto needTooltip =
+                    i->isOverStatus(posRel) ||
+                    (Features::longPathTooltipsAllowed() && i->needsTooltip());
+
+                if (needTooltip)
                 {
                     forceTooltip = true;
-                    updateTooltip(i, pos);
+                    updateTooltip(i, posRel, h);
                 }
             }
-            if (i->isOverDate(pos))
+
+            if (i->isOverDate(posRel))
             {
                 point = true;
                 i->setDateState(true, false);
@@ -803,6 +861,7 @@ namespace Ui
                 i->setFilesize(_meta.size_);
                 i->setLocalPath(_meta.localPath_);
                 i->setLastModified(_meta.lastModified_);
+                i->setFileStatus(_meta.trustRequired_ ? FileStatus::Blocked : FileStatus::NoStatus);
                 break;
             }
         }
@@ -849,7 +908,7 @@ namespace Ui
                     Downloading_.erase(std::remove(Downloading_.begin(), Downloading_.end(), i->reqId()), Downloading_.end());
                     if (Downloading_.empty())
                         anim_->stop();
-                    Utils::showDownloadToast(_result);
+                    Utils::showDownloadToast(aimId_, _result);
                     break;
                 }
             }
@@ -867,7 +926,7 @@ namespace Ui
                     QFileInfo f(_result.filename_);
                     i->setLastModified(f.lastModified().toTime_t());
                     needUpdate = true;
-                    Utils::showDownloadToast(_result);
+                    Utils::showDownloadToast(aimId_, _result);
                 }
             }
 
@@ -953,17 +1012,21 @@ namespace Ui
         setFixedHeight(h);
     }
 
-    void FilesList::updateTooltip(const std::unique_ptr<BaseFileItem>& _item, const QPoint& _p)
+    void FilesList::updateTooltip(const std::unique_ptr<BaseFileItem>& _item, const QPoint& _p, int _h)
     {
-        if (_item->isOverFilename(_p))
+        const auto overName = _item->isOverFilename(_p);
+        const auto overStatus = _item->isOverStatus(_p);
+        if (overName || overStatus)
         {
             if (!isTooltipActivated())
             {
-                auto ttRect = _item->getTooltipRect();
-                auto isFullyVisible = visibleRegion().boundingRect().y() < ttRect.top();
+                const auto relRect = overName ? _item->getTooltipRect() : _item->getStatusRect();
+                const auto ttRect = relRect.translated(0, _h);
+                const auto isFullyVisible = visibleRegion().boundingRect().y() < ttRect.top();
                 const auto arrowDir = isFullyVisible ? Tooltip::ArrowDirection::Down : Tooltip::ArrowDirection::Up;
                 const auto arrowPos = isFullyVisible ? Tooltip::ArrowPointPos::Top : Tooltip::ArrowPointPos::Bottom;
-                showTooltip(_item->getFilename(), QRect(mapToGlobal(ttRect.topLeft()), ttRect.size()), arrowDir, arrowPos);
+                const auto text = overName ? _item->getFilename() : getFileStatusText(_item->getFileStatus());
+                showTooltip(text, QRect(mapToGlobal(ttRect.topLeft()), ttRect.size()), arrowDir, arrowPos);
             }
         }
         else

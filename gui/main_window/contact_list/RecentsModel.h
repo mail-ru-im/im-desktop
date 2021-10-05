@@ -11,6 +11,7 @@ namespace Ui
 {
     class MainWindow;
     enum class MessagesBuddiesOpt;
+    enum class ClosePage;
 }
 
 namespace Logic
@@ -45,7 +46,7 @@ namespace Logic
 
     private Q_SLOTS:
 
-        void activeDialogHide(const QString&);
+        void activeDialogHide(const QString&, Ui::ClosePage _closePage);
         void contactChanged(const QString&);
         void selectedContactChanged(const QString& _new, const QString& _prev);
         void contactAvatarChanged(const QString&);
@@ -55,6 +56,8 @@ namespace Logic
         void sortDialogs();
         void contactRemoved(const QString&);
         void typingStatus(const Logic::TypingFires& _typing, bool _isTyping);
+        void onUnreadThreadsCount(int _unreadCount, int _unreadMentionsCount);
+        void onThreadUpdates(const Data::ThreadUpdates& _updates);
 
     public:
         explicit RecentsModel(QObject *parent);
@@ -62,7 +65,7 @@ namespace Logic
         int rowCount(const QModelIndex &parent = QModelIndex()) const override;
         QVariant data(const QModelIndex &index, int role) const override;
 
-        Data::DlgState getDlgState(const QString& aimId = QString(), bool fromDialog = false);
+        Data::DlgState getDlgState(const QString& _aimId = {}, bool _fromDialog = false);
         void unknownToRecents(const Data::DlgState&);
 
         void togglePinnedVisible();
@@ -89,6 +92,8 @@ namespace Logic
         bool isStranger(const QString& _aimid);
         bool isServiceItem(const QModelIndex& _index) const override;
         bool isClickableItem(const QModelIndex& _index) const override;
+        bool isDropableItem(const QModelIndex& _index) const override;
+        bool isPinnedServiceItem(const QModelIndex& _index) const;
         bool isPinnedGroupButton(const QModelIndex& i) const;
         bool isPinnedVisible() const;
         quint16 getPinnedCount() const;
@@ -125,6 +130,9 @@ namespace Logic
         int getUnreadCount(const QString& _aimId) const;
         int getUnreadMentionsCount(const QString& _aimId) const;
 
+        int getUnreadThreadsCount() const;
+        int getUnreadThreadsMentionsCount() const;
+
         int32_t getTime(const QString& _aimId) const;
 
         std::vector<QString> getSortedRecentsContacts() const;
@@ -143,6 +151,14 @@ namespace Logic
         int getUnimportantHeaderIndex() const;
         int getRecentsHeaderIndex() const;
         int getVisibleServiceItems() const;
+        std::optional<Data::DlgState> serviceItemByIndex(int _index) const;
+        void initPinnedItemsIndexes();
+        int pinnedServiceItemsCount() const;
+        int pinnedServiceItemIndex(Data::DlgState::PinnedServiceItemType _type) const;
+        int pinnedFavoritesIndex() const;
+        int scheduledMessagesItemIndex() const;
+        int threadsItemIndex() const;
+        int remindersItemIndex() const;
 
         void scheduleRefreshTimer();
         void makeIndexes();
@@ -163,6 +179,14 @@ namespace Logic
 
         std::map<QString, Recents::FriendlyItemText> friendlyTexts_;
         QTimer* refreshTimer_;
+
+        std::unordered_map<Data::DlgState::PinnedServiceItemType, size_t> pinnedItemsIndexes_;
+
+        struct
+        {
+            int unreadCount_ = 0;
+            int unreadMentionsCount_ = 0;
+        } threadsFeed_;
     };
 
     RecentsModel* getRecentsModel();

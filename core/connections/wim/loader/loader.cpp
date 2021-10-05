@@ -36,7 +36,7 @@ namespace
             [_id]
         (const auto &_item)
         {
-            assert(_item);
+            im_assert(_item);
             return (_item->get_id() == _id);
         });
     }
@@ -53,15 +53,15 @@ loader::~loader() = default;
 
 void loader::add_file_sharing_task(const std::shared_ptr<fs_loader_task>& _task)
 {
-    assert(_task);
+    im_assert(_task);
 
     const auto &task_id = _task->get_id();
-    assert(!task_id.empty());
+    im_assert(!task_id.empty());
 
     const auto iter_task = find_task_by_id(file_sharing_tasks_.cbegin(), file_sharing_tasks_.cend(), task_id);
     if (iter_task != file_sharing_tasks_.cend())
     {
-        assert(!"task with the same id already exist");
+        im_assert(!"task with the same id already exist");
         return;
     }
 
@@ -70,7 +70,7 @@ void loader::add_file_sharing_task(const std::shared_ptr<fs_loader_task>& _task)
 
 void loader::remove_file_sharing_task(std::string_view _id)
 {
-    assert(!_id.empty());
+    im_assert(!_id.empty());
 
     const auto iter_task = find_task_by_id(file_sharing_tasks_.cbegin(), file_sharing_tasks_.cend(), _id);
     if (iter_task == file_sharing_tasks_.cend())
@@ -95,7 +95,7 @@ void loader::on_file_sharing_task_progress(const std::shared_ptr<fs_loader_task>
 
 bool loader::has_file_sharing_task(std::string_view _id) const
 {
-    assert(!_id.empty());
+    im_assert(!_id.empty());
 
     return find_task_by_id(file_sharing_tasks_.cbegin(), file_sharing_tasks_.cend(), _id) != file_sharing_tasks_.cend();
 }
@@ -167,8 +167,8 @@ std::shared_ptr<upload_progress_handler> loader::upload_file_sharing(
     upload_file_params&& _file_params,
     const wim_packet_params& _params)
 {
-    assert(!_guid.empty());
-    assert(!_file_params.file_name.empty());
+    im_assert(!_guid.empty());
+    im_assert(!_file_params.file_name.empty());
 
     auto task = std::make_shared<upload_task>(_guid, _params, std::move(_file_params));
     task->set_handler(std::make_shared<upload_progress_handler>());
@@ -276,7 +276,7 @@ void cleanup_cache(const std::wstring& _cache_folder)
             {
                 if (boost::filesystem::is_regular_file(dir_iter->status()))
                 {
-                    const auto write_time = std::chrono::system_clock::from_time_t(boost::filesystem::last_write_time(dir_iter->path(), error));
+                    const auto write_time = std::chrono::system_clock::from_time_t(tools::system::get_file_lastmodified(dir_iter->path().wstring()));
                     if ((current_time - write_time) > delete_files_older)
                         files_to_delete.push_back(*dir_iter);
                 }
@@ -322,7 +322,7 @@ void loader::resume_task(
 
 void loader::abort_file_sharing_process(std::string_view _process_id)
 {
-    assert(!_process_id.empty());
+    im_assert(!_process_id.empty());
 
     remove_file_sharing_task(_process_id);
 }

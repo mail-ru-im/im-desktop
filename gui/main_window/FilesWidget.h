@@ -6,6 +6,7 @@
 namespace Ui
 {
     class TextEditEx;
+    class ThreadPlate;
 
     class FilesAreaItem : public QWidget
     {
@@ -96,17 +97,25 @@ namespace Ui
         void setButtonActive(bool);
 
     public:
-        FilesWidget(QWidget* _parent, const FilesToSend& _files);
+        enum class Target
+        {
+            Chat,
+            Thread,
+        };
+
+        FilesWidget(const FilesToSend& _files, Target _target, QWidget* _parent);
         ~FilesWidget();
 
         FilesToSend getFiles() const;
         QString getDescription() const;
+        int getCursorPos() const;
         const Data::MentionMap& getMentions() const;
         void setFocusOnInput();
         void setDescription(const QString& _text, const Data::MentionMap& _mentions = {});
 
     protected:
         void paintEvent(QPaintEvent* _event) override;
+        void resizeEvent(QResizeEvent* _event) override;
 
     private Q_SLOTS:
         void descriptionChanged();
@@ -133,6 +142,7 @@ namespace Ui
 
         FilesScroll* area_;
         FilesArea* filesArea_;
+        ThreadPlate* threadPlate_ = nullptr;
         int currentDocumentHeight_;
         int neededHeight_;
         bool drawDuration_;

@@ -1,6 +1,8 @@
 #pragma once
 
 #define auth_file_name "value.au"
+#define oauth2_login_path "/login"
+#define oauth2_token_path "/token"
 #define settings_export_file_name "exported_ui.json"
 #define core_settings_export_file_name "exported_core.json"
 #define fetch_url_file_name "fetch"
@@ -61,8 +63,10 @@
 #define settings_appearance_last_directory "appearance_last_wp_directory"
 #define settings_fast_drop_search_results "fast_drop_search_results"
 #define settings_exec_files_without_warning "exec_files_without_warning"
+#define settings_open_external_link_without_warning "open_external_link_without_warning"
 #define settings_show_calls_tab "settings_show_calls_tab"
 #define settings_show_reactions "settings_show_reactions"
+#define settings_warn_about_disabled_microphone "settings_warn_about_disabled_microphone"
 
 #define settings_allow_statuses "settings_allow_statuses"
 
@@ -73,6 +77,7 @@ constexpr bool settings_show_smartreply_default() noexcept { return true; }
 constexpr bool settings_spell_check_default() noexcept { return true; }
 constexpr bool settings_fast_drop_search_default() noexcept { return false; }
 constexpr bool settings_exec_files_without_warning_default() noexcept { return false; }
+constexpr bool settings_open_external_link_without_warning_default() noexcept { return false; }
 constexpr bool settings_keep_logged_in_default() noexcept { return true; }
 constexpr bool settings_show_reactions_default() noexcept { return true; }
 constexpr bool settings_allow_statuses_default() noexcept { return true; }
@@ -187,4 +192,11 @@ namespace feature
     constexpr int default_voip_big_conference_boundary() noexcept { return 5; }
 
     constexpr int default_dns_resolve_timeout_sec() noexcept { return 300; }
+
+    constexpr int default_draft_timeout_sec() noexcept { return 5; }
+    constexpr int default_draft_max_len() noexcept { return 10000; }
+
+    constexpr int default_smartreply_suggests_click_hide_timeout() noexcept { return 150; }
+    constexpr int default_smartreply_suggests_msgid_cache_size() noexcept { return 1; }
+    constexpr int default_base_retry_interval_sec() noexcept { return 1; }
 }

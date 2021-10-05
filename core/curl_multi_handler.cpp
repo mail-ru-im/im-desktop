@@ -229,7 +229,7 @@ namespace
 
     void on_socket_ok(const curl_socket_t s)
     {
-        assert(s != CURL_SOCKET_BAD);
+        im_assert(s != CURL_SOCKET_BAD);
         if (s == CURL_SOCKET_BAD)
             return;
 
@@ -242,7 +242,7 @@ namespace
 
     void on_socket_timed_out(const curl_socket_t s)
     {
-        assert(s != CURL_SOCKET_BAD);
+        im_assert(s != CURL_SOCKET_BAD);
         if (s == CURL_SOCKET_BAD)
             return;
 
@@ -279,7 +279,7 @@ namespace
 
     void check_socket_bad_write(const curl_socket_t s)
     {
-        assert(s != CURL_SOCKET_BAD);
+        im_assert(s != CURL_SOCKET_BAD);
         if (auto it = socket_map.find(s); it != socket_map.end())
         {
             auto& data = it->second;

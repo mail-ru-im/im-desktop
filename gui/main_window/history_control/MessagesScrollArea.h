@@ -3,6 +3,7 @@
 #include "history/History.h"
 #include "history/Message.h"
 #include "../../types/filesharing_meta.h"
+#include "complex_message/FileSharingUtils.h"
 
 
 namespace hist
@@ -23,7 +24,7 @@ namespace Ui
 
     struct SelectedMessageInfo
     {
-        Data::FormattedString text_;
+        Data::FString text_;
         bool isOutgoing_ = false;
         bool isUnsupported_ = false;
         Data::QuotesVec quotes_;
@@ -107,7 +108,7 @@ namespace Ui
             Formatted
         };
 
-        Data::FormattedString getSelectedText(TextFormat _format = TextFormat::Formatted) const;
+        Data::FString getSelectedText(TextFormat _format = TextFormat::Formatted) const;
         Data::FilesPlaceholderMap getFilesPlaceholders() const;
         Data::MentionMap getMentions() const;
 
@@ -197,6 +198,7 @@ namespace Ui
 
         int getSelectedCount() const;
         int getSelectedUnsupportedCount() const;
+        int getSelectedPlainFilesCount() const;
 
         void setSmartreplyWidget(SmartReplyWidget* _widget);
         void showSmartReplies();
@@ -206,10 +208,11 @@ namespace Ui
         void notifyQuotesResize();
 
         bool hasItems() const noexcept;
+        QString getAimid() const;
 
         void clearPttProgress();
 
-        std::optional<Data::FileSharingMeta> getMeta(const QString& _id) const;
+        std::optional<Data::FileSharingMeta> getMeta(const Utils::FileSharingId& _id) const;
 
     public Q_SLOTS:
         void notifySelectionChanges();
@@ -252,10 +255,10 @@ namespace Ui
 
     public Q_SLOTS:
         void onWheelEvent(QWheelEvent* e);
-        void updateSelected(qint64, const QString&, bool);
-        void updateSelectedCount();
+        void updateSelected(const QString& _aimId, qint64, const QString&, bool);
+        void updateSelectedCount(const QString& _aimId);
         void multiselectChanged();
-        void updatePttProgress(qint64, const QString&, int);
+        void updatePttProgress(qint64, const Utils::FileSharingId&, int);
 
     private:
         bool isHidingScrollbar() const;
@@ -321,7 +324,7 @@ namespace Ui
 
         int minViewPortHeightForUnload() const;
 
-        std::set<QString> contacts_;
+        std::unordered_set<QString> contacts_;
 
         bool IsSearching_;
 
@@ -339,9 +342,9 @@ namespace Ui
         struct PttProgress
         {
             qint64 id_;
-            QString fsId_;
+            Utils::FileSharingId fsId_;
             int progress_;
-            PttProgress(qint64 _id, const QString& _fsId, int _progress) : id_(_id), fsId_(_fsId), progress_(_progress) {};
+            PttProgress(qint64 _id, const Utils::FileSharingId& _fsId, int _progress) : id_(_id), fsId_(_fsId), progress_(_progress) {};
         };
 
         std::vector<PttProgress> pttProgress_;

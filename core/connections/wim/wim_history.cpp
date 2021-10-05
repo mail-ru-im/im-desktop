@@ -3,7 +3,7 @@
 #include "../../archive/history_message.h"
 #include "../../archive/history_patch.h"
 #include "../../archive/dlg_state.h"
-#include "../../tools/json_helper.h"
+#include "../../../common.shared/json_helper.h"
 
 #include "../../log/log.h"
 
@@ -17,7 +17,7 @@ namespace
 {
     void apply_persons(InOut archive::history_message_sptr &_message, const archive::persons_map &_persons)
     {
-        assert(_message);
+        im_assert(_message);
 
         if (!_persons.empty())
             _message->set_sender_friendly(_persons.begin()->second.friendly_);
@@ -49,14 +49,14 @@ namespace
 
             if (0 != msg->unserialize(x, _sender_aimid))
             {
-                assert(!"parse message error");
+                im_assert(!"parse message error");
             }
             else
             {
-                assert(!msg->is_patch());
+                im_assert(!msg->is_patch());
 
                 const auto is_same_as_prev = (prev_msg_id == msg->get_msgid());
-                assert(!is_same_as_prev);
+                im_assert(!is_same_as_prev);
 
                 if (is_same_as_prev)
                 {
@@ -94,7 +94,7 @@ bool core::wim::parse_history_messages_json(
     message_order _order,
     const char* _node_member /* = "messages" */)
 {
-    assert(!_sender_aimid.empty());
+    im_assert(!_sender_aimid.empty());
 
     const auto iter_messages = _node.FindMember(_node_member);
     if (iter_messages == _node.MemberEnd())
@@ -122,7 +122,7 @@ patch_container core::wim::parse_patches_json(const rapidjson::Value& _node_patc
 
     if (!_node_patch.IsArray())
     {
-        assert(!"unexpected patches node format");
+        im_assert(!"unexpected patches node format");
         return result;
     }
 
@@ -139,15 +139,15 @@ patch_container core::wim::parse_patches_json(const rapidjson::Value& _node_patc
 
         if (iter_msg_id == patch_node.MemberEnd() || iter_type == patch_node.MemberEnd())
         {
-            assert(!"unexpected patch node format");
+            im_assert(!"unexpected patch node format");
             continue;
         }
 
         const auto msg_id = iter_msg_id->value.GetInt64();
-        assert(msg_id > 0);
+        im_assert(msg_id > 0);
 
         const auto type = rapidjson_get_string_view(iter_type->value);
-        assert(!type.empty());
+        im_assert(!type.empty());
 
         __INFO(
             "delete_history",
@@ -175,8 +175,10 @@ patch_container core::wim::parse_patches_json(const rapidjson::Value& _node_patc
             patch_type = history_patch::type::clear;
         else if (type == "setReactions")
             patch_type = history_patch::type::set_reactions;
+        else if (type == "addThread")
+            patch_type = history_patch::type::add_thread;
 
-        assert(history_patch::is_valid_type(patch_type));
+        im_assert(history_patch::is_valid_type(patch_type));
 
         if (history_patch::is_valid_type(patch_type))
         {
@@ -249,6 +251,9 @@ void core::wim::apply_patches(const std::vector<std::pair<int64_t, archive::hist
         case history_patch::type::set_reactions:
             _block.emplace_back(history_message::make_set_reactions_patch(message_id, std::string()));
             break;
+        case history_patch::type::add_thread:
+            _block.emplace_back(history_message::make_updated_patch(message_id, {}));
+            break;
         default:
             break;
         }
@@ -279,7 +284,7 @@ std::vector<core::archive::dlg_state_head> core::wim::parse_heads(const rapidjso
         const auto iter_aimid = pos.FindMember("sn");
         if (iter_aimid == pos.MemberEnd() || !iter_aimid->value.IsString())
         {
-            assert(false);
+            im_assert(false);
             continue;
         }
 

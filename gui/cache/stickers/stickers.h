@@ -109,8 +109,8 @@ private:
 
 using stickerSptr = std::shared_ptr<Sticker>;
 using stickersMap = std::unordered_map<int32_t, stickerSptr>;
-using stickersArray = std::vector<QString>;
-using FsStickersMap = std::unordered_map<QString, stickerSptr, Utils::QStringHasher>;
+using stickersArray = std::vector<Utils::FileSharingId>;
+using FsStickersMap = std::unordered_map<Utils::FileSharingId, stickerSptr, Utils::FileSharingIdHasher>;
 
 class Set
 {
@@ -154,7 +154,7 @@ public:
     const StickerData& getBigIcon() const;
 
     int32_t getCount() const;
-    int32_t getStickerPos(const QString& _fsId) const;
+    int32_t getStickerPos(const Utils::FileSharingId& _fsId) const;
 
     bool isEmpty() const { return stickers_.empty(); }
 
@@ -200,10 +200,10 @@ enum class SuggestType
 
 struct StickerInfo
 {
-    const QString fsId_;
+    const Utils::FileSharingId fsId_;
     const SuggestType type_;
 
-    StickerInfo(QString _fsId, const SuggestType _type)
+    StickerInfo(Utils::FileSharingId _fsId, const SuggestType _type)
         : fsId_(std::move(_fsId))
         , type_(_type)
     {
@@ -229,7 +229,7 @@ struct StickerLoadData
     StickerData data_;
     stickerSptr sticker_;
     setSptr set_;
-    QString fsId_;
+    Utils::FileSharingId fsId_;
     QString path_;
     core::sticker_size size_;
     int id_;
@@ -245,7 +245,7 @@ class Cache : public QObject
 Q_SIGNALS:
     void setIconUpdated(int _setId, QPrivateSignal) const;
     void setBigIconUpdated(int _setId, QPrivateSignal) const;
-    void stickerUpdated(int _error, const QString& _fsId, int _setId, int _stickerId, QPrivateSignal) const;
+    void stickerUpdated(int _error, const Utils::FileSharingId& _fsId, int _setId, int _stickerId, QPrivateSignal) const;
 
 public:
     Cache(QObject* _parent);
@@ -262,7 +262,7 @@ public:
     void setSetBigIcon(const core::coll_helper& _coll);
 
     stickerSptr getSticker(uint32_t _setId, uint32_t _stickerId) const;
-    stickerSptr getSticker(const QString& _fsId) const;
+    stickerSptr getSticker(const Utils::FileSharingId& _fsId) const;
 
     const setsIdsArray& getSets() const;
     const setsIdsArray& getStoreSets() const;
@@ -270,13 +270,13 @@ public:
 
     setSptr getSet(int32_t _setId) const;
     setSptr getStoreSet(int32_t _setId) const;
-    setSptr findSetByFsId(const QString& _fsId) const;
+    setSptr findSetByFsId(const Utils::FileSharingId& _fsId) const;
 
     void addSet(setSptr _set);
-    void addStickerByFsId(const std::vector<QString> &_fsIds, const QString &_keyword, const SuggestType _type);
+    void addStickerByFsId(const std::vector<Utils::FileSharingId> &_fsIds, const QString &_keyword, const SuggestType _type);
 
     setSptr insertSet(int32_t _setId);
-    stickerSptr insertSticker(const QString& _fsId);
+    stickerSptr insertSticker(const Utils::FileSharingId& _fsId);
 
     void clearCache();
     void clearSetCache(int _setId);
@@ -284,6 +284,7 @@ public:
     bool getSuggest(const QString& _keyword, Suggest& _suggest, const std::set<SuggestType>& _types) const;
 
     void requestSearch(const QString& _term);
+    void requestStickersMeta();
 
     const setsMap& getSetsTree() const;
     const setsMap& getStoreTree() const;
@@ -311,6 +312,8 @@ private:
 
     StickerLoadDataV batchloadData_;
     QTimer* batchLoadTimer_ = nullptr;
+
+    bool metaAlreadyRequested_ = false;
 };
 
 void unserialize(const core::coll_helper& _coll);
@@ -327,9 +330,9 @@ void setSetIcon(const core::coll_helper& _coll);
 void setSetBigIcon(const core::coll_helper& _coll);
 
 stickerSptr getSticker(uint32_t _setId, uint32_t _stickerId);
-stickerSptr getSticker(const QString& _fsId);
+stickerSptr getSticker(const Utils::FileSharingId& _fsId);
 
-QString getSendUrl(const QString& _fsId);
+QString getSendUrl(const Utils::FileSharingId& _fsId);
 
 const setsIdsArray& getStickersSets();
 const setsIdsArray& getStoreStickersSets();
@@ -341,34 +344,34 @@ const stickersArray& getStickers(int32_t _setId);
 
 int32_t getSetStickersCount(int32_t _setId);
 
-int32_t getStickerPosInSet(int32_t _setId, const QString& _fsId);
+int32_t getStickerPosInSet(int32_t _setId, const Utils::FileSharingId& _fsId);
 
-const StickerData& getStickerData(const QString& _fsId, core::sticker_size _size);
+const StickerData& getStickerData(const Utils::FileSharingId& _fsId, core::sticker_size _size);
 
 const StickerData& getSetIcon(int32_t _setId);
 const StickerData& getSetBigIcon(int32_t _setId);
 
-void cancelDataRequest(std::vector<QString> _fsIds, core::sticker_size _size);
+void cancelDataRequest(std::vector<Utils::FileSharingId> _fsIds, core::sticker_size _size);
 
 QString getSetName(int32_t _setId);
 
-void lockStickerCache(const QString& _fsId);
+void lockStickerCache(const Utils::FileSharingId& _fsId);
 
-void unlockStickerCache(const QString& _fsId);
+void unlockStickerCache(const Utils::FileSharingId& _fsId);
 
 void showStickersPack(const int32_t _set_id, StatContext context);
 void showStickersPackByStoreId(const QString& _store_id, StatContext context);
-void showStickersPackByFileId(const QString& _file_id, StatContext context);
+void showStickersPackByFileId(const Utils::FileSharingId& _file_id, StatContext context);
 void showStickersPackByStickerId(const Data::StickerId& _sticker_id, StatContext context);
 
 setSptr parseSet(const core::coll_helper& _coll_set);
 
 void addSet(setSptr _set);
-void addStickers(const std::vector<QString> &_fsIds, const QString &_text, const Stickers::SuggestType _type);
+void addStickers(const std::vector<Utils::FileSharingId> &_fsIds, const QString &_text, const Stickers::SuggestType _type);
 
 setSptr getSet(const int32_t _setId);
 setSptr getStoreSet(const int32_t _setId);
-setSptr findSetByFsId(const QString& _fsId);
+setSptr findSetByFsId(const Utils::FileSharingId& _fsId);
 
 void requestSearch(const QString& _term);
 
@@ -380,5 +383,7 @@ Cache& getCache();
 
 bool getSuggest(const QString& _keyword, Suggest& _suggest, const std::set<SuggestType>& _types);
 bool getSuggestWithSettings(const QString& _keyword, Suggest& _suggest);
+
+std::string_view recentsStickerSettingsPath();
 
 UI_STICKERS_NS_END

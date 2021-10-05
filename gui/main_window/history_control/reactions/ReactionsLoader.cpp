@@ -21,13 +21,10 @@ namespace Ui
 class ReactionsLoader_p
 {
 public:
-    void onReactionDestroyed(const QString& _contact, int64_t _msgId)
+    void onLoaderUnsubscribed(const QString& _contact)
     {
-        auto& loader = loaders_[_contact];
-        loader.unsubscribe(_msgId);
-
-        if (loader.empty())
-            loaders_.erase(_contact);
+        if (auto it = loaders_.find(_contact); it != loaders_.cend() && it->second.empty())
+            loaders_.erase(it);
     }
 
     std::unordered_map<QString, ChatReactionsLoader, Utils::QStringHasher> loaders_;
@@ -62,7 +59,7 @@ void ReactionsLoader::subscribe(MessageReactions* _reactions)
     auto& loader = d->loaders_[contact];
     loader.subscribe(_reactions);
 
-    connect(_reactions, &MessageReactions::destroyed, this, [this, contact, msgId]() { d->onReactionDestroyed(contact, msgId); });
+    connect(&loader, &ChatReactionsLoader::unsubscribed, this, [this, contact]() { d->onLoaderUnsubscribed(contact); });
 
     GetDispatcher()->getReactions(contact, { msgId }, true);
 }
@@ -105,7 +102,14 @@ ChatReactionsLoader::~ChatReactionsLoader()
 
 void ChatReactionsLoader::subscribe(MessageReactions* _reactions)
 {
-    d->reactions_[_reactions->msgId()] = _reactions;
+    const auto msgId = _reactions->msgId();
+
+    auto& reactions = d->reactions_[msgId];
+    if (reactions)
+        reactions->disconnect(this);
+
+    reactions = _reactions;
+    connect(_reactions, &MessageReactions::destroyed, this, [this, msgId]() { unsubscribe(msgId); });
 
     if (d->chatId_.isEmpty())
         d->chatId_ = _reactions->contact();
@@ -117,6 +121,7 @@ void ChatReactionsLoader::subscribe(MessageReactions* _reactions)
 void ChatReactionsLoader::unsubscribe(int64_t _msgId)
 {
     d->reactions_.erase(_msgId);
+    Q_EMIT unsubscribed(_msgId, QPrivateSignal());
 }
 
 bool ChatReactionsLoader::empty() const

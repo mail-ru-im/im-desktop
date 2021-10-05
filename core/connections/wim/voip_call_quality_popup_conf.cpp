@@ -2,7 +2,7 @@
 #include "voip_call_quality_popup_conf.h"
 
 #include "../../../corelib/collection_helper.h"
-#include "../../tools/json_helper.h"
+#include "../../../common.shared/json_helper.h"
 
 
 using namespace core;
@@ -78,7 +78,7 @@ bool voip_call_quality_popup_conf::unserialize(const rapidjson::Document &_doc)
         auto& translates = iter_translates->value;
 
         auto iter_reason_translates = translates.FindMember("reason");
-        assert(iter_reason_translates != translates.MemberEnd());
+        im_assert(iter_reason_translates != translates.MemberEnd());
 
         auto& reason_tr = iter_reason_translates->value;
 
@@ -86,7 +86,7 @@ bool voip_call_quality_popup_conf::unserialize(const rapidjson::Document &_doc)
         {
             auto& problem_group = problem_groups[i];
 
-            assert(problem_group.MemberCount() == 1);
+            im_assert(problem_group.MemberCount() == 1);
             for (auto it = problem_group.MemberBegin(); it != problem_group.MemberEnd(); ++it)
             {
                 reason_category category;

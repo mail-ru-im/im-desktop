@@ -407,12 +407,10 @@ namespace Ui
 
         setCursor(Qt::PointingHandCursor);
 
-        connect(this, &QCheckBox::stateChanged, this, [this]() {
-            if (this->isChecked())
-                state_ = Activity::ACTIVE;
-            else
-                state_ = Activity::NORMAL; }
-        );
+        connect(this, &QCheckBox::stateChanged, this, [this]()
+        {
+            state_ = isChecked() ? Activity::ACTIVE : Activity::NORMAL;
+        });
     };
 
     void CheckBox::setState(const Activity _state)

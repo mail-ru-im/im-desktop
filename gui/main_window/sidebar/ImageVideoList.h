@@ -20,7 +20,7 @@ class ImageVideoList : public MediaContentWidget
     Q_OBJECT
 
 public:
-    ImageVideoList(QWidget* _parent, MediaContentWidget::Type _type, const std::string& _mediaType);
+    ImageVideoList(QWidget* _parent, MediaContentType _type, const std::string& _mediaType);
     ~ImageVideoList();
 
     void processItems(const QVector<Data::DialogGalleryEntry>& _entries) override;

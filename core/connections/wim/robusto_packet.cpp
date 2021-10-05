@@ -5,9 +5,8 @@
 #include "../../tools/hmac_sha_base64.h"
 #include "../../utils.h"
 #include "../../tools/system.h"
-#include "../../tools/json_helper.h"
+#include "../../../common.shared/json_helper.h"
 #include "../../tools/features.h"
-#include "../urls_cache.h"
 #include "../common.shared/string_utils.h"
 
 using namespace core;
@@ -106,6 +105,9 @@ int32_t robusto_packet::on_response_error_code()
     if (status_code_ == 40401)
         return wpie_error_robusto_target_not_found;
 
+    if (status_code_ >= 40000 && status_code_ < 50000)
+        return wpie_generic_client_error;
+
     return wpie_error_message_unknown;
 }
 
@@ -171,7 +173,7 @@ void robusto_packet::execute_request_async(const std::shared_ptr<http_request_si
     });
 }
 
-void robusto_packet::setup_common_and_sign(rapidjson::Value& _node, rapidjson_allocator& _a, const std::shared_ptr<core::http_request_simple>& _request, std::string_view _method, use_aimsid _use_aimsid)
+void robusto_packet::setup_common_and_sign(rapidjson::Value& _node, rapidjson_allocator& _a, const std::shared_ptr<core::http_request_simple>& _request, std::string_view _method, use_aimsid _use_aimsid, urls::url_type _url_type)
 {
     if (_use_aimsid == use_aimsid::yes)
         _node.AddMember("aimsid", params_.aimsid_, _a);
@@ -188,7 +190,7 @@ void robusto_packet::setup_common_and_sign(rapidjson::Value& _node, rapidjson_al
 
     std::string json_string = rapidjson_get_string(buffer);
 
-    _request->set_url(su::concat(urls::get_url(urls::url_type::rapi_host), _method));
+    _request->set_url(su::concat(urls::get_url(_url_type), _method));
     _request->set_normalized_url(_method);
 
     _request->set_keep_alive();

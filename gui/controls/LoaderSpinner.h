@@ -10,7 +10,19 @@ namespace Ui
         Q_OBJECT
 
     public:
-        LoaderSpinner(QWidget* _parent = nullptr, const QSize& _size = QSize(), bool _rounded = true, bool _shadow = true);
+        enum Option : uint16_t
+        {
+            NoOptions = 0x0,
+            Rounded = 0x1,
+            Shadowed = 0x2,
+            Cancelable = 0x4,
+
+            DefaultOptions = Rounded | Shadowed | Cancelable
+        };
+        Q_DECLARE_FLAGS(Options, Option);
+
+    public:
+        LoaderSpinner(QWidget* _parent = nullptr, const QSize& _size = QSize(), Options _opt = Option::DefaultOptions);
         ~LoaderSpinner();
 
         void startAnimation(const QColor& _spinnerColor = QColor(), const QColor& _bgColor = QColor());
@@ -27,7 +39,8 @@ namespace Ui
         RotatingSpinner* spinner_;
         CustomButton* button_;
         QSize size_;
-        bool rounded_;
-        bool shadow_;
+        Options options_;
     };
+
+    Q_DECLARE_OPERATORS_FOR_FLAGS(LoaderSpinner::Options);
 }

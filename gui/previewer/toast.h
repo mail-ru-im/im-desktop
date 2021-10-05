@@ -27,9 +27,12 @@ public:
     void setUseMainWindowShift(bool _enable);
     void setBackgroundColor(const QColor& _color);
     void enableMoveAnimation(bool _enable);
+    void enableMultiScreenShowing(bool _enable);
+
+    bool isMultiScreenShowing() const { return isMultiScreenShowingEnabled_; }
 
 Q_SIGNALS:
-    void disappeared();
+    void appeared();
 
 protected:
     void paintEvent(QPaintEvent* _event) override;
@@ -59,6 +62,7 @@ private:
 
     bool useMainWindowShift_ = false;
     bool isMoveAnimationEnabled_ = true;
+    bool isMultiScreenShowingEnabled_ = false;
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -81,12 +85,16 @@ public:
 protected:
     bool eventFilter(QObject* _object, QEvent* _event) override;
 
+private Q_SLOTS:
+    void clearMultiScreenToastsIfNeeded();
+
 private:
     ToastManager() = default;
     ToastManager(const ToastManager& _other) = delete;
 
     QPointer<ToastBase> bottomToast_;
     QPointer<ToastBase> topToast_;
+    std::vector<QPointer<ToastBase>> multiScreenToasts_;
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -138,7 +146,7 @@ class DownloadFinishedToast_p;
 class DownloadFinishedToast : public ToastBase
 {
 public:
-    DownloadFinishedToast(const Data::FileSharingDownloadResult& _result, QWidget* _parent = nullptr);
+    DownloadFinishedToast(const QString& _chatAimId, const Data::FileSharingDownloadResult& _result, QWidget* _parent = nullptr);
     ~DownloadFinishedToast();
 
 
@@ -163,6 +171,7 @@ private:
     int fileWidth_;
     int pathWidth_;
     int totalWidth_;
+    QString chatAimId_;
 };
 
 }
@@ -177,6 +186,12 @@ namespace Utils
 
     void showToastOverContactDialog(Ui::ToastBase* toast);
     void showTextToastOverContactDialog(const QString& _text, int _maxLineCount = 1); // show text toast over contactDialog
-    void showDownloadToast(const Data::FileSharingDownloadResult& _result);
+    void showDownloadToast(const QString& _chatAimId, const Data::FileSharingDownloadResult& _result);
     void showCopiedToast(std::optional<std::chrono::milliseconds> _visibilityDuration = std::nullopt);
+
+    void showMultiScreenToast(const QString& _text, int _maxLineCount = 1);
+
+    inline constexpr std::chrono::milliseconds defaultCopiedToastDuration() noexcept { return std::chrono::seconds(1); }
+
+    int defaultToastVerOffset() noexcept;
 }

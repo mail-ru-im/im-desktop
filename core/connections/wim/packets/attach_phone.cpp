@@ -2,103 +2,68 @@
 #include "attach_phone.h"
 
 #include "../../../http_request.h"
-#include "../../../tools/system.h"
 #include "../../login_info.h"
-#include "../../urls_cache.h"
 
 using namespace core;
 using namespace wim;
 
-std::string get_attach_phone_host()
-{
-    std::stringstream ss_host;
-    ss_host << urls::get_url(urls::url_type::smsreg_host) << std::string_view("/attachPhoneNumber.php");
-
-    return ss_host.str();
-}
-
-attach_phone::attach_phone(
-    wim_packet_params _params, const phone_info& _phone_info)
-
-    : wim_packet(std::move(_params))
+attach_phone::attach_phone(wim_packet_params _params, const phone_info& _phone_info)
+    : robusto_packet(std::move(_params))
     , phone_info_(_phone_info)
 {
-}
-
-int32_t core::wim::attach_phone::get_response_error_code()
-{
-    return on_response_error_code();
 }
 
 attach_phone::~attach_phone()
 {
 }
 
-std::string_view attach_phone::get_method() const
-{
-    return "attachPhoneNumber";
-}
-
 int32_t attach_phone::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
-    if (phone_info_.get_phone().empty())// || password_.empty())
+    if (phone_info_.get_phone().empty())
         return wpie_invalid_login;
 
-    const std::string host = get_attach_phone_host();
-    _request->set_compression_auto();
-    _request->set_url(host);
-    _request->set_normalized_url(get_method());
-    _request->push_post_parameter("a", escape_symbols(params_.a_token_));
-    _request->push_post_parameter("k", escape_symbols(params_.dev_id_));
-    _request->push_post_parameter("f", "json");
-    _request->push_post_parameter("msisdn", phone_info_.get_phone());
-    _request->push_post_parameter("sms_code", phone_info_.get_sms_code());
-    _request->push_post_parameter("trans_id", phone_info_.get_trans_id());
-    _request->push_post_parameter("r", core::tools::system::generate_guid());
+    rapidjson::Document doc(rapidjson::Type::kObjectType);
+    auto& a = doc.GetAllocator();
 
-    time_t ts = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) - params_.time_offset_;
-    _request->push_post_parameter("ts", std::to_string(ts));
+    rapidjson::Value node_params(rapidjson::Type::kObjectType);
+    node_params.AddMember("sn", params_.aimid_, a);
+    node_params.AddMember("sessionId", phone_info_.get_trans_id(), a);
+    node_params.AddMember("smsCode", phone_info_.get_sms_code(), a);
+    node_params.AddMember("phone", phone_info_.get_phone(), a);
 
+    doc.AddMember("params", std::move(node_params), a);
+
+    setup_common_and_sign(doc, a, _request, get_method());
+
+    if (!params_.full_log_)
+    {
+        log_replace_functor f;
+        f.add_json_marker("aimsid", aimsid_range_evaluator());
+        _request->set_replace_log_function(f);
+    }
     return 0;
 }
 
-int32_t attach_phone::on_response_error_code()
+int32_t attach_phone::get_response_error_code()
 {
     switch (status_code_)
     {
-    case 471:
+    case 20000:
+        return 0;
+    case 40010: // invalid verification number
+        return wpie_invalid_phone_number;
+    case 40020: // phone attached to another account
         return wpie_error_attach_busy_phone;
-    case 401:
-        return wpie_wrong_login;
-    default:
-        return wpie_login_unknown_error;
-    }
-}
-
-int32_t attach_phone::parse_response_data(const rapidjson::Value& _data)
-{
-    return 0;
-}
-
-int32_t attach_phone::execute_request(const std::shared_ptr<core::http_request_simple>& request)
-{
-    url_ = request->get_url();
-
-    if (auto error_code = get_error(request->post()))
-        return *error_code;
-
-    http_code_ = (uint32_t)request->get_response_code();
-
-    if (http_code_ != 200)
-    {
-        status_code_ = http_code_;
-        return wpie_http_error;
+    case 40500: // rate limit overflow
+        return wpie_error_robuso_too_fast_sending;
+    case 50000: // internal server error
+        return wpie_error_message_unknown;
     }
 
-    return 0;
+    return robusto_packet::on_response_error_code();
 }
 
-int32_t attach_phone::on_empty_data()
+std::string_view attach_phone::get_method() const
 {
-    return 0;
+    return "auth/attachPhone";
 }

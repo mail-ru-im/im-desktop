@@ -29,7 +29,7 @@ int32_t get_stickers_store_packet::init_request(const std::shared_ptr<core::http
     std::stringstream ss_host;
     ss_host << urls::get_url(urls::url_type::stickers_store_host) << std::string_view("/store/showcase");
 
-    params["a"] = escape_symbols(params_.a_token_);
+    params["aimsid"] = escape_symbols(params_.aimsid_);
     params["f"] = "json";
     params["k"] = params_.dev_id_;
     params["ts"] = std::to_string((int64_t) ts);

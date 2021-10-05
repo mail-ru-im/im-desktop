@@ -25,10 +25,12 @@ namespace spellcheck
         bool containsWord(const QString& word) const;
         bool hasMisspelling(const QString& word) const;
         std::optional<Misspellings> checkText(const QString& text) const;
+        void updateKeyboardLanguages();
 
         void init();
 
     private:
         std::unique_ptr<platform::Details> platform_;
+        std::vector<QString> keyboardLanguages_;
     };
 }

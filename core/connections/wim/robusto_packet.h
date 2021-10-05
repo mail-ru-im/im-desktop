@@ -4,6 +4,7 @@
 #pragma once
 
 #include "wim_packet.h"
+#include "../urls_cache.h"
 
 namespace core
 {
@@ -22,7 +23,9 @@ namespace core
         enum robusto_protocol_error
         {
             ok = 20000,
-            reset_search_page = 20002,
+            reset_page = 20002,
+
+            message_reactions_disabled = 40300,
         };
 
         class robusto_packet : public core::wim::wim_packet
@@ -51,7 +54,8 @@ namespace core
                 rapidjson_allocator& _a,
                 const std::shared_ptr<core::http_request_simple>& _request,
                 std::string_view _method,
-                use_aimsid _use_aimsid = use_aimsid::yes);
+                use_aimsid _use_aimsid = use_aimsid::yes,
+                urls::url_type _url_type = urls::url_type::rapi_host);
 
         public:
 

@@ -59,6 +59,11 @@ namespace Ui
         requestBg();
     }
 
+    const QString& InputBgWidget::aimId() const
+    {
+        return chatBg_->aimId();
+    }
+
     void InputBgWidget::paintEvent(QPaintEvent*)
     {
         QPainter p(this);

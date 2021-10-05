@@ -10,6 +10,7 @@
 
 #include "history_message.h"
 #include "storage.h"
+#include "draft_storage.h"
 
 #include "dlg_state.h"
 
@@ -75,10 +76,7 @@ dlg_state::dlg_state()
 {
 }
 
-dlg_state::~dlg_state()
-{
-
-}
+dlg_state::~dlg_state() = default;
 
 dlg_state::dlg_state(const dlg_state& _state)
 {
@@ -113,11 +111,14 @@ void dlg_state::copy_from(const dlg_state& _state)
     heads_ = _state.heads_;
     info_version_ = _state.info_version_;
     members_version_ = _state.members_version_;
+    if (_state.draft_)
+        draft_ = std::make_unique<draft>(*_state.draft_);
+    parent_topic_ = _state.parent_topic_;
 }
 
 void dlg_state::set_last_msgid(const int64_t _value)
 {
-    assert(_value >= -1);
+    im_assert(_value >= -1);
 
     last_msgid_ = (_value <= 0) ? -1 : _value;
 }
@@ -136,16 +137,14 @@ const history_message& dlg_state::get_last_message() const
 
 void dlg_state::set_last_message(const history_message& _message)
 {
-    assert(!_message.is_patch());
+    im_assert(!_message.is_patch());
 
     *last_message_ = _message;
 }
 
 bool dlg_state::has_last_message() const
 {
-    assert(last_message_);
-
-    return (last_message_->get_msgid() != -1);
+    return (last_msgid_ != -1);
 }
 
 void dlg_state::clear_last_message()
@@ -160,7 +159,7 @@ const history_message& dlg_state::get_pinned_message() const
 
 void dlg_state::set_pinned_message(const history_message& _message)
 {
-    assert(!_message.is_patch());
+    im_assert(!_message.is_patch());
 
     *pinned_message_ = _message;
 }
@@ -197,14 +196,14 @@ bool dlg_state::has_history_patch_version() const
 
 void dlg_state::set_history_patch_version(common::tools::patch_version _patch_version)
 {
-    assert(!_patch_version.is_empty());
+    im_assert(!_patch_version.is_empty());
 
     history_patch_version_ = std::move(_patch_version);
 }
 
 void dlg_state::set_history_patch_version(std::string_view _patch_version)
 {
-    assert(!_patch_version.empty());
+    im_assert(!_patch_version.empty());
 
     history_patch_version_ = common::tools::patch_version(_patch_version);
 }
@@ -226,14 +225,14 @@ void dlg_state::set_dlg_state_patch_version(std::string _patch_version)
 
 int64_t dlg_state::get_del_up_to() const
 {
-    assert(del_up_to_ >= -1);
+    im_assert(del_up_to_ >= -1);
 
     return del_up_to_;
 }
 
 void dlg_state::set_del_up_to(const int64_t _msg_id)
 {
-    assert(_msg_id >= -1);
+    im_assert(_msg_id >= -1);
 
     del_up_to_ = _msg_id;
 }
@@ -333,6 +332,16 @@ void dlg_state::serialize(icollection* _collection, const time_t _offset, const 
 
         coll.set_value_as_array("heads", heads_array.get());
     }
+
+    if (draft_)
+    {
+        coll_helper draft_coll(g_core->create_collection(), true);
+        draft_->serialize(draft_coll, _offset);
+        coll.set_value_as_collection("draft", draft_coll.get());
+    }
+
+    if (parent_topic_)
+        parent_topic_->serialize(coll);
 }
 
 void dlg_state::serialize(core::tools::binary_stream& _data) const
@@ -548,7 +557,7 @@ archive_state::archive_state(std::wstring _file_name, std::string _contact_id)
     : storage_(std::make_unique<storage>(std::move(_file_name)))
     , contact_id_(std::move(_contact_id))
 {
-    assert(!contact_id_.empty());
+    im_assert(!contact_id_.empty());
 }
 
 archive_state::~archive_state()
@@ -560,7 +569,7 @@ bool archive_state::save()
 {
     if (!state_)
     {
-        assert(!"dlg_state not intialized");
+        im_assert(!"dlg_state not intialized");
         return false;
     }
 
@@ -621,10 +630,28 @@ const std::vector<dlg_state_head>& dlg_state::get_heads() const
     return heads_;
 }
 
+void dlg_state::set_draft(const draft& _draft)
+{
+    draft_ = std::make_unique<draft>(_draft);
+}
 
+std::optional<draft> dlg_state::get_draft() const
+{
+    if (draft_)
+        return *draft_;
 
+    return {};
+}
 
+void dlg_state::set_parent_topic(std::optional<thread_parent_topic> _topic)
+{
+    parent_topic_ = _topic;
+}
 
+std::optional<thread_parent_topic> core::archive::dlg_state::get_parent_topic() const
+{
+    return parent_topic_;
+}
 
 const dlg_state& archive_state::get_state()
 {
@@ -773,16 +800,14 @@ bool archive_state::merge_state(const dlg_state& _new_state, Out dlg_state_chang
         new_last_message.get_msgid());
 
     if (update_last_message)
-    {
         state_->set_last_message(new_last_message);
-    }
 
     if (update_history_patch)
-    {
         state_->set_history_patch_version(_new_state.get_history_patch_version());
-    }
 
     state_->set_heads(_new_state.get_heads());
+    state_->set_parent_topic(_new_state.get_parent_topic());
+
     return true;
 }
 

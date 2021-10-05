@@ -84,7 +84,7 @@ namespace Ui
             else
                 onUpToDate(defaultSeq, _state == Utils::MacUpdateState::LoadError);
         });
-        Testing::setAccessibleName(this, qsl("AS AboutUsPage checkForUpdatesButton"));
+        Testing::setAccessibleName(text_, qsl("AS AboutUsPage checkForUpdatesButton"));
     }
 
     CheckForUpdateButton::~CheckForUpdateButton() = default;

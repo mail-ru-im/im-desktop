@@ -16,6 +16,7 @@
 #include "../main_window/containers/FriendlyContainer.h"
 #include "../main_window/containers/LastseenContainer.h"
 #include "../main_window/containers/StatusContainer.h"
+#include "../main_window/containers/TaskContainer.h"
 
 #include "../my_info.h"
 #include "../../common.shared/version_info.h"
@@ -116,13 +117,6 @@ namespace Utils
     Application::Application(int& _argc, char* _argv[])
         : QObject(nullptr)
     {
-        if constexpr (platform::is_linux())
-        {
-            const auto appFilePath = std::string_view(_argv[0]);
-            const std::string appDir = su::concat(appFilePath.substr(0, appFilePath.rfind('/') + 1), "plugins");
-            QCoreApplication::setLibraryPaths(QStringList(QString::fromStdString(appDir)));
-        }
-
         app_ = std::make_unique<QApplication>(_argc, _argv);
         app_->setProperty("startupTime", QDateTime::currentMSecsSinceEpoch());
 
@@ -184,6 +178,7 @@ namespace Utils
         Logic::ResetFriendlyContainer();
         Logic::ResetLastseenContainer();
         Logic::ResetStatusContainer();
+        Logic::ResetTaskContainer();
         Ui::ResetMyInfo();
 #ifndef STRIP_AV_MEDIA
         Ui::ResetSoundsManager();
@@ -208,6 +203,7 @@ namespace Utils
     bool Application::init(launch::CommandLineParser& _cmdParser)
     {
         Ui::createDispatcher();
+        Utils::InterConnector::instance().connectTo(Ui::GetDispatcher());
 
         init_win7_features();
 
@@ -418,9 +414,11 @@ namespace Utils
               , qsl(":/fonts/SFMono_MediumItalic")
               , qsl(":/fonts/SFMono_Bold")
               , qsl(":/fonts/SFMono_BoldItalic")
+              , qsl(":/fonts/SFMono_Regular")
+              , qsl(":/fonts/SFMono_RegularItalic")
             );
         }
-        else if constexpr (platform::is_windows())
+        else
         {
             addFonts(
                 qsl(":/fonts/RobotoMono_Regular")
@@ -478,12 +476,6 @@ namespace Utils
     bool Application::updating(MainWindowMode _mode)
     {
 #ifdef _WIN32
-        const auto updater_singlton_mutex_name = config::get().string(config::values::updater_main_instance_mutex_win);
-
-        CHandle mutex(::CreateSemaphoreA(NULL, 0, 1, std::string(updater_singlton_mutex_name).c_str()));
-        if (ERROR_ALREADY_EXISTS == ::GetLastError())
-            return true;
-
         QSettings s(u"HKEY_CURRENT_USER\\Software\\" % getProductName(), QSettings::NativeFormat);
         const auto versionUpdate = s.value(qsl("update_version")).toString();
         if (versionUpdate.isEmpty())
@@ -510,8 +502,6 @@ namespace Utils
                 const QString setupName = updateFolder % u'/' % Utils::getInstallerName();
                 if (!QFileInfo::exists(setupName))
                     return false;
-
-                mutex.Close();
 
                 const QString command = u'"' % QDir::toNativeSeparators(setupName) % u'"';
                 QStringList args = { update_final_command().toString() };

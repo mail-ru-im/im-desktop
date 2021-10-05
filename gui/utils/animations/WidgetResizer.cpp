@@ -1,4 +1,5 @@
 #include "WidgetResizer.h"
+#include "utils/utils.h"
 
 namespace Utils
 {

@@ -6,7 +6,7 @@
 #include "../../../core.h"
 #include "../../../utils.h"
 #include "../../../tools/system.h"
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 #include "../../urls_cache.h"
 #include "../common.shared/string_utils.h"
 

@@ -294,7 +294,7 @@ namespace Ui
             else if (_e->key() == Qt::Key_Escape)
             {
                 _e->accept();
-                Utils::InterConnector::instance().setFocusOnInput();
+                Q_EMIT Utils::InterConnector::instance().setFocusOnInput();
                 QWidget::clearFocus();
             }
         }
@@ -399,7 +399,7 @@ namespace Ui
             Q_EMIT Utils::InterConnector::instance().multiSelectCurrentElementChanged();
 
         if (_setFocus == SetFocusToInput::Yes)
-            Utils::InterConnector::instance().setFocusOnInput();
+            Q_EMIT Utils::InterConnector::instance().setFocusOnInput();
     }
 
     void SearchWidget::onEscapePress()

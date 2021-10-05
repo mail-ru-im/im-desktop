@@ -8,20 +8,20 @@ CORE_ARCHIVE_NS_BEGIN
     : type_(_type)
     , archive_id_(_archive_id)
 {
-    assert(is_valid_type(type_));
-    assert(archive_id_ > 0);
+    im_assert(is_valid_type(type_));
+    im_assert(archive_id_ > 0);
 }
 
 int64_t history_patch::get_message_id() const
 {
-    assert(archive_id_ > 0);
+    im_assert(archive_id_ > 0);
 
     return archive_id_;
 }
 
 history_patch::type history_patch::get_type() const
 {
-    assert(is_valid_type(type_));
+    im_assert(is_valid_type(type_));
 
     return type_;
 }
@@ -37,6 +37,7 @@ bool history_patch::is_valid_type(const type _type)
     case type::updated:
     case type::clear:
     case type::set_reactions:
+    case type::add_thread:
         return true;
 
     default:
@@ -70,8 +71,8 @@ std::string history_patch::type_to_string(const type _type)
 
 history_patch_uptr history_patch::make(const type _type, const int64_t _archive_id)
 {
-    assert(is_valid_type(_type));
-    assert(_archive_id > 0);
+    im_assert(is_valid_type(_type));
+    im_assert(_archive_id > 0);
 
     return history_patch_uptr(new history_patch(_type, _archive_id));
 }

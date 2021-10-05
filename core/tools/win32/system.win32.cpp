@@ -26,7 +26,7 @@ bool is_dir_writable(const std::wstring &_dir_path_str)
 
     std::error_code error;
     const auto is_dir = std::filesystem::is_directory(dir_path, error);
-    assert(is_dir);
+    im_assert(is_dir);
 
     if (!is_dir)
     {
@@ -134,7 +134,7 @@ namespace
             return std::wstring();
 
         std::error_code e;
-        assert(std::filesystem::is_directory(path, e));
+        im_assert(std::filesystem::is_directory(path, e));
         return path;
     }
 
@@ -147,7 +147,7 @@ namespace
 
         std::wstring result(path);
         std::error_code e;
-        assert(std::filesystem::is_directory(result, e));
+        im_assert(std::filesystem::is_directory(result, e));
 
         ::CoTaskMemFree(path);
 

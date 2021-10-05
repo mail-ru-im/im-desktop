@@ -11,8 +11,6 @@ namespace Utils
 
 namespace Ui
 {
-    class InputWidget;
-
     class AttachFileMenuItem : public SimpleListItem
     {
         Q_OBJECT
@@ -48,43 +46,43 @@ namespace Ui
         void paintEvent(QPaintEvent* _event) override;
     };
 
+    enum class AttachMediaType
+    {
+        photoVideo,
+        file,
+        camera,
+        contact,
+        poll,
+        task,
+        ptt,
+        geo,
+        callLink,
+        webinar
+    };
 
     class AttachFilePopup : public ClickableWidget
     {
         Q_OBJECT
 
     Q_SIGNALS:
-        void photoVideoClicked(QPrivateSignal) const;
-        void fileClicked(QPrivateSignal) const;
-        void cameraClicked(QPrivateSignal) const;
-        void geoClicked(QPrivateSignal) const;
-        void contactClicked(QPrivateSignal) const;
-        void pttClicked(QPrivateSignal) const;
-        void pollClicked(QPrivateSignal) const;
-        void callClicked(QPrivateSignal) const;
-        void webinarClicked(QPrivateSignal) const;
+        void itemClicked(AttachMediaType _mediaType, QPrivateSignal) const;
+        void visiblityChanged(bool _isVisible, QPrivateSignal) const;
 
     public:
-        static AttachFilePopup& instance();
-        static bool isOpen();
+        AttachFilePopup(QWidget* _parent);
 
-        enum class ShowMode
-        {
-            Normal,
-            Persistent
-        };
-        static void showPopup(const ShowMode _mode = ShowMode::Normal);
-        static void hidePopup();
-
-        void showAnimated();
+        void showAnimated(const QRect& _plusButtonRect); // in global coords
         void hideAnimated();
 
         void selectFirstItem();
         void setPersistent(const bool _persistent);
+        bool isPersistent() const noexcept { return persistent_; }
 
         void updateSizeAndPos();
         bool focusNextPrevChild(bool) override { return false; }
         bool eventFilter(QObject* _obj, QEvent* _event) override;
+
+        void setPttEnabled(bool _enabled);
 
     protected:
         void mouseMoveEvent(QMouseEvent* _e) override;
@@ -97,8 +95,6 @@ namespace Ui
         void initItems();
 
     private:
-        explicit AttachFilePopup(QWidget* _parent, InputWidget* _input);
-
         void onItemClicked(const int _idx);
         void onBackgroundClicked();
         void onHideTimer();
@@ -106,13 +102,10 @@ namespace Ui
         void hideWithDelay();
 
         bool isMouseInArea(const QPoint& _pos) const;
-        QRect getPlusButtonRect() const;
         QPolygon getMouseAreaPoly() const;
 
         SimpleListWidget* listWidget_ = nullptr;
         AttachPopupBackground* widget_ = nullptr;
-
-        InputWidget* input_ = nullptr;
 
         Utils::OpacityEffect* opacityEffect_ = nullptr;
 
@@ -125,23 +118,12 @@ namespace Ui
         AnimState animState_ = AnimState::None;
         QVariantAnimation* opacityAnimation_;
 
-        enum class MenuItemId
-        {
-            photoVideo,
-            file,
-            camera,
-            contact,
-            poll,
-            ptt,
-            geo,
-            callLink,
-            webinar
-        };
-        std::vector<std::pair<int, MenuItemId>> items_;
+        std::vector<std::pair<int, AttachMediaType>> items_;
 
         QRect buttonRect_;
         QPolygon mouseAreaPoly_;
         bool persistent_;
+        bool pttEnabled_;
         QTimer hideTimer_;
     };
 

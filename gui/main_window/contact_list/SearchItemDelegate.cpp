@@ -154,7 +154,7 @@ namespace
         for (const auto& q : std::as_const(_msg->Quotes_))
         {
             if (!q.isSticker() && !q.text_.isEmpty())
-                parts.push_back(Data::stubFromFormattedString(q.text_));
+                parts.push_back(q.text_.string());
         }
 
         for (const auto& s : _msg->snippets_)
@@ -168,7 +168,7 @@ namespace
         }
 
         if (!_msg->IsSticker() && !_msg->GetSourceText().isEmpty())
-            parts.push_back(Data::stubFromFormattedString(_msg->GetSourceText()));
+            parts.push_back(_msg->GetSourceText().string());
 
         for (const auto& part: parts)
         {
@@ -187,7 +187,7 @@ namespace
             }
         }
 
-        return Data::stubFromFormattedString(_msg->GetSourceText());
+        return _msg->GetSourceText().string();
     }
 }
 

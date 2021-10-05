@@ -113,6 +113,14 @@ FontFamily defaultAppFontFamily()
         return FontFamily::SOURCE_SANS_PRO;
 }
 
+FontFamily monospaceAppFontFamily()
+{
+    if constexpr (platform::is_apple())
+        return Fonts::FontFamily::SF_MONO;
+    else
+        return Fonts::FontFamily::ROBOTO_MONO;
+}
+
 FontWeight defaultAppFontWeight()
 {
     return FontWeight::Normal;
@@ -281,6 +289,27 @@ void setFontSizeSetting(const FontSize _size)
 {
     Ui::get_gui_settings()->set_value<int>(settings_appearance_text_size, (int)_size);
 }
+
+QFont getInputTextFont()
+{
+    auto font = Fonts::appFontScaled(15);
+
+    if constexpr (platform::is_apple())
+        font.setLetterSpacing(QFont::AbsoluteSpacing, -0.25);
+
+    return font;
+}
+
+QFont getInputMonospaceTextFont()
+{
+    auto font = Fonts::appFontScaled(14, Fonts::monospaceAppFontFamily());
+
+    if constexpr (platform::is_apple())
+        font.setLetterSpacing(QFont::AbsoluteSpacing, -0.25);
+
+    return font;
+}
+
 
 namespace
 {
@@ -530,6 +559,8 @@ namespace
             {
             case FontWeight::Light:
             case FontWeight::Normal:
+                _font.setWeight(QFont::Weight::Normal);
+                break;
             case FontWeight::Medium:
                 _font.setWeight(QFont::Weight::Medium);
                 _font.setHintingPreference(QFont::PreferVerticalHinting);
@@ -539,7 +570,6 @@ namespace
                 [[fallthrough]];
             case FontWeight::Bold:
                 _font.setWeight(QFont::Weight::Bold);
-                _font.setHintingPreference(QFont::PreferVerticalHinting);
                 break;
             default:
                 break;

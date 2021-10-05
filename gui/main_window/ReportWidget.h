@@ -2,6 +2,11 @@
 
 #include "../controls/TextUnit.h"
 
+namespace Data
+{
+    struct StickerId;
+}
+
 namespace Ui
 {
     class ComboBoxList;
@@ -69,7 +74,7 @@ namespace Ui
 
     bool ReportStickerPack(qint32 _id, const QString& _title);
 
-    bool ReportSticker(const QString& _aimid, const QString& _chatId, const QString& _stickerId);
+    bool ReportSticker(const QString& _aimid, const QString& _chatId, const Data::StickerId& _stickerId);
 
     bool ReportContact(const QString& _aimid, const QString& _title = QString(), bool _ignoreAndClose = true);
 

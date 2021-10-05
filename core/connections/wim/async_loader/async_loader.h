@@ -19,6 +19,10 @@ namespace core
 {
     class coll_helper;
 
+    namespace tools
+    {
+        struct filesharing_id;
+    }
 
     namespace wim
     {
@@ -162,12 +166,13 @@ namespace core
             std::wstring get_meta_path(std::string_view _url, const std::wstring& _path);
 
             static void save_filesharing_local_path(const std::wstring& _meta_path, std::string_view _url, const std::wstring& _path);
+            static void save_metainfo(const file_sharing_meta& _meta, const std::wstring& _path);
 
             void save_filesharing_local_path(std::string_view _url, const std::wstring& _path);
 
             std::string path_in_cache(const std::string& _url);
 
-            static async_loader_log_params make_filesharing_log_params(std::string_view _fs_id);
+            static async_loader_log_params make_filesharing_log_params(const core::tools::filesharing_id& _fs_id);
 
         private:
             void download_file_sharing_impl(std::string _url, wim_packet_params _wim_params, downloadable_file_chunks_ptr _file_chunks, int64_t _id, std::string_view _normalized_url = {});
@@ -193,10 +198,10 @@ namespace core
                     "handler  = <%3%>\n", _url % _signed_url % _handler.to_string());
 
                 auto meta_path = get_path_in_cache(content_cache_dir_, _url, path_type::link_meta);
-                auto load_from_local = [_handler, _parser, _url, meta_path]()
+                auto load_from_local = [_handler, _parser, _url](std::wstring_view _path)
                 {
                     tools::binary_stream json_file;
-                    if (json_file.load_from_file(meta_path))
+                    if (json_file.load_from_file(_path))
                     {
                         const auto file_size = json_file.available();
                         if (file_size != 0)
@@ -213,13 +218,13 @@ namespace core
                             if (meta_info)
                             {
                                 const auto status_code = meta_info->get_status_code();
-                                if (status_code != 0 && status_code != 20000 && status_code != 200)
+                                if (status_code != 0 && status_code != 20000 && status_code != 20002 && status_code != 200)
                                 {
                                     const auto need_to_repeat = (status_code == 1000 || status_code == 20001);
                                     if (need_to_repeat)
                                     {
                                         g_core->write_string_to_network_log("download_metainfo's been delayed by the server. It's going to be repeated\r\n");
-                                        tools::system::delete_file(meta_path);
+                                        tools::system::delete_file(std::wstring(_path));
                                     }
 
                                     fire_callback(need_to_repeat ? loader_errors::come_back_later : loader_errors::http_client_error, transferred_data<T>(), _handler.completion_callback_);
@@ -236,7 +241,7 @@ namespace core
                     return false;
                 };
 
-                if (load_from_local())
+                if (load_from_local(meta_path))
                     return;
 
                 auto local_handler = default_handler_t([_url, _signed_url, _parser, _handler, meta_path, _id, load_from_local, _log_params, full_log = _wim_params.full_log_, wr_this = weak_from_this()](loader_errors _error, const default_data_t& _data)
@@ -273,8 +278,33 @@ namespace core
                         return;
                     }
 
-                    if (load_from_local())
+                    auto data = std::static_pointer_cast<core::wim::downloaded_file_info>(_data.additional_data_);
+                    const auto has_tmp_file = data && !data->local_path_.empty();
+                    if (load_from_local(has_tmp_file ? data->local_path_ : meta_path))
+                    {
+                        if (has_tmp_file)
+                        {
+                            // delete tmp_file_name after processing
+                            ptr_this->file_save_thread_->run_async_function([wr_this, tmp_file_name = std::move(data->local_path_), meta_path]()
+                            {
+                                auto ptr_this = wr_this.lock();
+                                if (!ptr_this)
+                                    return 0;
+
+                                // inside load_from_local() the tmp_file_name can be deleted by "need_to_repeat" reason
+                                // so delete meta_path too
+                                if (!tools::system::is_exist(tmp_file_name))
+                                {
+                                    tools::system::delete_file(meta_path);
+                                    return 0;
+                                }
+
+                                tools::system::delete_file(tmp_file_name);
+                                return 0;
+                            });
+                        }
                         return;
+                    }
 
                     log_error("download_metainfo", _url, load_error_type::parse_failure, full_log);
                     fire_callback(loader_errors::invalid_json, transferred_data<T>(), _handler.completion_callback_);

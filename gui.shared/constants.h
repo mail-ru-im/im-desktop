@@ -36,6 +36,12 @@ constexpr auto url_commandpath_service_clear_cache() noexcept { return u"clear/c
 constexpr auto url_commandpath_service_debug() noexcept { return u"debug"; }
 constexpr auto url_commandpath_service_update() noexcept { return u"update"; }
 
+constexpr auto mimetype_marker() noexcept { return "imdesktop"; }
+
+// special hash, looks line filesharing, but invalid
+// used for restricted files, same on all platforms
+constexpr QStringView filesharingPlaceholder() noexcept { return u"N08262af1561a4e1a936b07287cb49101"; }
+
 namespace Ui
 {
     enum KeyToSendMessage

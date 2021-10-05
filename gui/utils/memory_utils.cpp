@@ -151,9 +151,18 @@ qint64 getMemoryFootprint(Ui::ComplexMessage::FileSharingBlock* _block)
 template<>
 qint64 getMemoryFootprint(Ui::ComplexMessage::TextBlock* _block)
 {
-    qint64 res = 0;
+    const auto& text = _block->getSourceText();
+    const auto& formats = text.formatting().formats();
 
-    res += Data::stubFromFormattedString(_block->getSourceText()).toUtf8().size();
+    qint64 res = 0;
+    res += text.string().toUtf8().size();
+    if (!formats.empty())
+        res += formats.capacity() * sizeof(*formats.cbegin());
+    for (const auto& ft : formats)
+    {
+        if (ft.data_)
+            res += ft.data_->size();
+    }
 
     return res;
 }

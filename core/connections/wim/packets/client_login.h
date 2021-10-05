@@ -23,8 +23,6 @@ namespace core
             std::string login_;
             std::string password_;
 
-            std::string session_secret_;
-            std::string session_key_;
             std::string a_token_;
             uint32_t expired_in_;
             uint32_t host_time_;
@@ -41,13 +39,10 @@ namespace core
             virtual int32_t on_empty_data() override;
 
         public:
-
-            const std::string get_session_secret() const { return session_secret_; }
-            const std::string get_session_key() const { return session_key_; }
-            const std::string get_a_token() const { return a_token_; }
-            const uint32_t get_expired_in() const { return expired_in_; }
-            const uint32_t get_host_time() const { return host_time_; }
-            const int64_t get_time_offset() const { return time_offset_; }
+            const std::string& get_a_token() const { return a_token_; }
+            uint32_t get_expired_in() const { return expired_in_; }
+            uint32_t get_host_time() const { return host_time_; }
+            int64_t get_time_offset() const { return time_offset_; }
 
             void set_product_guid_8x(const std::string& _guid);
 

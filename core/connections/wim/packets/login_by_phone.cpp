@@ -5,7 +5,7 @@
 #include "../../login_info.h"
 #include "../../../tools/system.h"
 #include "../../urls_cache.h"
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 
 using namespace core;
 using namespace wim;
@@ -65,9 +65,6 @@ int32_t core::wim::phone_login::parse_response_data(const rapidjson::Value& _dat
         return wpie_http_parse_response;
     else if (!verified)
         return wpie_phone_not_verified;
-
-    if (!tools::unserialize_value(_data, "sessionKey", session_key_))
-        return wpie_http_parse_response;
 
     if (!tools::unserialize_value(_data, "hostTime", host_time_))
         return wpie_http_parse_response;

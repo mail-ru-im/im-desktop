@@ -12,7 +12,7 @@
 #include "../wim_history.h"
 #include "../../../utils.h"
 #include "../../../tools/system.h"
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 
 #include "openssl/sha.h"
 
@@ -31,9 +31,9 @@ get_history_batch_params::get_history_batch_params(const std::string_view _aimid
     , seq_(0)
     , is_context_request_(false)
 {
-    assert(!aimid_.empty());
-    assert(!patch_version_.empty());
-    assert(!ids_.empty());
+    im_assert(!aimid_.empty());
+    im_assert(!patch_version_.empty());
+    im_assert(!ids_.empty());
 }
 
 get_history_batch_params::get_history_batch_params(const std::string_view _aimid, const std::string_view _patch_version, const int64_t _id, const int32_t _count_early, const int32_t _count_after, int64_t _seq)
@@ -45,9 +45,9 @@ get_history_batch_params::get_history_batch_params(const std::string_view _aimid
     , seq_(_seq)
     , is_context_request_(true)
 {
-    assert(!aimid_.empty());
-    assert(!patch_version_.empty());
-    assert(count_early_ > 0 || count_after_ > 0);
+    im_assert(!aimid_.empty());
+    im_assert(!patch_version_.empty());
+    im_assert(count_early_ > 0 || count_after_ > 0);
 }
 
 get_history_batch::get_history_batch(wim_packet_params _params, get_history_batch_params&& _hist_params, std::string&& _locale)
@@ -169,7 +169,7 @@ int32_t get_history_batch::parse_results(const rapidjson::Value& _node_results)
 
     if (std::string patch_version; tools::unserialize_value(_node_results, "patchVersion", patch_version))
     {
-        assert(!patch_version.empty());
+        im_assert(!patch_version.empty());
         if (!patch_version.empty())
             dlg_state_->set_history_patch_version(common::tools::patch_version(std::move(patch_version)));
     }
@@ -221,9 +221,14 @@ int32_t get_history_batch::parse_results(const rapidjson::Value& _node_results)
             dlg_state_->set_pinned_message(*pin_block.front());
     }
 
-    if (const auto iter_no_recents_update = _node_results.FindMember("noRecentsUpdate"); iter_no_recents_update != _node_results.MemberEnd() && iter_no_recents_update->value.IsBool())
+    if (auto no_update = false; tools::unserialize_value(_node_results, "noRecentsUpdate", no_update))
+        dlg_state_->set_no_recents_update(no_update);
+
+    if (const auto it = _node_results.FindMember("parentTopic"); it != _node_results.MemberEnd() && it->value.IsObject())
     {
-        dlg_state_->set_no_recents_update(iter_no_recents_update->value.GetBool());
+        archive::thread_parent_topic topic;
+        topic.unserialize(it->value);
+        dlg_state_->set_parent_topic(std::move(topic));
     }
 
     set_last_message(*messages_, *dlg_state_);

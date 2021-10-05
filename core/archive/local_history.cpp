@@ -15,7 +15,10 @@
 #include "not_sent_messages.h"
 #include "messages_data.h"
 #include "gallery_cache.h"
+#include "thread_update.h"
 #include "../../corelib/enumerations.h"
+#include "draft_storage.h"
+#include "pending_drafts.h"
 
 #include "local_history.h"
 
@@ -28,7 +31,7 @@ namespace
 
     void insert_message_time_events(const core::stats::stats_event_names _event_flurry, const core::stats::im_stat_event_names _event_imstat, const int32_t _duration_msec)
     {
-        assert(_duration_msec >= 0);
+        im_assert(_duration_msec >= 0);
         if (core::g_core && _duration_msec >= 0)
         {
             core::stats::event_props_type props;
@@ -49,6 +52,7 @@ local_history::local_history(const std::wstring& _archive_path)
     , po_(std::make_unique<pending_operations>(
         _archive_path + L"/pending.db",
         _archive_path + L"/pending.delete.db"))
+    , pending_drafts_(std::make_unique<pending_drafts>(_archive_path + L"/pending.drafts.db"))
 {
 }
 
@@ -212,6 +216,15 @@ history_block local_history::get_mentions(const std::string& _contact, bool& _fi
     return archive->get_mentions();
 }
 
+bool local_history::has_hole_in_range(const std::string& _contact, int64_t _msgid, int32_t _count_before, int32_t _count_after)
+{
+    auto archive = get_contact_archive(_contact);
+    if (!archive)
+        return true;
+
+    return archive->has_hole_in_range(_msgid, _count_before, _count_after);
+}
+
 local_history::hole_result local_history::get_next_hole(const std::string& _contact, int64_t _from, int64_t _depth)
 {
     auto hole = std::make_shared<archive_hole>();
@@ -331,8 +344,8 @@ void local_history::stat_write_sent_time(const message_stat_time& _stime, const 
 {
     if (_stime.need_stat_)
     {
-        assert(!_stime.contact_.empty());
-        assert(_stime.msg_id_ != -1);
+        im_assert(!_stime.contact_.empty());
+        im_assert(_stime.msg_id_ != -1);
 
         const auto current_time = std::chrono::steady_clock::now();
         const auto sent_duration = (current_time - _stime.create_time_ - (current_time - _correct_time)) / std::chrono::milliseconds(1);
@@ -344,8 +357,8 @@ void local_history::stat_write_delivered_time(message_stat_time& _stime, const s
 {
     if (_stime.need_stat_)
     {
-        assert(!_stime.contact_.empty());
-        assert(_stime.msg_id_ != -1);
+        im_assert(!_stime.contact_.empty());
+        im_assert(_stime.msg_id_ != -1);
 
         const auto current_time = std::chrono::steady_clock::now();
         const auto deliver_duration = (current_time - _stime.create_time_ - (current_time - _correct_time)) / std::chrono::milliseconds(1);
@@ -436,8 +449,8 @@ void local_history::failed_pending_message(const std::string& _message_internal_
 
 void local_history::delete_messages_up_to(const std::string& _contact, const int64_t _id)
 {
-    assert(!_contact.empty());
-    assert(_id > -1);
+    im_assert(!_contact.empty());
+    im_assert(_id > -1);
 
     __INFO(
         "delete_history",
@@ -643,7 +656,40 @@ void local_history::get_reactions(const std::string& _contact, const std::shared
     get_contact_archive(_contact)->get_reactions(*_msg_ids, *_reactions, *_missing);
 }
 
+void local_history::insert_thread_updates(const std::string& _contact, const thread_updates_v_sptr& _updates)
+{
+    get_contact_archive(_contact)->insert_thread_updates(*_updates);
+}
 
+void local_history::get_thread_updates(const std::string& _contact, const std::shared_ptr<msgids_list>& _msg_ids, thread_updates_v_sptr _updates, std::shared_ptr<core::archive::msgids_list> _missing)
+{
+    get_contact_archive(_contact)->get_thread_updates(*_msg_ids, *_updates, *_missing);
+}
+
+void local_history::set_draft(const std::string& _contact, const draft& _draft)
+{
+    get_contact_archive(_contact)->set_draft(_draft);
+}
+
+draft local_history::get_draft(const std::string& _contact)
+{
+    return get_contact_archive(_contact)->get_draft();
+}
+
+std::string local_history::get_next_pending_draft_contact()
+{
+    return pending_drafts_->get_next_pending_draft_contact();
+}
+
+void local_history::remove_pending_draft_contact(const std::string& _contact, int64_t _timestamp)
+{
+    pending_drafts_->remove_pending_draft_contact(_contact, _timestamp);
+}
+
+void local_history::add_pending_draft_contact(const std::string& _contact, int64_t _timestamp)
+{
+    pending_drafts_->add_pending_draft_contact(_contact, _timestamp);
+}
 
 
 face::face(const std::wstring& _archive_path)
@@ -654,7 +700,7 @@ face::face(const std::wstring& _archive_path)
 
 std::shared_ptr<update_history_handler> face::update_history(const std::string& _contact, const archive::history_block_sptr& _data, int64_t _from, archive::local_history::has_older_message_id _has_older_msgid)
 {
-    assert(!_contact.empty());
+    im_assert(!_contact.empty());
 
     __LOG(core::log::info("archive", boost::format("update_history, contact=%1%") % _contact);)
 
@@ -763,7 +809,7 @@ std::shared_ptr<request_buddies_handler> face::get_messages_buddies(const std::s
 
 std::shared_ptr<request_buddies_handler> face::get_messages(const std::string& _contact, int64_t _from, int64_t _count_early, int64_t _count_later)
 {
-    assert(!_contact.empty());
+    im_assert(!_contact.empty());
 
     auto history_cache = history_cache_;
     auto handler = std::make_shared<request_buddies_handler>();
@@ -802,7 +848,7 @@ std::shared_ptr<request_history_file_handler> face::get_history_block(std::share
                                                                       std::shared_ptr<tools::binary_stream> _data,
                                                                       std::function<bool()> _cancel)
 {
-    assert(!_contacts->empty());
+    im_assert(!_contacts->empty());
 
     auto history_cache = history_cache_;
     auto handler = std::make_shared<request_history_file_handler>();
@@ -1037,6 +1083,27 @@ std::shared_ptr<filter_deleted_handler> face::filter_deleted_messages(const std:
     return handler;
 }
 
+std::shared_ptr<has_hole_in_range_handler> face::has_hole_in_range(const std::string& _contact, int64_t _msgid, int32_t _count_before, int32_t _count_after)
+{
+    auto handler = std::make_shared<has_hole_in_range_handler>();
+    auto has_hole = std::make_shared<bool>();
+
+    static constexpr char task_name[] = "face::has_hole_in_range";
+
+    thread_->run_async_function([history_cache = history_cache_, has_hole, _contact, _msgid, _count_before, _count_after]()->int32_t
+    {
+        *has_hole = history_cache->has_hole_in_range(_contact, _msgid, _count_before, _count_after);
+        return 0;
+
+    }, task_name)->on_result_ = [handler, has_hole](int32_t _error)
+    {
+        if (handler->on_result)
+            handler->on_result(*has_hole);
+    };
+
+    return handler;
+}
+
 std::shared_ptr<request_next_hole_handler> face::get_next_hole(const std::string& _contact, int64_t _from, int64_t _depth)
 {
     auto handler = std::make_shared<request_next_hole_handler>();
@@ -1195,8 +1262,8 @@ std::shared_ptr<get_locale_handler> face::get_locale(std::string_view _contact)
 
 std::shared_ptr<async_task_handlers> face::delete_messages_up_to(const std::string& _contact, const int64_t _id)
 {
-    assert(!_contact.empty());
-    assert(_id > -1);
+    im_assert(!_contact.empty());
+    im_assert(_id > -1);
 
     auto handler = std::make_shared<async_task_handlers>();
 
@@ -1914,6 +1981,142 @@ std::shared_ptr<get_reactions_handler> face::get_reactions(const std::string& _c
     }, task_name)->on_result_ = [handler, result, missing](int32_t _error)
     {
         handler->on_result(result, missing);
+    };
+
+    return handler;
+}
+
+std::shared_ptr<async_task_handlers> face::insert_thread_updates(const std::string& _contact, const thread_updates_v_sptr& _updates)
+{
+    static constexpr char task_name[] = "face::insert_thread_updates";
+    auto handler = std::make_shared<async_task_handlers>();
+
+    thread_->run_async_function([history_cache = history_cache_, _contact, _updates]()->int32_t
+    {
+        history_cache->insert_thread_updates(_contact, _updates);
+
+        return 0;
+
+    }, task_name)->on_result_ = [handler](int32_t _error)
+    {
+        if (handler->on_result_)
+            handler->on_result_(_error);
+    };
+
+    return handler;
+}
+
+std::shared_ptr<get_thread_updates_handler> face::get_thread_updates(const std::string& _contact, const std::shared_ptr<msgids_list>& _msg_ids)
+{
+    auto handler = std::make_shared<get_thread_updates_handler>();
+
+    auto result = std::make_shared<thread_updates_v>();
+    auto missing = std::make_shared<msgids_list>();
+
+    static constexpr char task_name[] = "face::get_thread_updates";
+
+    thread_->run_async_function([history_cache = history_cache_, _contact, _msg_ids, result, missing]()->int32_t
+    {
+        history_cache->get_thread_updates(_contact, _msg_ids, result, missing);
+
+        return 0;
+
+    }, task_name)->on_result_ = [handler, result, missing](int32_t _error)
+    {
+        if (handler->on_result)
+            handler->on_result(*result, *missing);
+    };
+
+    return handler;
+}
+
+std::shared_ptr<get_draft_handler> face::get_draft(const std::string& _contact)
+{
+    auto handler = std::make_shared<get_draft_handler>();
+    auto result = std::make_shared<draft>();
+
+    static constexpr char task_name[] = "face::get_draft";
+    thread_->run_async_function([history_cache = history_cache_, _contact, result]()->int32_t
+    {
+        *result = history_cache->get_draft(_contact);
+        return 0;
+    }, task_name)->on_result_ = [handler, result](int32_t _error)
+    {
+        if (handler->on_result)
+            handler->on_result(result);
+    };
+
+    return handler;
+}
+
+std::shared_ptr<set_draft_handler> face::set_draft(const std::string& _contact, const draft& _draft)
+{
+    auto handler = std::make_shared<set_draft_handler>();
+
+    static constexpr char task_name[] = "face::set_draft";
+    thread_->run_async_function([history_cache = history_cache_, _contact, _draft]()->int32_t
+    {
+        history_cache->set_draft(_contact, _draft);
+        return 0;
+    }, task_name)->on_result_ = [handler](int32_t _error)
+    {
+        if (handler->on_result)
+            handler->on_result();
+    };
+
+    return handler;
+}
+
+std::shared_ptr<get_pending_draft_contact_handler> face::get_next_pending_draft_contact()
+{
+    auto handler = std::make_shared<get_pending_draft_contact_handler>();
+    auto contact = std::make_shared<std::string>();
+
+    static constexpr char task_name[] = "face::get_next_pending_draft_contact";
+    thread_->run_async_function([history_cache = history_cache_, contact]()->int32_t
+    {
+        *contact = history_cache->get_next_pending_draft_contact();
+        return 0;
+    }, task_name)->on_result_ = [handler, contact](int32_t _error)
+    {
+        if (handler->on_result)
+            handler->on_result(*contact);
+    };
+
+    return handler;
+}
+
+std::shared_ptr<async_task_handlers> face::remove_pending_draft_contact(const std::string& _contact, int64_t _timestamp)
+{
+     auto handler = std::make_shared<async_task_handlers>();
+
+     static constexpr char task_name[] = "face::remove_pending_draft_contact";
+     thread_->run_async_function([history_cache = history_cache_, _contact, _timestamp]()->int32_t
+     {
+         history_cache->remove_pending_draft_contact(_contact, _timestamp);
+         return 0;
+     }, task_name)->on_result_ = [handler](int32_t _error)
+     {
+         if (handler->on_result_)
+             handler->on_result_(_error);
+     };
+
+     return handler;
+}
+
+std::shared_ptr<async_task_handlers> face::add_pending_draft_contact(const std::string& _contact, int64_t _timestamp)
+{
+    auto handler = std::make_shared<async_task_handlers>();
+
+    static constexpr char task_name[] = "face::add_pending_draft_contact";
+    thread_->run_async_function([history_cache = history_cache_, _contact, _timestamp]()->int32_t
+    {
+        history_cache->add_pending_draft_contact(_contact, _timestamp);
+        return 0;
+    }, task_name)->on_result_ = [handler](int32_t _error)
+    {
+        if (handler->on_result_)
+            handler->on_result_(_error);
     };
 
     return handler;

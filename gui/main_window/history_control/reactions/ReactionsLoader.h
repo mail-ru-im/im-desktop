@@ -43,6 +43,10 @@ class ChatReactionsLoader_p;
 class ChatReactionsLoader : public QObject
 {
     Q_OBJECT
+
+Q_SIGNALS:
+    void unsubscribed(int64_t _msgId, QPrivateSignal);
+
 public:
     ChatReactionsLoader();
     ~ChatReactionsLoader();

@@ -1,13 +1,17 @@
 #include "stdafx.h"
 #include "my_info.h"
 #include "../../core.h"
-#include "../../tools/json_helper.h"
+#include "../../../common.shared/json_helper.h"
 #include "../../archive/storage.h"
+#include "tools/features.h"
 
 using namespace core;
 using namespace wim;
 
-my_info::my_info() = default;
+my_info::my_info()
+    : trusted_(features::trust_status_default())
+{
+}
 
 int32_t my_info::unserialize(const rapidjson::Value& _node)
 {
@@ -22,6 +26,7 @@ int32_t my_info::unserialize(const rapidjson::Value& _node)
     tools::unserialize_value(_node, "globalFlags", flags_);
     tools::unserialize_value(_node, "hasMail", hasMail_);
     tools::unserialize_value(_node, "official", official_);
+    tools::unserialize_value(_node, "cachedTrusted", trusted_);
 
     const auto iter_expressions = _node.FindMember("expressions");
     if (iter_expressions != _node.MemberEnd())
@@ -50,6 +55,7 @@ int32_t my_info::serialize(rapidjson::Value& _node, rapidjson_allocator& _a) con
     _node.AddMember("globalFlags", flags_, _a);
     _node.AddMember("hasMail", hasMail_, _a);
     _node.AddMember("official", official_, _a);
+    _node.AddMember("cachedTrusted", trusted_, _a);
 
     return 0;
 }
@@ -66,6 +72,7 @@ void my_info::serialize(core::coll_helper _coll)
     _coll.set_value_as_string("largeIconId", largeIconId_);
     _coll.set_value_as_bool("hasMail", hasMail_);
     _coll.set_value_as_bool("official", official_);
+    _coll.set_value_as_bool("trusted", trusted_);
 
     user_agreement_info_.serialize(_coll);
 }
@@ -88,7 +95,8 @@ bool my_info::operator==(const my_info& _right) const
         largeIconId_ == _right.largeIconId_ &&
         hasMail_ == _right.hasMail_ &&
         official_ == _right.official_ &&
-        user_agreement_info_ == _right.user_agreement_info_;
+        user_agreement_info_ == _right.user_agreement_info_ &&
+        trusted_ == _right.trusted_;
 }
 
 bool my_info::operator!=(const my_info& _right) const

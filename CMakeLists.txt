@@ -1,19 +1,22 @@
 cmake_minimum_required(VERSION 3.17)
 
-message(STATUS "")
-message(STATUS "CMake version = ${CMAKE_VERSION}")
-
 include(CheckFunctionExists)
 
 project(icq)
 
+message(STATUS "")
+message(STATUS "[CMAKE]")
+message(STATUS "[CMAKE] Using <CMakeLists.txt>")
+message(STATUS "[CMAKE]")
+message(STATUS "[CMAKE] CMake version = ${CMAKE_VERSION}")
+
 if(NOT PRODUCT)
     set(PRODUCT "icq")
     message(STATUS "")
-    message(STATUS "Default product is ${PRODUCT}")
+    message(STATUS "[INFO] Default product is ${PRODUCT}")
 endif()
 
-message(STATUS "PRODUCT is ${PRODUCT}")
+message(STATUS "[INFO] PRODUCT is ${PRODUCT}")
 
 add_definitions(-DSUPPORT_EXTERNAL_CONFIG)
 message(STATUS "add_definitions(-DSUPPORT_EXTERNAL_CONFIG)")
@@ -45,14 +48,16 @@ if(BUILD_PKG_MSI)
     add_definitions(-DBUILD_PKG_MSI=1)
 endif()
 
+option(IM_QT_DYNAMIC "Qt dynamic linking" ON)
+
 if(NOT IM_QT_DYNAMIC)
     add_definitions(-DIM_QT_STATIC)
-    message(STATUS "Qt linking: static")
-    message(STATUS "add_definitions(-DIM_QT_STATIC)")
+    message(STATUS "[INFO] Qt linking: static")
+    message(STATUS "[INFO] add_definitions(-DIM_QT_STATIC)")
 else()
     add_definitions(-DIM_QT_DYNAMIC)
-    message(STATUS "Qt linking: dynamic")
-    message(STATUS "add_definitions(-DIM_QT_DYNAMIC)")
+    message(STATUS "[INFO] Qt linking: dynamic")
+    message(STATUS "[INFO] add_definitions(-DIM_QT_DYNAMIC)")
 endif()
 
 if (STRIP_VOIP)
@@ -84,20 +89,28 @@ if (GIT_FOUND)
         OUTPUT_VARIABLE GIT_COMMIT_HASH
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
-    message(STATUS "Current GIT BRANCH NAME = ${GIT_BRANCH_NAME}")
-    message(STATUS "Current GIT COMMIT HASH = ${GIT_COMMIT_HASH}")
+    message(STATUS "")
+    message(STATUS "[BRANCH] Current GIT BRANCH NAME = ${GIT_BRANCH_NAME}")
+    message(STATUS "[BRANCH] Current GIT COMMIT HASH = ${GIT_COMMIT_HASH}")
+    message(STATUS "")
+    
+    if (ENABLE_BUILD_INFO)
+        add_definitions("-DGIT_BRANCH_NAME=\"${GIT_BRANCH_NAME}\"")
+        message(STATUS "add_definitions(-DGIT_BRANCH_NAME=${GIT_BRANCH_NAME})")
 
-    add_definitions("-DGIT_BRANCH_NAME=\"${GIT_BRANCH_NAME}\"")
-    message(STATUS "add_definitions(-DGIT_BRANCH_NAME=${GIT_BRANCH_NAME})")
-
-    add_definitions("-DGIT_COMMIT_HASH=\"${GIT_COMMIT_HASH}\"")
-    message(STATUS "add_definitions(-DGIT_COMMIT_HASH=${GIT_COMMIT_HASH})")
+        add_definitions("-DGIT_COMMIT_HASH=\"${GIT_COMMIT_HASH}\"")
+        message(STATUS "add_definitions(-DGIT_COMMIT_HASH=${GIT_COMMIT_HASH})")
+    endif()
 endif (GIT_FOUND)
 
-string(TIMESTAMP BUILD_TIME "%d/%m/%y %H:%M")
-add_definitions("-DBUILD_TIME=\"${BUILD_TIME}\"")
-message(STATUS "add_definitions(-DBUILD_TIME=${BUILD_TIME})")
-message(STATUS "Current BILD TIME = ${BUILD_TIME}")
+if (ENABLE_BUILD_INFO)
+    string(TIMESTAMP BUILD_TIME "%d/%m/%y %H:%M")
+    string(TIMESTAMP BUILD_TIME_SHORT "%m%Y")
+    add_definitions("-DBUILD_TIME=\"${BUILD_TIME}\"")
+    add_definitions("-DBUILD_TIME_SHORT=\"${BUILD_TIME_SHORT}\"")
+    message(STATUS "add_definitions(-DBUILD_TIME=${BUILD_TIME})")
+    message(STATUS "Current BILD TIME = ${BUILD_TIME}")
+endif()
 
 get_filename_component(ICQ_ROOT "${CMAKE_SOURCE_DIR}" ABSOLUTE)
 set(PRODUCT_SPEC_DIR "${ICQ_ROOT}/products/${PRODUCT}")
@@ -107,6 +120,17 @@ else()
     message(FATAL_ERROR "Folder ${PRODUCT_SPEC_DIR} is not exists!)")
 endif()
 include(${PRODUCT_SPEC_DIR}/project_settings.cmake)
+
+if(IM_QT_DYNAMIC)
+    if (HAS_WEB_ENGINE)
+        message(STATUS "[INFO] Qt WebEngine: ON")
+        add_definitions(-DHAS_WEB_ENGINE)
+    endif()
+    if (HAS_OAUTH2)
+    message(STATUS "[INFO] OAuth2: ON")
+        add_definitions(-DHAS_OAUTH2)
+    endif()
+endif()
 
 if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
     set(ICQ_DEBUG ON)
@@ -172,14 +196,12 @@ endif()
 if(MSVC)
     set(ICQ_PLATFORM windows)
     set(ICQ_ARCH x86)
-
-    if(ICQ_DEBUG)
-        add_definitions(/MTd)
-    else()
-        add_definitions(/MT)
-        # disable LTO because of https://bugreports.qt.io/browse/QTBUG-41301
-        #add_definitions(/GL)
-        #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /LTCG")
+    if(NOT IM_QT_DYNAMIC)
+        if(ICQ_DEBUG)
+            add_definitions(/MTd)
+        else()
+            add_definitions(/MT)
+        endif()
     endif()
     add_definitions(/Zi)
     add_definitions(/MP)
@@ -280,10 +302,10 @@ elseif(UNIX)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ARCH_FLAGS} ${LINUX_COMMON_FLAGS}")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARCH_FLAGS} ${LINUX_COMMON_FLAGS}")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${ARCH_FLAGS} -no-pie -Wl,--version-script=${ICQ_ROOT}/icq.exports -Wl,--gc-sections")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${ARCH_FLAGS} -no-pie -Wl,--version-script=${ICQ_ROOT}/icq.exports -Wl,--gc-sections -Wl,--no-as-needed")
     #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-Map=${ICQ_BIN_DIR}/icq.map -Wl,--cref")
     if(NOT DISABLE_STATIC_CXX)
-      set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
     endif()
     message(STATUS "[flags] CMAKE_C_FLAGS          = ${CMAKE_C_FLAGS}")
     message(STATUS "[flags] CMAKE_CXX_FLAGS        = ${CMAKE_CXX_FLAGS}")
@@ -293,6 +315,16 @@ else()
     message(FATAL_ERROR "Unknown platform")
 endif()
 
+if(LINUX)
+    if(NOT USE_TOOLCHAIN)
+        add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=1)
+        message(STATUS "")
+        message(STATUS "[flags] set _GLIBCXX_USE_CXX11_ABI=1")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=1")
+        message(STATUS "[flags] CMAKE_CXX_FLAGS        = ${CMAKE_CXX_FLAGS}")
+        message(STATUS "")
+    endif()
+endif()
 
 # ---------------------------  linux toolchain --------------------------------
 # i.e. -DUSE_TOOLCHAIN=/storage/toolchains
@@ -415,7 +447,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${ICQ_BIN_DIR})
 if(RUN_VALIDATOR)
     message(STATUS "[STAGE] VALIDATORS")
     find_package(PythonInterp 3 REQUIRED)
-    message(STATUS "PYTHON_EXECUTABLE = ${PYTHON_EXECUTABLE}")
+    message(STATUS "[INFO] PYTHON_EXECUTABLE = ${PYTHON_EXECUTABLE}")
     execute_process(COMMAND
                     "${PYTHON_EXECUTABLE}" buildsystem/products_json_validator.py --products "${ICQ_ROOT}/products"
                     WORKING_DIRECTORY ${ICQ_ROOT}
@@ -430,140 +462,120 @@ endif()
 # -----------------------------------------------------------------------------
 
 
+message(STATUS "")
 message(STATUS "[requirements] Reading common variables from requirements/CMakeLists.txt")
 
 include(requirements/common.cmake)
-message(STATUS "[requirements] DOWNLOADS_URL              = ${DOWNLOADS_URL}")
-message(STATUS "[requirements] DOWNLOADS_PATH             = ${DOWNLOADS_PATH}")
 
 # --------------------------  external  ---------------------------------------
+# message(STATUS "")
+# message(STATUS "[EXTERNAL DEPENDENCIES]")
 if(LINUX)
-    message(STATUS "")
-    message(STATUS "[EXTERNAL DEPENDENCIES]")
-
     include(requirements/linux.cmake)
-    message(STATUS "[requirements] ICQ_EXTERNAL               = ${ICQ_EXTERNAL}")
-    include_directories(${ICQ_EXTERNAL})
-
+elseif(APPLE)
+    include(requirements/macos.cmake)
 else()
-    message(STATUS "")
-    message(STATUS "[EXTERNAL]")
-
-    set(EXT_LIBS_NAME "external_${EXT_LIBS_VERSION}")
-    set(ICQ_EXTERNAL "${ICQ_ROOT}/${EXT_LIBS_NAME}")
-
-    include_directories(${ICQ_EXTERNAL})
-
-    set(EXT_LIBS_FILE_DESTINATION "${DOWNLOADS_PATH}/${EXT_LIBS_NAME}.zip")
-    set(EXT_LIBS_FILE_MD5 "${EXT_LIBS_FILE_DESTINATION}.md5")
-    set(EXT_LIBS_URL "${DOWNLOADS_URL}/${EXT_LIBS_VERSION}/${EXT_LIBS_NAME}.zip")
-
-    message(STATUS "[requirements] EXT_LIBS_VERSION           = ${EXT_LIBS_VERSION}")
-    message(STATUS "[requirements] EXT_LIBS_NAME              = ${EXT_LIBS_NAME}")
-    message(STATUS "[requirements] ICQ_EXTERNAL               = ${ICQ_EXTERNAL}")
-
-    message(STATUS "[requirements] EXT_LIBS_FILE_DESTINATION  = ${EXT_LIBS_FILE_DESTINATION}")
-    message(STATUS "[requirements] EXT_LIBS_FILE_MD5          = ${EXT_LIBS_FILE_MD5}")
-    message(STATUS "[requirements] EXT_LIBS_URL               = ${EXT_LIBS_URL}")
-    message(STATUS "")
-
-    common_prepare_libs("all" "${EXT_LIBS_FILE_MD5}" "${EXT_LIBS_URL}" "${EXT_LIBS_FILE_DESTINATION}" "${ICQ_EXTERNAL}")
-
+    include(requirements/windows.cmake)
 endif()
+common_print_dependencies_info()
+
+message(STATUS "[requirements] ICQ_EXTERNAL               = ${ICQ_EXTERNAL}")
+include_directories(${ICQ_EXTERNAL})
 # -----------------------------------------------------------------------------
+
+set(STATIC_RUNTIME_PREFIX "")
+if(IM_QT_DYNAMIC)
+    if(MSVC)
+        set(QT_LIB_EXT "lib")
+        set(QT_DLL_EXT "dll")
+        set(QT_SUP_EXT "lib")
+        set(QT_PLUGIN_EXT "dll")
+    elseif(APPLE)
+        set(QT_LIB_EXT "dylib")
+        set(QT_SUP_EXT "a")
+        set(QT_PLUGIN_EXT "dylib")
+    else()
+        set(QT_LIB_EXT "so")
+        set(QT_SUP_EXT "a")
+        set(QT_PLUGIN_EXT "so")
+    endif()
+else()
+    if(MSVC)
+        set(QT_LIB_EXT "lib")
+        set(QT_SUP_EXT "lib")
+        set(QT_PLUGIN_EXT "lib")
+        set(STATIC_RUNTIME_PREFIX "/static_runtime")
+    else()
+        set(QT_LIB_EXT "a")
+        set(QT_SUP_EXT "a")
+        set(QT_PLUGIN_EXT "a")
+    endif()
+endif()
 
 
 # ------------------------  set_lib_var  --------------------------------------
 macro(set_lib_var varName libName)
-    if(LINUX)
-        SET(${varName} "${ICQ_EXTERNAL}/${libName}/lib")
-    else()
-        SET(${varName} "${ICQ_EXTERNAL}/${libName}/lib/${ICQ_PLATFORM}/${ICQ_ARCH}")
-    endif()
-endmacro()
+    SET(${varName} "${libName}/lib")
+    message(STATUS "[lib] ${varName} -> ${${varName}}")
+endmacro(set_lib_var)
 
+# ------------------------  set_include_var  ----------------------------------
+macro(set_include_var varName includePath)
+    SET(${varName} "${includePath}")
+    include_directories("${includePath}")
+    message(STATUS "[include] ${varName} -> ${${varName}}")
+    # message(STATUS "[include] include_directories(${includePath})")
+endmacro(set_include_var)
 
 # -------------------  platform specific path ---------------------------------
-if(LINUX)
-    set(ICQ_PLATFORM_SPECIFIC "${ICQ_EXTERNAL}/additionals")
-else()
-    set(ICQ_PLATFORM_SPECIFIC "${ICQ_EXTERNAL}/platform_specific/${ICQ_PLATFORM}/${ICQ_ARCH}")
-endif()
+set(ICQ_PLATFORM_SPECIFIC "${ICQ_EXTERNAL}/additionals")
+
 
 # --------------------------    boost   ---------------------------------------
 if(LINUX)
     add_definitions(-DBOOST_UUID_RANDOM_PROVIDER_FORCE_POSIX) # fix missed SYS_getrandom in older kernels
 endif()
 
-if(WIN32)
-    set(BOOST_INCLUDEDIR "${ICQ_EXTERNAL}/boost_1.72.0/include")
-    set_lib_var(BOOST_LIBRARYDIR "boost_1.72.0")
-else()
-    if(LINUX)
-        set(BOOST_INCLUDEDIR "${ICQ_EXTERNAL}/boost_${deps_lib_version_boost}/include")
-        set_lib_var(BOOST_LIBRARYDIR boost_${deps_lib_version_boost})
-    else()
-        set(BOOST_INCLUDEDIR "${ICQ_EXTERNAL}/boost/include")
-        set_lib_var(BOOST_LIBRARYDIR boost)
-    endif()
-endif()
+set_lib_var(BOOST_LIBRARY_DIR "${pkg_boost_location}")
+set_include_var(BOOST_INCLUDEDIR "${pkg_boost_location}/include")
 
 set(Boost_USE_STATIC_LIBS ON)
-set(Boost_USE_STATIC_RUNTIME ON)
+if(NOT IM_QT_DYNAMIC)
+    set(Boost_USE_STATIC_RUNTIME ON)
+endif()
 set(Boost_NO_SYSTEM_PATHS ON)
 if(MSVC)
     add_definitions(-D_SCL_SECURE_NO_WARNINGS)
     find_package(Boost REQUIRED chrono date_time filesystem locale system thread regex)
 elseif(APPLE)
     find_package(Boost REQUIRED)
-    set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARYDIR}/libboost_chrono.a")
-    set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARYDIR}/libboost_locale.a")
-    set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARYDIR}/libboost_system.a")
-    set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARYDIR}/libboost_filesystem.a")
-    set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARYDIR}/libboost_unit_test_framework.a")
-    set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARYDIR}/libboost_regex.a")
-    set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARYDIR}/libboost_thread.a")
+    set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARY_DIR}/libboost_chrono.a")
+    set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARY_DIR}/libboost_locale.a")
+    set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARY_DIR}/libboost_system.a")
+    set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARY_DIR}/libboost_filesystem.a")
+    set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARY_DIR}/libboost_unit_test_framework.a")
+    set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARY_DIR}/libboost_regex.a")
+    set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARY_DIR}/libboost_thread.a")
 elseif(LINUX)
-    set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARYDIR}/libboost_filesystem.a")
-    set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARYDIR}/libboost_locale.a")
-    set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARYDIR}/libboost_system.a")
-    set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARYDIR}/libboost_thread.a")
-    set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARYDIR}/libboost_regex.a")
+    set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARY_DIR}/libboost_filesystem.a")
+    set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARY_DIR}/libboost_locale.a")
+    set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARY_DIR}/libboost_system.a")
+    set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARY_DIR}/libboost_thread.a")
+    set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARY_DIR}/libboost_regex.a")
 endif()
-message(STATUS "[include] include_directories(${BOOST_INCLUDEDIR})")
-include_directories(${BOOST_INCLUDEDIR})
 
 
 # -------------------------- rapidjson ----------------------------------------
 add_definitions(-DRAPIDJSON_HAS_STDSTRING=1 -DUSE_RAPIDJSON)
-if(LINUX)
-    set(ICQ_RAPID_JSON "${ICQ_EXTERNAL}/rapidjson_${deps_lib_version_rapidjson}_${deps_lib_version_rapidjson_src}")
-    message(STATUS "[include] include_directories(${ICQ_RAPID_JSON}/include)")
-    include_directories(${ICQ_RAPID_JSON}/include)
-else()
-    set(ICQ_RAPID_JSON "${ICQ_EXTERNAL}/rapidjson")
-    include_directories(${ICQ_RAPID_JSON}/include)
-endif()
+set_include_var(RAPID_JSON_HEADERS "${pkg_src_rapidjson_location}/include")
 
 # --------------------------    nghttp2    ------------------------------------
 add_definitions(-DNGHTTP2_STATICLIB)
-if(LINUX)
-    set(ICQ_NGHTTP2 "${ICQ_EXTERNAL}/nghttp2_${deps_lib_version_nghttp2}")
-    set(NGHTTP2_INCLUDE_DIR "${ICQ_NGHTTP2}/include")
-    message(STATUS "[include] include_directories(${NGHTTP2_INCLUDE_DIR})")
-    include_directories(${NGHTTP2_INCLUDE_DIR})
-    set_lib_var(NGHTTP2_LIBRARY_DIR nghttp2_${deps_lib_version_nghttp2})
-else()
-    set(ICQ_NGHTTP2 "${ICQ_EXTERNAL}/nghttp2")
-    set(NGHTTP2_INCLUDE_DIR "${ICQ_NGHTTP2}/include")
-    include_directories(${NGHTTP2_INCLUDE_DIR})
-    set_lib_var(NGHTTP2_LIBRARY_DIR nghttp2)
-endif()
-
-
+set_lib_var(NGHTTP2_LIBRARY_DIR "${pkg_nghttp2_location}")
+set_include_var(NGHTTP2_INCLUDE_DIR "${pkg_nghttp2_location}/include")
 if(MSVC)
     set(NGHTTP2_LIBRARIES "${NGHTTP2_LIBRARY_DIR}/nghttp2.lib")
-    message(${NGHTTP2_LIBRARIES})
+    message(STATUS "[INFO] NGHTTP2_LIBRARIES = ${NGHTTP2_LIBRARIES}")
 else()
     set(NGHTTP2_LIBRARIES "${NGHTTP2_LIBRARY_DIR}/libnghttp2.a")
 endif()
@@ -571,19 +583,8 @@ endif()
 
 # --------------------------    curl    ---------------------------------------
 add_definitions(-DCURL_STATICLIB)
-if(LINUX)
-    set(ICQ_CURL "${ICQ_EXTERNAL}/curl_${deps_lib_version_curl}")
-    set(CURL_INCLUDE_DIR "${ICQ_CURL}/include/curl")
-    message(STATUS "[include] include_directories(${CURL_INCLUDE_DIR})")
-    include_directories(${CURL_INCLUDE_DIR})
-    set_lib_var(CURL_LIBRARY_DIR curl_${deps_lib_version_curl})
-else()
-    set(ICQ_CURL "${ICQ_EXTERNAL}/curl")
-    set(CURL_INCLUDE_DIR "${ICQ_CURL}/include")
-    include_directories(${CURL_INCLUDE_DIR})
-    set_lib_var(CURL_LIBRARY_DIR curl)
-endif()
-
+set_lib_var(CURL_LIBRARY_DIR "${pkg_curl_location}")
+set_include_var(CURL_INCLUDE_DIR "${pkg_curl_location}/include/curl")
 if(MSVC)
     set(CURL_LIBRARIES
         optimized "${CURL_LIBRARY_DIR}/libcurl.lib"
@@ -594,23 +595,12 @@ endif()
 
 
 # --------------------------   openssl   --------------------------------------
-if(LINUX)
-    set(ICQ_OPENSSL "${ICQ_EXTERNAL}/openssl_${deps_lib_version_openssl}")
-    set(OPENSSL_LIBRARY_DIR "${ICQ_OPENSSL}/lib/${ICQ_PLATFORM}")
-    message(STATUS "[include] include_directories(${ICQ_OPENSSL}/include)")
-    include_directories(${ICQ_OPENSSL}/include)
-    set_lib_var(OPENSSL_LIBRARY_DIR openssl_${deps_lib_version_openssl})
-else()
-    set(ICQ_OPENSSL "${ICQ_EXTERNAL}/openssl")
-    set(OPENSSL_LIBRARY_DIR "${ICQ_OPENSSL}/lib/${ICQ_PLATFORM}")
-    include_directories(${ICQ_OPENSSL}/include)
-    set_lib_var(OPENSSL_LIBRARY_DIR openssl)
-endif()
-
+set_lib_var(OPENSSL_LIBRARY_DIR "${pkg_openssl_location}")
+set_include_var(OPENSSL_INCLUDE_DIR "${pkg_openssl_location}/include")
 if(MSVC)
     set(OPENSSL_LIBRARIES
-        optimized "${OPENSSL_LIBRARY_DIR}/libeay32.lib" optimized "${OPENSSL_LIBRARY_DIR}/ssleay32.lib"
-        debug "${OPENSSL_LIBRARY_DIR}/debug/libeay32.lib" debug "${OPENSSL_LIBRARY_DIR}/debug/ssleay32.lib")
+        optimized "${OPENSSL_LIBRARY_DIR}/libcrypto.lib" optimized "${OPENSSL_LIBRARY_DIR}/libssl.lib"
+        debug "${OPENSSL_LIBRARY_DIR}/libcrypto.lib" debug "${OPENSSL_LIBRARY_DIR}/libssl.lib")
 elseif(LINUX)
     set(OPENSSL_LIBRARIES "${OPENSSL_LIBRARY_DIR}/libssl.a" "${OPENSSL_LIBRARY_DIR}/libcrypto.a")
 elseif(APPLE)
@@ -619,22 +609,15 @@ endif()
 
 
 # --------------------------    zlib    ---------------------------------------
-if(LINUX)
-    set(ICQ_ZLIB "${ICQ_EXTERNAL}/zlib_${deps_lib_version_zlib}")
-    message(STATUS "[include] include_directories(${ICQ_ZLIB}/include)")
-    include_directories(${ICQ_ZLIB}/include)
-    set_lib_var(ZLIB_LIBRARY_DIR zlib_${deps_lib_version_zlib})
+set_include_var(ZLIB_INCLUDE_DIR "${pkg_zlib_location}/include")
+if(MSVC)
+	# just precompiled binary
+	message(INFO "[lib] ZLIB_LIBRARIES = ${pkg_bin_zlib.lib_location}")
+    set(ZLIB_LIBRARIES "${pkg_bin_zlib.lib_location}")
 else()
-    set(ICQ_ZLIB "${ICQ_EXTERNAL}/zlib")
-    include_directories(${ICQ_ZLIB}/include)
-    set_lib_var(ZLIB_LIBRARY_DIR zlib)
+	set_lib_var(ZLIB_LIBRARY_DIR "${pkg_zlib_location}")
 endif()
 
-if(MSVC)
-    set(ZLIB_LIBRARIES
-        optimized "${ZLIB_LIBRARY_DIR}/zlib.lib"
-        debug "${ZLIB_LIBRARY_DIR}/zlibd.lib")
-endif()
 
 # --------------------------   OpenAl   --------------------------
 if (NOT STRIP_AV_MEDIA)
@@ -647,26 +630,17 @@ if (NOT STRIP_AV_MEDIA)
     option(USE_SYSTEM_OPENAL "Use system openal." ${DEFAULT_USE_SYSTEM_OPENAL})
 
     if (USE_SYSTEM_OPENAL)
-        message(STATUS "openal: system")
+        message(STATUS "[INFO] OpenAL: System")
         add_definitions(-DUSE_SYSTEM_OPENAL)
     else()
-        message(STATUS "openal: external")
-        if(LINUX)
-            set(ICQ_OPENAL "${ICQ_EXTERNAL}/openal_${deps_lib_version_openal}")
-            message(STATUS "[include] include_directories(${ICQ_OPENAL}/include)")
-            include_directories(${ICQ_OPENAL}/include)
-            set_lib_var(OPENAL_LIBRARY_DIR openal_${deps_lib_version_openal})
-        else()
-            set(ICQ_OPENAL "${ICQ_EXTERNAL}/openal")
-            include_directories(${ICQ_OPENAL}/include)
-            set_lib_var(OPENAL_LIBRARY_DIR openal)
-        endif()
-
+        message(STATUS "[INFO] OpenAL: External")
+        set_lib_var(OPENAL_LIBRARY_DIR "${pkg_openal_location}")
+        set_include_var(OPENAL_INCLUDE_DIR "${pkg_openal_location}/include")
         add_definitions(-DAL_LIBTYPE_STATIC)
         if(MSVC)
             set(OPEN_AL_LIBRARIES
                 optimized "${OPENAL_LIBRARY_DIR}/OpenAL32.lib"
-                debug "${OPENAL_LIBRARY_DIR}/OpenAL32d.lib")
+                debug "${OPENAL_LIBRARY_DIR}/OpenAL32.lib")
         else()
             set(OPEN_AL_LIBRARIES "${OPENAL_LIBRARY_DIR}/libopenal.a")
         endif()
@@ -677,76 +651,122 @@ endif()
 if (STRIP_AV_MEDIA)
     add_definitions(-DSTRIP_AV_MEDIA)
 else()
-    if(LINUX)
-        set(ICQ_FFMPEG "${ICQ_EXTERNAL}/ffmpeg_${deps_lib_version_ffmpeg}")
+
+    set_lib_var(FFMPEG_LIBRARY_DIR "${pkg_ffmpeg_location}")
+    set_include_var(FFMPEG_INCLUDE_DIR "${pkg_ffmpeg_location}/include")
+    if (MSVC)
+        set(LIBRARY_EXTENTION "lib")
     else()
-        set(ICQ_FFMPEG "${ICQ_EXTERNAL}/ffmpeg")
+        set(LIBRARY_EXTENTION "a")
     endif()
 
-    if(MSVC)
-        include_directories(${ICQ_FFMPEG}/include_old)                                      # use old ffmped for windows until xp is being supported
-        SET(FFMPEG_LIBRARY_DIR "${ICQ_EXTERNAL}/ffmpeg/lib_old/${ICQ_PLATFORM}/${ICQ_ARCH}")
-        set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavcodec.lib")
-        set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavfilter.lib")
-        set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavformat.lib")
-        set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavutil.lib")
-        set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libswresample.lib")
-        set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libswscale.lib")
-    else()
-        if(LINUX)
-            message(STATUS "[include] include_directories(${ICQ_FFMPEG}/include)")
-            include_directories(${ICQ_FFMPEG}/include)
-            set_lib_var(FFMPEG_LIBRARY_DIR ffmpeg_${deps_lib_version_ffmpeg})
-        else()
-            include_directories(${ICQ_FFMPEG}/include)
-            set_lib_var(FFMPEG_LIBRARY_DIR ffmpeg)
-        endif()
-        set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavfilter.a")
-        set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavformat.a") # libavformat.a depends on libavcodec.a
-        set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavcodec.a")
-        set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavutil.a")
-        set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libswresample.a")
-        set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libswscale.a")
-    endif()
+    set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavfilter.${LIBRARY_EXTENTION}")
+    set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavformat.${LIBRARY_EXTENTION}") # libavformat.a depends on libavcodec.a
+    set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavcodec.${LIBRARY_EXTENTION}")
+    set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavutil.${LIBRARY_EXTENTION}")
+    set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libswresample.${LIBRARY_EXTENTION}")
+    set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libswscale.${LIBRARY_EXTENTION}")
+
 endif()
 
 
 # --------------------------   rlottie   --------------------------------------
 if (NOT STRIP_AV_MEDIA)
-    if(LINUX)
-        set(ICQ_RLOTTIE "${ICQ_EXTERNAL}/rlottie_${deps_lib_version_rlottie}")
-        message(STATUS "[include] include_directories(${ICQ_RLOTTIE}/include)")
-        include_directories(${ICQ_RLOTTIE}/include)
-        set_lib_var(RLOTTIE_LIBRARY_DIR rlottie_${deps_lib_version_rlottie})
-    else()
-        set(ICQ_RLOTTIE "${ICQ_EXTERNAL}/rlottie")
-        include_directories(${ICQ_RLOTTIE}/include)
-        set_lib_var(RLOTTIE_LIBRARY_DIR rlottie)
-    endif()
-
+    set_lib_var(RLOTTIE_LIBRARY_DIR "${pkg_rlottie_location}")
+    set_include_var(RLOTTIE_INCLUDE_DIR "${pkg_rlottie_location}/include")
     if(MSVC)
         set(RLOTTIE_LIBRARIES
             optimized "${RLOTTIE_LIBRARY_DIR}/rlottie.lib"
-            debug "${RLOTTIE_LIBRARY_DIR}/rlottied.lib")
+            debug "${RLOTTIE_LIBRARY_DIR}/rlottie.lib")
     else()
         set(RLOTTIE_LIBRARIES "${RLOTTIE_LIBRARY_DIR}/librlottie.a")
     endif()
 endif()
 
+
 # --------------------------   minizip   --------------------------------------
-if(LINUX)
-    set(ICQ_MINIZIP "${ICQ_EXTERNAL}/minizip_${deps_lib_version_minizip}")
-    message(STATUS "[include] include_directories(${ICQ_MINIZIP}/include)")
-    include_directories(${ICQ_MINIZIP}/include)
-else()
-    set(ICQ_MINIZIP "${ICQ_EXTERNAL}/minizip")
-    include_directories(${ICQ_MINIZIP}/include)
-endif()
+set(IM_MINIZIP "${pkg_src_minizip_location}/include")
+include_directories(${IM_MINIZIP})
+message(STATUS "[include] include_directories(${IM_MINIZIP})")
 
 
 # --------------------------   d3dcompiler  -----------------------------------
-set(D3D_COMPILER_LIBRARY "${ICQ_PLATFORM_SPECIFIC}/d3dcompiler_43.dll")
+set(D3D_COMPILER_LIBRARY "${pkg_bin_d3dcompiler_47.dll_location}")
 
+# --------------------------   GPU blacklist  -----------------------------------
+set(GPU_BLACKLIST "${ICQ_ROOT}/config/qt/${ICQ_PLATFORM}/gpu_blacklist.json")
+
+# --------------------------   mesa3d   ---------------------------------------
+set(MESA_LIBRARY "${pkg_mesa3d_location}/lib/opengl32sw.dll")
+
+
+# -------------------   windows runtime libraries  ----------------------------
+if (IM_QT_DYNAMIC)
+    if (MSVC)
+        set(WINSDK_RUNTIME "${pkg_runtime_location}")
+        if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+            set(RUNTIME_LIBRARIES_TO_COPY
+                ${WINSDK_RUNTIME}/concrt140d.dll
+                ${WINSDK_RUNTIME}/msvcp140d.dll
+                ${WINSDK_RUNTIME}/vccorlib140d.dll
+                ${WINSDK_RUNTIME}/vcruntime140d.dll
+                ${WINSDK_RUNTIME}/msvcp140d_codecvt_ids.dll
+                ${WINSDK_RUNTIME}/ucrtbased.dll
+                )
+        else()
+            set(RUNTIME_LIBRARIES_TO_COPY
+                ${WINSDK_RUNTIME}/concrt140.dll
+                ${WINSDK_RUNTIME}/msvcp140.dll
+                ${WINSDK_RUNTIME}/vccorlib140.dll
+                ${WINSDK_RUNTIME}/vcruntime140.dll
+                ${WINSDK_RUNTIME}/msvcp140_codecvt_ids.dll
+                ${WINSDK_RUNTIME}/ucrtbase.dll
+                ${WINSDK_RUNTIME}/api-ms-win-core-console-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-core-console-l1-2-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-core-datetime-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-core-debug-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-core-errorhandling-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-core-file-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-core-file-l1-2-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-core-file-l2-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-core-handle-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-core-heap-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-core-interlocked-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-core-libraryloader-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-core-localization-l1-2-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-core-memory-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-core-namedpipe-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-core-processenvironment-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-core-processthreads-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-core-processthreads-l1-1-1.dll
+                ${WINSDK_RUNTIME}/api-ms-win-core-profile-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-core-rtlsupport-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-core-string-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-core-synch-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-core-synch-l1-2-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-core-sysinfo-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-core-timezone-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-core-util-l1-1-0.dll
+                ${WINSDK_RUNTIME}/API-MS-Win-core-xstate-l2-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-crt-conio-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-crt-convert-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-crt-environment-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-crt-filesystem-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-crt-heap-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-crt-locale-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-crt-math-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-crt-multibyte-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-crt-private-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-crt-process-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-crt-runtime-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-crt-stdio-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-crt-string-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-crt-time-l1-1-0.dll
+                ${WINSDK_RUNTIME}/api-ms-win-crt-utility-l1-1-0.dll
+                )
+        endif()
+    endif()
+endif()
 
 # --------------------------  libvoip  ----------------------------------------
 if (NOT STRIP_VOIP)
@@ -762,24 +782,21 @@ if (NOT STRIP_VOIP)
 
     message(STATUS "")
     message(STATUS "[VOIP]")
-    message(STATUS "DOWNLOADS_URL              = ${DOWNLOADS_URL}")
-    message(STATUS "DOWNLOADS_PATH             = ${DOWNLOADS_PATH}")
-    message(STATUS "")
+    message(STATUS "[VOIP] DOWNLOADS_URL              = ${DOWNLOADS_URL}")
+    message(STATUS "[VOIP] DOWNLOADS_PATH             = ${DOWNLOADS_PATH}")
 
-    message(STATUS "VOIP_LIBS_VERSION          = ${VOIP_LIBS_VERSION}")
-    message(STATUS "VOIP_LIBS_NAME             = ${VOIP_LIBS_NAME}")
-    message(STATUS "VOIP_LIBS_FILE_DESTINATION = ${VOIP_LIBS_FILE_DESTINATION}")
-    message(STATUS "VOIP_LIBS_FILE_MD5         = ${VOIP_LIBS_FILE_MD5}")
-    message(STATUS "VOIP_LIBS_URL              = ${VOIP_LIBS_URL}")
-    message(STATUS "VOIPLIB_ROOT               = ${VOIPLIB_ROOT}")
-    message(STATUS "")
-
+    message(STATUS "[VOIP] VOIP_LIBS_VERSION          = ${VOIP_LIBS_VERSION}")
+    message(STATUS "[VOIP] VOIP_LIBS_NAME             = ${VOIP_LIBS_NAME}")
+    message(STATUS "[VOIP] VOIP_LIBS_FILE_DESTINATION = ${VOIP_LIBS_FILE_DESTINATION}")
+    message(STATUS "[VOIP] VOIP_LIBS_FILE_MD5         = ${VOIP_LIBS_FILE_MD5}")
+    message(STATUS "[VOIP] VOIP_LIBS_URL              = ${VOIP_LIBS_URL}")
+    message(STATUS "[VOIP] VOIPLIB_ROOT               = ${VOIPLIB_ROOT}")
 
     if(NOT EXISTS "${VOIP_LIBS_FILE_MD5}")
         message(STATUS "[md5] No md5 hash, continue")
-        download_file("${VOIP_LIBS_URL}" "${VOIP_LIBS_FILE_DESTINATION}" "${VOIP_LIBS_FILE_MD5}")
-        file_verify_md5("${VOIP_LIBS_FILE_DESTINATION}" "${VOIP_LIBS_FILE_MD5}")
-        file_extract("${VOIP_LIBS_FILE_DESTINATION}" "${VOIPLIB_ROOT}" 1 "${VOIP_LIBS_FILE_MD5}")
+        common_download_file("${VOIP_LIBS_URL}" "${VOIP_LIBS_FILE_DESTINATION}" "${VOIP_LIBS_FILE_MD5}")
+        common_file_verify_md5("${VOIP_LIBS_FILE_DESTINATION}" "${VOIP_LIBS_FILE_MD5}")
+        common_file_extract("${VOIP_LIBS_FILE_DESTINATION}" "${VOIPLIB_ROOT}" 1 "${VOIP_LIBS_FILE_MD5}")
     else()
         message(STATUS "[md5] Reading MD5 HASH from md5 file")
         file(READ "${VOIP_LIBS_FILE_MD5}" VOIP_LIBS_FILE_WITH_MD5)
@@ -793,14 +810,14 @@ if (NOT STRIP_VOIP)
         IF(NOT "${VOIP_LIBS_FILE_WITH_MD5}" MATCHES "${VOIP_LIBS_FILE_ZIPFILE_MD5}")
             message(STATUS "[md5] MD5 mismatch")
             message(STATUS "[md5] The file will be re-downloaded")
-            download_file("${VOIP_LIBS_URL}" "${VOIP_LIBS_FILE_DESTINATION}" "${VOIP_LIBS_FILE_MD5}")
-            file_verify_md5("${VOIP_LIBS_FILE_DESTINATION}" "${VOIP_LIBS_FILE_MD5}")
-            file_extract("${VOIP_LIBS_FILE_DESTINATION}" "${VOIPLIB_ROOT}" 1 "${VOIP_LIBS_FILE_MD5}")
+            common_download_file("${VOIP_LIBS_URL}" "${VOIP_LIBS_FILE_DESTINATION}" "${VOIP_LIBS_FILE_MD5}")
+            common_file_verify_md5("${VOIP_LIBS_FILE_DESTINATION}" "${VOIP_LIBS_FILE_MD5}")
+            common_file_extract("${VOIP_LIBS_FILE_DESTINATION}" "${VOIPLIB_ROOT}" 1 "${VOIP_LIBS_FILE_MD5}")
         else()
             # Don't download if exists & don't extract if exists
             message(STATUS "[md5] file: OK, verified")
             message(STATUS "")
-            file_extract("${VOIP_LIBS_FILE_DESTINATION}" "${VOIPLIB_ROOT}" 0 "${VOIP_LIBS_FILE_MD5}")
+            common_file_extract("${VOIP_LIBS_FILE_DESTINATION}" "${VOIPLIB_ROOT}" 0 "${VOIP_LIBS_FILE_MD5}")
         endif()
     endif()
 
@@ -825,47 +842,137 @@ if (NOT STRIP_VOIP)
 endif()
 # -----------------------------------------------------------------------------
 
+# ------------------------ additional libs & xkb ------------------------------
+if(LINUX)
+
+    set_lib_var(LIBXAU_LIBRARY_DIR "${pkg_libxau_location}")
+    set_include_var(LIBXAU_INCLUDEDIR "${pkg_libxau_location}/include")
+
+    set_lib_var(LIBXDMCP_LIBRARY_DIR "${pkg_libxdmcp_location}")
+    set_include_var(LIBXDMCP_INCLUDE_DIR "${pkg_libxdmcp_location}/include")
+
+    # Manual set, because custom *.a paths (not in lib subdir)
+    SET(XKBCOMMON_LIBRARY_DIR "${pkg_xkbcommon_location}")
+    SET(XKBCOMMON_X11_LIBRARY_DIR "${pkg_xkbcommon-x11_location}")
+    message(STATUS "[lib] XKBCOMMON_LIBRARY_DIR -> ${XKBCOMMON_LIBRARY_DIR}")
+    message(STATUS "[lib] XKBCOMMON_X11_LIBRARY_DIR -> ${XKBCOMMON_X11_LIBRARY_DIR}")
+
+    set_lib_var(DBUS_LIBRARY_DIR ${pkg_libdbus_location})
+
+    set_lib_var(XCBUTIL_LIBRARY_DIR "${pkg_xcb-util_location}")
+    set_include_var(XCBUTIL_INCLUDE_DIR "${pkg_xcb-util_location}/include")
+
+    set(ADDITIONAL_LIBRARIES
+        "${pkg_bin_libXi.a_location}"
+        "${LIBXAU_LIBRARY_DIR}/libXau.a"
+        "${LIBXDMCP_LIBRARY_DIR}/libXdmcp.a"
+        "${XKBCOMMON_LIBRARY_DIR}/libxkbcommon.a"
+        "${XKBCOMMON_X11_LIBRARY_DIR}/libxkbcommon-x11.a"
+        "${DBUS_LIBRARY_DIR}/libdbus-1.a"
+        "${XCBUTIL_LIBRARY_DIR}/libxcb-util.a"
+        "${pkg_bin_libXext.a_location}"
+    )
+
+    message(STATUS "[libs] ADDITIONAL_LIBRARIES -> ${ADDITIONAL_LIBRARIES}")
+
+    set_lib_var(XCB_LIBRARY_DIR "${pkg_xcb_location}")
+    set_include_var(XCB_INCLUDE_DIR "${pkg_xcb_location}/include")
+
+    set_lib_var(XPROTO_LIBRARY_DIR "${pkg_xproto_location}")
+    set_include_var(XPROTO_INCLUDE_DIR "${pkg_xproto_location}/include")
+
+    set_lib_var(XCB-UTIL-IMAGE_LIBRARY_DIR "${pkg_xcb-util-image_location}")
+    set_include_var(XCB-UTIL-IMAGE_INCLUDE_DIR "${pkg_xcb-util-image_location}/include")
+
+    set_lib_var(XCB-UTIL-WM_LIBRARY_DIR "${pkg_xcb-util-wm_location}")
+    set_include_var(XCB-UTIL-WM_INCLUDE_DIR "${pkg_xcb-util-wm_location}/include")
+
+    set_lib_var(XCB-UTIL-KEYSYMS_LIBRARY_DIR "${pkg_xcb-util-keysyms_location}")
+    set_include_var(XCB-UTIL-KEYSYMS_INCLUDE_DIR "${pkg_xcb-util-keysyms_location}/include")
+
+    set_lib_var(XCB-UTIL-RENDERUTIL_LIBRARY_DIR "${pkg_xcb-util-renderutil_location}")
+    set_include_var(XCB-UTIL-RENDERUTIL_INCLUDE_DIR "${pkg_xcb-util-renderutil_location}/include")
+
+    set(XCB_LIBRARIES
+        "${XCB_LIBRARY_DIR}/libxcb.a"
+        "${XCB-UTIL-KEYSYMS_LIBRARY_DIR}/libxcb-keysyms.a"
+        "${XCB-UTIL-IMAGE_LIBRARY_DIR}/libxcb-image.a"
+        "${XCB_LIBRARY_DIR}/libxcb-shm.a"
+        "${XCB-UTIL-WM_LIBRARY_DIR}/libxcb-icccm.a"
+        "${XCB_LIBRARY_DIR}/libxcb-sync.a"
+        "${XCB_LIBRARY_DIR}/libxcb-xfixes.a"
+        "${XCB_LIBRARY_DIR}/libxcb-shape.a"
+        "${XCB_LIBRARY_DIR}/libxcb-randr.a"
+        "${XCB_LIBRARY_DIR}/libxcb-render.a"
+        "${XCB-UTIL-RENDERUTIL_LIBRARY_DIR}/libxcb-render-util.a"
+        "${XCB_LIBRARY_DIR}/libxcb-xkb.a"
+
+        "${XCB_LIBRARY_DIR}/libxcb-xinput.a"
+
+        "${XCB_LIBRARY_DIR}/libxcb-composite.a"
+        "${XCB_LIBRARY_DIR}/libxcb-damage.a"
+        "${XCB_LIBRARY_DIR}/libxcb-dpms.a"
+        "${XCB_LIBRARY_DIR}/libxcb-dri2.a"
+        "${XCB_LIBRARY_DIR}/libxcb-dri3.a"
+        "${XCB_LIBRARY_DIR}/libxcb-glx.a"
+        "${XCB_LIBRARY_DIR}/libxcb-present.a"
+        "${XCB_LIBRARY_DIR}/libxcb-record.a"
+        "${XCB_LIBRARY_DIR}/libxcb-res.a"
+        "${XCB_LIBRARY_DIR}/libxcb-screensaver.a"
+        "${XCB_LIBRARY_DIR}/libxcb-shm.a"
+        "${XCB_LIBRARY_DIR}/libxcb-xf86dri.a"
+        "${XCB_LIBRARY_DIR}/libxcb-xtest.a"
+        "${XCB_LIBRARY_DIR}/libxcb-xv.a"
+        "${XCB_LIBRARY_DIR}/libxcb-xvmc.a"
+
+        )
+    message(STATUS "[libs] XCB_LIBRARIES -> ${XCB_LIBRARIES}")
+
+endif()
 
 # --------------------------     qt     ---------------------------------------
+message(STATUS "")
+set(ICQ_QT_ROOT "${pkg_qt_location}")
+message(STATUS "[INFO] ICQ_QT_ROOT = ${ICQ_QT_ROOT}")
+
+set(ICQ_QT_BIN_DIR "${ICQ_QT_ROOT}/bin")
+set(ICQ_QT_LIB_DIR "${ICQ_QT_ROOT}/lib")
+set(ICQ_QT_INCLUDE_DIR "${ICQ_QT_ROOT}/include")
+set(ICQ_QT_LIBEXEC_DIR "${ICQ_QT_ROOT}/libexec")
+set(ICQ_QT_PLUGINS_DIR "${ICQ_QT_ROOT}/plugins")
+set(ICQ_QT_RESOURCES_DIR "${ICQ_QT_ROOT}/resources")
+
 if(LINUX)
-    set(ICQ_QT_ROOT "${ICQ_EXTERNAL}/qt_${deps_lib_version_qt}")
-else()
-    if(IM_QT_DYNAMIC)
-        set(ICQ_QT_ROOT "${ICQ_EXTERNAL}/qt/dynamic/${ICQ_PLATFORM}")
-    else()
-        set(ICQ_QT_ROOT "${ICQ_EXTERNAL}/qt/static/${ICQ_PLATFORM}")
-    endif()
-endif()
+    EXEC_PROGRAM("chmod +x ${pkg_bin_lrelease_location}")
+    EXEC_PROGRAM("chmod +x ${pkg_bin_moc_location}")
+    EXEC_PROGRAM("chmod +x ${pkg_bin_rcc_location}")
+    EXEC_PROGRAM("chmod +x ${pkg_bin_uic_location}")
+    set(IM_QT_BIN_LRELEASE "${pkg_bin_lrelease_location}")
+    set(IM_QT_BIN_MOC "${pkg_bin_moc_location}")
+    set(IM_QT_BIN_RCC "${pkg_bin_rcc_location}")
+    set(IM_QT_BIN_UIC "${pkg_bin_uic_location}")
 
-
-if(LINUX)
-    # FIXME: Hardcoded
-    set(ICQ_QT_INCLUDE_DIR "${ICQ_QT_ROOT}/include")
-    set(ICQ_QT_LIB_DIR "${ICQ_QT_ROOT}/lib")
-    set(ICQ_QT_LIBEXEC_DIR "${ICQ_QT_ROOT}/libexec")
-    set(ICQ_QT_BIN_DIR "${ICQ_EXTERNAL}/qt_utils")
-    set(ICQ_QT_PLUGINS_DIR "${ICQ_QT_ROOT}/plugins")
-    set(ICQ_QT_RESOURCES_DIR "${ICQ_QT_ROOT}/resources")
-    EXEC_PROGRAM("chmod +x ${ICQ_QT_BIN_DIR}/lrelease")
-    EXEC_PROGRAM("chmod +x ${ICQ_QT_BIN_DIR}/rcc")
-    EXEC_PROGRAM("chmod +x ${ICQ_QT_BIN_DIR}/uic")
-    EXEC_PROGRAM("chmod +x ${ICQ_QT_BIN_DIR}/moc")
-else()
-    set(ICQ_QT_INCLUDE_DIR "${ICQ_QT_ROOT}/include")
-    set(ICQ_QT_LIB_DIR "${ICQ_QT_ROOT}/lib")
-    set(ICQ_QT_LIBEXEC_DIR "${ICQ_QT_ROOT}/libexec")
-    set(ICQ_QT_BIN_DIR "${ICQ_QT_ROOT}/bin")
-    set(ICQ_QT_PLUGINS_DIR "${ICQ_QT_ROOT}/plugins")
-    set(ICQ_QT_RESOURCES_DIR "${ICQ_QT_ROOT}/resources")
-endif()
-
-if(APPLE)
-    set(ICQ_QT_VERSION "5.15.3")
 elseif(MSVC)
-    set(ICQ_QT_VERSION "5.15.2")
+	set(IM_QT_BIN_LRELEASE "${pkg_bin_lrelease.exe_location}")
+    get_filename_component(IM_QT_BIN_MOC "${ICQ_QT_BIN_DIR}/moc.exe" ABSOLUTE)
+    get_filename_component(IM_QT_BIN_RCC "${ICQ_QT_BIN_DIR}/rcc.exe" ABSOLUTE)
+    get_filename_component(IM_QT_BIN_UIC "${ICQ_QT_BIN_DIR}/uic.exe" ABSOLUTE)	
+
 else()
-    set(ICQ_QT_VERSION "${deps_lib_version_qt}")
+    get_filename_component(IM_QT_BIN_LRELEASE "${ICQ_QT_BIN_DIR}/lrelease" ABSOLUTE)
+    get_filename_component(IM_QT_BIN_MOC "${ICQ_QT_BIN_DIR}/moc" ABSOLUTE)
+    get_filename_component(IM_QT_BIN_RCC "${ICQ_QT_BIN_DIR}/rcc" ABSOLUTE)
+    get_filename_component(IM_QT_BIN_UIC "${ICQ_QT_BIN_DIR}/uic" ABSOLUTE)
 endif()
+
+message(STATUS "[Qt Utils] IM_QT_BIN_LRELEASE = ${IM_QT_BIN_LRELEASE}")
+message(STATUS "[Qt Utils] IM_QT_BIN_MOC      = ${IM_QT_BIN_MOC}")
+message(STATUS "[Qt Utils] IM_QT_BIN_RCC      = ${IM_QT_BIN_RCC}")
+message(STATUS "[Qt Utils] IM_QT_BIN_UIC      = ${IM_QT_BIN_UIC}")
+
+set(ICQ_QT_VERSION "${pkg_qt_headers}")
+set(QT_MAJOR_VERSION "5")
+
 include_directories("${ICQ_QT_INCLUDE_DIR}")
 include_directories("${ICQ_QT_INCLUDE_DIR}/QtCore")
 include_directories("${ICQ_QT_INCLUDE_DIR}/QtCore/${ICQ_QT_VERSION}/QtCore")
@@ -881,36 +988,19 @@ include_directories("${ICQ_QT_INCLUDE_DIR}/QtNetwork")
 include_directories("${ICQ_QT_INCLUDE_DIR}/QtSvg")
 include_directories("${ICQ_QT_INCLUDE_DIR}/QtMacExtras")
 if(IM_AUTO_TESTING)
-    message(STATUS "... include: QtTest")
+    message(STATUS "[INFO] include: QtTest")
     include_directories("${ICQ_QT_INCLUDE_DIR}/QtTest")
 endif()
 
-if(IM_QT_DYNAMIC)
-    if(MSVC)
-        set(QT_LIB_EXT "dll")
-        set(QT_SUP_EXT "lib")
-    elseif(APPLE)
-        set(QT_LIB_EXT "dylib")
-        set(QT_SUP_EXT "a")
-    else()
-        set(QT_LIB_EXT "so")
-        set(QT_SUP_EXT "a")
-    endif()
-else()
-    if(MSVC)
-        set(QT_LIB_EXT "lib")
-        set(QT_SUP_EXT "lib")
-    else()
-        set(QT_LIB_EXT "a")
-        set(QT_SUP_EXT "a")
-    endif()
+if(NOT IM_QT_DYNAMIC)
+    add_definitions(-DQT_STATIC)
 endif()
 
-add_definitions(-DQT_STATIC)
 if(MSVC)
     set(QT_LIBRARIES
         optimized ${ICQ_QT_LIB_DIR}/Qt5Gui.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/Qt5Guid.${QT_LIB_EXT}
         optimized ${ICQ_QT_LIB_DIR}/Qt5Core.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/Qt5Cored.${QT_LIB_EXT}
+        optimized ${ICQ_QT_LIB_DIR}/Qt5Concurrent.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/Qt5Concurrentd.${QT_LIB_EXT}
         optimized ${ICQ_QT_LIB_DIR}/Qt5EventDispatcherSupport.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/Qt5EventDispatcherSupportd.${QT_LIB_EXT}
         optimized ${ICQ_QT_LIB_DIR}/Qt5FontDatabaseSupport.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/Qt5FontDatabaseSupportd.${QT_LIB_EXT}
         optimized ${ICQ_QT_LIB_DIR}/Qt5Network.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/Qt5Networkd.${QT_LIB_EXT}
@@ -930,18 +1020,194 @@ if(MSVC)
         optimized ${ICQ_QT_LIB_DIR}/qtharfbuzz.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/qtharfbuzzd.${QT_LIB_EXT}
         optimized ${ICQ_QT_LIB_DIR}/qtfreetype.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/qtfreetyped.${QT_LIB_EXT}
         optimized ${ICQ_QT_LIB_DIR}/qtlibpng.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/qtlibpngd.${QT_LIB_EXT}
-        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qgif.${QT_LIB_EXT} debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qgifd.${QT_LIB_EXT}
-        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qicns.${QT_LIB_EXT} debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qicnsd.${QT_LIB_EXT}
-        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qico.${QT_LIB_EXT} debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qicod.${QT_LIB_EXT}
-        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qjpeg.${QT_LIB_EXT} debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qjpegd.${QT_LIB_EXT}
-        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qsvg.${QT_LIB_EXT} debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qsvgd.${QT_LIB_EXT}
-        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qtga.${QT_LIB_EXT} debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qtgad.${QT_LIB_EXT}
-        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qtiff.${QT_LIB_EXT} debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qtiffd.${QT_LIB_EXT}
-        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qwbmp.${QT_LIB_EXT} debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qwbmpd.${QT_LIB_EXT}
-        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qwebp.${QT_LIB_EXT} debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qwebpd.${QT_LIB_EXT}
-        optimized ${ICQ_QT_PLUGINS_DIR}/audio/qtaudio_windows.${QT_LIB_EXT} debug ${ICQ_QT_PLUGINS_DIR}/audio/qtaudio_windowsd.${QT_LIB_EXT}
-        optimized ${ICQ_QT_PLUGINS_DIR}/platforms/qwindows.${QT_LIB_EXT} debug ${ICQ_QT_PLUGINS_DIR}/platforms/qwindowsd.${QT_LIB_EXT}
     )
+
+    set(QT_PLUGINS
+        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qgif.${QT_PLUGIN_EXT} debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qgifd.${QT_PLUGIN_EXT}
+        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qicns.${QT_PLUGIN_EXT} debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qicnsd.${QT_PLUGIN_EXT}
+        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qico.${QT_PLUGIN_EXT} debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qicod.${QT_PLUGIN_EXT}
+        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qjpeg.${QT_PLUGIN_EXT} debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qjpegd.${QT_PLUGIN_EXT}
+        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qsvg.${QT_PLUGIN_EXT} debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qsvgd.${QT_PLUGIN_EXT}
+        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qtga.${QT_PLUGIN_EXT} debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qtgad.${QT_PLUGIN_EXT}
+        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qtiff.${QT_PLUGIN_EXT} debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qtiffd.${QT_PLUGIN_EXT}
+        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qwbmp.${QT_PLUGIN_EXT} debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qwbmpd.${QT_PLUGIN_EXT}
+        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qwebp.${QT_PLUGIN_EXT} debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qwebpd.${QT_PLUGIN_EXT}
+        optimized ${ICQ_QT_PLUGINS_DIR}/audio/qtaudio_windows.${QT_PLUGIN_EXT} debug ${ICQ_QT_PLUGINS_DIR}/audio/qtaudio_windowsd.${QT_PLUGIN_EXT}
+        optimized ${ICQ_QT_PLUGINS_DIR}/platforms/qwindows.${QT_PLUGIN_EXT} debug ${ICQ_QT_PLUGINS_DIR}/platforms/qwindowsd.${QT_PLUGIN_EXT}
+    )
+
+    if(IM_QT_DYNAMIC)
+        set_lib_var(ANGLE_LIB_DIR "${pkg_angle_location}")
+        set_include_var(ANGLE_INCLUDE_DIR "${pkg_angle_location}/include")
+        set(ANGLE_ROOT "${pkg_angle_location}")
+        message(STATUS "[lib] ANGLE_ROOT -> ${ANGLE_ROOT}")
+
+        if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+            set(QT_LIBRARIES_TO_COPY
+                ${ICQ_QT_BIN_DIR}/Qt5Guid.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5Cored.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5Concurrentd.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5Networkd.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5Multimediad.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5MultimediaWidgetsd.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5Multimediad.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5Testd.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5OpenGLd.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5Svgd.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5Widgetsd.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5WinExtrasd.${QT_DLL_EXT}
+                )
+
+            set(QT_IMAGE_PLUGINS_TO_COPY
+                ${ICQ_QT_PLUGINS_DIR}/imageformats/qgifd.${QT_DLL_EXT}
+                ${ICQ_QT_PLUGINS_DIR}/imageformats/qicnsd.${QT_DLL_EXT}
+                ${ICQ_QT_PLUGINS_DIR}/imageformats/qicod.${QT_DLL_EXT}
+                ${ICQ_QT_PLUGINS_DIR}/imageformats/qjpegd.${QT_DLL_EXT}
+                ${ICQ_QT_PLUGINS_DIR}/imageformats/qsvgd.${QT_DLL_EXT}
+                ${ICQ_QT_PLUGINS_DIR}/imageformats/qtgad.${QT_DLL_EXT}
+                ${ICQ_QT_PLUGINS_DIR}/imageformats/qtiffd.${QT_DLL_EXT}
+                ${ICQ_QT_PLUGINS_DIR}/imageformats/qwbmpd.${QT_DLL_EXT}
+                ${ICQ_QT_PLUGINS_DIR}/imageformats/qwebpd.${QT_DLL_EXT}
+                )
+
+            set(QT_ICONENGINES_PLUGINS_TO_COPY
+                ${ICQ_QT_PLUGINS_DIR}/iconengines/qsvgicond.${QT_DLL_EXT}
+                )
+
+            set(QT_PLATFORMS_PLUGINS_TO_COPY
+                ${ICQ_QT_PLUGINS_DIR}/platforms/qwindowsd.${QT_DLL_EXT}
+                )
+
+            set(QT_AUDIO_PLUGINS_TO_COPY
+                ${ICQ_QT_PLUGINS_DIR}/audio/qtaudio_windowsd.${QT_DLL_EXT}
+                )
+
+            set(OPENGL_LIBRARIES_TO_COPY
+                ${ANGLE_LIB_DIR}/libEGLd.dll
+                ${ANGLE_LIB_DIR}/libGLESv2d.dll
+                )
+
+
+            if(HAS_WEB_ENGINE)
+                set(QT_LIBRARIES "${QT_LIBRARIES}"
+                    ${ICQ_QT_LIB_DIR}/Qt5WebEngined.${QT_LIB_EXT}
+                    ${ICQ_QT_LIB_DIR}/Qt5WebEngineCored.${QT_LIB_EXT}
+                    ${ICQ_QT_LIB_DIR}/Qt5WebEngineWidgetsd.${QT_LIB_EXT}
+                    ${ICQ_QT_LIB_DIR}/Qt5Quickd.${QT_LIB_EXT}
+                    ${ICQ_QT_LIB_DIR}/Qt5QmlModelsd.${QT_LIB_EXT}
+                    ${ICQ_QT_LIB_DIR}/Qt5Qmld.${QT_LIB_EXT}
+                    ${ICQ_QT_LIB_DIR}/Qt5Positioningd.${QT_LIB_EXT}
+                    ${ICQ_QT_LIB_DIR}/Qt5QuickWidgetsd.${QT_LIB_EXT}
+					${ICQ_QT_LIB_DIR}/Qt5WebChanneld.${QT_LIB_EXT}
+                    )
+
+                set(QT_LIBRARIES_TO_COPY "${QT_LIBRARIES_TO_COPY}"
+                    ${ICQ_QT_BIN_DIR}/Qt5WebEngined.${QT_DLL_EXT}
+                    ${ICQ_QT_BIN_DIR}/Qt5WebEngineCored.${QT_DLL_EXT}
+                    ${ICQ_QT_BIN_DIR}/Qt5WebEngineWidgetsd.${QT_DLL_EXT}
+                    ${ICQ_QT_BIN_DIR}/Qt5Quickd.${QT_DLL_EXT}
+                    ${ICQ_QT_BIN_DIR}/Qt5QmlModelsd.${QT_DLL_EXT}
+                    ${ICQ_QT_BIN_DIR}/Qt5Qmld.${QT_DLL_EXT}
+                    ${ICQ_QT_BIN_DIR}/Qt5Positioningd.${QT_DLL_EXT}
+                    ${ICQ_QT_BIN_DIR}/Qt5QuickWidgetsd.${QT_DLL_EXT}
+                    ${ICQ_QT_BIN_DIR}/Qt5WebChanneld.${QT_DLL_EXT}
+                    ${ICQ_QT_BIN_DIR}/Qt5PrintSupportd.${QT_DLL_EXT}
+                    )
+
+                set(QT_LIBEXEC_TO_COPY
+                    ${ICQ_QT_BIN_DIR}/QtWebEngineProcessd.exe
+                )
+            endif()
+        else()
+            set(QT_LIBRARIES_TO_COPY
+                ${ICQ_QT_BIN_DIR}/Qt5Gui.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5Core.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5Concurrent.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5Network.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5Multimedia.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5MultimediaWidgets.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5Multimedia.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5Test.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5OpenGL.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5Svg.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5Widgets.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5WinExtras.${QT_DLL_EXT}
+                )
+
+            set(QT_IMAGE_PLUGINS_TO_COPY
+                ${ICQ_QT_PLUGINS_DIR}/imageformats/qgif.${QT_DLL_EXT}
+                ${ICQ_QT_PLUGINS_DIR}/imageformats/qicns.${QT_DLL_EXT}
+                ${ICQ_QT_PLUGINS_DIR}/imageformats/qico.${QT_DLL_EXT}
+                ${ICQ_QT_PLUGINS_DIR}/imageformats/qjpeg.${QT_DLL_EXT}
+                ${ICQ_QT_PLUGINS_DIR}/imageformats/qsvg.${QT_DLL_EXT}
+                ${ICQ_QT_PLUGINS_DIR}/imageformats/qtga.${QT_DLL_EXT}
+                ${ICQ_QT_PLUGINS_DIR}/imageformats/qtiff.${QT_DLL_EXT}
+                ${ICQ_QT_PLUGINS_DIR}/imageformats/qwbmp.${QT_DLL_EXT}
+                ${ICQ_QT_PLUGINS_DIR}/imageformats/qwebp.${QT_DLL_EXT}
+                )
+
+            set(QT_ICONENGINES_PLUGINS_TO_COPY
+                ${ICQ_QT_PLUGINS_DIR}/iconengines/qsvgicon.${QT_DLL_EXT}
+                )
+
+            set(QT_PLATFORMS_PLUGINS_TO_COPY
+                ${ICQ_QT_PLUGINS_DIR}/platforms/qwindows.${QT_DLL_EXT}
+                )
+
+            set(QT_AUDIO_PLUGINS_TO_COPY
+                ${ICQ_QT_PLUGINS_DIR}/audio/qtaudio_windows.${QT_DLL_EXT}
+                )
+
+            set(OPENGL_LIBRARIES_TO_COPY
+                ${ANGLE_LIB_DIR}/libEGL.dll
+                ${ANGLE_LIB_DIR}/libGLESv2.dll
+                )
+
+            if(HAS_WEB_ENGINE)
+                set(QT_LIBRARIES "${QT_LIBRARIES}"
+                    ${ICQ_QT_LIB_DIR}/Qt5WebEngine.${QT_LIB_EXT}
+                    ${ICQ_QT_LIB_DIR}/Qt5WebEngineCore.${QT_LIB_EXT}
+                    ${ICQ_QT_LIB_DIR}/Qt5WebEngineWidgets.${QT_LIB_EXT}
+                    ${ICQ_QT_LIB_DIR}/Qt5Quick.${QT_LIB_EXT}
+                    ${ICQ_QT_LIB_DIR}/Qt5QmlModels.${QT_LIB_EXT}
+                    ${ICQ_QT_LIB_DIR}/Qt5Qml.${QT_LIB_EXT}
+                    ${ICQ_QT_LIB_DIR}/Qt5Positioning.${QT_LIB_EXT}
+                    ${ICQ_QT_LIB_DIR}/Qt5QuickWidgets.${QT_LIB_EXT}
+					${ICQ_QT_LIB_DIR}/Qt5WebChannel.${QT_LIB_EXT}
+                    )
+
+                set(QT_LIBRARIES_TO_COPY "${QT_LIBRARIES_TO_COPY}"
+                    ${ICQ_QT_BIN_DIR}/Qt5WebEngine.${QT_DLL_EXT}
+                    ${ICQ_QT_BIN_DIR}/Qt5WebEngineCore.${QT_DLL_EXT}
+                    ${ICQ_QT_BIN_DIR}/Qt5WebEngineWidgets.${QT_DLL_EXT}
+                    ${ICQ_QT_BIN_DIR}/Qt5Quick.${QT_DLL_EXT}
+                    ${ICQ_QT_BIN_DIR}/Qt5QmlModels.${QT_DLL_EXT}
+                    ${ICQ_QT_BIN_DIR}/Qt5Qml.${QT_DLL_EXT}
+                    ${ICQ_QT_BIN_DIR}/Qt5Positioning.${QT_DLL_EXT}
+                    ${ICQ_QT_BIN_DIR}/Qt5QuickWidgets.${QT_DLL_EXT}
+                    ${ICQ_QT_BIN_DIR}/Qt5WebChannel.${QT_DLL_EXT}
+                    ${ICQ_QT_BIN_DIR}/Qt5PrintSupport.${QT_DLL_EXT}
+                    )
+
+                set(QT_LIBEXEC_TO_COPY
+                    ${ICQ_QT_BIN_DIR}/QtWebEngineProcess.exe
+                )
+            endif()
+        endif()
+        set(QT_RESOURCES_TO_COPY
+            ${ICQ_QT_RESOURCES_DIR}/icudtl.dat
+            ${ICQ_QT_RESOURCES_DIR}/qtwebengine_devtools_resources.pak
+            ${ICQ_QT_RESOURCES_DIR}/qtwebengine_resources.pak
+            ${ICQ_QT_RESOURCES_DIR}/qtwebengine_resources_100p.pak
+            ${ICQ_QT_RESOURCES_DIR}/qtwebengine_resources_200p.pak
+            )
+
+        if(HAS_WEB_ENGINE)
+            set(QT_TRANSLATIONS_DIR "${ICQ_QT_ROOT}/translations")
+        endif()
+    else()
+        set(QT_LIBRARIES "${QT_LIBRARIES}" "${QT_PLUGINS}")
+    endif()
 elseif(APPLE)
     add_definitions(-DQT_GUI_LIB=1)
     set(QT_LIBRARIES
@@ -965,18 +1231,18 @@ elseif(APPLE)
         ${ICQ_QT_LIB_DIR}/libqtpcre2.${QT_SUP_EXT}
         ${ICQ_QT_LIB_DIR}/libqtlibpng.${QT_SUP_EXT}
         ${ICQ_QT_LIB_DIR}/libQt5MacExtras.${QT_LIB_EXT}
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqgif.${QT_LIB_EXT}
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqicns.${QT_LIB_EXT}
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqico.${QT_LIB_EXT}
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqjpeg.${QT_LIB_EXT}
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqmacheif.${QT_LIB_EXT}
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqmacjp2.${QT_LIB_EXT}
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqsvg.${QT_LIB_EXT}
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqtga.${QT_LIB_EXT}
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqtiff.${QT_LIB_EXT}
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqwbmp.${QT_LIB_EXT}
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqwebp.${QT_LIB_EXT}
-        ${ICQ_QT_PLUGINS_DIR}/platforms/libqcocoa.${QT_LIB_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqgif.${QT_PLUGIN_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqicns.${QT_PLUGIN_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqico.${QT_PLUGIN_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqjpeg.${QT_PLUGIN_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqmacheif.${QT_PLUGIN_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqmacjp2.${QT_PLUGIN_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqsvg.${QT_PLUGIN_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqtga.${QT_PLUGIN_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqtiff.${QT_PLUGIN_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqwbmp.${QT_PLUGIN_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqwebp.${QT_PLUGIN_EXT}
+        ${ICQ_QT_PLUGINS_DIR}/platforms/libqcocoa.${QT_PLUGIN_EXT}
         )
 
     if(IM_QT_DYNAMIC)
@@ -1008,11 +1274,17 @@ elseif(APPLE)
             ${ICQ_QT_PLUGINS_DIR}/imageformats/libqwebp.${QT_LIB_EXT}
             )
 
+        set(QT_ICONENGINES_PLUGINS_TO_COPY
+            ${ICQ_QT_PLUGINS_DIR}/iconengines/libqsvgicon.${QT_LIB_EXT}
+            )
+
         set(QT_PLATFORMS_PLUGINS_TO_COPY
             ${ICQ_QT_PLUGINS_DIR}/platforms/libqcocoa.${QT_LIB_EXT}
             )
 
         if(HAS_WEB_ENGINE)
+            set(QT_TRANSLATIONS_DIR "${ICQ_QT_ROOT}/translations")
+
             set(QT_LIBRARIES "${QT_LIBRARIES}"
                 ${ICQ_QT_LIB_DIR}/libQt5WebEngine.${QT_LIB_EXT}
                 ${ICQ_QT_LIB_DIR}/libQt5WebEngineCore.${QT_LIB_EXT}
@@ -1038,51 +1310,80 @@ elseif(APPLE)
                 )
 
             set(QT_LIBEXEC_TO_COPY
-                ${ICQ_QT_LIBEXEC_DIR}/QtWebEngineProcess
+                ${ICQ_QT_LIBEXEC_DIR}/${QT_WEBENGINE_PROCESS_NAME}
                 )
-            
+
             set(QT_RESOURCES_TO_COPY
                 ${ICQ_QT_RESOURCES_DIR}/icudtl.dat
-                ${ICQ_QT_RESOURCES_DIR}/qt.conf
                 ${ICQ_QT_RESOURCES_DIR}/qtwebengine_devtools_resources.pak
                 ${ICQ_QT_RESOURCES_DIR}/qtwebengine_resources.pak
                 ${ICQ_QT_RESOURCES_DIR}/qtwebengine_resources_100p.pak
                 ${ICQ_QT_RESOURCES_DIR}/qtwebengine_resources_200p.pak
+                ${ICQ_ROOT}/config/qt/${ICQ_PLATFORM}/qt.conf
                 )
         endif()
     endif()
 
     if(IM_AUTO_TESTING)
-        message(STATUS "... add definitions -DQT_WIDGETS_LIB -DQT_CORE_LIB")
+        message(STATUS "[INFO] add definitions -DQT_WIDGETS_LIB -DQT_CORE_LIB")
         add_definitions(-DQT_WIDGETS_LIB)
         add_definitions(-DQT_CORE_LIB)
     endif()
 
 elseif(LINUX)
+    if(IM_QT_DYNAMIC)
+        set(QT_EXT ".${ICQ_QT_VERSION}")
+    endif()
     set(QT_LIBRARIES
+        ${ICQ_QT_LIB_DIR}/libQt5XcbQpa.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5ServiceSupport.${QT_SUP_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5ThemeSupport.${QT_SUP_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5FontDatabaseSupport.${QT_SUP_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5XkbCommonSupport.${QT_SUP_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5LinuxAccessibilitySupport.${QT_SUP_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5AccessibilitySupport.${QT_SUP_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5EdidSupport.${QT_SUP_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5DBus.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Widgets.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Gui.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Network.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Multimedia.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Concurrent.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Core.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Svg.${QT_LIB_EXT}${QT_EXT}
+        ${XCB_LIBRARIES}
+        ${XCB_LIBRARY_DIR}/libxcb.${QT_SUP_EXT}
+        )
+
+    set(QT_LIBRARIES_TO_COPY
+        ${ICQ_QT_LIB_DIR}/libQt5XcbQpa.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5DBus.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Widgets.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Gui.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Network.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Multimedia.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Concurrent.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Core.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Svg.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5OpenGL.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5PrintSupport.${QT_LIB_EXT}${QT_EXT}
+        )
+
+    set(QT_PLATFORMS_PLUGINS_TO_COPY
         ${ICQ_QT_PLUGINS_DIR}/platforms/libqxcb.${QT_LIB_EXT}
-        ${ICQ_QT_LIB_DIR}/libQt5XcbQpa.${QT_LIB_EXT}
-        ${ICQ_QT_LIB_DIR}/libQt5ServiceSupport.${QT_LIB_EXT}
-        ${ICQ_QT_LIB_DIR}/libQt5ThemeSupport.${QT_LIB_EXT}
-        ${ICQ_QT_LIB_DIR}/libQt5FontDatabaseSupport.${QT_LIB_EXT}
-        ${ICQ_QT_LIB_DIR}/libQt5XkbCommonSupport.${QT_LIB_EXT}
-        ${ICQ_QT_LIB_DIR}/libQt5LinuxAccessibilitySupport.${QT_LIB_EXT}
-        ${ICQ_QT_LIB_DIR}/libQt5AccessibilitySupport.${QT_LIB_EXT}
-        ${ICQ_QT_LIB_DIR}/libQt5EdidSupport.${QT_LIB_EXT}
-        ${ICQ_QT_LIB_DIR}/libQt5DBus.${QT_LIB_EXT}
-        ${ICQ_QT_LIB_DIR}/libQt5Widgets.${QT_LIB_EXT}
-        ${ICQ_QT_LIB_DIR}/libQt5Gui.${QT_LIB_EXT}
-        ${ICQ_QT_LIB_DIR}/libQt5Network.${QT_LIB_EXT}
-        ${ICQ_QT_LIB_DIR}/libQt5Multimedia.${QT_LIB_EXT}
-        ${ICQ_QT_LIB_DIR}/libQt5Concurrent.${QT_LIB_EXT}
-        ${ICQ_QT_LIB_DIR}/libxcb-static.${QT_LIB_EXT}
-        ${ICQ_QT_LIB_DIR}/libQt5Core.${QT_LIB_EXT}
-        ${ICQ_QT_LIB_DIR}/libQt5Svg.${QT_LIB_EXT}
-        ${ICQ_QT_LIB_DIR}/libqtpcre2.${QT_LIB_EXT}
-        ${ICQ_QT_LIB_DIR}/libqtlibpng.${QT_LIB_EXT}
+        )
+
+    set(QT_XCBGLINTERGRATIONS_PLUGINS_TO_COPY
+        ${ICQ_QT_PLUGINS_DIR}/xcbglintegrations/libqxcb-glx-integration.${QT_LIB_EXT}
+        )
+
+    set(QT_BEARER_PLUGINS_TO_COPY
         ${ICQ_QT_PLUGINS_DIR}/bearer/libqconnmanbearer.${QT_LIB_EXT}
         ${ICQ_QT_PLUGINS_DIR}/bearer/libqnmbearer.${QT_LIB_EXT}
         ${ICQ_QT_PLUGINS_DIR}/bearer/libqgenericbearer.${QT_LIB_EXT}
+        )
+    
+    set(QT_IMAGE_PLUGINS_TO_COPY
         ${ICQ_QT_PLUGINS_DIR}/imageformats/libqgif.${QT_LIB_EXT}
         ${ICQ_QT_PLUGINS_DIR}/imageformats/libqicns.${QT_LIB_EXT}
         ${ICQ_QT_PLUGINS_DIR}/imageformats/libqico.${QT_LIB_EXT}
@@ -1093,52 +1394,77 @@ elseif(LINUX)
         ${ICQ_QT_PLUGINS_DIR}/imageformats/libqwbmp.${QT_LIB_EXT}
         ${ICQ_QT_PLUGINS_DIR}/imageformats/libqwebp.${QT_LIB_EXT}
         )
-endif()
+    
+    set(QT_CONF_FILE ${ICQ_ROOT}/config/qt/${ICQ_PLATFORM}/qt.conf)
 
-
-# ------------------------ libphonenumber  ------------------------------------
-if (NOT STRIP_VOIP)
-    if(LINUX)
-        set(ICQ_PHONENUMBER "${ICQ_EXTERNAL}/libphonenumber_${deps_lib_version_libphonenumber}")
-        set_lib_var(PHONENUMBER_LIBRARY_DIR libphonenumber_${deps_lib_version_libphonenumber})
-    else()
-        set(ICQ_PHONENUMBER "${ICQ_EXTERNAL}/phonenumber")
-        set_lib_var(PHONENUMBER_LIBRARY_DIR phonenumber)
+    if (NOT IM_QT_DYNAMIC)
+        set(QT_LIBRARIES 
+            "${QT_PLATFORMS_PLUGINS_TO_COPY}"
+            "${QT_LIBRARIES}"
+            ${ICQ_QT_LIB_DIR}/libqtpcre2.${QT_LIB_EXT}
+            ${ICQ_QT_LIB_DIR}/libqtlibpng.${QT_LIB_EXT}
+            "${QT_IMAGE_PLUGINS_TO_COPY}"
+            "${QT_BEARER_PLUGINS_TO_COPY}"
+            ${ICQ_QT_LIB_DIR}/libxcb-static.${QT_LIB_EXT}
+        )
     endif()
 
-    add_definitions ("-DI18N_PHONENUMBERS_USE_BOOST")
-    if(MSVC)
-        include_directories(${ICQ_PHONENUMBER}/include_win)
-    else()
-        include_directories(${ICQ_PHONENUMBER}/include)
-    endif()
+    if(HAS_WEB_ENGINE)
+        set(QT_LIBRARIES "${QT_LIBRARIES}"
+            ${ICQ_QT_LIB_DIR}/libQt5WebEngine.${QT_LIB_EXT}${QT_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5WebEngineCore.${QT_LIB_EXT}${QT_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5WebEngineWidgets.${QT_LIB_EXT}${QT_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5Quick.${QT_LIB_EXT}${QT_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5QmlModels.${QT_LIB_EXT}${QT_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5Qml.${QT_LIB_EXT}${QT_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5Positioning.${QT_LIB_EXT}${QT_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5QuickWidgets.${QT_LIB_EXT}${QT_EXT}
+			${ICQ_QT_LIB_DIR}/libQt5WebChannel.${QT_LIB_EXT}${QT_EXT}
+            )
 
-    if(LINUX OR APPLE)
-        set(PHONENUMBER_LIBRARIES ${PHONENUMBER_LIBRARY_DIR}/libphonenumber.a)
-    elseif(MSVC)
-        set(PHONENUMBER_LIBRARIES optimized ${PHONENUMBER_LIBRARY_DIR}/phonenumber.lib debug ${PHONENUMBER_LIBRARY_DIR}/phonenumberd.lib)
-    endif()
+        set(QT_LIBRARIES_TO_COPY "${QT_LIBRARIES_TO_COPY}"
+            ${ICQ_QT_LIB_DIR}/libQt5WebEngine.${QT_LIB_EXT}${QT_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5WebEngineCore.${QT_LIB_EXT}${QT_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5WebEngineWidgets.${QT_LIB_EXT}${QT_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5Quick.${QT_LIB_EXT}${QT_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5QmlModels.${QT_LIB_EXT}${QT_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5Qml.${QT_LIB_EXT}${QT_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5Positioning.${QT_LIB_EXT}${QT_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5QuickWidgets.${QT_LIB_EXT}${QT_EXT}
+			${ICQ_QT_LIB_DIR}/libQt5WebChannel.${QT_LIB_EXT}${QT_EXT}
+            )
 
-    if(LINUX)
-        set(ICQ_ICU "${ICQ_EXTERNAL}/icu_${deps_lib_version_icu}")
-        set_lib_var(ICU_LIBRARY_DIR icu_${deps_lib_version_icu})
-        set(ICU_LIBRARIES
-            ${ICU_LIBRARY_DIR}/libicuuc.a
-            ${ICU_LIBRARY_DIR}/libicui18n.a)
+        set(QT_LIBEXEC_TO_COPY
+            ${ICQ_QT_LIBEXEC_DIR}/QtWebEngineProcess
+            )
+        
+        set(QT_RESOURCES_TO_COPY
+            ${ICQ_QT_RESOURCES_DIR}/icudtl.dat
+            ${ICQ_QT_RESOURCES_DIR}/qtwebengine_devtools_resources.pak
+            ${ICQ_QT_RESOURCES_DIR}/qtwebengine_resources.pak
+            ${ICQ_QT_RESOURCES_DIR}/qtwebengine_resources_100p.pak
+            ${ICQ_QT_RESOURCES_DIR}/qtwebengine_resources_200p.pak
+            )
     endif()
 endif()
 
 
 # ------------------------- protobuf  -----------------------------------------
-if(LINUX)
-    set(ICQ_PROTOBUF "${ICQ_EXTERNAL}/protobuf_${deps_lib_version_protobuf}")
-    set_lib_var(PROTOBUF_LIBRARY_DIR protobuf_${deps_lib_version_protobuf})
-else()
-    set(ICQ_PROTOBUF "${ICQ_EXTERNAL}/protobuf")
-    set_lib_var(PROTOBUF_LIBRARY_DIR protobuf)
-endif()
+set_lib_var(PROTOBUF_LIBRARY_DIR "${pkg_protobuf_location}")
+set_include_var(PROTOBUF_INCLUDE_DIR "${pkg_protobuf_location}/include")
 
-include_directories(${ICQ_PROTOBUF}/include)
+
+# ------------------------ libphonenumber  ------------------------------------
+if (NOT STRIP_VOIP)
+    set_lib_var(PHONENUMBER_LIBRARY_DIR "${pkg_libphonenumber_location}")
+    set_include_var(PHONENUMBER_INCLUDE_DIR "${pkg_libphonenumber_location}/include")
+    add_definitions ("-DI18N_PHONENUMBERS_USE_BOOST")
+    if(LINUX OR APPLE)
+        set(PHONENUMBER_LIBRARIES ${PHONENUMBER_LIBRARY_DIR}/libphonenumber.a)
+    elseif(MSVC)
+        set(PHONENUMBER_LIBRARIES optimized ${PHONENUMBER_LIBRARY_DIR}/phonenumber.lib debug ${PHONENUMBER_LIBRARY_DIR}/phonenumber.lib)
+    endif()
+endif()
 
 
 # --------------------------- breakpad  ---------------------------------------
@@ -1146,85 +1472,93 @@ if (STRIP_CRASH_HANDLER)
     add_definitions(-DSTRIP_CRASH_HANDLER)
 else()
     if (LINUX)
-        message(STATUS "> BREAKPAD")
-        set(ICQ_BREAKPAD "${ICQ_EXTERNAL}/breakpad_master_${deps_lib_version_breakpad_src}/src")
-        set_lib_var(BREAKPAD_LIBRARY_DIR breakpad_${deps_lib_version_breakpad})
 
-        FILE(GLOB breadpad_common_files
-            ${ICQ_BREAKPAD}/common/*.cc
-            ${ICQ_BREAKPAD}/common/*.h
+        set_lib_var(BREAKPAD_LIBRARY_DIR "${pkg_breakpad_location}")
+        set(IM_BREAKPAD "${pkg_src_breakpad_location}/src")
+
+        FILE(GLOB breakpad_common_files
+            ${IM_BREAKPAD}/common/*.cc
+            ${IM_BREAKPAD}/common/*.h
         )
 
-        FILE(GLOB breadpad_client_files
-            ${ICQ_BREAKPAD}/client/*.cc
-            ${ICQ_BREAKPAD}/client/*.h
+        FILE(GLOB breakpad_client_files
+            ${IM_BREAKPAD}/client/*.cc
+            ${IM_BREAKPAD}/client/*.h
         )
 
-        include_directories(${ICQ_BREAKPAD})
-        include_directories(${ICQ_BREAKPAD}/client)
-        include_directories(${ICQ_BREAKPAD}/common)
+        include_directories(${IM_BREAKPAD})
+        include_directories(${IM_BREAKPAD}/client)
+        include_directories(${IM_BREAKPAD}/common)
+        message(STATUS "[include] include_directories(${IM_BREAKPAD})")
+        message(STATUS "[include] include_directories(${IM_BREAKPAD}/client)")
+        message(STATUS "[include] include_directories(${IM_BREAKPAD}/common)")
         set(BREAKPAD_LIBRARIES ${BREAKPAD_LIBRARY_DIR}/libbreakpad_client.a)
 
-        FILE(GLOB_RECURSE breadpad_common_platform_files
-            ${ICQ_BREAKPAD}/common/linux/*.cc
-            ${ICQ_BREAKPAD}/common/linux/*.h
+        FILE(GLOB_RECURSE breakpad_common_platform_files
+            ${IM_BREAKPAD}/common/linux/*.cc
+            ${IM_BREAKPAD}/common/linux/*.h
         )
 
-        FILE(GLOB_RECURSE breadpad_client_platform_files
-            ${ICQ_BREAKPAD}/client/linux/*.cc
-            ${ICQ_BREAKPAD}/client/linux/*.h
+        FILE(GLOB_RECURSE breakpad_client_platform_files
+            ${IM_BREAKPAD}/client/linux/*.cc
+            ${IM_BREAKPAD}/client/linux/*.h
         )
 
-        SOURCE_GROUP(breakpad FILES ${breadpad_common_files} ${breadpad_client_files}
-        ${breadpad_common_platform_files} ${breadpad_client_platform_files})
+        SOURCE_GROUP(breakpad FILES ${breakpad_common_files} ${breakpad_client_files}
+        ${breakpad_common_platform_files} ${breakpad_client_platform_files})
     endif()
 
 
     if (APPLE)
         if (BUILD_FOR_STORE)
-            message(STATUS "> BREAKPAD")
-            set(ICQ_BREAKPAD "${ICQ_EXTERNAL}/breakpad/src")
-            set_lib_var(BREAKPAD_LIBRARY_DIR breakpad)
+            message(STATUS "[INFO] > BREAKPAD")
 
-            include_directories(${ICQ_BREAKPAD})
-            include_directories(${ICQ_BREAKPAD}/client)
-            include_directories(${ICQ_BREAKPAD}/common)
+            set_lib_var(BREAKPAD_LIBRARY_DIR "${pkg_breakpad_location}")
+            set(IM_BREAKPAD "${pkg_src_breakpad_location}/src")
+
+            include_directories(${IM_BREAKPAD})
+            include_directories(${IM_BREAKPAD}/client)
+            include_directories(${IM_BREAKPAD}/common)
             set(BREAKPAD_LIBRARIES ${BREAKPAD_LIBRARY_DIR}/libbreakpad.a)
 
             set(BREAKPAD_SOURCE
-            ${ICQ_BREAKPAD}/common/string_conversion.cc
-            ${ICQ_BREAKPAD}/common/convert_UTF.cc
-            ${ICQ_BREAKPAD}/common/md5.cc
-            ${ICQ_BREAKPAD}/client/minidump_file_writer.cc
-            ${ICQ_BREAKPAD}/client/mac/crash_generation/crash_generation_client.cc
-            ${ICQ_BREAKPAD}/client/mac/handler/exception_handler.cc
-            ${ICQ_BREAKPAD}/client/mac/handler/minidump_generator.cc
-            ${ICQ_BREAKPAD}/client/mac/handler/breakpad_nlist_64.cc
-            ${ICQ_BREAKPAD}/client/mac/handler/dynamic_images.cc
-            ${ICQ_BREAKPAD}/client/mac/handler/protected_memory_allocator.cc
-            ${ICQ_BREAKPAD}/common/mac/bootstrap_compat.cc
-            ${ICQ_BREAKPAD}/common/mac/file_id.cc
-            ${ICQ_BREAKPAD}/common/mac/macho_id.cc
-            ${ICQ_BREAKPAD}/common/mac/macho_reader.cc
-            ${ICQ_BREAKPAD}/common/mac/macho_utilities.cc
-            ${ICQ_BREAKPAD}/common/mac/macho_walker.cc
-            ${ICQ_BREAKPAD}/common/mac/string_utilities.cc
-            ${ICQ_BREAKPAD}/common/mac/MachIPC.mm)
-        else()
-    # --------------------------- crashpad  --------------------------
-            message(STATUS "> CRASHPAD")
-            set(ICQ_CRASHPAD "${ICQ_EXTERNAL}/crashpad")
-            set_lib_var(CRASHPAD_LIBRARY_DIR crashpad)
+            ${IM_BREAKPAD}/common/string_conversion.cc
+            ${IM_BREAKPAD}/common/convert_UTF.cc
+            ${IM_BREAKPAD}/common/md5.cc
+            ${IM_BREAKPAD}/client/minidump_file_writer.cc
+            ${IM_BREAKPAD}/client/mac/crash_generation/crash_generation_client.cc
+            ${IM_BREAKPAD}/client/mac/handler/exception_handler.cc
+            ${IM_BREAKPAD}/client/mac/handler/minidump_generator.cc
+            ${IM_BREAKPAD}/client/mac/handler/breakpad_nlist_64.cc
+            ${IM_BREAKPAD}/client/mac/handler/dynamic_images.cc
+            ${IM_BREAKPAD}/client/mac/handler/protected_memory_allocator.cc
+            ${IM_BREAKPAD}/common/mac/bootstrap_compat.cc
+            ${IM_BREAKPAD}/common/mac/file_id.cc
+            ${IM_BREAKPAD}/common/mac/macho_id.cc
+            ${IM_BREAKPAD}/common/mac/macho_reader.cc
+            ${IM_BREAKPAD}/common/mac/macho_utilities.cc
+            ${IM_BREAKPAD}/common/mac/macho_walker.cc
+            ${IM_BREAKPAD}/common/mac/string_utilities.cc
+            ${IM_BREAKPAD}/common/mac/MachIPC.mm)
 
-            include_directories(${ICQ_CRASHPAD}/include)
-            include_directories(${ICQ_CRASHPAD}/include/mini_chromium)
+        else()
+
+            # --------------------------- crashpad  --------------------------
+            message(STATUS "[INFO] > CRASHPAD")
+            set(IM_CRASHPAD "${pkg_crashpad_location}")
+            set_lib_var(CRASHPAD_LIBRARY_DIR "${pkg_crashpad_location}")
+
+            include_directories(${IM_CRASHPAD}/include)
+            include_directories(${IM_CRASHPAD}/include/mini_chromium)
 
             set(CRASHPAD_LIBRARIES
                 ${CRASHPAD_LIBRARY_DIR}/libclient.a
-                ${CRASHPAD_LIBRARY_DIR}/libutil.a
                 ${CRASHPAD_LIBRARY_DIR}/libbase.a
-                ${CRASHPAD_LIBRARY_DIR}/libsnapshot.a)
+                ${CRASHPAD_LIBRARY_DIR}/libsnapshot.a
+                ${CRASHPAD_LIBRARY_DIR}/libmig_output.a
+                ${CRASHPAD_LIBRARY_DIR}/libutil.a)
         endif()
+
     endif()
 endif()
 
@@ -1233,41 +1567,27 @@ endif()
 if (STRIP_RE2)
     add_definitions(-DSTRIP_RE2)
 else()
-    if(LINUX)
-        set(ICQ_RE2 "${ICQ_EXTERNAL}/re2_${deps_lib_version_re2}")
-        set_lib_var(RE2_LIBRARY_DIR re2_${deps_lib_version_re2})
-    else()
-        set(ICQ_RE2 "${ICQ_EXTERNAL}/re2")
-        set_lib_var(RE2_LIBRARY_DIR re2)
-    endif()
+    set_lib_var(RE2_LIBRARY_DIR "${pkg_re2_location}")
+    set_include_var(PHONENUMBER_INCLUDE_DIR "${pkg_re2_location}/include")
 
-    include_directories(${ICQ_RE2}/include)
     if(LINUX OR APPLE)
         set(RE2_LIBRARIES ${RE2_LIBRARY_DIR}/libre2.a)
     elseif (MSVC)
-        set(RE2_LIBRARIES optimized ${RE2_LIBRARY_DIR}/libre2.lib debug ${RE2_LIBRARY_DIR}/libre2d.lib)
+        set(RE2_LIBRARIES optimized ${RE2_LIBRARY_DIR}/re2.lib debug ${RE2_LIBRARY_DIR}/re2.lib)
     endif()
 endif()
+
 
 # --------------------------    zstd    --------------------------
 if (STRIP_ZSTD)
     add_definitions(-DSTRIP_ZSTD)
 else()
-    if(LINUX)
-        set(ICQ_ZSTD "${ICQ_EXTERNAL}/zstd_${deps_lib_version_zstd}")
-        set_lib_var(ZSTD_LIBRARY_DIR zstd_${deps_lib_version_zstd})
-    else()
-        set(ICQ_ZSTD "${ICQ_EXTERNAL}/zstd")
-        set_lib_var(ZSTD_LIBRARY_DIR zstd)
-    endif()
-
-    set(ZSTD_INCLUDE_DIR "${ICQ_ZSTD}/include")
-    include_directories(${ZSTD_INCLUDE_DIR})
-
+    set_lib_var(ZSTD_LIBRARY_DIR "${pkg_zstd_location}")
+    set_include_var(ZSTD_INCLUDE_DIR "${pkg_zstd_location}/include")
     if(MSVC)
         set(ZSTD_LIBRARIES
-            optimized "${ZSTD_LIBRARY_DIR}/libzstd_static.lib"
-            debug "${ZSTD_LIBRARY_DIR}/libzstd_staticd.lib")
+            optimized "${ZSTD_LIBRARY_DIR}/zstd_static.lib"
+            debug "${ZSTD_LIBRARY_DIR}/zstd_static.lib")
     else()
         set(ZSTD_LIBRARIES "${ZSTD_LIBRARY_DIR}/libzstd.a")
     endif()
@@ -1404,7 +1724,6 @@ endfunction()
 # --------------------------    mocs    ---------------------------------------
 function(generate_mocs output ${ARGN})
     set(ICQ_MOC_DIR "${CMAKE_CURRENT_BINARY_DIR}/mocs")
-    get_filename_component(ICQ_MOC_EXE "${ICQ_QT_BIN_DIR}/moc" ABSOLUTE)
     foreach(header IN ITEMS ${ARGN})
         file(READ "${header}" file_content)
         string(FIND "${file_content}" "Q_OBJECT" pos1)
@@ -1424,15 +1743,15 @@ function(generate_mocs output ${ARGN})
         list(APPEND _moc_files ${moc_file})
         if(APPLE)
             add_custom_command(OUTPUT ${moc_file}
-                COMMAND ${ICQ_MOC_EXE} -f ${header} -o ${moc_file} ${header} 2> /dev/null
+                COMMAND ${IM_QT_BIN_MOC} -f ${header} -o ${moc_file} ${header} 2> /dev/null
                 DEPENDS ${header} VERBATIM)
         elseif(LINUX)
             add_custom_command(OUTPUT ${moc_file}
-                COMMAND ${ICQ_MOC_EXE} -D__linux__ -f ${header} -o ${moc_file} ${header} 2> /dev/null
+                COMMAND ${IM_QT_BIN_MOC} -D__linux__ -f ${header} -o ${moc_file} ${header} 2> /dev/null
                 DEPENDS ${header} VERBATIM)
         else()
             add_custom_command(OUTPUT ${moc_file}
-                COMMAND ${ICQ_MOC_EXE} -f ${header} -o ${moc_file} ${header}
+                COMMAND ${IM_QT_BIN_MOC} -f ${header} -o ${moc_file} ${header}
                 DEPENDS ${header} VERBATIM)
         endif()
     endforeach()
@@ -1441,25 +1760,28 @@ function(generate_mocs output ${ARGN})
 endfunction()
 
 
-# -------------------------  translations  ------------------------------------
-function(generate_translations language_files qm_files translations_dir ${ARGN})
-    set(_language_files)
-    set(_qm_files)
-    get_filename_component(ICQ_LRELEASE_EXE "${ICQ_QT_BIN_DIR}/lrelease" ABSOLUTE)
-    foreach(lang IN ITEMS ${ARGN})
-        set(lang_file "${translations_dir}/${lang}.ts")
-        set(qm_file "${translations_dir}/${lang}.qm")
-        add_custom_command(OUTPUT "${qm_file}"
-            COMMAND ${ICQ_LRELEASE_EXE} ${lang_file} -qm ${qm_file}
-            DEPENDS ${lang_file})
-        list(APPEND _language_files "${lang_file}")
-        list(APPEND _qm_files "${qm_file}")
-    endforeach()
-    source_group("translations" FILES ${_language_files})
-    source_group("translations" FILES ${_qm_files})
-    set(${language_files} ${_language_files} PARENT_SCOPE)
-    set(${qm_files} ${_qm_files} PARENT_SCOPE)
-endfunction()
+# # -------------------------  translations  ------------------------------------
+# function(generate_translations language_files qm_files translations_dir ${ARGN})
+#     set(_language_files)
+#     set(_qm_files)
+
+#     message(STATUS "[info] Define IM_QT_BIN_LRELEASE to ${IM_QT_BIN_LRELEASE}/lrelease")
+#     get_filename_component(IM_QT_BIN_LRELEASE "${ICQ_QT_BIN_DIR}/lrelease" ABSOLUTE)
+#     message(STATUS "[info] IM_QT_BIN_LRELEASE = ${IM_QT_BIN_LRELEASE}")
+#     foreach(lang IN ITEMS ${ARGN})
+#         set(lang_file "${translations_dir}/${lang}.ts")
+#         set(qm_file "${translations_dir}/${lang}.qm")
+#         add_custom_command(OUTPUT "${qm_file}"
+#             COMMAND ${IM_QT_BIN_LRELEASE} ${lang_file} -qm ${qm_file}
+#             DEPENDS ${lang_file})
+#         list(APPEND _language_files "${lang_file}")
+#         list(APPEND _qm_files "${qm_file}")
+#     endforeach()
+#     source_group("translations" FILES ${_language_files})
+#     source_group("translations" FILES ${_qm_files})
+#     set(${language_files} ${_language_files} PARENT_SCOPE)
+#     set(${qm_files} ${_qm_files} PARENT_SCOPE)
+# endfunction()
 
 
 # --------------------------  subdirs   ---------------------------------------
@@ -1467,3 +1789,6 @@ add_subdirectory(core)
 add_subdirectory(corelib)
 add_subdirectory(gui)
 add_subdirectory(libomicron)
+
+# Set <PROJECT_NAME> as Startup Project for Visual Studio *.sln
+# set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})

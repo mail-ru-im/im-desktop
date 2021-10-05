@@ -212,6 +212,8 @@ void GeneralSettingsWidget::Creator::initGeneral(GeneralSettings* _parent)
 
         addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Show calls tab"), settings_show_calls_tab, true, qsl("AS GeneralPage showCallsTabSetting"));
 
+        addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Warn about disabled microphone"), settings_warn_about_disabled_microphone, true, qsl("AS GeneralPage WarnAboutDisabledMicrophoneSetting"));
+
         mainLayout->addSpacing(Utils::scale_value(20));
     }
 

@@ -25,7 +25,7 @@ int32_t get_stickers_index::init_request(const std::shared_ptr<core::http_reques
 
     const time_t ts = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) - params_.time_offset_;
 
-    params["a"] = escape_symbols(params_.a_token_);
+    params["aimsid"] = escape_symbols(params_.aimsid_);
     params["f"] = "json";
     params["k"] = params_.dev_id_;
     params["ts"] = std::to_string((int64_t) ts);

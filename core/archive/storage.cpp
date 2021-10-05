@@ -30,7 +30,7 @@ bool storage::open(storage_mode _mode)
 
     if (active_file_stream_)
     {
-        assert(!"file stream already opened");
+        im_assert(!"file stream already opened");
         return false;
     }
 
@@ -86,7 +86,7 @@ void storage::close()
 {
     if (!active_file_stream_)
     {
-        assert(!"file stream not opened");
+        im_assert(!"file stream not opened");
         return;
     }
 
@@ -107,7 +107,7 @@ storage::result_type storage::write_data_block(core::tools::binary_stream& _data
 {
     if (!active_file_stream_)
     {
-        assert(!"file stream not opened");
+        im_assert(!"file stream not opened");
         return { false, 0 };
     }
 

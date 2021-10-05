@@ -22,8 +22,6 @@ namespace core
             static int32_t base64_decode(uint8_t* source, int32_t length, uint8_t* dst);
             [[nodiscard]]static int32_t base64_encode(uint8_t* source, int32_t length, uint8_t* dst);
 
-            [[nodiscard]] static std::string hmac_base64(std::vector<uint8_t>& data, std::vector<uint8_t>& secret);
-
             [[nodiscard]] static std::string decode64(std::string_view val);
             [[nodiscard]] static std::string encode64(std::string_view val);
         };

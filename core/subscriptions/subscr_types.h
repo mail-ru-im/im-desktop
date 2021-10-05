@@ -8,7 +8,9 @@ namespace core::wim::subscriptions
 
         antivirus,
         status,
-        call_room_info
+        call_room_info,
+        thread,
+        task,
     };
 
     std::string_view type_2_string(subscriptions::type _type) noexcept;

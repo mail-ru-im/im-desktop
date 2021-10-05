@@ -49,13 +49,13 @@ namespace core
 
         void set_notifier(std::weak_ptr<network_change_notifier> _notifier)
         {
-            assert(g_core->is_core_thread());
+            im_assert(g_core->is_core_thread());
             notifier_ = _notifier;
         }
 
         void on_ip_address_changed(connection_type type)
         {
-            assert(g_core->is_core_thread());
+            im_assert(g_core->is_core_thread());
             pending_connection_type_ = type;
             auto delay = last_announced_connection_type_ == CONNECTION_NONE ? params_.ip_address_offline_delay_ : params_.ip_address_online_delay_;
             // Cancels any previous timer.
@@ -64,7 +64,7 @@ namespace core
 
         void on_connection_type_changed(connection_type type)
         {
-            assert(g_core->is_core_thread());
+            im_assert(g_core->is_core_thread());
             pending_connection_type_ = type;
             auto delay = last_announced_connection_type_ == CONNECTION_NONE ? params_.connection_type_offline_delay_ : params_.connection_type_online_delay_;
             // Cancels any previous timer.
@@ -173,7 +173,7 @@ namespace core
 
     std::shared_ptr<network_change_notifier> network_change_notifier::create(std::unique_ptr<network_change_observer> _observer)
     {
-        assert(g_core->is_core_thread());
+        im_assert(g_core->is_core_thread());
 #if defined(_WIN32)
         std::shared_ptr<network_change_notifier> notifier = std::make_shared<network_change_notifier_win>(std::move(_observer));
 #elif defined(__linux__)
@@ -181,7 +181,7 @@ namespace core
 #elif defined(__APPLE__)
         std::shared_ptr<network_change_notifier> notifier = std::make_shared<network_change_notifier_mac>(std::move(_observer));
 #else
-        assert(false);
+        im_assert(false);
 #endif
         log_text("Startup service");
         notifier->init();
@@ -190,7 +190,7 @@ namespace core
 
     void network_change_notifier::init()
     {
-        assert(g_core->is_core_thread());
+        im_assert(g_core->is_core_thread());
         network_change_calculator_->set_notifier(weak_from_this());
     }
 
@@ -232,7 +232,7 @@ namespace core
 
     bool core::network_change_notifier::is_offline()
     {
-        assert(g_core->is_core_thread());
+        im_assert(g_core->is_core_thread());
         return get_current_connection_type() == CONNECTION_NONE;
     }
 
@@ -247,39 +247,39 @@ namespace core
 #endif
     void network_change_notifier::set_initial_connection_type(connection_type _type)
     {
-        assert(g_core->is_core_thread());
+        im_assert(g_core->is_core_thread());
         network_change_calculator_->set_initial_connection_type(_type);
     }
 
     void core::network_change_notifier::notify_of_ip_address_change()
     {
-        assert(g_core->is_core_thread());
+        im_assert(g_core->is_core_thread());
         auto type = get_current_connection_type();
         network_change_calculator_->on_ip_address_changed(type);
     }
 
     void core::network_change_notifier::notify_of_connection_type_change()
     {
-        assert(g_core->is_core_thread());
+        im_assert(g_core->is_core_thread());
         auto type = get_current_connection_type();
         network_change_calculator_->on_connection_type_changed(type);
     }
 
     void network_change_notifier::notify_network_down()
     {
-        assert(g_core->is_core_thread());
+        im_assert(g_core->is_core_thread());
         observer_->on_network_down();
     }
 
     void network_change_notifier::notify_network_up(connection_type _type)
     {
-        assert(g_core->is_core_thread());
+        im_assert(g_core->is_core_thread());
         observer_->on_network_up();
     }
 
     void network_change_notifier::notify_network_change(connection_type _type)
     {
-        assert(g_core->is_core_thread());
+        im_assert(g_core->is_core_thread());
         observer_->on_network_change();
     }
 

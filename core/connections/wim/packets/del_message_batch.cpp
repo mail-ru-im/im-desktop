@@ -2,7 +2,7 @@
 
 #include "../../../log/log.h"
 #include "../../../http_request.h"
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 #include "../../../tools/features.h"
 
 #include "del_message_batch.h"
@@ -23,12 +23,12 @@ del_message_batch::del_message_batch(
     , silent_(_silent)
     , silent_responce_(false)
 {
-    assert(!contact_aimid_.empty());
+    im_assert(!contact_aimid_.empty());
 }
 
 int32_t del_message_batch::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
-    assert(_request);
+    im_assert(_request);
     rapidjson::Document doc(rapidjson::Type::kObjectType);
     auto& a = doc.GetAllocator();
 

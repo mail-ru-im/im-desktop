@@ -19,6 +19,7 @@
 #include "../../utils/InterConnector.h"
 #include "../../utils/utils.h"
 #include "../../utils/gui_coll_helper.h"
+#include "ServiceContacts.h"
 
 #include "../../controls/CustomButton.h"
 
@@ -70,6 +71,7 @@ namespace Logic
             Logic::MembersWidgetRegim::VIDEO_CONFERENCE,
             Logic::MembersWidgetRegim::SELECT_CHAT_MEMBERS,
             Logic::MembersWidgetRegim::SHARE_CONTACT,
+            Logic::MembersWidgetRegim::TASK_ASSIGNEE,
             Logic::MembersWidgetRegim::DISALLOWED_INVITERS_ADD,
         };
         return std::any_of(std::begin(regimes), std::end(regimes), [_regim](auto r){ return r == _regim; });
@@ -115,7 +117,7 @@ namespace Logic
             aimid = callInfo->getAimId();
         }
 
-        if (aimid.startsWith(ql1c('~')))
+        if (aimid.startsWith(ql1c('~')) && ServiceContacts::contactType(aimid) != ServiceContacts::ContactType::ThreadsFeed)
             return QString();
 
         return aimid;
@@ -214,7 +216,7 @@ namespace Logic
             if (Logic::getContactListModel()->selectedContact() == aimId)
             {
                 Q_EMIT Logic::getContactListModel()->leave_dialog(aimId);
-                Logic::getContactListModel()->setCurrent(QString(), -1);
+                Utils::InterConnector::instance().closeDialog();
             }
             Logic::getRecentsModel()->setAttention(aimId, true);
         }

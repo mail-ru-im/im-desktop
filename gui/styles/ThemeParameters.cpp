@@ -12,7 +12,9 @@
 namespace
 {
     QString getTextLineEditQss();
+    QString getTextLineEditQssNoHeight();
     QString getTextLineEditFocusQss();
+    QString getTextLineEditFocusQssNoHeight();
     QString getLineEditQss();
     QString getLineEditFocusQss();
     QString getTextEditQss();
@@ -48,6 +50,36 @@ namespace Styling
     QString ThemeParameters::getColorHex(const StyleVariable _var, double alpha) const
     {
         return getColor(_var, alpha).name(QColor::HexArgb);
+    }
+
+    QColor ThemeParameters::getSelectedTabOrRecentItemBackground() const
+    {
+        return getColor(Styling::StyleVariable::PRIMARY, 0.1);
+    }
+
+    QColor ThemeParameters::getColorAlphaBlended(const StyleVariable _bg, const StyleVariable _fg) const
+    {
+        const auto fg = Styling::getParameters().getColor(_fg);
+        const auto bg = Styling::getParameters().getColor(_bg);
+        constexpr auto bgAlpha = 1.0;
+        const auto alphaDenominator = fg.alphaF() + bgAlpha * (1.0 - fg.alphaF());
+        const auto blend = [alphaFg = fg.alphaF(), alphaDenominator](qreal _bg, qreal _fg)
+        {
+            return (_fg * alphaFg + _bg * (1 - alphaFg)) / alphaDenominator;
+        };
+
+        auto result = QColor();
+        result.setRgbF(
+            blend(bg.redF(), fg.redF()),
+            blend(bg.greenF(), fg.greenF()),
+            blend(bg.blueF(), fg.blueF())
+        );
+        return result;
+    }
+
+    QString ThemeParameters::getColorAlphaBlendedHex(const StyleVariable _bg, const StyleVariable _fg) const
+    {
+        return getColorAlphaBlended(_bg, _fg).name(QColor::HexArgb);
     }
 
     bool ThemeParameters::isChatWallpaperPlainColor() const
@@ -233,10 +265,9 @@ namespace Styling
         return qss;
     }
 
-    QString ThemeParameters::getTextLineEditCommonQss(bool _isError, int _height) const
+    void ThemeParameters::setTextLineEditCommonQssNoHeight(QString& _template, bool _isError) const
     {
-        QString qss = getTextLineEditQss() % getTextLineEditFocusQss();
-
+        auto& qss = _template;
         if (_isError)
         {
             qss.replace(ql1s("%BORDER_COLOR%"), getColorHex(StyleVariable::SECONDARY_ATTENTION));
@@ -252,8 +283,20 @@ namespace Styling
         qss.replace(ql1s("%BACKGROUND_FOCUS%"), ql1s("transparent"));
         qss.replace(ql1s("%FONT_COLOR%"), getColorHex(StyleVariable::BASE_PRIMARY));
         qss.replace(ql1s("%FONT_COLOR_FOCUS%"), getColorHex(StyleVariable::TEXT_SOLID));
-        qss.replace(ql1s("%HEIGHT%"), QString::number(_height));
+    }
 
+    QString ThemeParameters::getTextLineEditCommonQssNoHeight(bool _isError) const
+    {
+        QString qss = getTextLineEditQssNoHeight() % getTextLineEditFocusQssNoHeight();
+        setTextLineEditCommonQssNoHeight(qss, _isError);
+        return qss;
+    }
+
+    QString ThemeParameters::getTextLineEditCommonQss(bool _isError, int _height) const
+    {
+        QString qss = getTextLineEditQss() % getTextLineEditFocusQss();
+        setTextLineEditCommonQssNoHeight(qss, _isError);
+        qss.replace(ql1s("%HEIGHT%"), QString::number(_height));
         return qss;
     }
 
@@ -411,36 +454,36 @@ namespace Styling
 
     QString ThemeParameters::getSmilesQss() const
     {
-        QString qss = ql1s(
+        const auto qss = ql1s(
             "Ui--Smiles--AddButton{"
-            "padding : 0;"
-            "margin : 0;}"
+                "padding : 0;"
+                "margin : 0;}"
             "Ui--Smiles--TabButton{"
-            "padding : 0;"
-            "margin : 0;"
-            "border: none;}"
+                "padding : 0;"
+                "margin : 0;"
+                "border: none;}"
             "Ui--Smiles--Toolbar{"
-            "padding : 0;"
-            "margin : 0;"
-            "background-color: %1;"
-            "border-color: %2;"
-            "border-width: 1dip;"
-            "border-style: solid;"
-            "border-right: none;"
-            "border-left: none;"
-            "border-top: none;}"
+                "padding : 0;"
+                "margin : 0;"
+                "background-color: %1;"
+                "border-color: %2;"
+                "border-width: 1dip;"
+                "border-style: solid;"
+                "border-right: none;"
+                "border-left: none;"
+                "border-top: none;}"
             "Ui--Smiles--Toolbar#smiles_cat_selector{"
-            "border-bottom: none;}"
+                "border-bottom: none;}"
             "QWidget#scroll_area_widget{"
-            "background-color: %1;}"
+                "background-color: %1;}"
             "QTableView{"
-            "background-color: %1;"
-            "border: none; }"
+                "background-color: %1;"
+                "border: none; }"
             "QScrollArea{"
-            "border: none;"
-            "background-color: %1;}"
+                "border: none;"
+                "background-color: %1;}"
             "Ui--Smiles--SmilesMenu{"
-            "background-color: %1;}"
+                "background-color: %1;}"
         ).arg(getColorHex(StyleVariable::BASE_GLOBALWHITE), getColorHex(StyleVariable::BASE_BRIGHT_INVERSE));
         return qss;
     }
@@ -654,6 +697,29 @@ namespace
         );
     }
 
+    QString getTextLineEditQssNoHeight()
+    {
+        return qsl(
+            "QTextBrowser {"
+            "background-color: %BACKGROUND%;"
+            "border-style: none;"
+            "border-bottom-color: %BORDER_COLOR%;"
+            "border-bottom-width: 1dip;"
+            "border-bottom-style: solid; }"
+        );
+    }
+
+    QString getTextLineEditFocusQssNoHeight()
+    {
+        return qsl(
+            "QTextBrowser:focus {"
+            "background-color: %BACKGROUND_FOCUS%;"
+            "border-style: none;"
+            "border-bottom-color: %BORDER_COLOR_FOCUS%;"
+            "border-bottom-width: 1dip;"
+            "border-bottom-style: solid;}"
+        );
+    }
     QString getTextLineEditFocusQss()
     {
         return qsl(

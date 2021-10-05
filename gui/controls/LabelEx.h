@@ -10,8 +10,8 @@ Q_SIGNALS:
 
     public:
         LabelEx(QWidget* _parent);
-        void setColor(const QColor &_color);
-        void setColors(const QColor &_normalColor, const QColor &_hoverColor, const QColor &_activeColor);
+        void setColor(const QColor& _color);
+        void setColors(const QColor& _normalColor, const QColor& _hoverColor, const QColor& _activeColor);
 
         void setElideMode(Qt::TextElideMode _mode);
         Qt::TextElideMode elideMode() const;

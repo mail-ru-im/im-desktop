@@ -289,7 +289,7 @@ namespace core
         void check_update(int64_t _seq, std::optional<std::string> _url);
 
         bool is_keep_local_data() const;
-        void remove_local_data(bool _is_exit = false);
+        void remove_local_data(const std::string_view _aimid, bool _is_exit = false);
 
         bool is_smartreply_available() const;
         bool is_suggests_available() const;

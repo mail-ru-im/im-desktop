@@ -12,6 +12,7 @@
 #include "FavoritesUtils.h"
 
 #include "styles/ThemeParameters.h"
+#include "../../../common.shared/config/config.h"
 
 namespace Ui
 {
@@ -229,7 +230,7 @@ namespace Ui
         }
         else
         {
-            const auto show_last_message = Ui::get_gui_settings()->get_value<bool>(settings_show_last_message, true);
+            const auto show_last_message = Ui::get_gui_settings()->get_value<bool>(settings_show_last_message, !config::get().is_on(config::features::compact_mode_by_default));
             static ContactListParams params(!show_last_message);
             params.setIsCL(!show_last_message);
             return params;

@@ -155,10 +155,22 @@ namespace
             return false;
         };
 
-        constexpr std::string_view fields[] = { "contact", "aimid", "aimId", "sn", "stamp" };
-        for (std::string_view c : fields)
+        constexpr static std::string_view fields[] = { "contact", "aimid", "aimId", "sn", "id", "stamp" };
+        for (auto c : fields)
             if (write_contact(c))
                 break;
+
+        if (_message_data->is_value_exist("msgid"))
+        {
+            if (const auto value = _message_data->get_value("msgid"))
+            {
+                if (const auto intval = value->get_as_int64())
+                {
+                    bs.write<std::string_view>(" ");
+                    bs.write<std::string_view>(std::to_string(intval));
+                }
+            }
+        }
 
         if (_message_data->is_value_exist("contacts"))
         {
@@ -326,7 +338,7 @@ core_dispatcher::~core_dispatcher()
 {
     profiler::flush_logs();
 
-    __LOG(log::shutdown();)
+    log::shutdown();
 
     http_request_simple::shutdown_global();
 }
@@ -340,7 +352,7 @@ void core::core_dispatcher::execute_core_context(stacked_task _func)
 {
     if (!core_thread_)
     {
-        assert(!"core thread empty");
+        im_assert(!"core thread empty");
         return;
     }
 
@@ -370,7 +382,7 @@ std::stack<std::wstring> core::core_dispatcher::network_log_file_names_history_c
 
 std::shared_ptr<base_im> core::core_dispatcher::find_im_by_id(unsigned id) const
 {
-    assert(!!im_container_);
+    im_assert(!!im_container_);
     if (!!im_container_) {
         return im_container_->get_im_by_id(id);
     }
@@ -381,7 +393,7 @@ uint32_t core::core_dispatcher::add_timer(stacked_task _func, std::chrono::milli
 {
     if (!scheduler_)
     {
-        assert(false);
+        im_assert(false);
         return 0;
     }
 
@@ -392,7 +404,7 @@ uint32_t core::core_dispatcher::add_single_shot_timer(stacked_task _func, std::c
 {
     if (!scheduler_)
     {
-        assert(false);
+        im_assert(false);
         return 0;
     }
 
@@ -407,7 +419,7 @@ void core::core_dispatcher::stop_timer(uint32_t _id)
 
 std::shared_ptr<async_task_handlers> core::core_dispatcher::run_async(std::function<int32_t()> task)
 {
-    assert(!!async_executer_);
+    im_assert(!!async_executer_);
     if (!async_executer_)
         return std::make_shared<async_task_handlers>();
     return async_executer_->run_async_function(std::move(task));
@@ -430,7 +442,7 @@ void core::core_dispatcher::link_gui(icore_interface* _core_face, const common::
 
 void core::core_dispatcher::start(const common::core_gui_settings& _settings)
 {
-    __LOG(log::init(utils::get_logs_path(), false);)
+    log::init(utils::get_logs_path(), false);
 
 #ifndef STRIP_ZSTD
     zstd_helper_ = std::make_shared<zstd_helper>(utils::get_product_data_path() + L"/zdicts");
@@ -467,7 +479,7 @@ void core::core_dispatcher::start(const common::core_gui_settings& _settings)
 
 #ifndef STRIP_VOIP
     voip_manager_.reset(voip_manager::createVoipManager(*this));
-    assert(!!voip_manager_);
+    im_assert(!!voip_manager_);
 #endif //__STRIP_VOIP
 
     memory_stats_collector_ = std::make_unique<memory_stats::memory_stats_collector>();
@@ -538,6 +550,7 @@ void core::core_dispatcher::unlink_gui()
 {
     execute_core_context({ [this]
     {
+        const auto aimid = im_container_->get_login();
         // NOTE : this order is important!
         voip_manager_.reset();
         im_container_.reset();
@@ -552,7 +565,7 @@ void core::core_dispatcher::unlink_gui()
 
         const auto keep_local_data = is_keep_local_data();
         if (!keep_local_data)
-            gui_settings_->clear_personal_values();
+            gui_settings_->clear_personal_values(aimid);
 
         gui_settings_.reset();
         scheduler_.reset();
@@ -571,7 +584,7 @@ void core::core_dispatcher::unlink_gui()
 #endif // !STRIP_ZSTD
 
         if (!keep_local_data)
-            remove_local_data(true);
+            remove_local_data(aimid, true);
 
         curl_handler::instance().cleanup();
     } });
@@ -796,7 +809,6 @@ void core::core_dispatcher::post_message_to_gui(std::string_view _message, int64
             bs.write<std::string_view>(logutils::yn(is_auth_error));
             bs.write<std::string_view>(";\r\n");
         }
-
     }
 
 //     if (_message_data)
@@ -810,7 +822,7 @@ void core::core_dispatcher::post_message_to_gui(std::string_view _message, int64
 
     if (!gui_connector_)
     {
-        assert(!"gui unlinked");
+        im_assert(!"gui unlinked");
         return;
     }
 
@@ -822,7 +834,7 @@ icollection* core::core_dispatcher::create_collection()
 {
     if (!core_factory_)
     {
-        assert(!"core factory empty");
+        im_assert(!"core factory empty");
         return nullptr;
     }
 
@@ -1068,7 +1080,7 @@ void core::core_dispatcher::on_message_update_theme_settings_value(int64_t _seq,
 void core::core_dispatcher::on_message_set_default_theme_id(int64_t _seq, coll_helper _params)
 {
     const std::string_view theme_id = _params.get_value_as_string("id");
-    assert(!theme_id.empty());
+    im_assert(!theme_id.empty());
 
     theme_settings_->set_default_theme(theme_id);
     theme_settings_->save_if_needed();
@@ -1225,7 +1237,7 @@ void core::core_dispatcher::on_message_log(coll_helper _params) const
         return;
     }
 
-    assert(!"unknown log record type");
+    im_assert(!"unknown log record type");
 }
 
 void core::core_dispatcher::on_message_profiler_proc_start(coll_helper _params) const
@@ -1254,7 +1266,7 @@ void core::core_dispatcher::receive_message_from_gui(std::string_view _message, 
 
     if (_message.empty())
     {
-        assert(false);
+        im_assert(false);
         return;
     }
 
@@ -1384,6 +1396,22 @@ void core::core_dispatcher::receive_message_from_gui(std::string_view _message, 
         {
             on_create_logs_archive(_seq, params);
         }
+        else if (message_string == "web_log")
+        {
+            tools::binary_stream bs;
+            bs.write<std::string_view>("source: ");
+            bs.write<std::string_view>(_message_data->get_value("source")->get_as_string());
+            bs.write<std::string_view>("\r\n");
+            bs.write<std::string_view>("message: ");
+            bs.write<std::string_view>(_message_data->get_value("message")->get_as_string());
+            bs.write<std::string_view>("\r\n");
+
+            log_replace_functor f;
+            f.add_marker("aimsid", aimsid_range_evaluator());
+            f(bs);
+
+            write_data_to_network_log(bs);
+        }
         else
         {
             im_container_->on_message_from_gui(message_string, _seq, params);
@@ -1418,7 +1446,7 @@ std::string core::core_dispatcher::get_login_after_start() const
         im_login_id login(std::string(), default_im_id);
         if (logins.get_first_login(login))
             return login.get_login();
-        assert(false);
+        im_assert(false);
     }
 
     return std::string();
@@ -1468,7 +1496,7 @@ void core::core_dispatcher::replace_uin_in_login(im_login_id& old_login, im_logi
 void core::core_dispatcher::post_voip_message(unsigned _id, const voip_manager::VoipProtoMsg& msg) {
     execute_core_context({ [this, _id, msg] {
         auto im = find_im_by_id(_id);
-        assert(!!im);
+        im_assert(!!im);
 
         if (!!im) {
             im->post_voip_msg_to_server(msg);
@@ -1480,7 +1508,7 @@ void core::core_dispatcher::post_voip_alloc(unsigned _id, const char* _data, siz
     std::string data_str(_data, _len);
     execute_core_context({ [this, _id, data_str] {
         auto im = find_im_by_id(_id);
-        assert(!!im);
+        im_assert(!!im);
 
         if (!!im) {
             im->post_voip_alloc_to_server(data_str);
@@ -1515,7 +1543,7 @@ void core::core_dispatcher::unlogin(const bool _is_auth_error, const bool _force
 
         execute_core_context({ [this]()
         {
-            remove_local_data(false);
+            remove_local_data(im_container_->get_login(), false);
         } });
     }
 }
@@ -1578,7 +1606,7 @@ bool core_dispatcher::locale_was_changed() const
 
 void core_dispatcher::set_locale(const std::string& _locale)
 {
-    assert(is_core_thread());
+    im_assert(is_core_thread());
 
     static std::string stored;
     if (stored.empty())
@@ -1593,7 +1621,7 @@ void core_dispatcher::set_locale(const std::string& _locale)
 
 std::string core_dispatcher::get_locale() const
 {
-    assert(is_core_thread());
+    im_assert(is_core_thread());
 
     return settings_->get_locale();
 }
@@ -1877,10 +1905,10 @@ bool core_dispatcher::is_keep_local_data() const
     return get_gui_settings_bool_value(settings_keep_logged_in, settings_keep_logged_in_default());
 }
 
-void core_dispatcher::remove_local_data(bool _is_exit)
+void core_dispatcher::remove_local_data(const std::string_view _aimid, bool _is_exit)
 {
     if (gui_settings_)
-        gui_settings_->clear_personal_values();
+        gui_settings_->clear_personal_values(_aimid);
 
     utils::remove_user_data_dirs();
 

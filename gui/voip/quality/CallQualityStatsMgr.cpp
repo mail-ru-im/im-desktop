@@ -72,10 +72,9 @@ void CallQualityStatsMgr::onShowCallQualityStarsPopup()
     });
 
     GeneralDialog::Options options;
-    options.preferredSize_ = QSize(Utils::scale_value(380), -1);
+    options.preferredWidth_ = Utils::scale_value(380);
 
-    auto generalDialog = std::make_unique<GeneralDialog>(w, Utils::InterConnector::instance().getMainWindow(),
-                                                         false, true, true, true, options);
+    auto generalDialog = std::make_unique<GeneralDialog>(w, Utils::InterConnector::instance().getMainWindow(), options);
     auto okCancelButtons = generalDialog->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "OK"), true);
     w->setOkCancelButton(okCancelButtons.first, okCancelButtons.second);
 
@@ -98,11 +97,8 @@ void CallQualityStatsMgr::onRatingConfirmed(int _starsCount)
     auto w = new RatingIssuesWidget(qualityReasonsPopupConfig_, nullptr);
 
     GeneralDialog::Options options;
-    options.preferredSize_ = QSize(Utils::scale_value(380), 0);
-
-    auto generalDialog = std::make_unique<GeneralDialog>(w, Utils::InterConnector::instance().getMainWindow(),
-                                                         false, true, true, true,
-                                                         options);
+    options.preferredWidth_ = Utils::scale_value(380);
+    auto generalDialog = std::make_unique<GeneralDialog>(w, Utils::InterConnector::instance().getMainWindow(), options);
     auto okCancelButtons = generalDialog->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"),
                                                          QT_TRANSLATE_NOOP("popup_window", "OK"), true);
     Q_UNUSED(okCancelButtons);

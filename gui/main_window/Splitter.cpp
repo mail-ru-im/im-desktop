@@ -19,6 +19,11 @@ namespace Ui
         return new SplitterHandle(orientation(), this);
     }
 
+    QColor Splitter::defaultHandleColor()
+    {
+        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT);
+    }
+
     bool Splitter::shouldShowWidget(const QWidget* w) const
     {
         return isVisible() && !(w->isHidden() && w->testAttribute(Qt::WA_WState_ExplicitShowHide));
@@ -28,14 +33,14 @@ namespace Ui
         : QSplitterHandle(_o, _parent)
     {
         setAutoFillBackground(true);
-        updateStyle();
+        setColor(Splitter::defaultHandleColor());
     }
 
     SplitterHandle::~SplitterHandle() = default;
 
-    void SplitterHandle::updateStyle()
+    void SplitterHandle::setColor(QColor _color)
     {
-        Utils::updateBgColor(this, Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT));
+        Utils::updateBgColor(this, _color);
     }
 
     void SplitterHandle::mouseMoveEvent(QMouseEvent* _event)
@@ -65,11 +70,6 @@ namespace Ui
             mouseOffset_ = pick(_event->pos());
 
         QSplitterHandle::mousePressEvent(_event);
-    }
-
-    void SplitterHandle::mouseReleaseEvent(QMouseEvent* _event)
-    {
-        QSplitterHandle::mouseReleaseEvent(_event);
     }
 
     void SplitterHandle::paintEvent(QPaintEvent* _event)

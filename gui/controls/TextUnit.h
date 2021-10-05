@@ -12,25 +12,33 @@ namespace Ui
 
     [[nodiscard]] QString getEllipsis();
 
+    enum class ParseBackticksPolicy
+    {
+        KeepBackticks,
+        ParseSingles,
+        ParseTriples,
+        ParseSinglesAndTriples,
+    };
+
+
     namespace TextRendering
     {
         class TextUnit
         {
         public:
             TextUnit();
-            TextUnit(const QString& _text, std::vector<BaseDrawingBlockPtr>&& _blocks, const Data::MentionMap& _mentions, LinksVisible _showLinks, ProcessLineFeeds _processLineFeeds, EmojiSizeType _emojiSizeType);
-            TextUnit(const Data::FormattedString& _text, const Data::MentionMap& _mentions, LinksVisible _showLinks, ProcessLineFeeds _processLineFeeds, EmojiSizeType _emojiSizeType);
+            TextUnit(const Data::FString& _text, const Data::MentionMap& _mentions, LinksVisible _showLinks, ProcessLineFeeds _processLineFeeds, EmojiSizeType _emojiSizeType);
 
             void setText(const QString& _text, const QColor& _color = QColor());//set or replace existing text; also init blocks and evaluate height by desired width
-            void setText(const Data::FormattedString& _text, const QColor& _color = QColor());//set or replace existing text; also init blocks and evaluate height by desired width
+            void setText(const Data::FString& _text, QColor _color = QColor());//set or replace existing text; also init blocks and evaluate height by desired width
 
             void setMentions(const Data::MentionMap& _mentions);//set mentions, find they in text and replace by clickable links
             const Data::MentionMap& getMentions() const;//get mentions
 
             void setTextAndMentions(const QString& _text, const Data::MentionMap& _mentions);//setText() + setMentions()
-            void setTextAndMentions(const Data::FormattedString& _text, const Data::MentionMap& _mentions);//setText() + setMentions()
+            void setTextAndMentions(const Data::FString& _text, const Data::MentionMap& _mentions);//setText() + setMentions()
 
-            void elide(int _width, ElideType _type = ElideType::ACCURATE); //elide text by specified width;
+            void elide(int _width); //elide text by specified width;
             [[nodiscard]] bool isElided() const;//check if TextUnit's elided
 
             //some stuff for replacing blocks in debug mode
@@ -74,6 +82,8 @@ namespace Ui
             //! Initialize monospace font with regular font, thus monospace formatting won't work
             void init(const QFont& _font, const QColor& _color, const QColor& _linkColor = QColor(), const QColor& _selectionColor = QColor(), const QColor& _highlightColor = QColor(), HorAligment _align = HorAligment::LEFT, int _maxLinesCount = -1, LineBreakType _lineBreak = LineBreakType::PREFER_WIDTH, EmojiSizeType _emojiSizeType = EmojiSizeType::REGULAR, const LinksStyle _linksStyle = LinksStyle::PLAIN);
 
+            void updateWordsOfStyle(core::data::format_type _type, const QFont& _newFont, QColor _newColor);
+
             void setLastLineWidth(int _width); //only for units with _maxLinesCount != -1
 
             size_t getLinesCount() const; // get actual line count
@@ -96,18 +106,18 @@ namespace Ui
 
             [[nodiscard]] bool isOverLink(const QPoint& _p) const;//check cursor is over link; cursor specified by _p
 
-            [[nodiscard]] QString getLink(const QPoint& _p) const;//get link under cursor, returns QString() by default
+            [[nodiscard]] Data::LinkInfo getLink(const QPoint& _p) const;//get link under cursor, returns QString() by default
 
             [[nodiscard]] std::optional<TextWordWithBoundary> getWordAt(QPoint) const; //get word
-            [[nodiscard]] bool replaceWordAt(const QString& _old, const QString& _new, QPoint _p);
+            [[nodiscard]] bool replaceWordAt(const Data::FString& _old, const Data::FString& _new, QPoint _p);
 
-            [[nodiscard]] Data::FormattedString getSelectedText(TextType _type = TextType::VISIBLE) const;//get selected text, visible or source (depends on _type)
+            [[nodiscard]] Data::FString getSelectedText(TextType _type = TextType::VISIBLE) const;//get selected text, visible or source (depends on _type)
 
             [[nodiscard]] QString getText() const;//get visible text
 
-            [[nodiscard]] QString getTextInstantEdit() const;//get text for instant edit
+            [[nodiscard]] Data::FString getTextInstantEdit() const;//get text for instant edit
 
-            [[nodiscard]] Data::FormattedString getSourceText() const;//get source text
+            [[nodiscard]] Data::FString getSourceText() const;//get source text
 
             [[nodiscard]] bool isAllSelected() const;//check all text is selected
 
@@ -144,10 +154,6 @@ namespace Ui
 
             void setLineSpacing(int _spacing);//add _spacing to line's height; experemental function, don't use it
 
-            void markdown(const QFont& _font, const QColor& _color, ProcessLineFeeds _linefeeds = ProcessLineFeeds::KEEP_LINE_FEEDS);// 'markdown' text with specified parameters;
-
-            [[nodiscard]] bool sourceModified() const;//check source text is modified; f.e. markdown() modifies source text
-
             void setHighlighted(const bool _isHighlighted); // set all word highlighted attribute
             void setHighlighted(const highlightsV& _entries); // set all matching words and word-parts highlighted
 
@@ -182,9 +188,11 @@ namespace Ui
             const std::vector<BaseDrawingBlockPtr>& blocks() const { return blocks_; }
 
         protected:
-            Data::FormattedString originText_;
+            Data::FString sourceText_;
 
             TextUnit(std::vector<BaseDrawingBlockPtr>&& _blocks, const Data::MentionMap& _mentions, LinksVisible _showLinks, ProcessLineFeeds _processLineFeeds, EmojiSizeType _emojiSizeType);
+            void setSourceText(const Data::FString& _text, ProcessLineFeeds _processLineFeeds);
+            void appendToSourceText(TextUnit& _suffix);
 
         private:
             std::vector<BaseDrawingBlockPtr> blocks_;
@@ -210,12 +218,12 @@ namespace Ui
             LineBreakType lineBreak_;
             LinksStyle linksStyle_;
             int lineSpacing_;
-            bool sourceModified_;
             bool needsEmojiMargin_;
 
             int64_t blockId_ = 0;
 
             std::shared_ptr<bool> guard_;
+            TextRendering::VerPosition lastVerPosition_;
 
         private:
             [[nodiscard]] QPoint mapPoint(QPoint) const;
@@ -225,11 +233,12 @@ namespace Ui
 
 
         TextUnitPtr MakeTextUnit(
-            const Data::FormattedString& _text,
+            const Data::FString& _text,
             const Data::MentionMap& _mentions = Data::MentionMap(),
             LinksVisible _showLinks = LinksVisible::SHOW_LINKS,
             ProcessLineFeeds _processLineFeeds = ProcessLineFeeds::KEEP_LINE_FEEDS,
-            EmojiSizeType _emojiSizeType = EmojiSizeType::REGULAR);
+            EmojiSizeType _emojiSizeType = EmojiSizeType::REGULAR,
+            ParseBackticksPolicy _backticksPolicy = ParseBackticksPolicy::KeepBackticks);
 
         TextUnitPtr MakeTextUnit(
             const QString& _text,
@@ -237,7 +246,6 @@ namespace Ui
             LinksVisible _showLinks = LinksVisible::SHOW_LINKS,
             ProcessLineFeeds _processLineFeeds = ProcessLineFeeds::KEEP_LINE_FEEDS,
             EmojiSizeType _emojiSizeType = EmojiSizeType::REGULAR);
-
 
         //some stuff for replacing blocks in debug mode
         bool InsertOrUpdateDebugMsgIdBlockIntoUnit(TextUnitPtr& _textUnit, qint64 _id, size_t _atPosition = 0);

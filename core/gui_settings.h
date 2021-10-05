@@ -19,6 +19,7 @@ namespace core
 
         bool load_exported();
         void clear_all_status_duration();
+        void clear_account_settings(std::string_view _aimid);
 
     public:
 
@@ -31,7 +32,7 @@ namespace core
 
         void start_save();
         void clear_values();
-        void clear_personal_values();
+        void clear_personal_values(const std::string_view _aimid);
         void clear_value(const std::string_view _value);
 
         virtual void set_value(std::string_view _name, tools::binary_stream&& _data);

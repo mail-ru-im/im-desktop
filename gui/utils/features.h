@@ -26,6 +26,7 @@ namespace Features
     };
 
     LoginMethod loginMethod();
+    bool isOAuth2LoginAllowed();
     size_t getSMSResultTime();
 
     bool showAttachPhoneNumberPopup();
@@ -88,7 +89,7 @@ namespace Features
     bool forceCheckMacUpdates();
     bool callRoomInfoEnabled();
 
-    bool isYourInvitesButtonVisible();
+    bool areYourInvitesButtonVisible();
     bool isGroupInvitesBlacklistEnabled();
 
     bool IvrLoginEnabled();
@@ -118,11 +119,42 @@ namespace Features
 
     bool isFormattingInInputEnabled();
 
+    bool isBlockFormattingInInputEnabled();
+
     QString statusBannerEmojis();
 
     bool isAppsNavigationBarVisible();
-    bool isTabBarVisible();
+    bool isMessengerTabBarVisible();
     bool isStatusInAppsNavigationBar();
 
+    bool isOrganizationStructureEnabled();
+    bool isTasksEnabled();
+    bool isCalendarEnabled();
+
+    bool isRecentsPinnedItemsEnabled();
+    bool isScheduledMessagesEnabled();
     bool isThreadsEnabled();
+    bool isRemindersEnabled();
+
+    bool isSharedFederationStickerpacksSupported();
+
+    std::chrono::milliseconds threadResubscribeTimeout();
+
+    bool isDraftEnabled();
+    std::chrono::seconds draftTimeout();
+    int draftMaximumLength();
+
+    bool isMessageCornerMenuEnabled();
+    bool isTaskCreationInChatEnabled();
+
+    bool isRestrictedFilesEnabled();
+    bool trustedStatusDefault();
+
+    bool isAntivirusCheckEnabled();
+    bool isAntivirusCheckProgressVisible();
+
+    bool isExpandedGalleryEnabled();
+    bool hasWebEngine();
+
+    std::chrono::seconds webPageReloadInterval();
 }

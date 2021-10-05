@@ -15,8 +15,9 @@ namespace hist
         using IdsSet = std::set<qint64>;
         struct LastReads
         {
-            qint64 text = -1;
-            qint64 mention = -1;
+            qint64 text_ = -1;
+            qint64 mention_ = -1;
+            std::once_flag flag_;
         };
 
     public:

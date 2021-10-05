@@ -4,7 +4,7 @@
 #include "smartreply_suggest.h"
 
 #include "../../../common.shared/smartreply/smartreply_types.h"
-#include "../tools/json_helper.h"
+#include "../../common.shared/json_helper.h"
 
 namespace core
 {

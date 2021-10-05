@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "user_agreement_info.h"
 
-#include "../../tools/json_helper.h"
+#include "../../../common.shared/json_helper.h"
 
 #include <rapidjson/prettywriter.h>
 #include <rapidjson/encodedstream.h>
@@ -17,7 +17,7 @@ user_agreement_info::user_agreement_info()
 
 int32_t user_agreement_info::unserialize(const rapidjson::Value& _node)
 {
-    assert(_node.IsArray());
+    im_assert(_node.IsArray());
 
     const auto& types = _node;
     for (rapidjson::SizeType i = 0; i < types.Size(); ++i)
@@ -25,7 +25,7 @@ int32_t user_agreement_info::unserialize(const rapidjson::Value& _node)
         const auto& type = types[i];
         if (!type.IsString())
         {
-            assert(!"not a string in useragreement array");
+            im_assert(!"not a string in useragreement array");
             continue;
         }
 

@@ -12,6 +12,7 @@ namespace core
             std::string dlink_;
             std::string mime_;
             std::string md5_;
+            bool trust_required_ = false;
 
             void serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const;
             void unserialize(const rapidjson::Value& _node);
@@ -92,7 +93,7 @@ namespace core
 
             static file_sharing_meta_uptr parse_json(InOut char* _json, std::string_view _uri);
 
-            int64_t get_status_code() const { return status_code_; }
+            int get_status_code() const { return status_code_; }
         };
     }
 }

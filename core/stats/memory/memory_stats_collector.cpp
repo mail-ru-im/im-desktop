@@ -68,7 +68,7 @@ reports_list memory_stats_collector::generate_instant_reports()
 
     for (auto &reporter: reporters_list_)
     {
-        assert(reporter);
+        im_assert(reporter);
 
         const auto& reports = reporter->generate_instant_reports();
         result.insert(result.end(), reports.begin(), reports.end());

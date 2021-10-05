@@ -29,6 +29,7 @@ namespace Ui
     class SearchWidget;
     class ContactListWidget;
     class GalleryPopup;
+    enum class MediaContentType;
 
     class UserProfile : public SidebarPage
     {
@@ -116,7 +117,7 @@ namespace Ui
         void updateCloseButton();
         void updatePinButton();
         void changeTab(int _tab);
-        void changeGalleryPage(int _page);
+        void changeGalleryPage(MediaContentType _page);
         void closeGallery();
         void loadInfo();
         void updateControls();
@@ -135,6 +136,8 @@ namespace Ui
 
         void switchMessageOrCallMode(MessageOrCallMode _mode);
         void hideControls();
+
+        void switchToGallery(MediaContentType _type);
 
     private:
         QElapsedTimer elapsedTimer_;
@@ -186,7 +189,7 @@ namespace Ui
         QString currentAimId_;
         QString currentPhone_;
         FrameCountMode frameCountMode_;
-        int currentGalleryPage_;
+        MediaContentType currentGalleryPage_;
         bool galleryIsEmpty_;
         bool shortView_;
         bool replaceFavorites_;

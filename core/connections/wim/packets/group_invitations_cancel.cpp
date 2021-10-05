@@ -2,7 +2,7 @@
 
 #include "group_invitations_cancel.h"
 #include "../../../http_request.h"
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 
 using namespace core;
 using namespace wim;
@@ -12,7 +12,7 @@ group_invitations_cancel::group_invitations_cancel(wim_packet_params _params, st
     , contact_(std::move(_contact))
     , chat_(std::move(_chat))
 {
-    assert(!contact_.empty() && !chat_.empty());
+    im_assert(!contact_.empty() && !chat_.empty());
 }
 
 std::string_view group_invitations_cancel::get_method() const

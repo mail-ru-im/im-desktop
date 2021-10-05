@@ -2,7 +2,7 @@
 #include "group_inviteblacklist_in_cl.h"
 
 #include "../../../http_request.h"
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 
 using namespace core;
 using namespace wim;
@@ -13,7 +13,7 @@ group_inviteblacklist_in_cl::group_inviteblacklist_in_cl(wim_packet_params _para
     , cursor_(_cursor)
     , page_size_(_page_size)
 {
-    assert(page_size_ > 0);
+    im_assert(page_size_ > 0);
 }
 
 group_inviteblacklist_in_cl::~group_inviteblacklist_in_cl() = default;

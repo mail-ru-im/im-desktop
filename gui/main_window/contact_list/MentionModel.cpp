@@ -134,7 +134,7 @@ namespace Logic
         dialogAimId_ = _aimid;
         localSearcher_->setExcludeChats(SearchDataSource::localAndServer);
         localSearcher_->setSearchSource(isGlobalContactSearchAllowed() ? SearchDataSource::localAndServer : SearchDataSource::local);
-        sendServerRequests_ = Logic::getContactListModel()->isChat(dialogAimId_) && isServerSearchEnabled();
+        sendServerRequests_ = isChatOrThread() && isServerSearchEnabled();
     }
 
     QString MentionModel::getDialogAimId() const
@@ -190,7 +190,7 @@ namespace Logic
 
         qCDebug(mentionsModel) << "Using mentions chat suggests from" << (useLocalResults ? "LOCAL" : "SERVER");
 
-        const auto isChat = Logic::getContactListModel()->isChat(dialogAimId_);
+        const auto isChat = isChatOrThread();
 
         match_ = std::move(useLocalResults ? localResults_: serverResults_);
 
@@ -396,7 +396,12 @@ namespace Logic
 
     bool MentionModel::isGlobalContactSearchAllowed() const
     {
-        return Features::isGlobalContactSearchAllowed() && !Logic::getContactListModel()->isChat(dialogAimId_);
+        return Features::isGlobalContactSearchAllowed() && !isChatOrThread();
+    }
+
+    bool Logic::MentionModel::isChatOrThread() const
+    {
+        return Logic::getContactListModel()->isChat(dialogAimId_) || Logic::getContactListModel()->isThread(dialogAimId_);
     }
 
     MentionModel* GetMentionModel()

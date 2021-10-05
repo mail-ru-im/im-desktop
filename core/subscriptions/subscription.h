@@ -13,6 +13,7 @@ namespace core::wim::subscriptions
         virtual ~subscription_base() = default;
 
         virtual void serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const = 0;
+        virtual void serialize_args(rapidjson::Value& _node, rapidjson_allocator& _a) const = 0;
         virtual subscr_clock_t::duration renew_interval() const = 0;
 
         virtual std::vector<std::string> get_log_markers() const { return {}; }
@@ -41,6 +42,7 @@ namespace core::wim::subscriptions
         antivirus_subscription(std::vector<std::string> _file_hashes);
 
         void serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const override;
+        void serialize_args(rapidjson::Value& _node, rapidjson_allocator& _a) const override;
         subscr_clock_t::duration renew_interval() const override;
         std::vector<std::string> get_log_markers() const override;
 
@@ -57,6 +59,7 @@ namespace core::wim::subscriptions
         status_subscription(std::vector<std::string> _contacts);
 
         void serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const override;
+        void serialize_args(rapidjson::Value& _node, rapidjson_allocator& _a) const override;
         subscr_clock_t::duration renew_interval() const override;
 
     private:
@@ -72,6 +75,7 @@ namespace core::wim::subscriptions
         call_room_info_subscription(std::vector<std::string> _room_ids);
 
         void serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const override;
+        void serialize_args(rapidjson::Value& _node, rapidjson_allocator& _a) const override;
         subscr_clock_t::duration renew_interval() const override;
 
     private:
@@ -79,6 +83,38 @@ namespace core::wim::subscriptions
 
     private:
         std::vector<std::string> room_ids_;
+    };
+
+    class thread_subscription : public subscription_base
+    {
+    public:
+        thread_subscription(std::vector<std::string> _thread_ids);
+
+        void serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const override;
+        void serialize_args(rapidjson::Value& _node, rapidjson_allocator& _a) const override;
+        subscr_clock_t::duration renew_interval() const override;
+
+    private:
+        bool equal(const subscription_base& _other) const override;
+
+    private:
+        std::vector<std::string> thread_ids_;
+    };
+
+    class task_subscription : public subscription_base
+    {
+    public:
+        task_subscription(std::vector<std::string> _room_ids);
+
+        void serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const override;
+        void serialize_args(rapidjson::Value& _node, rapidjson_allocator& _a) const override;
+        subscr_clock_t::duration renew_interval() const override;
+
+    private:
+        bool equal(const subscription_base& _other) const override;
+
+    private:
+        std::vector<std::string> task_ids_;
     };
 
     using subscr_ptr = std::shared_ptr<subscription_base>;
@@ -95,7 +131,12 @@ namespace core::wim::subscriptions
                 return std::make_shared<status_subscription>(std::forward<Args>(args)...);
             case subscriptions::type::call_room_info:
                 return std::make_shared<call_room_info_subscription>(std::forward<Args>(args)...);
+            case subscriptions::type::thread:
+                return std::make_shared<thread_subscription>(std::forward<Args>(args)...);
+            case subscriptions::type::task:
+                return std::make_shared<task_subscription>(std::forward<Args>(args)...);
             default:
+                im_assert(!"Unknown subscription type");
                 break;
         }
 

@@ -6,6 +6,7 @@
 #include "../main_window/sidebar/SidebarUtils.h"
 #include "../main_window/MainWindow.h"
 #include "../main_window/containers/FriendlyContainer.h"
+#include "main_window/contact_list/ContactListModel.h"
 #include "../styles/ThemeParameters.h"
 #include "../previewer/toast.h"
 
@@ -67,7 +68,9 @@ CallLinkWidget::CallLinkWidget(QWidget* _parent, Utils::CallLinkFrom _from, cons
     connect(linkLabel_, &TextLabel::copyClicked, this, &CallLinkWidget::copyLink);
     mainLayout->addSpacerItem(new QSpacerItem(0, Utils::scale_value(8), QSizePolicy::Expanding, QSizePolicy::Fixed));
 
-    mainDialog_ = std::make_unique<Ui::GeneralDialog>(mainWidget_, Utils::InterConnector::instance().getMainWindow());
+    GeneralDialog::Options opt;
+    opt.threadBadge_ = Logic::getContactListModel()->isThread(_aimId);
+    mainDialog_ = std::make_unique<Ui::GeneralDialog>(mainWidget_, Utils::InterConnector::instance().getMainWindow(), opt);
     mainDialog_->addLabel(getCaption(_type), Qt::AlignVCenter | Qt::AlignLeft);
     mainDialog_->addText(getDescription(_type, _from, _aimId), Utils::scale_value(12), Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
     mainDialog_->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "Send"), true);

@@ -21,6 +21,7 @@ namespace Ui
         void updateWallpaper(const QString& _aimId);
 
         bool isFlatColor() const;
+        const QString& aimId() const { return aimId_; }
 
     protected:
         void paintEvent(QPaintEvent*) override;
@@ -31,5 +32,6 @@ namespace Ui
         QPixmap wallpaper_;
         QColor bgColor_;
         QRect viewRect_;
+        QString aimId_;
     };
 }

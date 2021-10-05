@@ -5,7 +5,7 @@
 
 #include "../common.shared/string_utils.h"
 #include "../corelib/enumerations.h"
-#include "tools/json_helper.h"
+#include "../common.shared/json_helper.h"
 #include "tools/system.h"
 #include "tools/strings.h"
 #include "tools/features.h"
@@ -20,6 +20,7 @@ using namespace core;
 namespace
 {
     constexpr std::string_view json_name() noexcept { return "myteam-config.json"; };
+    constexpr std::string_view develop_json_name() noexcept { return "develop-myteam-config.json"; };
 
     constexpr std::string_view platform_key_name() noexcept
     {
@@ -44,6 +45,11 @@ namespace
     std::wstring config_filename()
     {
         return su::wconcat(core::utils::get_product_data_path(), L'/', core::tools::from_utf8(json_name()));
+    }
+
+    std::wstring develop_config_filename()
+    {
+        return su::wconcat(core::utils::get_product_data_path(), L'/', core::tools::from_utf8(develop_json_name()));
     }
 }
 
@@ -124,7 +130,7 @@ void external_url_config::load_async(std::string_view _url, load_callback_t _cal
     request->set_normalized_url("ext_url_cfg");
     request->set_use_curl_decompresion(true);
 
-    request->get_async([fire_callback = std::move(fire_callback), request, url = std::string(_url)](curl_easy::completion_code _code) mutable
+    request->get_async([fire_callback = std::move(fire_callback), request, url = std::string(_url), use_develop_local_config = use_develop_local_config_](curl_easy::completion_code _code) mutable
     {
         if (_code != curl_easy::completion_code::success)
         {
@@ -159,7 +165,7 @@ void external_url_config::load_async(std::string_view _url, load_callback_t _cal
             return;
         }
 
-        if (!external_url_config::instance().unserialize(doc))
+        if (!use_develop_local_config && !external_url_config::instance().unserialize(doc))
         {
             fire_callback(ext_url_config_error::answer_not_enough_fields, std::move(url));
             return;
@@ -175,7 +181,10 @@ void external_url_config::load_async(std::string_view _url, load_callback_t _cal
 bool external_url_config::load_from_file()
 {
     core::tools::binary_stream bstream;
-    if (!bstream.load_from_file(config_filename()))
+
+    use_develop_local_config_ = environment::is_develop() && bstream.load_from_file(develop_config_filename());
+
+    if (!use_develop_local_config_ && !bstream.load_from_file(config_filename()))
         return false;
 
     bstream.write<char>('\0');
@@ -193,7 +202,7 @@ bool external_url_config::load_from_file()
 
 std::string external_url_config::get_host(host_url_type _type) const
 {
-    if (const auto c = get_config(); c)
+    if (const auto c = get_config())
         return std::string(c->get_host(_type));
 
     return {};
@@ -312,6 +321,11 @@ bool external_url_config::config_p::unserialize(const rapidjson::Value& _node)
         if (!get_url(iter_templ->value, "profile", host_url_type::profile))
             return false;
 
+        get_url(iter_templ->value, "di", host_url_type::di);
+        get_url(iter_templ->value, "di-dark", host_url_type::di_dark);
+        get_url(iter_templ->value, "tasks", host_url_type::tasks);
+        get_url(iter_templ->value, "calendar", host_url_type::calendar);
+
         vcs_rooms_.clear();
         const auto iter_vcs = iter_templ->value.FindMember("vcs-room");
         if (iter_vcs != iter_templ->value.MemberEnd() && iter_vcs->value.IsString())
@@ -350,10 +364,14 @@ bool external_url_config::config_p::unserialize(const rapidjson::Value& _node)
 
     override_values_.clear();
 
-    const auto unserialize_feature = [this, &_node](auto feature, auto name)
+    const auto unserialize_feature_from_node = [this](const rapidjson::Value& _node, auto feature, auto name)
     {
         if (auto enabled = common::json::get_value<bool>(_node, name); enabled)
             override_features_.emplace_back(feature, *enabled);
+    };
+    const auto unserialize_feature = [&_node, &unserialize_feature_from_node](auto feature, auto name)
+    {
+        unserialize_feature_from_node(_node, feature, name);
     };
     const auto unserialize_value = [this, &_node](auto value, auto name)
     {
@@ -369,7 +387,28 @@ bool external_url_config::config_p::unserialize(const rapidjson::Value& _node)
     unserialize_feature(config::features::vcs_webinar_enabled, "allow-vcs-webinar-creation");
     unserialize_feature(config::features::phone_allowed, "attach-phone-enabled");
     unserialize_feature(config::features::silent_message_delete, "silent-message-delete");
+    unserialize_feature(config::features::support_shared_federation_stickerpacks, "support-shared-federation-stickerpacks");
+    unserialize_feature(config::features::smartreply_suggests_stickers, "smart-reply-stickers-enabled");
+    unserialize_feature(config::features::smartreply_suggests_text, "smart-reply-text-enabled");
+    unserialize_feature(config::features::restricted_files_enabled, "restricted-files-enabled");
+    unserialize_feature(config::features::antivirus_check_enabled, "antivirus-check-enabled");
+    unserialize_feature(config::features::threads_enabled, "threads-enabled");
     unserialize_value(config::values::status_banner_emoji_csv, "status-banner-emoji");
+
+    const auto iter_apps = _node.FindMember("mini-apps");
+    if (iter_apps != _node.MemberEnd() && iter_apps->value.IsObject())
+    {
+        unserialize_feature_from_node(iter_apps->value, config::features::tasks_enabled, "tasks-enabled");
+        unserialize_feature_from_node(iter_apps->value, config::features::task_creation_in_chat_enabled, "task-creation-in-chat-enabled");
+        unserialize_feature_from_node(iter_apps->value, config::features::organization_structure_enabled, "organization-structure-enabled");
+        unserialize_feature_from_node(iter_apps->value, config::features::calendar_enabled, "calendar-enabled");
+    }
+
+    // enable smartreply suggests for quotes if enabled for stickers and text
+    const auto is_smartreply_suggests_stickers = std::any_of(override_features_.cbegin(), override_features_.cend(), [](const auto& x) { return x == std::pair(config::features::smartreply_suggests_stickers, true); });
+    const auto is_smartreply_suggests_text = std::any_of(override_features_.cbegin(), override_features_.cend(), [](const auto& x) { return x == std::pair(config::features::smartreply_suggests_text, true); });
+    if (is_smartreply_suggests_stickers && is_smartreply_suggests_text)
+        override_features_.emplace_back(config::features::smartreply_suggests_for_quotes, true);
 
     return true;
 }

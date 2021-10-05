@@ -2,6 +2,7 @@
 
 #include "../corelib/enumerations.h"
 #include "controls/FlowLayout.h"
+#include "../history_control/complex_message/FileSharingUtils.h"
 
 namespace Emoji
 {
@@ -21,9 +22,8 @@ namespace Ui
         using stickerSptr = std::shared_ptr<Sticker>;
         typedef std::vector<std::shared_ptr<Stickers::Set>> setsArray;
         typedef std::shared_ptr<Set> setSptr;
+        using stickersArray = std::vector<Utils::FileSharingId>;
     }
-
-    using stickersArray = std::vector<QString>;
 
     namespace Smiles
     {
@@ -249,9 +249,9 @@ namespace Ui
 
         Q_SIGNALS:
             void emojiSelected(const Emoji::EmojiRecord& _emoji, const QPoint _pos);
-            void stickerSelected(const QString& _stickerId);
-            void stickerHovered(qint32 _setId, const QString& _stickerId);
-            void stickerPreview(qint32 _setId, const QString& _stickerId);
+            void stickerSelected(const Utils::FileSharingId& _stickerId);
+            void stickerHovered(qint32 _setId, const Utils::FileSharingId& _stickerId);
+            void stickerPreview(qint32 _setId, const Utils::FileSharingId& _stickerId);
             void stickerPreviewClose();
 
         private Q_SLOTS:
@@ -284,17 +284,17 @@ namespace Ui
 
             bool sendSelectedEmoji();
             void sendEmoji(const QModelIndex& _index, const EmojiSendSource _src);
-            void addStickers(const std::vector<QString>& _stickers);
+            void addStickers(const std::vector<Utils::FileSharingId>& _stickers);
 
         public:
             RecentsWidget(QWidget* _parent);
             ~RecentsWidget();
 
-            void addSticker(const QString& _stickerOd);
+            void addSticker(const Utils::FileSharingId& _stickerId);
             void addEmoji(const Emoji::EmojiRecord& _emoji);
             void initEmojisFromSettings();
             void initStickersFromSettings();
-            void onStickerUpdated(int32_t _setOd, const QString& _stickerOd);
+            void onStickerUpdated(int32_t _setOd, const Utils::FileSharingId& _stickerId);
             void resetPreview();
 
             bool sendSelected();
@@ -314,7 +314,7 @@ namespace Ui
 
             void clearSelection() override;
 
-            void clearIfNotSelected(const QString& _stickerId);
+            void clearIfNotSelected(const Utils::FileSharingId& _stickerId);
 
             bool isKeyboardActive() override;
 
@@ -329,16 +329,16 @@ namespace Ui
             Q_OBJECT
 
         public:
-            StickerWidget(QWidget* _parent, const QString& _stickerId, int _itemSize, int _stickerSize);
+            StickerWidget(QWidget* _parent, const Utils::FileSharingId& _stickerId, int _itemSize, int _stickerSize);
             void clearCache();
-            const QString& getId() const noexcept { return stickerId_; }
+            const Utils::FileSharingId& getId() const noexcept { return stickerId_; }
             void onVisibilityChanged(bool _visible);
 
         protected:
             void paintEvent(QPaintEvent* _e) override;
 
         private:
-            QString stickerId_;
+            Utils::FileSharingId stickerId_;
             QPixmap cached_;
             int stickerSize_;
 
@@ -354,9 +354,9 @@ namespace Ui
 
         Q_SIGNALS:
 
-            void stickerSelected(const QString& _stickerId);
-            void stickerPreview(const QString& _stickerId);
-            void stickerHovered(qint32 _setId, const QString& _stickerId);
+            void stickerSelected(const Utils::FileSharingId& _stickerId);
+            void stickerPreview(const Utils::FileSharingId& _stickerId);
+            void stickerHovered(qint32 _setId, const Utils::FileSharingId& _stickerId);
 
         private Q_SLOTS:
             void longtapTimeout();
@@ -381,7 +381,7 @@ namespace Ui
 
             int32_t itemSize_;
 
-            std::pair<int32_t, QString> hoveredSticker_;
+            std::pair<int32_t, Utils::FileSharingId> hoveredSticker_;
 
             bool keyboardActive_;
 
@@ -390,9 +390,9 @@ namespace Ui
 
             virtual bool resize(const QSize& _size, bool _force = false);
 
-            virtual std::pair<int32_t, QString> getStickerFromPos(const QPoint& _pos) const;
+            virtual std::pair<int32_t, Utils::FileSharingId> getStickerFromPos(const QPoint& _pos) const;
 
-            virtual void redrawSticker(const int32_t _setId, const QString& _stickerId);
+            virtual void redrawSticker(const int32_t _setId, const Utils::FileSharingId& _stickerId);
             void populateStickerWidgets();
 
             int getNeedHeight() const;
@@ -407,13 +407,13 @@ namespace Ui
             void mouseMoveEventInternal(const QPoint& _pos);
             void leaveEventInternal();
 
-            virtual void onStickerUpdated(int32_t _setId, const QString& _stickerId);
+            virtual void onStickerUpdated(int32_t _setId, const Utils::FileSharingId& _stickerId);
             void onStickerAdded();
 
             void onVisibilityChanged();
 
-            virtual int32_t getStickerPosInSet(const QString& _stickerId) const;
-            virtual const stickersArray& getStickerIds() const;
+            virtual int32_t getStickerPosInSet(const Utils::FileSharingId& _stickerId) const;
+            virtual const Ui::Stickers::stickersArray& getStickerIds() const;
 
             StickersTable(
                 QWidget* _parent,
@@ -424,11 +424,11 @@ namespace Ui
 
             ~StickersTable();
 
-            std::pair<int32_t, QString> getSelected() const;
-            virtual void setSelected(const std::pair<int32_t, QString>& _sticker);
+            std::pair<int32_t, Utils::FileSharingId> getSelected() const;
+            virtual void setSelected(const std::pair<int32_t, Utils::FileSharingId>& _sticker);
 
             bool sendSelected();
-            void clearIfNotSelected(const QString& _stickerId);
+            void clearIfNotSelected(const Utils::FileSharingId& _stickerId);
 
             void clearSelection() override;
 
@@ -462,7 +462,7 @@ namespace Ui
         //////////////////////////////////////////////////////////////////////////
         class RecentsStickersTable : public StickersTable
         {
-            stickersArray recentStickersArray_;
+            Ui::Stickers::stickersArray recentStickersArray_;
 
             int maxRowCount_;
 
@@ -471,14 +471,14 @@ namespace Ui
         public:
             void clear();
 
-            bool addSticker(const QString& _stickerId);
+            bool addSticker(const Utils::FileSharingId& _stickerId);
 
             void setMaxRowCount(int _val);
 
             RecentsStickersTable(QWidget* _parent, const qint32 _stickerSize, const qint32 _itemSize);
 
-            int32_t getStickerPosInSet(const QString& _stickerId) const override;
-            const stickersArray& getStickerIds() const override;
+            int32_t getStickerPosInSet(const Utils::FileSharingId& _stickerId) const override;
+            const Ui::Stickers::stickersArray& getStickerIds() const override;
 
             void selectLast() override;
             bool selectRight() override;
@@ -498,9 +498,9 @@ namespace Ui
 
         Q_SIGNALS:
 
-            void stickerSelected(const QString& _stickerId);
-            void stickerHovered(qint32 _setId, const QString& _stickerId);
-            void stickerPreview(int32_t _setId, const QString& _stickerId);
+            void stickerSelected(const Utils::FileSharingId& _stickerId);
+            void stickerHovered(qint32 _setId, const Utils::FileSharingId& _stickerId);
+            void stickerPreview(int32_t _setId, const Utils::FileSharingId& _stickerId);
             void stickerPreviewClose();
             void scrollTo(int _pos);
 
@@ -524,10 +524,10 @@ namespace Ui
         public:
             void init();
             void clear();
-            void onStickerUpdated(int32_t _setId, const QString& _stickerId);
+            void onStickerUpdated(int32_t _setId, const Utils::FileSharingId& _stickerId);
             void resetPreview();
 
-            void scrollToSticker(int32_t _setId, const QString& _stickerId);
+            void scrollToSticker(int32_t _setId, const Utils::FileSharingId& _stickerId);
 
             StickersWidget(QWidget* _parent, Toolbar* _toolbar);
         };
@@ -536,14 +536,14 @@ namespace Ui
         //////////////////////////////////////////////////////////////////////////
         // SmilesMenu
         //////////////////////////////////////////////////////////////////////////
-        class SmilesMenu : public QFrame
+        class SmilesMenu : public QWidget
         {
             Q_OBJECT
             Q_PROPERTY(int currentHeight READ getCurrentHeight WRITE setCurrentHeight)
 
         Q_SIGNALS:
             void emojiSelected(const Emoji::EmojiCode&, const QPoint _pos);
-            void stickerSelected(const QString& _stickerId);
+            void stickerSelected(const Utils::FileSharingId& _stickerId);
             void visibilityChanged(const bool _isVisible, QPrivateSignal) const;
             void scrolled();
 
@@ -551,12 +551,12 @@ namespace Ui
             void onSetIconChanged(int _setId);
             void touchScrollStateChanged(QScroller::State);
             void stickersMetaEvent();
-            void stickerEvent(const qint32 _error, const qint32 _setId, const QString& _stickerId);
+            void stickerEvent(const qint32 _error, const qint32 _setId, const Utils::FileSharingId& _stickerId);
             void onScroll(int _value);
             void hideStickerPreview();
 
         public:
-            SmilesMenu(QWidget* _parent);
+            SmilesMenu(QWidget* _parent, const QString& _aimId = {});
             ~SmilesMenu();
 
             void showAnimated();
@@ -566,7 +566,7 @@ namespace Ui
 
             void setCurrentHeight(int _val);
             int getCurrentHeight() const;
-            void addStickerToRecents(const qint32 _setId, const QString& _stickerId);
+            void addStickerToRecents(const qint32 _setId, const Utils::FileSharingId& _stickerId);
 
             void clearSelection();
             bool hasSelection() const;
@@ -574,32 +574,36 @@ namespace Ui
             void setToolBarVisible(bool _visible);
             void setRecentsVisible(bool _visible);
             void setStickersVisible(bool _visible);
+            void setAddButtonVisible(bool _visible);
             void setHorizontalMargins(int _margin);
             void setDrawTopBorder(bool _draw);
             void setTopSpacing(int _spacing);
 
+            void setPreviewAreaAdditions(QMargins _margins);
+
         private:
-            Toolbar* topToolbar_;
-            Toolbar* bottomToolbar_;
+            Toolbar* topToolbar_ = nullptr;
+            Toolbar* bottomToolbar_ = nullptr;
 
-            QScrollArea* viewArea_;
-            QBoxLayout* viewAreaLayout_;
+            QScrollArea* viewArea_ = nullptr;
+            QBoxLayout* viewAreaLayout_ = nullptr;
 
-            RecentsWidget* recentsView_;
-            EmojisWidget* emojiView_;
-            StickersWidget* stickersView_;
-            StickerPreview* stickerPreview_;
-            QVBoxLayout* rootVerticalLayout_;
-            QPropertyAnimation* animHeight_;
-            QPropertyAnimation* animScroll_;
-            QSpacerItem* topSpacer_;
+            RecentsWidget* recentsView_ = nullptr;
+            EmojisWidget* emojiView_ = nullptr;
+            StickersWidget* stickersView_ = nullptr;
+            StickerPreview* stickerPreview_ = nullptr;
+            QVBoxLayout* rootVerticalLayout_ = nullptr;
+            QPropertyAnimation* animHeight_ = nullptr;
+            QPropertyAnimation* animScroll_ = nullptr;
+            QSpacerItem* topSpacer_ = nullptr;
 
-            bool isVisible_;
-            bool blockToolbarSwitch_;
-            int currentHeight_;
-            bool setFocusToButton_;
-            bool lottieAllowed_;
-            bool drawTopBorder_;
+            bool isVisible_ = false;
+            bool blockToolbarSwitch_ = false;
+            int currentHeight_ = 0;
+            bool lottieAllowed_ = false;
+            bool drawTopBorder_ = true;
+            QMargins previewMargins_;
+            QString aimId_;
 
         private:
             void InitSelector();
@@ -627,9 +631,9 @@ namespace Ui
             void HookScroll();
             void showRecents();
 
-            void showStickerPreview(const int32_t _setId, const QString& _stickerId);
-            void updateStickerPreview(const int32_t _setId, const QString& _stickerId);
-            void onStickerHovered(const int32_t _setId, const QString& _stickerId);
+            void showStickerPreview(const int32_t _setId, const Utils::FileSharingId& _stickerId);
+            void updateStickerPreview(const int32_t _setId, const Utils::FileSharingId& _stickerId);
+            void onStickerHovered(const int32_t _setId, const Utils::FileSharingId& _stickerId);
             void onEmojiHovered();
 
             bool iskeyboardActive() const;

@@ -9,6 +9,7 @@
 namespace Ui
 {
     enum class MediaType;
+    enum class FileStatus;
 }
 
 CORE_NS_BEGIN
@@ -39,13 +40,15 @@ public:
 
     virtual IItemBlockLayout* getBlockLayout() const override;
 
-    QString getProgressText() const;
+    virtual QString getProgressText() const;
 
-    virtual Data::FormattedString getSourceText() const override;
+    Data::FString getSourceText() const override;
+
+    Data::FString getTextInstantEdit() const override;
 
     virtual QString getPlaceholderText() const override;
 
-    virtual Data::FormattedString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
+    virtual Data::FString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
 
     virtual void initialize() final override;
 
@@ -59,6 +62,7 @@ public:
 
     virtual ContentType getContentType() const override { return ContentType::FileSharing; }
 
+    bool onMenuItemTriggered(const QVariantMap& _params) override;
     IItemBlock::MenuFlags getMenuFlags(QPoint _p) const override;
 
     PinPlaceholderType getPinPlaceholder() const override;
@@ -100,6 +104,12 @@ public:
 
     Data::FilesPlaceholderMap getFilePlaceholders() override;
 
+    bool isDownloadAllowed() const;
+    bool isBlockedFileSharing() const override;
+    bool isFileSharingWithStatus() const override;
+
+    bool isDraggable() const override;
+
 Q_SIGNALS:
     void uploaded(QPrivateSignal) const;
 
@@ -107,7 +117,7 @@ protected:
 
     IFileSharingBlockLayout* getFileSharingLayout() const;
 
-    QString getFileSharingId() const;
+    const Utils::FileSharingId& getFileSharingId() const;
 
     const core::file_sharing_content_type& getType() const;
 
@@ -121,7 +131,7 @@ protected:
 
     virtual void onDownloadedAction() = 0;
 
-    virtual void onDataTransfer(const int64_t _bytesTransferred, const int64_t _bytesTotal) = 0;
+    virtual void onDataTransfer(const int64_t _bytesTransferred, const int64_t _bytesTotal, bool _showBytes = true) = 0;
 
     virtual void onDownloadingFailed(const int64_t _requestId) = 0;
 
@@ -141,7 +151,13 @@ protected:
 
     virtual void onPreviewMetainfoDownloaded() = 0;
 
-    void requestMetainfo(const bool _isPreview);
+    enum class MetainfoCache
+    {
+        Check,
+        DontCheck,
+    };
+
+    void requestMetainfo(const bool _isPreview, const MetainfoCache _cache = MetainfoCache::Check);
 
     void setBlockLayout(IFileSharingBlockLayout* _layout);
 
@@ -168,7 +184,7 @@ protected:
 
     bool isInited() const;
 
-    virtual std::optional<Data::FileSharingMeta> getMeta(const QString& _id) const override;
+    std::optional<Data::FileSharingMeta> getMeta(const Utils::FileSharingId& _id) const override;
 
 private:
     void connectSignals();
@@ -196,6 +212,8 @@ private:
 
     QString Link_;
 
+    Utils::FileSharingId fileId_;
+
     int64_t PreviewMetaRequestId_;
 
     QString SaveAs_;
@@ -208,10 +226,13 @@ private:
 
     QString uploadId_;
 
-    QTimer* dataTransferTimeout_;
+    QTimer* dataTransferTimeout_ = nullptr;
+
+    std::function<void()> delayedCallDownloading_;
 
 protected:
     Data::FileSharingMeta Meta_;
+    FileStatus status_;
 
 private Q_SLOTS:
     void onFileDownloaded(qint64 _seq, const Data::FileSharingDownloadResult& _result);

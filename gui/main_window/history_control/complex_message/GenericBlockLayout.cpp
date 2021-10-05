@@ -44,8 +44,7 @@ void GenericBlockLayout::setGeometry(const QRect &r)
 {
     QLayout::setGeometry(r);
 
-    const auto isResize = (r.topLeft() == QPoint());
-    if (isResize)
+    if (const auto isResize = (r.topLeft() == QPoint()))
         return;
 
     const QRect internalRect(QPoint(), r.size());
@@ -93,19 +92,14 @@ bool GenericBlockLayout::onBlockContentsChanged()
     const auto sizeBefore = BlockSize_;
 
     const auto &blockGeometry = getBlockGeometry();
-    const auto noGeometry = ((blockGeometry.width() == 0) && (blockGeometry.height() == 0));
-    if (noGeometry)
-    {
+    if (const auto noGeometry = ((blockGeometry.width() == 0) && (blockGeometry.height() == 0)))
         return false;
-    }
 
     BlockSize_ = setBlockGeometryInternal(blockGeometry);
 
     const auto isSizeChanged = (sizeBefore != BlockSize_);
     if (isSizeChanged)
-    {
         update();
-    }
 
     return isSizeChanged;
 }

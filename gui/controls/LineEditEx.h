@@ -9,7 +9,7 @@ namespace Ui
 Q_SIGNALS:
         void focusIn();
         void focusOut();
-        void clicked();
+        void clicked(Qt::MouseButton _button);
         void emptyTextBackspace();
         void escapePressed();
         void upArrow();
@@ -17,6 +17,7 @@ Q_SIGNALS:
         void enter();
         void tab();
         void backtab();
+        void scrolled(int _steps, QPrivateSignal);
 
     public:
         struct Options
@@ -43,11 +44,21 @@ Q_SIGNALS:
         void contextMenuEvent(QContextMenuEvent *) override;
         void paintEvent(QPaintEvent* _event) override;
         bool eventFilter(QObject* _obj, QEvent* _event) override;
+        void wheelEvent(QWheelEvent* _event) override;
+
+        enum class RenderMargins
+        {
+            ContentMargin,
+            TextMargin
+        };
+
+        void setRenderMargins(RenderMargins _margins);
 
     private:
         QString customPlaceholder_;
         QColor  customPlaceholderColor_;
         QMenu* contextMenu_ = nullptr;
         Options options_;
+        RenderMargins margins_ = RenderMargins::ContentMargin;
     };
 }

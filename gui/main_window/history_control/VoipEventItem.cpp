@@ -204,7 +204,7 @@ namespace Ui
         const auto active = isOutgoing ? Styling::StyleVariable::PRIMARY_BRIGHT_ACTIVE : Styling::StyleVariable::BASE_BRIGHT_ACTIVE;
 
         auto bgVariable = isHovered() ? (isPressed_ ? active : hover) : normal;
-        if (Utils::InterConnector::instance().isMultiselect())
+        if (Utils::InterConnector::instance().isMultiselect(aimId_))
             bgVariable = normal;
 
         const auto bgColor = Styling::getParameters(aimId_).getColor(bgVariable);
@@ -267,7 +267,7 @@ namespace Ui
 
         init();
 
-        Utils::InterConnector::instance().disableInMultiselect(callButton_);
+        Utils::InterConnector::instance().disableInMultiselect(callButton_, getContact());
 
         connect(Logic::GetAvatarStorage(), &Logic::AvatarStorage::avatarChanged, this, &VoipEventItem::onAvatarChanged);
         connect(Logic::GetFriendlyContainer(), &Logic::FriendlyContainer::friendlyChanged, this, &VoipEventItem::onContactNameChanged);
@@ -280,10 +280,7 @@ namespace Ui
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiselectAnimationUpdate, this, updateFunc);
     }
 
-    VoipEventItem::~VoipEventItem()
-    {
-        Utils::InterConnector::instance().detachFromMultiselect(callButton_);
-    }
+    VoipEventItem::~VoipEventItem() = default;
 
     QString VoipEventItem::formatRecentsText() const
     {
@@ -365,7 +362,7 @@ namespace Ui
         menu->addSeparator();
         menu->addActionWithIcon(qsl(":/context_menu/delete"), QT_TRANSLATE_NOOP("context_menu", "Delete for me"), makeData(qsl("delete")));
 
-        if (aimId != MyInfo()->aimId() && (isOutgoing() || Logic::getContactListModel()->isYouAdmin(aimId)))
+        if (aimId != MyInfo()->aimId() && (isOutgoing() || Logic::getContactListModel()->areYouAdmin(aimId)))
             menu->addActionWithIcon(qsl(":/context_menu/deleteall"), QT_TRANSLATE_NOOP("context_menu", "Delete for all"), makeData(qsl("delete_all")));
 
         if (GetAppConfig().IsContextMenuFeaturesUnlocked())
@@ -438,7 +435,7 @@ namespace Ui
 
     void VoipEventItem::mouseDoubleClickEvent(QMouseEvent* _e)
     {
-        if (!Utils::InterConnector::instance().isMultiselect() && _e->button() == Qt::LeftButton)
+        if (_e->button() == Qt::LeftButton && !Utils::InterConnector::instance().isMultiselect(getContact()))
         {
             auto emitQuote = true;
             if (BubbleRect_.contains(_e->pos()))
@@ -483,10 +480,10 @@ namespace Ui
             return;
 
         QPainter p(this);
-        p.setRenderHint(QPainter::Antialiasing);
-        p.setRenderHint(QPainter::TextAntialiasing);
+        p.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing | QPainter::SmoothPixmapTransform);
 
-        drawSelection(p, BubbleRect_);
+        if (Utils::InterConnector::instance().isMultiselect(getContact()))
+            drawSelection(p, BubbleRect_);
 
         if (const auto st = getLastStatus(); st != LastStatus::None)
             drawLastStatusIcon(p, st, getContact(), friendlyName_, 0);
@@ -531,7 +528,7 @@ namespace Ui
         QMargins margins(
             left,
             MessageStyle::getTopMargin(hasTopMargin()),
-            MessageStyle::getRightMargin(outgoing, w),
+            MessageStyle::getRightMargin(outgoing, w, getContact()),
             0
         );
 
@@ -721,7 +718,7 @@ namespace Ui
         const auto isSelected = (overlapRatePercents > 50);
         if (isSelected)
         {
-            Utils::InterConnector::instance().setMultiselect(true);
+            Utils::InterConnector::instance().setMultiselect(true, EventInfo_->getContactAimid());
             const auto isSelectionTopToBottom = (_from.y() <= _to.y());
             const auto &topPoint = (isSelectionTopToBottom ? _from : _to);
             const auto &bottomPoint = (isSelectionTopToBottom ? _to : _from);
@@ -776,7 +773,7 @@ namespace Ui
 
     void VoipEventItem::setQuoteSelection()
     {
-        QuoteAnimation_.startQuoteAnimation();
+        QuoteAnimation_->startQuoteAnimation();
     }
 
     void VoipEventItem::updateSize()
@@ -894,7 +891,7 @@ namespace Ui
             Utils::drawBubbleShadow(_p, Bubble_);
 
         _p.fillPath(Bubble_, bodyBrush);
-        if (QColor qColor = QuoteAnimation_.quoteColor(); qColor.isValid())
+        if (QColor qColor = QuoteAnimation_->quoteColor(); qColor.isValid())
         {
             _p.fillPath(Bubble_, qColor);
             bodyBrush.setColor(blendColors(bodyBrush.color(), qColor, qColor.alphaF()));

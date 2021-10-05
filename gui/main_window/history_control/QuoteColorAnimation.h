@@ -23,7 +23,6 @@ protected:
     QColor getStartColor() const;
 
     QString aimId_;
-    QWidget* Widget_;
     QColor QuoteColor_;
     int Alpha_;
     bool IsActive_;

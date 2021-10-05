@@ -12,12 +12,13 @@ namespace Ui
         : QWidget(_parent)
         , hoverStateCursor_(Qt::PointingHandCursor)
     {
-        setAttribute(Qt::WA_Hover, true);
+        setAttribute(Qt::WA_Hover);
         setMouseTracking(true);
     }
 
     SimpleListItem::~SimpleListItem()
     {
+        unsetCursor();
     }
 
     void SimpleListItem::setSelected(bool)
@@ -38,11 +39,11 @@ namespace Ui
         return false;
     }
 
-    void SimpleListItem::setPressed(const bool _isPressed)
+    void SimpleListItem::setPressed(bool _isPressed)
     {
-        if (isPressed_ != _isPressed)
+        if (std::exchange(isPressed_, _isPressed) != _isPressed)
         {
-            isPressed_ = _isPressed;
+            Q_EMIT pressChanged(isPressed_);
             update();
         }
     }
@@ -52,6 +53,16 @@ namespace Ui
         return isPressed_;
     }
 
+    void SimpleListItem::setHovered(bool _isHovered)
+    {
+        if (std::exchange(isHovered_, _isHovered) != _isHovered)
+        {
+            setCursor(isHovered_ ? getHoverStateCursor() : Qt::ArrowCursor);
+            Q_EMIT hoverChanged(isHovered_);
+            update();
+        }
+    }
+
     bool SimpleListItem::isHovered() const noexcept
     {
         return isHovered_;
@@ -59,11 +70,9 @@ namespace Ui
 
     void SimpleListItem::setHoverStateCursor(Qt::CursorShape _value)
     {
-        if (hoverStateCursor_ != _value)
+        if (std::exchange(hoverStateCursor_, _value) != _value)
         {
-            hoverStateCursor_ = _value;
-
-            if (isHovered())
+            if (isHovered() || isPressed())
                 update();
         }
     }
@@ -73,31 +82,16 @@ namespace Ui
         return hoverStateCursor_;
     }
 
-    bool SimpleListItem::event(QEvent* _event)
+    void SimpleListItem::enterEvent(QEvent* _event)
     {
-        switch (_event->type())
-        {
-        case QEvent::HoverEnter:
-        {
-            isHovered_ = true;
-            setCursor(getHoverStateCursor());
-            Q_EMIT hoverChanged(isHovered_, QPrivateSignal());
-            update();
-        }
-        break;
-        case QEvent::HoverLeave:
-        {
-            isHovered_ = false;
-            setCursor(Qt::ArrowCursor);
-            Q_EMIT hoverChanged(isHovered_, QPrivateSignal());
-            update();
-        }
-        break;
-        default:
-            break;
-        }
+        setHovered(true);
+        QWidget::enterEvent(_event);
+    }
 
-        return QWidget::event(_event);
+    void SimpleListItem::leaveEvent(QEvent* _event)
+    {
+        setHovered(false);
+        QWidget::leaveEvent(_event);
     }
 
     SimpleListWidget::SimpleListWidget(Qt::Orientation _o, QWidget* _parent)
@@ -118,23 +112,36 @@ namespace Ui
         return int(items_.size() - 1);
     }
 
+    int SimpleListWidget::addItem(SimpleListItem* _tab, int _index)
+    {
+        if (auto boxLayout = qobject_cast<QBoxLayout*>(layout()))
+        {
+            if (_index >= 0 && static_cast<size_t>(_index) <= items_.size())
+                items_.insert(std::next(items_.cbegin(), _index), _tab);
+            else
+                items_.push_back(_tab);
+
+            boxLayout->insertWidget(_index, _tab);
+            return _index;
+        }
+        return -1;
+    }
+
     void SimpleListWidget::setCurrentIndex(int _index)
     {
-        if (_index != currentIndex_)
-        {
-            if (isValidIndex(currentIndex_))
-                items_[currentIndex_]->setSelected(false);
+        if (_index == currentIndex_)
+            return;
 
-            if (isValidIndex(_index))
-            {
-                currentIndex_ = _index;
-                items_[currentIndex_]->setSelected(true);
-            }
-            else
-            {
-                currentIndex_ = -1;
-                qWarning("ListWidget: invalid index");
-            }
+        if (isValidIndex(_index))
+        {
+            clearSelection();
+            currentIndex_ = _index;
+            items_[currentIndex_]->setSelected(true);
+        }
+        else
+        {
+            currentIndex_ = -1;
+            qWarning("ListWidget: invalid index");
         }
     }
 
@@ -148,6 +155,17 @@ namespace Ui
         if (isValidIndex(_index))
             return items_[_index];
         return nullptr;
+    }
+
+    void SimpleListWidget::removeItemAt(int _index)
+    {
+        if (auto item = itemAt(_index))
+        {
+            item->hide();
+            layout()->removeWidget(item);
+            item->deleteLater();
+            items_.erase(std::next(items_.begin(), _index));
+        }
     }
 
     int SimpleListWidget::count() const noexcept
@@ -179,6 +197,13 @@ namespace Ui
         layout()->setSpacing(_spacing);
     }
 
+    void SimpleListWidget::updateHoverState()
+    {
+        const auto pos = mapFromGlobal(QCursor::pos());
+        for (auto item : items_)
+            item->setHovered(item->geometry().contains(pos));
+    }
+
     bool SimpleListWidget::isValidIndex(int _index) const noexcept
     {
         return _index >= 0 && _index < int(items_.size());
@@ -186,15 +211,17 @@ namespace Ui
 
     void SimpleListWidget::mousePressEvent(QMouseEvent* _event)
     {
-        const auto pos = _event->pos();
-        for (size_t i = 0; i < items_.size(); ++i)
+        const auto itemIdx = indexOf([pos = _event->pos()](auto item)
         {
-            if (items_[i]->isVisible() && items_[i]->geometry().contains(pos))
-            {
-                pressedIndex_ = { int(i),  _event->button() };
-                break;
-            }
+            return item->isVisible() && item->geometry().contains(pos);
+        });
+        if (auto item = itemAt(itemIdx))
+        {
+            const auto accepted = item->acceptedButtons();
+            if (std::any_of(accepted.begin(), accepted.end(), [btn = _event->button()](auto b) { return b == btn; }))
+                pressedIndex_ = { itemIdx,  _event->button() };
         }
+
         updatePressedState();
 
         QWidget::mousePressEvent(_event);
@@ -202,20 +229,17 @@ namespace Ui
 
     void SimpleListWidget::mouseReleaseEvent(QMouseEvent* _event)
     {
-        const auto pos = _event->pos();
-        for (size_t i = 0; i < items_.size(); ++i)
+        if (auto item = itemAt(pressedIndex_.index_))
         {
-            if (items_[i]->isVisible() && items_[i]->geometry().contains(pos))
+            if (item->isVisible() && item->geometry().contains(_event->pos()))
             {
-                if (int(i) == pressedIndex_.index_)
+                if (const auto btn = pressedIndex_.button_; btn == _event->button())
                 {
-                    if ((pressedIndex_.button_ == Qt::LeftButton) && (_event->button() == Qt::LeftButton))
+                    if (btn == Qt::LeftButton)
                         Q_EMIT clicked(pressedIndex_.index_, QPrivateSignal());
-                    else if ((pressedIndex_.button_ == Qt::RightButton) && (_event->button() == Qt::RightButton))
+                    else if (btn == Qt::RightButton)
                         Q_EMIT rightClicked(pressedIndex_.index_, QPrivateSignal());
                 }
-
-                break;
             }
         }
 

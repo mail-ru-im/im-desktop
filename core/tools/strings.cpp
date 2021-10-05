@@ -6,26 +6,26 @@
 #include <locale>
 #include <string>
 
+#ifdef __linux__
+using converter_t = std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t>;
+#else
+using converter_t = std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>;
+#endif //__linux__
+
 namespace core
 {
     namespace tools
     {
         std::string from_utf16(std::wstring_view _source_16)
         {
-#ifdef __linux__
-            return std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t>().to_bytes(_source_16.data(), _source_16.data() + _source_16.size());
-#else
-            return std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>().to_bytes(_source_16.data(), _source_16.data() + _source_16.size());
-#endif //__linux__
+             static converter_t converter;
+             return converter.to_bytes(_source_16.data(), _source_16.data() + _source_16.size());
         }
 
         std::wstring from_utf8(std::string_view _source_8)
         {
-#ifdef __linux__
-            return std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t>().from_bytes(_source_8.data(), _source_8.data() + _source_8.size());
-#else
-            return std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>().from_bytes(_source_8.data(), _source_8.data() + _source_8.size());
-#endif //__linux__
+             static converter_t converter;
+             return converter.from_bytes(_source_8.data(), _source_8.data() + _source_8.size());
         }
 
         bool is_digit(char _c)
@@ -120,17 +120,6 @@ namespace core
             return buffer.data();
         }
 #endif // _WIN32
-
-        std::string wstring_to_string(const std::wstring& _wstr)
-        {
-#if defined(__linux__)
-            return std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t>().to_bytes(_wstr);
-#elif defined(__APPLE__)
-            return std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>().to_bytes(_wstr);
-#else
-            return from_utf16(short_path_for(_wstr));
-#endif //__linux__
-        }
 
         std::string adler32(std::string_view _input)
         {

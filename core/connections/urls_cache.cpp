@@ -48,6 +48,9 @@ namespace
                 { url_type::avatars,                    config::hosts::host_url_type::base_binary, su::concat(api_ver, "/files/avatar") },
                 { url_type::sticker,                    config::hosts::host_url_type::base_binary, su::concat(api_ver, "/files/sticker") },
                 { url_type::wallpapers,                 config::hosts::host_url_type::base_binary, "/images/wallpapers/" },
+                { url_type::tasks_host,                 config::hosts::host_url_type::base, su::concat(api_ver, "/tasks/")  },
+                { url_type::oauth2_login,               config::hosts::host_url_type::mail_oauth2, oauth2_login_path },
+                { url_type::oauth2_token,               config::hosts::host_url_type::mail_oauth2, oauth2_token_path }
             };
             return cache;
         }();
@@ -64,7 +67,7 @@ std::string core::urls::get_url(url_type _type, with_https _https)
     if (const auto it = std::find_if(cache.begin(), cache.end(), [_type](const auto& item) { return item.url_type_ == _type; }); it != cache.end())
         return su::concat(_https == with_https::yes ? https : std::string_view(), config::hosts::get_host_url(it->host_type_), it->url_);
 
-    assert(false);
+    im_assert(false);
     return {};
 }
 

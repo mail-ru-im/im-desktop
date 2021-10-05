@@ -17,6 +17,7 @@ namespace Heads
 namespace Utils
 {
     class OpacityEffect;
+    struct FileSharingId;
 }
 
 namespace Ui
@@ -211,7 +212,7 @@ namespace Ui
         void setSmartreplyButton(QWidget* _button);
         void notifyQuotesResize();
 
-        std::optional<Data::FileSharingMeta> getMeta(const QString& _id) const;
+        std::optional<Data::FileSharingMeta> getMeta(const Utils::FileSharingId& _id) const;
 
     private:
 
@@ -242,7 +243,7 @@ namespace Ui
         using ItemsInfo = std::deque<ItemInfoUptr>;
         using ItemsInfoIter = ItemsInfo::iterator;
 
-        std::set<QWidget*> Widgets_;
+        std::unordered_set<QWidget*> Widgets_;
 
         ItemsInfo LayoutItems_;
 
@@ -283,7 +284,7 @@ namespace Ui
 
         QRect absolute2Viewport(QRect absolute) const;
 
-        void applyItemsGeometry(const bool _checkVisibility = true);
+        void applyItemsGeometry();
 
         void applyBottomWidgetsGeometry();
         void applyTypingWidgetGeometry();

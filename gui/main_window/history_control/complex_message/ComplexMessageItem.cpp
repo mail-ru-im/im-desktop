@@ -16,6 +16,7 @@
 #include "../../../my_info.h"
 #include "../StickerInfo.h"
 #include "../SnippetCache.h"
+#include "../FileStatus.h"
 
 #include "../../contact_list/RecentsTab.h"
 #include "../../contact_list/ContactListModel.h"
@@ -49,8 +50,6 @@
 #include "spellcheck/Spellchecker.h"
 
 #include "../../../common.shared/config/config.h"
-
-#include "../../MainPage.h"
 
 UI_COMPLEX_MESSAGE_NS_BEGIN
 
@@ -182,7 +181,7 @@ namespace
             parser.process(_url);
             if (parser.hasUrl())
             {
-                if (!isInternalUrl(_url))
+                if (!isInternalUrl(_url) && !Utils::isUrlVCS(_url))
                 {
                     if (!_text.isEmpty())
                     {
@@ -195,11 +194,7 @@ namespace
                     }
                     else
                     {
-                        if (Utils::GetConfirmationWithTwoButtons(QT_TRANSLATE_NOOP("bots", "Cancel"), QT_TRANSLATE_NOOP("bots", "Ok"),
-                            QT_TRANSLATE_NOOP("bots", "Are you sure you want to open an external link %1?").arg(_url), QString(), nullptr))
-                        {
-                            Utils::openUrl(_url);
-                        }
+                        Utils::openUrl(_url, Utils::OpenUrlConfirm::Yes);
                     }
                 }
                 else
@@ -218,6 +213,20 @@ namespace
                 Utils::showTextToastOverContactDialog(_text);
         }
     }
+
+    Data::FString borrowStylesFromWord(Data::FStringView _source, const QString& _target)
+    {
+        auto result = Data::FString(_target);
+        if (auto firstLetter = _source.left(1); firstLetter.hasFormatting())
+        {
+            core::data::format::builder formats;
+            for (const auto& style : firstLetter.getStyles())
+                formats %= core::data::range_format(style.type_, {0, result.size()});
+
+            result.setFormatting(formats.finalize());
+        }
+        return result;
+    };
 
     constexpr auto BUTTON_ANIMATION_START_TIMEOUT = std::chrono::milliseconds(200);
 
@@ -264,10 +273,9 @@ ComplexMessageItem::ComplexMessageItem(QWidget* _parent, const Data::MessageBudd
     , shareButton_(nullptr)
     , shareButtonAnimation_(nullptr)
     , shareButtonOpacityEffect_(nullptr)
-    , SourceText_(Features::isFormattingInBubblesEnabled() ? _msg.GetSourceText() : _msg.GetSourceText().string())
+    , SourceText_(_msg.GetSourceText())
     , TimeWidget_(nullptr)
     , timeAnimation_(nullptr)
-    , timeOpacityEffect_(nullptr)
     , Time_(-1)
     , bQuoteAnimation_(false)
     , bObserveToSize_(false)
@@ -283,19 +291,17 @@ ComplexMessageItem::ComplexMessageItem(QWidget* _parent, const Data::MessageBudd
     im_assert(!SenderAimid_.isEmpty());
     im_assert(!ChatAimid_.isEmpty());
 
+    setContact(ChatAimid_); // order is important, must be called as soon as possible
+    setBuddy(_msg);
+
     SenderAimidForDisplay_ = Logic::getContactListModel()->isChannel(ChatAimid_) ? ChatAimid_ : _msg.getSender();
     SenderFriendly_ = Logic::GetFriendlyContainer()->getFriendly(_msg.Chat_ ? SenderAimid_ : (_msg.IsOutgoing() ? Ui::MyInfo()->aimId() : _msg.AimId_));
 
     buttonLabel_ = TextRendering::MakeTextUnit(QString());
-    buttonLabel_->init(MessageStyle::getButtonsFont(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+    initButtonsLabel();
 
     if (!isHeadless())
-    {
         im_assert(Date_.isValid());
-    }
-
-    setBuddy(_msg);
-    setContact(ChatAimid_);
 
     Layout_ = new ComplexMessageItemLayout(this);
     setLayout(Layout_);
@@ -346,7 +352,7 @@ QString ComplexMessageItem::formatRecentsText() const
 
     QString tmp;
 
-    unsigned textBlocks = 0, fileSharingBlocks = 0, linkBlocks = 0, quoteBlocks = 0, pollBlocks = 0, otherBlocks = 0;
+    unsigned textBlocks = 0, fileSharingBlocks = 0, linkBlocks = 0, quoteBlocks = 0, pollBlocks = 0, taskBlocks = 0, otherBlocks = 0;
 
     for (const auto b : Blocks_)
     {
@@ -365,7 +371,7 @@ QString ComplexMessageItem::formatRecentsText() const
 
         case IItemBlock::ContentType::Link:
             tmp = b->formatRecentsText();
-            if (Blocks_.size() - textBlocks - quoteBlocks != 1 || !textOnly.contains(tmp))
+            if (getBlockCount() - textBlocks - quoteBlocks != 1 || !textOnly.contains(tmp))
             {
                 if (linkBlocks)
                     textOnly += QChar::Space;
@@ -391,6 +397,11 @@ QString ComplexMessageItem::formatRecentsText() const
 
         case IItemBlock::ContentType::Poll:
             ++pollBlocks;
+            break;
+
+        case IItemBlock::ContentType::Task:
+            ++taskBlocks;
+            textOnly += b->formatRecentsText();
             break;
 
         case IItemBlock::ContentType::Other:
@@ -419,7 +430,7 @@ QString ComplexMessageItem::formatRecentsText() const
     {
         res = QT_TRANSLATE_NOOP("poll_block", "Poll: ") % textOnly;
     }
-    else if (!textOnly.isEmpty() && ((linkBlocks || quoteBlocks) || (fileSharingBlocks && (linkBlocks || otherBlocks || textBlocks || quoteBlocks))))
+    else if (!textOnly.isEmpty() && ((linkBlocks || quoteBlocks) || (fileSharingBlocks && (linkBlocks || otherBlocks || textBlocks || quoteBlocks))) || taskBlocks)
     {
         res = textOnly;
     }
@@ -443,17 +454,15 @@ MediaType ComplexMessageItem::getMediaType(MediaRequestMode _mode) const
 {
     if (!Blocks_.empty())
     {
-        const auto containsPoll = std::any_of(Blocks_.begin(), Blocks_.end(), [](const auto& _block) { return _block->getContentType() == IItemBlock::ContentType::Poll; });
-
-        if (containsPoll)
+        // contains poll?
+        if (findBlock(Blocks_.begin(), Blocks_.end(), uint32_t(IItemBlock::ContentType::Poll)) != nullptr)
             return Ui::MediaType::mediaTypePoll;
 
-        const auto mediaBlocksNumber = std::count_if(Blocks_.begin(), Blocks_.end(),
-            [](const auto& _block)
-            {
-                return _block->isPreviewable();
-            }
-        );
+        // contains task?
+        if (findBlock(Blocks_.begin(), Blocks_.end(), uint32_t(IItemBlock::ContentType::Task)) != nullptr)
+            return Ui::MediaType::mediaTypeTask;
+
+        const auto mediaBlocksNumber = std::count_if(Blocks_.begin(), Blocks_.end(), [](const auto& _block) { return _block->isPreviewable(); });
 
         for (const auto _block : Blocks_)
         {
@@ -513,22 +522,16 @@ void ComplexMessageItem::updateFriendly(const QString& _aimId, const QString& _f
 
 PinPlaceholderType ComplexMessageItem::getPinPlaceholder() const
 {
-    im_assert(!Blocks_.empty());
-
     std::vector<PinPlaceholderType> types;
-    types.reserve(Blocks_.size());
+    types.reserve(getBlockCount());
     for (const auto b : Blocks_)
     {
         if (b->getContentType() == IItemBlock::ContentType::Quote)
             return PinPlaceholderType::None;
 
-        types.emplace_back(b->getPinPlaceholder());
+        if (const auto ph = b->getPinPlaceholder(); ph != PinPlaceholderType::None)
+            types.push_back(ph);
     }
-
-    types.erase(std::remove_if(types.begin(), types.end(), [](auto _type)
-    {
-        return _type == PinPlaceholderType::None;
-    }), types.end());
 
     if (types.size() == 1)
         return types.front();
@@ -553,28 +556,17 @@ void ComplexMessageItem::requestPinPreview(PinPlaceholderType _type)
 
 QString ComplexMessageItem::getFirstLink() const
 {
-    for (const auto b : Blocks_)
-    {
-        switch (b->getContentType())
-        {
-        case IItemBlock::ContentType::Link:
-        case IItemBlock::ContentType::FileSharing:
-            return b->getSourceText().string();
-
-        default:
-            break;
-        }
-    }
+    if (auto blk = findBlock(Blocks_.begin(), Blocks_.end(), uint32_t(IItemBlock::ContentType::Sticker) |
+                                                             uint32_t(IItemBlock::ContentType::FileSharing)))
+        return blk->getSourceText().string();
 
     return QString();
 }
 
 Data::StickerId ComplexMessageItem::getFirstStickerId() const
 {
-    for (const auto b : Blocks_)
-        if (b->getContentType() == IItemBlock::ContentType::Sticker)
-            return b->getStickerId();
-
+    if (auto blk = findBlock(Blocks_.begin(), Blocks_.end(), uint32_t(IItemBlock::ContentType::Sticker)))
+        return blk->getStickerId();
     return {};
 }
 
@@ -598,9 +590,9 @@ QString ComplexMessageItem::getQuoteHeader() const
     return getSenderFriendly() % u" (" % QDateTime::fromSecsSinceEpoch(Time_).toString(u"dd.MM.yyyy hh:mm") % u"):\n";
 }
 
-Data::FormattedString ComplexMessageItem::getSelectedText(const bool _isQuote, TextFormat _format) const
+Data::FString ComplexMessageItem::getSelectedText(const bool _isQuote, TextFormat _format) const
 {
-    Data::FormattedString text;
+    Data::FString text;
     if (!isSelected())
         return text;
 
@@ -609,7 +601,7 @@ Data::FormattedString ComplexMessageItem::getSelectedText(const bool _isQuote, T
     if (_isQuote)
         text += getQuoteHeader();
 
-    if (Utils::InterConnector::instance().isMultiselect())
+    if (Utils::InterConnector::instance().isMultiselect(ChatAimid_))
     {
         if (!Blocks_.empty() && Blocks_.front()->getContentType() == IItemBlock::ContentType::DebugText)
         {
@@ -618,7 +610,7 @@ Data::FormattedString ComplexMessageItem::getSelectedText(const bool _isQuote, T
             text += QChar::LineFeed;
         }
 
-        if (Blocks_.size() < 2 && !Description_.isEmpty())
+        if (getBlockCount() < 2 && !Description_.isEmpty())
         {
             text += Url_ % QChar::LineFeed;
             text += Description_;
@@ -674,6 +666,8 @@ bool ComplexMessageItem::isEditable() const
         auto linkBlocks = 0;
         auto quoteBlocks = 0;
         auto pollBlocks = 0;
+        auto taskBlocks = 0;
+        auto profileBlocks = 0;
         auto otherBlocks = 0;
         auto forward = false;
 
@@ -704,46 +698,60 @@ bool ComplexMessageItem::isEditable() const
             case IItemBlock::ContentType::Poll:
                 ++pollBlocks;
                 break;
+            case IItemBlock::ContentType::Task:
+                ++taskBlocks;
+                break;
+            case IItemBlock::ContentType::Profile:
+                ++profileBlocks;
+                break;
             default:
                 ++otherBlocks;
                 break;
             }
         }
 
-        const auto textOnly = textBlocks && !(fileBlocks || linkBlocks || pollBlocks || otherBlocks);
+        const auto textOnly = textBlocks && !(fileBlocks || linkBlocks || pollBlocks || taskBlocks || otherBlocks);
         const auto textAndMedia = textBlocks && (linkBlocks || fileBlocks || mediaBlocks);
         const auto mediaOnly = mediaBlocks && !(textBlocks || linkBlocks);
         const auto linkOnly = linkBlocks;
         const auto quoteAndText = !forward && quoteBlocks;
-        return (textOnly || textAndMedia || linkOnly || quoteAndText || mediaOnly) && !pollBlocks;
+        return (textOnly || textAndMedia || linkOnly || quoteAndText || mediaOnly || profileBlocks) && !pollBlocks && !taskBlocks;
     }
 
     return false;
 }
 
-bool ComplexMessageItem::isMediaOnly() const
+bool ComplexMessageItem::isSingleMedia() const
 {
-    return isMediaOnly_;
+    static constexpr auto mediaTypes =
+    {
+        MediaType::mediaTypeFsPhoto,
+        MediaType::mediaTypeFsVideo,
+        MediaType::mediaTypeFsGif,
+    };
+
+    return isSingleFilesharing()
+        && std::any_of(mediaTypes.begin(), mediaTypes.end(), [type = getMediaType()](auto t){ return t == type; });
 }
 
 bool ComplexMessageItem::isSimple() const
 {
-    return Blocks_.size() == 1 && Blocks_.front()->isSimple();
+    return getBlockCount() == 1 && Blocks_.front()->isSimple();
 }
 
 bool ComplexMessageItem::isSingleSticker() const
 {
-    return Blocks_.size() == 1 && Blocks_.front()->getContentType() == IItemBlock::ContentType::Sticker;
+    return isSingleBlockOfType(IItemBlock::ContentType::Sticker);
 }
 
 bool ComplexMessageItem::isSingleFilesharing() const
 {
-    return Blocks_.size() == 1 && Blocks_.front()->getContentType() == IItemBlock::ContentType::FileSharing;
+    return isSingleBlockOfType(IItemBlock::ContentType::FileSharing);
 }
 
 void ComplexMessageItem::onHoveredBlockChanged(IItemBlock *newHoveredBlock)
 {
-    if (hoveredBlock_ == newHoveredBlock || Utils::InterConnector::instance().isMultiselect())
+    if (hoveredBlock_ == newHoveredBlock || Utils::InterConnector::instance().isMultiselect(ChatAimid_))
     {
         if (!newHoveredBlock)
             hoveredBlock_ = nullptr;
@@ -758,7 +766,7 @@ void ComplexMessageItem::onHoveredBlockChanged(IItemBlock *newHoveredBlock)
 
 void ComplexMessageItem::onSharingBlockHoverChanged(IItemBlock* newHoveredBlock)
 {
-    if (Utils::InterConnector::instance().isMultiselect())
+    if (Utils::InterConnector::instance().isMultiselect(ChatAimid_))
     {
         if (!newHoveredBlock)
             hoveredSharingBlock_ = nullptr;
@@ -834,6 +842,8 @@ void ComplexMessageItem::onVisibleRectChanged(const QRect& _visibleRect)
     const auto visContent = Layout_->getBlocksContentRect().intersected(_visibleRect);
     for (auto block : Blocks_)
         block->onVisibleRectChanged(visContent.intersected(block->getBlockGeometry()));
+
+    HistoryControlPageItem::onVisibleRectChanged(_visibleRect);
 }
 
 void ComplexMessageItem::onDistanceToViewportChanged(const QRect& _widgetAbsGeometry, const QRect& _viewportVisibilityAbsRect)
@@ -842,63 +852,45 @@ void ComplexMessageItem::onDistanceToViewportChanged(const QRect& _widgetAbsGeom
         block->onDistanceToViewportChanged(_widgetAbsGeometry, _viewportVisibilityAbsRect);
 }
 
-
-void ComplexMessageItem::replaceBlockWithSourceText(IItemBlock *block, ReplaceReason _reason)
+void ComplexMessageItem::replaceBlockWithSourceText(IItemBlock* _block, ReplaceReason _reason)
 {
     const auto scopedExit = Utils::ScopeExitT([this]() { Q_EMIT layoutChanged(QPrivateSignal()); });
-    cleanupBlock(block);
+    cleanupBlock(_block);
 
     for (auto b : Blocks_)
     {
-        if (b->replaceBlockWithSourceText(block))
+        if (b->replaceBlockWithSourceText(_block))
         {
             Layout_->onBlockSizeChanged();
             return;
         }
     }
 
-    auto iter = std::find(Blocks_.begin(), Blocks_.end(), block);
-
-    if (iter == Blocks_.end())
+    if (!mergeToPreviousOrReplaceByText(Blocks_, _block, this, _reason))
     {
         im_assert(!"block is missing");
         return;
     }
 
-    auto& existingBlock = *iter;
-    im_assert(existingBlock);
-
-    auto textBlock = new TextBlock(this, (_reason == ReplaceReason::NoMeta)
-                                                ? existingBlock->getPlaceholderText()
-                                                : existingBlock->getSourceText());
-
-    textBlock->onActivityChanged(true);
-
-    textBlock->show();
-
-    existingBlock->deleteLater();
-    existingBlock = textBlock;
-
     updateTimeWidgetUnderlay();
-
     Layout_->onBlockSizeChanged();
 }
 
-void ComplexMessageItem::removeBlock(IItemBlock *block)
+void ComplexMessageItem::removeBlock(IItemBlock* _block)
 {
     const auto scopedExit = Utils::ScopeExitT([this]() { Q_EMIT layoutChanged(QPrivateSignal()); });
-    cleanupBlock(block);
+    cleanupBlock(_block);
 
     for (auto b : Blocks_)
     {
-        if (b->removeBlock(block))
+        if (b->removeBlock(_block))
         {
             Layout_->onBlockSizeChanged();
             return;
         }
     }
 
-    const auto iter = std::find(Blocks_.begin(), Blocks_.end(), block);
+    const auto iter = std::find(Blocks_.begin(), Blocks_.end(), _block);
 
     if (iter == Blocks_.end())
     {
@@ -908,7 +900,7 @@ void ComplexMessageItem::removeBlock(IItemBlock *block)
 
     Blocks_.erase(iter);
 
-    block->deleteLater();
+    _block->deleteLater();
     updateTimeWidgetUnderlay();
 
     for (auto b : Blocks_)
@@ -935,7 +927,7 @@ void ComplexMessageItem::selectByPos(const QPoint& from, const QPoint& to, const
 {
     im_assert(!Blocks_.empty());
 
-    if (Utils::InterConnector::instance().isMultiselect())
+    if (Utils::InterConnector::instance().isMultiselect(ChatAimid_))
         clearBlockSelection();
 
     if (handleSelectByPos(from, to, areaFrom, areaTo))
@@ -972,8 +964,8 @@ void ComplexMessageItem::selectByPos(const QPoint& from, const QPoint& to, const
                 clearBlockSelection();
 
             handleSelectByPos(from, to, areaFrom, areaTo);
-            Q_EMIT Utils::InterConnector::instance().selectionStateChanged(getId(), getInternalId(), true);
-            Q_EMIT Utils::InterConnector::instance().updateSelectedCount();
+            Q_EMIT Utils::InterConnector::instance().selectionStateChanged(ChatAimid_, getId(), getInternalId(), true);
+            Q_EMIT Utils::InterConnector::instance().updateSelectedCount(ChatAimid_);
         }
     }
 }
@@ -1001,8 +993,6 @@ void ComplexMessageItem::setHasSenderName(const bool _hasSender)
         for (auto block : Blocks_)
             block->resetClipping();
     }
-
-    updateSize();
 }
 
 void ComplexMessageItem::setItems(IItemBlocksVec blocks)
@@ -1095,16 +1085,79 @@ bool ComplexMessageItem::hasPictureContent() const
     }
 }
 
+template<class _BlockIt, class _OutIt>
+void findMismatchedBlocks(_BlockIt currFirst, _BlockIt currLast, _BlockIt otherFirst, _BlockIt otherLast, _OutIt result)
+{
+    size_t currSize = std::distance(currFirst, currLast);
+    size_t otherSize = std::distance(otherFirst, otherLast);
+    size_t n = std::min(currSize, otherSize);
+
+    for (size_t i = 0; i < n; ++i, ++currFirst, ++otherFirst)
+    {
+        auto currBlock = *currFirst;
+        auto otherBlock = *otherFirst;
+        if (currBlock->getContentType() != otherBlock->getContentType() ||
+            currBlock->getSourceText() != otherBlock->getSourceText())
+        {
+            *result = otherBlock;
+            ++result;
+        }
+    }
+
+    if (currSize < otherSize)
+        std::copy(otherFirst, otherLast, result);
+    else
+        std::copy(currFirst, currLast, result);
+}
+
+void ComplexMessageItem::removeBlocks(IItemBlocksVec::const_iterator _first, IItemBlocksVec::const_iterator _last)
+{
+    if (_first == _last)
+        return;
+
+    // create a temporary array since std::vector always invalidate iterators
+    std::vector<IItemBlock*> blks(_first, _last);
+    while (!blks.empty())
+    {
+        if (auto blk = blks.back())
+        {
+            blk->hideBlock();
+            removeBlock(blk);
+        }
+        blks.pop_back();
+    }
+}
+
+void ComplexMessageItem::insertBlocks(IItemBlocksVec::const_iterator _first, IItemBlocksVec::const_iterator _last, ComplexMessageItem* _other)
+{
+    im_assert(_other != nullptr);
+    if (_first == _last)
+        return;
+
+    std::copy(_first, _last, std::back_inserter(Blocks_));
+    std::for_each(_first, _last, [this, _other](auto b)
+    {
+        QWidget* w = dynamic_cast<QWidget*>(b);
+        im_assert(w != nullptr);
+        _other->Layout_->removeWidget(w);
+        b->setParentMessage(this);
+        b->onActivityChanged(true);
+        w->show();
+    });
+    _other->Blocks_.erase(_first, _last);
+
+    Layout_->onBlockSizeChanged();
+}
+
 bool ComplexMessageItem::canBeUpdatedWith(const ComplexMessageItem& _other) const
 {
-    if (Blocks_.size() != _other.Blocks_.size())
-        return false;
+    if (getBlockCount() != _other.getBlockCount())
+    {
+        std::vector<IItemBlock*> mismatched;
+        findMismatchedBlocks(Blocks_.begin(), Blocks_.end(), _other.Blocks_.begin(), _other.Blocks_.end(), std::back_inserter(mismatched));
 
-    const auto checkSticker = isSingleSticker() && _other.isSingleSticker();
-    const auto checkFS = isSingleFilesharing() && _other.isSingleFilesharing();
-    const auto checkPending = buddy().IsPending() || _other.buddy().IsPending();
-    if (!checkSticker && !checkFS && checkPending)
-        return false;
+        return (mismatched.size() == 1 && mismatched.back()->getContentType() == IItemBlock::ContentType::Text);
+    }
 
     auto iter = Blocks_.begin();
     auto iterOther = _other.Blocks_.begin();
@@ -1141,8 +1194,9 @@ void ComplexMessageItem::updateWith(ComplexMessageItem &_update)
         const auto editedChanged = _update.isEdited() != isEdited();
         const auto reactionsChanged = hasReactions() != _update.hasReactions();
         const auto buttonsMightChanged = (buttons_.size() + _update.buttons_.size()) > 0;
+        const auto threadIdChanged = getThreadId() != _update.getThreadId();
 
-        const auto needUpdateSize = editedChanged || reactionsChanged || buttonsMightChanged;
+        const auto needUpdateSize = editedChanged || reactionsChanged || buttonsMightChanged || threadIdChanged;
 
         setBuddy(_update.buddy());
 
@@ -1154,34 +1208,41 @@ void ComplexMessageItem::updateWith(ComplexMessageItem &_update)
 
         auto iter = Blocks_.begin();
         auto iterOther = _update.Blocks_.begin();
-        while (iter != Blocks_.end())
+        size_t n = std::min(getBlockCount(), _update.getBlockCount());
+        for (size_t i = 0; i < n; ++i, ++iter, ++iterOther)
         {
             auto block = *iter;
             auto otherBlock = *iterOther;
 
             block->updateWith(otherBlock);
-
-            ++iter;
-            ++iterOther;
         }
+
+        if (getBlockCount() < _update.getBlockCount())
+            insertBlocks(iterOther, _update.Blocks_.end(), &_update);
+        else
+            removeBlocks(iter, Blocks_.end());
 
         Description_ = _update.Description_;
 
         fillFilesPlaceholderMap();
+        updateTimeWidgetUnderlay();
+
+        setChainedToPrev(_update.isChainedToPrevMessage());
+        setChainedToNext(_update.isChainedToNextMessage());
 
         if (needUpdateSize)
             updateSize();
 
-        setChainedToPrev(_update.isChainedToPrevMessage());
-        setChainedToNext(_update.isChainedToNextMessage());
+        if (TimeWidget_)
+            Testing::setAccessibleName(TimeWidget_, u"AS HistoryPage messageTime " % QString::number(Id_));
     }
 }
 
-void ComplexMessageItem::getUpdatableInfoFrom(ComplexMessageItem &update)
+void ComplexMessageItem::getUpdatableInfoFrom(ComplexMessageItem& _update)
 {
     auto iter = Blocks_.begin();
-    auto iterOther = update.Blocks_.begin();
-    while (Blocks_.size() == update.Blocks_.size() && iter != Blocks_.end() && iterOther != update.Blocks_.end())
+    auto iterOther = _update.Blocks_.begin();
+    while (getBlockCount() == _update.getBlockCount() && iter != Blocks_.end() && iterOther != _update.Blocks_.end())
     {
         auto block = *iter;
         auto otherBlock = *iterOther;
@@ -1192,6 +1253,8 @@ void ComplexMessageItem::getUpdatableInfoFrom(ComplexMessageItem &update)
         ++iter;
         ++iterOther;
     }
+
+    copyPlates(&_update);
 }
 
 void ComplexMessageItem::leaveEvent(QEvent *event)
@@ -1224,7 +1287,7 @@ void ComplexMessageItem::mouseMoveEvent(QMouseEvent *_event)
 {
     _event->ignore();
 
-    if (!Utils::InterConnector::instance().isMultiselect())
+    if (!Utils::InterConnector::instance().isMultiselect(ChatAimid_))
     {
         const auto mousePos = _event->pos();
 
@@ -1263,7 +1326,7 @@ void ComplexMessageItem::mouseMoveEvent(QMouseEvent *_event)
 void ComplexMessageItem::mousePressEvent(QMouseEvent *event)
 {
     const auto isLeftButtonPressed = (event->button() == Qt::LeftButton);
-    if (isLeftButtonPressed && Utils::InterConnector::instance().isMultiselect())
+    if (isLeftButtonPressed && Utils::InterConnector::instance().isMultiselect(ChatAimid_))
         return HistoryControlPageItem::mousePressEvent(event);
 
     MouseLeftPressedOverAvatar_ = false;
@@ -1313,8 +1376,8 @@ void ComplexMessageItem::mousePressEvent(QMouseEvent *event)
 
         if (pressed)
         {
-            Q_EMIT Utils::InterConnector::instance().selectionStateChanged(getId(), getInternalId(), true);
-            Q_EMIT Utils::InterConnector::instance().updateSelectedCount();
+            Q_EMIT Utils::InterConnector::instance().selectionStateChanged(ChatAimid_, getId(), getInternalId(), true);
+            Q_EMIT Utils::InterConnector::instance().updateSelectedCount(ChatAimid_);
             event->accept();
             return;
         }
@@ -1322,7 +1385,7 @@ void ComplexMessageItem::mousePressEvent(QMouseEvent *event)
 
     if (Bubble_.contains(event->pos()))
     {
-        if (!isSelected() || !isRightButtonPressed)
+        if (!isSelected() && isLeftButtonPressed)
         {
             if (auto scrollArea = qobject_cast<MessagesScrollArea*>(parent()))
                 scrollArea->clearSelection();
@@ -1334,8 +1397,11 @@ void ComplexMessageItem::mousePressEvent(QMouseEvent *event)
 
 void ComplexMessageItem::mouseReleaseEvent(QMouseEvent *event)
 {
+    for (auto b : Blocks_)
+        b->anyMouseButtonReleased();
+
     const auto isLeftButtonReleased = (event->button() == Qt::LeftButton);
-    if (isLeftButtonReleased && Utils::InterConnector::instance().isMultiselect())
+    if (isLeftButtonReleased && Utils::InterConnector::instance().isMultiselect(ChatAimid_))
         return HistoryControlPageItem::mouseReleaseEvent(event);
 
     event->ignore();
@@ -1346,7 +1412,6 @@ void ComplexMessageItem::mouseReleaseEvent(QMouseEvent *event)
     for (auto& line : buttons_)
         for (auto& btn : line)
             btn.pressed_ = false;
-
 
     if (isLeftButtonReleased)
     {
@@ -1413,18 +1478,18 @@ void ComplexMessageItem::mouseReleaseEvent(QMouseEvent *event)
         MenuBlock_ = findBlockUnder(mapFromGlobal(globalPos));
         if (MenuBlock_ && MenuBlock_->getContentType() == IItemBlock::ContentType::Text)
         {
-            auto link = MenuBlock_->linkAtPos(globalPos);
-            if (!link.isEmpty())
+            auto url = MenuBlock_->linkAtPos(globalPos).url_;
+            if (!url.isEmpty())
             {
                 Utils::UrlParser parser;
-                parser.process(link);
+                parser.process(url);
                 if (parser.hasUrl())
                 {
                     auto menu = new ContextMenu(this);
                     Testing::setAccessibleName(menu, qsl("AS ComplexMessageItem contextMenu"));
 
                     menu->addActionWithIcon(qsl(":/context_menu/link"), QT_TRANSLATE_NOOP("context_menu", "Copy link"),
-                        makeData(qsl("copy_link"), link));
+                        makeData(qsl("copy_link"), url));
 
                     connect(menu, &ContextMenu::triggered, this, &ComplexMessageItem::onMenuItemTriggered, Qt::QueuedConnection);
                     connect(menu, &ContextMenu::triggered, menu, &ContextMenu::deleteLater, Qt::QueuedConnection);
@@ -1459,7 +1524,7 @@ void ComplexMessageItem::mouseReleaseEvent(QMouseEvent *event)
 
 void ComplexMessageItem::mouseDoubleClickEvent(QMouseEvent *event)
 {
-    if (Utils::InterConnector::instance().isMultiselect())
+    if (Utils::InterConnector::instance().isMultiselect(ChatAimid_))
         return;
 
     const auto isLeftButtonReleased = (event->button() == Qt::LeftButton);
@@ -1496,14 +1561,14 @@ void ComplexMessageItem::mouseDoubleClickEvent(QMouseEvent *event)
                     block->doubleClicked(event->pos(), [&emitQuote](bool result) { if (result) emitQuote = false; });
                     if (block->isSelected())
                     {
-                        Q_EMIT Utils::InterConnector::instance().selectionStateChanged(getId(), getInternalId(), true);
-                        Q_EMIT Utils::InterConnector::instance().updateSelectedCount();
+                        Q_EMIT Utils::InterConnector::instance().selectionStateChanged(ChatAimid_, getId(), getInternalId(), true);
+                        Q_EMIT Utils::InterConnector::instance().updateSelectedCount(ChatAimid_);
                     }
                 }
             }
         }
 
-        if (emitQuote)
+        if (emitQuote && getId() != -1)
         {
             Q_EMIT quote(getQuotes(false));
             return;
@@ -1604,11 +1669,12 @@ void ComplexMessageItem::paintEvent(QPaintEvent *event)
     QPainter p(this);
     p.setRenderHints(QPainter::SmoothPixmapTransform | QPainter::Antialiasing | QPainter::TextAntialiasing);
 
-    drawSelection(p, Layout_->getBubbleRect());
+    if (Utils::InterConnector::instance().isMultiselect(ChatAimid_))
+        drawSelection(p, Layout_->getBubbleRect());
 
-    drawButtons(p, QuoteAnimation_.quoteColor());
+    drawButtons(p, QuoteAnimation_->quoteColor());
 
-    drawBubble(p, QuoteAnimation_.quoteColor());
+    drawBubble(p, QuoteAnimation_->quoteColor());
 
     drawAvatar(p);
 
@@ -1691,9 +1757,9 @@ void ComplexMessageItem::onMenuItemTriggered(QAction *action)
 
         const auto guard = QPointer(this);
         if (MenuBlock_ && MenuBlock_->getContentType() != IItemBlock::ContentType::Sticker)
-            confirm = ReportMessage(getSenderAimid(), ChatAimid_, Id_, Data::stubFromFormattedString(SourceText_));
+            confirm = ReportMessage(getSenderAimid(), ChatAimid_, Id_, SourceText_.string());
         else
-            confirm = ReportSticker(getSenderAimid(), isChat_ ? ChatAimid_ : QString(), MenuBlock_ ? MenuBlock_->getStickerId().toString() : QString());
+            confirm = ReportSticker(getSenderAimid(), isChat_ ? ChatAimid_ : QString(), MenuBlock_ ? MenuBlock_->getStickerId() : Data::StickerId{});
 
         if (!guard)
             return;
@@ -1729,7 +1795,7 @@ void ComplexMessageItem::onMenuItemTriggered(QAction *action)
         Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chat_delete_action, stat_props);
 
         if (is_shared && containsPoll)
-            Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::polls_action, { {"chat_type", Ui::getStatsChatType() }, { "action", "del_for_all" } });
+            Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::polls_action, { {"chat_type", Ui::getStatsChatType(ChatAimid_) }, { "action", "del_for_all" } });
     }
     else if (commandView == u"edit")
     {
@@ -1740,13 +1806,9 @@ void ComplexMessageItem::onMenuItemTriggered(QAction *action)
     {
         clearBlockSelection();
         Utils::InterConnector::instance().clearPartialSelection(ChatAimid_);
-        Utils::InterConnector::instance().setMultiselect(true);
+        Utils::InterConnector::instance().setMultiselect(true, ChatAimid_);
         setSelected(true);
         Q_EMIT Utils::InterConnector::instance().messageSelected(getId(), getInternalId());
-    }
-    else if (commandView == u"multiselect_forward")
-    {
-        Q_EMIT Utils::InterConnector::instance().multiselectForward(ChatAimid_);
     }
     else if (commandView == u"add_to_favorites")
     {
@@ -1780,7 +1842,7 @@ void ComplexMessageItem::onMenuItemTriggered(QAction *action)
                 Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chat_pin_action, stat_props);
 
             if (!isUnpin && containsPoll)
-                Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::polls_action, { {"chat_type", Ui::getStatsChatType() }, { "action", "pin" } });
+                Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::polls_action, { {"chat_type", Ui::getStatsChatType(ChatAimid_) }, { "action", "pin" } });
         }
     }
 }
@@ -1797,7 +1859,7 @@ void ComplexMessageItem::onLinkMetainfoMetaDownloaded(int64_t _seq, bool _succes
             auto blockIt = std::find(Blocks_.begin(), Blocks_.end(), snippet.textBlock_);
             if (blockIt != Blocks_.end() || !snippet.textBlock_)
             {
-                auto it = snippet.textBlock_ ? Blocks_.erase(blockIt) : Blocks_.begin() + std::min(snippet.insertAt_, Blocks_.size());
+                auto it = snippet.textBlock_ ? Blocks_.erase(blockIt) : Blocks_.begin() + std::min(snippet.insertAt_, (size_t)getBlockCount());
 
                 if (snippet.textBlock_)
                     snippet.textBlock_->deleteLater();
@@ -1896,7 +1958,7 @@ void ComplexMessageItem::updateButtons()
 void ComplexMessageItem::callEditingImpl()
 {
     auto msg = std::make_shared<Data::MessageBuddy>(buddy());
-    msg->SetText(Data::stubFromFormattedString(getEditableText(InstantEdit::No)));
+    msg->SetText(getEditableText(InstantEdit::No));
     msg->Files_ = getFilesPlaceholders();
     Q_EMIT edit(msg, getMediaType());
 }
@@ -1918,9 +1980,10 @@ void ComplexMessageItem::connectSignals()
     connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiselectChanged, this, &ComplexMessageItem::updateShareButtonGeometry);
 
     connect(Ui::GetDispatcher(), &Ui::core_dispatcher::botCallbackAnswer, this, &ComplexMessageItem::onBotCallbackAnswer);
-    connect(Logic::GetStatusContainer(), &Logic::StatusContainer::statusChanged, this, [this]()
+    connect(Logic::GetStatusContainer(), &Logic::StatusContainer::statusChanged, this, [this](const QString& _aimId)
     {
-        update();
+        if (hasAvatar() && SenderAimidForDisplay_ == _aimId)
+            update();
     });
 }
 
@@ -1939,13 +2002,13 @@ bool ComplexMessageItem::containsShareableBlocks() const
          });
 }
 
-void ComplexMessageItem::drawAvatar(QPainter &p)
+void ComplexMessageItem::drawAvatar(QPainter& _p)
 {
     if (Avatar_.isNull() || (!hasAvatar() && !needsAvatar()))
         return;
 
     if (const auto avatarRect = Layout_->getAvatarRect(); avatarRect.isValid())
-        Utils::drawAvatarWithBadge(p, avatarRect.topLeft(), Avatar_, SenderAimidForDisplay_, true);
+        Utils::drawAvatarWithBadge(_p, avatarRect.topLeft(), Avatar_, SenderAimidForDisplay_, true);
 }
 
 void ComplexMessageItem::drawBubble(QPainter &p, const QColor& quote_color)
@@ -2121,9 +2184,9 @@ void ComplexMessageItem::drawButtons(QPainter &p, const QColor& quote_color)
     }
 }
 
-Data::FormattedString ComplexMessageItem::getBlocksText(const IItemBlocksVec& _items, const bool _isSelected, TextFormat _format) const
+Data::FString ComplexMessageItem::getBlocksText(const IItemBlocksVec& _items, const bool _isSelected, TextFormat _format) const
 {
-    Data::FormattedString result;
+    Data::FString result;
 
     // to reduce the number of reallocations
     result.reserve(1024);
@@ -2205,23 +2268,22 @@ Data::QuotesVec ComplexMessageItem::getQuotes(const bool _selectedTextOnly, cons
 {
     Data::QuotesVec result;
 
-    const auto isQuote = [](const auto _block) { return _block->getContentType() == IItemBlock::ContentType::Quote; };
-
-    const auto quotesOnly = std::all_of(Blocks_.begin(), Blocks_.end(), isQuote);
+    const auto quotesOnly = getBlockCount(uint32_t(IItemBlock::ContentType::Quote)) == static_cast<int>(Blocks_.size());
     const auto dropQuotes = !_isForward && !quotesOnly;
 
     for (const auto block : Blocks_)
     {
-        if (block->getContentType() == IItemBlock::ContentType::DebugText)
+        const auto blockType = block->getContentType();
+        if (blockType == IItemBlock::ContentType::DebugText)
             continue;
 
         if (_selectedTextOnly && block->getSelectedText().isEmpty())
             continue;
 
-        if (!_selectedTextOnly && dropQuotes && isQuote(block))
+        if (!_selectedTextOnly && dropQuotes && blockType ==IItemBlock::ContentType::Quote)
             continue;
 
-        if (block->getContentType() == IItemBlock::ContentType::Link && hasLinkInText_ && !block->isLinkMediaPreview())
+        if (blockType == IItemBlock::ContentType::Link && hasLinkInText_ && !block->isLinkMediaPreview())
             continue;
 
         auto quote = getQuoteFromBlock(block, _selectedTextOnly);
@@ -2260,7 +2322,7 @@ Data::QuotesVec ComplexMessageItem::getQuotes(const bool _selectedTextOnly, cons
 Data::QuotesVec ComplexMessageItem::getQuotesForEdit() const
 {
     Data::QuotesVec quotes;
-    quotes.reserve(Blocks_.size());
+    quotes.reserve(getBlockCount(uint32_t(IItemBlock::ContentType::ExcludeDebug_Mask)));
 
     for (const auto b : Blocks_)
         if (auto q = b->getQuote(); !q.isEmpty())
@@ -2269,7 +2331,7 @@ Data::QuotesVec ComplexMessageItem::getQuotesForEdit() const
     return quotes;
 }
 
-void ComplexMessageItem::setSourceText(const Data::FormattedString& _text)
+void ComplexMessageItem::setSourceText(const Data::FString& _text)
 {
     SourceText_ = _text;
 }
@@ -2294,7 +2356,7 @@ void ComplexMessageItem::initializeShareButton()
     if (shareButton_ || Blocks_.empty())
         return;
 
-    if (!containsShareableBlocks())
+    if (!containsShareableBlocks() || !shareButtonEnabled())
         return;
 
     shareButton_ = new CustomButton(this, qsl(":/share_button"), Utils::unscale_value(MessageStyle::getSharingButtonSize()));
@@ -2325,12 +2387,12 @@ void ComplexMessageItem::initSender()
 void ComplexMessageItem::initButtonsLabel()
 {
     if (buttonLabel_)
-        buttonLabel_->init(MessageStyle::getButtonsFont(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+        buttonLabel_->init(MessageStyle::getButtonsFont(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), {}, {}, {}, TextRendering::HorAligment::CENTER);
 }
 
 bool ComplexMessageItem::isBubbleRequired() const
 {
-    return Blocks_.size() > 1 || std::any_of(Blocks_.begin(), Blocks_.end(), [](const auto& b) { return b->isBubbleRequired(); })
+    return getBlockCount() > 1 || std::any_of(Blocks_.begin(), Blocks_.end(), [](const auto& b) { return b->isBubbleRequired(); })
             || (hasButtons() && !isSingleSticker());
 }
 
@@ -2341,17 +2403,17 @@ bool ComplexMessageItem::isMarginRequired() const
 
 bool ComplexMessageItem::isHeaderRequired() const
 {
-    return isSenderVisible() && Blocks_.size() == 1 && !Blocks_.front()->isBubbleRequired() && !isSingleSticker();
+    return isSenderVisible() && getBlockCount() == 1 && !Blocks_.front()->isBubbleRequired() && !isSingleSticker();
 }
 
 bool ComplexMessageItem::isSmallPreview() const
 {
-    return Blocks_.size() == 1 && Blocks_.front()->isSmallPreview();
+    return getBlockCount() == 1 && Blocks_.front()->isSmallPreview();
 }
 
 bool ComplexMessageItem::canStretchWithSender() const
 {
-    return !(Blocks_.size() == 1 && !Blocks_.front()->canStretchWithSender());
+    return !(getBlockCount() == 1 && !Blocks_.front()->canStretchWithSender());
 }
 
 int ComplexMessageItem::getMaxWidth() const
@@ -2442,11 +2504,11 @@ const Data::FilesPlaceholderMap& ComplexMessageItem::getFilesPlaceholders() cons
     return files_;
 }
 
-Data::FormattedString ComplexMessageItem::getEditableText(InstantEdit _mode) const
+Data::FString ComplexMessageItem::getEditableText(InstantEdit _mode) const
 {
-    using editPair = std::pair<IItemBlock::ContentType, Data::FormattedString>;
+    using editPair = std::pair<IItemBlock::ContentType, Data::FString>;
     std::vector<editPair> pairs;
-    pairs.reserve(Blocks_.size());
+    pairs.reserve(getBlockCount(uint32_t(IItemBlock::ContentType::ExcludeDebug_Mask)));
 
     for (const auto b : Blocks_)
     {
@@ -2456,6 +2518,7 @@ Data::FormattedString ComplexMessageItem::getEditableText(InstantEdit _mode) con
         case IItemBlock::ContentType::Text:
         case IItemBlock::ContentType::FileSharing:
         case IItemBlock::ContentType::Sticker:
+        case IItemBlock::ContentType::Profile:
             pairs.emplace_back(ct, _mode == InstantEdit::Yes ? b->getTextInstantEdit() : b->getSourceText());
             break;
         case IItemBlock::ContentType::Link:
@@ -2467,28 +2530,26 @@ Data::FormattedString ComplexMessageItem::getEditableText(InstantEdit _mode) con
         }
     }
 
-    auto resSize = 0;
-    for (const auto& [_, text] : pairs)
-        resSize += text.size();
-
-    Data::FormattedString result;
-    result.reserve(resSize);
-
+    Data::FString::Builder result;
+    bool lastLineFeed = false;
     for (size_t i = 0; i < pairs.size(); ++i)
     {
         auto& [type, text] = pairs[i];
 
-        if (i > 0
-            && !text.startsWith(QChar::LineFeed)
-            && !(type != IItemBlock::ContentType::Text && pairs[i - 1].first == IItemBlock::ContentType::Text))
+        if (i > 0 && !text.startsWith(QChar::LineFeed))
         {
-            result += QChar::LineFeed;
+            const auto curText = type == IItemBlock::ContentType::Text;
+            const auto prevText = pairs[i - 1].first == IItemBlock::ContentType::Text;
+            if ((curText || !prevText) || (curText != prevText && !lastLineFeed))
+                result %= qsl("\n");
         }
 
-        result += text;
+        lastLineFeed = text.endsWith(QChar::LineFeed);
+
+        result %= text;
     }
 
-    return result;
+    return result.finalize();
 }
 
 int ComplexMessageItem::desiredWidth() const
@@ -2502,7 +2563,7 @@ int ComplexMessageItem::desiredWidth() const
     result = std::max(result, buttonsDesiredWidth());
 
     if (isBubbleRequired() || isSingleSticker())
-        result += 2 * MessageStyle::getBubbleHorPadding();
+        result += Layout_->getBubbleLeftPadding() + Layout_->getBubbleRightPadding();
 
     return result;
 }
@@ -2550,7 +2611,7 @@ int ComplexMessageItem::calcButtonsWidth(int availableWidth)
         for (auto& btn : line)
         {
             buttonLabel_->setText(btn.originalText_);
-            buttonLabel_->elide(available - MessageStyle::getButtonHorOffset() * 2, TextRendering::ElideType::FAST);
+            buttonLabel_->elide(available - MessageStyle::getButtonHorOffset() * 2);
             if (buttonLabel_->isElided())
                 btn.data_.text_ = buttonLabel_->getText();
             else
@@ -2571,11 +2632,16 @@ int ComplexMessageItem::buttonsHeight() const
     return std::accumulate(buttonLineHeights_.begin(), buttonLineHeights_.end(), 0);
 }
 
+void ComplexMessageItem::initSize()
+{
+    Layout_->updateSize(width());
+    HistoryControlPageItem::initSize();
+}
+
 void ComplexMessageItem::updateSize()
 {
     Layout_->onBlockSizeChanged();
-    updateGeometry();
-    update();
+    HistoryControlPageItem::updateSize();
 }
 
 void ComplexMessageItem::callEditing()
@@ -2604,6 +2670,7 @@ void ComplexMessageItem::setButtons(const std::vector<std::vector<Data::ButtonDa
     {
         auto buttonsCount = 0;
         std::vector<MessageButton> buttons;
+        buttons.reserve(line.size());
         bool hasTwoLineButton = false;
         for (const auto& btn : line)
         {
@@ -2633,6 +2700,8 @@ void ComplexMessageItem::updateButtonsFromOther(const std::vector<std::vector<Me
     for (const auto& line : _buttons)
     {
         std::vector<MessageButton> buttons;
+        buttons.reserve(line.size());
+
         bool hasTwoLineButton = false;
         for (const auto& btn : line)
         {
@@ -2654,9 +2723,9 @@ void ComplexMessageItem::setHideEdit(bool _hideEdit)
         TimeWidget_->setHideEdit(hideEdit_);
 }
 
-int ComplexMessageItem::getBlockCount() const
+int ComplexMessageItem::getBlockCount(uint32_t _typeMask) const
 {
-    return Blocks_.size();
+    return countBlocks(Blocks_.begin(), Blocks_.end(), _typeMask);
 }
 
 IItemBlock* ComplexMessageItem::getHoveredBlock() const
@@ -2701,11 +2770,6 @@ std::vector<Ui::ComplexMessage::GenericBlock*> ComplexMessageItem::getBlockWidge
     return result;
 }
 
-bool ComplexMessageItem::isHeadless() const
-{
-    return parentWidget() == nullptr;
-}
-
 bool ComplexMessageItem::isLastBlock(const IItemBlock* _block) const
 {
     return !Blocks_.empty() && Blocks_.back() == _block;
@@ -2743,12 +2807,7 @@ bool ComplexMessageItem::isAllSelected() const
 
 bool ComplexMessageItem::isSenderVisible() const
 {
-    return Sender_ && hasSenderName();
-}
-
-void ComplexMessageItem::setCustomBubbleHorPadding(const int32_t _val)
-{
-    Layout_->setCustomBubbleBlockHorPadding(_val);
+    return Sender_&& hasSenderName();
 }
 
 bool ComplexMessageItem::hasSharedContact() const
@@ -2756,18 +2815,19 @@ bool ComplexMessageItem::hasSharedContact() const
     return buddy().sharedContact_.has_value();
 }
 
-GenericBlock* ComplexMessageItem::addSnippetBlock(const QString& _link, const bool _linkInText, SnippetBlock::EstimatedType _estimatedType, size_t _insertAt, bool _quoteOrForward)
+GenericBlock* ComplexMessageItem::addSnippetBlock(Data::FStringView _link, const bool _linkInText, SnippetBlock::EstimatedType _estimatedType, size_t _insertAt, bool _quoteOrForward)
 {
     GenericBlock* block = nullptr;
-    const auto metaInCache = SnippetCache::instance()->contains(_link);
+    const auto linkString = _link.string().toString();
+    const auto metaInCache = SnippetCache::instance()->contains(linkString);
 
     if ((!deliveredToServer_ && !metaInCache || _linkInText) && !_quoteOrForward)
     {
         if (!_linkInText)
-            block = new TextBlock(this, _link);
+            block = new SnippetBlock(this, _link, _linkInText, _estimatedType);
 
         SnippetData snippet;
-        snippet.link_ = _link;
+        snippet.link_ = linkString;
         snippet.linkInText_ = _linkInText;
         snippet.textBlock_ = block;
         snippet.estimatedType_ = _estimatedType;
@@ -2843,30 +2903,30 @@ void ComplexMessageItem::onCopyMenuItem(ComplexMessageItem::MenuItemType type)
 
     if (isCopy)
     {
-        Data::FormattedString rawText;
-        rawText.reserve(1024);
+        Data::FString::Builder builder;
 
         if (isQuote || isForward)
-            rawText += getQuoteHeader();
+            builder %= getQuoteHeader();
 
         if (isSelected())
-            rawText += getSelectedText(false, TextFormat::Raw);
+            builder %= getSelectedText(false, TextFormat::Raw);
         else
-            rawText += getBlocksText(Blocks_, false, TextFormat::Raw);
+            builder %= getBlocksText(Blocks_, false, TextFormat::Raw);
 
-        const auto plainRawText = Data::stubFromFormattedString(rawText);
-        const auto text = !mentions_.empty() ? Utils::convertMentions(plainRawText, mentions_) : plainRawText;
+        auto text = builder.finalize();
         const auto placeholders = getFilesPlaceholders();
-        auto dt = new QMimeData();
-        dt->setText(text);
-        dt->setData(MimeData::getRawMimeType(), text.toUtf8());
-        dt->setData(MimeData::getFileMimeType(), MimeData::convertMapToArray(placeholders));
-        dt->setData(MimeData::getMentionMimeType(), MimeData::convertMapToArray(mentions_));
+        const auto plainString = text.string();
+        auto dt = MimeData::toMimeData(std::move(text), mentions_, placeholders);
         QApplication::clipboard()->setMimeData(dt);
 
-        Q_EMIT copy(text);
+        Q_EMIT copy();
 
-        MainPage::instance()->setFocusOnInput();
+        Q_EMIT Utils::InterConnector::instance().setFocusOnInput(ChatAimid_);
+
+        // show toast if not selected
+        // if selected - showCopiedToast will be called from another location
+        if (!isSelected())
+            Utils::showCopiedToast();
     }
     else if (isQuote)
     {
@@ -2909,7 +2969,7 @@ void ComplexMessageItem::onShareButtonClicked()
     Q_EMIT forward({ getQuoteFromBlock(hoveredSharingBlock_, false) });
 }
 
-void ComplexMessageItem::trackMenu(const QPoint &globalPos)
+void ComplexMessageItem::trackMenu(const QPoint& _globalPos)
 {
     cleanupMenu();
 
@@ -2921,31 +2981,44 @@ void ComplexMessageItem::trackMenu(const QPoint &globalPos)
 
     const auto role = Logic::getContactListModel()->getYourRole(ChatAimid_);
     const auto isDisabled = role == u"notamember" || role == u"readonly";
-    const auto notAMember = Logic::getContactListModel()->youAreNotAMember(ChatAimid_);
+    const auto notAMember = Logic::getContactListModel()->areYouNotAMember(ChatAimid_);
     const auto editable = !isDisabled && isEditable();
+    const auto isThread = Logic::getContactListModel()->isThread(ChatAimid_);
+    const auto hasBlockedFiles = hasBlockedFilesharings();
 
-    if (Utils::InterConnector::instance().isMultiselect())
+    if (Utils::InterConnector::instance().isMultiselect(ChatAimid_))
     {
         auto hasSelected = true;
         if (auto scrollArea = qobject_cast<MessagesScrollArea*>(parent()))
             hasSelected = (scrollArea->getSelectedCount() != 0);
 
+        auto addAction = [menu, guard = QPointer(this), this](auto _icon, auto _text, auto _func, auto _enabled)
+        {
+            auto emitSignal = [guard, this, _func]()
+            {
+                if (guard)
+                    Q_EMIT(Utils::InterConnector::instance().*_func)(ChatAimid_);
+            };
+            menu->addActionWithIconAndFunc(_icon, _text, emitSignal)->setEnabled(_enabled);
+        };
+
         if (!isDisabled)
-            menu->addActionWithIcon(qsl(":/context_menu/reply"), QT_TRANSLATE_NOOP("context_menu", "Reply"), &Utils::InterConnector::instance(), &Utils::InterConnector::multiselectReply)->setEnabled(hasSelected && !notAMember);
+            addAction(qsl(":/context_menu/reply"), QT_TRANSLATE_NOOP("context_menu", "Reply"), &Utils::InterConnector::multiselectReply, hasSelected && !notAMember && !isThread);
 
-        menu->addActionWithIcon(qsl(":/context_menu/copy"), QT_TRANSLATE_NOOP("context_menu", "Copy"), &Utils::InterConnector::instance(), &Utils::InterConnector::multiselectCopy)->setEnabled(hasSelected);
+        addAction(qsl(":/context_menu/copy"), QT_TRANSLATE_NOOP("context_menu", "Copy"), &Utils::InterConnector::multiselectCopy, hasSelected);
 
-        menu->addActionWithIcon(qsl(":/context_menu/forward"), QT_TRANSLATE_NOOP("context_menu", "Forward"), makeData(qsl("multiselect_forward")))->setEnabled(hasSelected);
+        if (!hasBlockedFiles)
+            addAction(qsl(":/context_menu/forward"), QT_TRANSLATE_NOOP("context_menu", "Forward"), &Utils::InterConnector::multiselectForward, hasSelected);
 
         menu->addSeparator();
-        menu->addActionWithIcon(qsl(":/context_menu/delete"), QT_TRANSLATE_NOOP("context_menu", "Delete"), &Utils::InterConnector::instance(), &Utils::InterConnector::multiselectDelete)->setEnabled(hasSelected && !notAMember);
-        if (!Favorites::isFavorites(ChatAimid_))
+        addAction(qsl(":/context_menu/delete"), QT_TRANSLATE_NOOP("context_menu", "Delete"), &Utils::InterConnector::multiselectDelete, hasSelected && !notAMember);
+        if (!Favorites::isFavorites(ChatAimid_) && !hasBlockedFiles)
         {
             menu->addSeparator();
-            menu->addActionWithIcon(qsl(":/context_menu/favorites"), QT_TRANSLATE_NOOP("context_menu", "Add to favorites"), &Utils::InterConnector::instance(), &Utils::InterConnector::multiselectFavorites)->setEnabled(hasSelected);
+            addAction(qsl(":/context_menu/favorites"), QT_TRANSLATE_NOOP("context_menu", "Add to favorites"), &Utils::InterConnector::multiselectFavorites, hasSelected && !isThread);
         }
         connect(menu, &ContextMenu::triggered, this, &ComplexMessageItem::onMenuItemTriggered, Qt::QueuedConnection);
-        menu->popup(globalPos);
+        menu->popup(_globalPos);
         return;
     }
 
@@ -2953,7 +3026,7 @@ void ComplexMessageItem::trackMenu(const QPoint &globalPos)
         menu->addActionWithIcon(qsl(":/context_menu/reply"), QT_TRANSLATE_NOOP("context_menu", "Reply"), makeData(qsl("quote")))->setEnabled(msgSent && !notAMember);
 
     if (isChat_ && Logic::getContactListModel()->isPublic(ChatAimid_) && !Logic::getContactListModel()->isChannel(ChatAimid_)
-        && Logic::getContactListModel()->isYouAdmin(ChatAimid_) && SenderAimid_ != MyInfo()->aimId())
+        && Logic::getContactListModel()->areYouAdmin(ChatAimid_) && SenderAimid_ != MyInfo()->aimId() && !isThread)
     {
         menu->addActionWithIcon(qsl(":/context_menu/readonly"), QT_TRANSLATE_NOOP("sidebar", "Ban to write"), makeData(qsl("pre_ban")))->setEnabled(false);
         menu->addActionWithIcon(qsl(":/context_menu/block"), QT_TRANSLATE_NOOP("sidebar", "Delete from group"), makeData(qsl("pre_block")))->setEnabled(false);
@@ -2961,7 +3034,7 @@ void ComplexMessageItem::trackMenu(const QPoint &globalPos)
         const auto seq = Ui::GetDispatcher()->loadChatMembersInfo(ChatAimid_, { SenderAimid_ });
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::chatMemberInfo, menu, [menu, seq, chatId = ChatAimid_, senderId = SenderAimid_](const qint64 _seq, const std::shared_ptr<Data::ChatMembersPage>& _info)
         {
-            if (seq != _seq || chatId != _info->AimId_ || !Logic::getContactListModel()->isYouAdmin(chatId))
+            if (seq != _seq || chatId != _info->AimId_ || !Logic::getContactListModel()->areYouAdmin(chatId))
                 return;
 
             auto it = std::find_if(_info->Members_.cbegin(), _info->Members_.cend(), [senderId](const auto& _m) { return senderId == _m.AimId_; });
@@ -2982,7 +3055,7 @@ void ComplexMessageItem::trackMenu(const QPoint &globalPos)
         });
     }
 
-    const auto pos = mapFromGlobal(globalPos);
+    const auto pos = mapFromGlobal(_globalPos);
     MenuBlock_ = findBlockUnder(pos);
 
     auto testFlag = [](auto flags, auto flag) { return flags && bool(*flags & flag); };
@@ -2998,6 +3071,7 @@ void ComplexMessageItem::trackMenu(const QPoint &globalPos)
     const auto isRevokeVote = testFlag(menuFlags, IItemBlock::MenuFlagRevokeVote);
     const auto isStopPoll = testFlag(menuFlags, IItemBlock::MenuFlagStopPoll);
     const auto isSpellSuggestable = testFlag(menuFlags, IItemBlock::MenuFlagSpellItems);
+    const auto isEditTask = testFlag(menuFlags, IItemBlock::MenuFlagEditTask);
 
     bool hasCopyableEmail = false;
     QString link;
@@ -3011,7 +3085,7 @@ void ComplexMessageItem::trackMenu(const QPoint &globalPos)
         else
         {
             // check if message has a link without preview
-            link = MenuBlock_->linkAtPos(globalPos);
+            link = MenuBlock_->linkAtPos(_globalPos).url_;
 
             bool hasCopyableLink = false;
             auto selectedText = getSelectedText(false);
@@ -3055,20 +3129,23 @@ void ComplexMessageItem::trackMenu(const QPoint &globalPos)
     if (isStopPoll)
         menu->addActionWithIcon(qsl(":/context_menu/stop"), QT_TRANSLATE_NOOP("context_menu", "Stop poll"), makeData(qsl("stop_poll")))->setEnabled(!replyOnly);
 
-    menu->addActionWithIcon(qsl(":/context_menu/forward"), QT_TRANSLATE_NOOP("context_menu", "Forward"), makeData(qsl("forward")))->setEnabled(!replyOnly && msgSent);
+    if (isEditTask)
+        menu->addActionWithIcon(qsl(":/context_menu/edit"), QT_TRANSLATE_NOOP("context_menu", "Edit task"), makeData(qsl("edit_task")))->setEnabled(!replyOnly);
 
-    menu->addActionWithIcon(qsl(":/context_menu/select"), QT_TRANSLATE_NOOP("context_menu", "Select"), makeData(qsl("select")));
+    if (!hasBlockedFiles)
+        menu->addActionWithIcon(qsl(":/context_menu/forward"), QT_TRANSLATE_NOOP("context_menu", "Forward"), makeData(qsl("forward")))->setEnabled(!replyOnly && msgSent && !isThread);
+    menu->addActionWithIcon(qsl(":/context_menu/select"), QT_TRANSLATE_NOOP("context_menu", "Select"), makeData(qsl("select")))->setEnabled(!isThread);
 
-    if (Logic::getContactListModel()->isYouAdmin(ChatAimid_))
+    if (Logic::getContactListModel()->areYouAdmin(ChatAimid_))
     {
         const Data::DlgState dlg = Logic::getRecentsModel()->getDlgState(ChatAimid_);
         if (dlg.pinnedMessage_ && dlg.pinnedMessage_->Id_ == Id_)
-            menu->addActionWithIcon(qsl(":/context_menu/unpin"), QT_TRANSLATE_NOOP("context_menu", "Unpin"), makeData(qsl("unpin")))->setEnabled(!replyOnly && msgSent);
+            menu->addActionWithIcon(qsl(":/context_menu/unpin"), QT_TRANSLATE_NOOP("context_menu", "Unpin"), makeData(qsl("unpin")))->setEnabled(!replyOnly && msgSent && !isThread);
         else
-            menu->addActionWithIcon(qsl(":/context_menu/pin"), QT_TRANSLATE_NOOP("context_menu", "Pin"), makeData(qsl("pin")))->setEnabled(!replyOnly && msgSent);
+            menu->addActionWithIcon(qsl(":/context_menu/pin"), QT_TRANSLATE_NOOP("context_menu", "Pin"), makeData(qsl("pin")))->setEnabled(!replyOnly && msgSent && !isThread);
     }
 
-    if (hasBlock && isFileCopyable)
+    if (hasBlock && isFileCopyable && !MenuBlock_->isBlockedFileSharing())
         menu->addActionWithIcon(qsl(":/context_menu/download"), QT_TRANSLATE_NOOP("context_menu", "Save as..."), makeData(qsl("save_as")))->setEnabled(!replyOnly && msgSent);
 
     if (isOpenable)
@@ -3087,51 +3164,66 @@ void ComplexMessageItem::trackMenu(const QPoint &globalPos)
     menu->addSeparator();
 
     const auto deleteText = Favorites::isFavorites(ChatAimid_) ? QT_TRANSLATE_NOOP("context_menu", "Delete") : QT_TRANSLATE_NOOP("context_menu", "Delete for me");
-    menu->addActionWithIcon(qsl(":/context_menu/delete"), deleteText, makeData(qsl("delete")))->setEnabled(!replyOnly && !notAMember);
+    menu->addActionWithIcon(qsl(":/context_menu/delete"), deleteText, makeData(qsl("delete")))->setEnabled(!replyOnly && !notAMember && !isThread);
 
-    if ((Logic::getContactListModel()->isYouAdmin(ChatAimid_) || (!isDisabled && isOutgoing())) && !Favorites::isFavorites(ChatAimid_))
+    if ((Logic::getContactListModel()->areYouAdmin(ChatAimid_) || (!isDisabled && isOutgoing())) && !Favorites::isFavorites(ChatAimid_))
         menu->addActionWithIcon(qsl(":/context_menu/deleteall"), QT_TRANSLATE_NOOP("context_menu", "Delete for all"), makeData(qsl("delete_all")))->setEnabled(!replyOnly && !notAMember);
 
     if (GetAppConfig().IsContextMenuFeaturesUnlocked())
-        menu->addActionWithIcon(qsl(":/context_menu/copy"), qsl("Copy Message ID"), makeData(qsl("dev:copy_message_id")))->setEnabled(!replyOnly);
-
-    if (GetAppConfig().IsShowMsgIdsEnabled())
     {
-        if (hasBlock && (MenuBlock_->getContentType() == IItemBlock::ContentType::Poll))
-            menu->addActionWithIcon(qsl(":/context_menu/copy"), qsl("Copy Poll ID"), makeData(qsl("copy_poll_id")))->setEnabled(!replyOnly);
+        menu->addActionWithIcon(qsl(":/context_menu/copy"), qsl("Copy Message ID"), makeData(qsl("dev:copy_message_id")))->setEnabled(!replyOnly);
+        if (hasBlock)
+        {
+            switch (MenuBlock_->getContentType())
+            {
+            case IItemBlock::ContentType::FileSharing:
+            case IItemBlock::ContentType::Sticker:
+                menu->addActionWithIcon(qsl(":/context_menu/copy"), qsl("Copy Filesharing ID"), makeData(qsl("dev:copy_fs_id")))->setEnabled(!replyOnly);
+                menu->addActionWithIcon(qsl(":/context_menu/copy"), qsl("Copy Filesharing full link"), makeData(qsl("dev:copy_fs_link")))->setEnabled(!replyOnly);
+                break;
+            case IItemBlock::ContentType::Poll:
+                menu->addActionWithIcon(qsl(":/context_menu/copy"), qsl("Copy Poll ID"), makeData(qsl("dev:copy_poll_id")))->setEnabled(!replyOnly);
+                break;
+            case IItemBlock::ContentType::Task:
+                menu->addActionWithIcon(qsl(":/context_menu/copy"), qsl("Copy Task ID"), makeData(qsl("dev:copy_task_id")))->setEnabled(!replyOnly);
+                break;
+            default:
+                break;
+            }
+        }
     }
 
-    if (hasBlock && (MenuBlock_->getContentType() == IItemBlock::ContentType::Sticker ||
-        (isChat_ && SenderAimid_ != MyInfo()->aimId() && !Logic::getContactListModel()->isYouAdmin(ChatAimid_))))
+    if (hasBlock && ((MenuBlock_->getContentType() == IItemBlock::ContentType::Sticker && !MenuBlock_->getStickerId().fsId_.value_or(Utils::FileSharingId{}).sourceId) ||
+        (isChat_ && SenderAimid_ != MyInfo()->aimId() && !Logic::getContactListModel()->areYouAdmin(ChatAimid_))))
     {
         menu->addSeparator();
         menu->addActionWithIcon(qsl(":/context_menu/spam"), QT_TRANSLATE_NOOP("context_menu", "Report"), makeData(qsl("report")))->setEnabled(!replyOnly);
     }
 
-    if (!Favorites::isFavorites(ChatAimid_))
+    if (!hasBlockedFiles && !Favorites::isFavorites(ChatAimid_))
     {
         menu->addSeparator();
-        menu->addActionWithIcon(qsl(":/context_menu/favorites"), QT_TRANSLATE_NOOP("context_menu", "Add to favorites"), makeData(qsl("add_to_favorites")))->setEnabled(!replyOnly && msgSent);
+        menu->addActionWithIcon(qsl(":/context_menu/favorites"), QT_TRANSLATE_NOOP("context_menu", "Add to favorites"), makeData(qsl("add_to_favorites")))->setEnabled(!replyOnly && msgSent && !isThread);
     }
 
     connect(menu, &ContextMenu::triggered, this, &ComplexMessageItem::onMenuItemTriggered, Qt::QueuedConnection);
     connect(menu, &ContextMenu::triggered, menu, &ContextMenu::deleteLater, Qt::QueuedConnection);
     connect(menu, &ContextMenu::aboutToHide, menu, &ContextMenu::deleteLater, Qt::QueuedConnection);
 
-    auto showMenuCallback = [menu, globalPos]()
+    auto showMenuCallback = [menu, _globalPos]()
     {
-        menu->popup(globalPos);
+        menu->popup(_globalPos);
     };
 
     if (isSpellSuggestable && editable)
     {
-        if (const auto word = MenuBlock_->getWordAt(globalPos); !word)
+        if (const auto word = MenuBlock_->getWordAt(_globalPos); !word)
         {
             showMenuCallback();
         }
         else
         {
-            auto onResult = [this, weakThis = QPointer(this), weakMenu = QPointer(menu), globalPos, word = *word, showMenuCallback = std::move(showMenuCallback), editable](std::optional<spellcheck::Suggests> _suggests, spellcheck::WordStatus _status) mutable
+            auto onResult = [this, weakThis = QPointer(this), weakMenu = QPointer(menu), _globalPos, word = *word, showMenuCallback = std::move(showMenuCallback), editable](std::optional<spellcheck::Suggests> _suggests, spellcheck::WordStatus _status) mutable
             {
                 Q_UNUSED(this); // 'this' is only for VS
                 if (!weakThis || !weakMenu)
@@ -3150,7 +3242,7 @@ void ComplexMessageItem::trackMenu(const QPoint &globalPos)
                         {
                             if (!weakThis)
                                 return;
-                            spellcheck::Spellchecker::instance().removeWord(word);
+                            spellcheck::Spellchecker::instance().removeWord(word.string());
                         });
                         suggestActions.push_back(a);
                         auto separator = new QAction(weakMenu);
@@ -3166,7 +3258,7 @@ void ComplexMessageItem::trackMenu(const QPoint &globalPos)
                 {
                     if (!weakThis)
                         return;
-                    spellcheck::Spellchecker::instance().addWord(word);
+                    spellcheck::Spellchecker::instance().addWord(word.string());
                 });
                 suggestActions.push_back(addAction);
 
@@ -3175,7 +3267,7 @@ void ComplexMessageItem::trackMenu(const QPoint &globalPos)
                 {
                     if (!weakThis)
                         return;
-                    spellcheck::Spellchecker::instance().ignoreWord(word);
+                    spellcheck::Spellchecker::instance().ignoreWord(word.string());
                 });
                 suggestActions.push_back(ignoreAction);
 
@@ -3192,12 +3284,12 @@ void ComplexMessageItem::trackMenu(const QPoint &globalPos)
                 for (auto&& s : std::move(*_suggests))
                 {
                     auto a = new TextAction(s, weakMenu);
-                    QObject::connect(a, &QAction::triggered, weakThis.data(), [word, s = std::move(s), globalPos, weakThis]()
+                    QObject::connect(a, &QAction::triggered, weakThis.data(), [word, s = std::move(s), _globalPos, weakThis]()
                     {
                         if (!weakThis)
                             return;
 
-                        if (weakThis->MenuBlock_ && weakThis->MenuBlock_->replaceWordAt(word, s, globalPos))
+                        if (weakThis->MenuBlock_ && weakThis->MenuBlock_->replaceWordAt(word, borrowStylesFromWord(word, s), _globalPos))
                             weakThis->sendInstantEdit();
                     });
 
@@ -3212,7 +3304,7 @@ void ComplexMessageItem::trackMenu(const QPoint &globalPos)
                 weakMenu->insertActions(actions.isEmpty() ? nullptr : actions.front(), suggestActions);
             };
 
-            spellcheck::Spellchecker::instance().getSuggestsIfNeeded(*word, onResult);
+            spellcheck::Spellchecker::instance().getSuggestsIfNeeded(word->string(), onResult);
         }
     }
     else
@@ -3234,7 +3326,7 @@ void ComplexMessageItem::updateShareButtonGeometry()
     if (!shareButton_)
         return;
 
-    if (!hoveredSharingBlock_ || Utils::InterConnector::instance().isMultiselect())
+    if (!hoveredSharingBlock_ || Utils::InterConnector::instance().isMultiselect(ChatAimid_))
         hideShareButtonAnimated();
     else
         showShareButtonAnimated();
@@ -3256,14 +3348,10 @@ void ComplexMessageItem::showShareButtonAnimated()
     if (!hoveredSharingBlock_ || !shareButton_)
         return;
 
-    const QPoint endPos(Layout_->getShareButtonPos(*hoveredSharingBlock_, hoveredSharingBlock_->isBubbleRequired()));
-    const QPoint startPos(endPos.x() + MessageStyle::getSharingButtonAnimationShift(isOutgoingPosition()), endPos.y());
+    shareButton_->move(Layout_->getShareButtonPos(*hoveredSharingBlock_, hoveredSharingBlock_->isBubbleRequired()));
 
-    shareButton_->move(startPos);
+    animateShareButton(QAbstractAnimation::Forward);
     shareButton_->show();
-
-    shareButtonOpacityEffect_->setOpacity(0.0);
-    animateShareButton(startPos.x(), endPos.x(), WidgetAnimationType::show);
 }
 
 void ComplexMessageItem::hideShareButtonAnimated()
@@ -3271,38 +3359,41 @@ void ComplexMessageItem::hideShareButtonAnimated()
     if (!shareButton_)
         return;
 
-    const QPoint startPos(shareButton_->pos());
-    const QPoint endPos(startPos.x() + MessageStyle::getSharingButtonAnimationShift(isOutgoingPosition()), startPos.y());
-
-    shareButtonOpacityEffect_->setOpacity(1.0);
-    animateShareButton(startPos.x(), endPos.x(), WidgetAnimationType::hide);
+    animateShareButton(QAbstractAnimation::Backward);
 }
 
-void ComplexMessageItem::animateShareButton(const int _startPosX, const int _endPosX, const WidgetAnimationType _anim)
+void ComplexMessageItem::animateShareButton(QAbstractAnimation::Direction _direction)
 {
     if (!shareButton_)
         return;
 
     if (!shareButtonAnimation_)
+    {
         shareButtonAnimation_ = new QVariantAnimation(this);
+        shareButtonAnimation_->setDuration(MessageStyle::getHiddenControlsAnimationTime().count());
+        shareButtonAnimation_->setEasingCurve(QEasingCurve::InOutSine);
+        shareButtonAnimation_->setStartValue(0.0);
+        shareButtonAnimation_->setEndValue(1.0);
 
+        connect(shareButtonAnimation_, &QVariantAnimation::valueChanged, this, [this](const QVariant& _value)
+        {
+            shareButtonOpacityEffect_->setOpacity(_value.toDouble());
+        });
+        connect(shareButtonAnimation_, &QVariantAnimation::finished, this, [this]()
+        {
+            if (shareButtonAnimation_->direction() == QAbstractAnimation::Backward)
+                shareButton_->hide();
+        });
+    }
+
+    const auto isRunning = shareButtonAnimation_->state() == QAbstractAnimation::Running;
+    if (isRunning && shareButtonAnimation_->direction() == _direction)
+        return;
+
+    const auto cur = isRunning ? shareButtonAnimation_->currentTime() : 0.;
     shareButtonAnimation_->stop();
-    shareButtonAnimation_->setStartValue(_startPosX);
-    shareButtonAnimation_->setEndValue(_endPosX);
-    shareButtonAnimation_->setDuration(MessageStyle::getHiddenControlsAnimationTime().count());
-    shareButtonAnimation_->disconnect(this);
-    connect(shareButtonAnimation_, &QVariantAnimation::valueChanged, this, [_startPosX, _endPosX, _anim, this](const QVariant& value)
-    {
-        const auto val = value.toInt();
-        shareButton_->move(val, shareButton_->pos().y());
-        const auto opacity = std::abs(static_cast<double>(val - _startPosX) / (_endPosX - _startPosX));
-        shareButtonOpacityEffect_->setOpacity(_anim == WidgetAnimationType::hide ? 1.0 - opacity : opacity);
-    });
-    connect(shareButtonAnimation_, &QVariantAnimation::finished, this, [_anim, this]()
-    {
-        if (_anim == WidgetAnimationType::hide)
-            shareButton_->hide();
-    });
+    shareButtonAnimation_->setCurrentTime(shareButtonAnimation_->totalDuration() - cur);
+    shareButtonAnimation_->setDirection(_direction);
     shareButtonAnimation_->start();
 }
 
@@ -3318,8 +3409,9 @@ void ComplexMessageItem::showTimeAnimated()
     TimeWidget_->move(startPos);
     TimeWidget_->show();
 
-    timeOpacityEffect_->setOpacity(0.0);
-    animateTime(startPos.y(), endPos.y(), WidgetAnimationType::show);
+    if (timeOpacityEffect_)
+        timeOpacityEffect_->setOpacity(0.0);
+    animateTime(startPos.y(), endPos.y(), QAbstractAnimation::Forward);
 }
 
 void ComplexMessageItem::hideTimeAnimated()
@@ -3331,8 +3423,9 @@ void ComplexMessageItem::hideTimeAnimated()
     const QPoint startPos(TimeWidget_->pos());
     const QPoint endPos(initialPos.x(), initialPos.y() + getTimeAnimationDistance());
 
-    timeOpacityEffect_->setOpacity(1.0);
-    animateTime(startPos.y(), endPos.y(), WidgetAnimationType::hide);
+    if (timeOpacityEffect_)
+        timeOpacityEffect_->setOpacity(1.0);
+    animateTime(startPos.y(), endPos.y(), QAbstractAnimation::Backward);
 }
 
 int ComplexMessageItem::getTimeAnimationDistance() const
@@ -3343,7 +3436,7 @@ int ComplexMessageItem::getTimeAnimationDistance() const
     return TimeWidget_->getVerMargin() + MessageStyle::getHiddenControlsShift();
 }
 
-void ComplexMessageItem::animateTime(const int _startPosY, const int _endPosY, const WidgetAnimationType _anim)
+void ComplexMessageItem::animateTime(const int _startPosY, const int _endPosY, QAbstractAnimation::Direction _direction)
 {
     if (!TimeWidget_)
         return;
@@ -3356,17 +3449,18 @@ void ComplexMessageItem::animateTime(const int _startPosY, const int _endPosY, c
     timeAnimation_->setEndValue(_endPosY);
     timeAnimation_->setDuration(MessageStyle::getHiddenControlsAnimationTime().count());
     timeAnimation_->disconnect(this);
-    connect(timeAnimation_, &QVariantAnimation::valueChanged, this, [_startPosY, _endPosY, _anim, this](const QVariant& value)
+    connect(timeAnimation_, &QVariantAnimation::valueChanged, this, [_startPosY, _endPosY, _direction, this](const QVariant& value)
     {
         const auto val = value.toDouble();
         TimeWidget_->move(TimeWidget_->pos().x(), val);
         const auto denominator = std::max(1, _endPosY - _startPosY);
         const auto opacity = std::abs((val - _startPosY) / denominator);
-        timeOpacityEffect_->setOpacity(_anim == WidgetAnimationType::hide ? 1.0 - opacity : opacity);
+        if (timeOpacityEffect_)
+            timeOpacityEffect_->setOpacity(_direction == QAbstractAnimation::Backward ? 1.0 - opacity : opacity);
     });
-    connect(timeAnimation_, &QVariantAnimation::finished, this, [_anim, this]()
+    connect(timeAnimation_, &QVariantAnimation::finished, this, [_direction, this]()
     {
-        if (_anim == WidgetAnimationType::hide)
+        if (_direction == QAbstractAnimation::Backward)
             TimeWidget_->hide();
     });
     timeAnimation_->start();
@@ -3387,7 +3481,7 @@ Data::Quote ComplexMessageItem::getQuoteFromBlock(IItemBlock* _block, const bool
     }
     else
     {
-        quote.text_ = 
+        quote.text_ =
             _selectedTextOnly
             ? _block->getSelectedText(false, IItemBlock::TextDestination::quote)
             : _block->getSourceText();
@@ -3404,9 +3498,13 @@ Data::Quote ComplexMessageItem::getQuoteFromBlock(IItemBlock* _block, const bool
         quote.geo_ = buddy().geo_;
         quote.files_ = getFilesPlaceholders();
         quote.poll_ = buddy().poll_;
+        if (!_selectedTextOnly)
+            quote.task_ = buddy().task_;
 
         if (quote.poll_)
             quote.mediaType_ = Ui::MediaType::mediaTypePoll;
+        if (quote.task_)
+            quote.mediaType_ = Ui::MediaType::mediaTypeTask;
 
         if (quote.isEmpty())
             return Data::Quote();
@@ -3424,7 +3522,7 @@ Data::Quote ComplexMessageItem::getQuoteFromBlock(IItemBlock* _block, const bool
             quote.stickerId_ = stickerId.obsoleteId_->id_;
         }
 
-        if (!Url_.isEmpty() && !Description_.isEmpty() && (!_selectedTextOnly || Utils::InterConnector::instance().isMultiselect()))
+        if (!Url_.isEmpty() && !Description_.isEmpty() && (!_selectedTextOnly || Utils::InterConnector::instance().isMultiselect(ChatAimid_)))
         {
             quote.url_ = Url_;
             quote.description_ = Description_;
@@ -3477,10 +3575,11 @@ void ComplexMessageItem::updateTimeWidgetUnderlay()
             MediaType::mediaTypeContact,
             MediaType::mediaTypeGeo,
             MediaType::mediaTypePoll,
+            MediaType::mediaTypeTask,
         };
 
         const auto mediaType = Blocks_.back()->getMediaType();
-        const auto withUnderlay = Blocks_.size() == 1 && std::none_of(std::begin(plainTypes), std::end(plainTypes), [mediaType](const auto _t) { return mediaType == _t; });
+        const auto withUnderlay = getBlockCount() == 1 && std::none_of(std::begin(plainTypes), std::end(plainTypes), [mediaType](const auto _t) { return mediaType == _t; });
 
         TimeWidget_->setUnderlayVisible(withUnderlay);
 
@@ -3519,19 +3618,18 @@ QRect ComplexMessageItem::messageRect() const
     return isBubbleRequired() ? Layout_->getBubbleRect() : Layout_->getBlocksContentRect();
 }
 
+QRect ComplexMessageItem::cornerMenuContentRect() const
+{
+    if (isSingleSticker())
+        return Layout_->getBlocksContentRect();
+
+    return Layout_->getBubbleRect();
+}
+
 ReactionsPlateType ComplexMessageItem::reactionsPlateType() const
 {
-    if (Blocks_.size() == 1)
-    {
-        switch (getMediaType())
-        {
-            case MediaType::mediaTypeSticker:
-                return ReactionsPlateType::Media;
-            default:
-                break;
-        }
-    }
-
+    if (isSingleSticker())
+        return ReactionsPlateType::Media;
     return ReactionsPlateType::Regular;
 
 }
@@ -3542,7 +3640,7 @@ void ComplexMessageItem::setSpellErrorsVisible(bool _visible)
         block->setSpellErrorsVisible(_visible);
 }
 
-void ComplexMessageItem::setProgress(const QString& _fsId, const int32_t _value)
+void ComplexMessageItem::setProgress(const Utils::FileSharingId& _fsId, const int32_t _value)
 {
     for (auto& block : Blocks_)
     {
@@ -3561,9 +3659,10 @@ void ComplexMessageItem::fillGalleryData(Utils::GalleryData& _data)
     _data.time_ = Time_;
     _data.sender_ = isChat() ? SenderAimid_ : (isOutgoing() ? Ui::MyInfo()->aimId() : ChatAimid_);
     _data.caption_ = Description_.string();
+    _data.fromThreadFeed_ = isThreadFeedMessage();
 }
 
-std::optional<Data::FileSharingMeta> ComplexMessageItem::getMeta(const QString& _id) const
+std::optional<Data::FileSharingMeta> ComplexMessageItem::getMeta(const Utils::FileSharingId& _id) const
 {
     for (const auto& b : Blocks_)
     {
@@ -3573,6 +3672,17 @@ std::optional<Data::FileSharingMeta> ComplexMessageItem::getMeta(const QString& 
     }
 
     return std::nullopt;
+}
+
+bool ComplexMessageItem::canBeThreadParent() const
+{
+    return !isSingleSticker();
+}
+
+void ComplexMessageItem::updateFileStatus(FileStatus _status)
+{
+    for (auto b : Blocks_)
+        b->updateFileStatus(_status);
 }
 
 void ComplexMessageItem::setTimeWidgetVisible(const bool _visible)
@@ -3612,8 +3722,9 @@ void ComplexMessageItem::sendInstantEdit()
 
     if (!Description_.isEmpty())
     {
-        for (const auto block : boost::adaptors::reverse(Blocks_))
+        for (auto it = Blocks_.crbegin(); it != Blocks_.crend(); ++it)
         {
+            const auto block = *it;
             const auto type = block->getContentType();
             if (type == IItemBlock::ContentType::DebugText)
                 continue;
@@ -3627,6 +3738,37 @@ void ComplexMessageItem::sendInstantEdit()
 
     msg.SetText(getEditableText(InstantEdit::Yes));
     GetDispatcher()->updateMessage(msg);
+}
+
+bool ComplexMessageItem::isSingleBlockOfType(IItemBlock::ContentType _type) const
+{
+    const auto blockCount = getBlockCount(uint32_t(IItemBlock::ContentType::ExcludeDebug_Mask));
+    const auto allBlockCount = getBlockCount();
+    return blockCount == 1 && Blocks_[allBlockCount - blockCount]->getContentType() == _type;
+}
+
+bool ComplexMessageItem::shareButtonEnabled() const
+{
+    return !isThreadFeedMessage() && !Logic::getContactListModel()->isThread(ChatAimid_);
+}
+
+bool ComplexMessageItem::hasBlockedFilesharings() const
+{
+    return std::any_of(Blocks_.begin(), Blocks_.end(), [](auto b) { return b->isBlockedFileSharing(); });
+}
+
+bool ComplexMessageItem::hasFilesharingsWithStatus() const
+{
+    return std::any_of(Blocks_.begin(), Blocks_.end(), [](auto b) { return b->isFileSharingWithStatus(); });
+}
+
+ComplexMessageItem::BubbleHorMargins ComplexMessageItem::getBubbleHorMarginAdjust() const
+{
+    BubbleHorMargins margins;
+    if (isSingleFilesharing() && hasFilesharingsWithStatus())
+        margins.right_ = Utils::scale_value(-4);
+
+    return margins;
 }
 
 MessageTimeWidget* ComplexMessageItem::getTimeWidget() const
@@ -3646,7 +3788,7 @@ void ComplexMessageItem::setUrlAndDescription(const QString& _url, const QString
     Description_ = _description;
 }
 
-void ComplexMessageItem::setUrlAndDescription(const QString& _url, const Data::FormattedString& _description)
+void ComplexMessageItem::setUrlAndDescription(const QString& _url, const Data::FString& _description)
 {
     Url_ = _url;
     Description_ = _description;
@@ -3662,7 +3804,7 @@ void ComplexMessageItem::setQuoteSelection()
     for (auto& val : Blocks_)
         val->setQuoteSelection();
 
-    QuoteAnimation_.startQuoteAnimation();
+    QuoteAnimation_->startQuoteAnimation();
 }
 
 void ComplexMessageItem::highlightText(const highlightsV& _highlights)
@@ -3679,10 +3821,7 @@ void ComplexMessageItem::resetHighlight()
 
 void ComplexMessageItem::setDeliveredToServer(const bool _isDeliveredToServer)
 {
-    if (!isOutgoing())
-        return;
-
-    if (deliveredToServer_ != _isDeliveredToServer)
+    if (isOutgoing())
         deliveredToServer_ = _isDeliveredToServer;
 }
 

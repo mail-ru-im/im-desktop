@@ -21,7 +21,7 @@ namespace
             DWORD err = ERROR_SUCCESS;
             if (wait_rv == WAIT_FAILED)
                 err = GetLastError();
-            assert(false);  // Crash.
+            im_assert(false);  // Crash.
         }
     }
 
@@ -38,7 +38,7 @@ namespace
             bool did_init = (WSAStartup(winsock_ver, &wsa_data) == 0);
             if (did_init)
             {
-                assert(wsa_data.wVersion == winsock_ver);
+                im_assert(wsa_data.wVersion == winsock_ver);
 
                 // The first time WSAGetLastError is called, the delay load helper will
                 // resolve the address with GetProcAddress and fixup the import.  If a
@@ -59,7 +59,7 @@ namespace core
     namespace internal
     {
 
-        void assert_event_not_signaled(WSAEVENT _hEvent) 
+        void assert_event_not_signaled(WSAEVENT _hEvent)
         {
             DWORD wait_rv = WaitForSingleObject(_hEvent, 0);
             check_event_wait(_hEvent, wait_rv, WAIT_TIMEOUT);
@@ -79,5 +79,5 @@ namespace core
             static winsock_init_singleton s;
         }
 
-    } // namespace internal 
+    } // namespace internal
 } // namespace core

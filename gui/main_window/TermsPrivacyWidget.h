@@ -23,11 +23,6 @@ namespace Ui
         Q_OBJECT
 
     public:
-        struct AcceptParams
-        {
-            bool accepted_ = false;
-        };
-
         struct Options
         {
             bool isGdprUpdate_ = false;
@@ -41,11 +36,11 @@ namespace Ui
         ~TermsPrivacyWidget();
 
     Q_SIGNALS:
-        void agreementAccepted(const AcceptParams& _acceptParams);
+        void agreementAccepted();
 
     public Q_SLOTS:
         void onAgreeClicked();
-        void reportAgreementAccepted(const AcceptParams& _acceptParams);
+        void reportAgreementAccepted();
 
     protected:
         void keyPressEvent(QKeyEvent *_event) override;

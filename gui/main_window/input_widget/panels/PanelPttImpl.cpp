@@ -228,10 +228,10 @@ namespace Ui
                 removeRecord();
             else
                 recorder_->stop();
-        }
 
-        if (player_ && recorder_ && !player_->hasBuffer())
-            recorder_->getPcmData();
+            if (player_ && !player_->hasBuffer())
+                recorder_->getPcmData();
+        }
     }
 
     void InputPanelPttImpl::pauseRecord()

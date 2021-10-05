@@ -6,5 +6,5 @@ extern "C"
 #endif
     void init_crash_handlers()
     {
-        assert(!"need for binary compatability");
+        im_assert(!"need for binary compatability");
     }

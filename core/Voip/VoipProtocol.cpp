@@ -24,7 +24,7 @@ std::shared_ptr<core::async_task_handlers> voip_manager::VoipProtocol::post_pack
         auto ptr_this = __this.lock();
         if (!ptr_this)
             return;
-        if (core::wim::wim_protocol_internal_error::wpie_network_error == error  && packet->get_repeat_count() < RESEND_TIMES)
+        if (core::wim::wim_packet::is_network_error(error) && packet->get_repeat_count() < RESEND_TIMES)
         {
             ptr_this->post_packet(packet, error_handler, callback_handlers);
             return;

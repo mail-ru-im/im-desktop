@@ -6,7 +6,7 @@
 
 #include "../../../corelib/core_face.h"
 #include "../../../corelib/collection_helper.h"
-#include "../../tools/json_helper.h"
+#include "../../../common.shared/json_helper.h"
 
 using namespace core;
 

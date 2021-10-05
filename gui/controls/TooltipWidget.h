@@ -46,13 +46,13 @@ namespace Tooltip
     void drawTooltip(QPainter& _p, const QRect& _tooltipRect, const int _arrowOffset, const ArrowDirection _direction);
     void drawBigTooltip(QPainter& _p, const QRect& _tooltipRect, const int _arrowOffset, const ArrowDirection _direction);
 
-    Ui::TextTooltip* getDefaultTooltip();
+    Ui::TextTooltip* getDefaultTooltip(QWidget* _parent = nullptr);
     void resetDefaultTooltip();
 
-    Ui::TextTooltip* getDefaultMultilineTooltip();
+    Ui::TextTooltip* getDefaultMultilineTooltip(QWidget* _parent = nullptr);
     void resetDefaultMultilineTooltip();
 
-    void show(const QString& _text, const QRect& _objectRect, const QSize& _maxSize = QSize(0, 0), ArrowDirection _direction = ArrowDirection::Auto, Tooltip::ArrowPointPos _arrowPos = Tooltip::ArrowPointPos::Top, const QRect& _boundingRect = QRect(), Tooltip::TooltipMode _mode = Tooltip::TooltipMode::Default);
+    void show(const QString& _text, const QRect& _objectRect, const QSize& _maxSize = QSize(0, 0), ArrowDirection _direction = ArrowDirection::Auto, Tooltip::ArrowPointPos _arrowPos = Tooltip::ArrowPointPos::Top, const QRect& _boundingRect = QRect(), Tooltip::TooltipMode _mode = Tooltip::TooltipMode::Default, QWidget* _parent = nullptr);
     void forceShow(bool _force);
     void hide();
 

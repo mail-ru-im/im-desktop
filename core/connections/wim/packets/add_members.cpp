@@ -2,7 +2,7 @@
 
 #include "add_members.h"
 #include "../../../http_request.h"
-#include "tools/json_helper.h"
+#include "../common.shared/json_helper.h"
 #include "../corelib/enumerations.h"
 
 using namespace core;
@@ -14,8 +14,8 @@ add_members::add_members(wim_packet_params _params, std::string _aimid, std::vec
     , members_to_add_(std::move(_members_to_add))
     , unblock_(_unblock)
 {
-    assert(!aimid_.empty());
-    assert(!members_to_add_.empty());
+    im_assert(!aimid_.empty());
+    im_assert(!members_to_add_.empty());
 }
 
 int32_t add_members::init_request(const std::shared_ptr<core::http_request_simple>& _request)

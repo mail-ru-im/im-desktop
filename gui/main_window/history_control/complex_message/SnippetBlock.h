@@ -42,12 +42,12 @@ public:
     };
 
     SnippetBlock(ComplexMessageItem* _parent, const QString& _link, const bool _hasLinkInMessage, EstimatedType _estimatedType);
+    SnippetBlock(ComplexMessageItem* _parent, Data::FStringView _link, const bool _hasLinkInMessage, EstimatedType _estimatedType);
 
     IItemBlockLayout* getBlockLayout() const override; // returns nullptr, since there is no layout
 
-    Data::FormattedString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
+    Data::FString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
     QString getTextForCopy() const override;
-    bool updateFriendly(const QString& _aimId, const QString& _friendly) override { return true; }
 
     void selectByPos(const QPoint& from, const QPoint& to, bool topToBottom) override;
     bool isAllSelected() const override { return isSelected(); }

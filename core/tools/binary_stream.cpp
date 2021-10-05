@@ -56,7 +56,7 @@ bool core::tools::binary_stream::save_2_file(std::string_view _buf, const std::w
 
         if (!outfile.good())
         {
-            assert(!"save stream to file error");
+            im_assert(!"save stream to file error");
             return false;
         }
     }
@@ -96,7 +96,7 @@ bool binary_stream::load_from_file(std::wstring_view _file_name)
         infile.read(buffer, bytes_to_read);
         if (!infile.good())
         {
-            assert(!"read stream to file error");
+            im_assert(!"read stream to file error");
             return false;
         }
 

@@ -81,6 +81,7 @@ namespace Ui
 
         QTimer tooltipTimer_;
         bool enableTooltip_ = true;
+        bool tooltipHasParent_ = false;
         QString tooltipText_;
 
         QWidget* focusChainNextOverride_ = nullptr;
@@ -97,7 +98,7 @@ namespace Ui
         ClickableTextWidget(QWidget* _parent, const QFont& _font, const QColor& _color, const TextRendering::HorAligment _textAlign = TextRendering::HorAligment::LEFT);
         ClickableTextWidget(QWidget* _parent, const QFont& _font, const Styling::StyleVariable _color, const TextRendering::HorAligment _textAlign = TextRendering::HorAligment::LEFT);
 
-        void setText(const QString& _text);
+        void setText(const Data::FString& _text);
         QSize sizeHint() const override;
 
         void setColor(const QColor& _color);

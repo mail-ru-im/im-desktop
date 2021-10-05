@@ -55,9 +55,10 @@ http_request_simple::http_request_simple(proxy_settings _proxy_settings, std::st
     is_send_im_stats_(true),
     multi_(false),
     use_curl_decompression_(false),
+    use_new_connection_(false),
     compression_method_(data_compression_method::none)
 {
-    assert(!user_agent_.empty());
+    im_assert(!user_agent_.empty());
 }
 
 http_request_simple::~http_request_simple() = default;
@@ -84,7 +85,7 @@ void http_request_simple::set_need_log_original_url(bool _value)
 
 void http_request_simple::push_post_parameter(std::wstring_view name, std::wstring_view value)
 {
-    assert(!name.empty());
+    im_assert(!name.empty());
 
     post_parameters_[tools::from_utf16(name)] = tools::from_utf16(value);
 }
@@ -101,7 +102,7 @@ void http_request_simple::push_post_form_parameter(std::wstring_view name, std::
 
 void http_request_simple::push_post_form_parameter(std::string name, std::string value)
 {
-    assert(!name.empty());
+    im_assert(!name.empty());
     post_form_parameters_[std::move(name)] = std::move(value);
 }
 
@@ -112,15 +113,15 @@ void http_request_simple::push_post_form_file(std::wstring_view name, std::wstri
 
 void http_request_simple::push_post_form_file(const std::string& name, const std::string& file_name)
 {
-    assert(!name.empty());
-    assert(!file_name.empty());
+    im_assert(!name.empty());
+    im_assert(!file_name.empty());
     post_form_files_.insert(std::make_pair(name, file_name));
 }
 
 void http_request_simple::push_post_form_filedata(std::wstring_view name, std::wstring_view file_name)
 {
-    assert(!name.empty());
-    assert(!file_name.empty());
+    im_assert(!name.empty());
+    im_assert(!file_name.empty());
     file_binary_stream file_data;
     file_data.file_name_ = file_name.substr(file_name.find_last_of(L"\\/") + 1);
     file_data.file_stream_.load_from_file(file_name);
@@ -180,6 +181,11 @@ void core::http_request_simple::set_use_curl_decompresion(bool _enable)
     use_curl_decompression_ = _enable;
 }
 
+void core::http_request_simple::set_use_new_connection(bool _use)
+{
+    use_new_connection_ = _use;
+}
+
 std::string http_request_simple::get_post_param() const
 {
     std::string result;
@@ -218,12 +224,13 @@ curl_easy::completion_code http_request_simple::send_request(bool _post, double&
     if (!ctx->init(connect_timeout_, timeout_, proxy_settings, user_agent_))
     {
         g_core->write_string_to_network_log("send_request: ctx init fail\r\n");
-        assert(false);
+        im_assert(false);
         return curl_easy::completion_code::failed;
     }
 
     ctx->set_post_data_compression(compression_method_);
     ctx->set_use_curl_decompression(use_curl_decompression_);
+    ctx->set_use_new_connection(use_new_connection_);
     ctx->set_normalized_url(get_normalized_url());
     if (_post)
     {

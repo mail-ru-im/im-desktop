@@ -396,7 +396,7 @@ namespace Ui
         if (command == u"copy_link")
         {
             QApplication::clipboard()->setText(link);
-            Utils::showToastOverMainWindow(link % QChar::LineFeed % QT_TRANSLATE_NOOP("toast", "Link copied"), getToastVerOffset());
+            Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("toast", "Link copied"), getToastVerOffset());
             Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::settingsscr_nick_action, { {"do", "copy_url"} });
         }
         else if (command == u"share_link")
@@ -477,7 +477,7 @@ namespace Ui
         }
 
         QApplication::clipboard()->setText(target);
-        Utils::showToastOverMainWindow(target % QChar::LineFeed % copied, getToastVerOffset());
+        Utils::showToastOverMainWindow(copied, getToastVerOffset());
 
         Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::settingsscr_nick_action, { {"do", "copy_nick"} });
     }

@@ -1,7 +1,7 @@
 #include "stdafx.h"
 
 #include "privacy_settings.h"
-#include "../../tools/json_helper.h"
+#include "../../../common.shared/json_helper.h"
 #include "../../tools/features.h"
 
 namespace core::wim

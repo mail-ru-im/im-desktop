@@ -6,6 +6,11 @@
 #include "../containers/StatusContainer.h"
 #include "GalleryList.h"
 
+namespace Data
+{
+    struct DialogGalleryState;
+}
+
 namespace Logic
 {
     class ChatMembersModel;
@@ -113,6 +118,7 @@ namespace Ui
         Q_OBJECT
     Q_SIGNALS:
         void checked(bool, QPrivateSignal);
+        void disabledClicked(QPrivateSignal);
 
     public:
         SidebarCheckboxButton(QWidget* _parent);
@@ -121,6 +127,8 @@ namespace Ui
         bool isChecked() const;
 
         void setEnabled(bool _isEnabled) override;
+
+        void setCheckValidator(std::function<bool(bool)> _validatorFunc);
 
     protected:
         void resizeEvent(QResizeEvent* _event) override;
@@ -131,6 +139,8 @@ namespace Ui
     private:
         QPoint clickedPoint_;
         SwitcherCheckbox* checkbox_;
+
+        std::function<bool(bool)> checkValidator_; // accepts desired value, returns new value
     };
 
     class StatusPlate;
@@ -624,6 +634,12 @@ namespace Ui
         GalleryPopup();
 
         void setCounters(int _photo, int _video, int _files, int _links, int _ptt);
+        void setCounters(const Data::DialogGalleryState& _state);
+
+        static int horOffset();
+        static int verOffset();
+
+        int itemsCount() const;
 
     private:
         SidebarButton* galleryPhoto_;

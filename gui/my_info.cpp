@@ -69,7 +69,10 @@ namespace Ui
     bool AttachPhoneInfo::show_dialog()
     {
         auto phoneWidget = new PhoneWidget(0, PhoneWidgetState::ENTER_PHONE_STATE, title_, text_, close_, Ui::AttachState::FORCE_LOGOUT);
-        attachPhoneDialog = std::make_unique<GeneralDialog>(phoneWidget, Utils::InterConnector::instance().getMainWindow(), false, true, close_);
+
+        Ui::GeneralDialog::Options opt;
+        opt.rejectable_ = close_;
+        attachPhoneDialog = std::make_unique<GeneralDialog>(phoneWidget, Utils::InterConnector::instance().getMainWindow(), opt);
         QObject::connect(phoneWidget, &PhoneWidget::requestClose, attachPhoneDialog.get(), &GeneralDialog::acceptDialog);
         attachPhoneDialog->showInCenter();
 
@@ -86,6 +89,8 @@ namespace Ui
 
     my_info::my_info()
     {
+        data_.trusted_ = Features::trustedStatusDefault();
+
         attachPhoneTimer_.setSingleShot(true);
         connect(&attachPhoneTimer_, &QTimer::timeout, this, &my_info::attachStuff);
     }
@@ -115,6 +120,7 @@ namespace Ui
         data_.flags_ = _collection->get_value_as_uint("globalFlags");
         data_.largeIconId_ = QString::fromUtf8(_collection->get_value_as_string("largeIconId"));
         data_.hasMail_ = _collection->get_value_as_bool("hasMail");
+        data_.trusted_ = _collection->get_value_as_bool("trusted");
 
         get_gui_settings()->set_value(login_page_last_entered_phone, data_.phoneNumber_);
         get_gui_settings()->set_value(login_page_last_entered_uin, data_.aimId_);

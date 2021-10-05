@@ -370,6 +370,7 @@ public:
     QPointer<CustomMenu> menu_;
     std::unique_ptr<CaptionArea> caption_;
     GalleryFrame::Actions menuActions_;
+    bool gotoEnabled_ = true;
 };
 
 GalleryFrame::GalleryFrame(QWidget *_parent)
@@ -493,6 +494,11 @@ void GalleryFrame::setMenuEnabled(bool _enable)
     auto & menu = d->objects_[MenuButton];
     menu->setDisabled(!_enable);
     update(menu->rect());
+}
+
+void GalleryFrame::setGotoEnabled(bool _enable)
+{
+    d->gotoEnabled_ = _enable;
 }
 
 QString GalleryFrame::actionIconPath(Action action)
@@ -767,8 +773,7 @@ void GalleryFrame::onClick(ControlType _type)
 
 void GalleryFrame::setLabelText(ControlType _type, const QString &_text)
 {
-    auto object = d->objects_[_type].get();
-    if (object)
+    if (auto object = d->objects_[_type].get())
     {
         auto label = dynamic_cast<Label*>(object);
         label->setText(_text);
@@ -780,7 +785,7 @@ CustomMenu* GalleryFrame::createMenu()
 {
     auto menu = new CustomMenu();
 
-    if (d->menuActions_ & GoTo)
+    if ((d->menuActions_ & GoTo) && d->gotoEnabled_)
         addAction(GoTo, menu, this, &GalleryFrame::goToMessage);
 
     if (d->menuActions_ & Copy)

@@ -5,7 +5,7 @@
 #import <IOKit/pwr_mgt/IOPMLib.h>
 #include "render/VOIPRenderViewClasses.h"
 #include "../../utils/utils.h"
-#include "platform_specific/macos/x64/iTunes.h"
+#include "iTunes.h"
 #include "styles/ThemeParameters.h"
 #include "voip/CommonUI.h"
 

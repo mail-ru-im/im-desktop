@@ -202,7 +202,7 @@ namespace core { namespace tools { namespace system {
 
     bool create_empty_file(const std::wstring &_path)
     {
-        assert(!_path.empty());
+        im_assert(!_path.empty());
 
         binary_stream out;
         return out.save_2_file(_path);
@@ -382,6 +382,12 @@ namespace core { namespace tools { namespace system {
         return file.good()
             ? static_cast<size_t>(file.tellg())
             : 0;
+    }
+
+    uint64_t get_file_lastmodified(const std::wstring& _path)
+    {
+        boost::system::error_code e;
+        return boost::filesystem::last_write_time(_path, e);
     }
 
     std::string get_counter_random()

@@ -29,6 +29,7 @@ static const host_cache& get_bundled_cache()
         { host_url_type::profile,           std::string(config::get().url(config::urls::profile)) },
 
         { host_url_type::mail_auth,         std::string(config::get().url(config::urls::auth_mail_ru)) },
+        { host_url_type::mail_oauth2,       std::string(config::get().url(config::urls::oauth2_mail_ru)) },
         { host_url_type::mail_redirect,     std::string(config::get().url(config::urls::r_mail_ru)) },
         { host_url_type::mail_win,          std::string(config::get().url(config::urls::win_mail_ru)) },
         { host_url_type::mail_read,         std::string(config::get().url(config::urls::read_msg)) },
@@ -91,7 +92,7 @@ static void load_dns_cahe_from_string(std::string_view _str)
         }
         else
         {
-            assert(false);
+            im_assert(false);
         }
     };
 
@@ -267,6 +268,7 @@ void config::hosts::send_config_to_gui()
             return {};
         };
 
+        coll.set_value_as_string("base", get_value(host_url_type::base));
         coll.set_value_as_string("baseBinary", get_value(host_url_type::base_binary));
         coll.set_value_as_string("filesParse", get_value(host_url_type::files_parse));
         coll.set_value_as_string("stickerShare", get_value(host_url_type::stickerpack_share));
@@ -279,6 +281,12 @@ void config::hosts::send_config_to_gui()
 
         if (::features::is_update_from_backend_enabled())
             coll.set_value_as_string("appUpdate", get_value(host_url_type::app_update));
+
+        coll.set_value_as_string("di", get_value(host_url_type::di));
+        coll.set_value_as_string("di_dark", get_value(host_url_type::di_dark));
+        coll.set_value_as_string("tasks", get_value(host_url_type::tasks));
+        coll.set_value_as_string("calendar", get_value(host_url_type::calendar));
+        coll.set_value_as_string("config-host", g_core->get_external_config_url());
 
         core::ifptr<core::iarray> arr(coll->create_array());
         arr->reserve(_vcs_urls.size());
@@ -308,7 +316,7 @@ std::string config::hosts::get_host_url(host_url_type _type)
     if (const auto it = std::find_if(cache.begin(), cache.end(), [_type](const auto& x) { return x.first == _type; }); it != cache.end())
         return it->second;
 
-    assert(false);
+    im_assert(false);
     return {};
 }
 
@@ -405,7 +413,7 @@ std::string config::hosts::format_resolve_host_str(std::string_view _host, unsig
                 else if (dns_workaround_was_enabled)
                     return su::concat('-', _cached, ':', std::to_string(port));
                 else
-                    assert(false);
+                    im_assert(false);
 
                 return std::string();
             }
@@ -450,7 +458,7 @@ void config::hosts::resolve_hosts(bool _load)
                 auto entry = cache.find(url);
                 if (entry == cache.end())
                 {
-                    assert(false);
+                    im_assert(false);
                     return;
                 }
 

@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "ComplexMessageItem.h"
+#include "ComplexMessageUtils.h"
 #include "../MessageStyle.h"
 #include "../../../controls/TextUnit.h"
 #include "../../../controls/LabelEx.h"
@@ -28,7 +29,7 @@ namespace
     QString labelLink(const TextRendering::TextUnitPtr& _label, const QPoint& _pos)
     {
         if (_label)
-            return _label->getLink(_pos);
+            return _label->getLink(_pos).url_;
 
         return QString();
     }
@@ -59,7 +60,7 @@ QuoteBlock::QuoteBlock(ComplexMessageItem* _parent, const Data::Quote& _quote)
 
     connect(this, &QuoteBlock::observeToSize, _parent, &ComplexMessageItem::onObserveToSize);
 
-    if (Quote_.isInteractive())
+    if (isQuoteInteractive())
     {
         setCursor(Qt::PointingHandCursor);
         connect(_parent, &ComplexMessageItem::hoveredBlockChanged, this, qOverload<>(&QuoteBlock::update));
@@ -104,19 +105,13 @@ bool QuoteBlock::updateFriendly(const QString& _aimId, const QString& _friendly)
 
         for (const auto block : Blocks_)
             needUpdate |= block->updateFriendly(_aimId, _friendly);
-
-        if (needUpdate)
-        {
-            update();
-            updateGeometry();
-        }
     }
     return needUpdate;
 }
 
-Data::FormattedString QuoteBlock::getSelectedText(const bool _isFullSelect, const TextDestination _dest) const
+Data::FString QuoteBlock::getSelectedText(const bool _isFullSelect, const TextDestination _dest) const
 {
-    Data::FormattedString result;
+    Data::FString result;
     for (auto b : Blocks_)
     {
         if (b->isSelected())
@@ -130,7 +125,7 @@ Data::FormattedString QuoteBlock::getSelectedText(const bool _isFullSelect, cons
     }
 
     if (_isFullSelect && !result.isEmpty())
-        return Data::FormattedString(getQuoteHeader()) += result;
+        return Data::FString(getQuoteHeader()) += result;
 
     return result;
 }
@@ -154,22 +149,21 @@ QString QuoteBlock::getTextForCopy() const
     return result;
 }
 
-Data::FormattedString QuoteBlock::getSourceText() const
+Data::FString QuoteBlock::getSourceText() const
 {
-    Data::FormattedString result;
+    Data::FString result;
     for (auto b : Blocks_)
     {
         const auto sourceText = b->hasSourceText() ? b->getSourceText() : b->getTextForCopy();
-        if (b->getContentType() == IItemBlock::ContentType::Link && result.string().contains(sourceText.string()))
+        if (b->getContentType() == IItemBlock::ContentType::Link && result.contains(sourceText.string()))
             continue;
 
         result += sourceText;
         result += QChar::LineFeed;
     }
 
-    // TODO-FORMAT-IMPLEMENT
     if (!result.isEmpty())
-        return Data::FormattedString(getQuoteHeader()) += result;
+        return Data::FString(getQuoteHeader()) += result;
 
     return result;
 }
@@ -346,6 +340,14 @@ bool QuoteBlock::quoteOnly() const
     return !ReplyBlock_;
 }
 
+bool QuoteBlock::isQuoteInteractive() const
+{
+    if (Parent_->isThreadFeedMessage())
+        return false;
+
+    return Quote_.isInteractive();
+}
+
 QString QuoteBlock::getQuoteHeader() const
 {
     return u"> " % Quote_.senderFriendly_ % u" (" % QDateTime::fromSecsSinceEpoch(Quote_.time_).toString(u"dd.MM.yyyy hh:mm") % u"): ";
@@ -374,8 +376,10 @@ void QuoteBlock::initSenderName()
 
     auto text = [](const QString& _text, const QFont& _font, const QColor& _color)
     {
-        auto unit = TextRendering::MakeTextUnit(_text, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-        unit->init(_font, _color, QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+        auto unit = TextRendering::MakeTextUnit(_text, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS,
+            TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS, TextRendering::EmojiSizeType::REGULAR,
+            ParseBackticksPolicy::ParseSingles);
+        unit->init(_font, _color, MessageStyle::getQuoteSenderFontMarkdown(), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
         return unit;
     };
 
@@ -394,7 +398,6 @@ void QuoteBlock::initSenderName()
             hdrText = QT_TRANSLATE_NOOP("quote", "Forwarded message");
 
         senderLabel_ = text(hdrText, MessageStyle::getQuoteSenderFont(), forwardLabelColor());
-        senderLabel_->markdown(MessageStyle::getQuoteSenderFontMarkdown(), forwardLabelColor(), Ui::TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
     }
     else
     {
@@ -434,34 +437,33 @@ void QuoteBlock::updateFonts()
 
 void QuoteBlock::blockClicked()
 {
-    if (!Quote_.isInteractive())
+    if (!isQuoteInteractive())
         return;
 
-    if (Quote_.isForward_)
+    const auto& id = Quote_.chatId_.isEmpty() ? getChatAimid() : Quote_.chatId_;
+    if (!Quote_.isForward_ || Logic::getContactListModel()->contains(id))
     {
-        if (Logic::getContactListModel()->contains(Quote_.chatId_))
+        if (getParentComplexMessage()->isThreadFeedMessage())
         {
-            const auto selectedContact = Logic::getContactListModel()->selectedContact();
-            if (selectedContact != Quote_.chatId_)
-                Q_EMIT Utils::InterConnector::instance().addPageToDialogHistory(selectedContact);
-
-            Q_EMIT Logic::getContactListModel()->select(Quote_.chatId_, Quote_.msgId_, Logic::UpdateChatSelection::Yes);
+            Utils::InterConnector::instance().scrollThreadFeedToMsg(id, Quote_.msgId_);
         }
-        else if (!Quote_.chatStamp_.isEmpty())
+        else
         {
-            Logic::getContactListModel()->joinLiveChat(Quote_.chatStamp_, false);
+            if (const auto& selected = Logic::getContactListModel()->selectedContact(); selected != id)
+                Q_EMIT Utils::InterConnector::instance().addPageToDialogHistory(selected);
+            Utils::InterConnector::instance().openDialog(id, Quote_.msgId_);
         }
     }
-    else
+    else if (!Quote_.chatStamp_.isEmpty())
     {
-        Logic::getContactListModel()->setCurrent(Logic::getContactListModel()->selectedContact(), Quote_.msgId_, true);
+        Logic::getContactListModel()->joinLiveChat(Quote_.chatStamp_, false);
     }
 }
 
 void QuoteBlock::drawBlock(QPainter &p, const QRect& _rect, const QColor& _quoteColor)
 {
     const auto hoveredBlock = getParentComplexMessage()->getHoveredBlock();
-    if (hoveredBlock && Quote_.isInteractive())
+    if (hoveredBlock && isQuoteInteractive())
     {
         if (hoveredBlock == this || std::any_of(Blocks_.begin(), Blocks_.end(), [hoveredBlock](const auto _block) { return hoveredBlock == _block; }))
         {
@@ -514,7 +516,7 @@ void QuoteBlock::initialize()
 
 void QuoteBlock::mouseMoveEvent(QMouseEvent * _e)
 {
-    if (Utils::InterConnector::instance().isMultiselect() || Quote_.isInteractive())
+    if (Utils::InterConnector::instance().isMultiselect(getChatAimid()) || isQuoteInteractive())
     {
         setCursor(Qt::PointingHandCursor);
     }
@@ -536,25 +538,10 @@ void QuoteBlock::mouseMoveEvent(QMouseEvent * _e)
 
 bool QuoteBlock::replaceBlockWithSourceText(IItemBlock *block)
 {
-    auto iter = std::find(Blocks_.begin(), Blocks_.end(), block);
-
-    if (iter == Blocks_.end())
+    if (!mergeToPreviousOrReplaceByText(Blocks_, block, Parent_))
         return false;
-
-    auto &existingBlock = *iter;
-    if (!existingBlock)
-        return false;
-
-    auto textBlock = new TextBlock(Parent_, existingBlock->getSourceText());
-
-    textBlock->onActivityChanged(true);
-    textBlock->show();
-
-    existingBlock->deleteLater();
-    existingBlock = textBlock;
 
     Q_EMIT observeToSize();
-
     return true;
 }
 
@@ -598,7 +585,7 @@ int QuoteBlock::desiredWidth(int _width) const
     return (getLeftOffset() - getLeftAdditional()) + std::max(result + Ui::MessageStyle::Quote::getQuoteOffsetRight(), Ui::MessageStyle::getQuoteBlockDesiredWidth());
 }
 
-QString QuoteBlock::linkAtPos(const QPoint& pos) const
+Data::LinkInfo QuoteBlock::linkAtPos(const QPoint& pos) const
 {
     for (auto b : Blocks_)
     {
@@ -607,7 +594,7 @@ QString QuoteBlock::linkAtPos(const QPoint& pos) const
             return link;
     }
 
-    return QString();
+    return {};
 }
 
 bool QuoteBlock::clicked(const QPoint& _p)
@@ -648,7 +635,7 @@ bool QuoteBlock::clicked(const QPoint& _p)
             if (hoveredBlock->getContentType() == ContentType::Text)
             {
                 const auto globalPoint = getParentComplexMessage()->mapToGlobal(_p);
-                if (!hoveredBlock->linkAtPos(globalPoint).isEmpty() || !Quote_.isInteractive())
+                if (!hoveredBlock->linkAtPos(globalPoint).isEmpty() || !isQuoteInteractive())
                     hoveredBlock->clicked(_p);
                 else
                     blockClicked();
@@ -666,7 +653,7 @@ bool QuoteBlock::clicked(const QPoint& _p)
 
 void QuoteBlock::doubleClicked(const QPoint & _p, std::function<void(bool)> _callback)
 {
-    if (!Quote_.isInteractive())
+    if (!isQuoteInteractive())
     {
         const auto hoveredBlock = getParentComplexMessage()->getHoveredBlock();
         const auto isChildBlock = std::any_of(Blocks_.begin(), Blocks_.end(), [hoveredBlock](const auto _block) { return hoveredBlock == _block; });
@@ -682,7 +669,7 @@ void QuoteBlock::doubleClicked(const QPoint & _p, std::function<void(bool)> _cal
 
 bool QuoteBlock::pressed(const QPoint & _p)
 {
-    if (!Quote_.isInteractive())
+    if (!isQuoteInteractive())
     {
         const auto hoveredBlock = getParentComplexMessage()->getHoveredBlock();
         const auto isChildBlock = std::any_of(Blocks_.begin(), Blocks_.end(), [hoveredBlock](const auto _block) { return hoveredBlock == _block; });
@@ -708,7 +695,7 @@ QString QuoteBlock::getSenderAimid() const
 
 bool QuoteBlock::isNeedCheckTimeShift() const
 {
-    if (Quote_.isInteractive())
+    if (isQuoteInteractive())
         return true;
 
     if (!Blocks_.empty())
@@ -742,13 +729,8 @@ Data::FilesPlaceholderMap QuoteBlock::getFilePlaceholders()
 
 bool QuoteBlock::containsText() const
 {
-    for (auto b : Blocks_)
-    {
-        if (b->getContentType() != IItemBlock::ContentType::Text && b->getContentType() != IItemBlock::ContentType::DebugText)
-            return false;
-    }
-
-    return true;
+    static const uint32_t TextMask = uint32_t(IItemBlock::ContentType::Text) | uint32_t(IItemBlock::ContentType::DebugText);
+    return (findBlock(Blocks_.begin(), Blocks_.end(), TextMask) != nullptr);
 }
 
 int QuoteBlock::getMaxWidth() const
@@ -772,6 +754,17 @@ int QuoteBlock::effectiveBlockWidth() const
     }
 
     return result;
+}
+
+void QuoteBlock::updateFileStatus(FileStatus _status)
+{
+    for (auto block : Blocks_)
+        block->updateFileStatus(_status);
+}
+
+bool QuoteBlock::isBlockedFileSharing() const
+{
+    return std::any_of(Blocks_.begin(), Blocks_.end(), [](auto b) { return b->isBlockedFileSharing(); });
 }
 
 const std::vector<GenericBlock *>& QuoteBlock::getBlocks() const

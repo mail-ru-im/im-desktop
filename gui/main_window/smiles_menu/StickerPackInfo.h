@@ -30,13 +30,13 @@ namespace Ui
 
     private Q_SLOTS:
 
-        void onStickerPreview(const QString& _stickerId);
+        void onStickerPreview(const Utils::FileSharingId& _stickerId);
 
     Q_SIGNALS :
 
         void stickerPreviewClose();
-        void stickerPreview(const int32_t _setId, const QString& _stickerId);
-        void stickerHovered(const int32_t _setId, const QString& _stickerId);
+        void stickerPreview(const int32_t _setId, const Utils::FileSharingId& _stickerId);
+        void stickerHovered(const int32_t _setId, const Utils::FileSharingId& _stickerId);
 
     private:
 
@@ -133,8 +133,8 @@ namespace Ui
         void onRemoveButton(bool _checked);
         void touchScrollStateChanged(QScroller::State _state);
         void onStickerPreviewClose();
-        void onStickerPreview(const int32_t _setId, const QString& _stickerId);
-        void onStickerHovered(const int32_t _setId, const QString& _stickerId);
+        void onStickerPreview(const int32_t _setId, const Utils::FileSharingId& _stickerId);
+        void onStickerHovered(const int32_t _setId, const Utils::FileSharingId& _stickerId);
         void contextMenuAction(QAction* _action);
         void onWindowResized();
 
@@ -149,7 +149,7 @@ namespace Ui
         PackWidget(Stickers::StatContext _context, QWidget* _parent);
         ~PackWidget();
 
-        void onStickersPackInfo(std::shared_ptr<Ui::Stickers::Set> _set, const bool _result, const bool _purchased);
+        void onStickersPackInfo(std::shared_ptr<Ui::Stickers::Set> _set, const bool _result, const bool _purchased, bool _fromOtherFederation);
 
         void setParentDialog(GeneralDialog* _dialog);
         QString getName() const { return name_; }
@@ -176,11 +176,11 @@ namespace Ui
 
         PackWidget* pack_;
 
-        int32_t set_id_;
+        int32_t setId_;
 
-        QString store_id_;
+        QString storeId_;
 
-        QString file_id_;
+        Utils::FileSharingId fileSharingId_;
 
         Stickers::StatContext context_;
 
@@ -195,7 +195,7 @@ namespace Ui
         StickerPackInfo(QWidget* _parent,
             const int32_t _set_id,
             const QString& _store_id,
-            const QString& _file_id,
+            const Utils::FileSharingId& _file_id,
             Stickers::StatContext _context);
 
         virtual ~StickerPackInfo();

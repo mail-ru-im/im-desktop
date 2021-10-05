@@ -129,7 +129,7 @@ namespace core
             template <typename T>
             T* safely_cast_netlink_msg_data(const struct nlmsghdr* _header, int _length)
             {
-                assert(NLMSG_OK(_header, static_cast<__u32>(_length)));
+                im_assert(NLMSG_OK(_header, static_cast<__u32>(_length)));
                 if (_length <= 0 || static_cast<size_t>(_length) < NLMSG_HDRLEN + sizeof(T))
                     return nullptr;
                 return reinterpret_cast<const T*>(NLMSG_DATA(_header));
@@ -177,7 +177,7 @@ namespace core
 
         void address_tracker_linux::init(std::function<void(network_change_notifier::connection_type)> _init_callback)
         {
-            assert(g_core->is_core_thread());
+            im_assert(g_core->is_core_thread());
             netlink_fd_ = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
             if (netlink_fd_ == -1)
             {
@@ -304,7 +304,7 @@ namespace core
 
         void address_tracker_linux::abort_and_force_online()
         {
-            assert(g_core->is_core_thread());
+            im_assert(g_core->is_core_thread());
             abort_watch_ = true;
             netlink_fd_ = -1;
             current_connection_type_ = network_change_notifier::CONNECTION_UNKNOWN;
@@ -318,7 +318,7 @@ namespace core
 
         network_change_notifier::connection_type address_tracker_linux::get_current_connection_type() const
         {
-            assert(g_core->is_core_thread());
+            im_assert(g_core->is_core_thread());
             std::unique_lock<std::mutex> lock(connection_type_mutex_);
 
             if (!connection_type_initialized_)
@@ -380,13 +380,13 @@ namespace core
 
         void address_tracker_linux::handle_message(const char* _buffer, int _length, bool* _address_changed, bool* _link_changed, bool* _tunnel_changed)
         {
-            assert(_buffer);
+            im_assert(_buffer);
             // Note that NLMSG_NEXT decrements |length| to reflect the number of bytes
             // remaining in |buffer|.
             for (const struct nlmsghdr* header = reinterpret_cast<const struct nlmsghdr*>(_buffer); _length >= 0 && NLMSG_OK(header, static_cast<__u32>(_length)); header = NLMSG_NEXT(header, _length))
             {
                 // The |header| pointer should never precede |buffer|.
-                assert(_buffer <= reinterpret_cast<const char*>(header));
+                im_assert(_buffer <= reinterpret_cast<const char*>(header));
                 switch (header->nlmsg_type)
                 {
                 case NLMSG_DONE:
@@ -503,7 +503,7 @@ namespace core
 
         void address_tracker_linux::on_file_can_read_without_blocking()
         {
-            assert(!g_core->is_core_thread());
+            im_assert(!g_core->is_core_thread());
             bool address_changed;
             bool link_changed;
             bool tunnel_changed;

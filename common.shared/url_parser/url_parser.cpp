@@ -6,6 +6,8 @@
 #include "../core/tools/strings.h"
 #endif
 
+#include "../core/tools/features.h"
+
 #include "url_parser.h"
 #include "../config/config.h"
 
@@ -92,6 +94,11 @@ const char* to_string(common::tools::url::extension _value)
     }
 }
 
+const char* to_string(std::string_view _string)
+{
+    return _string.data();
+}
+
 common::tools::url::url() = default;
 
 common::tools::url::url(std::string _url, type _type, protocol _protocol, extension _extension)
@@ -154,6 +161,14 @@ bool common::tools::url::has_prtocol() const
     {
         return std::tolower(a) == std::tolower(b);
     });
+}
+
+bool common::tools::url::has_prohibited_protocols() const
+{
+    if (!features::is_url_ftp_protocols_allowed())
+        return protocol_ == url::protocol::ftp || protocol_ == url::protocol::ftps || protocol_ == url::protocol::sftp;
+
+    return false;
 }
 
 bool common::tools::url::operator==(const url& _right) const
@@ -236,7 +251,7 @@ void common::tools::url_parser_utf16::process(char16_t _c)
     }
 
     char16_size_ = core::tools::utf16_char_size(_c);
-    assert(static_cast<size_t>(char16_size_) <= char16_buf_.size());
+    im_assert(static_cast<size_t>(char16_size_) <= char16_buf_.size());
     if (char16_size_ == 1)
         process();
     else
@@ -271,7 +286,7 @@ void common::tools::url_parser::process(char _c)
 
 bool common::tools::url_parser::has_url() const
 {
-    return url_.type_ != url::type::undefined;
+    return url_.type_ != url::type::undefined && !url_.has_prohibited_protocols();
 }
 
 const common::tools::url& common::tools::url_parser::get_url() const
@@ -322,6 +337,29 @@ common::tools::url_vector_t common::tools::url_parser::parse_urls(const std::str
     return urls;
 }
 
+common::tools::url_vector_t common::tools::url_parser_utf16::parse_urls(std::u16string_view _source, const std::string& _files_url)
+{
+    url_vector_t urls;
+
+    url_parser_utf16 parser(_files_url);
+
+    for (char16_t c : _source)
+    {
+        parser.process(c);
+        if (parser.has_url())
+        {
+            urls.push_back(parser.get_url());
+            parser.reset();
+        }
+    }
+
+    parser.finish();
+    if (parser.has_url())
+        urls.push_back(parser.get_url());
+
+    return urls;
+}
+
 void common::tools::url_parser::add_fixed_urls(std::vector<compare_item>&& _items)
 {
     for (auto&& item : _items)
@@ -352,7 +390,7 @@ static bool is_black_list_email_host(std::string_view _s)
 #ifdef URL_PARSER_SET_STATE_AND_REPROCESS
 #error Rename the macros
 #endif
-#define URL_PARSER_SET_STATE_AND_REPROCESS(X) { assert(state_ != (X)); if (state_ != (X)) { state_ = (X); process(); return; } }
+#define URL_PARSER_SET_STATE_AND_REPROCESS(X) { im_assert(state_ != (X)); if (state_ != (X)) { state_ = (X); process(); return; } }
 
 static bool is_supported_scheme(std::string_view _scheme)
 {
@@ -370,7 +408,7 @@ void common::tools::url_parser_utf16::process()
 {
     if (char16_buf_[0] != 0)
     {
-        std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> convert;
+        static std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> convert;
         std::u16string source;
         source.resize(char16_size_);
         for (auto i = 0; i < char16_size_; ++i)
@@ -380,7 +418,7 @@ void common::tools::url_parser_utf16::process()
         {
             dest = convert.to_bytes(source);
         }
-        catch (const std::range_error& _e)
+        catch (const std::range_error&)
         {
             // might happen on linux for invalid emoji
             char16_buf_.fill(0);
@@ -395,6 +433,7 @@ void common::tools::url_parser_utf16::process()
         char16_buf_.fill(0);
     }
 
+    num_processed_chars_since_url_start_ += char16_size_;
     url_parser::process();
 }
 
@@ -404,6 +443,7 @@ void common::tools::url_parser::process()
     switch (state_)
     {
     case states::lookup:
+        num_processed_chars_since_url_start_ = 1;
         if (compare_set_.count(c)) { start_fixed_urls_compare(states::lookup_without_fixed_urls); return; }
         [[fallthrough]];
     case states::lookup_without_fixed_urls:
@@ -416,8 +456,14 @@ void common::tools::url_parser::process()
         else if (c == 'i' || c == 'I') { protocol_ = url::protocol::icq; state_ = states::protocol_t1; break; }
         else if (c == 'm' || c == 'M') { protocol_ = url::protocol::agent; state_ = states::protocol_t1; break; }
         else if (c == LEFT_DOUBLE_QUOTE[0] && char_size_ == 2 && char_buf_[1] == LEFT_DOUBLE_QUOTE[1]) return;
-        else if (c == LEFT_QUOTE[0] && char_size_ == 3 && char_buf_[1] == LEFT_QUOTE[1] && char_buf_[2] == LEFT_QUOTE[2]) return;
+        else if (c == LEFT_QUOTE[0] && char_size_ == 3 && char_buf_[1] == LEFT_QUOTE[1] && char_buf_[2] == LEFT_QUOTE[2])
+        {
+            num_processed_chars_since_url_start_ = 0;
+            return;
+        }
         else if (is_letter_or_digit(c, is_utf8_)) { save_char_buf(domain_); state_ = states::host; break; }
+
+        num_processed_chars_since_url_start_ = 0;
         return;
     case states::protocol_t1:
         if (c == 't' || c == 'T') state_ = protocol_ == url::protocol::ftp ? states::protocol_p : states::protocol_t2;
@@ -580,6 +626,7 @@ void common::tools::url_parser::process()
     case states::profile_id:
         ++id_length_;
         if (is_space(c, is_utf8_)) { if (id_length_ >= min_profile_id_length) URL_PARSER_URI_FOUND else { state_ = states::host; need_to_check_domain_ = false; URL_PARSER_URI_FOUND } }
+        else if (c == '?') state_ = states::query;
         else if (!is_allowed_profile_id_char(c, is_utf8_)) URL_PARSER_RESET_PARSER
             break;
     case states::check_filesharing:
@@ -856,7 +903,7 @@ void common::tools::url_parser::process()
         else if (!is_allowable_query_char(c, is_utf8_)) URL_PARSER_RESET_PARSER
             break;
     default:
-        assert(!"invalid state_!");
+        im_assert(!"invalid state_!");
     };
 
     save_char_buf(buf_);
@@ -883,6 +930,7 @@ void common::tools::url_parser::reset()
 
     buf_.clear();
     domain_.clear();
+    num_processed_chars_since_url_start_ = 0;
 
     to_compare_ = nullptr;
     compare_pos_ = 0;
@@ -1060,7 +1108,7 @@ bool common::tools::url_parser::save_url()
     case states::query:
         break;
     default:
-        assert(!"you must handle all enumerations");
+        im_assert(!"you must handle all enumerations");
     };
 
     if (domain_segments_ == 1 && state_ != states::filesharing_id && protocol_ == url::protocol::undefined)
@@ -1114,9 +1162,9 @@ bool common::tools::url_parser::save_url()
     }
     else
     {
-        const auto is_filesharing_link =
-            (state_ == states::filesharing_id) && (id_length_ >= min_filesharing_id_length);
-        if (is_filesharing_link)
+        const auto is_filesharing_link = (state_ == states::filesharing_id) && (id_length_ >= min_filesharing_id_length);
+        const auto is_filesharing_with_query = (state_ == states::query) && (ok_state_ == states::filesharing_id) && (id_length_ >= min_filesharing_id_length);
+        if (is_filesharing_link || is_filesharing_with_query)
         {
             url_ = make_url(common::tools::url::type::filesharing);
         }
@@ -1225,7 +1273,7 @@ bool common::tools::url_parser::is_digit(char _c, bool _is_utf8) const
 
 bool common::tools::url_parser::is_letter(char _c, bool _is_utf8) const
 {
-    return _is_utf8 || (_c >= 0x41 && _c <= 0x5A) || (_c >= 0x61 && _c <= 0x7A);
+    return _is_utf8 || (_c >= 'A' && _c <= 'Z') || (_c >= 'a' && _c <= 'z');
 }
 
 bool common::tools::url_parser::is_letter_or_digit(char _c, bool _is_utf8) const

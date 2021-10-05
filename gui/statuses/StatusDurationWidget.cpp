@@ -2,28 +2,32 @@
 #include "StatusDurationWidget.h"
 #include "StatusCommonUi.h"
 #include "utils/utils.h"
+#include "../app_config.h"
+#include "utils/features.h"
 #include "utils/InterConnector.h"
 #include "core_dispatcher.h"
-#include "controls/DialogButton.h"
 #include "controls/TooltipWidget.h"
-#include "controls/LineEditEx.h"
+#include "controls/DialogButton.h"
+#include "controls/DateTimeWidget.h"
 #include "styles/ThemeParameters.h"
 #include "fonts.h"
 
 namespace
 {
 
-constexpr auto lineEditHeight = 32;
-constexpr auto validationInterval() noexcept { return std::chrono::seconds(1); }
-
-int maxWidth()
+int maxWidth() noexcept
 {
     return Utils::scale_value(342);
 }
 
-int sideMargin()
+int sideMargin() noexcept
 {
-    return Utils::scale_value(32);
+    return Utils::scale_value(50);
+}
+
+auto rightMargin() noexcept
+{
+    return Utils::scale_value(50);
 }
 
 QFont headerLabelFont()
@@ -32,26 +36,6 @@ QFont headerLabelFont()
         return Fonts::appFontScaled(22, Fonts::FontWeight::Medium);
 
     return Fonts::appFontScaled(22);
-}
-
-QFont hintFont()
-{
-    return Fonts::appFontScaled(15);
-}
-
-int hintTopMargin()
-{
-    return Utils::scale_value(8);
-}
-
-QString dateFormat()
-{
-    return qsl("d.M.yyyy");
-}
-
-QString timeFormat()
-{
-    return qsl("h:m");
 }
 
 int labelBottomMargin()
@@ -69,36 +53,6 @@ int labelTopMargin()
 
     return Utils::scale_value(14);
 }
-
-//////////////////////////////////////////////////////////////////////////
-// DateValidator
-//////////////////////////////////////////////////////////////////////////
-
-class DateValidator : public QValidator
-{
-public:
-    DateValidator(QObject* _parent) : QValidator(_parent)
-    {
-        re.setPattern(qsl("\\A(?:(([0-2]{0,1}\\d{1})|([3][0,1]{1}))\\.(([0]{0,1}\\d{1})|([1]{1}[0-2]{1}))\\.([2]{1}[0]{1}[2-9]{1}\\d{1}))\\z"));
-    }
-    QValidator::State validate(QString& input, int&) const override
-    {
-        const auto match = re.match(input, 0, QRegularExpression::PartialPreferCompleteMatch);
-        if (match.hasPartialMatch() || input.isEmpty())
-            return QValidator::Intermediate;
-
-        if (!match.hasMatch())
-            return QValidator::Invalid;
-
-        const auto date = QDate::fromString(input, dateFormat());
-        if (!date.isValid() || QDate::currentDate() > date)
-            return QValidator::Invalid;
-
-        return QValidator::Acceptable;
-    }
-private:
-    QRegularExpression re;
-};
 
 }
 
@@ -118,16 +72,14 @@ public:
 
     QDate date() const
     {
-        return QDate::fromString(date_->text(), dateFormat());
+        return dateTime_->date();
     }
 
     QTime time() const
     {
-        return QTime::fromString(time_->text(), timeFormat());
+        return dateTime_->time();
     }
-
-    LineEditEx* date_ = nullptr;
-    LineEditEx* time_ = nullptr;
+    DateTimePicker* dateTime_ = nullptr;
     DialogButton* nextButton_ = nullptr;
     QString status_;
     QString description_;
@@ -153,58 +105,17 @@ StatusDurationWidget::StatusDurationWidget(QWidget* _parent)
     layout->addWidget(label);
     layout->addSpacing(labelBottomMargin());
 
-    auto inputLayout = Utils::emptyHLayout();
-    inputLayout->addSpacing(sideMargin());
+    d->dateTime_ = new DateTimePicker(this, Ui::GetAppConfig().showSecondsInTimePicker());
+    d->dateTime_->setAccessibilityPrefix(qsl("StatusDurationWidget"));
+    connect(d->dateTime_, &DateTimePicker::dateTimeChanged, this, &StatusDurationWidget::validateDate);
+    connect(d->dateTime_, &DateTimePicker::dateTimeValidityChanged, this, &StatusDurationWidget::validateDate);
+    connect(d->dateTime_, &DateTimePicker::enter, this, &StatusDurationWidget::applyNewDuration);
 
-    auto dateLayout = Utils::emptyVLayout();
-    const LineEditEx::Options options{ {Qt::Key_Enter, Qt::Key_Return} };
-    d->date_ = new LineEditEx(this, options);
-    d->date_->setFont(Fonts::appFontScaled(15));
-    d->date_->setCustomPlaceholder(QT_TRANSLATE_NOOP("status_popup", "Date"));
-    d->date_->setValidator(new DateValidator(this));
-    d->date_->setFixedWidth(Utils::scale_value(120));
-    d->date_->setCustomPlaceholderColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
-    auto dateHint = new TextWidget(this, QT_TRANSLATE_NOOP("status_popup", "dd.mm.yyyy"));
-    dateHint->init(hintFont(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
-    Testing::setAccessibleName(d->date_, qsl("AS StatusDurationWidget dateEdit"));
-
-    auto timeLayout = Utils::emptyVLayout();
-    d->time_ = new LineEditEx(this, options);
-    d->time_->setFont(Fonts::appFontScaled(15));
-    d->time_->setCustomPlaceholder(QT_TRANSLATE_NOOP("status_popup", "Time"));
-    d->time_->setValidator(new QRegularExpressionValidator(QRegularExpression(qsl("([0-1][0-9]|[2][0-3]):([0-5][0-9])")), this));
-    d->time_->setFixedWidth(Utils::scale_value(60));
-    d->time_->setCustomPlaceholderColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
-    auto timeHint = new TextWidget(this, QT_TRANSLATE_NOOP("status_popup", "hh:mm"));
-    timeHint->init(hintFont(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
-    Testing::setAccessibleName(d->time_, qsl("AS StatusDurationWidget timeEdit"));
-
-    Utils::ApplyStyle(d->date_, Styling::getParameters().getLineEditCommonQss(false, lineEditHeight));
-    Utils::ApplyStyle(d->time_, Styling::getParameters().getLineEditCommonQss(false, lineEditHeight));
-
-    connect(d->date_, &LineEditEx::textChanged, this, &StatusDurationWidget::validateInput);
-    connect(d->time_, &LineEditEx::textChanged, this, &StatusDurationWidget::validateInput);
-    connect(d->date_, &LineEditEx::enter, this, &StatusDurationWidget::applyNewDuration);
-    connect(d->time_, &LineEditEx::enter, this, &StatusDurationWidget::applyNewDuration);
-
-    auto validationTimer = new QTimer(this);
-    validationTimer->setInterval(validationInterval());
-    connect(validationTimer, &QTimer::timeout, this, &StatusDurationWidget::validateInput);
-    validationTimer->start();
-
-    dateLayout->addWidget(d->date_);
-    dateLayout->addSpacing(hintTopMargin());
-    dateLayout->addWidget(dateHint);
-    timeLayout->addWidget(d->time_);
-    timeLayout->addSpacing(hintTopMargin());
-    timeLayout->addWidget(timeHint);
-
-    inputLayout->addLayout(dateLayout);
-    inputLayout->addSpacing(Utils::scale_value(40));
-    inputLayout->addLayout(timeLayout);
-    inputLayout->addStretch();
-
-    layout->addLayout(inputLayout);
+    auto dateTimeLayout = Utils::emptyHLayout();
+    dateTimeLayout->addSpacing(sideMargin());
+    dateTimeLayout->addWidget(d->dateTime_);
+    dateTimeLayout->addSpacing(rightMargin());
+    layout->addLayout(dateTimeLayout);
 
     auto backButton = createButton(this, QT_TRANSLATE_NOOP("status_popup", "Back"), DialogButtonRole::CANCEL);
     Testing::setAccessibleName(backButton, qsl("AS StatusDurationWidget backButton"));
@@ -234,32 +145,26 @@ void StatusDurationWidget::setStatus(const QString& _status, const QString& _des
     d->description_ = _description;
 }
 
-void StatusDurationWidget::showEvent(QShowEvent* _event)
+void StatusDurationWidget::setDateTime(const QDateTime& _dateTime)
 {
-    d->date_->setFocus();
+    d->dateTime_->setDateTime(_dateTime);
 }
 
-bool StatusDurationWidget::validateInput()
+void StatusDurationWidget::showEvent(QShowEvent* _event)
 {
-    const auto date = d->date();
-    const auto time = d->time();
+    d->dateTime_->setFocus();
+}
 
-    bool valid = false;
-    if (date.isValid() && time.isValid())
-        valid = QDateTime(date, time) > QDateTime::currentDateTime();
-    else if (date.isValid() && d->time_->text().isEmpty())
-        valid = date >= QDate::currentDate();
-    else if (time.isValid() && d->date_->text().isEmpty())
-        valid = true;
-
-    d->nextButton_->setEnabled(valid);
-
-    return valid;
+bool StatusDurationWidget::validateDate()
+{
+    const auto isValid = d->dateTime_->isDateTimeValid();
+    d->nextButton_->setEnabled(isValid);
+    return isValid;
 }
 
 void StatusDurationWidget::applyNewDuration()
 {
-    if (!validateInput())
+    if (!validateDate())
         return;
 
     const auto date = d->date();
@@ -270,11 +175,12 @@ void StatusDurationWidget::applyNewDuration()
     if (!time.isValid() || !date.isValid() && time < QTime::currentTime())
         dateTime = dateTime.addDays(1);
 
-    const auto seconds = QDateTime::currentDateTime().secsTo(dateTime);
+    // msecs are used (instead of .secsTo()) to garantee status target time might not jump backward, only forward
+    const auto seconds = std::lrint(std::ceil(QDateTime::currentDateTime().msecsTo(dateTime) / 1000.0));
+
     GetDispatcher()->setStatus(d->status_, seconds, d->description_);
     Q_EMIT Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
     Statuses::showToastWithDuration(std::chrono::seconds(seconds));
 }
-
 
 }

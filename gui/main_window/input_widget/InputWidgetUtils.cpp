@@ -1,7 +1,9 @@
 #include "stdafx.h"
 
+#include "InputWidget.h"
 #include "InputWidgetUtils.h"
 #include "HistoryTextEdit.h"
+#include "AttachFilePopup.h"
 #include "utils/utils.h"
 #include "utils/InterConnector.h"
 #include "styles/ThemeParameters.h"
@@ -9,7 +11,6 @@
 #include "controls/textrendering/TextRendering.h"
 #include "fonts.h"
 
-#include "main_window/history_control/HistoryControlPage.h"
 #include "main_window/contact_list/ContactListModel.h"
 
 #include "core_dispatcher.h"
@@ -17,58 +18,57 @@
 
 namespace Ui
 {
-    std::string getStatsChatType()
+    std::string getStatsChatType(const QString& _contact)
     {
-        const auto& contact = Logic::getContactListModel()->selectedContact();
-        return Utils::isChat(contact) ? (Logic::getContactListModel()->isChannel(contact) ? "channel" : "group") : "chat";
+        return Utils::isChat(_contact) ? (Logic::getContactListModel()->isChannel(_contact) ? "channel" : "group") : "chat";
     }
 
-    int getInputTextLeftMargin()
+    int getInputTextLeftMargin() noexcept
     {
         return Utils::scale_value(16);
     }
 
-    int getDefaultInputHeight()
+    int getDefaultInputHeight() noexcept
     {
         return Utils::scale_value(52);
     }
 
-    int getHorMargin()
+    int getHorMargin() noexcept
     {
         return Utils::scale_value(52);
     }
 
-    int getVerMargin()
+    int getVerMargin() noexcept
     {
         return Utils::scale_value(8);
     }
 
-    int getHorSpacer()
+    int getHorSpacer() noexcept
     {
         return Utils::scale_value(12);
     }
 
-    int getEditHorMarginLeft()
+    int getEditHorMarginLeft() noexcept
     {
         return Utils::scale_value(20);
     }
 
-    int getQuoteRowHeight()
+    int getQuoteRowHeight() noexcept
     {
         return Utils::scale_value(16);
     }
 
-    int getBubbleCornerRadius()
+    int getBubbleCornerRadius() noexcept
     {
         return Utils::scale_value(18);
     }
 
-    QSize getCancelBtnIconSize()
+    QSize getCancelBtnIconSize() noexcept
     {
         return QSize(16, 16);
     }
 
-    QSize getCancelButtonSize()
+    QSize getCancelButtonSize() noexcept
     {
         return Utils::scale_value(QSize(20, 20));
     }
@@ -94,84 +94,6 @@ namespace Ui
         _p.fillPath(path, _color);
     }
 
-    bool isMarkdown(const QStringRef& _text, const int _position)
-    {
-        auto position = _position;
-        if (position != 0)
-        {
-            const auto rightPart = _text.mid(_position);
-            position = rightPart.indexOf(QChar::Space);
-
-            if (position == -1)
-                position = rightPart.indexOf(ql1c('\n'));
-        }
-
-        if (position == -1)
-            position = _position;
-        else
-            position += _position;
-
-        const auto leftPart = _text.mid(0, (position == 0) ? 0 : position + 1);
-
-        bool isMD = false;
-
-        const auto M_MARK = Ui::TextRendering::tripleBackTick().toString();
-        const auto mmCount = leftPart.count(M_MARK);
-
-        if (mmCount % 2 != 0)
-        {
-            isMD = true;
-        }
-        else
-        {
-            if (mmCount % 2 == 0)
-            {
-                auto lastLF = -1;
-                auto textToCheck = _text;
-
-                if (const auto lastMM = _text.lastIndexOf(M_MARK); lastMM != -1)
-                    textToCheck = _text.mid(lastMM + M_MARK.size());
-
-                lastLF = textToCheck.lastIndexOf(ql1c('\n'));
-
-                lastLF = (lastLF == -1) ? 0 : lastLF;
-                const auto partAfterLF = textToCheck.mid(lastLF);
-                const auto S_MARK = Ui::TextRendering::singleBackTick();
-                const auto smCount = partAfterLF.count(S_MARK);
-                isMD = (smCount > 0 && smCount % 2 != 0);
-            }
-        }
-
-        return isMD;
-    }
-
-    MentionCompleter* getMentionCompleter()
-    {
-        const auto currentContact = Logic::getContactListModel()->selectedContact();
-        if (!currentContact.isEmpty())
-        {
-            auto page = Utils::InterConnector::instance().getHistoryPage(currentContact);
-            if (page)
-                return page->getMentionCompleter();
-        }
-
-        return nullptr;
-
-    }
-
-    bool showMentionCompleter(const QString& _initialPattern, const QPoint& _pos)
-    {
-        auto page = Utils::InterConnector::instance().getHistoryPage(Logic::getContactListModel()->selectedContact());
-        if (page)
-        {
-            Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::mentions_popup_show);
-            page->showMentionCompleter(_initialPattern, _pos);
-            return true;
-        }
-
-        return false;
-    }
-
     bool isEmoji(QStringView _text, qsizetype& _pos)
     {
         const auto emojiMaxSize = Emoji::EmojiCode::maxSize();
@@ -185,181 +107,6 @@ namespace Ui
             }
         }
         return false;
-    }
-
-    std::pair<QString, int> getLastWord(HistoryTextEdit* _textEdit)
-    {
-        auto cursor = _textEdit->textCursor();
-        cursor.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor);
-        const auto endPosition = cursor.position();
-
-        QChar currentChar;
-
-        while (!currentChar.isSpace())
-        {
-            if (cursor.atStart())
-                break;
-
-            cursor.movePosition(QTextCursor::PreviousCharacter, QTextCursor::KeepAnchor);
-            currentChar = *cursor.selectedText().begin();
-            cursor.movePosition(QTextCursor::NoMove, QTextCursor::MoveAnchor);
-        }
-
-        if (!cursor.atStart())
-            cursor.movePosition(QTextCursor::NextCharacter, QTextCursor::KeepAnchor);
-
-        const auto startPositon = cursor.position();
-        cursor.setPosition(startPositon, QTextCursor::MoveAnchor);
-        cursor.setPosition(endPosition, QTextCursor::KeepAnchor);
-
-        return { cursor.selectedText(), startPositon };
-    }
-
-    bool replaceEmoji(HistoryTextEdit* _textEdit)
-    {
-        if (!Ui::get_gui_settings()->get_value<bool>(settings_autoreplace_emoji, settings_autoreplace_emoji_default()))
-            return false;
-
-        const auto[lastWord, position] = getLastWord(_textEdit);
-        const auto text = _textEdit->getPlainText();
-        auto cursor = _textEdit->textCursor();
-        cursor.setPosition(position);
-
-        if (cursor.charFormat().isAnchor())
-            return false;
-
-        if (isMarkdown(QStringRef(&text), position))
-        {
-            cursor.movePosition(QTextCursor::End);
-            return false;
-        }
-
-        const auto &emojiReplacer = _textEdit->getReplacer();
-        if (emojiReplacer.isAutoreplaceAvailable())
-        {
-            const auto &replacement = emojiReplacer.getReplacement(lastWord);
-            if (!replacement.isNull())
-            {
-                const auto asCode = replacement.value<Emoji::EmojiCode>();
-                const auto asString = replacement.value<QString>();
-                if (!asCode.isNull() || !asString.isEmpty())
-                {
-                    QChar currentChar;
-
-                    while (currentChar != QChar::Space && currentChar != QChar::LineFeed && currentChar != QChar::ParagraphSeparator)
-                    {
-                        if (cursor.atEnd())
-                            break;
-
-                        cursor.movePosition(QTextCursor::NextCharacter, QTextCursor::KeepAnchor);
-                        currentChar = *cursor.selectedText().crbegin();
-                        cursor.movePosition(QTextCursor::NoMove, QTextCursor::MoveAnchor);
-                    }
-
-                    cursor.removeSelectedText();
-
-                    if (currentChar == QChar::ParagraphSeparator)
-                        currentChar = ql1c('\n');
-
-                    if (!asString.isEmpty())
-                    {
-                        _textEdit->insertPlainText(asString % currentChar);
-                    }
-                    else if (!asCode.isNull())
-                    {
-                        _textEdit->insertEmoji(asCode);
-                        _textEdit->insertPlainText(currentChar);
-                        _textEdit->ensureCursorVisible();
-                    }
-                    _textEdit->getUndoRedoStack().push(_textEdit->getPlainText());
-
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-
-    void RegisterTextChange(HistoryTextEdit* _textEdit)
-    {
-        const auto currentText = _textEdit->getPlainText();
-        const auto stackTopText = _textEdit->getUndoRedoStack().top().Text();
-
-        const auto currentTextLenght = currentText.length();
-        const auto stackTextLenght = stackTopText.length();
-
-        auto cursor = _textEdit->textCursor();
-        auto startPosition = cursor.position();
-
-        if (currentText == stackTopText)
-        {
-            _textEdit->getUndoRedoStack().top().Cursor() = startPosition;
-            _textEdit->getReplacer().setAutoreplaceAvailable(Emoji::ReplaceAvailable::Available);
-            return;
-        }
-
-        if (currentTextLenght == stackTextLenght)
-        {
-            _textEdit->getUndoRedoStack().push(currentText);
-            _textEdit->getUndoRedoStack().top().Cursor() = startPosition;
-        }
-        else if (currentTextLenght - stackTextLenght > 0)
-        {
-            cursor.movePosition(QTextCursor::PreviousCharacter, QTextCursor::KeepAnchor);
-            auto delim = *cursor.selectedText().cbegin();
-
-            if (delim.isSpace())
-            {
-                cursor.movePosition(QTextCursor::NextCharacter, QTextCursor::MoveAnchor);
-                qsizetype endPosition = cursor.position();
-
-                if (isEmoji(currentText, endPosition) && (endPosition == currentTextLenght))
-                {
-                    if (currentText.startsWith(stackTopText))
-                        _textEdit->getUndoRedoStack().top().Text() += delim;
-                    else
-                    {
-                        _textEdit->getUndoRedoStack().push(currentText);
-                        _textEdit->getUndoRedoStack().top().Cursor() = startPosition;
-                    }
-                }
-                else
-                {
-                    _textEdit->getUndoRedoStack().push(currentText);
-                    _textEdit->getUndoRedoStack().top().Cursor() = startPosition;
-                    if (replaceEmoji(_textEdit))
-                    {
-                        startPosition = _textEdit->textCursor().position();
-                        cursor.setPosition(startPosition);
-                        _textEdit->getUndoRedoStack().top().Cursor() = startPosition;
-                        return;
-                    }
-                }
-            }
-            else
-            {
-                _textEdit->getUndoRedoStack().push(currentText);
-                _textEdit->getUndoRedoStack().top().Cursor() = startPosition;
-                if (currentTextLenght - stackTextLenght == 1)
-                    _textEdit->getReplacer().setAutoreplaceAvailable(Emoji::ReplaceAvailable::Available);
-            }
-        }
-        else
-        {
-            _textEdit->getUndoRedoStack().push(currentText);
-            _textEdit->getUndoRedoStack().top().Cursor() = startPosition;
-            cursor.setPosition(startPosition);
-            if (currentText.isEmpty())
-                _textEdit->getReplacer().setAutoreplaceAvailable(Emoji::ReplaceAvailable::Available);
-        }
-
-        if (startPosition <= _textEdit->getPlainText().length())
-            cursor.setPosition(startPosition);
-        else
-            cursor.movePosition(QTextCursor::NextCharacter);
-
-        _textEdit->setTextCursor(cursor);
     }
 
     void updateButtonColors(CustomButton* _button, const InputStyleMode _mode)
@@ -390,19 +137,72 @@ namespace Ui
         return Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION, 0.22);
     }
 
-    void sendStat(const core::stats::stats_event_names _event, const std::string_view _from)
+    void sendStat(const QString& _contact, core::stats::stats_event_names _event, const std::string_view _from)
     {
-        Ui::GetDispatcher()->post_stats_to_core(_event, { { "from", std::string(_from) }, {"chat_type", Ui::getStatsChatType() } });
+        Ui::GetDispatcher()->post_stats_to_core(_event, { { "from", std::string(_from) }, {"chat_type", Ui::getStatsChatType(_contact) } });
     }
 
-    void sendShareStat(bool _sent)
+    void sendShareStat(const QString& _contact, bool _sent)
     {
         Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::sharecontactscr_contact_action,
         {
-            {"chat_type", Ui::getStatsChatType() },
+            {"chat_type", Ui::getStatsChatType(_contact) },
             { "type", std::string("internal") },
             { "status", std::string( _sent ? "sent" : "not_sent") }
         });
+    }
+
+    void sendAttachStat(const QString& _contact, AttachMediaType _mediaType)
+    {
+        std::optional<core::stats::stats_event_names> statEvent;
+
+        switch (_mediaType)
+        {
+        case AttachMediaType::photoVideo:
+            statEvent = core::stats::stats_event_names::chatscr_openmedgallery_action;
+            break;
+
+        case AttachMediaType::file:
+            statEvent = core::stats::stats_event_names::chatscr_openfile_action;
+            break;
+
+        case AttachMediaType::camera:
+            statEvent = core::stats::stats_event_names::chatscr_opencamera_action;
+            break;
+
+        case AttachMediaType::contact:
+            statEvent = core::stats::stats_event_names::chatscr_opencontact_action;
+            break;
+
+        case AttachMediaType::poll:
+            break;
+
+        case AttachMediaType::task:
+            statEvent = core::stats::stats_event_names::chatscr_createtask_action;
+            break;
+
+        case AttachMediaType::ptt:
+            statEvent = core::stats::stats_event_names::chatscr_openptt_action;
+            break;
+
+        case AttachMediaType::geo:
+            statEvent = core::stats::stats_event_names::chatscr_opengeo_action;
+            break;
+
+        case AttachMediaType::callLink:
+            statEvent = core::stats::stats_event_names::chatscr_callbylink_action;
+            break;
+
+        case AttachMediaType::webinar:
+            statEvent = core::stats::stats_event_names::chatscr_webinar_action;
+            break;
+
+        default:
+            return;
+        }
+
+        if (statEvent)
+            sendStat(_contact, *statEvent, "plus");
     }
 
     BubbleWidget::BubbleWidget(QWidget* _parent, const int _topMargin, const int _botMargin, const Styling::StyleVariable _bgColor)
@@ -416,6 +216,74 @@ namespace Ui
     {
         QPainter p(this);
         Ui::drawInputBubble(p, rect(), Styling::getParameters().getColor(bgColor_), topMargin_, botMargin_);
+    }
+
+    bool isApplePageUp(int _key, Qt::KeyboardModifiers _modifiers) noexcept
+    {
+        return platform::is_apple() && _modifiers.testFlag(Qt::KeyboardModifier::ControlModifier) && _key == Qt::Key_Up;
+    }
+
+    bool isApplePageDown(int _key, Qt::KeyboardModifiers _modifiers) noexcept
+    {
+        return platform::is_apple() && _modifiers.testFlag(Qt::KeyboardModifier::ControlModifier) && _key == Qt::Key_Down;
+    }
+
+    bool isApplePageEnd(int _key, Qt::KeyboardModifiers _modifiers) noexcept
+    {
+        return platform::is_apple() && ((_modifiers.testFlag(Qt::KeyboardModifier::MetaModifier) && _key == Qt::Key_Right) || _key == Qt::Key_End);
+    }
+
+    bool isCtrlEnd(int _key, Qt::KeyboardModifiers _modifiers) noexcept
+    {
+        return (_modifiers == Qt::CTRL && _key == Qt::Key_End) || isApplePageEnd(_key, _modifiers);
+    }
+
+    bool isApplePageUp(QKeyEvent* _e) noexcept
+    {
+        return _e && isApplePageUp(_e->key(), _e->modifiers());
+    }
+
+    bool isApplePageDown(QKeyEvent* _e) noexcept
+    {
+        return _e && isApplePageDown(_e->key(), _e->modifiers());
+    }
+
+    bool isApplePageEnd(QKeyEvent* _e) noexcept
+    {
+        return _e && isApplePageEnd(_e->key(), _e->modifiers());
+    }
+
+    bool isCtrlEnd(QKeyEvent* _e) noexcept
+    {
+        return _e && isCtrlEnd(_e->key(), _e->modifiers());
+    }
+
+
+    std::vector<InputWidget*>& getInputWidgetsImpl()
+    {
+        static std::vector<InputWidget*> inputs;
+        return inputs;
+    }
+
+    const std::vector<InputWidget*>& getInputWidgetInstances()
+    {
+        return getInputWidgetsImpl();
+    }
+
+    void registerInputWidgetInstance(InputWidget* _input)
+    {
+        if (!_input)
+            return;
+
+        auto& inputs = getInputWidgetsImpl();
+        if (std::none_of(inputs.begin(), inputs.end(), [_input](auto i) { return i == _input; }))
+            inputs.push_back(_input);
+    }
+
+    void deregisterInputWidgetInstance(InputWidget* _input)
+    {
+        auto& inputs = getInputWidgetsImpl();
+        inputs.erase(std::remove(inputs.begin(), inputs.end(), _input), inputs.end());
     }
 }
 

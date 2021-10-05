@@ -44,6 +44,8 @@ namespace hist
         multiselect
     };
 
+    scroll_mode_type evaluateScrollMode(qint64 _messageIdToScroll, qint64 _lastReadMessage, bool _needCreateNewPage, bool _ignoreScroll);
+
     enum class FetchDirection
     {
         toNewer,
@@ -196,10 +198,6 @@ namespace hist
 
         void messagesModified(const QString&, const Data::MessageBuddies&);
 
-        template <typename R>
-        void addToTail(const R& range);
-        void addToTail(const Data::MessageBuddySptr& _msg);
-
         // refactor me. move to core
         void processChatEvents(const Data::MessageBuddies& _msgs, Ui::MessagesBuddiesOpt _option, qint64 _seq) const;
 
@@ -225,7 +223,7 @@ namespace hist
         template <typename R>
         BuddiesInsertResult insertBuddies(const R& range, Ui::MessagesBuddiesOpt option);
 
-        void proccesInserted(const PendingsInsertResult& _pendingResult, const BuddiesInsertResult& _buddiesResult, Ui::MessagesBuddiesOpt _option, qint64 _seq, qint64 _prevLastId);
+        void processInserted(const PendingsInsertResult& _pendingResult, const BuddiesInsertResult& _buddiesResult, Ui::MessagesBuddiesOpt _option, qint64 _seq, qint64 _prevLastId);
 
         struct RequestParams
         {
@@ -271,9 +269,9 @@ namespace hist
             Simple,
             Full
         };
-        void logCurrentIds(const QString& _hint, LogType _type);
+        void logCurrentIds(const QString& _hint, LogType _type) const;
 
-        void dump(const QString&);
+        void dump(const QString&) const;
 
     private:
 
@@ -281,13 +279,26 @@ namespace hist
 
         FirstRequest firstInitRequest_ = FirstRequest::Yes;
 
-        struct
+        struct InitParams
         {
-            qint64 centralMessage = -1;
-            scroll_mode_type _mode  = scroll_mode_type::none;
-            ServerResultsOnly _serverResultsOnly = ServerResultsOnly::No;
+            qint64 centralMessage_ = -1;
+            scroll_mode_type mode_ = scroll_mode_type::none;
+            ServerResultsOnly serverResultsOnly_ = ServerResultsOnly::No;
 
-        } initParams_;
+            bool operator==(const InitParams& _other) const
+            {
+                return
+                    centralMessage_ == _other.centralMessage_ &&
+                    mode_ == _other.mode_ &&
+                    serverResultsOnly_ == _other.serverResultsOnly_;
+            }
+
+            bool operator!=(const InitParams& _other) const
+            {
+                return !(*this == _other);
+            }
+        };
+        InitParams initParams_;
 
         struct MessageWithKey
         {
@@ -319,7 +330,6 @@ namespace hist
 
         } viewBounds_;
 
-        std::vector<MessageWithKey> tail_;
         std::vector<MessageWithKey> pendings_;
 
         using MessagesMap = std::map<qint64, Data::MessageBuddySptr>;

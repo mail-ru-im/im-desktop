@@ -129,6 +129,7 @@ namespace Ui
         bool chatCreation_ = false;
         bool isChannel_ = false;
         bool withSemiwindow_ = true;
+        bool selectForThread_ = false;
     };
 
     class SelectContactsWidget : public QDialog
@@ -219,7 +220,7 @@ namespace Ui
         std::unique_ptr<GeneralDialog> mainDialog_;
         QVBoxLayout* globalLayout_;
         int regim_;
-        Logic::CustomAbstractListModel* chatMembersModel_;
+        Logic::CustomAbstractListModel* const chatMembersModel_;
         QWidget* mainWidget_;
 
         bool chatCreation_ = false;

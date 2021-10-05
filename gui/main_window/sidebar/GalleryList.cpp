@@ -1,10 +1,14 @@
 #include "stdafx.h"
 
 #include "GalleryList.h"
+#include "ImageVideoList.h"
+#include "LinkList.h"
+#include "FilesList.h"
+#include "PttList.h"
+
 #include "SidebarUtils.h"
 
 #include "../../fonts.h"
-#include "../../my_info.h"
 #include "../../utils/utils.h"
 #include "../../utils/stat_utils.h"
 #include "../../core_dispatcher.h"
@@ -33,23 +37,23 @@ namespace
         return result;
     }
 
-    core::stats::stats_event_names event_by_type(Ui::MediaContentWidget::Type _type)
+    core::stats::stats_event_names event_by_type(Ui::MediaContentType _type)
     {
         switch (_type)
         {
-        case Ui::MediaContentWidget::ImageVideo:
+        case Ui::MediaContentType::ImageVideo:
             return core::stats::stats_event_names::chatgalleryscr_phmenu_action;
 
-        case Ui::MediaContentWidget::Video:
+        case Ui::MediaContentType::Video:
             return core::stats::stats_event_names::chatgalleryscr_vidmenu_action;
 
-        case Ui::MediaContentWidget::Files:
+        case Ui::MediaContentType::Files:
             return core::stats::stats_event_names::chatgalleryscr_filemenu_action;
 
-        case Ui::MediaContentWidget::Links:
+        case Ui::MediaContentType::Links:
             return core::stats::stats_event_names::chatgalleryscr_linkmenu_action;
 
-        case Ui::MediaContentWidget::Audio:
+        case Ui::MediaContentType::Voice:
             return core::stats::stats_event_names::chatgalleryscr_pttmenu_action;
 
         default:
@@ -62,6 +66,47 @@ namespace
 
 namespace Ui
 {
+    QString getGalleryTitle(MediaContentType _type)
+    {
+        switch (_type)
+        {
+        case MediaContentType::ImageVideo:
+            return (QT_TRANSLATE_NOOP("sidebar", "Photo and video"));
+        case MediaContentType::Video:
+            return (QT_TRANSLATE_NOOP("sidebar", "Video"));
+        case MediaContentType::Files:
+            return (QT_TRANSLATE_NOOP("sidebar", "Files"));
+        case MediaContentType::Links:
+            return (QT_TRANSLATE_NOOP("sidebar", "Links"));
+        case MediaContentType::Voice:
+            return (QT_TRANSLATE_NOOP("sidebar", "Voice messages"));
+        default:
+            im_assert(false);
+        }
+        return QString();
+    }
+
+    int countForType(const Data::DialogGalleryState& _state, MediaContentType _type)
+    {
+        switch (_type)
+        {
+        case MediaContentType::ImageVideo:
+            return _state.imagesCount_ + _state.videosCount_;
+        case MediaContentType::Video:
+            return _state.videosCount_;
+        case MediaContentType::Files:
+            return _state.filesCount_;
+        case MediaContentType::Links:
+            return _state.linksCount_;
+        case MediaContentType::Voice:
+            return _state.pttCount_;
+        default:
+            break;
+        }
+
+        return 0;
+    }
+
     void MediaContentWidget::onMenuAction(QAction *_action)
     {
         const auto params = _action->data().toMap();
@@ -170,7 +215,7 @@ namespace Ui
         connect(menu, &ContextMenu::triggered, menu, &ContextMenu::deleteLater, Qt::QueuedConnection);
         connect(menu, &ContextMenu::aboutToHide, menu, &ContextMenu::deleteLater, Qt::QueuedConnection);
 
-        menu->invertRight(_inverted);
+        menu->showAtLeft(_inverted);
 
         menu->popup(mapToGlobal(_pos));
     }
@@ -217,15 +262,21 @@ namespace Ui
 
     ContextMenu *MediaContentWidget::makeContextMenu(qint64 _msg, const QString &_link, const QString& _sender, time_t _time, const QString& _aimid)
     {
+        const auto showTrustedActions =
+            type_ != MediaContentType::Files ||
+            !Logic::getContactListModel()->isTrustRequired(_aimid);
+
         auto menu = new ContextMenu(this);
 
         menu->addActionWithIcon(qsl(":/context_menu/goto"), QT_TRANSLATE_NOOP("gallery", "Go to message"), makeData(qsl("go_to"), _msg, _link, _sender, _time));
-        menu->addActionWithIcon(qsl(":/context_menu/forward"), QT_TRANSLATE_NOOP("context_menu", "Forward"), makeData(qsl("forward"), _msg, _link, _sender, _time));
 
-        if (type_ == MediaContentWidget::Links)
+        if (showTrustedActions)
+            menu->addActionWithIcon(qsl(":/context_menu/forward"), QT_TRANSLATE_NOOP("context_menu", "Forward"), makeData(qsl("forward"), _msg, _link, _sender, _time));
+
+        if (type_ == MediaContentType::Links)
             menu->addActionWithIcon(qsl(":/context_menu/link"), QT_TRANSLATE_NOOP("context_menu", "Copy link"), makeData(qsl("copy_link"), _msg, _link, _sender, _time));
 
-        if (!Favorites::isFavorites(_aimid))
+        if (showTrustedActions && !Favorites::isFavorites(_aimid))
         {
             menu->addSeparator();
             menu->addActionWithIcon(qsl(":/context_menu/favorites"), QT_TRANSLATE_NOOP("context_menu", "Add to favorites"), makeData(qsl("add_to_favorites"), _msg, _link, _sender, _time));
@@ -234,12 +285,12 @@ namespace Ui
         return menu;
     }
 
-    GalleryList::GalleryList(QWidget *_parent, const QString& _type, MediaContentWidget *_contentWidget)
+    GalleryList::GalleryList(QWidget* _parent, const QString& _type, MediaContentWidget* _contentWidget)
         : GalleryList(_parent, QStringList() << _type, _contentWidget)
     {
     }
 
-    GalleryList::GalleryList(QWidget *_parent, const QStringList &_types, MediaContentWidget *_contentWidget)
+    GalleryList::GalleryList(QWidget* _parent, const QStringList& _types, MediaContentWidget* _contentWidget)
         : QWidget(_parent)
         , contentWidget_(_contentWidget)
         , types_(_types)
@@ -250,22 +301,21 @@ namespace Ui
     {
         area_ = CreateScrollAreaAndSetTrScrollBarV(this);
         area_->setStyleSheet(qsl("background: transparent;"));
-        auto vLayout = Utils::emptyVLayout(this);
         area_->setWidget(contentWidget_ ? contentWidget_ : new QWidget(this));
         area_->setWidgetResizable(true);
         area_->setFocusPolicy(Qt::NoFocus);
         area_->setFrameShape(QFrame::NoFrame);
+
+        auto vLayout = Utils::emptyVLayout(this);
         vLayout->addWidget(area_);
+
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::dialogGalleryResult, this, &GalleryList::dialogGalleryResult);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::dialogGalleryUpdate, this, &GalleryList::dialogGalleryUpdate);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::dialogGalleryHolesDownloaded, this, &GalleryList::dialogGalleryHolesDownloaded);
         connect(area_->verticalScrollBar(), &QScrollBar::valueChanged, this, &GalleryList::scrolled, Qt::QueuedConnection);
     }
 
-    GalleryList::~GalleryList()
-    {
-
-    }
+    GalleryList::~GalleryList() = default;
 
     void GalleryList::initFor(const QString& _aimId)
     {
@@ -297,7 +347,7 @@ namespace Ui
         contentWidget_ = _contentWidget;
     }
 
-    void GalleryList::setType(const QString _type)
+    void GalleryList::setType(const QString& _type)
     {
         types_.clear();
         types_ << _type;
@@ -308,7 +358,52 @@ namespace Ui
         types_ = std::move(_types);
     }
 
-    QString GalleryList::currentAimId() const
+    void GalleryList::openContentFor(const QString& _aimId, MediaContentType _type)
+    {
+        openContentForType(_type);
+        initFor(_aimId);
+    }
+
+    void GalleryList::openContentForType(MediaContentType _type)
+    {
+        switch (_type)
+        {
+        case MediaContentType::ImageVideo:
+            setTypes({ qsl("image"), qsl("video") });
+            setContentWidget(new ImageVideoList(this, MediaContentType::ImageVideo, "Photo+Video"));
+            break;
+
+        case MediaContentType::Video:
+            setType(qsl("video"));
+            setContentWidget(new ImageVideoList(this, MediaContentType::Video, "Video"));
+            break;
+
+        case MediaContentType::Files:
+            setTypes({ qsl("file"), qsl("audio") });
+            setContentWidget(new FilesList(this));
+            break;
+
+        case MediaContentType::Links:
+            setType(qsl("link"));
+            setContentWidget(new LinkList(this));
+            break;
+
+        case MediaContentType::Voice:
+            setType(qsl("ptt"));
+            setContentWidget(new PttList(this));
+            break;
+
+        default:
+            im_assert(false);
+        }
+    }
+
+    void GalleryList::setMaxContentWidth(int _width)
+    {
+        area_->setMaxContentWidth(_width);
+    }
+
+    const QString& GalleryList::currentAimId() const
     {
         return aimId_;
     }
@@ -320,11 +415,11 @@ namespace Ui
 
     void GalleryList::resizeEvent(QResizeEvent *_event)
     {
-        if (!contentWidget_)
-            return QWidget::resizeEvent(_event);
-
-        if(!exhausted() && !aimId_.isEmpty() && requestId_ == -1 && contentWidget_->height() <= area_->height())
-            requestId_ = Ui::GetDispatcher()->getDialogGallery(aimId_, types_, lastMsgId_, lastSeq_, PAGE_SIZE, true);
+        if (contentWidget_)
+        {
+            if (!exhausted() && !aimId_.isEmpty() && requestId_ == -1 && contentWidget_->height() <= area_->height())
+                requestId_ = Ui::GetDispatcher()->getDialogGallery(aimId_, types_, lastMsgId_, lastSeq_, PAGE_SIZE, true);
+        }
 
         QWidget::resizeEvent(_event);
     }
@@ -356,7 +451,15 @@ namespace Ui
         if (!contentWidget_ || aimId_ != _aimid)
             return;
 
-        contentWidget_->processUpdates(_entries);
+        QVector<Data::DialogGalleryEntry> updates;
+        updates.reserve(_entries.size());
+        std::copy_if(
+            _entries.begin(),
+            _entries.end(),
+            std::back_inserter(updates),
+            [this](const auto& e) { return types_.contains(e.type_) || e.action_ == u"del"; });
+        if (!updates.isEmpty())
+            contentWidget_->processUpdates(updates);
     }
 
     void GalleryList::dialogGalleryHolesDownloaded(const QString& _aimid)

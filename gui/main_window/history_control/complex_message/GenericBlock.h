@@ -44,13 +44,15 @@ class GenericBlock :
 public:
     GenericBlock(
         ComplexMessageItem* parent,
-        const Data::FormattedString& _sourceText,
+        const Data::FString& _sourceText,
         const MenuFlags _menuFlags,
         const bool _isResourcesUnloadingEnabled);
 
     using IItemBlock::clicked;
 
     virtual ~GenericBlock() = 0;
+
+    void setParentMessage(ComplexMessageItem* _parent) override;
 
     QSize blockSizeForMaxWidth(const int32_t maxWidth) override;
 
@@ -70,13 +72,13 @@ public:
 
     QString getSenderFriendly() const;
 
-    void setSourceText(const Data::FormattedString& _text);
+    void setSourceText(const Data::FString& _text);
 
     const QString& getChatAimid() const;
 
-    Data::FormattedString getSourceText() const override;
+    Data::FString getSourceText() const override;
 
-    Data::FormattedString getTextInstantEdit() const override;
+    Data::FString getTextInstantEdit() const override;
 
     QString getPlaceholderText() const override;
 
@@ -171,8 +173,6 @@ public:
 
     static void showErrorToast();
 
-    static void showFileCopiedToast();
-
     static void showToast(const QString& _text);
 
     bool isEdited() const;
@@ -226,7 +226,7 @@ protected:
     void showTooltip(QString _text, QRect _rect, Tooltip::ArrowDirection _arrowDir, Tooltip::ArrowPointPos _arrowPos);
     void hideTooltip();
 
-    QuoteColorAnimation QuoteAnimation_;
+    QPointer<QuoteColorAnimation> QuoteAnimation_;
 
 private:
     GenericBlock();
@@ -234,8 +234,6 @@ private:
     void startResourcesUnloadTimer();
 
     void stopResourcesUnloadTimer();
-
-    static QPoint getToastPos(const QSize& _dialogSize);
 
     bool Initialized_;
 
@@ -247,7 +245,7 @@ private:
 
     QTimer *ResourcesUnloadingTimer_;
 
-    Data::FormattedString SourceText_;
+    Data::FString SourceText_;
 
     bool IsBubbleRequired_;
 

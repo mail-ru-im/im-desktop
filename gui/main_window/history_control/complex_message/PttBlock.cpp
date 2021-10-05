@@ -14,7 +14,6 @@
 #include "../../../utils/features.h"
 #include "../../../styles/ThemeParameters.h"
 #include "../../../cache/ColoredCache.h"
-#include "../../contact_list/ContactListModel.h"
 
 #include "../../input_widget/InputWidgetUtils.h"
 
@@ -27,8 +26,6 @@
 #include "../MessageStyle.h"
 #include "../MessageStatusWidget.h"
 #include "../FileSharingInfo.h"
-
-#include "../../MainPage.h"
 
 #include "ComplexMessageItem.h"
 #include "PttBlockLayout.h"
@@ -124,7 +121,7 @@ namespace PttDetails
             update();
         }
 
-        MainPage::instance()->setFocusOnInput();
+        Q_EMIT Utils::InterConnector::instance().setFocusOnInput(aimId_);
     }
 
     void PlayButton::setState(const ButtonState _state)
@@ -334,7 +331,7 @@ PttBlock::PttBlock(
     {
         buttonPlay_ = new PttDetails::PlayButton(this, getChatAimid());
         Testing::setAccessibleName(buttonPlay_, qsl("AS PttBlock buttonPlay"));
-        Utils::InterConnector::instance().disableInMultiselect(buttonPlay_);
+        Utils::InterConnector::instance().disableInMultiselect(buttonPlay_, getChatAimid());
     }
 
     pttLayout_ = new PttBlockLayout();
@@ -376,7 +373,7 @@ PttBlock::PttBlock(ComplexMessageItem *_parent,
     {
         buttonPlay_ = new PttDetails::PlayButton(this, getChatAimid());
         Testing::setAccessibleName(buttonPlay_, qsl("AS PttBlock buttonPlay"));
-        Utils::InterConnector::instance().disableInMultiselect(buttonPlay_);
+        Utils::InterConnector::instance().disableInMultiselect(buttonPlay_, getChatAimid());
     }
 
     pttLayout_ = new PttBlockLayout();
@@ -401,12 +398,7 @@ PttBlock::PttBlock(ComplexMessageItem *_parent,
     }
 }
 
-PttBlock::~PttBlock()
-{
-    Utils::InterConnector::instance().detachFromMultiselect(buttonPlay_);
-    Utils::InterConnector::instance().detachFromMultiselect(buttonText_);
-    Utils::InterConnector::instance().detachFromMultiselect(buttonCollapse_);
-}
+PttBlock::~PttBlock() = default;
 
 void PttBlock::clearSelection()
 {
@@ -424,7 +416,7 @@ QSize PttBlock::getCtrlButtonSize() const
     return getButtonSize();
 }
 
-Data::FormattedString PttBlock::getSelectedText(const bool, const TextDestination) const
+Data::FString PttBlock::getSelectedText(const bool, const TextDestination) const
 {
     QString result;
     result.reserve(512);
@@ -439,11 +431,6 @@ Data::FormattedString PttBlock::getSelectedText(const bool, const TextDestinatio
         result += decodedTextCtrl_->getSelectedText().string();
 
     return result;
-}
-
-bool PttBlock::updateFriendly(const QString&/* _aimId*/, const QString&/* _friendly*/)
-{
-    return false;
 }
 
 QSize PttBlock::getTextButtonSize() const
@@ -547,7 +534,7 @@ void PttBlock::onMenuOpenFolder()
 
 void PttBlock::mouseMoveEvent(QMouseEvent* _e)
 {
-    if (Utils::InterConnector::instance().isMultiselect())
+    if (Utils::InterConnector::instance().isMultiselect(getChatAimid()))
     {
         Tooltip::forceShow(false);
         bulletPressed_ = false;
@@ -578,7 +565,7 @@ void PttBlock::mouseMoveEvent(QMouseEvent* _e)
 
 void PttBlock::mousePressEvent(QMouseEvent* _e)
 {
-    if (Utils::InterConnector::instance().isMultiselect())
+    if (Utils::InterConnector::instance().isMultiselect(getChatAimid()))
     {
         Tooltip::forceShow(false);
         bulletPressed_ = false;
@@ -600,7 +587,7 @@ void PttBlock::mousePressEvent(QMouseEvent* _e)
 
 void PttBlock::mouseReleaseEvent(QMouseEvent* _e)
 {
-    if (Utils::InterConnector::instance().isMultiselect())
+    if (Utils::InterConnector::instance().isMultiselect(getChatAimid()))
     {
         Tooltip::forceShow(false);
         bulletPressed_ = false;
@@ -743,7 +730,7 @@ void PttBlock::onDownloadedAction()
     }
 }
 
-void PttBlock::onDataTransfer(const int64_t _bytesTransferred, const int64_t _bytesTotal)
+void PttBlock::onDataTransfer(const int64_t _bytesTransferred, const int64_t _bytesTotal, bool /*_showBytes*/)
 {
     if (progressPlay_)
     {
@@ -784,7 +771,7 @@ void PttBlock::onMetainfoDownloaded()
         buttonText_->move(pttLayout_->getTextButtonRect().topLeft());
         buttonText_->show();
 
-        Utils::InterConnector::instance().disableInMultiselect(buttonText_);
+        Utils::InterConnector::instance().disableInMultiselect(buttonText_, getChatAimid());
         connect(buttonText_, &PttDetails::ButtonWithBackground::clicked, this, &PttBlock::onTextButtonClicked);
     }
 }
@@ -1084,7 +1071,7 @@ void PttBlock::initPlaybackAnimation(AnimationState _state)
     playbackProgressAnimation_->setEndValue(durationMSec_);
 
     if (_state == AnimationState::Play)
-        Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_playptt_action, { { "from_gallery", "no" },  { "chat_type", Ui::getStatsChatType() } });
+        Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_playptt_action, { { "from_gallery", "no" },  { "chat_type", Ui::getStatsChatType(getChatAimid()) } });
 
 #endif // !STRIP_AV_MEDIA
 }
@@ -1121,7 +1108,7 @@ void PttBlock::updateCollapseState()
         buttonCollapse_->setFixedSize(getButtonSize());
         buttonCollapse_->move(pttLayout_->getTextButtonRect().topLeft());
 
-        Utils::InterConnector::instance().disableInMultiselect(buttonCollapse_);
+        Utils::InterConnector::instance().disableInMultiselect(buttonCollapse_, getChatAimid());
         connect(buttonCollapse_, &PttDetails::ButtonWithBackground::clicked, this, &PttBlock::onTextButtonClicked);
     }
 
@@ -1270,7 +1257,7 @@ void PttBlock::showBulletTooltip(QPoint _curPos) const
 
 void PttBlock::onPlayButtonClicked()
 {
-    if (Utils::InterConnector::instance().isMultiselect())
+    if (Utils::InterConnector::instance().isMultiselect(getChatAimid()))
         return;
 
     Q_EMIT Utils::InterConnector::instance().stopPttRecord();
@@ -1290,7 +1277,7 @@ void PttBlock::onPlayButtonClicked()
 
 void PttBlock::onTextButtonClicked()
 {
-    if (Utils::InterConnector::instance().isMultiselect())
+    if (Utils::InterConnector::instance().isMultiselect(getChatAimid()))
         return;
 
     if (hasDecodedText())
@@ -1304,7 +1291,7 @@ void PttBlock::onTextButtonClicked()
         requestText();
     }
 
-    MainPage::instance()->setFocusOnInput();
+    Q_EMIT Utils::InterConnector::instance().setFocusOnInput(getChatAimid());
 }
 
 void PttBlock::onPttFinished(int _id, bool _byPlay)
@@ -1341,15 +1328,13 @@ void PttBlock::onPttPaused(int _id)
 
 void PttBlock::onPttText(qint64 _seq, int _error, QString _text, int _comeback)
 {
-    if (Utils::InterConnector::instance().isMultiselect())
+    if (Utils::InterConnector::instance().isMultiselect(getChatAimid()))
         return;
 
     im_assert(_seq > 0);
 
     if (textRequestId_ != _seq)
-    {
         return;
-    }
 
     textRequestId_  = -1;
 
@@ -1373,7 +1358,7 @@ void PttBlock::onPttText(qint64 _seq, int _error, QString _text, int _comeback)
 
     Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_recognptt_action, {
         { "from_gallery", "no" },
-        { "chat_type", Ui::getStatsChatType() },
+        { "chat_type", Ui::getStatsChatType(getChatAimid()) },
         { "result", isError ? "fail" : "success" } });
 
     stopTextRequestProgressAnimation();
@@ -1386,7 +1371,7 @@ void PttBlock::onPttText(qint64 _seq, int _error, QString _text, int _comeback)
 
 void PttBlock::pttPlayed(qint64 id)
 {
-    if (prevId_ == -1 || id != prevId_ || getChatAimid() != Logic::getContactListModel()->selectedContact())
+    if (prevId_ == -1 || id != prevId_ || !Utils::InterConnector::instance().isHistoryPageVisible(getChatAimid()))
         return;
 
     if (!isPlayed_ && !isPlaying())
@@ -1511,7 +1496,7 @@ IItemBlock::MenuFlags PttBlock::getMenuFlags(QPoint p) const
     return FileSharingBlockBase::getMenuFlags(p);
 }
 
-bool PttBlock::setProgress(const QString& _fsId, const int32_t _value)
+bool PttBlock::setProgress(const Utils::FileSharingId& _fsId, const int32_t _value)
 {
     if (_fsId == getFileSharingId())
     {

@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "user_info.h"
-#include "../../tools/json_helper.h"
+#include "../../../common.shared/json_helper.h"
 
 using namespace core;
 using namespace wim;

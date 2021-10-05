@@ -745,14 +745,6 @@ namespace Ui
 #endif
     }
 
-    void TextUnitLabel::resizeEvent(QResizeEvent* _e)
-    {
-        adjustSize();
-        updateGeometry();
-        update();
-        QWidget::resizeEvent(_e);
-    }
-
     void TextUnitLabel::setText(const QString &_text, const QColor& _color)
     {
         textUnit_->setText(_text, _color);
@@ -784,7 +776,7 @@ namespace Ui
     {
         auto fontHeight = QFontMetrics(_font).height();
         // todo: after emoji correction TextUnit height is different from font height
-        if (platform::is_apple())
+        if constexpr (platform::is_apple())
             fontHeight -= Utils::scale_value(1);
         else
             fontHeight += Utils::scale_value(1);

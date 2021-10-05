@@ -244,7 +244,7 @@ namespace Ui
 
     void SettingsTab::settingsFavoritesClicked()
     {
-        Logic::getContactListModel()->setCurrent(Favorites::aimId(), -1, true);
+        Utils::InterConnector::instance().openDialog(Favorites::aimId());
     }
 
     void SettingsTab::settingsGeneralClicked()

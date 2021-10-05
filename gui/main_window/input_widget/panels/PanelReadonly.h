@@ -26,9 +26,8 @@ namespace Ui
         Q_OBJECT
 
     public:
-        InputPanelReadonly(QWidget* _parent);
+        InputPanelReadonly(QWidget* _parent, const QString& _aimId);
 
-        void setAimid(const QString& _aimId);
         void setState(const ReadonlyPanelState _state);
         ReadonlyPanelState currentState() const noexcept { return state_; }
 

@@ -197,7 +197,6 @@ namespace Ui
             Utils::UpdateProfile({ { std::make_pair(std::string("firstName"), firstNameEdit_->text()) },
                                    { std::make_pair(std::string("lastName"), lastNameEdit_->text()) } });
             Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::introduce_name_set);
-            Q_EMIT profileUpdated();
         }
     }
 
@@ -210,6 +209,10 @@ namespace Ui
             setButtonActive(true);
             firstNameEdit_->setFocus();
             Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("placeholders", "Error occurred, try again later"), Utils::scale_value(10));
+        }
+        else
+        {
+            Q_EMIT profileUpdated();
         }
     }
 

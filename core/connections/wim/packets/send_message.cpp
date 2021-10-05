@@ -2,7 +2,7 @@
 
 #include "../../../http_request.h"
 #include "../../../corelib/enumerations.h"
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 #include "../../../archive/history_message.h"
 #include "../../../../common.shared/smartreply/smartreply_types.h"
 #include "../../urls_cache.h"
@@ -35,43 +35,19 @@ namespace
         return poll_params;
     }
 
-    rapidjson::Value serialize_format(const core::data::format::string_formatting& _format, rapidjson_allocator& _a)
+    rapidjson::Value create_task_params(const core::tasks::task& _task, rapidjson_allocator& _a)
     {
-        namespace fmt = core::data::format;
+        rapidjson::Value text_params(rapidjson::Type::kObjectType);
+        text_params.AddMember("mediaType", "text", _a);
+        text_params.AddMember("text", _task->params_.title_, _a);
 
-        auto serialize_format_entry = [&_a](const fmt::format& _entry)
-        {
-            rapidjson::Value result(rapidjson::Type::kObjectType);
-            result.AddMember("offset", _entry.range_.offset_, _a);
-            result.AddMember("length", _entry.range_.length_, _a);
+        rapidjson::Value task_params(rapidjson::Type::kObjectType);
+        task_params.AddMember("title", _task->params_.title_, _a);
+        task_params.AddMember("endTime", _task->end_time_to_seconds(), _a);
+        task_params.AddMember("assignee", _task->params_.assignee_, _a);
 
-            if (_entry.data_)
-            {
-                if (_entry.type_ == fmt::format_type::link)
-                    result.AddMember("url", *_entry.data_, _a);
-
-                if (_entry.type_ == fmt::format_type::pre)
-                    result.AddMember("lang", *_entry.data_, _a);
-            }
-
-            return result;
-        };
-
-        rapidjson::Value format_params(rapidjson::Type::kObjectType);
-
-        std::unordered_map<fmt::format_type, rapidjson::Value> arrays_map;
-        for (const auto& entry : _format.formats())
-        {
-            if (arrays_map.find(entry.type_) == arrays_map.end())
-                arrays_map.emplace(entry.type_, rapidjson::Type::kArrayType);
-
-            arrays_map[entry.type_].PushBack(serialize_format_entry(entry), _a);
-        }
-
-        for (auto& [format_type, arr] : arrays_map)
-            format_params.AddMember(rapidjson::Value(fmt::to_string(format_type).data(), _a), arr, _a);
-
-        return format_params;
+        text_params.AddMember("task", task_params, _a);
+        return text_params;
     }
 }
 
@@ -84,16 +60,18 @@ send_message::send_message(wim_packet_params _params,
     const std::string& _internal_id,
     const std::string& _aimid,
     const std::string& _message_text,
-    const core::data::format::string_formatting& _message_format,
+    const core::data::format& _message_format,
     const core::archive::quotes_vec& _quotes,
     const core::archive::mentions_map& _mentions,
     const std::string& _description,
-    const core::data::format::string_formatting& _description_format,
+    const core::data::format& _description_format,
     const std::string& _url,
     const archive::shared_contact& _shared_contact,
     const core::archive::geo& _geo,
     const core::archive::poll& _poll,
-    const smartreply::marker_opt& _smartreply_marker)
+    const core::tasks::task& _task,
+    const smartreply::marker_opt& _smartreply_marker,
+    const std::optional<int64_t>& _draft_delete_time)
     :
         wim_packet(std::move(_params)),
         updated_id_(_updated_id),
@@ -115,9 +93,11 @@ send_message::send_message(wim_packet_params _params,
         shared_contact_(_shared_contact),
         geo_(_geo),
         poll_(_poll),
-        smartreply_marker_(_smartreply_marker)
+        task_(_task),
+        smartreply_marker_(_smartreply_marker),
+        draft_delete_time_(_draft_delete_time)
 {
-    assert(!internal_id_.empty());
+    im_assert(!internal_id_.empty());
 }
 
 send_message::~send_message() = default;
@@ -145,75 +125,7 @@ int32_t send_message::init_request(const std::shared_ptr<core::http_request_simp
         auto& a = doc.GetAllocator();
         doc.Reserve(quotes_.size() + 1, a);
 
-        for (const auto& quote : quotes_)
-        {
-            rapidjson::Value quote_params(rapidjson::Type::kObjectType);
-            quote_params.AddMember("mediaType", quote.get_type(), a);
-
-            if (!quote.get_description().empty())
-            {
-                quote_params.AddMember("text", "", a);
-                rapidjson::Value caption_params(rapidjson::Type::kObjectType);
-                caption_params.AddMember("caption", quote.get_description(), a);
-                if (!quote.get_description_format().empty())
-                    caption_params.AddMember("format", serialize_format(quote.get_description_format(), a), a);
-                caption_params.AddMember("url", quote.get_url(), a);
-                quote_params.AddMember("captionedContent", std::move(caption_params), a);
-            }
-            else if (quote.get_shared_contact())
-            {
-                quote_params.AddMember("text", "", a);
-                rapidjson::Value contact_params(rapidjson::Type::kObjectType);
-                contact_params.AddMember("name", quote.get_shared_contact()->name_, a);
-                contact_params.AddMember("phone", quote.get_shared_contact()->phone_, a);
-                if (!quote.get_shared_contact()->sn_.empty())
-                    contact_params.AddMember("sn", quote.get_shared_contact()->sn_, a);
-                quote_params.AddMember("contact", std::move(contact_params), a);
-            }
-            else if (quote.get_geo())
-            {
-                quote_params.AddMember("text", quote.get_text(), a);
-                rapidjson::Value geo_params(rapidjson::Type::kObjectType);
-                geo_params.AddMember("name", quote.get_geo()->name_, a);
-                geo_params.AddMember("lat", quote.get_geo()->lat_, a);
-                geo_params.AddMember("long", quote.get_geo()->long_, a);
-                quote_params.AddMember("geo", std::move(geo_params), a);
-            }
-            else if (quote.get_poll())
-            {
-                quote_params.AddMember("text", quote.get_text(), a);
-                rapidjson::Value poll_params(rapidjson::Type::kObjectType);
-                poll_params.AddMember("id", quote.get_poll()->id_, a);
-                quote_params.AddMember("poll", std::move(poll_params), a);
-            }
-            else
-            {
-                if (auto sticker = quote.get_sticker(); !sticker.empty())
-                {
-                    quote_params.AddMember("stickerId", std::move(sticker), a);
-                }
-                else
-                {
-                    quote_params.AddMember("text", quote.get_text(), a);
-                    if (const auto& format = quote.get_format())
-                        quote_params.AddMember("format", serialize_format(*format, a), a);
-                }
-            }
-            quote_params.AddMember("sn", quote.get_sender(), a);
-            quote_params.AddMember("msgId", quote.get_msg_id(), a);
-            quote_params.AddMember("time", quote.get_time(), a);
-
-            if (const auto& chat_sn = quote.get_chat(); chat_sn.find("@chat.agent") != chat_sn.npos)
-            {
-                rapidjson::Value chat_params(rapidjson::Type::kObjectType);
-                chat_params.AddMember("sn", chat_sn, a);
-                if (const auto& chat_stamp = quote.get_stamp(); !chat_stamp.empty())
-                    chat_params.AddMember("stamp", chat_stamp, a);
-                quote_params.AddMember("chat", std::move(chat_params), a);
-            }
-
-            doc.PushBack(std::move(quote_params), a);
-        }
+        archive::serialize_message_quotes(quotes_, doc, a);
 
         if (description_.empty())
         {
@@ -229,12 +141,17 @@ int32_t send_message::init_request(const std::shared_ptr<core::http_request_simp
                 {
                     text_params.AddMember("mediaType", "text", a);
                     text_params.AddMember("text", message_text_, a);
+                    if (!message_format_.empty())
+                        text_params.AddMember("format", message_format_.serialize(a), a);
 
                     if (poll_)
                         text_params.AddMember("poll", create_poll_params(poll_, a), a);
                 }
                 doc.PushBack(std::move(text_params), a);
             }
+
+            if (task_)
+                doc.PushBack(create_task_params(task_, a), a);
 
             if (shared_contact_)
             {
@@ -260,7 +177,7 @@ int32_t send_message::init_request(const std::shared_ptr<core::http_request_simp
             rapidjson::Value caption_params(rapidjson::Type::kObjectType);
             caption_params.AddMember("caption", description_, a);
             if (!description_format_.empty())
-                caption_params.AddMember("format", serialize_format(description_format_, a), a);
+                caption_params.AddMember("format", description_format_.serialize(a), a);
             caption_params.AddMember("url", url_, a);
             text_params.AddMember("captionedContent", std::move(caption_params), a);
             doc.PushBack(std::move(text_params), a);
@@ -290,6 +207,19 @@ int32_t send_message::init_request(const std::shared_ptr<core::http_request_simp
 
         _request->push_post_parameter("parts", escape_symbols(rapidjson_get_string_view(buffer)));
     }
+    else if (task_)
+    {
+        rapidjson::Document doc(rapidjson::Type::kArrayType);
+        auto& a = doc.GetAllocator();
+
+        doc.PushBack(create_task_params(task_, a), a);
+
+        rapidjson::StringBuffer buffer;
+        rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+        doc.Accept(writer);
+
+        _request->push_post_parameter("parts", escape_symbols(rapidjson_get_string_view(buffer)));
+    }
 
     if (!mentions_.empty())
     {
@@ -303,7 +233,7 @@ int32_t send_message::init_request(const std::shared_ptr<core::http_request_simp
         _request->push_post_parameter("mentions", std::move(str));
     }
 
-    if (quotes_.empty() && !geo_ && !poll_)
+    if (quotes_.empty() && !geo_ && !poll_ && !task_)
     {
         if (description_.empty())
         {
@@ -314,7 +244,7 @@ int32_t send_message::init_request(const std::shared_ptr<core::http_request_simp
             }
             else
             {
-                assert(!is_sticker);
+                im_assert(!is_sticker);
                 rapidjson::Document doc(rapidjson::Type::kArrayType);
                 auto& a = doc.GetAllocator();
 
@@ -323,7 +253,7 @@ int32_t send_message::init_request(const std::shared_ptr<core::http_request_simp
                 text_params.AddMember("text", message_text_, a);
 
                 rapidjson::Value format_params(rapidjson::Type::kObjectType);
-                text_params.AddMember("format", serialize_format(message_format_, a), a);
+                text_params.AddMember("format", message_format_.serialize(a), a);
                 doc.PushBack(std::move(text_params), a);
 
                 rapidjson::StringBuffer buffer;
@@ -345,7 +275,7 @@ int32_t send_message::init_request(const std::shared_ptr<core::http_request_simp
             rapidjson::Value caption_params(rapidjson::Type::kObjectType);
             caption_params.AddMember("caption", description_, a);
             if (!description_format_.empty())
-                caption_params.AddMember("format", serialize_format(description_format_, a), a);
+                caption_params.AddMember("format", description_format_.serialize(a), a);
             caption_params.AddMember("url", url_, a);
             text_params.AddMember("captionedContent", std::move(caption_params), a);
             doc.PushBack(std::move(text_params), a);
@@ -429,6 +359,9 @@ int32_t send_message::init_request(const std::shared_ptr<core::http_request_simp
         _request->push_post_parameter("notifyDelivery", "true");
     }
 
+    if (draft_delete_time_)
+        _request->push_post_parameter("draftDeleteTime", std::to_string(*draft_delete_time_));
+
     if (!params_.full_log_)
     {
         log_replace_functor f;
@@ -448,6 +381,7 @@ int32_t send_message::parse_response_data(const rapidjson::Value& _data)
     tools::unserialize_value(_data, "histMsgId", hist_msg_id_);
     tools::unserialize_value(_data, "beforeHistMsgId", before_hist_msg_id);
     tools::unserialize_value(_data, "pollId", poll_id_);
+    tools::unserialize_value(_data, "taskId", task_id_);
 
     if (std::string_view state; tools::unserialize_value(_data, "state", state) && state == "duplicate")
         duplicate_ = true;

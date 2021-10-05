@@ -85,6 +85,7 @@ namespace core
 
         bool is_use_curl_decompression() const;
         void set_use_curl_decompression(bool _enable);
+        void set_use_new_connection(bool _use);
 
         const std::string& zstd_request_dict() const;
         const std::string& zstd_response_dict() const;
@@ -156,5 +157,6 @@ namespace core
         std::string zstd_response_dict_;
         bool use_curl_decompression_;
         bool resolve_failed_;
+        bool use_new_connection_;
     };
 }

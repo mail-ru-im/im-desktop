@@ -77,7 +77,7 @@ void core::collection_value::clear()
         ::memset(&data__, 0, sizeof(data__));
         break;
     default:
-        assert(!"clear data for this type");
+        im_assert(!"clear data for this type");
         break;
     }
 
@@ -94,7 +94,7 @@ int32_t core::collection_value::get_as_int() const
 {
     if (type_ != collection_value_type::vt_int)
     {
-        assert(!"invalid value type");
+        im_assert(!"invalid value type");
         return 0;
     }
 
@@ -112,7 +112,7 @@ int64_t core::collection_value::get_as_int64() const
 {
     if (type_ != collection_value_type::vt_int64)
     {
-        assert(!"invalid value type");
+        im_assert(!"invalid value type");
         return 0;
     }
 
@@ -134,7 +134,7 @@ const char* core::collection_value::get_as_string() const
 {
     if (type_ != collection_value_type::vt_string)
     {
-        assert(!"invalid value type");
+        im_assert(!"invalid value type");
         return "";
     }
 
@@ -152,7 +152,7 @@ double core::collection_value::get_as_double() const
 {
     if (type_ != collection_value_type::vt_double)
     {
-        assert(!"invalid value type");
+        im_assert(!"invalid value type");
         return 0.0;
     }
 
@@ -171,7 +171,7 @@ bool core::collection_value::get_as_bool() const
     bool val = false;
     if (type_ != collection_value_type::vt_bool)
     {
-        assert(!"invalid value type");
+        im_assert(!"invalid value type");
         return val;
     }
 
@@ -190,7 +190,7 @@ icollection* core::collection_value::get_as_collection() const
 {
     if (type_ != collection_value_type::vt_collection)
     {
-        assert(!"invalid data type");
+        im_assert(!"invalid data type");
         return nullptr;
     }
 
@@ -209,7 +209,7 @@ istream* core::collection_value::get_as_stream()
 {
     if (type_ != collection_value_type::vt_stream)
     {
-        assert(!"invalid data type");
+        im_assert(!"invalid data type");
         return nullptr;
     }
 
@@ -228,7 +228,7 @@ iarray* core::collection_value::get_as_array()
 {
     if (type_ != collection_value_type::vt_array)
     {
-        assert(!"invalid data type");
+        im_assert(!"invalid data type");
         return nullptr;
     }
 
@@ -247,7 +247,7 @@ ihheaders_list* core::collection_value::get_as_hheaders()
 {
     if (type_ != collection_value_type::vt_hheaders)
     {
-        assert(!"invalid data type");
+        im_assert(!"invalid data type");
         return nullptr;
     }
 
@@ -265,7 +265,7 @@ uint32_t core::collection_value::get_as_uint() const
 {
     if (type_ != collection_value_type::vt_uint)
     {
-        assert(!"invalid data type");
+        im_assert(!"invalid data type");
         return 0;
     }
 
@@ -457,7 +457,7 @@ ivalue* core::collection::get_value(std::string_view name) const
     const auto iter_value = values_.find(name);
     if (iter_value == values_.end())
     {
-        assert(!"value doesn't exist");
+        im_assert(!"value doesn't exist");
 #if defined(DEBUG) || defined(_DEBUG)
         puts(std::string(name).c_str());
 #endif // defined(DEBUG) || defined(_DEBUG)

@@ -22,6 +22,13 @@ namespace Styling
         [[nodiscard]] QString getColorHex(const StyleVariable _var) const; // get color string in #AARRGGBB format
         [[nodiscard]] QString getColorHex(const StyleVariable _var, double alpha) const; // get color string in #AARRGGBB format
 
+        //! Used when a color with alpha is to be painted above some background color. Background's alpha is ignored
+        //! It seems this algo is different from figma's algo which leads to 1% transparency discrepancy
+        [[nodiscard]] QColor getColorAlphaBlended(const StyleVariable _bg, const StyleVariable _fg) const;
+        [[nodiscard]] QString getColorAlphaBlendedHex(const StyleVariable _bg, const StyleVariable _fg) const;
+
+        [[nodiscard]] QColor getSelectedTabOrRecentItemBackground() const;
+
         [[nodiscard]] bool isChatWallpaperPlainColor() const;
         [[nodiscard]] QColor getChatWallpaperPlainColor() const;
         [[nodiscard]] QPixmap getChatWallpaper() const;
@@ -35,6 +42,7 @@ namespace Styling
 
         [[nodiscard]] QString getLineEditCommonQss(bool _isError = false, int _height = 48) const;
         [[nodiscard]] QString getTextLineEditCommonQss(bool _isError = false, int _height = 48) const;
+        [[nodiscard]] QString getTextLineEditCommonQssNoHeight(bool _isError = false) const;
         [[nodiscard]] QString getLineEditDisabledQss(int _height = 48) const;
         [[nodiscard]] QString getLineEditCustomQss(const QColor& _lineFocusColor, const QColor& _lineNoFocusColor = Qt::transparent, int _height = 48) const;
 
@@ -61,6 +69,9 @@ namespace Styling
         [[nodiscard]] QColor getPrimaryTabFocusColor() const;
 
         [[nodiscard]] QColor getAppTitlebarColor() const;
+
+    protected:
+        void setTextLineEditCommonQssNoHeight(QString& _template, bool _isError) const;
 
     private:
         ThemePtr theme_;

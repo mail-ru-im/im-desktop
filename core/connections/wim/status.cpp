@@ -2,7 +2,7 @@
 
 #include "status.h"
 
-#include "tools/json_helper.h"
+#include "../common.shared/json_helper.h"
 #include "../../../corelib/collection_helper.h"
 
 namespace

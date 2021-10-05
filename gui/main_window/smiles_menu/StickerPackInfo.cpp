@@ -90,7 +90,7 @@ StickersView::StickersView(QWidget* _parent, Smiles::StickersTable* _stickers)
     connect(stickers_, &Smiles::StickersTable::stickerHovered, this, &StickersView::stickerHovered);
 }
 
-void StickersView::onStickerPreview(const QString& _stickerId)
+void StickersView::onStickerPreview(const Utils::FileSharingId& _stickerId)
 {
     previewActive_ = true;
 
@@ -257,7 +257,7 @@ void PackWidget::setParentDialog(GeneralDialog* _dialog)
     dialog_ = _dialog;
 }
 
-void PackWidget::onStickersPackInfo(std::shared_ptr<Ui::Stickers::Set> _set, const bool _result, const bool _purchased)
+void PackWidget::onStickersPackInfo(std::shared_ptr<Ui::Stickers::Set> _set, const bool _result, const bool _purchased, bool _fromOtherFederation)
 {
     if (!_result || !_set)
         return;
@@ -270,35 +270,30 @@ void PackWidget::onStickersPackInfo(std::shared_ptr<Ui::Stickers::Set> _set, con
 
     loadingText_->setVisible(false);
 
-    if (!description_.isEmpty())
+    if (!descrControl_)
     {
-        if (!descrControl_)
-        {
-            QHBoxLayout* textLayout = new QHBoxLayout(nullptr);
-            textLayout->setContentsMargins(getTextMargin(), 0, getButtonMargin(), 0);
+        QHBoxLayout* textLayout = new QHBoxLayout(nullptr);
+        textLayout->setContentsMargins(getTextMargin(), 0, getButtonMargin(), 0);
 
-            int textWidth = width() - getTextMargin() - getButtonMargin();
+        int textWidth = width() - getTextMargin() - getButtonMargin();
 
-            descrControl_ = new TextEditEx(this, Fonts::appFontScaled(12), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), false, false);
-            descrControl_->setWordWrapMode(QTextOption::WordWrap);
-            descrControl_->setPlainText(description_, false);
-            descrControl_->setObjectName(qsl("description"));
-            descrControl_->adjustHeight(textWidth);
-            descrControl_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-            descrControl_->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-            descrControl_->setFrameStyle(QFrame::NoFrame);
-            Utils::ApplyStyle(descrControl_, qsl("QWidget { background-color:transparent; border: none; }"));
+        descrControl_ = new TextEditEx(this, Fonts::appFontScaled(12), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), false, false);
+        descrControl_->setWordWrapMode(QTextOption::WordWrap);
+        descrControl_->setObjectName(qsl("description"));
+        descrControl_->adjustHeight(textWidth);
+        descrControl_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        descrControl_->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        descrControl_->setFrameStyle(QFrame::NoFrame);
+        Utils::ApplyStyle(descrControl_, qsl("QWidget { background-color:transparent; border: none; }"));
 
-            Testing::setAccessibleName(descrControl_, qsl("AS StickerPack subtitle"));
-            textLayout->addWidget(descrControl_);
+        Testing::setAccessibleName(descrControl_, qsl("AS StickerPack subtitle"));
+        textLayout->addWidget(descrControl_);
 
-            rootVerticalLayout_->addLayout(textLayout);
-        }
-        else
-        {
-            descrControl_->setPlainText(description_, false);
-        }
+        rootVerticalLayout_->addLayout(textLayout);
     }
+
+    if (!description_.isEmpty())
+        descrControl_->setPlainText(description_, false);
 
     if (!viewArea_)
     {
@@ -380,8 +375,8 @@ void PackWidget::onStickersPackInfo(std::shared_ptr<Ui::Stickers::Set> _set, con
         rootVerticalLayout_->addLayout(buttonsLayout);
     }
 
-    addButton_->setVisible(!_purchased);
-    removeButton_->setVisible(_purchased);
+    addButton_->setVisible(!_purchased && !_fromOtherFederation);
+    removeButton_->setVisible(_purchased && !_fromOtherFederation);
 
     if (!moreButton_)
     {
@@ -406,6 +401,8 @@ void PackWidget::onStickersPackInfo(std::shared_ptr<Ui::Stickers::Set> _set, con
 
         connect(moreButton_, &QPushButton::clicked, this, []() { menu.popup(QCursor::pos()); });
     }
+    if (_fromOtherFederation)
+        moreButton_->hide();
 }
 
 void PackWidget::touchScrollStateChanged(QScroller::State _state)
@@ -448,7 +445,7 @@ void PackWidget::onStickerPreviewClose()
     stickerPreview_.reset();
 }
 
-void PackWidget::onStickerPreview(const int32_t _setId, const QString& _stickerId)
+void PackWidget::onStickerPreview(const int32_t _setId, const Utils::FileSharingId& _stickerId)
 {
     if (!stickerPreview_)
     {
@@ -478,7 +475,7 @@ void PackWidget::onStickerPreview(const int32_t _setId, const QString& _stickerI
     }
 }
 
-void PackWidget::onStickerHovered(const int32_t _setId, const QString& _stickerId)
+void PackWidget::onStickerHovered(const int32_t _setId, const Utils::FileSharingId& _stickerId)
 {
     if (stickerPreview_)
         stickerPreview_->showSticker(_stickerId);
@@ -558,11 +555,11 @@ void PackWidget::resizeEvent(QResizeEvent* _e)
 //////////////////////////////////////////////////////////////////////////
 // StickerPackInfo
 //////////////////////////////////////////////////////////////////////////
-StickerPackInfo::StickerPackInfo(QWidget* _parent, const int32_t _set_id, const QString& _store_id, const QString& _file_id, Stickers::StatContext _context)
+StickerPackInfo::StickerPackInfo(QWidget* _parent, const int32_t _set_id, const QString& _store_id, const Utils::FileSharingId& _file_id, Stickers::StatContext _context)
     : QWidget(_parent)
-    , set_id_(_set_id)
-    , store_id_(_store_id)
-    , file_id_(_file_id)
+    , setId_(_set_id)
+    , storeId_(_store_id)
+    , fileSharingId_(_file_id)
     , context_(_context)
 {
     setStyleSheet(Styling::getParameters().getStickersQss());
@@ -578,25 +575,25 @@ StickerPackInfo::StickerPackInfo(QWidget* _parent, const int32_t _set_id, const 
 
 
     Stickers::setSptr stickerSet;
-    if (set_id_ != -1)
+    if (setId_ != -1)
     {
-        stickerSet = Stickers::getSet(set_id_);
+        stickerSet = Stickers::getSet(setId_);
         if (!stickerSet)
-            stickerSet = Stickers::getStoreSet(set_id_);
+            stickerSet = Stickers::getStoreSet(setId_);
     }
-    else if (!file_id_.isEmpty())
+    else if (!fileSharingId_.fileId.isEmpty())
     {
-        stickerSet = Stickers::findSetByFsId(file_id_);
+        stickerSet = Stickers::findSetByFsId(fileSharingId_);
     }
 
     if (stickerSet)
     {
-        pack_->onStickersPackInfo(stickerSet, true, stickerSet->isPurchased());
+        pack_->onStickersPackInfo(stickerSet, true, stickerSet->isPurchased(), fileSharingId_.sourceId.has_value());
         if (const auto& name = stickerSet->getName(); !name.isEmpty())
             parentDialog_->addLabel(name);
     }
 
-    Ui::GetDispatcher()->getStickersPackInfo(set_id_, _store_id, _file_id);
+    Ui::GetDispatcher()->getStickersPackInfo(setId_, _store_id, _file_id);
     connect(Ui::GetDispatcher(), &core_dispatcher::onStickerpackInfo, this, &StickerPackInfo::onStickerpackInfo);
 }
 
@@ -608,7 +605,7 @@ void StickerPackInfo::onShareClicked()
 
     Q_EMIT Utils::InterConnector::instance().searchEnd();
 
-    QString sourceText = getStickerpackUrl(store_id_);
+    QString sourceText = getStickerpackUrl(storeId_);
     forwardMessage(sourceText, QT_TRANSLATE_NOOP("stickers", "Share"), QT_TRANSLATE_NOOP("popup_window", "Send"), false);
 
     parentDialog_->close();
@@ -618,7 +615,7 @@ void StickerPackInfo::onReportClicked()
 {
     auto h = parentDialog_->height();
     parentDialog_->setFixedHeight(0);
-    if (ReportStickerPack(set_id_, QT_TRANSLATE_NOOP("stickers", "Stickerpack: ") + pack_->getName()))
+    if (ReportStickerPack(setId_, QT_TRANSLATE_NOOP("stickers", "Stickerpack: ") + pack_->getName()))
         parentDialog_->close();
     else
         parentDialog_->setFixedHeight(h);
@@ -626,9 +623,6 @@ void StickerPackInfo::onReportClicked()
 
 void StickerPackInfo::show()
 {
-    auto mainWindow = Utils::InterConnector::instance().getMainWindow();
-    if (mainWindow)
-        mainWindow->showMessengerPage();
     parentDialog_->showInCenter();
 }
 
@@ -645,16 +639,16 @@ void StickerPackInfo::onStickerpackInfo(const bool _result, const bool _exist, s
     if (!_set)
         return;
 
-    if (set_id_ != -1 && _set->getId() != set_id_)
+    if (setId_ != -1 && _set->getId() != setId_)
         return;
 
-    if (!store_id_.isEmpty() && store_id_ != _set->getStoreId())
+    if (!storeId_.isEmpty() && storeId_ != _set->getStoreId())
         return;
 
-    set_id_ = _set->getId();
-    store_id_ = _set->getStoreId();
+    setId_ = _set->getId();
+    storeId_ = _set->getStoreId();
 
-    pack_->onStickersPackInfo(_set, _result, _set->isPurchased());
+    pack_->onStickersPackInfo(_set, _result, _set->isPurchased(), fileSharingId_.sourceId.has_value());
 
     if (_result)
         parentDialog_->addLabel(_set->getName());

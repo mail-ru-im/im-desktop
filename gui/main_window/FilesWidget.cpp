@@ -16,6 +16,7 @@
 #include "utils/LoadFirstFrameTask.h"
 
 #include "history_control/FileSizeFormatter.h"
+#include "history_control/ThreadPlate.h"
 #include "styles/ThemeParameters.h"
 
 namespace
@@ -48,7 +49,8 @@ namespace
     constexpr auto RIGHT_OFFSET = 6;
     constexpr auto durationFontSize = platform::is_apple() ? 11 : 13;
 
-    const auto roundRadius() { return Utils::scale_value(5); }
+    const auto roundRadius() noexcept { return Utils::scale_value(5); }
+    const auto threadPlateMargin() noexcept { return Utils::scale_value(16); }
 
     QPixmap getRemoveIcon(Styling::StyleVariable _color)
     {
@@ -452,7 +454,7 @@ namespace Ui
         update();
     }
 
-    FilesWidget::FilesWidget(QWidget* _parent, const FilesToSend& _files)
+    FilesWidget::FilesWidget(const FilesToSend& _files, Target _target, QWidget* _parent)
         : QWidget(_parent)
         , currentDocumentHeight_(-1)
         , neededHeight_(-1)
@@ -462,7 +464,15 @@ namespace Ui
     {
         title_ = TextRendering::MakeTextUnit(QString());
         title_->init(Fonts::appFontScaled(23), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        title_->setOffsets(Utils::scale_value(HOR_OFFSET), Utils::scale_value(VER_OFFSET));
         title_->evaluateDesiredSize();
+
+        if (_target == Target::Thread)
+        {
+            threadPlate_ = ThreadPlate::plateForPopup(this);
+            threadPlate_->updateGeometry();
+            threadPlate_->show();
+        }
 
         description_ = new TextEditEx(this, Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), true, false);
         Utils::ApplyStyle(description_, Styling::getParameters().getTextEditCommonQss(true));
@@ -527,6 +537,11 @@ namespace Ui
         return description_->getPlainText();
     }
 
+    int FilesWidget::getCursorPos() const
+    {
+        return description_->textCursor().position();
+    }
+
     const Data::MentionMap& FilesWidget::getMentions() const
     {
         return description_->getMentions();
@@ -534,7 +549,11 @@ namespace Ui
 
     void FilesWidget::setFocusOnInput()
     {
-        Utils::InterConnector::instance().getMainWindow()->activate();
+        if (auto mainWindow = Utils::InterConnector::instance().getMainWindow())
+        {
+            if (!mainWindow->isActive())
+                mainWindow->activate();
+        }
         description_->setFocus();
     }
 
@@ -550,7 +569,6 @@ namespace Ui
         QPainter p(this);
         p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
 
-        title_->setOffsets(Utils::scale_value(HOR_OFFSET), Utils::scale_value(VER_OFFSET));
         title_->draw(p);
 
         if (!singlePreview_.isNull())
@@ -603,6 +621,15 @@ namespace Ui
         }
 
         QWidget::paintEvent(_event);
+    }
+
+    void FilesWidget::resizeEvent(QResizeEvent* _event)
+    {
+        if (threadPlate_)
+        {
+            threadPlate_->move(width() - threadPlate_->width() - Utils::scale_value(HOR_OFFSET), title_->verOffset() + (title_->cachedSize().height() - threadPlate_->height()) / 2);
+            title_->elide(width() - threadPlate_->width() - threadPlateMargin());
+        }
     }
 
     void FilesWidget::descriptionChanged()

@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include "history_message.h"
+#include "thread_parent_topic.h"
 #include "../../common.shared/patch_version.h"
 
 //////////////////////////////////////////////////////////////////////////
@@ -15,6 +16,7 @@ namespace core
     {
         class storage;
         class history_message;
+        struct draft;
 
         using dlg_state_head = std::pair<std::string, std::string>;
 
@@ -42,6 +44,9 @@ namespace core
 
             std::unique_ptr<history_message> last_message_;
             std::unique_ptr<history_message> pinned_message_;
+            std::unique_ptr<draft> draft_;
+
+            std::optional<thread_parent_topic> parent_topic_;
 
             std::string friendly_;
 
@@ -159,6 +164,12 @@ namespace core
             void set_heads(std::vector<dlg_state_head>&& _heads);
             void set_heads(const std::vector<dlg_state_head>& _heads);
             const std::vector<dlg_state_head>& get_heads() const;
+
+            void set_draft(const draft& _draft);
+            std::optional<core::archive::draft> get_draft() const;
+
+            void set_parent_topic(std::optional<thread_parent_topic> _topic);
+            std::optional<thread_parent_topic> get_parent_topic() const;
 
             void serialize(icollection* _collection, const time_t _offset, const time_t _last_successful_fetch, const bool _serialize_message = true) const;
             void serialize(core::tools::binary_stream& _data) const;

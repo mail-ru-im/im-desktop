@@ -3,7 +3,7 @@
 #include "wim_packet.h"
 #include "../../../corelib/collection_helper.h"
 #include "../../utils.h"
-#include "../../tools/json_helper.h"
+#include "../../../common.shared/json_helper.h"
 
 
 using namespace core;
@@ -26,7 +26,12 @@ bool core::wim::auth_parameters::is_valid_agent_token() const
 
 bool core::wim::auth_parameters::is_valid_token() const
 {
-    return (!a_token_.empty() && !session_key_.empty() && !dev_id_.empty());
+    return (!a_token_.empty() && !dev_id_.empty());
+}
+
+bool core::wim::auth_parameters::is_valid_o2token() const
+{
+    return (o2token_ && !dev_id_.empty());
 }
 
 bool core::wim::auth_parameters::is_valid_md5() const
@@ -36,7 +41,7 @@ bool core::wim::auth_parameters::is_valid_md5() const
 
 bool core::wim::auth_parameters::is_valid() const
 {
-    return (is_valid_token() || is_valid_md5() || is_valid_agent_token());
+    return (is_valid_token() || is_valid_md5() || is_valid_agent_token() || is_valid_o2token());
 }
 
 void core::wim::auth_parameters::reset_robusto()
@@ -48,13 +53,14 @@ void core::wim::auth_parameters::reset_robusto()
 void core::wim::auth_parameters::clear()
 {
     aimid_.clear();
+    o2token_.reset();
     a_token_.clear();
-    session_key_.clear();
     dev_id_.clear();
     aimsid_.clear();
     version_.clear();
     product_guid_8x_.clear();
     agent_token_.clear();
+    miniapps_.clear();
 
     reset_robusto();
 }
@@ -64,6 +70,14 @@ bool core::wim::auth_parameters::is_robusto_valid() const
     return (
         !robusto_token_.empty() &&
         (robusto_client_id_ > 0));
+}
+
+bool core::wim::auth_parameters::is_valid_miniapp(const std::string& _id) const
+{
+    if (const auto iter = miniapps_.find(_id); iter != miniapps_.end())
+        return !iter->second.aimsid_.empty();
+
+    return false;
 }
 
 enum auth_param_type
@@ -78,9 +92,15 @@ enum auth_param_type
     apt_version = 11,
     apt_locale = 12,
     apt_time_offset_local = 13,
+    apt_o2token = 14,
+    apt_o2refresh = 15,
 
     apt_robusto_token = 100,
-    apt_robusto_client_id = 101
+    apt_robusto_client_id = 101,
+
+    apt_miniapps = 200,
+    apt_miniapp_id = 201,
+    apt_miniapp_aimsid = 202,
 };
 
 enum fetch_param_type
@@ -101,7 +121,10 @@ void core::wim::auth_parameters::serialize(core::tools::binary_stream& _stream) 
 
     pack.push_child(core::tools::tlv(apt_aimid, aimid_));
     pack.push_child(core::tools::tlv(apt_a_token, a_token_));
-    pack.push_child(core::tools::tlv(apt_session_key, session_key_));
+    if (o2token_)
+        pack.push_child(core::tools::tlv(apt_o2token, *o2token_));
+    if (o2refresh_)
+        pack.push_child(core::tools::tlv(apt_o2refresh, *o2refresh_));
     pack.push_child(core::tools::tlv(apt_dev_id, dev_id_));
     pack.push_child(core::tools::tlv(apt_aimsid, aimsid_));
     pack.push_child(core::tools::tlv(apt_exipired_in, (int64_t) exipired_in_));
@@ -112,6 +135,23 @@ void core::wim::auth_parameters::serialize(core::tools::binary_stream& _stream) 
 
     pack.push_child(core::tools::tlv(apt_robusto_token, robusto_token_));
     pack.push_child(core::tools::tlv(apt_robusto_client_id, robusto_client_id_));
+
+    if (!miniapps_.empty())
+    {
+        core::tools::tlvpack miniapps_pack;
+
+        for (const auto& [id, params] : miniapps_)
+        {
+            core::tools::tlvpack app_pack;
+
+            app_pack.push_child(core::tools::tlv(apt_miniapp_id, id));
+            app_pack.push_child(core::tools::tlv(apt_miniapp_aimsid, params.aimsid_));
+
+            miniapps_pack.push_child(core::tools::tlv(0, app_pack));
+        }
+
+        pack.push_child(core::tools::tlv(apt_miniapps, miniapps_pack));
+    }
 
     pack.serialize(temp_stream);
 
@@ -137,7 +177,8 @@ bool core::wim::auth_parameters::unserialize(core::tools::binary_stream& _stream
 
     auto tlv_aimid = tlv_pack_childs.get_item(apt_aimid);
     auto tlv_a_token = tlv_pack_childs.get_item(apt_a_token);
-    auto tlv_session_key = tlv_pack_childs.get_item(apt_session_key);
+    auto tlv_o2token = tlv_pack_childs.get_item(apt_o2token);
+    auto tlv_o2refresh = tlv_pack_childs.get_item(apt_o2refresh);
     auto tlv_dev_id = tlv_pack_childs.get_item(apt_dev_id);
     auto tlv_aim_sid = tlv_pack_childs.get_item(apt_aimsid);
     auto tlv_exipired_in = tlv_pack_childs.get_item(apt_exipired_in);
@@ -151,8 +192,7 @@ bool core::wim::auth_parameters::unserialize(core::tools::binary_stream& _stream
 
     if (
         !tlv_aimid ||
-        !tlv_a_token ||
-        !tlv_session_key ||
+        (!tlv_a_token && !tlv_o2token) ||
         !tlv_dev_id ||
         !tlv_aim_sid ||
         !tlv_exipired_in ||
@@ -160,8 +200,12 @@ bool core::wim::auth_parameters::unserialize(core::tools::binary_stream& _stream
         return false;
 
     aimid_ = tlv_aimid->get_value<std::string>();
-    a_token_ = tlv_a_token->get_value<std::string>();
-    session_key_ = tlv_session_key->get_value<std::string>();
+    if (tlv_a_token)
+        a_token_ = tlv_a_token->get_value<std::string>();
+    if (tlv_o2token)
+        o2token_ = tlv_o2token->get_value<std::string>();
+    if (tlv_o2refresh)
+        o2refresh_ = tlv_o2refresh->get_value<std::string>();
     dev_id_ = tlv_dev_id->get_value<std::string>();
     aimsid_ = tlv_aim_sid->get_value<std::string>();
     exipired_in_ = tlv_exipired_in->get_value<int64_t>(0);
@@ -181,6 +225,35 @@ bool core::wim::auth_parameters::unserialize(core::tools::binary_stream& _stream
 
     if (tlv_time_offset_local)
         time_offset_local_ = tlv_time_offset_local->get_value<int64_t>(0);
+
+    if (auto tlv_miniapps = tlv_pack_childs.get_item(apt_miniapps))
+    {
+        core::tools::tlvpack tlv_pack_heads;
+        if (tlv_pack_heads.unserialize(tlv_miniapps->get_value<core::tools::binary_stream>()))
+        {
+            auto val = tlv_pack_heads.get_first();
+
+            while (val)
+            {
+                core::tools::tlvpack tlv_pack_head;
+
+                tlv_pack_head.unserialize(val->get_value<core::tools::binary_stream>());
+
+                auto tlv_id = tlv_pack_head.get_item(apt_miniapp_id);
+                auto tlv_aimsid = tlv_pack_head.get_item(apt_miniapp_aimsid);
+
+                if (tlv_id && tlv_aimsid)
+                {
+                    auto id = tlv_id->get_value<std::string>();
+                    auto aimsid = tlv_aimsid->get_value<std::string>();
+                    if (!id.empty() && !aimsid.empty())
+                        miniapps_[std::move(id)] = { std::move(aimsid) };
+                }
+
+                val = tlv_pack_heads.get_next();
+            }
+        }
+    }
 
     return true;
 }
@@ -204,10 +277,6 @@ bool core::wim::auth_parameters::unserialize(const rapidjson::Value& _node)
     auto iter_guid = _node.FindMember("productguid");
     if (iter_guid != _node.MemberEnd() && iter_guid->value.IsString())
         product_guid_8x_ = rapidjson_get_string(iter_guid->value);
-
-    auto iter_session_key = _node.FindMember("sessionkey");
-    if (iter_session_key != _node.MemberEnd() && iter_session_key->value.IsString())
-        session_key_ = rapidjson_get_string(iter_session_key->value);
 
     auto iter_devid = _node.FindMember("devid");
     if (iter_devid != _node.MemberEnd() && iter_devid->value.IsString())
@@ -248,8 +317,6 @@ bool core::wim::auth_parameters::unserialize(const rapidjson::Value& _node)
         password_md5_ = rapidjson_get_string(iter_password_md5->value);
     }
 
-
-
     return true;
 }
 
@@ -258,7 +325,6 @@ void core::wim::auth_parameters::serialize(rapidjson::Value& _node, rapidjson_al
     _node.AddMember("login", login_, _a);
     _node.AddMember("aimid", aimid_, _a);
     _node.AddMember("atoken", a_token_, _a);
-    _node.AddMember("sessionkey", session_key_, _a);
     _node.AddMember("devid", dev_id_, _a);
     _node.AddMember("expiredin", (int64_t)exipired_in_, _a);
     _node.AddMember("timeoffset", (int64_t)time_offset_, _a);
@@ -268,6 +334,8 @@ void core::wim::auth_parameters::serialize(rapidjson::Value& _node, rapidjson_al
     _node.AddMember("password_md5", password_md5_, _a);
     _node.AddMember("productguid", product_guid_8x_, _a);
     _node.AddMember("agenttoken", agent_token_, _a);
+    if (o2token_)
+        _node.AddMember("o2token", *o2token_, _a);
 }
 
 bool core::wim::auth_parameters::unserialize(coll_helper& _params)
@@ -277,9 +345,9 @@ bool core::wim::auth_parameters::unserialize(coll_helper& _params)
         return false;
 
     a_token_ = _params.get_value_as_string("atoken");
+    o2token_ = _params.get_value_as_string("o2token");
     agent_token_ = _params.get_value_as_string("agenttoken");
     product_guid_8x_ = _params.get_value_as_string("productguid");
-    session_key_ = _params.get_value_as_string("sessionkey");
     std::string dev_id = _params.get_value_as_string("devid");
 
     if (!dev_id.empty())

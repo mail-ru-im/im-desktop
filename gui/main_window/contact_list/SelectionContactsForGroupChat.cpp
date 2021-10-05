@@ -995,7 +995,12 @@ namespace Ui
 
         // TODO : use SetView here
         auto dialogParent = isVideoModes() ? parentWidget() : Utils::InterConnector::instance().getMainWindow();
-        mainDialog_ = std::make_unique<Ui::GeneralDialog>(mainWidget_, dialogParent, _options.handleKeyPressEvents_, true, true, _options.withSemiwindow_);
+
+        GeneralDialog::Options opt;
+        opt.ignoreKeyPressEvents_ = _options.handleKeyPressEvents_;
+        opt.withSemiwindow_ = _options.withSemiwindow_;
+        opt.threadBadge_ = _options.selectForThread_;
+        mainDialog_ = std::make_unique<Ui::GeneralDialog>(mainWidget_, dialogParent, opt);
         mainDialog_->installEventFilter(this);
         mainDialog_->addLabel(_labelText, Qt::AlignTop | Qt::AlignLeft);
 
@@ -1321,6 +1326,7 @@ namespace Ui
             Logic::getContactListModel()->setIsWithCheckedBox(false);
         });
 
+        updateSize();
         result = mainDialog_->showInCenter();
         if (!guard)
             return result;

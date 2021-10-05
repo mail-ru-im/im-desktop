@@ -14,11 +14,15 @@ namespace core::wim::subscriptions
             return "status";
         case subscriptions::type::call_room_info:
             return "callRoomInfo";
+        case subscriptions::type::thread:
+            return "threadUpdate";
+        case subscriptions::type::task:
+            return "task";
         default:
             break;
         }
 
-        assert(!"unsupported subscription event type");
+        im_assert(!"unsupported subscription event type");
         return std::string_view();
     }
 
@@ -30,8 +34,12 @@ namespace core::wim::subscriptions
             return subscriptions::type::status;
         else if (_type_string == "callRoomInfo")
             return subscriptions::type::call_room_info;
+        else if (_type_string == "threadUpdate")
+            return subscriptions::type::thread;
+        else if (_type_string == "task")
+            return subscriptions::type::task;
 
-        assert(!"unsupported subscription event type");
+        im_assert(!"unsupported subscription event type");
         return subscriptions::type::invalid;
     }
 

@@ -5,6 +5,11 @@
 #include <boost/property_tree/ptree_fwd.hpp>
 #include <unordered_map>
 
+namespace core
+{
+    class coll_helper;
+}
+
 CORE_CONFIGURATION_NS_BEGIN
 
 class app_config
@@ -35,7 +40,9 @@ public:
         sys_crash_handler_enabled = 20,
         watch_gui_memory = 21,
         app_update_interval_secs = 22,
-        net_compression = 23
+        net_compression = 23,
+        cache_history_pages_check_interval_secs = 24,
+        ssl_verification_enabled = 25
     };
 
     enum class gdpr_report_to_server_state
@@ -67,6 +74,7 @@ public:
     bool is_sys_crash_handler_enabled() const;
     bool is_watch_gui_memory_enabled() const;
     bool is_net_compression_enabled() const;
+    bool is_ssl_verification_enabled() const;
 
     bool gdpr_user_has_agreed() const;
     int32_t gdpr_agreement_reported_to_server() const;
@@ -79,6 +87,7 @@ public:
     int32_t forced_dpi() const;
     bool is_save_rtp_dumps_enabled() const;
     int cache_history_pages_secs() const;
+    int cache_history_pages_check_interval_secs() const;
     uint32_t app_update_interval_secs() const;
 
     std::string_view get_stat_base_url() const;
@@ -87,7 +96,7 @@ public:
 
     std::string get_update_url(std::string_view _updateble_build_version) const;
 
-    void serialize(Out core::coll_helper &_collection) const;
+    void serialize(Out core::coll_helper& _collection) const;
 
     template <typename ValueType>
     void set_config_option(AppConfigOption option, ValueType&& value);

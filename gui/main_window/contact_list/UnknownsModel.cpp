@@ -54,13 +54,11 @@ namespace Logic
                     Logic::getRecentsModel()->unknownToRecents(*iter);
 
                     if (isNowSelected)
-                    {
-                        Logic::getContactListModel()->setCurrent(_aimId, -1, true);
-                    }
+                        Utils::InterConnector::instance().openDialog(_aimId);
                 }
                 else if (isNowSelected)
                 {
-                    Logic::getContactListModel()->setCurrent(QString(), -1, true);
+                    Utils::InterConnector::instance().closeDialog();
                 }
 
                 dialogs_.erase(iter);
@@ -187,8 +185,9 @@ namespace Logic
         updateIndex(_prev);
     }
 
-    void UnknownsModel::activeDialogHide(const QString& _aimId)
+    void UnknownsModel::activeDialogHide(const QString& _aimId, Ui::ClosePage _closePage)
     {
+        Q_UNUSED(_closePage)
         const auto wasNotEmpty = !dialogs_.empty();
         const auto iter = std::find_if(dialogs_.begin(), dialogs_.end(), [&_aimId](const auto& _dlg) { return _dlg.AimId_ == _aimId; });
         if (iter != dialogs_.end())
@@ -199,7 +198,7 @@ namespace Logic
             dialogs_.erase(iter);
 
             if (Logic::getContactListModel()->selectedContact() == _aimId)
-                Logic::getContactListModel()->setCurrent(QString(), -1, true);
+                Utils::InterConnector::instance().closeDialog();
 
             Q_EMIT updatedSize();
         }
@@ -313,7 +312,7 @@ namespace Logic
         std::stable_sort(dialogs_.begin(), dialogs_.end(), [](const Data::DlgState& first, const Data::DlgState& second)
         {
             if (first.PinnedTime_ == -1 && second.PinnedTime_ == -1)
-                return first.Time_ > second.Time_;
+                return first.serverTime_ > second.serverTime_;
 
             if (first.PinnedTime_ == -1)
                 return false;
@@ -490,10 +489,7 @@ namespace Logic
 
         dlg.UnreadCount_ = 0;
 
-        Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-        collection.set_value_as_qstring("contact", dlg.AimId_);
-        collection.set_value_as_int64("message", dlg.LastMsgId_);
-        Ui::GetDispatcher()->post_message_to_core("dlg_state/set_last_read", collection.get());
+        Ui::GetDispatcher()->setLastRead(dlg.AimId_, dlg.LastMsgId_);
 
         const auto idx = index(_index);
         Q_EMIT dataChanged(idx, idx);

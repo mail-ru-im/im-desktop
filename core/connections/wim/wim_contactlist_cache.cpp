@@ -8,7 +8,7 @@
 #include "../../../corelib/collection_helper.h"
 #include "../common.shared/string_utils.h"
 #include "../../log/log.h"
-#include "../../tools/json_helper.h"
+#include "../../../common.shared/json_helper.h"
 #include "../../tools/system.h"
 #include "../libomicron/include/omicron/omicron.h"
 
@@ -995,14 +995,14 @@ int32_t contactlist::unserialize(const rapidjson::Value& _node)
         int grp_id;
         if (!tools::unserialize_value(grp, "id", grp_id))
         {
-            assert(false);
+            im_assert(false);
             continue;
         }
 
         auto group = std::make_shared<core::wim::cl_group>();
         group->id_ = grp_id;
         if (!tools::unserialize_value(grp, "name", group->name_))
-            assert(false);
+            im_assert(false);
 
         if (const auto iter_buddies = grp.FindMember("buddies"); iter_buddies != grp.MemberEnd() && iter_buddies->value.IsArray())
         {
@@ -1012,7 +1012,7 @@ int32_t contactlist::unserialize(const rapidjson::Value& _node)
                 std::string_view aimid;
                 if (!tools::unserialize_value(bd, "aimId", aimid))
                 {
-                    assert(false);
+                    im_assert(false);
                     continue;
                 }
 
@@ -1059,7 +1059,7 @@ int32_t contactlist::unserialize_from_diff(const rapidjson::Value& _node)
         int grp_id;
         if (!tools::unserialize_value(grp, "id", grp_id))
         {
-            assert(false);
+            im_assert(false);
             continue;
         }
 
@@ -1067,7 +1067,7 @@ int32_t contactlist::unserialize_from_diff(const rapidjson::Value& _node)
         group->id_ = grp_id;
 
         if (!tools::unserialize_value(grp, "name", group->name_))
-            assert(false);
+            im_assert(false);
 
         const auto iter_grp_end = grp.MemberEnd();
         const auto iter_group_added = grp.FindMember("added");
@@ -1086,7 +1086,7 @@ int32_t contactlist::unserialize_from_diff(const rapidjson::Value& _node)
                 std::string_view aimid;
                 if (!tools::unserialize_value(bd, "aimId", aimid))
                 {
-                    assert(false);
+                    im_assert(false);
                     continue;
                 }
 

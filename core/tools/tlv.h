@@ -148,7 +148,7 @@ namespace core
 
             if (value_stream_.available() < sizeof(T_))
             {
-                assert(!"bad tlv length");
+                im_assert(!"bad tlv length");
                 return T_();
             }
 
@@ -166,7 +166,7 @@ namespace core
 
             if (value_stream_.available() < sizeof(T_))
             {
-                assert(!"bad tlv length");
+                im_assert(!"bad tlv length");
                 return T_();
             }
 

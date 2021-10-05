@@ -63,7 +63,8 @@ namespace
 
             const auto x = _itemRect.width();
             const auto y = _itemRect.height();
-            const QString text = (_suggest.isStickerType() ? _suggest.getData() : QString()) % QChar::LineFeed % QString::number(_suggest.getMsgId());
+            auto stickerData = std::get_if<Utils::FileSharingId>(&_suggest.getData());
+            const QString text = (_suggest.isStickerType() && stickerData ? (stickerData->fileId % (stickerData->sourceId ? *stickerData->sourceId : QString())) : QString()) % QChar::LineFeed % QString::number(_suggest.getMsgId());
             Utils::drawText(_p, QPointF(x, y), Qt::AlignRight | Qt::AlignBottom, text);
         }
     }
@@ -109,14 +110,14 @@ namespace Ui
     SmartReplySticker::SmartReplySticker(QWidget* _parent, const Data::SmartreplySuggest& _suggest)
         : SmartReplyItem(_parent, _suggest)
     {
-        im_assert(!getId().isEmpty());
+        im_assert(std::get_if<Utils::FileSharingId>(&_suggest.getData()));
 
         setFixedSize(stickerBoxSize(), stickerBoxSize());
 
         connect(this, &ClickableWidget::hoverChanged, this, qOverload<>(&SmartReplySticker::update));
         connect(this, &ClickableWidget::pressChanged, this, qOverload<>(&SmartReplySticker::update));
 
-        connect(&Stickers::getCache(), &Stickers::Cache::stickerUpdated, this, [this](qint32, const QString& _stickerId)
+        connect(&Stickers::getCache(), &Stickers::Cache::stickerUpdated, this, [this](qint32, const Utils::FileSharingId& _stickerId)
         {
             if (_stickerId == getId())
             {
@@ -136,7 +137,7 @@ namespace Ui
 
         longtapTimer_.setSingleShot(true);
         longtapTimer_.setInterval(getLongtapTimeout());
-        connect(&longtapTimer_, &QTimer::timeout, this, [this]() { Q_EMIT showPreview(getId()); });
+        connect(&longtapTimer_, &QTimer::timeout, this, [this]() { Q_EMIT showPreview(suggest_.getData()); });
     }
 
     void SmartReplySticker::onVisibilityChanged(bool _visible)
@@ -240,12 +241,14 @@ namespace Ui
         return false;
     }
 
-    const QString& SmartReplySticker::getId() const
+    const Utils::FileSharingId& SmartReplySticker::getId() const
     {
-        return suggest_.getData();
+        static const Utils::FileSharingId empty;
+        auto fileSharingId = std::get_if<Utils::FileSharingId>(&suggest_.getData());
+        return fileSharingId ? *fileSharingId : empty;
     }
 
-    void SmartReplySticker::onStickerLoaded(int _error, const QString& _id)
+    void SmartReplySticker::onStickerLoaded(int _error, const Utils::FileSharingId& _id)
     {
         if (_error == 0 || _id == getId())
             prepareImage();
@@ -286,9 +289,10 @@ namespace Ui
         , hasMarginLeft_(true)
         , hasMarginRight_(true)
     {
-        im_assert(!suggest_.getData().isEmpty());
+        auto text = std::get_if<QString>(&suggest_.getData());
+        im_assert(text && !text->isEmpty());
 
-        textUnit_ = TextRendering::MakeTextUnit(suggest_.getData(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS, TextRendering::EmojiSizeType::SMARTREPLY);
+        textUnit_ = TextRendering::MakeTextUnit(text ? *text : QString(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS, TextRendering::EmojiSizeType::SMARTREPLY);
         textUnit_->init(getTextItemFont(), getTextColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1, TextRendering::LineBreakType::PREFER_SPACES, TextRendering::EmojiSizeType::SMARTREPLY);
         textUnit_->evaluateDesiredSize();
 
@@ -400,8 +404,15 @@ namespace Ui
         {
         case core::smartreply::type::sticker:
         case core::smartreply::type::sticker_by_text:
-            if (const auto sticker = Stickers::getSticker(_suggest.getData()); sticker && sticker->isFailed())
+            if (auto fileSharingId = std::get_if<Utils::FileSharingId>(&_suggest.getData()))
+            {
+                if (const auto sticker = Stickers::getSticker(*fileSharingId); sticker && sticker->isFailed())
+                    return nullptr;
+            }
+            else
+            {
                 return nullptr;
+            }
 
             return std::make_unique<SmartReplySticker>(nullptr, _suggest);
 

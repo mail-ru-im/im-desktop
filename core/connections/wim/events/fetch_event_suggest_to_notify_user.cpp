@@ -1,7 +1,7 @@
 #include "stdafx.h"
 
 #include "../wim_im.h"
-#include "tools/json_helper.h"
+#include "../common.shared/json_helper.h"
 #include "fetch_event_suggest_to_notify_user.h"
 
 namespace core::wim

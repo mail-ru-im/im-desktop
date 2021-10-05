@@ -168,7 +168,7 @@ namespace Ui
 
     void EditMessageWidget::setMessage(Data::MessageBuddySptr _message)
     {
-        editBlockText_->setMessage(_message);
+        editBlockText_->setMessage(std::move(_message));
     }
 
     void EditMessageWidget::setMediaType(const MediaType _mediaType)

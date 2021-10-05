@@ -5,7 +5,7 @@
 #include "../../../http_request.h"
 #include "../../../smartreply/smartreply_suggest.h"
 #include "../../../../common.shared/smartreply/smartreply_types.h"
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 
 using namespace core;
 using namespace wim;
@@ -16,9 +16,9 @@ get_smartreplies::get_smartreplies(wim_packet_params _params, std::string _aimid
     , msgid_(_msgid)
     , types_(std::move(_types))
 {
-    assert(!aimid_.empty());
-    assert(msgid_ >= 0);
-    assert(!types_.empty());
+    im_assert(!aimid_.empty());
+    im_assert(msgid_ >= 0);
+    im_assert(!types_.empty());
 }
 
 std::string_view get_smartreplies::get_method() const
@@ -28,7 +28,7 @@ std::string_view get_smartreplies::get_method() const
 
 int32_t get_smartreplies::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
-    assert(_request);
+    im_assert(_request);
 
     rapidjson::Document doc(rapidjson::Type::kObjectType);
     auto& a = doc.GetAllocator();

@@ -18,12 +18,15 @@ namespace core
             account_operations_host,
             smsapi_host,
             webrtc_host,
+            oauth2_login,
+            oauth2_token,
             mytracker,
             files_info,
             avatars,
             url_content,
             sticker,
-            wallpapers
+            wallpapers,
+            tasks_host
         };
 
         enum class with_https

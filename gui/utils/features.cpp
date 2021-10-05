@@ -11,8 +11,18 @@
 #include "../url_config.h"
 #include "../common.shared/config/config.h"
 #include "../common.shared/omicron_keys.h"
-#include "../common.shared/smartreply/smartreply_config.h"
 #include "cache/emoji/EmojiCode.h"
+
+namespace
+{
+
+    bool myteamConfigOrOmicronFeatureEnabled(config::features _feature, const char* _omicron_key)
+    {
+        const auto config_value = config::get().is_on(_feature);
+        const auto omicron_value = Omicron::_o(_omicron_key, config_value);
+        return config::is_overridden(_feature) ? config_value || omicron_value : omicron_value;
+    }
+}
 
 namespace Features
 {
@@ -136,6 +146,11 @@ namespace Features
         return LoginMethod::Basic;
     }
 
+    bool isOAuth2LoginAllowed()
+    {
+        return hasWebEngine() && Omicron::_o(omicron::keys::login_by_oauth2_allowed, config::get().is_on(config::features::login_by_oauth2_allowed));
+    }
+
     size_t getSMSResultTime()
     {
         return Omicron::_o(omicron::keys::sms_result_waiting_time, 60);
@@ -180,22 +195,26 @@ namespace Features
 
     bool isSmartreplyEnabled()
     {
-        return config::get().is_on(config::features::smartreplies) && Omicron::_o(feature::smartreply::is_enabled().name(), feature::smartreply::is_enabled().def<bool>());
+        const auto value = config::get().is_on(config::features::smartreply_suggests_feature_enabled);
+        return config::get().is_on(config::features::smartreplies) && Omicron::_o(omicron::keys::smartreply_suggests_feature_enabled, value);
     }
 
     bool isSmartreplyForQuoteEnabled()
     {
-        return isSmartreplyEnabled() && Omicron::_o(feature::smartreply::is_enabled_for_quotes().name(), feature::smartreply::is_enabled_for_quotes().def<bool>());
+        const auto value = config::get().is_on(config::features::smartreply_suggests_for_quotes);
+        return isSmartreplyEnabled() && Omicron::_o(omicron::keys::smartreply_suggests_for_quotes, value);
     }
 
     std::chrono::milliseconds smartreplyHideTime()
     {
-        return std::chrono::milliseconds(Omicron::_o(feature::smartreply::click_hide_timeout().name(), feature::smartreply::click_hide_timeout().def<int>()));
+        const auto value = config::get().number<int64_t>(config::values::smartreply_suggests_click_hide_timeout);
+        return std::chrono::milliseconds(Omicron::_o(omicron::keys::smartreply_suggests_click_hide_timeout, value.value_or(feature::default_smartreply_suggests_click_hide_timeout())));
     }
 
     int smartreplyMsgidCacheSize()
     {
-        return Omicron::_o(feature::smartreply::msgid_cache_size().name(), feature::smartreply::msgid_cache_size().def<int>());
+        const auto value = config::get().number<int64_t>(config::values::smartreply_suggests_msgid_cache_size);
+        return Omicron::_o(omicron::keys::smartreply_suggests_msgid_cache_size, value.value_or(feature::default_smartreply_suggests_msgid_cache_size()));
     }
 
     bool isSuggestsEnabled()
@@ -246,9 +265,7 @@ namespace Features
 
     bool avatarChangeAllowed()
     {
-        auto value = config::get().is_on(config::features::avatar_change_allowed);
-        value = config::is_overridden(config::features::avatar_change_allowed) ? value : Omicron::_o(omicron::keys::avatar_change_allowed, value);
-        return value;
+        return myteamConfigOrOmicronFeatureEnabled(config::features::avatar_change_allowed, omicron::keys::avatar_change_allowed);
     }
 
     bool clRemoveContactsAllowed()
@@ -258,9 +275,7 @@ namespace Features
 
     bool changeNameAllowed()
     {
-        auto value = config::get().is_on(config::features::changeable_name);
-        value = config::is_overridden(config::features::changeable_name) ? value : Omicron::_o(omicron::keys::changeable_name, value);
-        return value;
+        return myteamConfigOrOmicronFeatureEnabled(config::features::changeable_name, omicron::keys::changeable_name);
     }
 
     bool changeInfoAllowed()
@@ -325,16 +340,12 @@ namespace Features
 
     bool isVcsCallByLinkEnabled()
     {
-        auto value = config::get().is_on(config::features::vcs_call_by_link_enabled);
-        value = config::is_overridden(config::features::vcs_call_by_link_enabled) ? value : Omicron::_o(omicron::keys::vcs_call_by_link_enabled, value);
-        return value;
+        return myteamConfigOrOmicronFeatureEnabled(config::features::vcs_call_by_link_enabled, omicron::keys::vcs_call_by_link_enabled);
     }
 
     bool isVcsWebinarEnabled()
     {
-        auto value = config::get().is_on(config::features::vcs_webinar_enabled);
-        value = config::is_overridden(config::features::vcs_webinar_enabled) ? value : Omicron::_o(omicron::keys::vcs_webinar_enabled, value);
-        return value;
+        return myteamConfigOrOmicronFeatureEnabled(config::features::vcs_webinar_enabled, omicron::keys::vcs_webinar_enabled);
     }
 
     QString getVcsRoomList()
@@ -387,7 +398,7 @@ namespace Features
         return Omicron::_o(omicron::keys::call_room_info_enabled, config::get().is_on(config::features::call_room_info_enabled));
     }
 
-    bool isYourInvitesButtonVisible()
+    bool areYourInvitesButtonVisible()
     {
         return Omicron::_o(omicron::keys::show_your_invites_to_group_enabled, config::get().is_on(config::features::show_your_invites_to_group_enabled));
     }
@@ -479,6 +490,11 @@ namespace Features
         return Omicron::_o(omicron::keys::formatting_in_input, config::get().is_on(config::features::formatting_in_input));
     }
 
+    bool isBlockFormattingInInputEnabled()
+    {
+        return isFormattingInInputEnabled();
+    }
+
     QString statusBannerEmojis()
     {
         std::string csv(config::get().string(config::values::status_banner_emoji_csv));
@@ -488,12 +504,12 @@ namespace Features
 
     bool isAppsNavigationBarVisible()
     {
-        return config::get().is_on(config::features::apps_bar_visible);
+        return config::get().is_on(config::features::apps_bar_enabled);
     }
 
-    bool isTabBarVisible()
+    bool isMessengerTabBarVisible()
     {
-        return !isAppsNavigationBarVisible() || config::get().is_on(config::features::tab_bar_visible);
+        return !isAppsNavigationBarVisible();
     }
 
     bool isStatusInAppsNavigationBar()
@@ -501,8 +517,123 @@ namespace Features
         return isAppsNavigationBarVisible() && config::get().is_on(config::features::status_in_apps_bar);
     }
 
+    bool isOrganizationStructureEnabled()
+    {
+        return myteamConfigOrOmicronFeatureEnabled(config::features::organization_structure_enabled, omicron::keys::organization_structure_enabled);
+    }
+
+    bool isTasksEnabled()
+    {
+        return myteamConfigOrOmicronFeatureEnabled(config::features::tasks_enabled, omicron::keys::tasks_enabled);
+    }
+
+    bool isCalendarEnabled()
+    {
+        return myteamConfigOrOmicronFeatureEnabled(config::features::calendar_enabled, omicron::keys::calendar_enabled);
+    }
+
+    bool isRecentsPinnedItemsEnabled()
+    {
+        return isThreadsEnabled() || isScheduledMessagesEnabled() || isRemindersEnabled();
+    }
+
+    bool isScheduledMessagesEnabled()
+    {
+        return config::get().is_on(config::features::scheduled_messages_enabled);
+    }
+
     bool isThreadsEnabled()
     {
-        return config::get().is_on(config::features::threads_enabled);
+        return myteamConfigOrOmicronFeatureEnabled(config::features::threads_enabled, omicron::keys::threads_enabled);
+    }
+
+    bool isRemindersEnabled()
+    {
+        return config::get().is_on(config::features::reminders_enabled);
+    }
+
+    bool isSharedFederationStickerpacksSupported()
+    {
+        return config::get().is_on(config::features::support_shared_federation_stickerpacks);
+    }
+
+    std::chrono::milliseconds threadResubscribeTimeout()
+    {
+        im_assert(isThreadsEnabled());
+
+        constexpr std::chrono::seconds def = std::chrono::minutes(1);
+        return std::chrono::seconds(Omicron::_o(omicron::keys::subscr_renew_interval_thread, def.count()));
+    }
+
+    bool isDraftEnabled()
+    {
+        return Omicron::_o(omicron::keys::draft_enabled, config::get().is_on(config::features::draft_enabled));
+    }
+
+    std::chrono::seconds draftTimeout()
+    {
+        const auto default_value = config::get().number<int64_t>(config::values::draft_timeout_sec).value_or(feature::default_draft_timeout_sec());
+        return std::chrono::seconds(Omicron::_o(omicron::keys::draft_timeout, default_value));
+    }
+
+    int draftMaximumLength()
+    {
+        const auto default_value = config::get().number<int64_t>(config::values::draft_max_len).value_or(feature::default_draft_max_len());
+        return Omicron::_o(omicron::keys::draft_max_len, default_value);
+    }
+
+    bool isMessageCornerMenuEnabled()
+    {
+        return config::get().is_on(config::features::message_corner_menu);
+    }
+
+    bool isTaskCreationInChatEnabled()
+    {
+        return myteamConfigOrOmicronFeatureEnabled(config::features::task_creation_in_chat_enabled, omicron::keys::task_creation_in_chat_enabled);
+    }
+
+    bool isRestrictedFilesEnabled()
+    {
+        return myteamConfigOrOmicronFeatureEnabled(config::features::restricted_files_enabled, omicron::keys::restricted_files_enabled);
+    }
+
+    bool trustedStatusDefault()
+    {
+        return !isRestrictedFilesEnabled();
+    }
+
+    bool isAntivirusCheckEnabled()
+    {
+        return myteamConfigOrOmicronFeatureEnabled(config::features::antivirus_check_enabled, omicron::keys::antivirus_check_enabled);
+    }
+
+    bool isAntivirusCheckProgressVisible()
+    {
+        return config::get().is_on(config::features::antivirus_check_progress_visible);
+    }
+
+    bool isExpandedGalleryEnabled()
+    {
+        return Omicron::_o(omicron::keys::expanded_gallery_enabled, config::get().is_on(config::features::expanded_gallery));
+    }
+
+    bool hasWebEngine()
+    {
+        if (!build::has_webengine())
+            return false;
+
+#ifdef BUILD_FOR_STORE
+        if (QOperatingSystemVersion::current() <= QOperatingSystemVersion::MacOSHighSierra)
+            return false;
+#endif //BUILD_FOR_STORE
+
+        return true;
+    }
+
+    std::chrono::seconds webPageReloadInterval()
+    {
+        const auto defaultValue = config::get().number<int64_t>(config::values::base_retry_interval_sec);
+        const auto omicronValue = Omicron::_o(omicron::keys::base_retry_interval_sec, defaultValue.value_or(feature::default_base_retry_interval_sec()));
+        return std::chrono::seconds(omicronValue);
     }
 }

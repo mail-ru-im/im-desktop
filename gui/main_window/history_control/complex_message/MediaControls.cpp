@@ -4,8 +4,8 @@
 #include "../MessageStyle.h"
 #include "previewer/Drawable.h"
 #include "utils/utils.h"
+#include "utils/InterConnector.h"
 #include "fonts.h"
-#include "main_window/MainPage.h"
 
 namespace
 {
@@ -493,7 +493,7 @@ namespace Ui
     }
 
     void MediaControls_p::createObjects(const std::set<MediaControls::ControlType>& _controlsSet)
-    {        
+    {
         if (_controlsSet.find(MediaControls::Fullscreen) != _controlsSet.end())
             createFullscreen();
 
@@ -566,7 +566,7 @@ namespace Ui
             default:
                 return !(options_ & MediaControls::CompactMode);
         }
-    }    
+    }
 
     bool MediaControls_p::visibilityForState(MediaControls::ControlType _type, MediaControls::State _state, bool _mouseOver)
     {
@@ -917,7 +917,7 @@ namespace Ui
 
         onMousePressed(_event->pos());
 
-        MainPage::instance()->setFocusOnInput();
+        Q_EMIT Utils::InterConnector::instance().setFocusOnInput();
     }
 
     void MediaControls::mouseReleaseEvent(QMouseEvent* _event)

@@ -279,6 +279,15 @@ namespace Logic
 
     void SearchModel::onMessagesAll()
     {
+        for (const auto& resV : { msgLocalRes_, msgServerRes_ })
+        {
+            for (const auto& res : resV)
+            {
+                if (const auto msg = std::static_pointer_cast<Data::SearchResultMessage>(res))
+                    Logic::getContactListModel()->markAsThread(msg->message_->threadData_.id_, Data::MessageParentTopic::getChat(msg->message_->threadData_.parentTopic_));
+            }
+        }
+
         allMessageResRcvd_ = true;
         composeResults();
     }

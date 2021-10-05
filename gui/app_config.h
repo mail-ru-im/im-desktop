@@ -25,7 +25,7 @@ public:
     };
 
 public:
-    AppConfig(const core::coll_helper &collection);
+    AppConfig(const core::coll_helper& collection);
 
     bool IsContextMenuFeaturesUnlocked() const noexcept;
     bool IsServerHistoryEnabled() const noexcept;
@@ -39,6 +39,8 @@ public:
     bool IsShowHiddenThemes() const noexcept;
     bool IsSysCrashHandleEnabled() const noexcept;
     bool IsNetCompressionEnabled() const noexcept;
+    bool IsSslVerificationEnabled() const noexcept;
+    bool showSecondsInTimePicker() const noexcept;
 
     bool WatchGuiMemoryEnabled() const noexcept;
 
@@ -59,7 +61,8 @@ public:
     const std::string& getDevId() const noexcept;
 
     /* seconds */
-    int CacheHistoryControlPagesFor() const noexcept;
+    std::chrono::seconds CacheHistoryControlPagesFor() const noexcept;
+    std::chrono::seconds CacheHistoryControlPagesCheckInterval() const noexcept;
     uint32_t AppUpdateIntervalSecs() const noexcept;
 
     void SetFullLogEnabled(bool enabled) noexcept;
@@ -76,8 +79,13 @@ public:
     void SetWatchGuiMemoryEnabled(bool _watch) noexcept;
     void SetCustomDeviceId(bool _custom) noexcept;
     void SetNetCompressionEnabled(bool _enabled) noexcept;
+    void setShowSecondsInTimePicker(bool _enabled) noexcept;
 
     bool hasCustomDeviceId() const;
+
+#ifdef IM_AUTO_TESTING
+    QString toJsonString() const;
+#endif
 
 private:
     bool IsContextMenuFeaturesUnlocked_;
@@ -92,6 +100,8 @@ private:
     bool IsShowHiddenThemes_;
     bool IsSysCrashHandleEnabled_;
     bool IsNetCompressionEnabled_;
+    bool IsSslVerificationEnabled_;
+    bool showSecondsInTimePicker_;
 
     bool WatchGuiMemoryEnabled_;
 
@@ -102,6 +112,7 @@ private:
     bool GDPR_UserHasLoggedInEver_;
 
     int CacheHistoryContolPagesFor_;
+    int CacheHistoryContolPagesCheckInterval_;
 
     uint32_t AppUpdateIntervalSecs_;
 

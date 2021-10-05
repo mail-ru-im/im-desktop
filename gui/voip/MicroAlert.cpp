@@ -13,6 +13,8 @@
 #include "../main_window/MainWindow.h"
 #include "../main_window/MainPage.h"
 #include "gui_settings.h"
+#include "../core_dispatcher.h"
+
 
 namespace
 {

@@ -43,6 +43,9 @@ namespace core
         struct gallery_entry_id;
         struct gallery_item;
         struct reactions_data;
+        struct thread_update;
+        struct draft;
+        class pending_drafts;
 
         struct message_stat_time;
         using message_stat_time_v = std::vector<message_stat_time>;
@@ -60,6 +63,8 @@ namespace core
         using contact_and_offsets_v = std::vector<contact_and_offset>;
         using reactions_vector = std::vector<reactions_data>;
         using reactions_vector_sptr = std::shared_ptr<reactions_vector>;
+        using thread_updates_v = std::vector<thread_update>;
+        using thread_updates_v_sptr = std::shared_ptr<thread_updates_v>;
 
         using error_vector = std::vector<std::pair<int64_t, int32_t>>;
 
@@ -144,6 +149,12 @@ namespace core
             {
                 on_result = [](std::shared_ptr<archive_hole> _hole, archive::archive_hole_error _error){};
             }
+        };
+
+        struct has_hole_in_range_handler
+        {
+            using on_result_type = std::function<void(bool _has_hole)>;
+            on_result_type on_result;
         };
 
         struct validate_hole_request_handler
@@ -335,6 +346,30 @@ namespace core
             }
         };
 
+        struct get_thread_updates_handler
+        {
+            using on_result_type = std::function<void(const thread_updates_v&, const msgids_list&)>;
+            on_result_type on_result;
+        };
+
+        struct get_draft_handler
+        {
+            using on_result_type = std::function<void(std::shared_ptr<draft>)>;
+            on_result_type on_result;
+        };
+
+        struct set_draft_handler
+        {
+            using on_result_type = std::function<void()>;
+            on_result_type on_result;
+        };
+
+        struct get_pending_draft_contact_handler
+        {
+            using on_result_type = std::function<void(const std::string&)>;
+            on_result_type on_result;
+        };
+
         struct memory_usage
         {
             std::function<void(
@@ -349,6 +384,8 @@ namespace core
             const std::wstring archive_path_;
 
             std::unique_ptr<pending_operations> po_;
+
+            std::unique_ptr<pending_drafts> pending_drafts_;
 
             message_stat_time_v stat_message_times_;
 
@@ -402,6 +439,7 @@ namespace core
                 archive_hole_error error;
             };
 
+            bool has_hole_in_range(const std::string& _contact, int64_t _msgid, int32_t _count_before, int32_t _count_after);
             hole_result get_next_hole(const std::string& _contact, int64_t _from, int64_t _depth = -1);
             int64_t validate_hole_request(const std::string& _contact, const archive_hole& _hole_request, const int32_t _count);
 
@@ -483,6 +521,13 @@ namespace core
             void get_memory_usage(int64_t& _index_size, int64_t& _gallery_size);
             void insert_reactions(const std::string& _contact, const reactions_vector_sptr& _reactions);
             void get_reactions(const std::string& _contact, const std::shared_ptr<msgids_list>& _msg_ids, /*out*/ reactions_vector_sptr _reactions, /*out*/ std::shared_ptr<core::archive::msgids_list> _missing);
+            void insert_thread_updates(const std::string& _contact, const thread_updates_v_sptr& _updates);
+            void get_thread_updates(const std::string& _contact, const std::shared_ptr<msgids_list>& _msg_ids, /*out*/ thread_updates_v_sptr _updates, /*out*/ std::shared_ptr<core::archive::msgids_list> _missing);
+            void set_draft(const std::string& _contact, const draft& _draft);
+            draft get_draft(const std::string& _contact);
+            std::string get_next_pending_draft_contact();
+            void remove_pending_draft_contact(const std::string& _contact, int64_t _timestamp);
+            void add_pending_draft_contact(const std::string& _contact, int64_t _timestamp);
         };
 
         class face : public std::enable_shared_from_this<face>
@@ -514,6 +559,7 @@ namespace core
 
             std::shared_ptr<set_dlg_state_handler> set_dlg_state(const std::string& _contact, const dlg_state& _state);
             std::shared_ptr<async_task_handlers> clear_dlg_state(const std::string& _contact);
+            std::shared_ptr<has_hole_in_range_handler> has_hole_in_range(const std::string& _contact, int64_t _msgid, int32_t _count_before, int32_t _count_after);
             std::shared_ptr<request_next_hole_handler> get_next_hole(const std::string& _contact, int64_t _from, int64_t _depth = -1);
             std::shared_ptr<validate_hole_request_handler> validate_hole_request(const std::string& _contact, const archive_hole& _hole_request, const int32_t _count);
 
@@ -600,6 +646,15 @@ namespace core
 
             void insert_reactions(const std::string& _contact, const reactions_vector_sptr& _reactions);
             std::shared_ptr<get_reactions_handler> get_reactions(const std::string& _contact, const std::shared_ptr<msgids_list>& _msg_ids);
+
+            std::shared_ptr<async_task_handlers> insert_thread_updates(const std::string& _contact, const thread_updates_v_sptr& _updates);
+            std::shared_ptr<get_thread_updates_handler> get_thread_updates(const std::string& _contact, const std::shared_ptr<msgids_list>& _msg_ids);
+
+            std::shared_ptr<get_draft_handler> get_draft(const std::string& _contact);
+            std::shared_ptr<set_draft_handler> set_draft(const std::string& _contact, const draft& _draft);
+            std::shared_ptr<get_pending_draft_contact_handler> get_next_pending_draft_contact();
+            std::shared_ptr<async_task_handlers> remove_pending_draft_contact(const std::string& _contact, int64_t _timestamp);
+            std::shared_ptr<async_task_handlers> add_pending_draft_contact(const std::string& _contact, int64_t _timestamp);
         };
     }
 }

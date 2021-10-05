@@ -4,7 +4,7 @@
 
 #include "../../corelib/collection_helper.h"
 #include "../tools/system.h"
-#include "../tools/json_helper.h"
+#include "../../common.shared/json_helper.h"
 #include "../utils.h"
 
 #include "../core.h"
@@ -45,8 +45,8 @@ app_config::app_config()
 app_config::app_config(app_config::AppConfigMap _options)
     : app_config_options_(std::move(_options))
 {
-    assert(app_config_options_.find(app_config::AppConfigOption::forced_dpi) != app_config_options_.end());
-    assert(valid_dpi_values().count(
+    im_assert(app_config_options_.find(app_config::AppConfigOption::forced_dpi) != app_config_options_.end());
+    im_assert(valid_dpi_values().count(
         boost::any_cast<int32_t>(app_config_options_.at(app_config::AppConfigOption::forced_dpi))) > 0);
 }
 
@@ -94,6 +94,9 @@ pt::ptree app_config::as_ptree() const
         case app_config::AppConfigOption::cache_history_pages_secs:
             result.add(option_name(key), cache_history_pages_secs());
             break;
+        case app_config::AppConfigOption::cache_history_pages_check_interval_secs:
+            result.add(option_name(key), cache_history_pages_check_interval_secs());
+            break;
         case app_config::AppConfigOption::is_server_search_enabled:
             result.add(option_name(key), is_server_search_enabled());
             break;
@@ -130,9 +133,11 @@ pt::ptree app_config::as_ptree() const
         case app_config::AppConfigOption::net_compression:
             result.add(option_name(key), is_net_compression_enabled());
             break;
-
+        case app_config::AppConfigOption::ssl_verification_enabled:
+            result.add(option_name(key), is_ssl_verification_enabled());
+            break;
         default:
-            assert(!"unhandled option for as_ptree");
+            im_assert(!"unhandled option for as_ptree");
             continue;
         }
     }
@@ -221,21 +226,21 @@ bool app_config::is_sys_crash_handler_enabled() const
 {
     auto it = app_config_options_.find(app_config::AppConfigOption::sys_crash_handler_enabled);
     return it == app_config_options_.end() ? false
-        : boost::any_cast<bool>(it->second);
+                                           : boost::any_cast<bool>(it->second);
 }
 
 bool app_config::is_watch_gui_memory_enabled() const
 {
     auto it = app_config_options_.find(app_config::AppConfigOption::watch_gui_memory);
     return it == app_config_options_.end() ? false
-        : boost::any_cast<bool>(it->second);
+                                           : boost::any_cast<bool>(it->second);
 }
 
 bool app_config::is_net_compression_enabled() const
 {
     auto it = app_config_options_.find(app_config::AppConfigOption::net_compression);
     return it == app_config_options_.end() ? true
-        : boost::any_cast<bool>(it->second);
+                                           : boost::any_cast<bool>(it->second);
 }
 
 bool app_config::gdpr_user_has_agreed() const
@@ -266,7 +271,6 @@ bool app_config::is_updateble() const
         : boost::any_cast<bool>(it->second);
 }
 
-
 int32_t app_config::forced_dpi() const
 {
     auto it = app_config_options_.find(app_config::AppConfigOption::forced_dpi);
@@ -281,9 +285,23 @@ bool app_config::is_save_rtp_dumps_enabled() const
         : boost::any_cast<bool>(it->second);
 }
 
+bool app_config::is_ssl_verification_enabled() const
+{
+    auto it = app_config_options_.find(app_config::AppConfigOption::ssl_verification_enabled);
+    return it == app_config_options_.end() ? true
+        : boost::any_cast<bool>(it->second);
+}
+
 int app_config::cache_history_pages_secs() const
 {
     auto it = app_config_options_.find(app_config::AppConfigOption::cache_history_pages_secs);
+    return it == app_config_options_.end() ? 0
+                                           : boost::any_cast<int>(it->second);
+}
+
+int app_config::cache_history_pages_check_interval_secs() const
+{
+    auto it = app_config_options_.find(app_config::AppConfigOption::cache_history_pages_check_interval_secs);
     return it == app_config_options_.end() ? 0
                                            : boost::any_cast<int>(it->second);
 }
@@ -299,7 +317,7 @@ std::string app_config::device_id() const
 {
     auto it = app_config_options_.find(app_config::AppConfigOption::dev_id);
     return it == app_config_options_.end() ? std::string()
-        : boost::any_cast<std::string>(it->second);
+                                           : boost::any_cast<std::string>(it->second);
 }
 
 std::string_view app_config::get_update_win_alpha_url() const
@@ -429,7 +447,7 @@ void app_config::set_config_option(app_config::AppConfigOption option, ValueType
     app_config_options_[option] = std::forward<ValueType>(value);
 }
 
-void app_config::serialize(Out core::coll_helper &_collection) const
+void app_config::serialize(Out core::coll_helper& _collection) const
 {
     _collection.set<bool>("history.is_server_history_enabled", is_server_history_enabled());
     _collection.set<bool>(option_name(app_config::AppConfigOption::unlock_context_menu_features), unlock_context_menu_features());
@@ -438,6 +456,7 @@ void app_config::serialize(Out core::coll_helper &_collection) const
     _collection.set<bool>(option_name(app_config::AppConfigOption::full_log), is_full_log_enabled());
     _collection.set<bool>(option_name(app_config::AppConfigOption::show_msg_ids), is_show_msg_ids_enabled());
     _collection.set<int>(option_name(app_config::AppConfigOption::cache_history_pages_secs), cache_history_pages_secs());
+    _collection.set<int>(option_name(app_config::AppConfigOption::cache_history_pages_check_interval_secs), cache_history_pages_check_interval_secs());
     _collection.set<bool>(option_name(app_config::AppConfigOption::save_rtp_dumps), is_save_rtp_dumps_enabled());
     _collection.set<bool>(option_name(app_config::AppConfigOption::is_server_search_enabled), is_server_search_enabled());
     _collection.set<bool>(option_name(app_config::AppConfigOption::gdpr_user_has_agreed), gdpr_user_has_agreed());
@@ -455,6 +474,7 @@ void app_config::serialize(Out core::coll_helper &_collection) const
     _collection.set<bool>(option_name(app_config::AppConfigOption::watch_gui_memory), is_watch_gui_memory_enabled());
     _collection.set<uint32_t>(option_name(app_config::AppConfigOption::app_update_interval_secs), app_update_interval_secs());
     _collection.set<bool>(option_name(app_config::AppConfigOption::net_compression), is_net_compression_enabled());
+    _collection.set<bool>(option_name(app_config::AppConfigOption::ssl_verification_enabled), is_ssl_verification_enabled());
 
     // urls
     _collection.set<std::string_view>("urls.url_update_mac_alpha", get_update_mac_alpha_url());
@@ -466,21 +486,21 @@ void app_config::serialize(Out core::coll_helper &_collection) const
     auto _forced_dpi = forced_dpi();
     if (_forced_dpi != 0)
     {
-        assert(valid_dpi_values().count(_forced_dpi) > 0);
+        im_assert(valid_dpi_values().count(_forced_dpi) > 0);
         _collection.set_value_as_int("gui.forced_dpi", _forced_dpi);
     }
 }
 
 const app_config& get_app_config()
 {
-    assert(config_);
+    im_assert(config_);
 
     return *config_;
 }
 
-void load_app_config(const boost::filesystem::wpath &_path)
+void load_app_config(const boost::filesystem::wpath& _path)
 {
-    assert(!config_);
+    im_assert(!config_);
 
     config_ = std::make_unique<app_config>();
 
@@ -508,9 +528,9 @@ void load_app_config(const boost::filesystem::wpath &_path)
 #endif // !STRIP_CRASH_HANDLER
 }
 
-void dump_app_config_to_disk(const boost::filesystem::wpath &_path)
+void dump_app_config_to_disk(const boost::filesystem::wpath& _path)
 {
-    assert(config_);
+    im_assert(config_);
     if (!config_)
         return;
 
@@ -585,6 +605,10 @@ namespace
                 property_tree_.get<int>(option_name(app_config::AppConfigOption::cache_history_pages_secs), 300)
             },
             {
+                app_config::AppConfigOption::cache_history_pages_check_interval_secs,
+                property_tree_.get<int>(option_name(app_config::AppConfigOption::cache_history_pages_check_interval_secs), 60)
+            },
+            {
                 app_config::AppConfigOption::save_rtp_dumps,
                 property_tree_.get<bool>(option_name(app_config::AppConfigOption::save_rtp_dumps), false)
             },
@@ -646,11 +670,15 @@ namespace
             {
                 app_config::AppConfigOption::app_update_interval_secs,
                 property_tree_.get<uint32_t>(option_name(app_config::AppConfigOption::app_update_interval_secs), 86400)
-            }
-            ,
+            },
             {
                 app_config::AppConfigOption::net_compression,
                 property_tree_.get<bool>(option_name(app_config::AppConfigOption::net_compression), true)
+            }
+            ,
+            {
+                app_config::AppConfigOption::ssl_verification_enabled,
+                property_tree_.get<bool>(option_name(app_config::AppConfigOption::ssl_verification_enabled), true)
             }
         };
     }
@@ -675,6 +703,8 @@ namespace
             return "dev.show_message_ids";
         case app_config::AppConfigOption::cache_history_pages_secs:
             return "dev.cache_history_pages_secs";
+        case app_config::AppConfigOption::cache_history_pages_check_interval_secs:
+            return "dev.cache_history_pages_check_interval_secs";
         case app_config::AppConfigOption::save_rtp_dumps:
             return "dev.save_rtp_dumps";
         case app_config::AppConfigOption::is_server_search_enabled:
@@ -707,9 +737,10 @@ namespace
             return "dev.app_update_interval_secs";
         case app_config::AppConfigOption::net_compression:
             return "dev.net_compression";
-
+        case app_config::AppConfigOption::ssl_verification_enabled:
+            return "dev.webview_ssl_check";
         default:
-            assert(!"unhandled option for option_name");
+            im_assert(!"unhandled option for option_name");
             return "";
         }
     }

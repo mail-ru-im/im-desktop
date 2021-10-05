@@ -171,7 +171,7 @@ void core::masks::get_mask_id_list(int64_t _seq)
     __INFO("masks", "getting the masks list %1%", _seq);
 
     auto json_url = su::concat(urls::get_url(urls::url_type::misc_www_host), "/masks/list/v", std::to_string(version_));
-    const auto json_path = get_json_path();
+    const auto json_path = get_json_path().wstring();
 
     __INFO("masks", "downloading: %1%", json_url);
 
@@ -179,15 +179,10 @@ void core::masks::get_mask_id_list(int64_t _seq)
 
     if (tools::system::is_exist(json_path))
     {
-        if (!tools::system::is_empty(json_path.wstring()))
-        {
-            boost::system::error_code e;
-            modify_time = boost::filesystem::last_write_time(json_path, e);
-        }
+        if (!tools::system::is_empty(json_path))
+            modify_time = tools::system::get_file_lastmodified(json_path);
         else
-        {
-            tools::system::delete_file(json_path.wstring());
-        }
+            tools::system::delete_file(json_path);
     }
 
     auto file_info_handler = wim::file_info_handler_t(
@@ -202,8 +197,8 @@ void core::masks::get_mask_id_list(int64_t _seq)
         if (_error != loader_errors::success)
         {
             if (_error == loader_errors::http_error && _data.response_code_ == 304 && (content = std::make_shared<tools::binary_stream>())
-                && core::tools::system::is_exist(json_path) && !core::tools::system::is_empty(json_path.wstring())
-                && content->load_from_file(json_path.wstring()))
+                && core::tools::system::is_exist(json_path) && !core::tools::system::is_empty(json_path)
+                && content->load_from_file(json_path))
             {
                 content->write('\0');
             }
@@ -220,12 +215,12 @@ void core::masks::get_mask_id_list(int64_t _seq)
             }
         }
 
-        __INFO("masks", "the downloaded file: %1%", json_path);
+        __INFO("masks", "the downloaded file: %1%", tools::from_utf16(json_path));
 
-        if (!content && !core::tools::system::is_empty(json_path.wstring()))
+        if (!content && !core::tools::system::is_empty(json_path))
         {
             content = std::make_shared<tools::binary_stream>();
-            content->load_from_file(json_path.wstring());
+            content->load_from_file(json_path);
             content->write('\0');
         }
 
@@ -235,7 +230,7 @@ void core::masks::get_mask_id_list(int64_t _seq)
         rapidjson::Document json;
         if (json.Parse(content->get_data()).HasParseError())
         {
-            __WARN("masks", "can't parse the downloaded file %1%", json_path);
+            __WARN("masks", "can't parse the downloaded file %1%", tools::from_utf16(json_path));
             return;
         }
 
@@ -339,7 +334,7 @@ void core::masks::get_mask_id_list(int64_t _seq)
     params.priority_ = low_priority();
     params.url_ = std::move(json_url);
     params.base_url_ = params.url_;
-    params.file_name_ = json_path.wstring();
+    params.file_name_ = json_path;
     params.handler_ = std::move(file_info_handler);
     params.last_modified_time_ = modify_time;
     params.normalized_url_ = "masksList";
@@ -357,7 +352,7 @@ void core::masks::get_mask_preview(int64_t _seq, const std::string& mask_id)
     const auto mask_pos = mask_by_name_.find(mask_id);
     if (mask_pos == mask_by_name_.end())
     {
-        assert(!"call get_mask_id_list first!");
+        im_assert(!"call get_mask_id_list first!");
         return;
     }
 
@@ -457,7 +452,7 @@ void core::masks::get_mask(int64_t _seq, const std::string& mask_id)
     const auto mask_pos = mask_by_name_.find(mask_id);
     if (mask_pos == mask_by_name_.end())
     {
-        assert(!"call get_mask_id_list first!");
+        im_assert(!"call get_mask_id_list first!");
         return;
     }
 

@@ -17,7 +17,7 @@ class ifptr
 
     void copy(const ifptr& _copy)
     {
-        assert(&_copy != this);
+        im_assert(&_copy != this);
 
         release_owned_p();
 

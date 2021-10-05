@@ -12,6 +12,19 @@ int gladLoadGLLoader(GLADloadproc);
 
 static std::mutex g_wnd_mutex;
 
+namespace
+{
+    // workaround for the key 'Space': GLFW generates GLFW_KEY_UNKNOWN when not using primary keyboard layout
+    // so we cannot use glfwGetKeyScancode(GLFW_KEY_SPACE) for checking and use it scancode directly
+    constexpr int scancodeKeySpace = 65;
+
+    void sendKeyEvent(QObject* _receiver, QEvent::Type _type, int _key, Qt::KeyboardModifiers _mod)
+    {
+        if (_receiver)
+            QCoreApplication::postEvent(_receiver, new QKeyEvent(_type, _key, _mod));
+    }
+}
+
 class GLFWScope
 {
 public:
@@ -26,18 +39,17 @@ public:
     ~GLFWScope() { glfwTerminate(); }
 } g_GLFWScope;
 
-QWidget* platform_linux::GraphicsPanelLinux::parent_ = nullptr;
+std::unordered_map<GLFWwindow*, QPointer<QWidget>> platform_linux::GraphicsPanelLinux::parents_;
 
 platform_linux::GraphicsPanelLinux::GraphicsPanelLinux(QWidget* _parent,
     std::vector<QPointer<Ui::BaseVideoPanel>>&/* panels*/, bool /*primaryVideo*/)
     : platform_specific::GraphicsPanel(_parent)
+    , parent_(_parent)
 {
-    parent_ = _parent;
 }
 
 platform_linux::GraphicsPanelLinux::~GraphicsPanelLinux()
 {
-    parent_ = nullptr;
     if (videoWindow_)
         freeNative();
 }
@@ -58,6 +70,10 @@ void platform_linux::GraphicsPanelLinux::initNative(platform_specific::ViewResiz
     videoWindow_ = glfwCreateWindow(s.width(), s.height(), "Video", NULL, NULL);
     if (!videoWindow_)
         return;
+
+    if (parent_)
+        parents_.emplace(videoWindow_, QPointer(parent_));
+
     glfwMakeContextCurrent(videoWindow_);
     glfwSetKeyCallback(videoWindow_, keyCallback);
     glfwSetInputMode(videoWindow_, GLFW_STICKY_MOUSE_BUTTONS, 1);
@@ -75,6 +91,10 @@ void platform_linux::GraphicsPanelLinux::freeNative()
     im_assert(videoWindow_);
     if (!videoWindow_)
         return;
+
+    if (auto it = parents_.find(videoWindow_); it != parents_.cend())
+        parents_.erase(it);
+
     glfwDestroyWindow(videoWindow_);
     videoWindow_ = nullptr;
 }
@@ -110,14 +130,28 @@ void platform_linux::GraphicsPanelLinux::resizeEvent(QResizeEvent* _e)
 
 void platform_linux::GraphicsPanelLinux::keyCallback(GLFWwindow* _window, int _key, int _scancode, int _actions, int _mods)
 {
-    if (parent_)
+    if (auto it = parents_.find(_window); it != parents_.cend() && it->second)
     {
+        // workaround for the key 'Space': key callback generates GLFW_KEY_UNKNOWN when not using primary keyboard layout, but with correct scancode
+        if (_key == GLFW_KEY_UNKNOWN && _scancode == scancodeKeySpace)
+            _key = GLFW_KEY_SPACE;
+
         if (_actions == GLFW_PRESS && _mods == GLFW_MOD_CONTROL)
         {
             if (_key == GLFW_KEY_W)
-                qApp->postEvent(parent_, new QKeyEvent(QEvent::KeyPress, Qt::Key_W, Qt::ControlModifier));
+                sendKeyEvent(it->second, QEvent::KeyPress, Qt::Key_W, Qt::ControlModifier);
             else if (_key == GLFW_KEY_Q)
-                qApp->postEvent(parent_, new QKeyEvent(QEvent::KeyPress, Qt::Key_Q, Qt::ControlModifier));
+                sendKeyEvent(it->second, QEvent::KeyPress, Qt::Key_Q, Qt::ControlModifier);
+        }
+
+        if (_key == GLFW_KEY_SPACE && (_actions == GLFW_PRESS || _actions == GLFW_RELEASE))
+        {
+            const auto action = _actions == GLFW_PRESS ? QEvent::KeyPress : QEvent::KeyRelease;
+            sendKeyEvent(it->second, action, Qt::Key_Space, Qt::NoModifier);
+        }
+        else if (_key == GLFW_KEY_A && _actions == GLFW_PRESS && _mods == (GLFW_MOD_CONTROL | GLFW_MOD_SHIFT))
+        {
+            sendKeyEvent(it->second, QEvent::KeyPress, Qt::Key_A, Qt::ControlModifier | Qt::ShiftModifier);
         }
     }
 }

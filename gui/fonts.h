@@ -77,6 +77,8 @@ FONTS_NS_BEGIN
 
     FontFamily defaultAppFontFamily();
 
+    FontFamily monospaceAppFontFamily();
+
     QString defaultAppFontQssName();
 
     QString defaultAppFontQssWeight();
@@ -104,5 +106,8 @@ FONTS_NS_BEGIN
 
     FontSize getFontSizeSetting();
     void setFontSizeSetting(const FontSize _size);
+
+    QFont getInputTextFont();
+    QFont getInputMonospaceTextFont();
 
 FONTS_NS_END

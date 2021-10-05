@@ -4,7 +4,7 @@
 #include "../wim_packet.h"
 
 #include "../../../log/log.h"
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 
 #include "fetch_event_user_added_to_buddy_list.h"
 
@@ -25,10 +25,10 @@ int32_t fetch_event_user_added_to_buddy_list::parse(const rapidjson::Value& _nod
     }
 
     requester_uid_ = rapidjson_get_string(requester_iter->value);
-    assert(!requester_uid_.empty());
+    im_assert(!requester_uid_.empty());
 
     display_aimid_ = rapidjson_get_string(display_aimid_iter->value);
-    assert(!display_aimid_.empty());
+    im_assert(!display_aimid_.empty());
 
     if (requester_uid_.empty() || display_aimid_.empty())
     {
@@ -40,7 +40,7 @@ int32_t fetch_event_user_added_to_buddy_list::parse(const rapidjson::Value& _nod
 
 void fetch_event_user_added_to_buddy_list::on_im(std::shared_ptr<core::wim::im> _im, std::shared_ptr<auto_callback> _on_complete)
 {
-    assert(_im);
+    im_assert(_im);
 
     _im->on_event_user_added_to_buddy_list(this, _on_complete);
 
@@ -48,13 +48,13 @@ void fetch_event_user_added_to_buddy_list::on_im(std::shared_ptr<core::wim::im> 
 
 const std::string& fetch_event_user_added_to_buddy_list::get_display_aimid() const
 {
-    assert(!display_aimid_.empty());
+    im_assert(!display_aimid_.empty());
     return display_aimid_;
 }
 
 const std::string& fetch_event_user_added_to_buddy_list::get_requester_aimid() const
 {
-    assert(!requester_uid_.empty());
+    im_assert(!requester_uid_.empty());
     return requester_uid_;
 }
 

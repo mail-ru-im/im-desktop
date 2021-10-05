@@ -15,7 +15,6 @@
 #include "../../utils/graphicsEffects.h"
 #include "../../utils/features.h"
 #include "../../main_window/MainWindow.h"
-#include "../../main_window/MainPage.h"
 #include "../../fonts.h"
 #include "../../cache/stickers/stickers.h"
 #include "../../core_dispatcher.h"
@@ -1373,7 +1372,7 @@ void MyPacksWidget::createPackButtonClicked()
 
     if (Logic::getContactListModel()->contains(bot))
     {
-        Logic::getContactListModel()->setCurrent(bot, -1, true);
+        Utils::InterConnector::instance().openDialog(bot);
     }
     else
     {
@@ -1382,7 +1381,7 @@ void MyPacksWidget::createPackButtonClicked()
             if (!weak_this)
                 return;
 
-            Logic::getContactListModel()->setCurrent(bot, -1, true);
+            Utils::InterConnector::instance().openDialog(bot);
         });
     }
 

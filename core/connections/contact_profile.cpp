@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "contact_profile.h"
 #include "wim/persons.h"
-#include "../tools/json_helper.h"
+#include "../../common.shared/json_helper.h"
 
 namespace core
 {

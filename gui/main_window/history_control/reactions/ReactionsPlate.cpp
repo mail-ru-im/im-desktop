@@ -25,36 +25,9 @@ namespace
     constexpr std::chrono::milliseconds updateAnimationDuration = std::chrono::milliseconds(100);
     constexpr auto maxTooltipReactionsCount = 13u;
 
-    int32_t plateOffsetY(Ui::ReactionsPlateType _type)
-    {
-        if (_type == Ui::ReactionsPlateType::Regular)
-            return Ui::MessageStyle::Reactions::plateYOffset();
-        else
-            return Ui::MessageStyle::Reactions::mediaPlateYOffset();
-    }
-
-    int32_t plateOffsetX()
-    {
-        return Utils::scale_value(4);
-    }
-
     int32_t plateHeight()
     {
-        return Ui::MessageStyle::Reactions::plateHeight();
-    }
-
-    int32_t plateHeightWithShadow(Ui::ReactionsPlateType _type)
-    {
-        auto height = plateHeight();
-        if (_type == Ui::ReactionsPlateType::Regular)
-            height += Ui::MessageStyle::Reactions::shadowHeight();
-
-        return height;
-    }
-
-    int32_t plateBorderRadius()
-    {
-        return Utils::scale_value(12);
+        return Ui::MessageStyle::Plates::plateHeight();
     }
 
     const QColor& plateColor(Ui::ReactionsPlateType _type, bool _outgoing)
@@ -63,7 +36,7 @@ namespace
         {
             if (_outgoing)
             {
-                static const auto color = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_BRIGHT);
+                static const auto color = Styling::getParameters().getColor(Styling::StyleVariable::CHAT_TERTIARY);
                 return color;
             }
             else
@@ -139,16 +112,6 @@ namespace
         }
     }
 
-    QColor shadowColor()
-    {
-        return QColor(0, 0, 0, 255);
-    }
-
-    double shadowColorAlpha()
-    {
-        return 0.12;
-    }
-
     QString countText(int _count)
     {
         if (_count < 100)
@@ -159,24 +122,13 @@ namespace
 
     bool allowedToViewReactionsList(const QString& _aimId)
     {
+        if (Logic::getContactListModel()->isThread(_aimId))
+            return true;
+
         const auto role = Logic::getContactListModel()->getYourRole(_aimId);
-        const auto notAllowed = (role.isEmpty() && Utils::isChat(_aimId)) || role == u"notamember" || Logic::getContactListModel()->isChannel(_aimId) && !Logic::getContactListModel()->isYouAdmin(_aimId);
+        const auto notAllowed = (role.isEmpty() && Utils::isChat(_aimId)) || role == u"notamember" || Logic::getContactListModel()->isChannel(_aimId) && !Logic::getContactListModel()->areYouAdmin(_aimId);
 
         return !notAllowed;
-    }
-
-    int shadowHeight()
-    {
-        return Utils::scale_value(1);
-    }
-
-    void drawSolidShadow(QPainter& _p, const QPainterPath& _path)
-    {
-        Utils::ShadowLayer layer;
-        layer.color_ = QColor(17, 32, 55, 255 * 0.05);
-        layer.yOffset_ = shadowHeight();
-
-        Utils::drawLayeredShadow(_p, _path, { layer });
     }
 }
 
@@ -285,13 +237,19 @@ public:
     {
         const auto messageRect = item_->messageRect();
 
-        const auto top = messageRect.bottom() + plateOffsetY(item_->reactionsPlateType());
+        const auto top = messageRect.bottom() + MessageStyle::Plates::plateOffsetY(item_->reactionsPlateType());
         auto left = 0;
 
         if (outgoingPosition_)
-            left = messageRect.right() - plateOffsetX() - _plateWidth;
+        {
+            left = messageRect.right() - MessageStyle::Plates::plateOffsetX() - _plateWidth;
+        }
         else
-            left = messageRect.left() + plateOffsetX();
+        {
+            left = messageRect.left() + MessageStyle::Plates::plateOffsetX();
+            if (auto threadRect = item_->threadPlateRect(); threadRect.width() > 0)
+                left += threadRect.width() + MessageStyle::Plates::plateOffsetX();
+        }
 
         return QPoint(left, top);
     }
@@ -301,10 +259,9 @@ public:
         const auto plateType = item_->reactionsPlateType();
         shadow_->setEnabled(plateType == ReactionsPlateType::Regular);
 
-        auto xOffset = plateSideMargin();
-        xOffset += updateItemsGeometry(items_, xOffset);
-
-        const auto plateSize = QSize(xOffset, plateHeightWithShadow(plateType));
+        const auto itemsWidth = updateItemsGeometry(items_, plateSideMargin());
+        const auto plateWidth = itemsWidth > 0 ? itemsWidth + plateSideMargin() : 0;
+        const auto plateSize = QSize(plateWidth, MessageStyle::Plates::plateHeightWithShadow(plateType));
 
         return QRect(calcPlatePosition(plateSize.width()), plateSize);
     }
@@ -319,9 +276,9 @@ public:
     {
         QPainterPath platePath;
         const auto plateRect = QRect(0, 0, q->width(), plateHeight());
-        platePath.addRoundedRect(plateRect, plateBorderRadius(), plateBorderRadius());
+        platePath.addRoundedRect(plateRect, MessageStyle::Plates::borderRadius(), MessageStyle::Plates::borderRadius());
 
-        drawSolidShadow(_p, platePath);
+        Utils::drawPlateSolidShadow(_p, platePath);
 
         _p.setOpacity(opacity_);
         _p.fillPath(platePath, plateColor(item_->reactionsPlateType(), outgoingPosition_));
@@ -349,7 +306,7 @@ public:
         QObject::connect(opacityAnimation_, &QVariantAnimation::valueChanged, q, [this](const QVariant& value)
         {
             opacity_ = value.toDouble();
-            shadow_->setColor(shadowColorWithAlpha());
+            shadow_->setColor(Utils::plateShadowColorWithAlpha(opacity_));
             q->update();
         });
         QObject::connect(opacityAnimation_, &QVariantAnimation::finished, q, [this]()
@@ -436,7 +393,7 @@ public:
             }
 
             const auto width = currentWidth + (newWidth - currentWidth) * val;
-            setPlateGeometry(QRect(calcPlatePosition(width), QSize(width, plateHeightWithShadow(item_->reactionsPlateType()))));
+            setPlateGeometry(QRect(calcPlatePosition(width), QSize(width, MessageStyle::Plates::plateHeightWithShadow(item_->reactionsPlateType()))));
 
             q->update();
         });
@@ -578,20 +535,9 @@ public:
         Tooltip::show(tooltipText, QRect(q->mapToGlobal(_item.rect_.topLeft()), _item.rect_.size()), {-1, -1});
     }
 
-    QColor shadowColorWithAlpha()
-    {
-        auto color = shadowColor();
-        color.setAlphaF(shadowColorAlpha() * opacity_);
-        return color;
-    }
-
     void initShadow()
     {
-        shadow_ = new QGraphicsDropShadowEffect(q);
-        shadow_->setBlurRadius(8);
-        shadow_->setOffset(0, Utils::scale_value(1));
-        shadow_->setColor(shadowColorWithAlpha());
-
+        shadow_ = Utils::initPlateShadowEffect(q, opacity_);
         q->setGraphicsEffect(shadow_);
     }
 
@@ -648,7 +594,7 @@ void ReactionsPlate::setReactions(const Data::Reactions& _reactions)
 
             d->setPlateGeometry(d->updateGeometryHelper());
 
-            if (!isVisible() && !Utils::InterConnector::instance().isMultiselect())
+            if (!isVisible() && !Utils::InterConnector::instance().isMultiselect(d->item_->getContact()))
                 d->startShowAnimation();
         }
         else
@@ -755,7 +701,7 @@ void ReactionsPlate::wheelEvent(QWheelEvent* _event)
 
 void ReactionsPlate::onMultiselectChanged()
 {
-    if (Utils::InterConnector::instance().isMultiselect())
+    if (Utils::InterConnector::instance().isMultiselect(d->item_->getContact()))
         hide();
     else if (d->items_.size() > 0)
         show();

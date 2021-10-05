@@ -32,6 +32,7 @@ namespace Logic
         YOUR_INVITES_LIST,
         DISALLOWED_INVITERS,
         DISALLOWED_INVITERS_ADD,
+        TASK_ASSIGNEE
     };
 
     bool is_members_regim(int _regim);

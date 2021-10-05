@@ -109,7 +109,7 @@ namespace core
             // object be reset to NULL before this may be used.
             element_type* initialize_into()
             {
-                assert(!object_);
+                im_assert(!object_);
                 return &object_;
             }
 

@@ -230,7 +230,7 @@ bool web_file_info::unserialize(const core::tools::binary_stream& _bs)
         !tlv_file_id ||
         !tlv_played)
     {
-        assert(false);
+        im_assert(false);
         return false;
     }
 

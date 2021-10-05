@@ -3,6 +3,7 @@
 #include "SidebarUtils.h"
 #include "GroupProfile.h"
 #include "UserProfile.h"
+#include "ThreadPage.h"
 #include "../contact_list/ContactListModel.h"
 #include "../../controls/SemitransparentWindowAnimated.h"
 #include "../../utils/InterConnector.h"
@@ -10,7 +11,8 @@
 #include "../../utils/features.h"
 #include "../../utils/animations/SlideController.h"
 #include "../../styles/ThemeParameters.h"
-#include "../MainPage.h"
+#include "../MainWindow.h"
+#include "core_dispatcher.h"
 
 namespace
 {
@@ -22,6 +24,7 @@ namespace
     {
         SP_GroupProfile = 0,
         SP_UserProfile = 1,
+        SP_ThreadDialog = 2,
     };
 }
 
@@ -102,6 +105,7 @@ namespace Ui
         Utils::SlideController* slideController_;
         FrameCountMode frameCountMode_;
         bool needShadow_;
+        bool wasVisible_ = false;
 
         static SidebarPageFactory factory_;
 
@@ -113,6 +117,7 @@ namespace Ui
             , frameCountMode_(FrameCountMode::_1)
             , needShadow_(true)
         {
+            QObject::connect(slideController_, &Utils::SlideController::currentIndexChanged, qptr_, &Sidebar::onIndexChanged);
         }
 
         SidebarPage* pageWidget(int _index) const
@@ -148,11 +153,14 @@ namespace Ui
 
         int changePage(const QString& _aimId, SidebarParams _params, bool _selectionChanged)
         {
-            const auto key = Utils::isChat(_aimId) ? SP_GroupProfile : SP_UserProfile;
+            const auto prefixIdx = _aimId.indexOf(Sidebar::getThreadPrefix());
+            const auto key = prefixIdx != -1 ? SP_ThreadDialog : Utils::isChat(_aimId) ? SP_GroupProfile : SP_UserProfile;
 
             const auto& selectedContact = Logic::getContactListModel()->selectedContact();
-            const auto& aimId = (!_aimId.isEmpty() ? _aimId : selectedContact);
-            const bool hasChanges = _selectionChanged || _aimId == selectedContact || currentAimId_ == _aimId;
+            const auto& aimId = _aimId.isEmpty() ? selectedContact : _aimId;
+            const bool isWebAppTasksPage = Utils::InterConnector::instance().getMainWindow()->isWebAppTasksPage();
+            const bool hasChanges = isWebAppTasksPage || _selectionChanged || _aimId == selectedContact || currentAimId_ == _aimId;
+            const auto initAimid = prefixIdx != -1 ? _aimId.mid(prefixIdx + Sidebar::getThreadPrefix().size()) : aimId;
 
             SidebarPage* page = pageWidget(qptr_->currentIndex());
 
@@ -164,7 +172,8 @@ namespace Ui
 
                 page->setPrev(hasChanges ? QString() : currentAimId_);
                 // trigger request for user/chat info
-                page->initFor(!_aimId.isEmpty() ? _aimId : selectedContact, std::move(_params));
+                page->initFor(initAimid, std::move(_params));
+                page->setFrameCountMode(frameCountMode_);
                 if (index == qptr_->currentIndex())
                     return -1;
             }
@@ -177,7 +186,8 @@ namespace Ui
 
                 page->setPrev(hasChanges ? QString() : currentAimId_);
                 // trigger request for user/chat info
-                page->initFor(!_aimId.isEmpty() ? _aimId : selectedContact, std::move(_params));
+                page->initFor(initAimid, std::move(_params));
+                page->setFrameCountMode(frameCountMode_);
 
                 const int n = qptr_->count();
                 if (n >= kMaxCacheSize)
@@ -230,15 +240,23 @@ namespace Ui
             slideController_->setFading(SlideController::Fading::FadeIn);
             slideController_->setEffects(SlideController::SlideEffect::NoEffect);
             slideController_->setSlideDirection(SlideController::SlideDirection::NoSliding);
+            slideController_->setFillColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
         }
 
         void initializeAnimationController()
         {
             animSidebar_->setDuration(kSlideDuration.count());
             animSidebar_->setStartValue(0);
-            animSidebar_->setEndValue(qptr_->getDefaultWidth());
+            animSidebar_->setEndValue(Sidebar::getDefaultWidth());
             QObject::connect(animSidebar_, &QVariantAnimation::valueChanged, qptr_, &Sidebar::animate);
             QObject::connect(animSidebar_, &QVariantAnimation::finished, qptr_, &Sidebar::onAnimationFinished);
+
+            auto updateWidth = [anim = animSidebar_]()
+            {
+                anim->setEndValue(Sidebar::getDefaultWidth());
+            };
+            QObject::connect(Ui::GetDispatcher(), &Ui::core_dispatcher::externalUrlConfigUpdated, animSidebar_, updateWidth);
+            QObject::connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated, animSidebar_, updateWidth);
         }
 
         void initializePageFactory()
@@ -248,6 +266,7 @@ namespace Ui
 
             factory_.registrate<GroupProfile>(SP_GroupProfile);
             factory_.registrate<UserProfile>(SP_UserProfile);
+            factory_.registrate<ThreadPage>(SP_ThreadDialog);
         }
     };
 
@@ -255,10 +274,9 @@ namespace Ui
 
     Sidebar::Sidebar(QWidget* _parent)
         : QStackedWidget(_parent)
+        , IEscapeCancellable(this)
         , d(std::make_unique<SidebarPrivate>(this, _parent))
     {
-        setStyleSheet(qsl("background-color: %1;").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
-
         d->initializeAnimationController();
         d->initializeSlideController();
         d->initializePageFactory();
@@ -279,16 +297,16 @@ namespace Ui
 
     void Sidebar::showAnimated()
     {
+        if (d->frameCountMode_ == FrameCountMode::_1)
+        {
+            show();
+            return;
+        }
+
         if (isVisible())
             return;
 
-        if (d->frameCountMode_ == FrameCountMode::_1)
-        {
-            setFixedHeight(d->semiWindow_->height());
-            show();
-            d->showPage();
-            return;
-        }
+        d->wasVisible_ = true;
 
         if (isNeedShadow())
         {
@@ -311,23 +329,51 @@ namespace Ui
 
     void Sidebar::hideAnimated()
     {
-        if (!isVisible())
-            return;
-
         if (d->frameCountMode_ == FrameCountMode::_1)
         {
             hide();
             return;
         }
+
+        if (!isVisible())
+            return;
+
+        d->wasVisible_ = false;
         d->updatePixmap();
         d->hidePage();
         d->animSidebar_->setDirection(QVariantAnimation::Backward);
         d->animSidebar_->start();
     }
 
+    void Sidebar::show()
+    {
+        if (isVisible())
+            return;
+
+        d->wasVisible_ = true;
+        setFixedHeight(d->semiWindow_->height());
+        QWidget::show();
+        d->showPage();
+    }
+
+    void Sidebar::hide()
+    {
+        d->wasVisible_ = false;
+        QWidget::hide();
+    }
+
     void Sidebar::moveToWindowEdge()
     {
         move(d->semiWindow_->width() - width(), 0);
+    }
+
+    void Sidebar::closePage(SidebarPage* _page)
+    {
+        if (_page)
+        {
+            _page->close();
+            escCancel_->removeChild(_page);
+        }
     }
 
     void Sidebar::animate(const QVariant& value)
@@ -352,10 +398,11 @@ namespace Ui
         }
         else
         {
-            SidebarPage* page = d->pageWidget(currentIndex());
-            if (page->isMembersVisible())
+            auto page = d->pageWidget(currentIndex());
+            if (page && page->isMembersVisible())
                 page->setMembersVisible(false);
-            page->close();
+
+            closePage(page);
 
             hide();
             if (isNeedShadow())
@@ -379,6 +426,9 @@ namespace Ui
             setFixedWidth(getDefaultWidth());
 
         d->updatePixmap();
+
+        if (auto page = d->pageWidget(_index))
+            escCancel_->addChild(page);
     }
 
     void Sidebar::onContentChanged()
@@ -387,12 +437,34 @@ namespace Ui
             d->updatePixmap();
     }
 
+    void Sidebar::onIndexChanged(int _index)
+    {
+        if (auto page = d->pageWidget(_index))
+            page->onPageBecomeVisible();
+    }
+
     void Sidebar::updateSize()
     {
         d->semiWindow_->updateSize();
         if (d->frameCountMode_ == FrameCountMode::_2)
             moveToWindowEdge();
         setFixedHeight(d->semiWindow_->height());
+    }
+
+    void Sidebar::changeHeight()
+    {
+        d->semiWindow_->updateSize();
+        setFixedHeight(d->semiWindow_->height());
+    }
+
+    bool Sidebar::isThreadOpen() const
+    {
+        return currentAimId().startsWith(getThreadPrefix());
+    }
+
+    bool Sidebar::wasVisible() const noexcept
+    {
+        return d->wasVisible_;
     }
 
     bool Sidebar::isNeedShadow() const noexcept
@@ -413,7 +485,7 @@ namespace Ui
             moveToWindowEdge();
         }
 
-        if (visible)
+        if (visible || d->wasVisible_)
         {
             if (d->needShadow_)
                 d->semiWindow_->showAnimated();
@@ -449,19 +521,46 @@ namespace Ui
         }
     }
 
+    void Sidebar::keyPressEvent(QKeyEvent* _event)
+    {
+        auto w = Utils::InterConnector::instance().getMainWindow();
+        if (w && w->isWebAppTasksPage() && _event->key() == Qt::Key_Escape)
+            Q_EMIT Utils::InterConnector::instance().closeSidebar();
+
+        QStackedWidget::keyPressEvent(_event);
+    }
+
     void Sidebar::preparePage(const QString& _aimId, SidebarParams _params, bool _selectionChanged)
     {
         const int index = d->changePage(_aimId, _params, _selectionChanged);
         if (index != -1)
         {
-            if (isVisible())
-                QTimer::singleShot(SidebarPage::kLoadDelay, [guard = QPointer(this), index] { if (guard) guard->onCurrentChanged(index); });
-            else
+            auto changePage = [_aimId, index, this]()
+            {
                 onCurrentChanged(index);
+
+                if (const auto page = d->pageWidget(currentIndex()))
+                {
+                    if (const auto& prev = page->prev(); !prev.isEmpty())
+                    {
+                        if (const auto index = d->findPage("aimId", prev); index != -1)
+                            closePage(d->pageWidget(index));
+                    }
+                }
+
+                Q_EMIT pageChanged(_aimId, QPrivateSignal());
+            };
+
+            if (isVisible())
+                QTimer::singleShot(SidebarPage::kLoadDelay, [guard = QPointer(this), changePage] { if (guard) changePage(); });
+            else
+                changePage();
         }
         if (auto page = d->pageWidget(index == -1 ? currentIndex() : index))
+        {
             if (page->isMembersVisible())
                 page->setMembersVisible(false);
+        }
     }
 
     void Sidebar::showMembers(const QString& _aimId)
@@ -489,9 +588,19 @@ namespace Ui
         }
     }
 
-    QString Sidebar::currentAimId() const
+    QString Sidebar::currentAimId(ResolveThread _resolve) const
     {
+        if (_resolve == ResolveThread::Yes && isThreadOpen())
+            return d->currentAimId_.mid(d->currentAimId_.indexOf(Sidebar::getThreadPrefix()) + Sidebar::getThreadPrefix().size());
+
         return d->currentAimId_;
+    }
+
+    QString Sidebar::parentAimId() const
+    {
+        if (auto page = d->pageWidget(currentIndex()))
+            return page->parentAimId();
+        return {};
     }
 
     void Sidebar::setFrameCountMode(FrameCountMode _mode)
@@ -500,7 +609,7 @@ namespace Ui
         for (int i = 0, n = count(); i < n; ++i)
             d->pageWidget(i)->setFrameCountMode(_mode);
 
-        if (isVisible() && width() > 0)
+        if ((isVisible() || wasVisible()) && width() > 0)
             d->backbuffer_ = grab();
     }
 

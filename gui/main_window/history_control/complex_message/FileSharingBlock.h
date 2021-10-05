@@ -79,8 +79,6 @@ public:
 
     bool isSizeLimited() const override;
 
-    bool updateFriendly(const QString& _aimId, const QString& _friendly) override;
-
     int filenameDesiredWidth() const;
 
     int getMaxFilenameWidth() const;
@@ -113,6 +111,10 @@ public:
     void updateWith(IItemBlock* _other) override;
 
     int effectiveBlockWidth() const override;
+
+    QString getProgressText() const override;
+
+    void updateFileStatus(FileStatus _status) override;
 
 protected:
     void drawBlock(QPainter &p, const QRect& _rect, const QColor& _quoteColor) override;
@@ -153,6 +155,7 @@ private:
     void drawPlainFileName(QPainter &p);
     void drawPlainFileProgress(QPainter& _p);
     void drawPlainFileShowInDirLink(QPainter &p);
+    void drawPlainFileStatus(QPainter& _p) const;
 
     void drawPreview(QPainter &p, const QRect &previewRect, const QColor& quote_color);
     void drawPreviewableBlock(QPainter &p, const QRect &previewRect, const QColor& quote_color);
@@ -173,7 +176,7 @@ private:
 
     void onDownloadedAction() override;
 
-    void onDataTransfer(const int64_t _bytesTransferred, const int64_t _bytesTotal) override;
+    void onDataTransfer(const int64_t _bytesTransferred, const int64_t _bytesTotal, bool _showBytes = true) override;
 
     void onDownloadingFailed(const int64_t requestId) override;
 
@@ -185,7 +188,7 @@ private:
 
     void onPreviewMetainfoDownloaded() override;
 
-    Data::StickerId getStickerId() const override { return Data::StickerId(Id_); }
+    Data::StickerId getStickerId() const override { return Data::StickerId(getFileSharingId()); }
 
     ContentType getContentType() const override;
 
@@ -224,21 +227,21 @@ private:
 
     bool isProgressVisible() const;
 
-    void onSticker(qint32 _error, const QString& _fsId);
+    void onSticker(qint32 _error, const Utils::FileSharingId& _fsId);
+
+    QRect getFileStatusRect() const;
+    QRect getPlainButtonRect() const;
+
+    void elidePlainFileName();
+    void setPlainFileName(const QString& _name);
+    void updatePlainButtonBlockReason(bool _condition);
+    bool isPlaceholder() const;
 
 #ifndef STRIP_AV_MEDIA
     std::unique_ptr<Ui::DialogPlayer> videoplayer_;
 #endif // !STRIP_AV_MEDIA
 
-    QString Id_;
-
     QRect LastContentRect_;
-
-    bool IsVisible_;
-
-    bool IsInPreloadDistance_;
-
-    bool needInitFromLocal_ = false;
 
     QSize OriginalPreviewSize_;
 
@@ -246,16 +249,20 @@ private:
     QPainterPath RelativePreviewClippingPath_;
 
     QPixmap Background_;
-    qint64 seq_;
+    qint64 seq_ = -1;
 
-    int64_t PreviewRequestId_;
+    int64_t PreviewRequestId_ = -1;
 
-    ActionButtonWidget* previewButton_;
-    FileSharingIcon* plainButton_;
+    ActionButtonWidget* previewButton_ = nullptr;
+    FileSharingIcon* plainButton_ = nullptr;
 
     TextRendering::TextUnitPtr nameLabel_;
     TextRendering::TextUnitPtr sizeProgressLabel_;
     TextRendering::TextUnitPtr showInFolderLabel_;
+
+    bool IsVisible_ = false;
+    bool IsInPreloadDistance_ = true;
+    bool needInitFromLocal_ = false;
 
 private Q_SLOTS:
     void onImageDownloadError(qint64 seq, QString rawUri);

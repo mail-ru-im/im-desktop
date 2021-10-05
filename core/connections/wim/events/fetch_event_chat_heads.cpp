@@ -5,7 +5,7 @@
 #include "../wim_packet.h"
 #include "../wim_history.h"
 
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 
 using namespace core;
 using namespace wim;
@@ -18,8 +18,8 @@ chat_heads::chat_heads()
 
 void core::wim::chat_heads::merge(const chat_heads& _other)
 {
-    assert(chat_aimid_ == _other.chat_aimid_);
-    assert(!reset_state_ && !_other.reset_state_);
+    im_assert(chat_aimid_ == _other.chat_aimid_);
+    im_assert(!reset_state_ && !_other.reset_state_);
 
     if (_other.persons_)
     {

@@ -3,7 +3,7 @@
 
 #include "../../../corelib/core_face.h"
 #include "../../../corelib/collection_helper.h"
-#include "../../tools/json_helper.h"
+#include "../../../common.shared/json_helper.h"
 #include "../../tools/tlv.h"
 
 namespace core
@@ -92,7 +92,7 @@ namespace core
         {
             if (!storage_)
             {
-                assert(!"cache storage");
+                im_assert(!"cache storage");
                 return false;
             }
 
@@ -125,7 +125,7 @@ namespace core
         {
             if (!storage_)
             {
-                assert(!"cache storage");
+                im_assert(!"cache storage");
                 return false;
             }
 

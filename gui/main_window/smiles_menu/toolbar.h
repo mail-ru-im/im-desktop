@@ -141,6 +141,7 @@ namespace Ui
             void buttonStoreClick();
 
             void updateItemsVisibility();
+            void initAddButton();
 
         protected:
             void paintEvent(QPaintEvent* _e) override;
@@ -162,7 +163,7 @@ namespace Ui
 
             const std::list<TabButton*>& GetButtons() const;
 
-            void addButtonStore();
+            void setAddButtonVisible(bool _visible);
 
             void selectNext();
             void selectPrevious();

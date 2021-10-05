@@ -241,12 +241,16 @@ namespace Ui
         return itemsWidth + (items.size() + (hasSideSpacers_ ? 1 : -1)) * itemSpacing() + (hasSideSpacers_ ? sideMargin() * 2  : 0);
     }
 
-    void SmartReplyWidget::showStickerPreview(const QString& _stickerId)
+    void SmartReplyWidget::showStickerPreview(const Data::SmartreplySuggest::Data& _previewData)
     {
+        const auto stickerId = std::get_if<Utils::FileSharingId>(&_previewData);
+        if (!stickerId)
+            return;
+
         if (!stickerPreview_)
         {
             auto mwWidget = Utils::InterConnector::instance().getMainWindow()->getWidget();
-            stickerPreview_ = new Smiles::StickerPreview(mwWidget, -1, _stickerId, Smiles::StickerPreview::Context::Popup);
+            stickerPreview_ = new Smiles::StickerPreview(mwWidget, -1, *stickerId, Smiles::StickerPreview::Context::Popup);
             stickerPreview_->setGeometry(mwWidget->rect());
             stickerPreview_->show();
             stickerPreview_->raise();
@@ -259,7 +263,7 @@ namespace Ui
         }
         else
         {
-            stickerPreview_->showSticker(_stickerId);
+            stickerPreview_->showSticker(*stickerId);
         }
     }
 
@@ -288,8 +292,11 @@ namespace Ui
                 const auto globalRect = item->rect().translated(globalPos);
                 if (globalRect.contains(_pos))
                 {
-                    showStickerPreview(item->getSuggest().getData());
-                    break;
+                    if (auto fileSharingId = std::get_if<Utils::FileSharingId>(&item->getSuggest().getData()))
+                    {
+                        showStickerPreview(*fileSharingId);
+                        break;
+                    }
                 }
             }
         }

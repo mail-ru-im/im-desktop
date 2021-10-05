@@ -3,20 +3,12 @@
 #include "smartreply_suggest.h"
 
 #include "core.h"
-#include "../tools/json_helper.h"
 #include "../../corelib/collection_helper.h"
+#include "../../common.shared/json_helper.h"
 #include "../../common.shared/smartreply/smartreply_types.h"
-#include "../../common.shared/smartreply/smartreply_config.h"
 #include "../../common.shared/config/config.h"
 #include "../../libomicron/include/omicron/omicron.h"
-
-namespace
-{
-    bool get_config_value(const feature::smartreply::omicron_field& _field)
-    {
-        return omicronlib::_o(_field.name(), _field.def<bool>());
-    }
-}
+#include "../tools/features.h"
 
 namespace core
 {
@@ -24,14 +16,14 @@ namespace core
     {
         std::vector<smartreply::type> supported_types_for_fetch()
         {
-            if (config::get().is_on(config::features::smartreplies) && get_config_value(feature::smartreply::is_enabled()))
+            if (config::get().is_on(config::features::smartreplies) && config::get().is_on(config::features::smartreply_suggests_feature_enabled))
             {
                 std::vector<smartreply::type> types;
 
-                if (get_config_value(feature::smartreply::text_enabled()))
+                if (features::smartreply_suggests_text_enabled())
                     types.push_back(smartreply::type::text);
 
-                if (get_config_value(feature::smartreply::sticker_enabled()))
+                if (features::smartreply_suggests_stickers_enabled())
                     types.push_back(smartreply::type::sticker);
 
                 return types;
@@ -118,7 +110,7 @@ namespace core
                 int64_t msgid = -1;
                 if (!tools::unserialize_value(_node, "msgId", msgid))
                 {
-                    //assert("https://jira.mail.ru/browse/ICQHD-8481 not done yet");
+                    //im_assert("https://jira.mail.ru/browse/ICQHD-8481 not done yet");
                     if (std::string s; tools::unserialize_value(_node, "msgId", s) && !s.empty())
                         msgid = std::stoll(s);
                 }

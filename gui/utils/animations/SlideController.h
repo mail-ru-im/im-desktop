@@ -57,7 +57,7 @@ public:
     };
     Q_ENUM(Fading)
 
-    explicit SlideController(QObject* _parent = nullptr);
+    explicit SlideController(QWidget* _parent = nullptr);
     ~SlideController();
 
     void setCachingPolicy(CachingPolicy _policy);

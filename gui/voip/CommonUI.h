@@ -74,49 +74,11 @@ namespace Ui
         QWidget& obj_;
     };
 
-    /*class AspectRatioResizebleWnd : public QWidget
-    {
-        Q_OBJECT
-    public:
-        AspectRatioResizebleWnd();
-        virtual ~AspectRatioResizebleWnd();
-
-        bool isInFullscreen() const;
-        void switchFullscreen();
-
-        void useAspect();
-        void unuseAspect();
-        void saveMinSize(const QSize& size);
-
-    protected:
-        bool nativeEvent(const QByteArray& _eventType, void* _message, long* _result) override;
-        virtual quintptr getContentWinId() = 0;
-        virtual void escPressed() { }
-
-        private Q_SLOTS:
-        void onVoipFrameSizeChanged(const voip_manager::FrameSize& _fs);
-        //void onVoipCallCreated(const voip_manager::ContactEx& _contactEx);
-
-    private:
-        float aspectRatio_;
-        bool useAspect_;
-        QSize originMinSize_;
-
-        std::unique_ptr<UIEffects> selfResizeEffect_;
-        // Commented because we always constrain size of video window.
-        //bool firstTimeUseAspectRatio_;
-
-        void applyFrameAspectRatio(float _wasAr);
-        void keyReleaseEvent(QKeyEvent*) override;
-#ifdef _WIN32
-        bool onWMSizing(RECT& _rc, unsigned _wParam);
-#endif
-        void fitMinimalSizeToAspect();
-    };*/
-
+    class SharingScreenFrame;
     // Inherit from this class to create panel in voip window.
     class BaseVideoPanel : public QWidget
     {
+        Q_OBJECT
     public:
         BaseVideoPanel(QWidget* parent, Qt::WindowFlags f = Qt::Window | Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint);
 
@@ -129,18 +91,21 @@ namespace Ui
         bool isGrabMouse();
         virtual bool isFadedIn();
 
+        void keyPressEvent(QKeyEvent* _event) override;
+        void keyReleaseEvent(QKeyEvent* _event) override;
+
     protected:
 
         bool grabMouse;
 
     private:
-
         std::unique_ptr<UIEffects> effect_;
     };
 
     // Inherit from this class to create panel on top in voip window.
     class BaseTopVideoPanel : public BaseVideoPanel
     {
+        Q_OBJECT
     public:
 #if defined(__linux__)
         BaseTopVideoPanel(QWidget* parent, Qt::WindowFlags f = Qt::Widget);
@@ -158,6 +123,7 @@ namespace Ui
     // Inherit from this class to create panel on bottom in voip window.
     class BaseBottomVideoPanel : public BaseVideoPanel
     {
+        Q_OBJECT
     public:
         BaseBottomVideoPanel(QWidget* parent,
 #ifndef __linux__
@@ -198,6 +164,7 @@ namespace Ui
     // mouse event on transparent panels.
     class PanelBackground : public QWidget
     {
+        Q_OBJECT
     public:
         PanelBackground(QWidget* parent);
 
@@ -242,15 +209,13 @@ namespace Ui
     class MoveablePanel : public BaseTopVideoPanel
     {
         Q_OBJECT
-            Q_SIGNALS :
-        void onkeyEscPressed();
-
-        private Q_SLOTS:
-
     public:
         MoveablePanel(QWidget* _parent);
         MoveablePanel(QWidget* _parent, Qt::WindowFlags f);
         virtual ~MoveablePanel();
+
+    Q_SIGNALS:
+        void onkeyEscPressed();
 
     private:
         QWidget* parent_;

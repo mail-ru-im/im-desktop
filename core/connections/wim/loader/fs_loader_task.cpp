@@ -11,7 +11,7 @@ fs_loader_task::fs_loader_task(std::string _id, const wim_packet_params& _params
         wim_params_(std::make_unique<wim_packet_params>(_params)),
         error_(0)
 {
-    assert(!id_.empty());
+    im_assert(!id_.empty());
 }
 
 
@@ -26,7 +26,7 @@ const wim_packet_params& fs_loader_task::get_wim_params() const
 
 const std::string& fs_loader_task::get_id() const
 {
-    assert(!id_.empty());
+    im_assert(!id_.empty());
 
     return id_;
 }
@@ -43,5 +43,5 @@ int32_t fs_loader_task::get_last_error() const
 
 void fs_loader_task::resume(loader& _loader)
 {
-    assert(false);
+    im_assert(false);
 }

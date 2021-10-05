@@ -12,13 +12,6 @@ using namespace tools;
 
 static uint8_t *coding=(uint8_t*)"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";                   //52...63
 
-enum
-{
-    UNABLE_TO_OPEN_INPUT_FILE,
-    UNABLE_TO_OPEN_OUTPUT_FILE,
-    UNABLE_TO_CREATE_OUTPUTBUFFER
-};
-
 uint8_t base64::lobyte(uint16_t w)
 {
     return ((uint8_t)(((uint32_t)(w)) & 0xff));
@@ -146,62 +139,6 @@ int32_t base64::base64_encode(uint8_t* source, int32_t length, uint8_t* dst)
         }
     }
     return (size);
-}
-
-
-std::string base64::hmac_base64(std::vector<uint8_t>& data, std::vector<uint8_t>& secret)
-{
-    const unsigned SHA_BLOCKSIZE = 64;
-
-    uint8_t* text = &data[0];
-    uint32_t textlen = (uint32_t)data.size();
-    uint8_t* key = &secret[0];
-    uint32_t keylen = (uint32_t)secret.size();
-
-#define MIR_SHA256_HASH_SIZE 32
-
-    unsigned char mdkey[MIR_SHA256_HASH_SIZE];
-    unsigned char k_ipad[SHA_BLOCKSIZE], k_opad[SHA_BLOCKSIZE];
-
-    SHA256_CTX ctx;
-
-    uint8_t res[MIR_SHA256_HASH_SIZE];
-
-    if ( keylen > SHA_BLOCKSIZE )
-    {
-        SHA256_Init( &ctx );
-        SHA256_Update( &ctx, key, keylen );
-        SHA256_Final( mdkey, &ctx );
-
-        keylen = 32;
-        key = mdkey;
-    }
-
-    memcpy( k_ipad, key, keylen );
-    memcpy( k_opad, key, keylen );
-    memset( k_ipad+keylen, 0x36, SHA_BLOCKSIZE - keylen );
-    memset( k_opad+keylen, 0x5c, SHA_BLOCKSIZE - keylen );
-
-    for ( uint32_t i = 0; i < keylen; i++ )
-    {
-        k_ipad[i] ^= 0x36;
-        k_opad[i] ^= 0x5c;
-    }
-
-    SHA256_Init( &ctx );
-    SHA256_Update( &ctx, k_ipad, SHA_BLOCKSIZE );
-    SHA256_Update( &ctx, text, (int32_t) textlen );
-    SHA256_Final( res, &ctx );
-
-    SHA256_Init( &ctx );
-    SHA256_Update( &ctx, k_opad,SHA_BLOCKSIZE );
-    SHA256_Update( &ctx, res, (int32_t)MIR_SHA256_HASH_SIZE );
-    SHA256_Final( res, &ctx );
-
-    std::vector<uint8_t> temp_buffer(MIR_SHA256_HASH_SIZE*2);
-    int32_t encoded = core::tools::base64::base64_encode((uint8_t*) res, MIR_SHA256_HASH_SIZE, &temp_buffer[0]);
-
-    return std::string((char*) &temp_buffer[0], encoded);
 }
 
 using namespace boost::archive::iterators;

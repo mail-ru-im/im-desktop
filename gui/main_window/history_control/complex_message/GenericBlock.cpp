@@ -4,9 +4,7 @@
 
 #include "utils/InterConnector.h"
 
-#include "main_window/ContactDialog.h"
-#include "main_window/history_control/HistoryControlPage.h"
-#include "main_window/history_control/HistoryControl.h"
+#include "main_window/MainWindow.h"
 
 #include "previewer/toast.h"
 
@@ -27,15 +25,16 @@ UI_COMPLEX_MESSAGE_NS_BEGIN
 namespace
 {
     constexpr std::chrono::milliseconds resourcesUnloadDelay = std::chrono::seconds(build::is_debug() ? 1 : 5);
+
+    constexpr auto tooltipMode = Tooltip::TooltipMode::Multiline;
 }
 
 GenericBlock::GenericBlock(
     ComplexMessageItem* _parent,
-    const Data::FormattedString& _sourceText,
+    const Data::FString& _sourceText,
     const MenuFlags _menuFlags,
     const bool _isResourcesUnloadingEnabled)
     : QWidget(_parent)
-    , QuoteAnimation_(_parent)
     , Initialized_(false)
     , IsResourcesUnloadingEnabled_(_isResourcesUnloadingEnabled)
     , MenuFlags_(_menuFlags)
@@ -51,23 +50,30 @@ GenericBlock::GenericBlock(
     , tooltipActivated_(false)
 {
     im_assert(Parent_);
-
-    QuoteAnimation_.setAimId(getChatAimid());
+    QuoteAnimation_ = new QuoteColorAnimation(this);
+    QuoteAnimation_->setAimId(getChatAimid());
     connect(this, &GenericBlock::setQuoteAnimation, _parent, &ComplexMessageItem::setQuoteAnimation);
 }
 
 GenericBlock::GenericBlock()
-    : QuoteAnimation_(this)
+    : QuoteAnimation_(new QuoteColorAnimation(this))
 {
     im_assert(!"program isn't supposed to reach this point");
 }
 
 GenericBlock::~GenericBlock() = default;
 
+void GenericBlock::setParentMessage(ComplexMessageItem* _parent)
+{
+    im_assert(_parent != nullptr);
+    if (_parent == nullptr)
+        return;
+    Parent_ = _parent;
+    QWidget::setParent(_parent);
+}
+
 QSize GenericBlock::blockSizeForMaxWidth(const int32_t maxWidth)
 {
-    im_assert(maxWidth > 0);
-
     if (const auto layout = getBlockLayout())
         return layout->blockSizeForMaxWidth(maxWidth);
 
@@ -82,7 +88,7 @@ void GenericBlock::deleteLater()
 
 QString GenericBlock::formatRecentsText() const
 {
-    return Data::stubFromFormattedString(getSourceText());
+    return getSourceText().string();
 }
 
 Ui::MediaType GenericBlock::getMediaType() const
@@ -111,7 +117,7 @@ QString GenericBlock::getSenderFriendly() const
     return getParentComplexMessage()->getSenderFriendly();
 }
 
-void GenericBlock::setSourceText(const Data::FormattedString& _text)
+void GenericBlock::setSourceText(const Data::FString& _text)
 {
     SourceText_ = _text;
 }
@@ -121,20 +127,20 @@ const QString& GenericBlock::getChatAimid() const
     return getParentComplexMessage()->getChatAimid();
 }
 
-Data::FormattedString GenericBlock::getSourceText() const
+Data::FString GenericBlock::getSourceText() const
 {
     im_assert(!SourceText_.isEmpty());
     return SourceText_;
 }
 
-Data::FormattedString GenericBlock::getTextInstantEdit() const
+Data::FString GenericBlock::getTextInstantEdit() const
 {
     return getSourceText();
 }
 
 QString GenericBlock::getPlaceholderText() const
 {
-    return Data::stubFromFormattedString(getSourceText());
+    return getSourceText().string();
 }
 
 const QString& GenericBlock::getLink() const
@@ -145,7 +151,7 @@ const QString& GenericBlock::getLink() const
 
 QString GenericBlock::getTextForCopy() const
 {
-    return Data::stubFromFormattedString(getSourceText());
+    return getSourceText().string();
 }
 
 bool GenericBlock::isBubbleRequired() const
@@ -202,7 +208,7 @@ bool GenericBlock::onMenuItemTriggered(const QVariantMap &params)
         if (const auto link = params[qsl("arg")].toString(); !link.isEmpty())
         {
             QApplication::clipboard()->setText(link);
-            showToast(QT_TRANSLATE_NOOP("generic_block", "Copied to clipboard"));
+            Utils::showCopiedToast();
         }
         else
         {
@@ -216,7 +222,7 @@ bool GenericBlock::onMenuItemTriggered(const QVariantMap &params)
         if (const auto email = params[qsl("arg")].toString(); !email.isEmpty())
         {
             QApplication::clipboard()->setText(email);
-            showToast(email % QChar::LineFeed % QT_TRANSLATE_NOOP("toast", "Email copied"));
+            showToast(QT_TRANSLATE_NOOP("toast", "Email copied"));
         }
 
         return true;
@@ -364,7 +370,7 @@ void GenericBlock::selectByPos(const QPoint &from, const QPoint &to, bool topToB
     const auto isSelected = (overlapRatePercents > 50);
     if (isSelected)
     {
-        Utils::InterConnector::instance().setMultiselect(true);
+        Utils::InterConnector::instance().setMultiselect(true, getChatAimid());
         Parent_->setSelectionCenter(topToBottom ? (Parent_->mapFromGlobal(to).y() - 2) : (Parent_->mapFromGlobal(from).y() + 2));
     }
     setSelected(isSelected);
@@ -525,7 +531,7 @@ void GenericBlock::paintEvent(QPaintEvent* _e)
     p.setPen(Qt::NoPen);
     p.setBrush(Qt::NoBrush);
 
-    drawBlock(p, _e->rect(), QuoteAnimation_.quoteColor());
+    drawBlock(p, _e->rect(), QuoteAnimation_->quoteColor());
 
     if (MessageStyle::isBlocksGridEnabled())
     {
@@ -539,7 +545,7 @@ void GenericBlock::paintEvent(QPaintEvent* _e)
 void GenericBlock::mouseMoveEvent(QMouseEvent* _e)
 {
     const auto isLeftButtonPressed = ((_e->buttons() & Qt::LeftButton) != 0);
-    const auto beginDrag = (isLeftButtonPressed && isDraggable() && !Utils::InterConnector::instance().isMultiselect() && !Parent_->isSelected());
+    const auto beginDrag = (isLeftButtonPressed && isDraggable() && !Utils::InterConnector::instance().isMultiselect(getChatAimid()) && !Parent_->isSelected());
     if (beginDrag)
     {
         auto pos = _e->pos();
@@ -617,11 +623,6 @@ void GenericBlock::stopResourcesUnloadTimer()
     ResourcesUnloadingTimer_->stop();
 }
 
-QPoint GenericBlock::getToastPos(const QSize& _dialogSize)
-{
-    return QPoint(_dialogSize.width() / 2, _dialogSize.height() - Utils::scale_value(36));
-}
-
 void GenericBlock::onResourceUnloadingTimeout()
 {
     onUnloadResources();
@@ -629,7 +630,7 @@ void GenericBlock::onResourceUnloadingTimeout()
 
 void GenericBlock::setQuoteSelection()
 {
-    QuoteAnimation_.startQuoteAnimation();
+    QuoteAnimation_->startQuoteAnimation();
 }
 
 void GenericBlock::hideBlock()
@@ -684,11 +685,7 @@ void GenericBlock::onBlockSizeChanged(const QSize& _size)
 
 void GenericBlock::showFileSavedToast(const QString& _path)
 {
-    if (auto dialog = Utils::InterConnector::instance().getContactDialog())
-    {
-        if (auto page = dialog->getHistoryPage(dialog->currentAimId()))
-            ToastManager::instance()->showToast(new SavedPathToast(_path, page), getToastPos(page->size()));
-    }
+    Utils::showToastOverContactDialog(new SavedPathToast(_path, Utils::InterConnector::instance().getMainWindow()));
 }
 
 void GenericBlock::showErrorToast()
@@ -696,18 +693,9 @@ void GenericBlock::showErrorToast()
     showToast(QT_TRANSLATE_NOOP("previewer", "Save error"));
 }
 
-void GenericBlock::showFileCopiedToast()
-{
-    showToast(QT_TRANSLATE_NOOP("previewer", "Copied to clipboard"));
-}
-
 void GenericBlock::showToast(const QString& _text)
 {
-    if (auto dialog = Utils::InterConnector::instance().getContactDialog())
-    {
-        if (auto page = dialog->getHistoryPage(dialog->currentAimId()))
-            Ui::ToastManager::instance()->showToast(new Ui::Toast(_text, page), getToastPos(page->size()));
-    }
+    Utils::showTextToastOverContactDialog(_text);
 }
 
 bool GenericBlock::isEdited() const
@@ -722,6 +710,9 @@ qint64 GenericBlock::getGalleryId() const
 
 bool GenericBlock::isTooltipActivated() const
 {
+    auto tooltip = (tooltipMode == Tooltip::TooltipMode::Multiline) ? Tooltip::getDefaultMultilineTooltip() : Tooltip::getDefaultTooltip();
+    if (tooltip)
+        return tooltipActivated_ && tooltip->isTooltipVisible();
     return tooltipActivated_;
 }
 
@@ -742,7 +733,7 @@ void GenericBlock::showTooltip(QString _text, QRect _rect, Tooltip::ArrowDirecti
 
     connect(tooltipTimer_, &QTimer::timeout, this, [text = std::move(_text), _rect, _arrowDir, _arrowPos]()
     {
-        Tooltip::show(text, _rect, {}, _arrowDir, _arrowPos, {}, Tooltip::TooltipMode::Multiline);
+        Tooltip::show(text, _rect, {}, _arrowDir, _arrowPos, {}, tooltipMode);
     });
     tooltipTimer_->start();
 

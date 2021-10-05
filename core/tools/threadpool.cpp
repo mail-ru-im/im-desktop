@@ -152,7 +152,7 @@ bool threadpool::run_task_impl()
     }
     else
     {
-        assert(!"threadpool: task is empty");
+        im_assert(!"threadpool: task is empty");
     }
     return true;
 }
@@ -181,7 +181,7 @@ threadpool::~threadpool()
 {
     if (creator_thread_id_ != std::this_thread::get_id())
     {
-        assert(!"invalid destroy thread");
+        im_assert(!"invalid destroy thread");
     }
 
     stop_ = true;

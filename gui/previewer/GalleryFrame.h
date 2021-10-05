@@ -83,6 +83,7 @@ namespace Previewer
         void setZoomOutEnabled(bool _enable);
         void setSaveEnabled(bool _enable);
         void setMenuEnabled(bool _enable);
+        void setGotoEnabled(bool _enable);
 
         static QString actionIconPath(Action action);
         static QString actionText(Action action);

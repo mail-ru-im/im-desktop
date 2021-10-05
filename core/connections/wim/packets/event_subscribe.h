@@ -11,7 +11,7 @@ namespace core
     {
         class event_subscribe : public robusto_packet
         {
-            subscriptions::subscr_ptr_v subscriptions_;
+            std::unordered_map<subscriptions::type, subscriptions::subscr_ptr_v> subscriptions_;
 
             int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
 

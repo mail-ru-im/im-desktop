@@ -31,13 +31,14 @@ namespace Styling
                 { StyleVariable::BASE_TERTIARY,                    u"base_tertiary" },
                 { StyleVariable::BASE_ULTRABRIGHT,                 u"base_ultrabright" },
                 { StyleVariable::BASE_ULTRABRIGHT_HOVER,           u"base_ultrabright_hover" },
+                { StyleVariable::CHAT_ENVIRONMENT,                 u"chat_environment" },
                 { StyleVariable::CHAT_PRIMARY,                     u"chat_primary" },
                 { StyleVariable::CHAT_PRIMARY_HOVER,               u"chat_primary_hover" },
                 { StyleVariable::CHAT_PRIMARY_ACTIVE,              u"chat_primary_active" },
                 { StyleVariable::CHAT_PRIMARY_MEDIA,               u"chat_primary_media" },
                 { StyleVariable::CHAT_SECONDARY,                   u"chat_secondary" },
                 { StyleVariable::CHAT_SECONDARY_MEDIA,             u"chat_secondary_media" },
-                { StyleVariable::CHAT_ENVIRONMENT,                 u"chat_environment" },
+                { StyleVariable::CHAT_TERTIARY,                    u"chat_tertiary" },
                 { StyleVariable::GHOST_SECONDARY,                  u"ghost_secondary" },
                 { StyleVariable::GHOST_SECONDARY_INVERSE,          u"ghost_secondary_inverse" },
                 { StyleVariable::GHOST_SECONDARY_INVERSE_HOVER,    u"ghost_secondary_inverse_hover" },
@@ -103,6 +104,22 @@ namespace Styling
                 { StyleVariable::CHATEVENT_BACKGROUND,             u"chatevent_background" },
                 { StyleVariable::NEWPLATE_BACKGROUND,              u"newplate_background" },
                 { StyleVariable::NEWPLATE_TEXT,                    u"newplate_text" },
+
+                { StyleVariable::TASK_CHEAPS_CREATE,               u"task_cheaps_create"},
+                { StyleVariable::TASK_CHEAPS_CREATE_HOVER,         u"task_cheaps_create_hover"},
+                { StyleVariable::TASK_CHEAPS_CREATE_ACTIVE,        u"task_cheaps_create_active"},
+                { StyleVariable::TASK_CHEAPS_IN_PROGRESS,          u"task_cheaps_in_progress"},
+                { StyleVariable::TASK_CHEAPS_IN_PROGRESS_HOVER,    u"task_cheaps_in_progress_hover"},
+                { StyleVariable::TASK_CHEAPS_IN_PROGRESS_ACTIVE,   u"task_cheaps_in_progress_active"},
+                { StyleVariable::TASK_CHEAPS_DENIED,               u"task_cheaps_denied"},
+                { StyleVariable::TASK_CHEAPS_DENIED_HOVER,         u"task_cheaps_denied_hover"},
+                { StyleVariable::TASK_CHEAPS_DENIED_ACTIVE,        u"task_cheaps_denied_active"},
+                { StyleVariable::TASK_CHEAPS_READY,                u"task_cheaps_ready"},
+                { StyleVariable::TASK_CHEAPS_READY_HOVER,          u"task_cheaps_ready_hover"},
+                { StyleVariable::TASK_CHEAPS_READY_ACTIVE,         u"task_cheaps_ready_active"},
+                { StyleVariable::TASK_CHEAPS_CLOSED,               u"task_cheaps_closed"},
+                { StyleVariable::TASK_CHEAPS_CLOSED_HOVER,         u"task_cheaps_closed_hover"},
+                { StyleVariable::TASK_CHEAPS_CLOSED_ACTIVE,        u"task_cheaps_closed_active"}
             };
 
             if constexpr (build::is_debug())
@@ -112,22 +129,14 @@ namespace Styling
                 for (const auto&[e, s] : props)
                 {
                     if (!setEnum.contains((int)e))
-                    {
                         setEnum.insert((int)e);
-                    }
                     else
-                    {
                         im_assert(!"repeating enum mappings in properties!");
-                    }
 
                     if (!setPath.contains(s))
-                    {
                         setPath.insert(s);
-                    }
                     else
-                    {
                         im_assert(!"repeating path mappings in properties!");
-                    }
                 }
             }
 

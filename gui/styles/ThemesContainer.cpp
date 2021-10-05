@@ -5,6 +5,7 @@
 
 #include "../fonts.h"
 
+#include "main_window/contact_list/ServiceContacts.h"
 #include "../utils/gui_coll_helper.h"
 #include "../utils/InterConnector.h"
 #include "../utils/JsonUtils.h"
@@ -277,9 +278,9 @@ namespace Styling
 
         if (!currentTheme_ && !availableThemes_.empty())
         {
-            auto trySetDarkTheme = [this]()
+            auto trySetDarkTheme = [this, globalTheme]()
             {
-                if (isAppInDarkMode())
+                if (globalTheme.isEmpty() && isAppInDarkMode())
                 {
                     const auto it = std::find_if(availableThemes_.begin(), availableThemes_.end(), [](const auto& t) { return t->getId() == darkThemeId(); });
                     if (it != availableThemes_.end())
@@ -664,6 +665,9 @@ namespace Styling
     {
         if (_aimId == tryOnContact_ && tryOnWallpaper_)
             return tryOnWallpaper_;
+
+        if (ServiceContacts::isServiceContact(_aimId))
+            return getThemeDefaultWallpaper();
 
         const auto it = contactWallpapers_.find(_aimId);
         if (it != contactWallpapers_.cend())

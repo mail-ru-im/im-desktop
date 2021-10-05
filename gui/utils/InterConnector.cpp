@@ -11,6 +11,11 @@
 
 #include "InterConnector.h"
 
+#include "../types/authorization.h"
+#include "../core_dispatcher.h"
+
+using HistoryPagePtr = QPointer<Ui::HistoryControlPage>;
+
 namespace Utils
 {
     InterConnector& InterConnector::instance()
@@ -38,6 +43,12 @@ namespace Utils
         im_assert(disabledWidgets_.empty());
     }
 
+    void InterConnector::clearInternalCaches()
+    {
+        multiselectStates_.clear();
+        historyPages_.clear();
+    }
+
     void InterConnector::setMainWindow(Ui::MainWindow* window)
     {
         MainWindow_ = window;
@@ -56,12 +67,54 @@ namespace Utils
         return MainWindow_;
     }
 
-    Ui::HistoryControlPage* InterConnector::getHistoryPage(const QString& aimId) const
+    Ui::HistoryControlPage* InterConnector::getHistoryPage(const QString& _aimId) const
     {
-        if (MainWindow_)
-            return MainWindow_->getHistoryPage(aimId);
+        return qobject_cast<Ui::HistoryControlPage*>(getPage(_aimId));
+    }
 
+    Ui::PageBase* InterConnector::getPage(const QString& _aimId) const
+    {
+        if (!_aimId.isEmpty())
+        {
+            if (auto it = historyPages_.find(_aimId); it != historyPages_.end())
+                return it->second;
+        }
         return nullptr;
+    }
+
+    void InterConnector::addPage(Ui::PageBase* _page)
+    {
+        if (_page)
+            historyPages_[_page->aimId()] = _page;
+    }
+
+    void InterConnector::removePage(Ui::PageBase* _page)
+    {
+        if (_page)
+            historyPages_.erase(_page->aimId());
+    }
+
+    std::vector<HistoryPagePtr> InterConnector::getVisibleHistoryPages() const
+    {
+        std::vector<HistoryPagePtr> res;
+        res.reserve(historyPages_.size());
+        for (const auto& [_, page] : historyPages_)
+        {
+            auto historyPage = qobject_cast<Ui::HistoryControlPage*>(page);
+            if (historyPage && historyPage->isPageOpen())
+                res.push_back(historyPage);
+        }
+
+        return res;
+    }
+
+    bool InterConnector::isHistoryPageVisible(const QString& _aimId) const
+    {
+        if (_aimId.isEmpty())
+            return false;
+
+        const auto pages = getVisibleHistoryPages();
+        return std::any_of(pages.begin(), pages.end(), [&_aimId](auto p) { return p->aimId() == _aimId; });
     }
 
     Ui::ContactDialog* InterConnector::getContactDialog() const
@@ -99,45 +152,53 @@ namespace Utils
 
     void InterConnector::showSidebar(const QString& aimId)
     {
-        if (MainWindow_)
-            MainWindow_->showSidebar(aimId);
+        if (auto page = getMessengerPage())
+            page->showSidebar(aimId);
     }
 
     void InterConnector::showSidebarWithParams(const QString &aimId, Ui::SidebarParams _params)
     {
-        if (MainWindow_)
-            MainWindow_->showSidebarWithParams(aimId, std::move(_params));
+        if (auto page = getMessengerPage())
+            page->showSidebarWithParams(aimId, std::move(_params));
     }
 
     void InterConnector::showMembersInSidebar(const QString& aimId)
     {
-        if (MainWindow_)
-            MainWindow_->showMembersInSidebar(aimId);
+        if (auto page = getMessengerPage())
+            page->showMembersInSidebar(aimId);
     }
 
     void InterConnector::setSidebarVisible(bool _visible)
     {
-        setSidebarVisible(SidebarVisibilityParams(_visible, false));
-    }
-
-    void InterConnector::setSidebarVisible(const SidebarVisibilityParams &_params)
-    {
-        if (MainWindow_)
-            MainWindow_->setSidebarVisible(_params);
+        Q_EMIT sidebarVisibilityChanged(_visible);
     }
 
     bool InterConnector::isSidebarVisible() const
     {
-        if (MainWindow_)
-            return MainWindow_->isSidebarVisible();
+        if (auto page = getMessengerPage())
+            return page->isSidebarVisible();
 
         return false;
     }
 
     void InterConnector::restoreSidebar()
     {
-        if (MainWindow_)
-            MainWindow_->restoreSidebar();
+        if (auto page = getMessengerPage())
+            page->restoreSidebar();
+    }
+
+    QString InterConnector::getSidebarAimid() const
+    {
+        if (auto page = getMessengerPage())
+            return page->getSidebarAimid();
+        return {};
+    }
+
+    QString InterConnector::getSidebarSelectedText() const
+    {
+        if (auto page = getMessengerPage())
+            return page->getSidebarSelectedText();
+        return {};
     }
 
     void InterConnector::setDragOverlay(bool enable)
@@ -148,18 +209,6 @@ namespace Utils
     bool InterConnector::isDragOverlay() const
     {
         return dragOverlay_;
-    }
-
-    void InterConnector::setFocusOnInput()
-    {
-        if (MainWindow_)
-            MainWindow_->setFocusOnInput();
-    }
-
-    void InterConnector::onSendMessage(const QString& contact)
-    {
-        if (MainWindow_)
-            MainWindow_->onSendMessage(contact);
     }
 
     void InterConnector::registerKeyCombinationPress(QKeyEvent* event, qint64 time)
@@ -195,11 +244,15 @@ namespace Utils
         if (current.isEmpty())
             return;
 
-        auto prevState = false;
-        if (auto iter = multiselectStates_.find(current); iter != multiselectStates_.end())
-            prevState = iter->second;
+        if (Logic::getContactListModel()->isThread(current))
+            return;
 
-        multiselectStates_[current] = _enable;
+        auto prevState = isMultiselect(current);
+
+        if (_enable)
+            multiselectStates_.insert(current);
+        else
+            multiselectStates_.erase(current);
 
         if (!_enable)
         {
@@ -207,13 +260,12 @@ namespace Utils
             currentMessage_ = -1;
         }
 
-
         if (prevState != _enable)
         {
-            for (const auto& w : disabledWidgets_)
+            for (const auto& [wdg, aimid] : disabledWidgets_)
             {
-                if (w.second == current)
-                    w.first->setAttribute(Qt::WA_TransparentForMouseEvents, _enable);
+                if (wdg && aimid == current)
+                    wdg->setAttribute(Qt::WA_TransparentForMouseEvents, _enable);
             }
 
             Q_EMIT multiselectChanged();
@@ -231,11 +283,12 @@ namespace Utils
 
     bool InterConnector::isMultiselect(const QString& _contact) const
     {
-        const auto current = _contact.isEmpty() ? Logic::getContactListModel()->selectedContact() : _contact;
-        if (auto iter = multiselectStates_.find(current); iter != multiselectStates_.end())
-            return iter->second;
+        return !_contact.isEmpty() && multiselectStates_.find(_contact) != multiselectStates_.end();
+    }
 
-        return false;
+    bool InterConnector::isMultiselect() const
+    {
+        return !multiselectStates_.empty();
     }
 
     void InterConnector::multiselectNextElementTab()
@@ -306,18 +359,20 @@ namespace Utils
 
     void InterConnector::multiselectEnter()
     {
+        const auto& contact = Logic::getContactListModel()->selectedContact();
+
         if (currentElement_ == MultiselectCurrentElement::Cancel)
-            setMultiselect(false);
+            setMultiselect(false, contact);
         else if (currentElement_ == MultiselectCurrentElement::Delete)
-            Q_EMIT multiselectDelete();
+            Q_EMIT multiselectDelete(contact);
         else if (currentElement_ == MultiselectCurrentElement::Favorites)
-            Q_EMIT multiselectFavorites();
+            Q_EMIT multiselectFavorites(contact);
         else if (currentElement_ == MultiselectCurrentElement::Forward)
-            Q_EMIT multiselectForward(Logic::getContactListModel()->selectedContact());
+            Q_EMIT multiselectForward(contact);
         else if (currentElement_ == MultiselectCurrentElement::Copy)
-            Q_EMIT multiselectCopy();
+            Q_EMIT multiselectCopy(contact);
         else if (currentElement_ == MultiselectCurrentElement::Reply)
-            Q_EMIT multiselectReply();
+            Q_EMIT multiselectReply(contact);
     }
 
     qint64 InterConnector::currentMultiselectMessage() const
@@ -327,8 +382,11 @@ namespace Utils
 
     void InterConnector::setCurrentMultiselectMessage(qint64 _id)
     {
-        currentMessage_ = _id;
-        Q_EMIT multiSelectCurrentMessageChanged();
+        if (currentMessage_ != _id)
+        {
+            currentMessage_ = _id;
+            Q_EMIT multiSelectCurrentMessageChanged();
+        }
     }
 
     MultiselectCurrentElement InterConnector::currentMultiselectElement() const
@@ -346,13 +404,15 @@ namespace Utils
 
     void InterConnector::disableInMultiselect(QWidget* _w, const QString& _aimid)
     {
-        if (!_w)
+        im_assert(_w);
+        im_assert(!_aimid.isEmpty());
+
+        if (!_w || _aimid.isEmpty())
             return;
 
-        auto aimid = _aimid.isEmpty() ? Logic::getContactListModel()->selectedContact() : _aimid;
-        disabledWidgets_[_w] = aimid;
-
-        _w->setAttribute(Qt::WA_TransparentForMouseEvents, isMultiselect(aimid));
+        disabledWidgets_[_w] = _aimid;
+        _w->setAttribute(Qt::WA_TransparentForMouseEvents, isMultiselect(_aimid));
+        connect(_w, &QWidget::destroyed, this, [this, _w]() { detachFromMultiselect(_w); });
     }
 
     void InterConnector::detachFromMultiselect(QWidget* _w)
@@ -388,16 +448,101 @@ namespace Utils
 #endif //__APPLE
     }
 
+    bool InterConnector::isRecordingPtt(const QString& _aimId) const
+    {
+        if (auto page = getHistoryPage(_aimId))
+            return page->isRecordingPtt();
+
+        return false;
+    }
+
     bool InterConnector::isRecordingPtt() const
     {
-        if (auto contactDialog = getContactDialog())
-            return contactDialog->isRecordingPtt();
-        return false;
+        const auto pages = getVisibleHistoryPages();
+        return std::any_of(pages.begin(), pages.end(), [](auto p) { return p->isRecordingPtt(); });
     }
 
     void InterConnector::showChatMembersFailuresPopup(ChatMembersOperation _operation, QString _chatAimId, std::map<core::chat_member_failure, std::vector<QString>> _failures)
     {
         if (auto mp = getMessengerPage())
             mp->showChatMembersFailuresPopup(_operation, std::move(_chatAimId), std::move(_failures));
+    }
+
+    void InterConnector::connectTo(Ui::core_dispatcher* _dispatcher)
+    {
+        connect(_dispatcher, &Ui::core_dispatcher::authParamsChanged, this, &InterConnector::onAuthParamsChanged, Qt::UniqueConnection);
+    }
+
+    std::pair<QUrl, bool> InterConnector::signUrl(const QString& _miniappId, QUrl _url) const
+    {
+        bool success = false;
+        if (isMiniAppAuthParamsValid(_miniappId) && _url.isValid())
+        {
+            auto query = QUrlQuery(_url.query());
+            query.addQueryItem(qsl("aimsid"), authParams_->getMiniAppAimsid(_miniappId));
+            _url.setQuery(query);
+            success = true;
+        }
+
+        return { _url, success };
+    }
+
+    bool InterConnector::isAuthParamsValid() const
+    {
+        return authParams_ && !authParams_->isEmpty();
+    }
+
+    bool InterConnector::isMiniAppAuthParamsValid(const QString& _miniappId) const
+    {
+        return authParams_ && !authParams_->getMiniAppAimsid(_miniappId).isEmpty();
+    }
+
+    void InterConnector::onAuthParamsChanged(const Data::AuthParams& _params)
+    {
+        const auto prevParams = std::exchange(authParams_, std::make_unique<Data::AuthParams>(_params));
+        const auto aimsidChanged = !prevParams || !prevParams->isTheSameMiniApps(*authParams_) || authParams_->isMiniAppsEmpty();
+
+        Q_EMIT authParamsChanged(aimsidChanged);
+    }
+
+    void InterConnector::openDialog(const QString& _aimId, qint64 _id, bool _select, std::function<void(Ui::PageBase*)> _getPageCallback, bool _ignoreScroll)
+    {
+        getMainWindow()->showMessengerPage();
+
+        if (_aimId.isEmpty())
+        {
+            Logic::getContactListModel()->setCurrent({});
+            return;
+        }
+
+        const auto pages = getVisibleHistoryPages();
+        const auto it = std::find_if(pages.begin(), pages.end(), [&_aimId](auto p) { return p->aimId() == _aimId; });
+        if (it != pages.end())
+        {
+            (*it)->scrollToMessage(_id);
+            if (_getPageCallback)
+                _getPageCallback(*it);
+
+            Q_EMIT Utils::InterConnector::instance().setFocusOnInput(_aimId);
+        }
+        else if (!Logic::getContactListModel()->isThread(_aimId))
+        {
+            Logic::getContactListModel()->setCurrent(_aimId, _id, _select, std::move(_getPageCallback), _ignoreScroll);
+        }
+        else
+        {
+            im_assert(false);
+        }
+    }
+
+    void InterConnector::closeDialog()
+    {
+        openDialog({});
+    }
+
+    void InterConnector::closeAndHighlightDialog()
+    {
+        if (auto mp = getMessengerPage())
+            mp->closeAndHighlightDialog();
     }
 }

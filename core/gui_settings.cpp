@@ -4,7 +4,7 @@
 #include "core.h"
 
 #include "tools/system.h"
-#include "tools/json_helper.h"
+#include "../common.shared/json_helper.h"
 #include "../../../corelib/collection_helper.h"
 #include "../common.shared/string_utils.h"
 
@@ -108,6 +108,22 @@ void core::gui_settings::clear_all_status_duration()
     }
 }
 
+void core::gui_settings::clear_account_settings(std::string_view _aimid)
+{
+    for (auto it = values_.cbegin(); it != values_.cend();)
+    {
+        if (su::starts_with(it->first, _aimid))
+        {
+            it = values_.erase(it);
+            changed_ = true;
+        }
+        else
+        {
+            ++it;
+        }
+    }
+}
+
 void gui_settings::set_value(std::string_view _name, tools::binary_stream&& _data)
 {
     values_[std::string(_name)] = std::move(_data);
@@ -169,7 +185,7 @@ bool gui_settings::unserialize(tools::binary_stream& _bs)
 
         if (!tlv_name || !tlv_value_data)
         {
-            assert(false);
+            im_assert(false);
             return false;
         }
 
@@ -311,7 +327,7 @@ void gui_settings::clear_values()
     changed_ = true;
 }
 
-void gui_settings::clear_personal_values()
+void gui_settings::clear_personal_values(const std::string_view _aimid)
 {
     clear_value(login_page_last_entered_phone);
     clear_value(login_page_last_entered_uin);
@@ -320,6 +336,8 @@ void gui_settings::clear_personal_values()
     clear_value(statuses_user_statuses);
     clear_value(show_microphone_request);
     clear_all_status_duration();
+    if (!_aimid.empty())
+        clear_account_settings(_aimid);
 
     save_if_needed();
 }

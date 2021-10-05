@@ -22,6 +22,7 @@ public:
         updated,
         clear,
         set_reactions,
+        add_thread,
 
         max
     };

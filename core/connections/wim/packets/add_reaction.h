@@ -15,6 +15,7 @@ public:
     add_reaction(wim_packet_params _params, int64_t _msg_id, const std::string& _chat_id, const std::string& _reaction, const std::vector<std::string>& _reactions);
 
     const archive::reactions_data& get_result() const;
+    bool is_reactions_for_message_disabled() const;
 
     virtual std::string_view get_method() const override;
 

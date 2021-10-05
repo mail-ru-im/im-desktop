@@ -5,6 +5,7 @@
 namespace Ui
 {
     class service_message_item;
+    class ClickableTextWidget;
 
     namespace TextRendering
     {
@@ -14,6 +15,9 @@ namespace Ui
     class ServiceMessageItem : public HistoryControlPageItem
     {
         Q_OBJECT
+
+    Q_SIGNALS:
+        void clicked();
 
     public:
         ServiceMessageItem(QWidget* _parent, const bool _overlay = false);
@@ -32,6 +36,8 @@ namespace Ui
         bool isDate() const;
         bool isOverlay() const;
 
+        void setThreadReplies(int _numNew, int _numOld);
+
         bool isFloating() const;
 
         void updateStyle() override;
@@ -43,7 +49,8 @@ namespace Ui
     protected:
         void setQuoteSelection() override {}
         void paintEvent(QPaintEvent* _event) override;
-        bool supportsReactions() const override { return false; }
+        bool canBeThreadParent() const override { return false; }
+        bool supportsOverlays() const override { return false; }
 
     private:
         void updateDateTranslation();
@@ -51,17 +58,18 @@ namespace Ui
         void drawDate(QPainter& _p);
         void drawPlateNew(QPainter& _p);
         void drawOverlay(QPainter& _p);
+        void drawThreadReplies(QPainter& _p);
 
         QFont getFont();
         QColor getColor();
 
     private:
-        enum type
+        enum class Type
         {
-            typeDate = 0,
-            typePlateNew = 1,
-            typeOverlay = 2
-
+            date,
+            plateNew,
+            overlay,
+            threadReplies,
         } type_;
 
         bool isFloating_;
@@ -69,6 +77,7 @@ namespace Ui
         QDate date_;
         QString message_;
         std::unique_ptr<TextRendering::TextUnit> messageUnit_;
+        ClickableTextWidget* clickableText_ = nullptr;
 
         QPainterPath bubble_;
         QRect bubbleGeometry_;

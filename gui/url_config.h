@@ -25,12 +25,24 @@ namespace Ui
         [[nodiscard]] const QString& getUrlAppUpdate() const noexcept { return appUpdate_; }
 
         [[nodiscard]] const QString& getBaseBinary() const noexcept { return baseBinary_; }
+        [[nodiscard]] const QString& getBase() const noexcept { return base_; }
+
+        [[nodiscard]] const QString& getDi(const bool _dark) const noexcept { return _dark && !diDark_.isEmpty() ? diDark_ : di_; }
+
+        [[nodiscard]] const QString& getTasks() const noexcept { return tasks_; }
+
+        [[nodiscard]] const QString& getCalendar() const noexcept { return calendar_; }
+
+        [[nodiscard]] const QString& getConfigHost() const noexcept { return configHost_; }
 
         const QVector<QString>& getVCSUrls() const noexcept;
 
     	bool isMailConfigPresent() const noexcept;
 
     private:
+        QString base_;
+        QString baseBinary_;
+
         QString filesParse_;
         QString stickerShare_;
         QString profile_;
@@ -41,7 +53,14 @@ namespace Ui
         QString mailRead_;
 
         QString appUpdate_;
-        QString baseBinary_;
+
+        QString di_;
+        QString diDark_;
+
+        QString tasks_;
+        QString calendar_;
+
+        QString configHost_;
 
         QVector<QString> vcsUrls_;
     };

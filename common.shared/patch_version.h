@@ -12,9 +12,9 @@ namespace common
         class patch_version
         {
         public:
-            explicit patch_version() noexcept = default;
+            explicit patch_version() = default;
 
-            explicit patch_version(std::string str) noexcept
+            explicit patch_version(std::string str)
                 : version_string_(std::move(str))
             {
             }
@@ -29,7 +29,7 @@ namespace common
             patch_version& operator=(patch_version&& other) = default;
             patch_version& operator=(const patch_version& other) = default;
 
-            const std::string& as_string() const noexcept
+            const std::string& as_string() const
             {
                 return version_string_;
             }
@@ -39,53 +39,53 @@ namespace common
                 version_string_ = _version;
             }
 
-            void set_offline_version(const int32_t _version) noexcept
+            void set_offline_version(const int32_t _version)
             {
                 offline_version_ = _version;
             }
 
-            int32_t get_offline_version() const noexcept
+            int32_t get_offline_version() const
             {
                 return offline_version_;
             }
 
-            bool is_empty() const noexcept
+            bool is_empty() const
             {
                 return version_string_.empty();
             }
 
-            void increment_offline() noexcept
+            void increment_offline()
             {
                 ++offline_version_;
             }
 
-             bool operator==(const patch_version &rhs) const noexcept
+             bool operator==(const patch_version &rhs) const
              {
                  return version_string_ == rhs.version_string_;
              }
 
-             bool operator!=(const patch_version &rhs) const noexcept
+             bool operator!=(const patch_version &rhs) const
              {
                  return version_string_ != rhs.version_string_;
              }
 
-            bool operator<(const patch_version &rhs) const noexcept
+            bool operator<(const patch_version &rhs) const
             {
                 return less_than(version_string_, rhs.version_string_);
             }
 
-            bool operator>(const patch_version &rhs) const noexcept
+            bool operator>(const patch_version &rhs) const
             {
                 return rhs < *this;
             }
 
-            bool operator>=(const patch_version &rhs) const noexcept
+            bool operator>=(const patch_version &rhs) const
             {
                 return !(*this < rhs);
             }
 
         private:
-            static bool less_than(std::string_view lhs, std::string_view rhs) noexcept
+            static bool less_than(std::string_view lhs, std::string_view rhs)
             {
                 if (lhs.size() == rhs.size())
                     return std::lexicographical_compare(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());

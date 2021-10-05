@@ -235,8 +235,6 @@ namespace Data
 
     BuddyPtr UnserializePresence(core::coll_helper* helper);
 
-    QString UnserializeActiveDialogHide(core::coll_helper* helper);
-
     QStringList UnserializeFavorites(core::coll_helper* helper);
 
     UserInfo UnserializeUserInfo(core::coll_helper* helper);

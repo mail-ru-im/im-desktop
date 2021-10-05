@@ -108,6 +108,8 @@ namespace Ui
                 p.requestChatWallpaper();
             }
         }
+
+        aimId_ = _aimId;
     }
 
     bool BackgroundWidget::isFlatColor() const

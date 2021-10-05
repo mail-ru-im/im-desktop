@@ -6,7 +6,7 @@
 #include "../wim_packet.h"
 #include "../../../archive/archive_index.h"
 #include "../../../log/log.h"
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 
 namespace
 {
@@ -86,7 +86,7 @@ int32_t fetch_event_dlg_state::parse(const rapidjson::Value& _node_event_data)
 
     if (std::string patch_version; tools::unserialize_value(_node_event_data, "patchVersion", patch_version))
     {
-        assert(!patch_version.empty());
+        im_assert(!patch_version.empty());
         state_.set_dlg_state_patch_version(std::move(patch_version));
     }
 
@@ -151,6 +151,13 @@ int32_t fetch_event_dlg_state::parse(const rapidjson::Value& _node_event_data)
 
     if (const auto iter_heads = _node_event_data.FindMember("lastMessageHeads"); iter_heads != _node_event_data.MemberEnd() && iter_heads->value.IsArray())
         state_.set_heads(parse_heads(iter_heads->value, *persons_));
+
+    if (const auto it = _node_event_data.FindMember("parentTopic"); it != _node_event_data.MemberEnd() && it->value.IsObject())
+    {
+        archive::thread_parent_topic topic;
+        topic.unserialize(it->value);
+        state_.set_parent_topic(std::move(topic));
+    }
 
     if constexpr (::build::is_debug())
     {

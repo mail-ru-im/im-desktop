@@ -21,19 +21,19 @@ namespace Logic
         return empty;
     }
 
-    void InputTextContainer::setInputText(const QString& _contact, QString _text, int _pos)
+    void InputTextContainer::setInputText(const QString& _contact, Data::FString _text, int _pos)
     {
         im_assert(!_contact.isEmpty());
         if (!_contact.isEmpty())
             inputTexts_[_contact] = InputText(std::move(_text), _pos);
     }
 
-    const QString& InputTextContainer::getText(const QString& _contact) const
+    const Data::FString& InputTextContainer::getText(const QString& _contact) const
     {
         return getInputText(_contact).text_;
     }
 
-    void InputTextContainer::setText(const QString& _contact, QString _text)
+    void InputTextContainer::setText(const QString& _contact, Data::FString _text)
     {
         im_assert(!_contact.isEmpty());
         if (!_contact.isEmpty())

@@ -1,11 +1,7 @@
 #pragma once
 
 #include "controls/ClickWidget.h"
-
-namespace Data
-{
-    class SmartreplySuggest;
-}
+#include "../../types/smartreply_suggest.h"
 
 namespace Ui
 {
@@ -53,7 +49,7 @@ namespace Ui
         void hideEvent(QHideEvent*) override;
 
     private:
-        void showStickerPreview(const QString& _stickerId);
+        void showStickerPreview(const Data::SmartreplySuggest::Data& _previewData);
         void hideStickerPreview();
         void onItemsMouseMoved(QPoint _pos);
 

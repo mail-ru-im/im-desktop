@@ -277,20 +277,23 @@ void VCSCommand::execute()
     if (!isValid_)
         return;
 
-    Q_EMIT Utils::InterConnector::instance().closeAnySemitransparentWindow({ Utils::CloseWindowInfo::Initiator::Unknown, Utils::CloseWindowInfo::Reason::Keep_Sidebar });
+    QTimer::singleShot(0, [url = url_]()
+    {
+        Q_EMIT Utils::InterConnector::instance().closeAnySemitransparentWindow({ Utils::CloseWindowInfo::Initiator::Unknown, Utils::CloseWindowInfo::Reason::Keep_Sidebar });
 
-    auto confirm = Utils::GetConfirmationWithTwoButtons(
-        QT_TRANSLATE_NOOP("popup_window", "Cancel"),
-        QT_TRANSLATE_NOOP("popup_window", "Yes"),
-        QT_TRANSLATE_NOOP("popup_window", "Do you want to join conference?"),
-        QT_TRANSLATE_NOOP("popup_window", "Join confirmation"),
-        nullptr
-    );
-    if (!confirm)
-        return;
+        auto confirm = Utils::GetConfirmationWithTwoButtons(
+            QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+            QT_TRANSLATE_NOOP("popup_window", "Yes"),
+            QT_TRANSLATE_NOOP("popup_window", "Do you want to join conference?"),
+            QT_TRANSLATE_NOOP("popup_window", "Join confirmation"),
+            nullptr
+        );
+        if (!confirm)
+            return;
 
 #ifndef STRIP_VOIP
-    Ui::GetDispatcher()->getVoipController().setStartVCS(url_);
+        Ui::GetDispatcher()->getVoipController().setStartVCS(url);
 #endif
-    return;
+        return;
+    });
 }

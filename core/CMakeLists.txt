@@ -3,6 +3,10 @@ cmake_minimum_required(VERSION 3.17)
 
 project(core)
 
+message(STATUS "")
+message(STATUS "[CMAKE]")
+message(STATUS "[CMAKE] including <core/CMakeLists.txt>")
+message(STATUS "[CMAKE]")
 
 # ---------------------------  paths  ----------------------------
 set(CMAKE_EXECUTABLE_OUTPUT_DIRECTORY_DEBUG ${ICQ_BIN_DIR})
@@ -83,12 +87,8 @@ set_source_group("sources" "${COMMON_ROOT}" ${COMMON_SOURCES} ${COMMON_HEADERS})
 
 # --------------------------  minizip    -------------------------
 if(NOT WIN32)
-    if(LINUX)
-        set(MINIZIP_ROOT "${ICQ_MINIZIP}/include")
-        message(STATUS "[minizip] MINIZIP_ROOT = ${MINIZIP_ROOT}")
-    else()
-        set(MINIZIP_ROOT "${ICQ_EXTERNAL}/minizip/include")
-    endif()
+    set(MINIZIP_ROOT "${pkg_src_minizip_location}/include")
+    message(STATUS "[core][minizip] MINIZIP_ROOT = ${MINIZIP_ROOT}")
 
     find_sources(MINIZIP_SOURCES "${MINIZIP_ROOT}" "c")
     find_sources(MINIZIP_HEADERS "${MINIZIP_ROOT}" "h")
@@ -98,8 +98,9 @@ if(NOT WIN32)
     list(REMOVE_ITEM MINIZIP_SOURCES "${MINIZIP_ROOT}/miniunz.c")
     list(REMOVE_ITEM MINIZIP_SOURCES "${MINIZIP_ROOT}/minizip.c")
 
-    message(STATUS "[minizip] set_source_group(minizip ${MINIZIP_ROOT} ${MINIZIP_SOURCES} ${MINIZIP_HEADERS})")
+    message(STATUS "[core][minizip] set_source_group(minizip ${MINIZIP_ROOT} ${MINIZIP_SOURCES} ${MINIZIP_HEADERS})")
     set_source_group("minizip" "${MINIZIP_ROOT}" ${MINIZIP_SOURCES} ${MINIZIP_HEADERS})
+
 endif()
 
 
@@ -162,6 +163,97 @@ if(MSVC)
         COMMAND ${CMAKE_COMMAND} -E copy ${D3D_COMPILER_LIBRARY} ${ICQ_BIN_DIR})
 endif()
 
+# --------------------------  copy gpu blacklist  -------------------------
+if(MSVC)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy ${GPU_BLACKLIST} ${ICQ_BIN_DIR})
+endif()
+
+# --------------------------  copy mesa library  -------------------------
+if(MSVC)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy ${MESA_LIBRARY} ${ICQ_BIN_DIR})
+endif()
+
+# -----------------------------  copy Qt  -------------------------------
+if(MSVC)
+    set(ICQ_PLUGINS_PLATFORMS_DIR "${ICQ_BIN_DIR}/plugins/platforms")
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_PLUGINS_PLATFORMS_DIR})
+
+    set(ICQ_PLUGINS_IMAGE_DIR "${ICQ_BIN_DIR}/plugins/imageformats")
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_PLUGINS_IMAGE_DIR})
+
+    set(ICQ_PLUGINS_ICONENGINES_DIR "${ICQ_BIN_DIR}/plugins/iconengines")
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_PLUGINS_ICONENGINES_DIR})
+
+    set(ICQ_PLUGINS_AUDIO_DIR "${ICQ_BIN_DIR}/plugins/audio")
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_PLUGINS_AUDIO_DIR})
+
+    set(ICQ_RESOURCES_DIR "${ICQ_BIN_DIR}/resources")
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_RESOURCES_DIR})
+
+    FOREACH(PLUGIN ${QT_PLATFORMS_PLUGINS_TO_COPY})
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy ${PLUGIN} ${ICQ_PLUGINS_PLATFORMS_DIR})
+    ENDFOREACH()
+
+    FOREACH(PLUGIN ${QT_IMAGE_PLUGINS_TO_COPY})
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy ${PLUGIN} ${ICQ_PLUGINS_IMAGE_DIR})
+    ENDFOREACH()
+
+    FOREACH(PLUGIN ${QT_ICONENGINES_PLUGINS_TO_COPY})
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy ${PLUGIN} ${ICQ_PLUGINS_ICONENGINES_DIR})
+    ENDFOREACH()
+
+    FOREACH(PLUGIN ${QT_AUDIO_PLUGINS_TO_COPY})
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy ${PLUGIN} ${ICQ_PLUGINS_AUDIO_DIR})
+    ENDFOREACH()
+
+    FOREACH(LIBEXEC ${QT_LIBEXEC_TO_COPY})
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy ${LIBEXEC} ${ICQ_BIN_DIR})
+    ENDFOREACH()
+
+    FOREACH(LIBRARY ${QT_LIBRARIES_TO_COPY})
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy ${LIBRARY} ${ICQ_BIN_DIR})
+    ENDFOREACH()
+
+    FOREACH(OPENGL_LIBRARY ${OPENGL_LIBRARIES_TO_COPY})
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy ${OPENGL_LIBRARY} ${ICQ_BIN_DIR})
+    ENDFOREACH()
+
+    FOREACH(RESOURCE ${QT_RESOURCES_TO_COPY})
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy ${RESOURCE} ${ICQ_RESOURCES_DIR})
+    ENDFOREACH()
+
+    if (IM_QT_DYNAMIC AND HAS_WEB_ENGINE)
+        set(ICQ_TRANSLATIONS_DIR "${ICQ_BIN_DIR}/translations")
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_TRANSLATIONS_DIR})
+
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory ${QT_TRANSLATIONS_DIR} ${ICQ_TRANSLATIONS_DIR})
+    endif()
+endif()
+
+# --------------------------  copy Runtime Libraries  -------------------------
+if(MSVC)
+    FOREACH(RUNTIME_LIBRARY ${RUNTIME_LIBRARIES_TO_COPY})
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy ${RUNTIME_LIBRARY} ${ICQ_BIN_DIR})
+    ENDFOREACH()
+endif()
 
 # --------------------------  integrate zstd dictionaries  -------------------------
 if (NOT STRIP_ZSTD)

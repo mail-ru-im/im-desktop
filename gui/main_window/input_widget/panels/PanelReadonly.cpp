@@ -37,8 +37,11 @@ namespace
 
 namespace Ui
 {
-    InputPanelReadonly::InputPanelReadonly(QWidget* _parent)
+    InputPanelReadonly::InputPanelReadonly(QWidget* _parent, const QString& _aimId)
         : QWidget(_parent)
+        , aimId_(_aimId)
+        , stamp_(Logic::getContactListModel()->getChatStamp(_aimId))
+        , isChannel_(Logic::getContactListModel()->isChannel(_aimId))
         , mainButton_(new RoundButton(this))
         , shareButton_(new CustomButton(this, qsl(":/input/share"), shareButtonSize()))
     {
@@ -73,16 +76,6 @@ namespace Ui
         connect(GetDispatcher(), &core_dispatcher::chatInfo, this, [this](const auto, const auto& _chatInfo){ updateFromChatInfo(_chatInfo); });
 
         updateStyle(InputStyleMode::Default);
-    }
-
-    void InputPanelReadonly::setAimid(const QString& _aimId)
-    {
-        if (aimId_ != _aimId)
-        {
-            aimId_ = _aimId;
-            stamp_ = Logic::getContactListModel()->getChatStamp(aimId_);
-            isChannel_ = Logic::getContactListModel()->isChannel(aimId_);
-        }
     }
 
     void InputPanelReadonly::setState(const ReadonlyPanelState _state)

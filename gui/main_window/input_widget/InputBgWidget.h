@@ -14,6 +14,8 @@ namespace Ui
         void setBgVisible(const bool _isVisible);
         void forceUpdate();
 
+        const QString& aimId() const;
+
     protected:
         void paintEvent(QPaintEvent*) override;
         void resizeEvent(QResizeEvent*) override;

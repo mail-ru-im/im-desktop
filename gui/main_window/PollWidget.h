@@ -22,6 +22,9 @@ namespace Ui
 
         void setInputData(const QString& _text, const Data::QuotesVec& _quotes, const Data::MentionMap& _mentions);
 
+        QString getInputText() const;
+        int getCursorPos() const;
+
     private Q_SLOTS:
         void onAdd();
         void onCancel();

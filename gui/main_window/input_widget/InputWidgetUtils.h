@@ -16,41 +16,33 @@ namespace Styling
 namespace Ui
 {
     class CustomButton;
-    class MentionCompleter;
     class HistoryTextEdit;
+    enum class AttachMediaType;
 
-    std::string getStatsChatType();
+    std::string getStatsChatType(const QString& _contact);
 
-    int getInputTextLeftMargin();
+    int getInputTextLeftMargin() noexcept;
 
-    int getDefaultInputHeight();
-    int getHorMargin();
-    int getVerMargin();
-    int getHorSpacer();
-    int getEditHorMarginLeft();
+    int getDefaultInputHeight() noexcept;
+    int getHorMargin() noexcept;
+    int getVerMargin() noexcept;
+    int getHorSpacer() noexcept;
+    int getEditHorMarginLeft() noexcept;
 
-    int getQuoteRowHeight();
+    int getQuoteRowHeight() noexcept;
 
-    int getBubbleCornerRadius();
+    int getBubbleCornerRadius() noexcept;
 
-    QSize getCancelBtnIconSize();
-    QSize getCancelButtonSize();
+    QSize getCancelBtnIconSize() noexcept;
+    QSize getCancelButtonSize() noexcept;
 
     void drawInputBubble(QPainter& _p, const QRect& _widgetRect, const QColor& _color, const int _topMargin, const int _botMargin);
 
-    bool isMarkdown(const QStringRef& _text, const int _position);
-
-    MentionCompleter* getMentionCompleter();
-    bool showMentionCompleter(const QString& _initialPattern, const QPoint& _pos);
-
     bool isEmoji(QStringView _text, qsizetype& _pos);
-
-    std::pair<QString, int> getLastWord(HistoryTextEdit* _textEdit);
-    bool replaceEmoji(HistoryTextEdit* _textEdit);
-    void RegisterTextChange(HistoryTextEdit* _textEdit);
 
     class BubbleWidget : public QWidget
     {
+        Q_OBJECT
     public:
         BubbleWidget(QWidget* _parent, const int _topMargin, const int _botMargin, const Styling::StyleVariable _bgColor);
 
@@ -115,8 +107,90 @@ namespace Ui
     QColor focusColorPrimary();
     QColor focusColorAttention();
 
-    void sendStat(const core::stats::stats_event_names _event, const std::string_view _from);
-    void sendShareStat(bool _sent);
+    void sendStat(const QString& _contact, core::stats::stats_event_names _event, const std::string_view _from);
+    void sendShareStat(const QString& _contact, bool _sent);
+    void sendAttachStat(const QString& _contact, AttachMediaType _mediaType);
+
+    class TransitionAnimation : public QVariantAnimation
+    {
+        Q_OBJECT
+
+    public:
+        TransitionAnimation(QObject* parent = nullptr) : QVariantAnimation(parent) { }
+
+        void setCurrentHeight(int _height) { currentHeight_ = _height; }
+        int getCurrentHeight() const noexcept { return currentHeight_; }
+
+        void setTargetHeight(int _height) { targetHeight_ = _height; }
+        int getTargetHeight() const noexcept { return targetHeight_; }
+
+        void setEffect(QGraphicsOpacityEffect* _effect) { targetEffect_ = _effect; }
+        QGraphicsOpacityEffect* getEffect() const noexcept { return targetEffect_; }
+
+    private:
+        int currentHeight_ = 0;
+        int targetHeight_ = 0;
+        QGraphicsOpacityEffect* targetEffect_ = nullptr;
+    };
+
+    enum class InputFeature
+    {
+        None = 0,
+        AttachFile = 1 << 0,
+        Ptt = 1 << 1,
+        Suggests = 1 << 2,
+        LocalState = 1 << 3,
+    };
+    Q_DECLARE_FLAGS(InputFeatures, InputFeature)
+    Q_DECLARE_OPERATORS_FOR_FLAGS(InputFeatures)
+
+    constexpr InputFeatures defaultInputFeatures() noexcept
+    {
+        return InputFeature::AttachFile | InputFeature::Ptt | InputFeature::Suggests;
+    }
+
+    bool isApplePageUp(int _key, Qt::KeyboardModifiers _modifiers) noexcept;
+    bool isApplePageDown(int _key, Qt::KeyboardModifiers _modifiers) noexcept;
+    bool isApplePageEnd(int _key, Qt::KeyboardModifiers _modifiers) noexcept;
+    bool isCtrlEnd(int _key, Qt::KeyboardModifiers _modifiers) noexcept;
+
+    bool isApplePageUp(QKeyEvent* _e) noexcept;
+    bool isApplePageDown(QKeyEvent* _e) noexcept;
+    bool isApplePageEnd(QKeyEvent* _e) noexcept;
+    bool isCtrlEnd(QKeyEvent* _e) noexcept;
+
+
+    class InputWidget;
+    const std::vector<InputWidget*>& getInputWidgetInstances();
+    void registerInputWidgetInstance(InputWidget* _input);
+    void deregisterInputWidgetInstance(InputWidget* _input);
+
+    template <typename Class, typename Func>
+    QWidget* getWidgetImpl(QWidget* _parent, Func _func)
+    {
+        if (_parent)
+        {
+            const auto widgets = _parent->findChildren<Class*>();
+            for (auto w : widgets)
+            {
+                if (_func(w))
+                    return w;
+            }
+        }
+        return nullptr;
+    }
+
+    template <typename Class, typename Method>
+    QWidget* getWidgetIf(QWidget* _parent, Method _method)
+    {
+        return getWidgetImpl<Class>(_parent, [m = std::move(_method)](auto w) { return ((*w).*m)(); });
+    }
+
+    template <typename Class, typename Method>
+    QWidget* getWidgetIfNot(QWidget* _parent, Method _method)
+    {
+        return getWidgetImpl<Class>(_parent, [m = std::move(_method)](auto w) { return !((*w).*m)(); });
+    }
 }
 
 namespace Styling

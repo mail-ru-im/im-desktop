@@ -36,6 +36,7 @@
 #include "main_window/LocalPIN.h"
 #include "omicron/omicron_helper.h"
 #include "main_window/contact_list/FavoritesUtils.h"
+#include "main_window/contact_list/ServiceContacts.h"
 #include "main_window/history_control/reactions/DefaultReactions.h"
 
 #if defined(IM_AUTO_TESTING)
@@ -205,6 +206,19 @@ namespace
 
     constexpr std::chrono::milliseconds typingCheckInterval = std::chrono::seconds(1);
     constexpr auto typingLifetime = std::chrono::seconds(8);
+
+    void serializeMessageCommon(Ui::gui_coll_helper& _coll, const QString& _contact, const Data::MentionMap& _mentions, const Data::QuotesVec& _quotes)
+    {
+        im_assert(!_contact.isEmpty());
+        _coll.set_value_as_qstring("contact", _contact);
+
+        Data::serializeQuotes(_coll, _quotes, Data::ReplaceFilesPolicy::Replace);
+
+        Data::MentionMap mentions(_mentions);
+        for (const auto& q : _quotes)
+            mentions.insert(q.mentions_.begin(), q.mentions_.end());
+        Data::serializeMentions(_coll, mentions);
+    }
 }
 
 
@@ -323,15 +337,11 @@ qint64 core_dispatcher::cancelLoaderTask(const QString& _url, std::optional<qint
 
 qint64 core_dispatcher::uploadSharedFile(const QString& _contact, const QString& _localPath, const Data::QuotesVec& _quotes, const QString& _description, const Data::MentionMap& _mentions, bool _keepExif)
 {
-    core::coll_helper collection(create_collection(), true);
-    collection.set<QString>("contact", _contact);
-    collection.set<QString>("file", _localPath);
-    collection.set<QString>("description", _description);
-    Data::serializeQuotes(collection, _quotes);
-    Data::MentionMap mentions(_mentions);
-    for (const auto& q : _quotes)
-        mentions.insert(q.mentions_.begin(), q.mentions_.end());
-    Data::serializeMentions(collection, mentions);
+    gui_coll_helper collection(create_collection(), true);
+    collection.set_value_as_qstring("file", _localPath);
+    collection.set_value_as_qstring("description", _description);
+
+    serializeMessageCommon(collection, _contact, _mentions, _quotes);
 
     if (!_keepExif)
     {
@@ -350,37 +360,27 @@ qint64 core_dispatcher::uploadSharedFile(const QString& _contact, const QByteArr
 qint64 core_dispatcher::uploadSharedFile(const QString& _contact, const QByteArray& _array, QStringView _ext, const Data::QuotesVec& _quotes, const QString& _description, const Data::MentionMap& _mentions)
 {
     Ui::gui_coll_helper collection(create_collection(), true);
-    collection.set<QString>("contact", _contact);
 
     core::istream* stream = collection->create_stream();
     stream->write((uint8_t*)(_array.data()), _array.size());
     collection.set_value_as_stream("file_stream", stream);
     collection.set_value_as_qstring("ext", _ext);
+    collection.set_value_as_qstring("description", _description);
 
-    collection.set<QString>("description", _description);
-    Data::serializeQuotes(collection, _quotes);
-    Data::MentionMap mentions(_mentions);
-    for (const auto& q : _quotes)
-        mentions.insert(q.mentions_.begin(), q.mentions_.end());
-    Data::serializeMentions(collection, mentions);
+    serializeMessageCommon(collection, _contact, _mentions, _quotes);
 
     return post_message_to_core("files/upload", collection.get());
 }
 
 qint64 core_dispatcher::uploadSharedFile(const QString& _contact, const QString& _localPath, const Data::QuotesVec& _quotes, std::optional<std::chrono::seconds> _duration)
 {
-    core::coll_helper collection(create_collection(), true);
-    collection.set<QString>("contact", _contact);
-    collection.set<QString>("file", _localPath);
-    collection.set<QString>("description", QString());
+    gui_coll_helper collection(create_collection(), true);
+    collection.set_value_as_qstring("file", _localPath);
+    collection.set_value_as_qstring("description", QString());
     if (_duration)
         collection.set<int64_t>("duration", (*_duration).count());
 
-    Data::serializeQuotes(collection, _quotes);
-    Data::MentionMap mentions;
-    for (const auto& q : _quotes)
-        mentions.insert(q.mentions_.begin(), q.mentions_.end());
-    Data::serializeMentions(collection, mentions);
+    serializeMessageCommon(collection, _contact, {}, _quotes);
 
     return post_message_to_core("files/upload", collection.get());
 }
@@ -414,20 +414,22 @@ qint64 core_dispatcher::getSticker(const qint32 _setId, const qint32 _stickerId,
     return post_message_to_core("stickers/sticker/get", collection.get());
 }
 
-qint64 core_dispatcher::getSticker(const QString& _fsId, const core::sticker_size _size)
+qint64 core_dispatcher::getSticker(const Utils::FileSharingId& _fsId, const core::sticker_size _size)
 {
-    im_assert(!_fsId.isEmpty());
+    im_assert(!_fsId.fileId.isEmpty());
     im_assert(_size > core::sticker_size::min);
     im_assert(_size < core::sticker_size::max);
 
-    core::coll_helper collection(create_collection(), true);
-    collection.set<QString>("fs_id", _fsId);
+    Ui::gui_coll_helper collection(create_collection(), true);
+    collection.set_value_as_qstring("file_id", _fsId.fileId);
+    if (_fsId.sourceId)
+        collection.set_value_as_qstring("source_id", *_fsId.sourceId);
     collection.set_value_as_enum("size", _size);
 
     return post_message_to_core("stickers/sticker/get", collection.get());
 }
 
-qint64 core_dispatcher::getStickerCancel(const std::vector<QString>& _fsIds, core::sticker_size _size)
+qint64 core_dispatcher::getStickerCancel(const std::vector<Utils::FileSharingId>& _fsIds, core::sticker_size _size)
 {
     if (_fsIds.empty())
         return -1;
@@ -435,9 +437,23 @@ qint64 core_dispatcher::getStickerCancel(const std::vector<QString>& _fsIds, cor
     im_assert(_size > core::sticker_size::min);
     im_assert(_size < core::sticker_size::max);
 
-    gui_coll_helper collection(create_collection(), true);
+    Ui::gui_coll_helper collection(create_collection(), true);
     collection.set_value_as_enum("size", _size);
-    collection.set_value_as_array("ids", Utils::toArrayOfStrings(_fsIds, collection).get());
+
+    core::ifptr<core::iarray> arr(collection->create_array());
+    arr->reserve(_fsIds.size());
+    for (const auto& fsId : _fsIds)
+    {
+        Ui::gui_coll_helper coll(create_collection(), true);
+        coll.set_value_as_qstring("file_id", fsId.fileId);
+        if (fsId.sourceId)
+            coll.set_value_as_qstring("source", *fsId.sourceId);
+        core::ifptr<core::ivalue> val(collection->create_value());
+        val->set_as_collection(coll.get());
+        arr->push_back(val.get());
+    }
+
+    collection.set_value_as_array("ids", arr.get());
     return post_message_to_core("stickers/sticker/get/cancel", collection.get());
 }
 
@@ -457,13 +473,15 @@ qint64 core_dispatcher::cleanSetIconBig(const qint32 _setId)
     return post_message_to_core("stickers/big_set_icon/clean", collection.get());
 }
 
-qint64 core_dispatcher::getStickersPackInfo(const qint32 _setId, const QString& _storeId, const QString& _fileId)
+qint64 core_dispatcher::getStickersPackInfo(const qint32 _setId, const QString& _storeId, const Utils::FileSharingId& _fileSharingId)
 {
-    core::coll_helper collection(create_collection(), true);
+    Ui::gui_coll_helper collection(create_collection(), true);
 
     collection.set_value_as_int("set_id", _setId);
-    collection.set<QString>("store_id", _storeId);
-    collection.set<QString>("file_id", _fileId);
+    collection.set_value_as_qstring("store_id", _storeId);
+    collection.set_value_as_qstring("file_id", _fileSharingId.fileId);
+    if (_fileSharingId.sourceId)
+        collection.set_value_as_qstring("source", *_fileSharingId.sourceId);
 
     return post_message_to_core("stickers/pack/info", collection.get());
 }
@@ -500,27 +518,6 @@ qint64 core_dispatcher::searchStickers(const QString& _searchTerm)
     core::coll_helper collection(create_collection(), true);
     collection.set<QString>("term", _searchTerm);
     return post_message_to_core("stickers/store/search", collection.get());
-}
-
-qint64 core_dispatcher::getStickersMeta()
-{
-    int scale = (int)(Utils::getScaleCoefficient() * 100.0);
-    scale = Utils::scale_bitmap(scale);
-    std::string_view size = "small";
-
-    switch (scale)
-    {
-    case 150:
-        size = "medium";
-        break;
-    case 200:
-        size = "large";
-        break;
-    }
-
-    gui_coll_helper collection(create_collection(), true);
-    collection.set_value_as_string("size", size);
-    return post_message_to_core("stickers/meta/get", collection.get());
 }
 
 qint64 core_dispatcher::getFsStickersByIds(const std::vector<int32_t>& _ids)
@@ -702,12 +699,12 @@ qint64 core_dispatcher::contactSwitched(const QString &_contactAimid)
     return post_message_to_core("contact/switched", collection.get());
 }
 
-void core_dispatcher::sendStickerToContact(const QString& _contact, const QString& _stickerId)
+void core_dispatcher::sendStickerToContact(const QString& _contact, const Utils::FileSharingId& _stickerId)
 {
     im_assert(!_contact.isEmpty());
-    im_assert(!_stickerId.isEmpty());
+    im_assert(!_stickerId.fileId.isEmpty());
 
-    if (_contact.isEmpty() || _stickerId.isEmpty())
+    if (_contact.isEmpty() || _stickerId.fileId.isEmpty())
         return;
 
     Ui::gui_coll_helper collection(create_collection(), true);
@@ -718,7 +715,7 @@ void core_dispatcher::sendStickerToContact(const QString& _contact, const QStrin
     post_message_to_core("send_message", collection.get());
 }
 
-void core_dispatcher::sendMessageToContact(const QString& _contact, const QString& _text, const Data::QuotesVec& _quotes, const Data::MentionMap& _mentions)
+void core_dispatcher::sendMessageToContact(const QString& _contact, const Data::FString& _text, const Data::QuotesVec& _quotes, const Data::MentionMap& _mentions)
 {
     im_assert(!_contact.isEmpty());
     im_assert(!_text.isEmpty());
@@ -730,15 +727,21 @@ void core_dispatcher::sendMessageToContact(const QString& _contact, const QStrin
     data.mentions_ = _mentions;
     data.quotes_ = _quotes;
     data.text_ = _text;
+    if (Features::isFormattingInInputEnabled())
+        Utils::convertOldStyleMarkdownToFormats(data.text_);
 
     sendMessageToContact(_contact, std::move(data));
 }
 
-void core_dispatcher::sendMessage(const Data::MessageBuddy& _buddy)
+void core_dispatcher::sendMessage(const Data::MessageBuddy& _buddy, const SendMessageParams& _params)
 {
     Ui::gui_coll_helper collection(create_collection(), true);
     _buddy.serialize(collection.get());
     postMessageStats(_buddy);
+
+    if (_params.draftDeleteTime_)
+        collection.set_value_as_int64("draft_delete_time", *_params.draftDeleteTime_);
+
     post_message_to_core("send_message", collection.get());
 }
 
@@ -752,30 +755,27 @@ void core_dispatcher::updateMessage(const Data::MessageBuddy& _buddy)
 
 void core_dispatcher::sendMessageToContact(const QString& _contact, core_dispatcher::MessageData _data)
 {
-    if (_contact.isEmpty() || (_data.text_.isEmpty() && _data.quotes_.empty()))
+    if (_contact.isEmpty() || (_data.text_.isEmpty() && _data.quotes_.empty() && !_data.task_))
         return;
 
     Ui::gui_coll_helper collection(create_collection(), true);
 
-    collection.set<QString>("contact", _contact);
-    collection.set<QString>("message", _data.text_);
+    if (Features::isFormattingInInputEnabled())
+        Utils::convertOldStyleMarkdownToFormats(_data.text_);
+    collection.set<QString>("message", _data.text_.string());
+    Data::serializeFormat(_data.text_.formatting(), collection, "message_format");
 
-    for (auto& quote : _data.quotes_)
-        quote.text_ = Utils::replaceFilesPlaceholders(quote.text_, quote.files_);
-
-    Data::serializeQuotes(collection, _data.quotes_);
-    Data::MentionMap mentions(_data.mentions_);
-    for (const auto& q : _data.quotes_)
-        mentions.insert(q.mentions_.begin(), q.mentions_.end());
-    Data::serializeMentions(collection, mentions);
+    serializeMessageCommon(collection, _contact, _data.mentions_, _data.quotes_);
 
     if (_data.poll_)
         _data.poll_->serialize(collection.get());
+    if (_data.task_)
+        _data.task_->serialize(collection.get());
 
     post_message_to_core("send_message", collection.get());
 }
 
-void core_dispatcher::updateMessageToContact(const QString& _contact, int64_t _messageId, const QString& _text)
+void core_dispatcher::updateMessageToContact(const QString& _contact, int64_t _messageId, const Data::FString& _text)
 {
     im_assert(!_contact.isEmpty());
     im_assert(!_text.isEmpty());
@@ -784,7 +784,12 @@ void core_dispatcher::updateMessageToContact(const QString& _contact, int64_t _m
 
     collection.set<QString>("contact", _contact);
     collection.set_value_as_int64("id", _messageId);
-    collection.set<QString>("message", _text);
+
+    auto postProcessedText = _text;
+    if (Features::isFormattingInInputEnabled())
+        Utils::convertOldStyleMarkdownToFormats(postProcessedText);
+    collection.set<QString>("message", postProcessedText.string());
+    Data::serializeFormat(postProcessedText.formatting(), collection, "message_format");
 
     post_message_to_core("update_message", collection.get());
 }
@@ -796,23 +801,22 @@ void core_dispatcher::sendSmartreplyToContact(const QString& _contact, const Dat
         return;
 
     Ui::gui_coll_helper collection(create_collection(), true);
-    collection.set_value_as_qstring("contact", _contact);
 
     if (_smartreply.isStickerType())
     {
-        collection.set_value_as_bool("fs_sticker", true);
-        collection.set_value_as_qstring("message", Stickers::getSendUrl(_smartreply.getData()));
+        if (auto fileSharingId = std::get_if<Utils::FileSharingId>(&_smartreply.getData()))
+        {
+            collection.set_value_as_bool("fs_sticker", true);
+            collection.set_value_as_qstring("message", Stickers::getSendUrl(*fileSharingId));
+        }
     }
     else if (_smartreply.isTextType())
     {
-        collection.set<QString>("message", _smartreply.getData());
+        if (auto text = std::get_if<QString>(&_smartreply.getData()))
+            collection.set_value_as_qstring("message", *text);
     }
 
-    Data::serializeQuotes(collection, _quotes);
-    Data::MentionMap mentions;
-    for (const auto& q : _quotes)
-        mentions.insert(q.mentions_.begin(), q.mentions_.end());
-    Data::serializeMentions(collection, mentions);
+    serializeMessageCommon(collection, _contact, {}, _quotes);
 
     {
         Ui::gui_coll_helper sr_helper(create_collection(), true);
@@ -926,8 +930,6 @@ void core_dispatcher::initMessageMap()
     REGISTER_IM_MESSAGE("contacts/search/server/result", onContactsSearchServerResults);
     REGISTER_IM_MESSAGE("addressbook/sync/update", onSyncAddressBook);
 
-    REGISTER_IM_MESSAGE("history_update", onHistoryUpdate);
-
 #ifndef STRIP_VOIP
     REGISTER_IM_MESSAGE("voip_signal", onVoipSignal);
 #endif
@@ -990,7 +992,6 @@ void core_dispatcher::initMessageMap()
     REGISTER_IM_MESSAGE("typing/stop", onTypingStop);
     REGISTER_IM_MESSAGE("contacts/get_ignore/result", onContactsGetIgnoreResult);
 
-    REGISTER_IM_MESSAGE("login_result_attach_uin", onLoginResultAttachUin);
     REGISTER_IM_MESSAGE("login_result_attach_phone", onLoginResultAttachPhone);
     REGISTER_IM_MESSAGE("update_profile/result", onUpdateProfileResult);
     REGISTER_IM_MESSAGE("chats/home/get/result", onChatsHomeGetResult);
@@ -1076,6 +1077,7 @@ void core_dispatcher::initMessageMap()
     REGISTER_IM_MESSAGE("suggest_group_nick/result", onSuggestGroupNickResult);
 
     REGISTER_IM_MESSAGE("session_started", onSessionStarted);
+    REGISTER_IM_MESSAGE("session_finished", onSessionFinished);
 
     REGISTER_IM_MESSAGE("external_url_config/error", onExternalUrlConfigError);
     REGISTER_IM_MESSAGE("external_url_config/hosts", onExternalUrlConfigHosts);
@@ -1117,6 +1119,20 @@ void core_dispatcher::initMessageMap()
     REGISTER_IM_MESSAGE("emoji/get/result", onGetEmojiResult);
 
     REGISTER_IM_MESSAGE("suggest_to_notify_user", onSuggestToNotifyUser);
+
+    REGISTER_IM_MESSAGE("threads/update", onThreadsUpdate);
+    REGISTER_IM_MESSAGE("threads/unread_count", onUnreadThreadsCount);
+    REGISTER_IM_MESSAGE("threads/add/result", onAddThreadResult);
+    REGISTER_IM_MESSAGE("threads/feed/get/result", onThreadsFeedGetResult);
+
+    REGISTER_IM_MESSAGE("auth_data", onAuthData);
+
+    REGISTER_IM_MESSAGE("draft", onDraft);
+
+    REGISTER_IM_MESSAGE("task/create/result", onTaskCreateResult);
+    REGISTER_IM_MESSAGE("task/update", onTaskUpdate);
+    REGISTER_IM_MESSAGE("task/edit_result", onTaskEditResult);
+    REGISTER_IM_MESSAGE("task/load_all", onTasksLoaded);
 }
 
 void core_dispatcher::uninit()
@@ -1230,6 +1246,7 @@ void core_dispatcher::fileSharingMetainfoResult(const int64_t _seq, core::coll_h
     meta.downloadUri_ = _params.get<QString>("file_dlink");
     meta.lastModified_ = _params.get<int64_t>("last_modified");
     meta.filenameShort_ = _params.get<QString>("file_name_short");
+    meta.trustRequired_ = _params.get<bool>("trustRequired") && Features::isRestrictedFilesEnabled();
 
     Q_EMIT fileSharingFileMetainfoDownloaded(_seq, meta);
 }
@@ -1791,6 +1808,16 @@ void core_dispatcher::onTypingCheckTimer()
         typingCheckTimer_->stop();
 }
 
+int64_t core_dispatcher::groupSubscribeImpl(std::string_view _message, const QString& _chatId, const QString& _stamp)
+{
+    gui_coll_helper collection(create_collection(), true);
+    if (!_stamp.isEmpty())
+        collection.set_value_as_qstring("stamp", _stamp);
+    else
+        collection.set_value_as_qstring("aimid", _chatId);
+    return post_message_to_core(_message, collection.get());
+}
+
 void core_dispatcher::setUserState(const core::profile_state state)
 {
     im_assert(state > core::profile_state::min);
@@ -1824,7 +1851,7 @@ void core_dispatcher::onNeedLogin(const int64_t _seq, core::coll_helper _params)
     {
         get_gui_settings()->set_value(login_page_last_entered_phone, QString());
         get_gui_settings()->set_value(login_page_last_entered_uin, QString());
-        get_gui_settings()->set_value(settings_recents_fs_stickers, QString());
+        get_gui_settings()->set_value(Ui::Stickers::recentsStickerSettingsPath().data(), QString());
         get_gui_settings()->set_value<std::vector<int32_t>>(settings_old_recents_stickers, {});
     }
 
@@ -2002,6 +2029,9 @@ qint64 core_dispatcher::getDialogGallery(const QString& _aimId, const QStringLis
 
 qint64 core_dispatcher::requestDialogGalleryState(const QString& _aimId)
 {
+    if (_aimId.isEmpty())
+        return -1;
+
     Ui::gui_coll_helper collection(create_collection(), true);
     collection.set_value_as_qstring("aimid", _aimId);
     return post_message_to_core("request_gallery_state", collection.get());
@@ -2399,9 +2429,11 @@ void core_dispatcher::onActiveDialogsAreEmpty(const int64_t _seq, core::coll_hel
 
 void core_dispatcher::onActiveDialogsHide(const int64_t _seq, core::coll_helper _params)
 {
-    QString aimId = Data::UnserializeActiveDialogHide(&_params);
+    auto closePage = true;
+    if (_params.is_value_exist("close_page"))
+        closePage = _params.get_value_as_bool("close_page");
 
-    Q_EMIT activeDialogHide(aimId);
+    Q_EMIT activeDialogHide(_params.get<QString>("contact"), closePage ? ClosePage::Yes : ClosePage::No);
 }
 
 void core_dispatcher::onActiveDialogsSent(const int64_t _seq, core::coll_helper _params)
@@ -2446,8 +2478,20 @@ void core_dispatcher::onStickersRequestedSuggests(const int64_t _seq, core::coll
     if (_params->is_value_exist("error"))
         return;
 
-    const auto stickers = Utils::toContainerOfString<QVector<QString>>(_params.get_value_as_array("stickers"));
-    Q_EMIT stickersRequestedSuggestsResult(stickers);
+    QVector<Utils::FileSharingId> stickerIds;
+    auto stickers = _params.get_value_as_array("stickers");
+    if (stickers)
+    {
+        const auto size = stickers->size();
+        stickerIds.reserve(size);
+        for (std::remove_const_t<decltype(size)> i = 0; i < size; ++i)
+        {
+            auto str = QString::fromUtf8(stickers->get_at(i)->get_as_string());
+            if (!str.isEmpty())
+                stickerIds.push_back({ std::move(str), std::nullopt });
+        }
+    }
+    Q_EMIT stickersRequestedSuggestsResult(_params.get<QString>("contact"), stickerIds);
 }
 
 void core_dispatcher::onSmartreplyInstantSuggests(const int64_t _seq, core::coll_helper _params)
@@ -2627,14 +2671,6 @@ void core_dispatcher::onChatsContactsResult(const int64_t _seq, core::coll_helpe
     Q_EMIT chatContacts(_seq, contacts);
 }
 
-void core_dispatcher::onLoginResultAttachUin(const int64_t _seq, core::coll_helper _params)
-{
-    bool result = _params.get_value_as_bool("result");
-    int error = result ? 0 : _params.get_value_as_int("error");
-
-    Q_EMIT loginResultAttachUin(_seq, error);
-}
-
 void core_dispatcher::onLoginResultAttachPhone(const int64_t _seq, core::coll_helper _params)
 {
     bool result = _params.get_value_as_bool("result");
@@ -2675,6 +2711,24 @@ void core_dispatcher::onUserProxyResult(const int64_t _seq, core::coll_helper _p
     userProxy.authType_ = _params.get_value_as_enum<core::proxy_auth>("settings_proxy_auth_type", core::proxy_auth::basic);
 
     *Utils::get_proxy_settings() = userProxy;
+
+    if (build::has_webengine())
+    {
+        const auto proxyType = Utils::ProxySettings::proxyType(userProxy.type_);
+        QNetworkProxy proxy;
+        proxy.setType(proxyType);
+        if (proxyType != QNetworkProxy::ProxyType::NoProxy)
+        {
+            proxy.setHostName(userProxy.proxyServer_);
+            proxy.setPort(userProxy.port_);
+            if (userProxy.needAuth_)
+            {
+                proxy.setUser(userProxy.username_);
+                proxy.setPassword(userProxy.password_);
+            }
+        }
+        QNetworkProxy::setApplicationProxy(proxy);
+    }
 
     Q_EMIT getUserProxy();
 }
@@ -2763,13 +2817,6 @@ void core_dispatcher::onFriendlyUpdate(const int64_t _seq, core::coll_helper _pa
             }
         }
     }
-}
-
-void Ui::core_dispatcher::onHistoryUpdate(const int64_t _seq, core::coll_helper _params)
-{
-    qint64 last_read_msg = _params.get_value_as_int64("last_read_msg");
-
-    Q_EMIT historyUpdate(QString::fromUtf8(_params.get_value_as_string("contact")), last_read_msg);
 }
 
 void core_dispatcher::onUpdateReady(const int64_t _seq, core::coll_helper _params)
@@ -3086,6 +3133,20 @@ qint64 core_dispatcher::unsubscribeStatus(const std::vector<QString>& _contacts)
     return post_message_to_core("unsubscribe/status", collection.get());
 }
 
+qint64 core_dispatcher::subscribeThread(const std::vector<QString>& _threads)
+{
+    Ui::gui_coll_helper collection(create_collection(), true);
+    collection.set_value_as_array("contacts", Utils::toArrayOfStrings(_threads, collection).get());
+    return post_message_to_core("subscribe/thread", collection.get());
+}
+
+qint64 core_dispatcher::unsubscribeThread(const std::vector<QString>& _threads)
+{
+    Ui::gui_coll_helper collection(create_collection(), true);
+    collection.set_value_as_array("contacts", Utils::toArrayOfStrings(_threads, collection).get());
+    return post_message_to_core("unsubscribe/thread", collection.get());
+}
+
 qint64 core_dispatcher::subscribeCallRoomInfo(const QString& _roomId)
 {
     if (!Features::callRoomInfoEnabled())
@@ -3101,6 +3162,20 @@ qint64 core_dispatcher::unsubscribeCallRoomInfo(const QString& _roomId)
     Ui::gui_coll_helper collection(create_collection(), true);
     collection.set_value_as_qstring("room_id", _roomId);
     return post_message_to_core("unsubscribe/call_room_info", collection.get());
+}
+
+qint64 Ui::core_dispatcher::subscribeTask(const QString& _taskId)
+{
+    Ui::gui_coll_helper collection(create_collection(), true);
+    collection.set_value_as_qstring("task_id", _taskId);
+    return post_message_to_core("subscribe/task", collection.get());
+}
+
+qint64 Ui::core_dispatcher::unsubscribeTask(const QString& _taskId)
+{
+    Ui::gui_coll_helper collection(create_collection(), true);
+    collection.set_value_as_qstring("task_id", _taskId);
+    return post_message_to_core("unsubscribe/task", collection.get());
 }
 
 qint64 core_dispatcher::addToInvitersBlacklist(const std::vector<QString>& _contacts)
@@ -3212,6 +3287,36 @@ int64_t core_dispatcher::stopPoll(const QString& _pollId)
     return post_message_to_core("poll/stop", collection.get());
 }
 
+int64_t core_dispatcher::createTask(Data::Task _task)
+{
+    if (!_task)
+        return -1;
+
+    Ui::gui_coll_helper collection(create_collection(), true);
+    _task->serialize(collection.get());
+    return post_message_to_core("task/create", collection.get());
+}
+
+int64_t Ui::core_dispatcher::editTask(const Data::TaskChange& _task)
+{
+    Ui::gui_coll_helper collection(create_collection(), true);
+    _task.serialize(collection.get());
+
+    return post_message_to_core("task/edit", collection.get());
+}
+
+int64_t Ui::core_dispatcher::requestInitialTasks()
+{
+    return post_message_to_core("task/request_initial", nullptr);
+}
+
+int64_t Ui::core_dispatcher::updateTaskLastUsedTime(const QString& _taskId)
+{
+    Ui::gui_coll_helper collection(create_collection(), true);
+    collection.set_value_as_qstring("task_id", _taskId);
+    return post_message_to_core("task/update_last_used", collection.get());
+}
+
 int64_t core_dispatcher::getBotCallbackAnswer(const QString& _chatId, const QString& _callbackData, qint64 _msgId)
 {
     Ui::gui_coll_helper collection(create_collection(), true);
@@ -3228,6 +3333,16 @@ qint64 core_dispatcher::pinContact(const QString& _aimId, bool _enable)
     collection.set_value_as_qstring("contact", _aimId);
 
     return post_message_to_core(_enable ? "pin_chat" : "unfavorite", collection.get());
+}
+
+int64_t core_dispatcher::getChatInfo(const QString& _chatId, const QString& _stamp, int _membersLimit)
+{
+    Ui::gui_coll_helper collection(create_collection(), true);
+    collection.set_value_as_qstring("aimid", _chatId);
+    if (!_stamp.isEmpty())
+        collection.set_value_as_qstring("stamp", _stamp);
+    collection.set_value_as_int("limit", _membersLimit);
+    return Ui::GetDispatcher()->post_message_to_core("chats/info/get", collection.get());
 }
 
 qint64 Ui::core_dispatcher::loadChatMembersInfo(const QString& _aimId, const std::vector<QString>& _members)
@@ -3374,6 +3489,76 @@ int64_t core_dispatcher::setStatus(const QString& _emojiCode, int64_t _duration,
     return post_message_to_core("status/set", collection.get());
 }
 
+int64_t core_dispatcher::addThread(const Data::MessageParentTopic& _topic)
+{
+    gui_coll_helper collection(create_collection(), true);
+    _topic.serialize(collection);
+    return post_message_to_core("threads/add", collection.get());
+}
+
+int64_t core_dispatcher::getThreadsFeed(const QString& _cursor)
+{
+    gui_coll_helper collection(create_collection(), true);
+    collection.set_value_as_qstring("cursor", _cursor);
+    return post_message_to_core("threads/feed/get", collection.get());
+}
+
+int64_t core_dispatcher::setDraft(const Data::MessageBuddy& _msg, int64_t _timestamp, bool _synch)
+{
+    Ui::gui_coll_helper collection(create_collection(), true);
+    _msg.serialize(collection.get());
+    collection.set_value_as_bool("sync", _synch);
+    collection.set_value_as_int64("timestamp", _timestamp);
+    return post_message_to_core("draft/set", collection.get());
+}
+
+int64_t core_dispatcher::getDraft(const QString& _contact)
+{
+    Ui::gui_coll_helper collection(create_collection(), true);
+    collection.set_value_as_qstring("contact", _contact);
+    return post_message_to_core("draft/get", collection.get());
+}
+
+int64_t core_dispatcher::setDialogOpen(const QString& _contact, bool _open)
+{
+    gui_coll_helper collection(create_collection(), true);
+    collection.set_value_as_qstring("contact", _contact);
+    return post_message_to_core(_open ? "dialogs/add" : "dialogs/remove", collection.get());
+}
+
+int64_t core_dispatcher::getHistory(const QString& _contact, const GetHistoryParams& _params)
+{
+    Ui::gui_coll_helper collection(create_collection(), true);
+    collection.set_value_as_qstring("contact", _contact);
+    collection.set_value_as_int64("from", _params.from_); // this id is included
+    collection.set_value_as_int64("count_early", _params.early_);
+    collection.set_value_as_int64("count_later", _params.later_);
+    collection.set_value_as_bool("need_prefetch", _params.needPrefetch_);
+    collection.set_value_as_bool("is_first_request", _params.firstRequest_);
+    collection.set_value_as_bool("after_search", _params.afterSearch_);
+
+    return post_message_to_core("archive/messages/get", collection.get());
+}
+
+int64_t core_dispatcher::groupSubscribe(const QString& _chatId, const QString& _stamp)
+{
+    return groupSubscribeImpl("group/subscribe", _chatId, _stamp);
+}
+
+int64_t core_dispatcher::cancelGroupSubscription(const QString& _chatId, const QString& _stamp)
+{
+    return groupSubscribeImpl("group/cancel_subscription", _chatId, _stamp);
+}
+
+void core_dispatcher::setLastRead(const QString& _contact, int64_t _lastMsgId, core_dispatcher::ReadAll _readAll)
+{
+    Ui::gui_coll_helper collection(create_collection(), true);
+    collection.set_value_as_qstring("contact", _contact);
+    collection.set_value_as_int64("message", _lastMsgId);
+    collection.set_value_as_bool("read_all", _readAll == ReadAll::Yes);
+    post_message_to_core("dlg_state/set_last_read", collection.get());
+}
+
 void core_dispatcher::onNickCheckSetResult(const int64_t _seq, core::coll_helper _params)
 {
     Q_EMIT nickCheckSetResult(_seq, _params.get_value_as_int("error"));
@@ -3465,6 +3650,13 @@ void core_dispatcher::onSessionStarted(const int64_t _seq, core::coll_helper _pa
     Q_EMIT sessionStarted(aimId);
 }
 
+void Ui::core_dispatcher::onSessionFinished(const int64_t, core::coll_helper)
+{
+    isImCreated_ = false;
+
+    Q_EMIT sessionFinished(QPrivateSignal());
+}
+
 void core_dispatcher::onExternalUrlConfigError(const int64_t, core::coll_helper _params)
 {
     Q_EMIT externalUrlConfigUpdated(_params.get_value_as_int("error"));
@@ -3480,7 +3672,7 @@ void core_dispatcher::onGroupSubscribeResult(const int64_t _seq, core::coll_help
 {
     Q_UNUSED(_seq);
 
-    Q_EMIT subscribeResult(_params.get_value_as_int("error"), _params.get_value_as_int("resubscribe_in"));
+    Q_EMIT subscribeResult(_seq, _params.get_value_as_int("error"), _params.get_value_as_int("resubscribe_in"));
 }
 
 void core_dispatcher::onGetSessionsResult(const int64_t _seq, core::coll_helper _params)
@@ -3594,13 +3786,11 @@ void core_dispatcher::onReactionAddResult(const int64_t _seq, core::coll_helper 
 {
     Data::Reactions reactions;
 
-    auto error = 0;
-    if(_params.is_value_exist("error"))
-        error = _params.get_value_as_int("error");
-    else
+    const auto success = _params.get_value_as_int("error") == 0;
+    if (success)
         reactions.unserialize(_params.get_value_as_collection("reactions"));
 
-    Q_EMIT reactionAddResult(_seq, reactions, error == 0);
+    Q_EMIT reactionAddResult(_seq, reactions, success);
 }
 
 void core_dispatcher::onReactionRemoveResult(const int64_t _seq, core::coll_helper _params)
@@ -3632,6 +3822,145 @@ void core_dispatcher::onCallRoomInfo(const int64_t _seq, core::coll_helper _para
 void core_dispatcher::onSuggestToNotifyUser(const int64_t _seq, core::coll_helper _params)
 {
     Q_EMIT suggestNotifyUser(_params.get<QString>("contact"), _params.get<QString>("smsNotifyContext"));
+}
+
+void core_dispatcher::onThreadsUpdate(const int64_t _seq, core::coll_helper _params)
+{
+    Data::ThreadUpdates res;
+    const auto array = _params.get_value_as_array("updates");
+    const auto size = array->size();
+    res.messages_.reserve(size);
+    for (std::decay_t<decltype(size)> i = 0; i < size; ++i)
+    {
+        Ui::gui_coll_helper coll(array->get_at(i)->get_as_collection(), false);
+
+        auto u = std::make_unique<Data::ThreadUpdate>();
+        u->unserialize(coll);
+        if (Data::ParentTopic::Type::message == u->parent_->type_)
+        {
+            auto parentTopic = static_cast<Data::MessageParentTopic*>(u->parent_.get());
+            res.messages_[parentTopic->msgId_] = std::move(u);
+        }
+        else if (Data::ParentTopic::Type::task == u->parent_->type_)
+        {
+            // thread updates for task go through TaskContainer
+            continue;
+        }
+    }
+
+    Q_EMIT threadUpdates(res, QPrivateSignal());
+}
+
+void core_dispatcher::onUnreadThreadsCount(const int64_t _seq, core::coll_helper _params)
+{
+    const auto unreadThreads = _params.get_value_as_int("threads");
+    const auto unreadMentions = _params.get_value_as_int("mentions");
+    Q_EMIT unreadThreadCount(unreadThreads, unreadMentions, QPrivateSignal());
+}
+
+void core_dispatcher::onAddThreadResult(const int64_t _seq, core::coll_helper _params)
+{
+    Data::MessageParentTopic topic;
+    topic.unserialize(_params);
+
+    const auto error = _params.get_value_as_int("error");
+    const auto threadId = _params.get<QString>("id");
+
+    Q_EMIT messageThreadAdded(_seq, topic, threadId, error, QPrivateSignal());
+}
+
+void core_dispatcher::onThreadsFeedGetResult(const int64_t _seq, core::coll_helper _params)
+{
+    auto items = _params.get_value_as_array("data");
+    const auto resetPage = _params.get_value_as_bool("reset_page");
+    const auto itemsSize = items->size();
+    std::vector<Data::ThreadFeedItemData> itemsData;
+    itemsData.reserve(itemsSize);
+    for (int32_t i = 0; i < itemsSize; ++i)
+    {
+        Data::ThreadFeedItemData data;
+        core::coll_helper value(items->get_at(i)->get_as_collection(), false);
+        const auto type = Data::ParentTopic::unserialize_type(value);
+        auto parentTopic = Data::ParentTopic::createParentTopic(type);
+        if (Data::ParentTopic::Type::message != type)
+            continue;
+        auto messageParentTopic = std::static_pointer_cast<Data::MessageParentTopic>(parentTopic);
+        messageParentTopic->unserialize(value);
+        const auto threadId = value.get<QString>("thread_id");
+        auto msg = Data::unserializeMessage(core::coll_helper(value.get_value_as_collection("parent_message"), false), threadId, MyInfo()->aimId(), -1, -1);
+        msg->threadData_.parentTopic_ = messageParentTopic;
+        msg->threadData_.threadFeedMessage_ = true;
+        data.parentMessage_ = msg;
+        data.threadId_ = threadId;
+        data.parent_ = messageParentTopic;
+        data.olderMsgId_ = value.get_value_as_int64("older_msg_id");
+        data.repliesCount_ = value.get_value_as_int64("replies_count");
+        data.unreadCount_ = value.get_value_as_int64("unread_count");
+
+        Data::unserializeMessages(value.get_value_as_array("messages"), data.threadId_, MyInfo()->aimId(), -1, -1, Out data.messages_);
+        for (auto& msg : data.messages_)
+        {
+            msg->SetOutgoing(msg->getSender() == MyInfo()->aimId()); // fix https://jira.mail.ru/browse/IMSERVER-12561 until it is fixed on server
+            msg->threadData_.threadFeedMessage_ = true;
+        }
+
+        itemsData.push_back(std::move(data));
+    }
+
+    const auto cursor = _params.get<QString>("cursor");
+    Q_EMIT threadsFeedGetResult(itemsData, cursor, resetPage);
+}
+
+void core_dispatcher::onAuthData(const int64_t _seq, core::coll_helper _params)
+{
+    Q_UNUSED(_seq)
+    Q_EMIT authParamsChanged(Data::AuthParams(_params));
+}
+
+void core_dispatcher::onDraft(const int64_t _seq, core::coll_helper _params)
+{
+    const auto contact = _params.get<QString>("contact");
+    Data::Draft draftData;
+    draftData.unserialize(_params, contact);
+
+    Q_EMIT draft(contact, draftData);
+}
+
+void core_dispatcher::onTaskCreateResult(const int64_t _seq, core::coll_helper _params)
+{
+    int error = _params.get_value_as_int("error");
+    Q_EMIT taskCreated(_seq, error);
+}
+
+void core_dispatcher::onTaskUpdate(const int64_t _seq, core::coll_helper _params)
+{
+    Data::TaskData task;
+    task.unserialize(_params.get_value_as_collection("task"));
+    Q_EMIT updateTask(task);
+}
+
+void core_dispatcher::onTaskEditResult(const int64_t _seq, core::coll_helper _params)
+{
+    if (_params.get_value_as_int("error"))
+        Utils::showTextToastOverContactDialog(QT_TRANSLATE_NOOP("task_block", "Task edit: an error occured"));
+}
+
+void core_dispatcher::onTasksLoaded(const int64_t _seq, core::coll_helper _params)
+{
+    if (auto array = _params.get_value_as_array("tasks"))
+    {
+        const auto size = array->size();
+        QVector<Data::TaskData> tasks;
+        tasks.reserve(size);
+        for (std::decay_t<decltype(size)> i = 0; i < size; ++i)
+        {
+            Data::TaskData task;
+            core::coll_helper helper(array->get_at(i)->get_as_collection(), false);
+            task.unserialize(helper.get_value_as_collection("task"));
+            tasks.append(std::move(task));
+        }
+        Q_EMIT tasksLoaded(tasks);
+    }
 }
 
 void core_dispatcher::onBotCallbackAnswer(const int64_t _seq, core::coll_helper _params)

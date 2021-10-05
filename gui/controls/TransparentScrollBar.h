@@ -28,12 +28,12 @@ namespace Ui
         void fadeOut();
 
     private:
-        Utils::OpacityEffect*        opacityEffect_;
-        QPropertyAnimation*          fadeAnimation_;
+        Utils::OpacityEffect* opacityEffect_;
+        QPropertyAnimation* fadeAnimation_;
         float                        minOpacity_;
         float                        maxOpacity_;
-        QWidget*                     host_;
-        QTimer*                      timer_;
+        QWidget* host_;
+        QTimer* timer_;
     };
 
     enum class ScrollBarType
@@ -60,7 +60,7 @@ namespace Ui
         void fadeOut();
 
     public:
-        TransparentScrollButton(QWidget *parent);
+        TransparentScrollButton(QWidget* parent);
         virtual ~TransparentScrollButton();
 
         virtual void hoverOn() = 0;
@@ -70,9 +70,9 @@ namespace Ui
         void moved(QPoint);
 
     protected:
-        void mouseMoveEvent(QMouseEvent *) override;
-        void mousePressEvent(QMouseEvent *) override;
-        void paintEvent(QPaintEvent *event) override;
+        void mouseMoveEvent(QMouseEvent*) override;
+        void mousePressEvent(QMouseEvent*) override;
+        void paintEvent(QPaintEvent* event) override;
 
         QPropertyAnimation* maxSizeAnimation_;
         QPropertyAnimation* minSizeAnimation_;
@@ -127,7 +127,7 @@ namespace Ui
         Q_OBJECT
 
     public:
-        TransparentScrollButtonH(QWidget *parent);
+        TransparentScrollButtonH(QWidget* parent);
 
         int getMinWidth();
         int getMinHeight();
@@ -174,10 +174,10 @@ namespace Ui
         void updatePos();
 
     protected:
-        bool eventFilter(QObject *obj, QEvent *event) override;
-        void paintEvent(QPaintEvent *event) override;
-        void resizeEvent(QResizeEvent *event) override;
-        void mousePressEvent(QMouseEvent *event) override;
+        bool eventFilter(QObject* obj, QEvent* event) override;
+        void paintEvent(QPaintEvent* event) override;
+        void resizeEvent(QResizeEvent* event) override;
+        void mousePressEvent(QMouseEvent* event) override;
 
         virtual double calcButtonHeight() = 0;
         virtual double calcButtonWidth() = 0;
@@ -290,8 +290,8 @@ namespace Ui
         virtual void setScrollBarH(TransparentScrollBarH* _scrollBar);
 
     protected:
-        virtual void mouseMoveEvent(QMouseEvent *event);
-        virtual void wheelEvent(QWheelEvent *event);
+        virtual void mouseMoveEvent(QMouseEvent* event);
+        virtual void wheelEvent(QWheelEvent* event);
         virtual void updateGeometries();
         virtual void fadeIn();
 
@@ -301,8 +301,31 @@ namespace Ui
     };
 
 
+    //////////////////////////////////////////////////////////////////////////
+    // GestureHandler
+    //////////////////////////////////////////////////////////////////////////
 
+    class ListViewGestureHandler : public QObject
+    {
+        Q_OBJECT
 
+    Q_SIGNALS:
+        void tapAndHoldGesture(const QModelIndex& _index, QPrivateSignal);
+        void tapGesture(const QModelIndex& _index, QPrivateSignal);
+        void rightClick(const QModelIndex& _index, QPrivateSignal);
+
+    public:
+        explicit ListViewGestureHandler(QObject* _parent);
+        virtual void gestureEvent(QGestureEvent* _e);
+        virtual void setView(QListView* _view);
+        virtual void mouseEvent(QMouseEvent* _e);
+
+    private:
+        QModelIndex startGestureIndex_;
+        bool wasTapAndHold_ = false;
+
+        QListView* view_ = nullptr;
+    };
 
 
     //////////////////////////////////////////////////////////////////////////
@@ -323,6 +346,8 @@ namespace Ui
         bool getSelectByMouseHover() const;
 
         void updateSelectionUnderCursor();
+        void setListViewGestureHandler(ListViewGestureHandler* _handler);
+        ListViewGestureHandler* getListViewGestureHandler() const;
 
     protected:
         void enterEvent(QEvent* _e) override;
@@ -330,11 +355,13 @@ namespace Ui
         void mouseMoveEvent(QMouseEvent* _e) override;
         void wheelEvent(QWheelEvent* _e) override;
         void resizeEvent(QResizeEvent*) override;
+        bool eventFilter(QObject* _obj, QEvent* _event) override;
 
         QItemSelectionModel::SelectionFlags selectionCommand(const QModelIndex &index, const QEvent *event = 0) const override;
 
         bool selectByMouseHoverEnabled_;
         QTimer* rescheduleLayoutTimer_;
+        ListViewGestureHandler* getstureHandler_;
 
     private Q_SLOTS:
         void scrollAnimationValueChanged();
@@ -420,20 +447,28 @@ namespace Ui
         explicit ScrollAreaWithTrScrollBar(QWidget *parent = nullptr);
         virtual ~ScrollAreaWithTrScrollBar();
 
-        virtual QSize contentSize() const override;
-        virtual void setScrollBarV(TransparentScrollBarV* _scrollBar) override;
-        virtual void setScrollBarH(TransparentScrollBarH* _scrollBar) override;
+        QSize contentSize() const override;
+        void setScrollBarV(TransparentScrollBarV* _scrollBar) override;
+        void setScrollBarH(TransparentScrollBarH* _scrollBar) override;
         void setWidget(QWidget* widget);
+
+        void setMaxContentWidth(int _width);
+        int getMaxContentWidth() const noexcept { return maxWidth_; }
 
         virtual void fadeIn() override;
 
     protected:
-        virtual void mouseMoveEvent(QMouseEvent *event) override;
-        virtual void wheelEvent(QWheelEvent *event) override;
-        virtual void resizeEvent(QResizeEvent *event) override;
+        void mouseMoveEvent(QMouseEvent *event) override;
+        void wheelEvent(QWheelEvent *event) override;
+        void resizeEvent(QResizeEvent *event) override;
         void updateGeometry();
+        void updateMargins();
+
     private:
         bool eventFilter(QObject *obj, QEvent *event) override;
+
+    private:
+        int maxWidth_ = -1;
     };
 
 

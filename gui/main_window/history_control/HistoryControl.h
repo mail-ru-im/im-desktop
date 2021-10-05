@@ -1,7 +1,9 @@
 #pragma once
 
-#include "../../types/message.h"
-#include "../../styles/WallpaperId.h"
+#include "types/message.h"
+#include "styles/WallpaperId.h"
+#include "main_window/EscapeCancellable.h"
+#include "controls/BackgroundWidget.h"
 
 namespace core
 {
@@ -15,76 +17,77 @@ namespace Ui
     enum class ConnectionState;
     class ConnectionWidget;
     enum class FrameCountMode;
+    enum class ClosePage;
 
-    class SelectDialogWidget : public QWidget
+    class PageBase;
+    class HistoryControlPage;
+    class FeedPage;
+    class ConnectionWidget;
+    class BubblePlateWidget;
+    class SelectDialogWidget;
+    class StartCallDialogWidget;
+
+    class EmptyConnectionInfoPage : public BackgroundWidget
     {
-        Q_OBJECT
-
     public:
-        SelectDialogWidget(QWidget* _parent);
+        enum class OnlineWidgetType
+        {
+            Chat,
+            Calls,
+        };
 
-    protected:
-        void paintEvent(QPaintEvent* _e) override;
+        explicit EmptyConnectionInfoPage(QWidget* _parent = nullptr);
+        void setPageType(OnlineWidgetType _pageType);
 
     private:
-        void connectionStateChanged(const Ui::ConnectionState& _state);
         void onGlobalWallpaperChanged();
-        void setTextColor(const QColor& _color);
+        void connectionStateChanged(const Ui::ConnectionState& _state);
+        void updateCentralWidget();
 
+    private:
+        QWidget* dialogWidget_;
+        BubblePlateWidget* bubblePlate_;
         ConnectionWidget* connectionWidget_;
-        QLabel* selectDialogLabel_;
-        QLayout* rootLayout_;
+        SelectDialogWidget* selectDialogWidget_;
+        StartCallDialogWidget* startCallDialogWidget_;
+
+        ConnectionState connectionState_;
+        OnlineWidgetType pageType_;
     };
 
 
-
-    class history_control;
-    class HistoryControlPage;
-    class ConnectionWidget;
-
-    class HistoryControl : public QWidget
+    class HistoryControl : public QWidget, public IEscapeCancellable
     {
         Q_OBJECT
 
     Q_SIGNALS:
-        void quote(const Data::QuotesVec&) const;
-        void forward(const Data::QuotesVec&) const;
-        void messageIdsFetched(const QString&, const Data::MessageBuddies&, QPrivateSignal) const;
-        void clicked() const;
         void needUpdateWallpaper(const QString& _aimId, QPrivateSignal) const;
         void setTopWidget(const QString, QWidget*, QPrivateSignal) const;
 
     public Q_SLOTS:
         void contactSelected(const QString& _aimId, qint64 _messageId, const highlightsV& _highlights = {}, bool _ignoreScroll = false);
-        void switchToEmpty();
 
         void addPageToDialogHistory(const QString& _aimId);
         void clearDialogHistory();
         void switchToPrevDialogPage(const bool _calledFromKeyboard);
 
-    private Q_SLOTS:
-        void dlgStates(const QVector<Data::DlgState>& _states);
-
+        void switchToEmpty();
     public:
         HistoryControl(QWidget* parent);
         ~HistoryControl();
 
         void cancelSelection();
-        HistoryControlPage* getHistoryPage(const QString& aimId) const;
+        HistoryControlPage* getHistoryPage(const QString& _aimId) const;
+        PageBase* getPage(const QString& _aimId) const;
         bool hasMessageUnderCursor() const;
 
         void notifyApplicationWindowActive(const bool isActive);
         void notifyUIActive(const bool _isActive);
 
         void scrollHistoryToBottom(const QString& _contact) const;
-        void inputTyped();
         const QString& currentAimId() const;
         void setFrameCountMode(FrameCountMode _mode);
-
-        const QStringList& getStatusBannerEmoji() const noexcept { return statusBannerEmoji_; }
-
-    protected:
-        void mouseReleaseEvent(QMouseEvent *) override;
+        FrameCountMode getFrameCountMode() const noexcept { return frameCountMode_; }
 
     private Q_SLOTS:
         void updatePages();
@@ -98,9 +101,11 @@ namespace Ui
         void onGlobalWallpaperChanged();
         void onContactWallpaperChanged(const QString& _aimId);
         void onWallpaperAvailable(const Styling::WallpaperId& _id);
+        void onActiveDialogHide(const QString& _aimId, Ui::ClosePage _closePage);
 
     private:
-        HistoryControlPage* getCurrentPage() const;
+        HistoryControlPage* getCurrentHistoryPage() const;
+        PageBase* getCurrentPage() const;
         void updateWallpaper(const QString& _aimId = QString()) const;
         void updateEmptyPageWallpaper() const;
 
@@ -108,17 +113,30 @@ namespace Ui
         void suggestNotifyUser(const QString& _contact, const QString& _smsContext);
 
         void suspendBackgroundPages();
-        void updateStatusBannerEmoji();
 
-        QMap<QString, HistoryControlPage*> pages_;
+        void openGallery(const QString& _contact);
+
+        PageBase* createPage(const QString& _aimId);
+
+        QHash<QString, PageBase*> pages_;
         QMap<QString, QTime> times_;
         QString current_;
         QTimer* timer_;
         QStackedWidget* stackPages_;
-        QWidget* emptyPage_;
+        EmptyConnectionInfoPage* emptyPage_;
         std::deque<QString> dialogHistory_;
         FrameCountMode frameCountMode_;
         QString unreadText_;
-        QStringList statusBannerEmoji_;
+
+        struct
+        {
+            QString aimId_;
+            qint64 messageId_ = -1;
+            void clear()
+            {
+                aimId_.clear();
+                messageId_ = -1;
+            }
+        } lastInitedParams_;
     };
 }

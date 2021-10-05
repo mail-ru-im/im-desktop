@@ -439,7 +439,7 @@ void Ui::MaskPanel::leaveEvent(QEvent* _e)
 
 void Ui::MaskPanel::keyReleaseEvent(QKeyEvent* _e)
 {
-    QWidget::keyReleaseEvent(_e);
+    BaseVideoPanel::keyReleaseEvent(_e);
     if (_e->key() == Qt::Key_Escape)
         Q_EMIT onkeyEscPressed();
 }

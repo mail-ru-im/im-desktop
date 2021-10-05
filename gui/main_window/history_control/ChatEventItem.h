@@ -73,7 +73,8 @@ namespace Ui
         void mouseMoveEvent(QMouseEvent* _event) override;
         void mouseReleaseEvent(QMouseEvent* _event) override;
 
-        bool supportsReactions() const override { return false; }
+        bool canBeThreadParent() const override { return false; }
+        bool supportsOverlays() const override { return false; }
 
     private:
         QRect BubbleRect_;

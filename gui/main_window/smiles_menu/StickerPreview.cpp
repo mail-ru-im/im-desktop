@@ -59,7 +59,7 @@ namespace
 
 namespace Ui::Smiles
 {
-    StickerPreview::StickerPreview(QWidget* _parent, const int32_t _setId, const QString& _stickerId, Context _context)
+    StickerPreview::StickerPreview(QWidget* _parent, const int32_t _setId, const Utils::FileSharingId& _stickerId, Context _context)
         : QWidget(_parent)
         , context_(_context)
     {
@@ -72,7 +72,7 @@ namespace Ui::Smiles
 
     StickerPreview::~StickerPreview() = default;
 
-    void StickerPreview::showSticker(const QString& _stickerId)
+    void StickerPreview::showSticker(const Utils::FileSharingId& _stickerId)
     {
         // showSticker can be called after synthetic mouse move event sent from QWidget::hide,
         // so we need this, to prevent player_ object resetting (in StickerPreview::init) during execution of QWidget::hide
@@ -150,7 +150,7 @@ namespace Ui::Smiles
 
             const auto x = getAdjustedImageRect().center().x();
             const auto y = getAdjustedImageRect().bottom() + Utils::scale_value(10);
-            Utils::drawText(p, QPointF(x, y), Qt::AlignHCenter | Qt::AlignBottom, stickerId_);
+            Utils::drawText(p, QPointF(x, y), Qt::AlignHCenter | Qt::AlignBottom, stickerId_.fileId + (stickerId_.sourceId ? (qsl("?source=") + *stickerId_.sourceId) : QString()));
         }
     }
 
@@ -200,7 +200,7 @@ namespace Ui::Smiles
 
     }
 
-    void StickerPreview::onStickerLoaded(int _error, const QString& _id)
+    void StickerPreview::onStickerLoaded(int _error, const Utils::FileSharingId& _id)
     {
         if (_error == 0 && stickerId_ == _id)
         {
@@ -218,7 +218,7 @@ namespace Ui::Smiles
         }
     }
 
-    void StickerPreview::init(const QString &_stickerId)
+    void StickerPreview::init(const Utils::FileSharingId&_stickerId)
     {
         if (stickerId_ == _stickerId)
             return;

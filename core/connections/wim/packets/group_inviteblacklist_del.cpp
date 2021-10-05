@@ -2,7 +2,7 @@
 
 #include "group_inviteblacklist_del.h"
 #include "../../../http_request.h"
-#include "tools/json_helper.h"
+#include "../common.shared/json_helper.h"
 
 using namespace core;
 using namespace wim;
@@ -12,7 +12,7 @@ group_inviteblacklist_del::group_inviteblacklist_del(wim_packet_params _params, 
     , contacts_(std::move(_contacts_to_del))
     , all_(_del_all)
 {
-    assert(!contacts_.empty() || _del_all);
+    im_assert(!contacts_.empty() || _del_all);
 }
 
 std::string_view group_inviteblacklist_del::get_method() const

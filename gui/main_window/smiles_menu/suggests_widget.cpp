@@ -12,12 +12,12 @@
 
 namespace
 {
-    int getStickersSpacing()
+    int getStickersSpacing() noexcept
     {
         return Utils::scale_value(8);
     }
 
-    int getSuggestHeight()
+    int getSuggestHeight() noexcept
     {
         return Utils::scale_value(70);
     }
@@ -35,7 +35,7 @@ StickersWidget::StickersWidget(QWidget* _parent)
     : StickersTable(_parent, -1, Stickers::getStickerWidth(), Stickers::getStickerWidth() + getStickersSpacing(), false)
     , stickerPreview_(nullptr)
 {
-    connect(&Stickers::getCache(), &Stickers::Cache::stickerUpdated, this, [this](qint32 _error, const QString& _stickerId)
+    connect(&Stickers::getCache(), &Stickers::Cache::stickerUpdated, this, [this](qint32 _error, const Utils::FileSharingId& _stickerId)
     {
         if (_error == 0)
             redrawSticker(-1, _stickerId);
@@ -57,7 +57,7 @@ void StickersWidget::closeStickerPreview()
     stickerPreview_ = nullptr;
 }
 
-void StickersWidget::onStickerPreview(const QString& _stickerId)
+void StickersWidget::onStickerPreview(const Utils::FileSharingId& _stickerId)
 {
     if (!stickerPreview_)
     {
@@ -73,7 +73,7 @@ void StickersWidget::onStickerPreview(const QString& _stickerId)
     }
 }
 
-void StickersWidget::onStickerHovered(const int32_t _setId, const QString& _stickerId)
+void StickersWidget::onStickerHovered(const int32_t _setId, const Utils::FileSharingId& _stickerId)
 {
     if (stickerPreview_)
         stickerPreview_->showSticker(_stickerId);
@@ -143,7 +143,7 @@ void StickersWidget::leaveEvent(QEvent* _e)
     QWidget::leaveEvent(_e);
 }
 
-int32_t StickersWidget::getStickerPosInSet(const QString & _stickerId) const
+int32_t StickersWidget::getStickerPosInSet(const Utils::FileSharingId& _stickerId) const
 {
     const auto it = std::find_if(stickersArray_.begin(), stickersArray_.end(), [&_stickerId](const auto& _s) { return _s == _stickerId; });
     if (it != stickersArray_.end())
@@ -156,7 +156,7 @@ const stickersArray& StickersWidget::getStickerIds() const
     return stickersArray_;
 }
 
-void StickersWidget::setSelected(const std::pair<int32_t, QString>& _sticker)
+void StickersWidget::setSelected(const std::pair<int32_t, Utils::FileSharingId>& _sticker)
 {
     const auto stickerPosInSet = getStickerPosInSet(_sticker.second);
     if (stickerPosInSet >= 0)
@@ -191,7 +191,7 @@ void StickersSuggest::showAnimated(const QString& _text, const QPoint& _p, const
 {
     stickers_->clearStickers();
     stickers_->init(_text);
-    stickers_->setSelected(std::make_pair(-1, QString()));
+    stickers_->setSelected(std::make_pair(-1, Utils::FileSharingId()));
     if (needScrollToTop_)
         tooltip_->scrollToTop();
     tooltip_->raise();
@@ -256,7 +256,7 @@ void StickersSuggest::keyPressEvent(QKeyEvent* _event)
         case Qt::Key_Left:
         {
             const auto selectedSticker = stickers_->getSelected();
-            if (!selectedSticker.second.isEmpty())
+            if (!selectedSticker.second.fileId.isEmpty())
             {
                 stickers_->selectLeft();
 
@@ -270,7 +270,7 @@ void StickersSuggest::keyPressEvent(QKeyEvent* _event)
         case Qt::Key_Right:
         {
             const auto selectedSticker = stickers_->getSelected();
-            if (!selectedSticker.second.isEmpty())
+            if (!selectedSticker.second.fileId.isEmpty())
             {
                 stickers_->selectRight();
 
@@ -285,7 +285,7 @@ void StickersSuggest::keyPressEvent(QKeyEvent* _event)
         case Qt::Key_Enter:
         {
             const auto selectedSticker = stickers_->getSelected();
-            if (keyboardActive_ && !selectedSticker.second.isEmpty())
+            if (keyboardActive_ && !selectedSticker.second.fileId.isEmpty())
             {
                 Q_EMIT stickerSelected(selectedSticker.second);
 

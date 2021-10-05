@@ -18,6 +18,7 @@ namespace Ui
         mediaTypeFsVideo = 11,
         mediaTypeFsPhoto = 12,
         mediaTypeFsGif = 13,
+        mediaTypeTask = 14
     };
 
 

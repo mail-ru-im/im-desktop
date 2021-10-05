@@ -4,6 +4,7 @@
 
 #include "../../contact_list/RecentsModel.h"
 #include "../../contact_list/UnknownsModel.h"
+#include "../../contact_list/ContactListModel.h"
 #include "../../containers/FriendlyContainer.h"
 #include "../../history_control/ChatEventInfo.h"
 #include "../../history_control/VoipEventInfo.h"
@@ -60,7 +61,7 @@ namespace
 
     auto hasExecutedFetchRequestParams = [](auto needle) noexcept
     {
-        return [needle](auto params) noexcept
+        return [needle](const auto& params) noexcept
         {
             return needle.id == params.id && needle.direction == params.direction && needle.isContext == params.isContext;
         };
@@ -68,7 +69,7 @@ namespace
 
     auto hasSeq = [](auto seq) noexcept
     {
-        return [seq](auto param) noexcept
+        return [seq](const auto& param) noexcept
         {
             return param.seq == seq;
         };
@@ -163,17 +164,19 @@ namespace
 
     void traceMessageBuddies(const QString& _aimId,  const Data::MessageBuddies& _buddies, Ui::MessagesBuddiesOpt _option, qint64 _messageId = -1)
     {
-        qCDebug(history) << _aimId << "buddies size" << _buddies.size() << "option:" << optionToStr<QLatin1String>(_option);
+        qCDebug(history) << "---" << _aimId << "buddies size" << _buddies.size() << "option:" << optionToStr<QLatin1String>(_option);
         traceMessageBuddiesImpl(_buddies, _messageId);
+        qCDebug(history) << "---";
     }
 
     void traceMessageBuddies(const QString& _aimId, const std::map<qint64, Data::MessageBuddySptr>& _buddies, Ui::MessagesBuddiesOpt _option, qint64 _messageId = -1)
     {
-        qCDebug(history) << _aimId << "buddies size" << _buddies.size() << "option:" << optionToStr<QLatin1String>(_option);
+        qCDebug(history) << "---" << _aimId << "buddies size" << _buddies.size() << "option:" << optionToStr<QLatin1String>(_option);
         traceMessageBuddiesImpl(boost::adaptors::values(_buddies), _messageId);
+        qCDebug(history) << "---";
     }
 
-    static QVector<qint64> incomingIdsGreaterThan(const Data::MessageBuddies& _buddies, qint64 _id)
+    QVector<qint64> incomingIdsGreaterThan(const Data::MessageBuddies& _buddies, qint64 _id)
     {
         QVector<qint64> res;
         res.reserve(_buddies.size());
@@ -195,6 +198,17 @@ namespace hist
         return dlgState;
     }
 
+    scroll_mode_type evaluateScrollMode(qint64 _messageIdToScroll, qint64 _lastReadMessage, bool _needCreateNewPage, bool _ignoreScroll)
+    {
+        if (_needCreateNewPage)
+            _ignoreScroll = false;
+        if (_ignoreScroll || (_messageIdToScroll == -1 && _lastReadMessage == -1))
+            return scroll_mode_type::none;
+        if (_messageIdToScroll != -1)
+            return scroll_mode_type::search;
+        return scroll_mode_type::unread;
+    }
+
     History::History(const QString& _aimId, QObject* _parent)
         : QObject(_parent)
         , aimId_(_aimId)
@@ -213,9 +227,14 @@ namespace hist
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::removePending, this, &History::pendingAutoRemove);
 
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::logHistory, this, &History::dump);
+
+        qCDebug(history) << aimId_ << "ctor, thread" << (Logic::getContactListModel()->isThread(aimId_) ? "yes" : "no");
     }
 
-    History::~History() = default;
+    History::~History()
+    {
+        qCDebug(history) << aimId_ << "dtor";
+    }
 
     Data::MessageBuddies History::fetchBuddies(FetchDirection _direction)
     {
@@ -245,7 +264,7 @@ namespace hist
 
             if (size_t(distance - (result.size() - resultSizeBefore)) < preloadCount() && lastMessageId)
             {
-                const auto searchMode = initParams_.centralMessage > 0  && initParams_._serverResultsOnly == ServerResultsOnly::Yes ? SearchMode::Yes : SearchMode::No;
+                const auto searchMode = initParams_.centralMessage_ > 0  && initParams_.serverResultsOnly_ == ServerResultsOnly::Yes ? SearchMode::Yes : SearchMode::No;
                 const auto isFirstInit = searchMode == SearchMode::Yes ? FirstRequest::No : getAndResetFirstInitRequest();
 
                 RequestParams _params = { *lastMessageId, RequestDirection::ToOlder, JumpToBottom::No, isFirstInit, Reason::Plain, searchMode };
@@ -317,7 +336,7 @@ namespace hist
                 const auto lastMessageId = messages_.empty() ? std::nullopt : std::make_optional(messages_.crbegin()->first);
                 if (size_t(distance - result.size()) < preloadCount() && lastMessageId)
                 {
-                    const auto searchMode = /*initParams_._mode == scroll_mode_type::search &&*/ initParams_._serverResultsOnly == ServerResultsOnly::Yes ? SearchMode::Yes : SearchMode::No;
+                    const auto searchMode = initParams_.serverResultsOnly_ == ServerResultsOnly::Yes ? SearchMode::Yes : SearchMode::No;
                     const auto isFirstInit = searchMode == SearchMode::Yes ? FirstRequest::No : getAndResetFirstInitRequest();
 
                     RequestParams _params = { *lastMessageId, RequestDirection::ToNewer, JumpToBottom::No, isFirstInit, Reason::Plain, searchMode };
@@ -597,6 +616,7 @@ namespace hist
     {
         std::scoped_lock locker(lockForViewFetchCounter_);
 
+        const auto prevInitParams = std::move(initParams_);
         initParams_ = { _messageId, _type, _serverResultsOnly };
 
         if (hasAllMessagesForInit(_messageId, _type))
@@ -614,13 +634,20 @@ namespace hist
             };
             if (_type == hist::scroll_mode_type::none && _messageId == -1 && lastMessageInView())
             {
-                qCDebug(history) << "no need to request and Q_EMIT init";
+                qCDebug(history) << aimId_ << "no need to request and Q_EMIT init";
             }
             else
             {
                 clearExecutedRequests();
-                Q_EMIT readyInit(initParams_.centralMessage, initParams_._mode, QPrivateSignal());
+                Q_EMIT readyInit(initParams_.centralMessage_, initParams_.mode_, QPrivateSignal());
             }
+            return;
+        }
+
+        const auto isRequestContext = _messageId > 0 && _serverResultsOnly == ServerResultsOnly::Yes;
+        if (!isRequestContext && waitingInitSeq_ && prevInitParams == initParams_)
+        {
+            qCDebug(history) << aimId_ << "initfor message id:" << _messageId << "already requested" << *waitingInitSeq_;
             return;
         }
 
@@ -631,31 +658,18 @@ namespace hist
         // optimize me
         messages_.clear();
 
-        if (messages_.empty())
+        if (isRequestContext)
         {
-            if (/*_type == hist::scroll_mode_type::search*/ _messageId > 0 && _serverResultsOnly == ServerResultsOnly::Yes)
-            {
-                waitingInitSeq_ = requestMessageContext(_messageId);
-                qCDebug(history) << *waitingInitSeq_ << "initfor requestMessageContext: " << _messageId;
-            }
-            else
-            {
-                const auto direction = _messageId > 0 ? RequestDirection::Bidirection : RequestDirection::ToOlder;
-                RequestParams _params = { _messageId, direction, JumpToBottom::Yes, getAndResetFirstInitRequest(), Reason::Plain, SearchMode::No };
-                waitingInitSeq_ = requestMessages(_params);
-                qCDebug(history) << *waitingInitSeq_ << "initfor message id: " << _messageId;
-            }
+            waitingInitSeq_ = requestMessageContext(_messageId);
+            qCDebug(history) << aimId_ << *waitingInitSeq_ << "initfor requestMessageContext: " << _messageId;
         }
         else
         {
-            if (_messageId > 0)
-            {
-
-            }
-            else
-            {
-
-            }
+            const auto direction = _messageId > 0 ? RequestDirection::Bidirection : RequestDirection::ToOlder;
+            const auto isFirstInit = getAndResetFirstInitRequest();
+            RequestParams params = { _messageId, direction, JumpToBottom::Yes, isFirstInit, Reason::Plain, SearchMode::No };
+            waitingInitSeq_ = requestMessages(std::move(params));
+            qCDebug(history) << aimId_ << *waitingInitSeq_ << "initfor message id: " << _messageId << "first" << (isFirstInit == FirstRequest::Yes ? "yes" : "no");
         }
     }
 
@@ -663,6 +677,8 @@ namespace hist
     {
         if (_aimId != aimId_)
             return;
+
+        qCDebug(history) << aimId_ <<"messageBuddies size" << _buddies.size() << "seq" << _seq << "option:" << optionToStr<QLatin1String>(_option);
 
         std::unique_lock locker(lockForViewFetchCounter_);
 
@@ -684,6 +700,7 @@ namespace hist
             if (!newIds.isEmpty())
                 Q_EMIT newMessagesReceived(newIds, QPrivateSignal());
 
+            qCDebug(history) << aimId_ << "needIgnoreMessages";
             logCurrentIds(qsl("needIgnoreMessages"), LogType::Simple);
             return;
         }
@@ -714,23 +731,16 @@ namespace hist
         auto pendingResult = insertPendings(pendingRange);
         auto buddiesResult = insertBuddies(buddiesRange, _option);
 
-        const auto containsLastMessage = std::any_of(buddiesRange.begin(), buddiesRange.end(), hasId(_lastMsgid));
-
-        if (containsLastMessage)
-            addToTail(buddiesRange);
-
-        std::sort(tail_.begin(), tail_.end(), msgWithKeyComparator);
-
         if (isRequiredWaitingSeq)
         {
-            if (const auto fixed = fixIdAndMode(initParams_.centralMessage, initParams_._mode); fixed.id && fixed.mode)
+            if (const auto fixed = fixIdAndMode(initParams_.centralMessage_, initParams_.mode_); fixed.id && fixed.mode)
             {
                 qCDebug(history) << "Q_EMIT ready fixed" << *fixed.id;
                 Q_EMIT readyInit(*fixed.id, *fixed.mode, QPrivateSignal());
             }
             else
             {
-                Q_EMIT readyInit(initParams_.centralMessage, initParams_._mode, QPrivateSignal());
+                Q_EMIT readyInit(initParams_.centralMessage_, initParams_.mode_, QPrivateSignal());
             }
             waitingInitSeq_ = std::nullopt;
 
@@ -738,18 +748,10 @@ namespace hist
         }
         else
         {
-            proccesInserted(pendingResult, buddiesResult, _option, _seq, prevLastId);
+            processInserted(pendingResult, buddiesResult, _option, _seq, prevLastId);
         }
 
         Q_EMIT updateLastSeen(getDlgState(aimId_), QPrivateSignal());
-    }
-
-    template <typename R>
-    inline void History::addToTail(const R& range)
-    {
-     /*   for (const auto& msg : range)
-            tail_.push_back({ msg->ToKey(), msg });
-            */
     }
 
     template<typename R>
@@ -802,7 +804,6 @@ namespace hist
                 if (const auto it = std::find_if(pendings_.begin(), pendings_.end(), isKeyEqual(msg->ToKey())); it != pendings_.end())
                 {
                     pendings_.erase(it);
-                    addToTail(msg);
                     pendingResolves.push_back(msg);
                     isPendingResolve = true;
                 }
@@ -875,10 +876,10 @@ namespace hist
 
         logCurrentIds(qsl("messageIdsFromServer"), LogType::Simple);
 
-        if (initParams_.centralMessage > 0 && _ids.contains(initParams_.centralMessage))
+        if (initParams_.centralMessage_ > 0 && _ids.contains(initParams_.centralMessage_))
         {
             // reinit to scroll
-            initFor(initParams_.centralMessage, initParams_._mode);
+            initFor(initParams_.centralMessage_, initParams_.mode_);
             return;
         }
 
@@ -1050,22 +1051,16 @@ namespace hist
         if (_aimId != aimId_)
             return;
 
-        const auto scopedExit = Utils::ScopeExitT([this, _seq]() { removeSeq(_seq); });
-
-        const bool needWaitingForSeq = waitingInitSeq_.has_value();
-        const bool isRequiredWaitingSeq = needWaitingForSeq && (_seq == *waitingInitSeq_);
-
+        const bool isRequiredWaitingSeq = waitingInitSeq_ && _seq == *waitingInitSeq_;
         if (isRequiredWaitingSeq)
         {
-            if (_error == Ui::MessagesNetworkError::Yes)
-            {
-                initForImpl(_id, scroll_mode_type::search, ServerResultsOnly::No);
-            }
-            else
-            {
-                initForImpl(_id, scroll_mode_type::search, ServerResultsOnly::Yes);
-            }
+            const auto isSearchOnly = _error == Ui::MessagesNetworkError::Yes
+                ? ServerResultsOnly::No
+                : ServerResultsOnly::Yes;
+            initForImpl(_id, scroll_mode_type::search, isSearchOnly);
         }
+
+        removeSeq(_seq);
     }
 
     void History::messageLoadAfterSearchError(const QString& _aimId, qint64 _seq, qint64 _from, qint64 _countLater, qint64 _countEarly, Ui::MessagesNetworkError _error)
@@ -1073,33 +1068,29 @@ namespace hist
         if (_aimId != aimId_)
             return;
 
-        const auto scopedExit = Utils::ScopeExitT([this, _seq]() { removeSeq(_seq); });
-        const auto it = std::find_if(executedRequests.fetch.begin(), executedRequests.fetch.end(), hasSeq(_seq));
-        if (it != executedRequests.fetch.end())
+        if (_error == Ui::MessagesNetworkError::Yes)
         {
-            if (_error == Ui::MessagesNetworkError::Yes)
+            const auto it = std::find_if(executedRequests.fetch.begin(), executedRequests.fetch.end(), hasSeq(_seq));
+            if (it != executedRequests.fetch.end())
             {
-                initParams_._serverResultsOnly = ServerResultsOnly::No;
+                initParams_.serverResultsOnly_ = ServerResultsOnly::No;
 
-                const auto searchMode = SearchMode::No;
                 const auto isFirstInit = getAndResetFirstInitRequest();
-                auto params = *it;
-                Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-                collection.set_value_as_qstring("contact", aimId_);
-                collection.set_value_as_int64("from", _from); // this id is included
-                collection.set_value_as_int64("count_early", _countEarly);
-                collection.set_value_as_int64("count_later", _countLater);
-                collection.set_value_as_bool("need_prefetch", true);
-                collection.set_value_as_bool("is_first_request", isFirstInit == FirstRequest::Yes);
-                collection.set_value_as_bool("after_search", searchMode == SearchMode::Yes);
+                Ui::core_dispatcher::GetHistoryParams params;
+                params.from_ = _from;
+                params.early_ = _countEarly;
+                params.later_ = _countLater;
+                params.needPrefetch_ = true;
+                params.firstRequest_ = isFirstInit == FirstRequest::Yes;
+                params.afterSearch_ = false;
 
-                const auto seq = Ui::GetDispatcher()->post_message_to_core("archive/messages/get", collection.get());
-
-                params.seq = seq;
-
-                executedRequests.fetch.push_back(params);
+                auto requestParams = *it;
+                requestParams.seq = Ui::GetDispatcher()->getHistory(aimId_, params);
+                executedRequests.fetch.push_back(std::move(requestParams));
             }
         }
+
+        removeSeq(_seq);
     }
 
     void History::messagesClear(const QString& _aimId)
@@ -1111,7 +1102,6 @@ namespace hist
 
         messages_.clear();
         pendings_.clear();
-        tail_.clear();
 
         viewBounds_ = {};
 
@@ -1177,12 +1167,6 @@ namespace hist
             Q_EMIT updatedBuddies(updated, QPrivateSignal());
     }
 
-    void History::addToTail(const Data::MessageBuddySptr& _msg)
-    {
-        const auto r = { _msg };
-        addToTail(boost::make_iterator_range(r.begin(), r.end()));
-    }
-
     void History::processChatEvents(const Data::MessageBuddies & _msgs, Ui::MessagesBuddiesOpt _option, qint64 _seq) const
     {
         if (isCommonDlgState(_option) || _option == Ui::MessagesBuddiesOpt::RequestedByIds)
@@ -1238,7 +1222,7 @@ namespace hist
         return it != visibleItems.end();
     }
 
-    void History::proccesInserted(const PendingsInsertResult& _pendingResult, const BuddiesInsertResult& _buddiesResult, Ui::MessagesBuddiesOpt _option, qint64 _seq, qint64 _prevLastId)
+    void History::processInserted(const PendingsInsertResult& _pendingResult, const BuddiesInsertResult& _buddiesResult, Ui::MessagesBuddiesOpt _option, qint64 _seq, qint64 _prevLastId)
     {
         const bool needLog = !_pendingResult.inserted.isEmpty() || !_pendingResult.updated.isEmpty() || !_buddiesResult.inserted.isEmpty() || !_buddiesResult.pendingResolves.isEmpty() || !_buddiesResult.updated.isEmpty();
         if (needLog)
@@ -1460,21 +1444,17 @@ namespace hist
         break;
         }
 
-        Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-        collection.set_value_as_qstring("contact", aimId_);
-        collection.set_value_as_int64("from", _params.messageId); // this id is included
-        collection.set_value_as_int64("count_early", countEarly);
-        collection.set_value_as_int64("count_later", countLater);
-        collection.set_value_as_bool("need_prefetch", true);
-        collection.set_value_as_bool("is_first_request", _params.firstRequest == FirstRequest::Yes);
-        collection.set_value_as_bool("after_search", _params.search == SearchMode::Yes);
-
-        const auto seq = Ui::GetDispatcher()->post_message_to_core("archive/messages/get", collection.get());
-
-        currentReq.seq = seq;
+        Ui::core_dispatcher::GetHistoryParams params;
+        params.from_ = _params.messageId;
+        params.early_ = countEarly;
+        params.later_ = countLater;
+        params.needPrefetch_ = true;
+        params.firstRequest_ = _params.firstRequest == FirstRequest::Yes;
+        params.afterSearch_ = _params.search == SearchMode::Yes;
+        currentReq.seq = Ui::GetDispatcher()->getHistory(aimId_, params);
 
         executedRequests.fetch.push_back(currentReq);
-        return std::make_optional(seq);
+        return std::make_optional(currentReq.seq);
     }
 
     qint64 History::requestMessageContext(qint64 _messageId)
@@ -1489,7 +1469,7 @@ namespace hist
         const auto seq = Ui::GetDispatcher()->post_message_to_core("messages/context/get", collection.get());
         currentParams.seq = seq;
 
-        executedRequests.fetch.push_back(currentParams);
+        executedRequests.fetch.push_back(std::move(currentParams));
         return seq;
     }
 
@@ -1655,18 +1635,23 @@ namespace hist
         const bool isRequiredWaitingSeq = needWaitingForSeq && (_seq == *waitingInitSeq_);
         if (needWaitingForSeq && !isRequiredWaitingSeq)
         {
-            qCDebug(history) << aimId_ << "seq" << _seq << "is not equal waiting seq" << *waitingInitSeq_;
+            qCDebug(history) << aimId_ << "needIgnoreMessages: seq" << _seq << "is not equal waiting seq" << *waitingInitSeq_;
             traceMessageBuddies(aimId_,_buddies, _option);
             return true;
         }
 
         // workaround for showing the channel with one message when overview it at the first time
-        if (_option == Ui::MessagesBuddiesOpt::Init && _seq > 0 && messages_.empty() && !_buddies.isEmpty() && _buddies.first()->Prev_ == -1)
-            return false;
+        // and threads
+        if (_option == Ui::MessagesBuddiesOpt::Init && _seq > 0 && !_buddies.isEmpty())
+        {
+            const auto id = messages_.empty() ? -1 : messages_.crbegin()->first;
+            if (_buddies.front()->Prev_ >= id)
+                return false;
+        }
 
         if (_option != Ui::MessagesBuddiesOpt::Pending && _seq > 0 && needSkipSeq(_seq))
         {
-            qCDebug(history) << aimId_ << "seq was removed" << _seq;
+            qCDebug(history) << aimId_ << "needIgnoreMessages: needSkipSeq, seq was removed" << _seq;
             traceMessageBuddies(aimId_, _buddies, _option);
             return true;
         }
@@ -1683,7 +1668,7 @@ namespace hist
         return std::any_of(messages_.cbegin(), messages_.cend(), [&_id](const auto& x) { return x.second->InternalId_ == _id; });
     }
 
-    void History::logCurrentIds(const QString& _hint, LogType _type)
+    void History::logCurrentIds(const QString& _hint, LogType _type) const
     {
         Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
         collection.set_value_as_qstring("contact", aimId_);
@@ -1720,7 +1705,6 @@ namespace hist
         if (viewBounds_.topPending)
             collection.set_value_as_qstring("view_top_pending", (*viewBounds_.topPending).getInternalId());
 
-
         const auto seq = Ui::GetDispatcher()->post_message_to_core("archive/log/model", collection.get());
         Q_UNUSED(seq);
 
@@ -1728,7 +1712,7 @@ namespace hist
             traceMessageBuddies(aimId_, messages_, Ui::MessagesBuddiesOpt::Min);
     }
 
-    void History::dump(const QString& _aimId)
+    void History::dump(const QString& _aimId) const
     {
         if (_aimId != aimId_)
             return;

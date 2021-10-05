@@ -19,6 +19,7 @@ namespace core
             std::optional<bool> joiningByLink_;
             std::optional<bool> readOnly_;
             std::optional<bool> isChannel_;
+            std::optional<bool> trust_required_;
 
         public:
             chat_params();
@@ -37,6 +38,7 @@ namespace core
             void set_joiningByLink(bool _joiningByLink);
             void set_readOnly(bool _readOnly);
             void set_isChannel(bool _isChannel);
+            void set_trust_required(bool _trust_required);
 
             inline const std::optional<std::string> &get_name() const { return name_; }
             inline const std::optional<std::string> &get_avatar() const { return avatar_; }
@@ -48,6 +50,7 @@ namespace core
             inline const std::optional<bool> &get_joiningByLink() const { return joiningByLink_; }
             inline const std::optional<bool> &get_readOnly() const { return readOnly_; }
             inline const std::optional<bool> &get_isChannel() const { return isChannel_; }
+            inline const std::optional<bool>& get_trust_required() const { return trust_required_; }
 
             static chat_params create(const core::coll_helper& _params);
         };

@@ -79,7 +79,7 @@ namespace core
             static not_sent_message_sptr make(
                 const std::string& _aimid,
                 std::string _message,
-                core::data::format::string_formatting _message_format,
+                core::data::format _message_format,
                 const message_type _type,
                 const uint64_t _message_time,
                 std::string _internal_id);
@@ -90,7 +90,7 @@ namespace core
                 const std::string& _local_path,
                 const core::archive::quotes_vec& _quotes,
                 const std::string& _description,
-                const core::data::format::string_formatting& _description_format,
+                const core::data::format& _description_format,
                 const core::archive::mentions_map& _mentions,
                 const std::optional<int64_t>& _duration);
 
@@ -151,8 +151,8 @@ namespace core
             void set_description(const std::string& _description);
             std::string get_description() const;
 
-            core::data::format::string_formatting get_description_format() const { return message_->description_format(); }
-            void set_description_format(const core::data::format::string_formatting& _description_format);
+            core::data::format get_description_format() const { return message_->description_format(); }
+            void set_description_format(const core::data::format& _description_format);
 
             void set_url(const std::string& _url);
             std::string get_url() const;
@@ -169,8 +169,14 @@ namespace core
             void set_poll(const core::archive::poll& _poll);
             const core::archive::poll get_poll() const;
 
+            void set_task(const core::tasks::task& _task);
+            const core::tasks::task& get_task() const;
+
             void set_smartreply_marker(const smartreply::marker_opt& _marker);
             const smartreply::marker_opt& get_smartreply_marker() const;
+
+            void set_draft_delete_time(const std::optional<int64_t>& _draft_delete_time);
+            const std::optional<int64_t>& get_draft_delete_time() const;
 
         private:
 
@@ -197,6 +203,8 @@ namespace core
             delete_operation delete_operation_;
             smartreply::marker_opt smartreply_marker_;
 
+            std::optional<int64_t> draft_delete_time_;
+
             not_sent_message();
 
             not_sent_message(
@@ -206,7 +214,7 @@ namespace core
             not_sent_message(
                 const std::string& _aimid,
                 std::string _message,
-                core::data::format::string_formatting _message_format,
+                core::data::format _message_format,
                 const message_type _type,
                 const uint64_t _message_time,
                 std::string&& _internal_id);

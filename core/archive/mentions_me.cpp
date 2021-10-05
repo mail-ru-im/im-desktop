@@ -120,7 +120,7 @@ void mentions_me::add(const std::shared_ptr<archive::history_message>& _message)
     }
     else
     {
-        assert(!"mentions_me: message has not id");
+        im_assert(!"mentions_me: message has not id");
     }
 }
 

@@ -4,8 +4,7 @@
 #include "../../styles/ThemeParameters.h"
 
 QuoteColorAnimation::QuoteColorAnimation(QWidget* parent)
-    : QObject(nullptr)
-    , Widget_(parent)
+    : QObject(parent)
     , Alpha_(255)
     , IsActive_(true)
     , bPlay_(false)
@@ -20,7 +19,8 @@ QColor QuoteColorAnimation::quoteColor() const
 void QuoteColorAnimation::setQuoteColor(QColor color)
 {
     QuoteColor_ = std::move(color);
-    Widget_->update();
+    if (QWidget* w = qobject_cast<QWidget*>(parent()))
+        w->update();
 }
 
 void QuoteColorAnimation::setSemiTransparent()
@@ -81,7 +81,8 @@ void QuoteColorAnimation::startQuoteAnimation()
                 {
                     bPlay_ = false;
                     this->QuoteColor_ = QColor();
-                    Widget_->update();
+                    if (QWidget* w = qobject_cast<QWidget*>(parent()))
+                        w->update();
                 });
             });
         });

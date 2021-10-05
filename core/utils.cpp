@@ -164,12 +164,20 @@ namespace core
         {
             std::stringstream ss_ua;
 
-            ss_ua << get_ua_app_name() << ' ' << get_platform_name() << ' ' << (_uin ? (*_uin) : get_no_user_id());
+            std::string env_suffix;
+#ifdef BUILD_TIME_SHORT
+            if (environment::is_alpha())
+                env_suffix = su::concat("-alpha", BUILD_TIME_SHORT);
+            else if (environment::is_beta())
+                env_suffix = su::concat("-beta", BUILD_TIME_SHORT);
+#endif //BUILD_TIME_SHORT
+
+            ss_ua << get_ua_app_name() << env_suffix << ' ' << get_platform_name() << ' ' << (_uin ? (*_uin) : get_no_user_id());
             ss_ua << ' ' << get_dev_id();
             ss_ua << ' ' << tools::version_info().get_ua_version();
 
             static const auto os_version = get_ua_os_version();
-            assert(!os_version.empty());
+            im_assert(!os_version.empty());
 
             ss_ua << ' ' << os_version;
             ss_ua << ' ' << get_device_type();
@@ -455,7 +463,7 @@ namespace core
 
         std::string format_file_size(const int64_t size)
         {
-            assert(size >= 0);
+            im_assert(size >= 0);
 
             const auto KiB = 1024;
             const auto MiB = 1024 * KiB;

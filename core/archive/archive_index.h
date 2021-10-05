@@ -94,6 +94,7 @@ namespace core
 
             bool has_header(const int64_t _msgid) const;
 
+            bool has_hole_in_range(int64_t _msgid, int32_t _count_before, int32_t _count_after) const;
             archive::archive_hole_error get_next_hole(int64_t _from, archive_hole& _hole, int64_t _depth) const;
             std::vector<int64_t> get_messages_for_update()const;
             int64_t validate_hole_request(const archive_hole& _hole, const int32_t _count) const;

@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "WidgetFader.h"
 
 namespace Utils

@@ -19,11 +19,17 @@ namespace config
             profile,
 
             mail_auth,
+            mail_oauth2,
             mail_redirect,
             mail_win,
             mail_read,
 
-            app_update
+            app_update,
+
+            di,
+            di_dark,
+            tasks,
+            calendar,
         };
 
         [[nodiscard]] std::string get_host_url(host_url_type _type);

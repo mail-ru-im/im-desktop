@@ -39,7 +39,7 @@ messages_data::error_vector messages_data::get_messages(const headers_list& _hea
     for (const auto &header : _headers)
     {
         message_data.reset();
-        assert(!header.is_patch() || header.is_updated_message());
+        im_assert(!header.is_patch() || header.is_updated_message());
 
         auto make_fake_mesage = [](const auto& header)
         {
@@ -55,7 +55,7 @@ messages_data::error_vector messages_data::get_messages(const headers_list& _hea
 
         if (!storage_->read_data_block(header.get_data_offset(), message_data))
         {
-            assert(!"invalid message data");
+            im_assert(!"invalid message data");
             res.emplace_back(header.get_id(), 1);
             _messages.push_back(make_fake_mesage(header));
             continue;
@@ -64,7 +64,7 @@ messages_data::error_vector messages_data::get_messages(const headers_list& _hea
         auto msg = std::make_shared<history_message>();
         if (msg->unserialize(message_data) != 0)
         {
-            assert(!"unserialize message error");
+            im_assert(!"unserialize message error");
             res.emplace_back(header.get_id(), 2);
             _messages.push_back(make_fake_mesage(header));
             continue;
@@ -72,7 +72,7 @@ messages_data::error_vector messages_data::get_messages(const headers_list& _hea
 
         if (msg->get_msgid() != header.get_id())
         {
-            assert(!"message data invalid");
+            im_assert(!"message data invalid");
             res.emplace_back(header.get_id(), 3);
             _messages.push_back(make_fake_mesage(header));
             continue;
@@ -318,20 +318,20 @@ history_block messages_data::get_message_modifications(const message_header& _he
     {
         if (!storage_->read_data_block(header.get_data_offset(), message_data))
         {
-            assert(!"invalid modification data");
+            im_assert(!"invalid modification data");
             continue;
         }
 
         auto modification = std::make_shared<history_message>();
         if (modification->unserialize(message_data) != 0)
         {
-            assert(!"unserialize modification error");
+            im_assert(!"unserialize modification error");
             continue;
         }
 
         if (modification->get_msgid() != header.get_id())
         {
-            assert(!"modification data invalid");
+            im_assert(!"modification data invalid");
             continue;
         }
 

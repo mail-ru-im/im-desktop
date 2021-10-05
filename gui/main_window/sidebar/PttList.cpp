@@ -162,8 +162,8 @@ namespace Ui
         name_->init(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
         name_->evaluateDesiredSize();
 
-        const QString id = Ui::ComplexMessage::extractIdFromFileSharingUri(_link);
-        durationSec_ = Ui::ComplexMessage::extractDurationFromFileSharingId(id);
+        const auto id = Ui::ComplexMessage::extractIdFromFileSharingUri(_link);
+        durationSec_ = Ui::ComplexMessage::extractDurationFromFileSharingId(id.fileId);
 
         time_ = TextRendering::MakeTextUnit(formatDuration(durationSec_, progress_));
         time_->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
@@ -597,7 +597,7 @@ namespace Ui
     }
 
     PttList::PttList(QWidget* _parent)
-        : MediaContentWidget(Type::Files, _parent)
+        : MediaContentWidget(MediaContentType::Files, _parent)
         , playingId_(-1)
         , playingIndex_(std::make_pair(-1, -1))
         , lastProgress_(0)
@@ -1096,7 +1096,7 @@ namespace Ui
 
         Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_recognptt_action, {
             { "from_gallery", "yes" },
-            { "chat_type", Ui::getStatsChatType() },
+            { "chat_type", Ui::getStatsChatType(aimId_) },
             { "result", isError ? "fail" : "success" } });
 
         for (auto& i : Items_)
@@ -1286,7 +1286,7 @@ namespace Ui
         animation_->setEndValue(100);
 
         if (_state == AnimationState::Play)
-            Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_playptt_action, { { "from_gallery", "yes" },  { "chat_type", Ui::getStatsChatType() } });
+            Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_playptt_action, { { "from_gallery", "yes" },  { "chat_type", Ui::getStatsChatType(aimId_) } });
         else
             animation_->stop();
         lastProgress_ = storedProgress;

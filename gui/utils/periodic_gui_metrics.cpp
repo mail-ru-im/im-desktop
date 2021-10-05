@@ -8,6 +8,8 @@
 #include "gui_settings.h"
 #include "core_dispatcher.h"
 
+#include "../../common.shared/config/config.h"
+
 namespace
 {
     constexpr auto OneDay = std::chrono::hours(24);
@@ -187,7 +189,7 @@ void Periodic_Gui_Metrics::getDTPScreenType(Ui::MainPage* _mp)
 
     const auto lps = _mp->getLeftPanelState();
     const auto settings = Ui::get_gui_settings();
-    const bool show_last_message = settings->get_value<bool>(settings_show_last_message, true);
+    const bool show_last_message = settings->get_value<bool>(settings_show_last_message, !config::get().is_on(config::features::compact_mode_by_default));
 
     core::stats::event_prop_val_type val;
 

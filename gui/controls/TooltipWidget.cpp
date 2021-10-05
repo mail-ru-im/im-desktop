@@ -243,10 +243,10 @@ namespace Tooltip
     std::unique_ptr<TextTooltip> ml_tooltip;
     Tooltip::TooltipMode currentMode = Tooltip::TooltipMode::Default;
 
-    TextTooltip* getDefaultTooltip()
+    TextTooltip* getDefaultTooltip(QWidget* _parent)
     {
         if (!g_tooltip)
-            g_tooltip = std::make_unique<TextTooltip>(nullptr, true);
+            g_tooltip = std::make_unique<TextTooltip>(_parent, true);
 
         return g_tooltip.get();
     }
@@ -256,13 +256,29 @@ namespace Tooltip
         g_tooltip.reset();
     }
 
-    void show(const QString& _text, const QRect& _objectRect, const QSize& _maxSize, ArrowDirection _direction, Tooltip::ArrowPointPos _arrowPos, const QRect& _boundingRect, Tooltip::TooltipMode _mode)
+    void show(const QString& _text, const QRect& _objectRect, const QSize& _maxSize, ArrowDirection _direction, Tooltip::ArrowPointPos _arrowPos, const QRect& _boundingRect, Tooltip::TooltipMode _mode, QWidget* _parent)
     {
-        TextTooltip* t = (_mode == Tooltip::TooltipMode::Default) ? getDefaultTooltip() : getDefaultMultilineTooltip();
+        if (currentMode != _mode)
+            hide();
+
+        auto t = (_mode == Tooltip::TooltipMode::Default) ? getDefaultTooltip() : getDefaultMultilineTooltip();
+        if (_parent != t->parentWidget())
+        {
+            if (_mode == Tooltip::TooltipMode::Default)
+            {
+                resetDefaultTooltip();
+                t = getDefaultTooltip(_parent);
+            }
+            else
+            {
+                resetDefaultMultilineTooltip();
+                t = getDefaultMultilineTooltip(_parent);
+            }
+        }
 
         t->setPointWidth(_objectRect.width());
         QRect r;
-        if (auto w = Utils::InterConnector::instance().getMainWindow())
+        if (QWidget* w = _parent ? _parent : Utils::InterConnector::instance().getMainWindow())
         {
             auto mwRect = QRect(w->mapToGlobal(w->rect().topLeft()), w->mapToGlobal(w->rect().bottomRight()));
             if (mwRect.contains(_objectRect))
@@ -277,24 +293,20 @@ namespace Tooltip
 
     void forceShow(bool _force)
     {
-        if (currentMode == Tooltip::TooltipMode::Default)
-            getDefaultTooltip()->setForceShow(_force);
-        else
-            getDefaultMultilineTooltip()->setForceShow(_force);
+        auto t = (currentMode == Tooltip::TooltipMode::Default) ? getDefaultTooltip() : getDefaultMultilineTooltip();
+        t->setForceShow(_force);
     }
 
     void hide()
     {
-        if (currentMode == Tooltip::TooltipMode::Default)
-            getDefaultTooltip()->hideTooltip(true);
-        else
-            getDefaultMultilineTooltip()->hideTooltip(true);
+        getDefaultTooltip()->hideTooltip(true);
+        getDefaultMultilineTooltip()->hideTooltip(true);
     }
 
-    TextTooltip* getDefaultMultilineTooltip()
+    TextTooltip* getDefaultMultilineTooltip(QWidget* _parent)
     {
         if (!ml_tooltip)
-            ml_tooltip = std::make_unique<TextTooltip>(nullptr, true);
+            ml_tooltip = std::make_unique<TextTooltip>(_parent, true);
 
         return ml_tooltip.get();
     }
@@ -311,7 +323,7 @@ namespace Tooltip
 
     bool isVisible()
     {
-        return getDefaultTooltip()->isTooltipVisible();
+        return getDefaultTooltip()->isTooltipVisible() || getDefaultMultilineTooltip()->isTooltipVisible();
     }
 
     bool canWheel()
@@ -615,6 +627,9 @@ namespace Ui
 
     void TooltipWidget::showUsual(const QPoint _pos, const QSize& _maxSize, const QRect& _rect, Tooltip::ArrowDirection _direction)
     {
+        opacityEffect_->setOpacity(1.0);
+        opacityAnimation_->stop();
+
         const auto desired = updateTooltip(_pos, _maxSize, _rect, _direction);
 
         // when navigate pointing hand cursor with pressed mouse button on tooltip (like rewinding ptt) on macos
@@ -691,17 +706,21 @@ namespace Ui
 
     void TextWidget::setMaxWidth(int _width)
     {
-        maxWidth_ = _width;
-        text_->getHeight(maxWidth_);
-        update();
+        if (_width > 0)
+        {
+            maxWidth_ = _width;
+            text_->getHeight(maxWidth_);
+            update();
+        }
     }
 
     void TextWidget::setMaxWidthAndResize(int _width)
     {
-        maxWidth_ = _width;
-        text_->getHeight(maxWidth_);
-        setFixedSize(text_->cachedSize());
-        update();
+        if (_width > 0)
+        {
+            setMaxWidth(_width);
+            setFixedSize(text_->cachedSize());
+        }
     }
 
     void TextWidget::setText(const QString& _text, const QColor& _color)
@@ -754,7 +773,7 @@ namespace Ui
         if (const auto pos = _e->pos(); text_->isOverLink(pos))
         {
             _e->accept();
-            Q_EMIT linkActivated(text_->getLink(pos), QPrivateSignal());
+            Q_EMIT linkActivated(text_->getLink(pos).url_, QPrivateSignal());
         }
         else
         {
@@ -815,9 +834,6 @@ namespace Ui
         default:
             break;
         }
-
-        if (auto w = qobject_cast<QWidget*>(parent()))
-            p = w->mapFromGlobal(p);
 
         if (isTooltipVisible())
             tooltip_->showUsual(p, _maxSize, _rect, _direction);

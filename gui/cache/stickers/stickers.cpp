@@ -20,6 +20,9 @@
 #include <boost/range/adaptor/map.hpp>
 #include <boost/range/adaptor/reversed.hpp>
 
+#include "../../utils/features.h"
+#include "../../previewer/toast.h"
+
 #include "stickers.h"
 
 namespace
@@ -41,8 +44,8 @@ stickerSptr createSticker(Data::StickerId _id)
 
     if (_id.fsId_)
     {
-        im_assert(!_id.fsId_->isEmpty());
-        const auto type = ComplexMessage::extractContentTypeFromFileSharingId(*_id.fsId_);
+        im_assert(!_id.fsId_->fileId.isEmpty());
+        const auto type = ComplexMessage::extractContentTypeFromFileSharingId(_id.fsId_->fileId);
         im_assert(!type.is_undefined());
 
         if (type.is_lottie())
@@ -54,7 +57,7 @@ stickerSptr createSticker(Data::StickerId _id)
     return std::make_shared<ImageSticker>(std::move(_id));
 }
 
-stickerSptr createSticker(const QString& _fsId)
+stickerSptr createSticker(const Utils::FileSharingId& _fsId)
 {
     return createSticker(Data::StickerId(_fsId));
 }
@@ -62,8 +65,11 @@ stickerSptr createSticker(const QString& _fsId)
 stickerSptr unserializeSticker(const core::coll_helper& _coll)
 {
     Data::StickerId id;
-    if (auto fsId = QString::fromUtf8(_coll.get_value_as_string("fs_id", "")); !fsId.isEmpty())
-        id.fsId_ = std::move(fsId);
+    if (auto fsId = QString::fromUtf8(_coll.get_value_as_string("file_id", "")); !fsId.isEmpty())
+    {
+        auto sourceId = QString::fromUtf8(_coll.get_value_as_string("source_id", ""));
+        id.fsId_ = { fsId, sourceId.isEmpty() ? std::nullopt : std::make_optional(sourceId) };
+    }
 
     if (auto setId = _coll.get_value_as_int("set_id", -1); setId >= 0)
         id.obsoleteId_ = { setId, _coll.get_value_as_int("id", 0) };
@@ -271,7 +277,7 @@ int32_t Set::getCount() const
     return (int32_t) stickers_.size();
 }
 
-int32_t Set::getStickerPos(const QString& _fsId) const
+int32_t Set::getStickerPos(const Utils::FileSharingId& _fsId) const
 {
     return Utils::indexOf(stickers_.begin(), stickers_.end(), _fsId);
 }
@@ -301,7 +307,7 @@ void Set::unserialize(const core::coll_helper& _coll)
         if (!sticker)
             continue;
 
-        if (auto id = sticker->getId().fsId_; id && !id->isEmpty())
+        if (auto id = sticker->getId().fsId_; id && !id->fileId.isEmpty())
         {
             fsStickersTree_[*id] = sticker;
             stickers_.push_back(*id);
@@ -418,14 +424,14 @@ stickerSptr getSticker(uint32_t _setId, uint32_t _stickerId)
     return getCache().getSticker(_setId, _stickerId);
 }
 
-stickerSptr getSticker(const QString& _fsId)
+stickerSptr getSticker(const Utils::FileSharingId& _fsId)
 {
     return getCache().getSticker(_fsId);
 }
 
-QString getSendUrl(const QString& _fsId)
+QString getSendUrl(const Utils::FileSharingId& _fsId)
 {
-    return u"https://" % Ui::getUrlConfig().getUrlFilesParser() % u'/' % _fsId;
+    return u"https://" % Ui::getUrlConfig().getUrlFilesParser() % u'/' % _fsId.fileId % (_fsId.sourceId ? (u"?source=" % *_fsId.sourceId) : QString());
 }
 
 Cache::Cache(QObject* _parent)
@@ -439,12 +445,13 @@ void Cache::setStickerData(const core::coll_helper& _coll)
     const qint32 setId = _coll.get_value_as_int("set_id", -1);
     const qint32 stickerId = _coll.get_value_as_int("sticker_id");
     const qint32 error = _coll.get_value_as_int("error");
-    QString fsId = QString::fromUtf8(_coll.get_value_as_string("fs_id"));
-
+    const QString fileId = QString::fromUtf8(_coll.get_value_as_string("file_id"));
+    QString sourceId = QString::fromUtf8(_coll.get_value_as_string("source_id", ""));
+    Utils::FileSharingId fsId{ fileId, sourceId.isEmpty() ? std::nullopt : std::make_optional(std::move(sourceId)) };
     setSptr stickerSet;
     stickerSptr sticker;
 
-    if (!fsId.isEmpty())
+    if (!fileId.isEmpty())
     {
         auto& s = fsStickers_[fsId];
         if (!s)
@@ -499,7 +506,7 @@ void Cache::setStickerData(const core::coll_helper& _coll)
                 data.id_ = stickerId;
                 data.setId_ = setId;
 
-                if (ComplexMessage::isLottieFileSharingId(data.fsId_))
+                if (ComplexMessage::isLottieFileSharingId(data.fsId_.fileId))
                 {
                     data.data_ = StickerData::makeLottieData(data.path_);
                     onStickersBatchLoaded({ std::move(data) });
@@ -696,7 +703,7 @@ void Cache::unserialize_suggests(const core::coll_helper &_coll)
             core::coll_helper collSticker(stickers->get_at(j)->get_as_collection(), false);
 
             suggest.emplace_back(
-                QString::fromUtf8(collSticker.get_value_as_string("fs_id")),
+                Utils::FileSharingId{ QString::fromUtf8(collSticker.get_value_as_string("fs_id")), std::nullopt },
                 ((collSticker.get_value_as_string("type") == emoji_type) ? SuggestType::suggestEmoji : SuggestType::suggestWord));
         }
 
@@ -754,7 +761,7 @@ setSptr Cache::getStoreSet(int32_t _setId) const
     return {};
 }
 
-setSptr Cache::findSetByFsId(const QString& _fsId) const
+setSptr Cache::findSetByFsId(const Utils::FileSharingId& _fsId) const
 {
     for (const auto& [_, stickerSet] : setsTree_)
     {
@@ -776,7 +783,7 @@ void Cache::addSet(setSptr _set)
     setsTree_[id] = std::move(_set);
 }
 
-void Cache::addStickerByFsId(const std::vector<QString>& _fsIds, const QString& _keyword, const SuggestType _type)
+void Cache::addStickerByFsId(const std::vector<Utils::FileSharingId>& _fsIds, const QString& _keyword, const SuggestType _type)
 {
     for (const auto& id : _fsIds)
     {
@@ -798,7 +805,7 @@ setSptr Cache::insertSet(int32_t _setId)
     return stickerSet;
 }
 
-stickerSptr Cache::insertSticker(const QString& _fsId)
+stickerSptr Cache::insertSticker(const Utils::FileSharingId& _fsId)
 {
     auto& s = fsStickers_[_fsId];
     if (!s)
@@ -813,7 +820,7 @@ std::shared_ptr<Sticker> Cache::getSticker(uint32_t _setId, uint32_t _stickerId)
     return nullptr;
 }
 
-stickerSptr Cache::getSticker(const QString& _fsId) const
+stickerSptr Cache::getSticker(const Utils::FileSharingId& _fsId) const
 {
     if (const auto it = fsStickers_.find(_fsId); it != fsStickers_.end())
         return it->second;
@@ -874,6 +881,32 @@ bool Cache::getSuggest(const QString& _keyword, Suggest& _suggest, const std::se
 void Cache::requestSearch(const QString &_term)
 {
     searchSeqId_ = Ui::GetDispatcher()->searchStickers(_term);
+}
+
+void Cache::requestStickersMeta()
+{
+    if (metaAlreadyRequested_)
+        return;
+
+    metaAlreadyRequested_ = true;
+
+    int scale = (int)(Utils::getScaleCoefficient() * 100.0);
+    scale = Utils::scale_bitmap(scale);
+    std::string_view size = "small";
+
+    switch (scale)
+    {
+    case 150:
+        size = "medium";
+        break;
+    case 200:
+        size = "large";
+        break;
+    }
+
+    Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
+    collection.set_value_as_string("size", size);
+    Ui::GetDispatcher()->post_message_to_core("stickers/meta/get", collection.get());
 }
 
 const setsMap &Cache::getSetsTree() const
@@ -949,7 +982,7 @@ int32_t getSetStickersCount(int32_t _setId)
     return 0;
 }
 
-int32_t getStickerPosInSet(int32_t _setId, const QString& _fsId)
+int32_t getStickerPosInSet(int32_t _setId, const Utils::FileSharingId& _fsId)
 {
     if (const auto searchSet = getCache().getSet(_setId); searchSet)
         return searchSet->getStickerPos(_fsId);
@@ -966,7 +999,7 @@ const stickersArray& getStickers(int32_t _setId)
     return empty;
 }
 
-const StickerData& getStickerData(const QString& _fsId, core::sticker_size _size)
+const StickerData& getStickerData(const Utils::FileSharingId& _fsId, core::sticker_size _size)
 {
     auto sticker = getCache().insertSticker(_fsId);
     const auto& data = sticker->getData(_size);
@@ -979,7 +1012,7 @@ const StickerData& getStickerData(const QString& _fsId, core::sticker_size _size
     return data;
 }
 
-void lockStickerCache(const QString& _fsId)
+void lockStickerCache(const Utils::FileSharingId& _fsId)
 {
     auto s = getCache().getSticker(_fsId);
     if (!s)
@@ -988,7 +1021,7 @@ void lockStickerCache(const QString& _fsId)
     s->lockCache(true);
 }
 
-void unlockStickerCache(const QString& _fsId)
+void unlockStickerCache(const Utils::FileSharingId& _fsId)
 {
     auto s = getCache().getSticker(_fsId);
     if (!s)
@@ -1015,9 +1048,9 @@ const StickerData& getSetBigIcon(int32_t _setId)
     return StickerData::invalid();
 }
 
-void cancelDataRequest(std::vector<QString> _fsIds, core::sticker_size _size)
+void cancelDataRequest(std::vector<Utils::FileSharingId> _fsIds, core::sticker_size _size)
 {
-    std::vector<QString> toCancel;
+    std::vector<Utils::FileSharingId> toCancel;
     toCancel.reserve(_fsIds.size());
     for (auto& fsId : _fsIds)
     {
@@ -1044,8 +1077,7 @@ void showStickersPack(const int32_t _set_id, StatContext context)
 {
     QTimer::singleShot(0, [_set_id, context]
     {
-        Ui::StickerPackInfo dlg(Utils::InterConnector::instance().getMainWindow(), _set_id, QString(), QString(), context);
-
+        Ui::StickerPackInfo dlg(Utils::InterConnector::instance().getMainWindow(), _set_id, QString(), {}, context);
         dlg.show();
     });
 }
@@ -1054,18 +1086,22 @@ void showStickersPackByStoreId(const QString& _store_id, StatContext context)
 {
     QTimer::singleShot(0, [_store_id, context]
     {
-        Ui::StickerPackInfo dlg(Utils::InterConnector::instance().getMainWindow(), -1, _store_id, QString(), context);
-
+        Ui::StickerPackInfo dlg(Utils::InterConnector::instance().getMainWindow(), -1, _store_id, {}, context);
         dlg.show();
     });
 }
 
-void showStickersPackByFileId(const QString& _file_id, StatContext context)
+void showStickersPackByFileId(const Utils::FileSharingId& _filesharingId, StatContext context)
 {
-    QTimer::singleShot(0, [_file_id, context]
+    if (_filesharingId.sourceId && !Features::isSharedFederationStickerpacksSupported())
     {
-        Ui::StickerPackInfo dlg(Utils::InterConnector::instance().getMainWindow(), -1, QString(), _file_id, context);
+        Utils::showTextToastOverContactDialog(QT_TRANSLATE_NOOP("stickers", "Stickerpack is not available"));
+        return;
+    }
 
+    QTimer::singleShot(0, [_filesharingId, context]
+    {
+        Ui::StickerPackInfo dlg(Utils::InterConnector::instance().getMainWindow(), -1, QString(), _filesharingId, context);
         dlg.show();
     });
 }
@@ -1100,7 +1136,7 @@ setSptr getStoreSet(const int32_t _setId)
     return getCache().getStoreSet(_setId);
 }
 
-setSptr findSetByFsId(const QString& _fsId)
+setSptr findSetByFsId(const Utils::FileSharingId& _fsId)
 {
     return getCache().findSetByFsId(_fsId);
 }
@@ -1121,6 +1157,12 @@ bool getSuggestWithSettings(const QString& _keyword, Suggest& _suggest)
         types.insert(SuggestType::suggestWord);
 
     return getCache().getSuggest(_keyword, _suggest, types);
+}
+
+std::string_view recentsStickerSettingsPath()
+{
+    static const std::string path = get_account_setting_name(settings_recents_fs_stickers);
+    return path;
 }
 
 void resetCache()
@@ -1166,7 +1208,7 @@ const setsMap &getStoreTree()
     return getCache().getStoreTree();
 }
 
-void addStickers(const std::vector<QString>& _fsIds, const QString& _text, const Stickers::SuggestType _type)
+void addStickers(const std::vector<Utils::FileSharingId>& _fsIds, const QString& _text, const Stickers::SuggestType _type)
 {
     getCache().addStickerByFsId(_fsIds, _text, _type);
 }

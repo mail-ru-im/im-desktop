@@ -2,8 +2,6 @@
 
 namespace Ui
 {
-    class ContactDialog;
-
     class DragOverlayWindow : public QWidget
     {
         Q_OBJECT
@@ -16,10 +14,12 @@ namespace Ui
             SendWithCaption = 1 << 1
         };
 
-        explicit DragOverlayWindow(ContactDialog* _parent);
+        explicit DragOverlayWindow(const QString& _aimId, QWidget* _parent);
 
         void setMode(const int _mode);
         void setModeByMimeData(const QMimeData* _mimeData);
+        
+        void processMimeData(const QMimeData* _mimeData);
 
     protected:
         void paintEvent(QPaintEvent* _e) override;
@@ -34,9 +34,9 @@ namespace Ui
         void onTimer();
 
     private:
-        ContactDialog* Parent_;
         QTimer dragMouseoverTimer_;
         bool top_;
         int mode_;
+        QString aimId_;
     };
 }

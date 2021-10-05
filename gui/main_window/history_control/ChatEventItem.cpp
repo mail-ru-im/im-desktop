@@ -1,6 +1,5 @@
 #include "stdafx.h"
 
-
 #include "../../controls/TextUnit.h"
 #include "../../controls/CustomButton.h"
 #include "../../controls/ContactAvatarWidget.h"
@@ -180,7 +179,8 @@ namespace Ui
 
     int32_t ChatEventItem::evaluateTextWidth(const int32_t _widgetWidth)
     {
-        im_assert(_widgetWidth > 0);
+        if (_widgetWidth <= 0)
+            return 0;
 
         const auto maxBubbleWidth = _widgetWidth - Utils::scale_value(36);
         const auto maxBubbleContentWidth = maxBubbleWidth - 2 * getTextHorPadding();
@@ -334,7 +334,7 @@ namespace Ui
 
             leftButtonVisible_ = Logic::GetAvatarStorage()->isDefaultAvatar(aimId);
             rightButtonVisible_ = Logic::getContactListModel()->getChatDescription(aimId).isEmpty();
-            buttonsVisible_ = Logic::getContactListModel()->isYouAdmin(aimId) && (leftButtonVisible_ || rightButtonVisible_);
+            buttonsVisible_ = Logic::getContactListModel()->areYouAdmin(aimId) && (leftButtonVisible_ || rightButtonVisible_);
 
             btnLeft_->setVisible(leftButtonVisible_);
             btnRight_->setVisible(rightButtonVisible_);

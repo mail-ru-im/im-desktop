@@ -9,6 +9,8 @@ public:
     QPixmap frames_[2];
     QPixmap backbuffer_;
 
+    QLabel* overlay_;
+
     QCursor cursor_;
     QPointer<QStackedWidget> widget_;
     QTimeLine* timeLine_;
@@ -37,7 +39,8 @@ public:
 
 
 SlideControllerPrivate::SlideControllerPrivate(SlideController* _q)
-    : widget_(nullptr)
+    : overlay_(new QLabel())
+    , widget_(nullptr)
     , timeLine_(new QTimeLine(900, _q))
     , fillColor_(Qt::transparent)
     , effectFlags_(SlideController::SlideEffect::NoEffect)
@@ -50,6 +53,8 @@ SlideControllerPrivate::SlideControllerPrivate(SlideController* _q)
     , inversed_(false)
     , enabled_(true)
 {
+    overlay_->setAttribute(Qt::WA_TransparentForMouseEvents);
+    overlay_->hide();
     timeLine_->setUpdateInterval(24);
 }
 
@@ -202,10 +207,11 @@ void SlideControllerPrivate::renderFrame(int _frame, double _value, QPainter& _p
 }
 
 
-SlideController::SlideController(QObject* _parent)
+SlideController::SlideController(QWidget* _parent)
     : QObject(_parent)
     , d(new SlideControllerPrivate(this))
 {
+    d->overlay_->setParent(_parent);
     connect(d->timeLine_, &QTimeLine::valueChanged, this, &SlideController::render);
     connect(d->timeLine_, &QTimeLine::finished, this, &SlideController::onAnimationFinished);
 }
@@ -409,19 +415,6 @@ bool SlideController::eventFilter(QObject* _object, QEvent* _event)
 
     if (_object == d->widget_)
     {
-        if (_event->type() == QEvent::Paint)
-        {
-            if (d->timeLine_->state() == QTimeLine::NotRunning)
-                return QObject::eventFilter(_object, _event);
-
-            QPainter painter(d->widget_);
-            QWidget* w = currentWidget();
-            QPoint p = w->mapTo(d->widget_, w->pos());
-            p.rx() -= (w->layout() == nullptr ? 0 : w->layout()->spacing());
-            painter.drawPixmap(p, d->backbuffer_);
-            return true; // do NOT forward the event
-        }
-
         if (_event->type() == QEvent::Resize)
         {
             QResizeEvent* resizeEvent = static_cast<QResizeEvent*>(_event);
@@ -439,10 +432,12 @@ bool SlideController::eventFilter(QObject* _object, QEvent* _event)
                 lock = false;
             }
             if (resizeEvent->size() != d->backbuffer_.size())
+            {
                 d->backbuffer_ = QPixmap(resizeEvent->size());
+                d->overlay_->resize(resizeEvent->size());
+            }
         }
-
-        if (_event->type() == QEvent::Show)
+        else if (_event->type() == QEvent::Show)
         {
             d->timeLine_->setCurrentTime(d->timeLine_->duration());
             d->timeLine_->stop();
@@ -478,8 +473,6 @@ void SlideController::onCurrentChange(int _index)
     if (const auto child = w->childAt(w->mapFromGlobal(QCursor::pos())))
         d->widget_->setCursor(child->cursor()); // set the underlying widget cursor
 
-    w->hide();
-
     QRect r = w->rect();
 
     // grab target and current widgets into pixmaps
@@ -496,6 +489,11 @@ void SlideController::onCurrentChange(int _index)
     d->backbuffer_ = QPixmap(d->widget_->size());
     render(0);
     d->timeLine_->start();
+
+    d->overlay_->setGeometry(d->widget_->rect());
+    d->overlay_->raise();
+    d->overlay_->show();
+
     d->previousIndex_ = currentIndex(); // swap indices
 }
 
@@ -506,7 +504,8 @@ void SlideController::onAnimationFinished()
     QWidget* w = currentWidget();
     d->opacity_ = 0.0;
     w->updateGeometry();
-    w->show();
+
+    d->overlay_->hide();
 
     Q_EMIT currentIndexChanged(currentIndex(), QPrivateSignal{});
     // erase pixmaps and free the memory according to caching policy
@@ -546,6 +545,8 @@ void SlideController::render(double _value)
         d->renderFrame(0, _value, painter);
         d->renderFrame(1, _value, painter);
     }
+
+    d->overlay_->setPixmap(d->backbuffer_);
 
     d->widget_->update();
 }

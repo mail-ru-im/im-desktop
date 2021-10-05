@@ -20,12 +20,8 @@ namespace
         if (!core::tools::system::is_exist(_context->avatar_file_path_))
             return false;
 
-        boost::filesystem::wpath path(_context->avatar_file_path_);
         if (!_context->force_)
-        {
-            boost::system::error_code e;
-            _context->write_time_ = last_write_time(path, e);
-        }
+            _context->write_time_ = core::tools::system::get_file_lastmodified(_context->avatar_file_path_);
 
         if (!_context->avatar_data_.load_from_file(_context->avatar_file_path_))
             return false;
@@ -108,7 +104,7 @@ void avatar_loader::execute_task(std::shared_ptr<avatar_task> _task, std::functi
 
     if (!wim_params_)
     {
-        assert(false);
+        im_assert(false);
         _on_complete(wim_protocol_internal_error::wpie_network_error);
 
         return;
@@ -131,7 +127,7 @@ void avatar_loader::execute_task(std::shared_ptr<avatar_task> _task, std::functi
             ptr_this->local_thread_->run_async_function([avatar_data = packet->get_data(), _task]()->int32_t
             {
                 auto size = avatar_data->available();
-                assert(size);
+                im_assert(size);
                 if (size == 0)
                     return wpie_error_empty_avatar_data;
 
@@ -181,7 +177,7 @@ void avatar_loader::run_tasks_loop()
 {
     working_ = true;
 
-    assert(!network_error_);
+    im_assert(!network_error_);
 
     auto task = get_next_task();
     if (!task)
@@ -196,7 +192,7 @@ void avatar_loader::run_tasks_loop()
         if (!ptr_this)
             return;
 
-        if (_error == wim_protocol_internal_error::wpie_network_error || _error == wim_protocol_internal_error::wpie_couldnt_resolve_host)
+        if (wim_packet::is_network_error(_error))
         {
             ptr_this->network_error_ = true;
             ptr_this->working_ = false;
@@ -300,7 +296,7 @@ void avatar_loader::resume(const wim_packet_params& _params)
     else
         *wim_params_ = _params;
 
-    assert(!working_);
+    im_assert(!working_);
     if (!working_)
         run_tasks_loop();
 }

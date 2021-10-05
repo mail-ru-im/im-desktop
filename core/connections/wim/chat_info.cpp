@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "chat_info.h"
 
-#include "../../tools/json_helper.h"
+#include "../../../common.shared/json_helper.h"
 
 using namespace core;
 using namespace wim;
@@ -24,6 +24,7 @@ int32_t chat_info::unserialize(const rapidjson::Value& _node)
     tools::unserialize_value(_node, "membersCount", members_count_);
     tools::unserialize_value(_node, "friendsCount", friend_count_);
     tools::unserialize_value(_node, "joinModeration", joinModeration_);
+    tools::unserialize_value(_node, "trustRequired", trust_required_);
 
     if (const auto iter_yours = _node.FindMember("you"); iter_yours != _node.MemberEnd())
     {
@@ -112,6 +113,7 @@ void chat_info::serialize(core::coll_helper _coll) const
     _coll.set_value_as_bool("live", live_);
     _coll.set_value_as_bool("controlled", controlled_);
     _coll.set_value_as_bool("joinModeration", joinModeration_);
+    _coll.set_value_as_bool("trustRequired", trust_required_);
     _coll.set_value_as_string("creator", creator_);
     _coll.set_value_as_string("default_role", default_role_);
     _coll.set_value_as_string("inviter", inviter_);

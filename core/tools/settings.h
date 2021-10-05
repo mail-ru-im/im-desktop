@@ -64,7 +64,7 @@ namespace core
         {
             if (!_value)
             {
-                assert(false);
+                im_assert(false);
                 return false;
             }
 

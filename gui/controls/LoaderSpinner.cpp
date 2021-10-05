@@ -36,24 +36,27 @@ namespace
 
 using namespace Ui;
 
-LoaderSpinner::LoaderSpinner(QWidget* _parent, const QSize& _size, bool _rounded, bool _shadow)
+LoaderSpinner::LoaderSpinner(QWidget* _parent, const QSize& _size, Options _opt)
     : QWidget(_parent)
+    , button_(nullptr)
     , size_(_size)
-    , rounded_(_rounded)
-    , shadow_(_shadow)
+    , options_(_opt)
 {
     spinner_ = new Ui::RotatingSpinner(this);
 
-    button_ = new CustomButton(this, qsl(":/controls/close_icon"), getCloseIconSize());
-    Styling::Buttons::setButtonDefaultColors(button_);
-    button_->setFixedSize(spinner_->size());
+    if (options_ & Option::Cancelable)
+    {
+        button_ = new CustomButton(this, qsl(":/controls/close_icon"), getCloseIconSize());
+        Styling::Buttons::setButtonDefaultColors(button_);
+        button_->setFixedSize(spinner_->size());
 
-    connect(button_, &CustomButton::clicked, this, &LoaderSpinner::clicked);
+        connect(button_, &CustomButton::clicked, this, &LoaderSpinner::clicked);
+    }
 
     if (!size_.isValid())
         size_ = getDefaultWidgetSize();
 
-    setFixedSize(_shadow ? size_ + getShadowSize() : size_);
+    setFixedSize(options_ & Option::Shadowed ? size_ + getShadowSize() : size_);
 }
 
 LoaderSpinner::~LoaderSpinner()
@@ -78,12 +81,12 @@ void LoaderSpinner::paintEvent(QPaintEvent* _event)
 
     QPainterPath path;
     const auto rect = QRectF(0, 0, size_.width(), size_.height());
-    if (rounded_)
+    if (options_ & Option::Rounded)
         path.addRoundedRect(rect, getRectRadius(), getRectRadius());
     else
         path.addRect(rect);
 
-    if (shadow_)
+    if (options_ & Option::Shadowed)
         Utils::drawBubbleShadow(p, path);
 
     p.fillPath(path, getBgColor());
@@ -92,12 +95,13 @@ void LoaderSpinner::paintEvent(QPaintEvent* _event)
 void LoaderSpinner::resizeEvent(QResizeEvent* _event)
 {
     size_ = _event->size();
-    if (shadow_)
+    if (options_ & Option::Shadowed)
         size_ -= getShadowSize();
 
     const auto localPos = QPoint((size_.width() - spinner_->width()) / 2, (size_.height() - spinner_->height()) / 2);
     spinner_->move(localPos);
-    button_->move(localPos);
+    if (button_)
+        button_->move(localPos);
 
     update();
 

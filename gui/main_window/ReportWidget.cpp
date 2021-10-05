@@ -10,6 +10,7 @@
 #include "../core_dispatcher.h"
 #include "../utils/gui_coll_helper.h"
 #include "../styles/ThemeParameters.h"
+#include "../types/StickerId.h"
 
 namespace
 {
@@ -237,17 +238,24 @@ namespace Ui
         return result;
     }
 
-    bool ReportSticker(const QString& _aimid, const QString& _chatId, const QString& _stickerId)
+    bool ReportSticker(const QString& _aimid, const QString& _chatId, const Data::StickerId& _stickerId)
     {
         auto w = new ReportWidget(nullptr, QString());
         GeneralDialog generalDialog(w, Utils::InterConnector::instance().getMainWindow());
         generalDialog.addLabel(QT_TRANSLATE_NOOP("report_widget", "Report"));
         generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("report_widget", "Cancel"), QT_TRANSLATE_NOOP("report_widget", "OK"), true);
+        const bool useFileSharingId = _stickerId.fsId_.has_value();
+        if (useFileSharingId)
+        {
+            im_assert(!_stickerId.fsId_->sourceId);
+            if (_stickerId.fsId_->sourceId)
+                return false;
+        }
         auto result = generalDialog.showInCenter();
         if (result)
         {
             Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-            collection.set_value_as_qstring("id", _stickerId);
+            collection.set_value_as_qstring("id", useFileSharingId ? _stickerId.fsId_->fileId : _stickerId.toObsoleteIdString());
             collection.set_value_as_qstring("chatId", _chatId);
             collection.set_value_as_qstring("contact", _aimid);
             collection.set_value_as_qstring("reason", getReasonString(w->getReason()));

@@ -4,6 +4,7 @@
 #include "../../utils/utils.h"
 #include "../../styles/ThemeParameters.h"
 #include "../../controls/TextUnit.h"
+#include "../../controls/ClickWidget.h"
 #include "../../fonts.h"
 #include "../mediatype.h"
 
@@ -11,35 +12,75 @@ namespace
 {
     constexpr std::chrono::milliseconds updateTimeout = std::chrono::minutes(1);
 
-    int getPlateNewHeight()
+    int getPlateNewHeight() noexcept
     {
-        return Utils::scale_value(24);
+        return Utils::scale_value(20);
     }
 
-    const QMargins& getPlateNewMargins()
+    const QMargins& getPlateNewMargins() noexcept
     {
-        static const QMargins m(
-            Utils::scale_value(1),
-            Utils::scale_value(8),
-            Utils::scale_value(1),
-            0);
-
+        static const auto m = Utils::scale_value(QMargins(52, 8, 52, 0));
         return m;
     }
 
-    int getDateHeight()
+    int getPlateNewCornerRadius() noexcept
+    {
+        return Utils::scale_value(4);
+    }
+
+    const QMargins& getPlateThreadRepliesMargins() noexcept
+    {
+        static const auto m = Utils::scale_value(QMargins(16, 4, 16, 4));
+        return m;
+    }
+
+    int getDateHeight() noexcept
     {
         return Utils::scale_value(24);
     }
 
-    int getDateBubbleVerMargin(const bool _isFloating)
+    int getThreadRepliesHeight() noexcept
+    {
+        return Utils::scale_value(24);
+    }
+
+    int getDateBubbleVerMargin(const bool _isFloating) noexcept
     {
         return Utils::scale_value(_isFloating ? 12 : 8);
     }
 
-    int getDateTextHorMargins()
+    int getDateTextHorMargins() noexcept
     {
         return Utils::scale_value(12);
+    }
+
+    int getThreadRepliesTextToClickableTextGap() noexcept
+    {
+        return Utils::scale_value(4);
+    }
+
+    QString getThreadPlateClickableText(int _numNew, int _numOld)
+    {
+        if (_numNew > 0)
+        {
+            return Utils::GetTranslator()->getNumberString(
+                _numNew,
+                QT_TRANSLATE_NOOP3("threads_feed", "Show %1 more new", "1"),
+                QT_TRANSLATE_NOOP3("threads_feed", "Show %1 more new", "2"),
+                QT_TRANSLATE_NOOP3("threads_feed", "Show %1 more new", "5"),
+                QT_TRANSLATE_NOOP3("threads_feed", "Show %1 more new", "21")).arg(_numNew);
+        }
+        else if (_numOld > 0)
+        {
+            return Utils::GetTranslator()->getNumberString(
+                _numOld,
+                QT_TRANSLATE_NOOP3("threads_feed", "Show %1 more", "1"),
+                QT_TRANSLATE_NOOP3("threads_feed", "Show %1 more", "2"),
+                QT_TRANSLATE_NOOP3("threads_feed", "Show %1 more", "5"),
+                QT_TRANSLATE_NOOP3("threads_feed", "Show %1 more", "21")).arg(_numOld);
+        }
+
+        return QString();
     }
 }
 
@@ -47,7 +88,7 @@ namespace Ui
 {
     ServiceMessageItem::ServiceMessageItem(QWidget* _parent, const bool _overlay)
         : HistoryControlPageItem(_parent)
-        , type_(_overlay ? ServiceMessageItem::type::typeOverlay : ServiceMessageItem::type::typeDate)
+        , type_(_overlay ? Type::overlay : Type::date)
         , isFloating_(_overlay)
     {
         Utils::grabTouchWidget(this);
@@ -64,7 +105,6 @@ namespace Ui
                 if (QDate::currentDate() != lastUpdated_)
                 {
                     updateDateTranslation();
-
                     update();
                 }
             }
@@ -85,22 +125,17 @@ namespace Ui
             return;
 
         Utils::PainterSaver ps(_p);
+        _p.setRenderHint(QPainter::Antialiasing);
 
         QRect bubbleRect(0, 0, 2 * getDateTextHorMargins() + messageUnit_->desiredWidth(), getDateHeight());
         bubbleRect.moveCenter(rect().center());
-
         if (bubbleRect != bubbleGeometry_)
         {
-            const auto fill_r = bubbleRect.height() / 2;
-
-            QPainterPath path;
-            path.addRoundedRect(bubbleRect, fill_r, fill_r);
-
-            bubble_ = path;
+            const auto radius = bubbleRect.height() / 2;
+            bubble_ = QPainterPath();
+            bubble_.addRoundedRect(bubbleRect, radius, radius);
             bubbleGeometry_ = bubbleRect;
         }
-
-        _p.setRenderHint(QPainter::Antialiasing);
 
         Utils::drawBubbleShadow(_p, bubble_);
         _p.fillPath(bubble_, Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
@@ -112,15 +147,14 @@ namespace Ui
     void ServiceMessageItem::drawPlateNew(QPainter& _p)
     {
         Utils::PainterSaver ps(_p);
-
         _p.setPen(Qt::transparent);
         _p.setRenderHint(QPainter::Antialiasing);
 
-        const QColor bgColor = Styling::getParameters(getContact()).getColor(Styling::StyleVariable::NEWPLATE_BACKGROUND);
-
+        const auto bgColor = Styling::getParameters(getContact()).getColor(Styling::StyleVariable::NEWPLATE_BACKGROUND);
         const auto& margins = getPlateNewMargins();
-        const QRect bgRect(rect().marginsRemoved(margins));
-        _p.fillRect(bgRect, bgColor);
+        auto path = QPainterPath();
+        path.addRoundedRect(rect().marginsRemoved(margins), getPlateNewCornerRadius(), getPlateNewCornerRadius());
+        _p.fillPath(path, bgColor);
 
         if (messageUnit_)
         {
@@ -134,9 +168,34 @@ namespace Ui
         im_assert(false);
     }
 
+    void ServiceMessageItem::drawThreadReplies(QPainter& _p)
+    {
+        if (!messageUnit_)
+            return;
+
+        Utils::PainterSaver ps(_p);
+        _p.setRenderHint(QPainter::Antialiasing);
+
+        QRect bubbleRect(0, 0, width(), getThreadRepliesHeight());
+        bubbleRect.moveCenter(rect().center());
+        const auto radius = bubbleRect.height() / 2;
+        if (bubbleRect != bubbleGeometry_)
+        {
+            bubble_ = QPainterPath();
+            bubble_.addRoundedRect(bubbleRect, radius, radius);
+            bubbleGeometry_ = bubbleRect;
+        }
+
+        const auto bgColor = Styling::getParameters(getContact()).getColor(Styling::StyleVariable::NEWPLATE_BACKGROUND);
+        _p.fillPath(bubble_, bgColor);
+
+        messageUnit_->setOffsets(getPlateThreadRepliesMargins().left(), height() / 2);
+        messageUnit_->draw(_p, TextRendering::VerPosition::MIDDLE);
+    }
+
     QFont ServiceMessageItem::getFont()
     {
-        if (platform::is_apple() && type_ == type::typeDate)
+        if (platform::is_apple() && type_ == Type::date)
             return Fonts::adjustedAppFont(12, Fonts::FontWeight::Normal, Fonts::FontAdjust::NoAdjust);
         else
             return Fonts::adjustedAppFont(12, Fonts::FontWeight::SemiBold, Fonts::FontAdjust::NoAdjust);
@@ -144,17 +203,17 @@ namespace Ui
 
     QColor ServiceMessageItem::getColor()
     {
-        im_assert(!getContact().isEmpty());
-
         switch (type_)
         {
-        case ServiceMessageItem::type::typeDate:
-        case ServiceMessageItem::type::typeOverlay:
+        case Type::date:
+        case Type::overlay:
             return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
-            break;
-        case ServiceMessageItem::type::typePlateNew:
+
+        case Type::plateNew:
+        case Type::threadReplies:
+            im_assert(!getContact().isEmpty());
             return Styling::getParameters(getContact()).getColor(Styling::StyleVariable::NEWPLATE_TEXT);
-            break;
+
         default:
             break;
         }
@@ -169,12 +228,15 @@ namespace Ui
 
         switch (type_)
         {
-        case ServiceMessageItem::type::typeDate:
-        case ServiceMessageItem::type::typeOverlay:
+        case Type::date:
+        case Type::overlay:
             drawDate(p);
             break;
-        case ServiceMessageItem::type::typePlateNew:
+        case Type::plateNew:
             drawPlateNew(p);
+            break;
+        case Type::threadReplies:
+            drawThreadReplies(p);
             break;
         default:
             break;
@@ -217,11 +279,8 @@ namespace Ui
         if (date_ != _date)
         {
             date_ = _date;
-
-            type_ = ServiceMessageItem::type::typeDate;
-
+            type_ = Type::date;
             setFixedHeight(getDateHeight() + 2 * getDateBubbleVerMargin(isFloating()));
-
             updateDateTranslation();
         }
     }
@@ -247,10 +306,9 @@ namespace Ui
 
     void ServiceMessageItem::setNew()
     {
-        if (type_ != ServiceMessageItem::type::typeOverlay)
+        if (type_ != Type::overlay)
         {
-            type_ = ServiceMessageItem::type::typePlateNew;
-
+            type_ = Type::plateNew;
             setFixedHeight(getPlateNewHeight() + getPlateNewMargins().top() + getPlateNewMargins().bottom());
         }
 
@@ -264,17 +322,56 @@ namespace Ui
 
     bool ServiceMessageItem::isNew() const
     {
-        return (type_ == ServiceMessageItem::type::typePlateNew);
+        return (type_ == Type::plateNew);
     }
 
     bool ServiceMessageItem::isDate() const
     {
-        return (type_ == ServiceMessageItem::type::typeDate);
+        return (type_ == Type::date);
     }
 
     bool ServiceMessageItem::isOverlay() const
     {
-        return (type_ == ServiceMessageItem::type::typeOverlay);
+        return (type_ == Type::overlay);
+    }
+
+    void ServiceMessageItem::setThreadReplies(int _numNew, int _numOld)
+    {
+        type_ = Type::threadReplies;
+
+        const auto needShowClickableText = _numNew + _numOld > 0;
+
+        auto message = QT_TRANSLATE_NOOP("threads_feed", "Replies");
+        if (needShowClickableText)
+            message.append(qsl("."));
+        setMessage(message);
+
+        if (!clickableText_)
+        {
+            clickableText_ = new ClickableTextWidget(this, getFont(), Styling::StyleVariable::TEXT_PRIMARY, TextRendering::HorAligment::LEFT);
+            connect(clickableText_, &ClickableTextWidget::clicked, this, &ServiceMessageItem::clicked);
+
+            if (!layout())
+                Utils::emptyHLayout(this)->addWidget(clickableText_);
+        }
+
+        clickableText_->setVisible(needShowClickableText);
+        if (needShowClickableText)
+            clickableText_->setText(getThreadPlateClickableText(_numNew, _numOld));
+
+        const auto& margins = getPlateThreadRepliesMargins();
+        const auto widthForClickableText = needShowClickableText
+            ? getThreadRepliesTextToClickableTextGap() + clickableText_->sizeHint().width()
+            : 0;
+        setWidth(margins.left() 
+            + messageUnit_->desiredWidth()
+            + widthForClickableText
+            + margins.right());
+
+        const auto clickableTextXOffset = messageUnit_->desiredWidth() + getThreadRepliesTextToClickableTextGap();
+        layout()->setContentsMargins({clickableTextXOffset, 0, 0, 0});
+
+        update();
     }
 
     bool ServiceMessageItem::isFloating() const

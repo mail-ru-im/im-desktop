@@ -1,5 +1,6 @@
 #include "stdafx.h"
 
+#include "../main_window/history_control/complex_message/FileSharingUtils.h"
 #include "UrlParser.h"
 #include "utils.h"
 #include "../common.shared/config/config.h"
@@ -65,7 +66,7 @@ finish:
 
     if (parser_.has_url())
     {
-        if (Utils::isContainsMentionLink(text))
+        if (Utils::doesContainMentionLink(text))
         {
             forceNotUrl_ = true;
             charsProcessed_ = text.size();
@@ -104,7 +105,7 @@ void Utils::UrlParser::reset()
     parser_.reset();
 }
 
-QString Utils::UrlParser::getFilesharingId() const
+Utils::FileSharingId Utils::UrlParser::getFilesharingId() const
 {
     if (parser_.has_url())
     {
@@ -112,12 +113,17 @@ QString Utils::UrlParser::getFilesharingId() const
         {
             const auto urlStr = QString::fromStdString(url.url_);
 
-            if (const auto i = urlStr.lastIndexOf(ql1c('/')); i != -1)
-                return urlStr.mid(i + 1);
+            if (const auto lastSlash = urlStr.lastIndexOf(ql1c('/')); lastSlash != -1)
+            {
+                const auto lastQuestion = urlStr.lastIndexOf(ql1c('?'));
+                const auto lastEqual = urlStr.lastIndexOf(ql1c('='));
+                const auto idLength = lastQuestion == -1 ? -1 : (lastQuestion - lastSlash - 1);
+                return { urlStr.mid(lastSlash + 1, idLength), (lastEqual == -1) ? std::nullopt : std::make_optional(urlStr.mid(lastEqual + 1)) };
+            }
         }
     }
 
-    return QString();
+    return {};
 }
 
 const std::vector<std::string>& Utils::UrlParser::additionalFsUrls()
@@ -125,7 +131,7 @@ const std::vector<std::string>& Utils::UrlParser::additionalFsUrls()
     const static auto urls = []() {
         const auto urls_csv = config::get().string(config::values::additional_fs_parser_urls_csv);
         const auto str = QString::fromUtf8(urls_csv.data(), urls_csv.size());
-        const auto splitted = str.splitRef(ql1c(','), QString::SkipEmptyParts);
+        const auto splitted = str.splitRef(ql1c(','), Qt::SkipEmptyParts);
         std::vector<std::string> urls;
         urls.reserve(splitted.size());
         for (const auto& x : splitted)

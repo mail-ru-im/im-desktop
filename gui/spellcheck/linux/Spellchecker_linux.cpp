@@ -58,4 +58,8 @@ namespace spellcheck
     {
         return {};
     }
+
+    void SpellCheckerImpl::updateKeyboardLanguages()
+    {
+    }
 }

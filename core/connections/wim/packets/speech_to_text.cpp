@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "speech_to_text.h"
 #include "../../../http_request.h"
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 #include "../../urls_cache.h"
 
 using namespace core;
@@ -80,7 +80,7 @@ int32_t speech_to_text::execute_request(const std::shared_ptr<core::http_request
         if (http_code_ == 202)
         {
             auto response = dynamic_cast<tools::binary_stream*>(request->get_response().get());
-            assert(response);
+            im_assert(response);
             if (!response->available())
                 return wpie_http_empty_response;
 

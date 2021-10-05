@@ -1,6 +1,8 @@
 #pragma once
 
 #include "../../corelib/collection_helper.h"
+#include "../tools/file_sharing.h"
+
 enum class loader_errors;
 
 namespace core
@@ -41,16 +43,22 @@ namespace core
         {
             int32_t id_ = 0;
             size_map sizes_;
-            std::string file_sharing_id_;
+            core::tools::filesharing_id file_sharing_id_;
             emoji_vector emojis_;
+
+            sticker(std::string_view _id);
 
         public:
 
             sticker() = default;
-            sticker(std::string_view _id);
+            static sticker from_file_id(std::string_view _id)
+            {
+                return sticker(_id);
+            }
+            sticker(const core::tools::filesharing_id& _id);
 
             int32_t get_id() const;
-            const std::string& fs_id() const;
+            const core::tools::filesharing_id& fs_id() const;
 
             const size_map& get_sizes() const;
 
@@ -58,6 +66,8 @@ namespace core
 
             bool unserialize(const rapidjson::Value& _node, const emoji_map& _emojis);
             bool unserialize(const rapidjson::Value& _node);
+
+            void update_fideration_id(const std::string& _federation_id);
         };
 
         enum class set_type
@@ -101,6 +111,8 @@ namespace core
 
             const std::string& get_description() const;
             void set_description(std::string&& _description);
+
+            void set_federation_id(const std::string& federation_id);
 
             const stickers_vector& get_stickers() const;
 
@@ -167,7 +179,7 @@ namespace core
                 std::wstring _dest_file,
                 int32_t _set_id,
                 int32_t _sticker_id,
-                std::string _fs_id,
+                core::tools::filesharing_id _fs_id,
                 sticker_size _size);
 
             const std::string& get_source_url() const;
@@ -175,7 +187,7 @@ namespace core
             const std::wstring& get_dest_file() const;
             int32_t get_set_id() const;
             int32_t get_sticker_id() const;
-            const std::string& get_fs_id() const;
+            const core::tools::filesharing_id& get_fs_id() const;
             sticker_size get_size() const;
 
             void set_need_decompress(bool _decompress) noexcept { decompress_ = _decompress; }
@@ -198,7 +210,7 @@ namespace core
             int32_t set_id_;
             int32_t sticker_id_;
             sticker_size size_;
-            std::string fs_id_;
+            core::tools::filesharing_id fs_id_;
             bool decompress_ = false;
             type type_ = type::sticker;
         };
@@ -222,8 +234,8 @@ namespace core
             int32_t stat_dl_tasks_count_ = 0;
             std::chrono::steady_clock::time_point stat_dl_start_time_;
 
-            std::string make_sticker_url(const int32_t _set_id, const int32_t _sticker_id, std::string_view _fs_id, const core::sticker_size _size) const;
-            std::string make_sticker_url(const int32_t _set_id, const int32_t _sticker_id, std::string_view _fs_id, const std::string& _size) const;
+            std::string make_sticker_url(const int32_t _set_id, const int32_t _sticker_id, const core::tools::filesharing_id& _fs_id, const core::sticker_size _size) const;
+            std::string make_sticker_url(const int32_t _set_id, const int32_t _sticker_id, const core::tools::filesharing_id& _fs_id, const std::string& _size) const;
 
             const std::shared_ptr<stickers::set>& get_set(int32_t _set_id) const;
 
@@ -246,14 +258,14 @@ namespace core
             void serialize_store_sync(coll_helper _coll);
 
             static std::wstring get_sticker_path(const set& _set, const sticker& _sticker, sticker_size _size);
-            static std::wstring get_sticker_path(int32_t _set_id, int32_t _sticker_id, std::string_view _fs_id, sticker_size _size);
+            static std::wstring get_sticker_path(int32_t _set_id, int32_t _sticker_id, const core::tools::filesharing_id& _fs_id, sticker_size _size);
 
             download_tasks take_download_tasks();
             bool have_tasks_to_download() const noexcept;
             int32_t on_task_loaded(const download_task& _task);
-            int cancel_download_tasks(std::vector<std::string> _fs_ids, sticker_size _size);
+            int cancel_download_tasks(std::vector<core::tools::filesharing_id> _fs_ids, sticker_size _size);
 
-            void get_sticker(int64_t _seq, int32_t _set_id, int32_t _sticker_id, std::string _fs_id, const sticker_size _size, std::wstring& _path);
+            void get_sticker(int64_t _seq, int32_t _set_id, int32_t _sticker_id, const core::tools::filesharing_id& _fs_id, const sticker_size _size, std::wstring& _path);
             void get_set_icon_big(const int64_t _seq, const int32_t _set_id, std::wstring& _path);
             void clean_set_icon_big(const int32_t _set_id);
 
@@ -292,10 +304,10 @@ namespace core
                 int64_t _seq,
                 int32_t _set_id,
                 int32_t _sticker_id,
-                std::string _fs_id,
+                const core::tools::filesharing_id& _fs_id,
                 const core::sticker_size _size);
 
-            std::shared_ptr<result_handler<int>> cancel_download_tasks(std::vector<std::string> _fs_ids, core::sticker_size _size);
+            std::shared_ptr<result_handler<int>> cancel_download_tasks(std::vector<core::tools::filesharing_id> _fs_ids, core::sticker_size _size);
 
             std::shared_ptr<result_handler<std::wstring_view>> get_set_icon_big(const int64_t _seq, const int32_t _set_id);
             void clean_set_icon_big(const int64_t _seq, const int32_t _set_id);
@@ -323,8 +335,8 @@ namespace core
             std::shared_ptr<result_handler<const bool>> serialize_suggests(coll_helper _coll);
         };
 
-        void post_sticker_2_gui(int64_t _seq, int32_t _set_id, int32_t _sticker_id, std::string_view _fs_id, core::sticker_size _size, std::wstring_view _data);
-        void post_sticker_fail_2_gui(int64_t _seq, int32_t _set_id, int32_t _sticker_id, std::string_view _fs_id, loader_errors _error);
+        void post_sticker_2_gui(int64_t _seq, int32_t _set_id, int32_t _sticker_id, const core::tools::filesharing_id& _fs_id, core::sticker_size _size, std::wstring_view _data);
+        void post_sticker_fail_2_gui(int64_t _seq, int32_t _set_id, int32_t _sticker_id, const core::tools::filesharing_id& _fs_id, loader_errors _error);
         void post_set_icon_2_gui(int32_t _set_id, std::string_view _message, std::wstring_view _path, int32_t _error = 0);
     }
 }

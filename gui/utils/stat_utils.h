@@ -9,7 +9,7 @@ std::string averageCount(int count);
 
 struct GalleryMediaActionCont
 {
-    GalleryMediaActionCont(const std::string& _mediaType, const QString& _aimid)
+    GalleryMediaActionCont(std::string_view _mediaType, const QString& _aimid)
         : mediaType_(_mediaType)
         , happened_(false)
         , aimid_(_aimid)

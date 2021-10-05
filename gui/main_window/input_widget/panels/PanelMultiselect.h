@@ -10,9 +10,8 @@ namespace Ui
     {
         Q_OBJECT
     public:
-        InputPanelMultiselect(QWidget* _parent);
+        InputPanelMultiselect(QWidget* _parent, const QString& _aimId);
         void updateElements();
-        void setContact(const QString& _aimid);
 
     protected:
         void updateStyleImpl(const InputStyleMode _mode) override;
@@ -20,7 +19,7 @@ namespace Ui
 
     private Q_SLOTS:
         void multiSelectCurrentElementChanged();
-        void selectedCount(int, int);
+        void selectedCount(const QString& _aimid, int _totalCount, int _unsupported, int _plainFiles);
 
     private:
         RoundButton* delete_;

@@ -75,7 +75,7 @@ namespace Ui
 #ifdef _WIN32
         bool toastSupported();
 #endif //_WIN32
-        void showMessage(const Data::DlgState& state, const AlertType _alertType);
+        void showMessage(Data::DlgState state, const AlertType _alertType);
         TrayPosition getTrayPosition() const;
         void markShowed(const std::set<QString>& _aimIds);
         bool canShowNotificationsWin() const;

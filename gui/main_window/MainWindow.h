@@ -5,7 +5,6 @@ class MacSupport;
 #endif
 #include "controls/TextEmojiWidget.h"
 #include "controls/MainStackedWidget.h"
-#include "sidebar/Sidebar.h"
 
 class QApplication;
 class QDockWidget;
@@ -19,7 +18,6 @@ namespace Utils
 {
     struct ProxySettings;
     struct CloseWindowInfo;
-    struct SidebarVisibilityParams;
     struct GalleryData;
 
     namespace AddContactDialogs
@@ -35,7 +33,6 @@ namespace Ui
     class LoginPage;
     class TermsPrivacyWidget;
     class TrayIcon;
-    class HistoryControlPage;
     class DialogPlayer;
     class MainWindow;
     class CustomButton;
@@ -113,12 +110,16 @@ namespace Ui
         void upKeyPressed(QPrivateSignal);
         void downKeyPressed(QPrivateSignal);
         void enterKeyPressed(QPrivateSignal);
+        void anyKeyPressed(QPrivateSignal);
         void mouseReleased(QPrivateSignal);
         void mousePressed(QPrivateSignal);
         void mouseMoved(const QPoint&, QPrivateSignal);
 
         void windowHide(QPrivateSignal);
         void windowClose(QPrivateSignal);
+
+        void windowHiddenToTray();
+        void windowUnhiddenFromTray();
 
         void galeryClosed();
 
@@ -144,13 +145,14 @@ namespace Ui
         void guiSettingsChanged(const QString&);
         void onVoipResetComplete();
         void hideWindow();
+        void unhideWindow();
         void copy();
         void cut();
         void paste();
         void undo();
         void redo();
+
         void activateAbout();
-        void activateProfile();
         void activateSettings();
         void closeCurrent();
         void activateNextUnread();
@@ -175,6 +177,7 @@ namespace Ui
         void zoomWindow();
 
         void openStatusPicker();
+        void omicronUpdated();
 
     public:
         MainWindow(QApplication* _app, const bool _hasValidLogin, const bool _locked, const QString& _validOrFirstLogin);
@@ -196,6 +199,7 @@ namespace Ui
         bool isAppsPage() const;
         bool isMessengerPage() const;
         bool isMessengerPageContactDialog() const;
+        bool isWebAppTasksPage() const;
 
         int getScreen() const;
         QRect screenGeometry() const;
@@ -211,21 +215,11 @@ namespace Ui
 
         void closePopups(const Utils::CloseWindowInfo&);
 
-        HistoryControlPage* getHistoryPage(const QString& _aimId) const;
         MainPage* getMessengerPage() const;
         AppsPage* getAppsPage() const;
         QLabel* getWindowLogo() const;
 
-        void showSidebar(const QString& _aimId);
-        void showSidebarWithParams(const QString& _aimId, SidebarParams _params);
-        void showMembersInSidebar(const QString& _aimId);
-        void setSidebarVisible(const Utils::SidebarVisibilityParams& _params);
-        bool isSidebarVisible() const;
-        void restoreSidebar();
-
         void showMenuBarIcon(bool _show);
-        void setFocusOnInput();
-        void onSendMessage(const QString&);
 
         int getTitleHeight() const;
         bool isMaximized() const;
@@ -241,6 +235,9 @@ namespace Ui
         void updateWindowTitle();
 
         void setCurrentWidget(QWidget* _widget, ForceLocked _forceLocked = ForceLocked::No);
+
+        QPointer<QAction> getFormatAction(core::data::format_type _type) const { return formatActions_.at(_type); }
+        std::unordered_map<core::data::format_type, QPointer<QAction>> getFormatActions() const { return formatActions_; }
 
     private:
         void placeRectOnDesktopEntirely(QRect& _rect, QMargins _margin = QMargins());
@@ -308,6 +305,7 @@ namespace Ui
         CallQualityStatsMgr* callStatsMgr_;
         ConnectionStateWatcher* connStateWatcher_;
         QPointer<QWidget> previousFocusedWidget_;
+        std::unordered_map<core::data::format_type, QPointer<QAction>> formatActions_;
 
         bool SkipRead_;
         bool TaskBarIconHidden_;

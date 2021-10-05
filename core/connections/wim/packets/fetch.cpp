@@ -4,39 +4,13 @@
 #include <sstream>
 
 #include "../../../http_request.h"
-#include "../events/fetch_event.h"
 
-#include "../events/fetch_event_buddy_list.h"
-#include "../events/fetch_event_presence.h"
-#include "../events/fetch_event_dlg_state.h"
-#include "../events/fetch_event_hidden_chat.h"
-#include "../events/fetch_event_diff.h"
-#include "../events/fetch_event_my_info.h"
-#include "../events/fetch_event_user_added_to_buddy_list.h"
-#include "../events/fetch_event_typing.h"
-#include "../events/fetch_event_permit.h"
-#include "../events/fetch_event_imstate.h"
-#include "../events/fetch_event_notification.h"
-#include "../events/fetch_event_appsdata.h"
-#include "../events/fetch_event_mention_me.h"
-#include "../events/fetch_event_chat_heads.h"
-#include "../events/fetch_event_gallery_notify.h"
-#include "../events/fetch_event_mchat.h"
-#include "../events/fetch_event_smartreply_suggests.h"
-#include "../events/fetch_event_poll_update.h"
-#include "../events/fetch_event_async_response.h"
-#include "../events/fetch_event_recent_call_log.h"
-#include "../events/fetch_event_recent_call.h"
-#include "../events/fetch_event_reactions.h"
-#include "../events/fetch_event_status.h"
-#include "../events/fetch_event_call_room_info.h"
-#include "../events/fetch_event_suggest_to_notify_user.h"
-
+#include "../events/events.h"
 #include "../events/webrtc.h"
 
 #include "../../../log/log.h"
 
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 #include "../../../tools/coretime.h"
 #include "../../../common.shared/smartreply/smartreply_types.h"
 
@@ -276,6 +250,16 @@ int32_t fetch::parse_response_data(const rapidjson::Value& _data)
                         push_event(std::make_shared<fetch_event_call_room_info>())->parse(iter_event_data->value);
                     else if (event_type == "suggestToNotifyUser")
                         push_event(std::make_shared<fetch_event_suggest_to_notify_user>())->parse(iter_event_data->value);
+                    else if (event_type == "threadUpdate")
+                        push_event(std::make_shared<fetch_event_thread_update>())->parse(iter_event_data->value);
+                    else if (event_type == "unreadThreadsCount")
+                        push_event(std::make_shared<fetch_event_unread_threads_count>())->parse(iter_event_data->value);
+                    else if (event_type == "draft")
+                        push_event(std::make_shared<fetch_event_draft>())->parse(iter_event_data->value);
+                    else if (event_type == "task")
+                        push_event(std::make_shared<fetch_event_task>())->parse(iter_event_data->value);
+                    else if (event_type == "trustStatus")
+                        push_event(std::make_shared<fetch_event_trust_status>())->parse(iter_event_data->value);
                 }
             }
         }
@@ -325,7 +309,7 @@ int32_t fetch::parse_response_data(const rapidjson::Value& _data)
                 we->parse(response_str());
                 push_event(we);
             } else {
-                assert(false);
+                im_assert(false);
             }
         }
     }

@@ -11,6 +11,11 @@ namespace
     constexpr std::chrono::milliseconds TEMP_SUBSCRIPTION_TIMEOUT = std::chrono::minutes(2);
 
     constexpr auto LASTSEEN_MAX_REQUEST_COUNT = 30;
+
+    bool isValidContact(const QString& _aimId)
+    {
+        return !_aimId.isEmpty() && !Utils::isChat(_aimId) && !Utils::isServiceAimId(_aimId);
+    }
 }
 
 namespace Logic
@@ -34,7 +39,7 @@ namespace Logic
 
     void LastseenContainer::setContactLastSeen(const QString& _aimid, const Data::LastSeen& _lastSeen)
     {
-        if (_aimid.isEmpty() || Utils::isChat(_aimid))
+        if (!isValidContact(_aimid))
             return;
 
         auto& seen = contactsSeens_[_aimid];
@@ -67,7 +72,7 @@ namespace Logic
     {
         static const Data::LastSeen empty;
 
-        if (_aimid.isEmpty() || Utils::isChat(_aimid) || Utils::isServiceAimId(_aimid))
+        if (!isValidContact(_aimid))
             return empty;
 
         const auto& seen = contactsSeens_.find(_aimid);
@@ -93,7 +98,7 @@ namespace Logic
 
     void LastseenContainer::unsubscribe(const QString& _aimid)
     {
-        if (_aimid.isEmpty() || Utils::isChat(_aimid))
+        if (!isValidContact(_aimid))
             return;
 
         subscriptions_[_aimid] = QDateTime::currentDateTime();

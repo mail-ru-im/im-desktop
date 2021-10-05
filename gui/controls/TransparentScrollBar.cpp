@@ -871,9 +871,7 @@ namespace Ui
         setFocusPolicy(Qt::NoFocus);
     }
 
-    ScrollAreaWithTrScrollBar::~ScrollAreaWithTrScrollBar()
-    {
-    }
+    ScrollAreaWithTrScrollBar::~ScrollAreaWithTrScrollBar() = default;
 
     QSize ScrollAreaWithTrScrollBar::contentSize() const
     {
@@ -899,9 +897,11 @@ namespace Ui
         QScrollArea::wheelEvent(event);
     }
 
-    void ScrollAreaWithTrScrollBar::resizeEvent(QResizeEvent *event)
+    void ScrollAreaWithTrScrollBar::resizeEvent(QResizeEvent* _event)
     {
-        QScrollArea::resizeEvent(event);
+        if (width() != _event->oldSize().width())
+            updateMargins();
+        QScrollArea::resizeEvent(_event);
         Q_EMIT resized();
     }
 
@@ -909,6 +909,19 @@ namespace Ui
     {
         AbstractWidgetWithScrollBar::updateGeometries();
         QScrollArea::updateGeometry();
+    }
+
+    void ScrollAreaWithTrScrollBar::updateMargins()
+    {
+        QMargins margins;
+        if (maxWidth_ > 0 && width() > maxWidth_)
+        {
+            const auto m = (width() - maxWidth_) / 2.;
+            margins.setLeft(std::ceil(m));
+            margins.setRight(std::floor(m));
+        }
+        if (margins != viewportMargins())
+            setViewportMargins(margins);
     }
 
     void ScrollAreaWithTrScrollBar::setScrollBarV(TransparentScrollBarV* _scrollBar)
@@ -951,6 +964,12 @@ namespace Ui
             widget->installEventFilter(filter);
 
         QScrollArea::setWidget(widget);
+    }
+
+    void ScrollAreaWithTrScrollBar::setMaxContentWidth(int _width)
+    {
+        if (std::exchange(maxWidth_, _width) != _width)
+            updateMargins();
     }
 
     // TextEditExWithScrollBar
@@ -1052,6 +1071,7 @@ namespace Ui
         : QListView(_parent)
         , selectByMouseHoverEnabled_(false)
         , rescheduleLayoutTimer_(new QTimer(this))
+        , getstureHandler_(nullptr)
         , scrollAnimation_(new QVariantAnimation(this))
     {
         rescheduleLayoutTimer_->setSingleShot(true);
@@ -1065,6 +1085,7 @@ namespace Ui
         connect(scrollAnimation_, &QVariantAnimation::valueChanged, this, &FocusableListView::scrollAnimationValueChanged);
 
         updateSmoothScrollAvailability();
+        viewport()->installEventFilter(this);
     }
 
     void FocusableListView::setSelectByMouseHover(const bool _enabled)
@@ -1080,6 +1101,23 @@ namespace Ui
     void FocusableListView::updateSelectionUnderCursor()
     {
         updateSelectionUnderCursor(mapFromGlobal(QCursor::pos()));
+    }
+
+    void FocusableListView::setListViewGestureHandler(ListViewGestureHandler* _handler)
+    {
+        if (auto handler = std::exchange(getstureHandler_, nullptr))
+            handler->deleteLater();
+        if (_handler)
+        {
+            getstureHandler_ = _handler;
+            getstureHandler_->setParent(this);
+            getstureHandler_->setView(this);
+        }
+    }
+
+    ListViewGestureHandler* FocusableListView::getListViewGestureHandler() const
+    {
+        return getstureHandler_;
     }
 
     void FocusableListView::enterEvent(QEvent *_e)
@@ -1152,6 +1190,21 @@ namespace Ui
     {
         rescheduleLayoutTimer_->start();
         QListView::resizeEvent(e);
+    }
+
+    bool FocusableListView::eventFilter(QObject* _obj, QEvent* _event)
+    {
+        if (_event->type() == QEvent::Gesture)
+        {
+            if (getstureHandler_ && _obj == viewport())
+                getstureHandler_->gestureEvent(static_cast<QGestureEvent*>(_event));
+        }
+        else if (_event->type() == QEvent::MouseButtonPress)
+        {
+            if (getstureHandler_ && _obj == viewport())
+                getstureHandler_->mouseEvent(static_cast<QMouseEvent*>(_event));
+        }
+        return QListView::eventFilter(_obj, _event);
     }
 
     QItemSelectionModel::SelectionFlags FocusableListView::selectionCommand(const QModelIndex & index, const QEvent * event) const
@@ -1234,6 +1287,67 @@ namespace Ui
             connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated, setSmoothScrollingAvailability);
             setSmoothScrollingAvailability();
             connected = true;
+        }
+    }
+
+    ListViewGestureHandler::ListViewGestureHandler(QObject* _parent)
+        : QObject(_parent)
+    {
+    }
+
+    void ListViewGestureHandler::gestureEvent(QGestureEvent* _e)
+    {
+        if (!view_)
+            return;
+        auto handleGesture = [this, _e](auto gesture, auto type, auto callback)
+        {
+            if (gesture->hasHotSpot())
+            {
+                _e->accept(type);
+                if (gesture->state() == Qt::GestureStarted)
+                {
+                    startGestureIndex_ = view_->indexAt(view_->viewport()->mapFromGlobal(gesture->hotSpot().toPoint()));
+                }
+                else if (gesture->state() == Qt::GestureFinished)
+                {
+                    auto idx = view_->indexAt(view_->viewport()->mapFromGlobal(gesture->hotSpot().toPoint()));
+                    if (idx == std::exchange(startGestureIndex_, {}))
+                        callback(idx);
+                }
+            }
+        };
+        if (QGesture* tapandhold = _e->gesture(Qt::TapAndHoldGesture))
+        {
+            handleGesture(tapandhold, Qt::TapAndHoldGesture, [this](const auto& idx)
+            {
+                wasTapAndHold_ = true;
+                Q_EMIT tapAndHoldGesture(idx, QPrivateSignal{});
+            });
+        }
+        else if (QGesture* tap = _e->gesture(Qt::TapGesture))
+        {
+            handleGesture(tap, Qt::TapGesture, [this](const auto& idx) { Q_EMIT tapGesture(idx, QPrivateSignal{}); });
+        }
+    }
+
+    void ListViewGestureHandler::setView(QListView* _view)
+    {
+        view_ = _view;
+        wasTapAndHold_ = false;
+    }
+
+    void ListViewGestureHandler::mouseEvent(QMouseEvent* _e)
+    {
+        if (!view_)
+            return;
+        if (std::exchange(wasTapAndHold_, false))
+        {
+            if (_e->button() == Qt::MouseButton::RightButton)
+            {
+                auto idx = view_->indexAt(_e->pos());
+                if (idx.isValid())
+                    Q_EMIT rightClick(idx, QPrivateSignal{});
+            }
         }
     }
 }

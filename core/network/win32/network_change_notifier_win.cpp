@@ -63,7 +63,7 @@ namespace core
 
     void network_change_notifier_win::watch_for_address_change()
     {
-        assert(g_core->is_core_thread());
+        im_assert(g_core->is_core_thread());
         if (!watch_for_address_change_internal())
         {
             ++sequential_failures_;
@@ -103,7 +103,7 @@ namespace core
 
     bool network_change_notifier_win::watch_for_address_change_internal()
     {
-        assert(g_core->is_core_thread());
+        im_assert(g_core->is_core_thread());
         internal::reset_event_if_signaled(addr_overlapped_.hEvent);
         HANDLE handle = nullptr;
         DWORD ret = NotifyAddrChange(&handle, &addr_overlapped_);
@@ -119,7 +119,7 @@ namespace core
     {
         if (!g_core)
             return;
-        assert(!g_core->is_core_thread());
+        im_assert(!g_core->is_core_thread());
         g_core->execute_core_context({ [param]
         {
             // ignore event when destroy network_change_notifier by omicron config
@@ -132,7 +132,7 @@ namespace core
 
     bool network_change_notifier_win::start_watch()
     {
-        assert(g_core->is_core_thread());
+        im_assert(g_core->is_core_thread());
         DWORD wait_flags = WT_EXECUTEINWAITTHREAD | WT_EXECUTEONLYONCE;
         if (!RegisterWaitForSingleObject(&wait_object_, addr_overlapped_.hEvent, wait_done, this, INFINITE, wait_flags))
         {
@@ -145,13 +145,13 @@ namespace core
 
     void core::network_change_notifier_win::set_current_connection_type(connection_type _connection_type)
     {
-        assert(g_core->is_core_thread());
+        im_assert(g_core->is_core_thread());
         last_computed_connection_type_ = _connection_type;
     }
 
     network_change_notifier::connection_type network_change_notifier_win::recompute_current_connection_type()
     {
-        assert(g_core->is_core_thread());
+        im_assert(g_core->is_core_thread());
         internal::ensure_winsock_init();
 
         HANDLE ws_handle;
@@ -185,7 +185,7 @@ namespace core
         }
         else
         {
-            assert(SOCKET_ERROR == result);
+            im_assert(SOCKET_ERROR == result);
             result = WSAGetLastError();
 
             // Error code WSAEFAULT means there is a network connection but the
@@ -216,7 +216,7 @@ namespace core
 
     void network_change_notifier_win::on_signal()
     {
-        assert(g_core->is_core_thread());
+        im_assert(g_core->is_core_thread());
         log_text("internal: interface changed");
         watch_for_address_change();
 
@@ -230,7 +230,7 @@ namespace core
 
     void core::network_change_notifier_win::notify()
     {
-        assert(g_core->is_core_thread());
+        im_assert(g_core->is_core_thread());
         auto current_connection_type = recompute_current_connection_type();
         set_current_connection_type(current_connection_type);
 

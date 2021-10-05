@@ -9,6 +9,7 @@ namespace Logic
         enum Flags
         {
             ReplaceFavorites = 1 << 0,
+            ReplaceService = 1 << 1,
         };
 
         AvatarStorageProxy(int32_t _flags) : flags_(_flags) {}

@@ -385,9 +385,144 @@ You can leave your feedback or report an error here:</source>
         <source>You are not a member of this chat or you was banned to write</source>
         <translation>您不是聊天成员，或者不允许您写</translation>
     </message>
+</context>
+<context>
+    <name>calendar</name>
     <message>
-        <source>Are you sure you want to open an external link %1?</source>
-        <translation>您确定要打开外部链接%1吗？</translation>
+        <source>Mon</source>
+        <translation>星期一</translation>
+    </message>
+    <message>
+        <source>Tue</source>
+        <translation>宽</translation>
+    </message>
+    <message>
+        <source>Wed</source>
+        <translation>星期三</translation>
+    </message>
+    <message>
+        <source>Thu</source>
+        <translation>国民服役</translation>
+    </message>
+    <message>
+        <source>Fri</source>
+        <translation>周五</translation>
+    </message>
+    <message>
+        <source>Sat</source>
+        <translation>星期六</translation>
+    </message>
+    <message>
+        <source>Sun</source>
+        <translation>太阳</translation>
+    </message>
+    <message>
+        <source>January</source>
+        <translation>一月</translation>
+    </message>
+    <message>
+        <source>Febuary</source>
+        <translation>二月</translation>
+    </message>
+    <message>
+        <source>March</source>
+        <translation>行进</translation>
+    </message>
+    <message>
+        <source>April</source>
+        <translation>四月</translation>
+    </message>
+    <message>
+        <source>May</source>
+        <translation>可能</translation>
+    </message>
+    <message>
+        <source>June</source>
+        <translation>六月</translation>
+    </message>
+    <message>
+        <source>July</source>
+        <translation>七月</translation>
+    </message>
+    <message>
+        <source>August</source>
+        <translation>八月</translation>
+    </message>
+    <message>
+        <source>September</source>
+        <translation>九月</translation>
+    </message>
+    <message>
+        <source>October</source>
+        <translation>十月</translation>
+    </message>
+    <message>
+        <source>November</source>
+        <translation>十一月</translation>
+    </message>
+    <message>
+        <source>December</source>
+        <translation>十二月</translation>
+    </message>
+    <message>
+        <source>Jan</source>
+        <translation>简</translation>
+    </message>
+    <message>
+        <source>Feb</source>
+        <translation>二月</translation>
+    </message>
+    <message>
+        <source>Mar</source>
+        <translation>玛莎</translation>
+    </message>
+    <message>
+        <source>Apr</source>
+        <translation>四月</translation>
+    </message>
+    <message>
+        <source>Jun</source>
+        <translation>六月</translation>
+    </message>
+    <message>
+        <source>Jul</source>
+        <translation>七月</translation>
+    </message>
+    <message>
+        <source>Aug</source>
+        <translation>八月</translation>
+    </message>
+    <message>
+        <source>Sep</source>
+        <translation>九月</translation>
+    </message>
+    <message>
+        <source>Oct</source>
+        <translation>八月</translation>
+    </message>
+    <message>
+        <source>Nov</source>
+        <translation>十一月</translation>
+    </message>
+    <message>
+        <source>Dec</source>
+        <translation>十二月</translation>
+    </message>
+    <message>
+        <source>Today</source>
+        <translation>今天</translation>
+    </message>
+    <message>
+        <source>Tomorrow</source>
+        <translation>明天</translation>
+    </message>
+    <message>
+        <source>MayS</source>
+        <translation>可能</translation>
+    </message>
+    <message>
+        <source>%1. d, yyyy</source>
+        <translation>%1. d, yyyy</translation>
     </message>
 </context>
 <context>
@@ -988,6 +1123,22 @@ You can leave your feedback or report an error here:</source>
 %3
 %4 %5</translation>
     </message>
+    <message>
+        <source>%1 changed task title to &quot;%2&quot;</source>
+        <translation>%1将任务文本更改为&quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed task deadline to %2</source>
+        <translation>%1将截止日期更改为%2</translation>
+    </message>
+    <message>
+        <source>%1 changed task assignee to &quot;%2&quot;</source>
+        <translation>%1将艺术家更改为&quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>Task status changed to &quot;%1&quot;</source>
+        <translation>任务状态更改为&quot;%1&quot;</translation>
+    </message>
 </context>
 <context>
     <name>chat_page</name>
@@ -1054,6 +1205,22 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Message sent</source>
         <translation>讯息已发送</translation>
+    </message>
+    <message>
+        <source>Access limited</source>
+        <translation>访问受限</translation>
+    </message>
+    <message>
+        <source>File is not available</source>
+        <translation>文件不可用</translation>
+    </message>
+    <message>
+        <source>Filesharing Id copied to clipboard</source>
+        <translation>已复制文件共享 ID</translation>
+    </message>
+    <message>
+        <source>Filesharing link copied to clipboard</source>
+        <translation>已复制文件共享链接</translation>
     </message>
 </context>
 <context>
@@ -1176,6 +1343,30 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>PINNED</source>
         <translation>附着</translation>
+    </message>
+    <message>
+        <source>Threads</source>
+        <translation>线程ᵝ</translation>
+    </message>
+    <message>
+        <source>Reminders</source>
+        <translation>提醒事项</translation>
+    </message>
+    <message>
+        <source>Scheduled</source>
+        <translation>计划</translation>
+    </message>
+    <message>
+        <source>Draft</source>
+        <translation>草案</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation>一个任务</translation>
+    </message>
+    <message>
+        <source>Tasks</source>
+        <translation>任务</translation>
     </message>
 </context>
 <context>
@@ -1612,6 +1803,58 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Copy session info</source>
         <translation>复制会话信息</translation>
+    </message>
+    <message>
+        <source>Bold</source>
+        <translation>胖子</translation>
+    </message>
+    <message>
+        <source>Italic</source>
+        <translation>斜体字</translation>
+    </message>
+    <message>
+        <source>Underline</source>
+        <translation>带下划线的</translation>
+    </message>
+    <message>
+        <source>Strike through</source>
+        <translation>划掉</translation>
+    </message>
+    <message>
+        <source>Monospace</source>
+        <translation>等距</translation>
+    </message>
+    <message>
+        <source>Create link</source>
+        <translation>新增连结</translation>
+    </message>
+    <message>
+        <source>Clear format</source>
+        <translation>清晰的样式</translation>
+    </message>
+    <message>
+        <source>Format</source>
+        <translation>格式设定</translation>
+    </message>
+    <message>
+        <source>Edit task</source>
+        <translation>更改任务</translation>
+    </message>
+    <message>
+        <source>List</source>
+        <translation>列表</translation>
+    </message>
+    <message>
+        <source>Ordered list</source>
+        <translation>编号清单</translation>
+    </message>
+    <message>
+        <source>Quote</source>
+        <translation>引用</translation>
+    </message>
+    <message>
+        <source>Code</source>
+        <translation>编码</translation>
     </message>
 </context>
 <context>
@@ -2648,6 +2891,21 @@ You can leave your feedback or report an error here:</source>
     </message>
 </context>
 <context>
+    <name>draft</name>
+    <message>
+        <source>Apply draft</source>
+        <translation>申请草稿</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>消除</translation>
+    </message>
+    <message>
+        <source>Apply another draft version?</source>
+        <translation>您想使用其他版本的草稿吗？</translation>
+    </message>
+</context>
+<context>
     <name>favorites</name>
     <message>
         <source>
@@ -2758,10 +3016,10 @@ You can leave your feedback or report an error here:</source>
     </message>
 </context>
 <context>
-    <name>generic_block</name>
+    <name>groupchat</name>
     <message>
-        <source>Copied to clipboard</source>
-        <translation>复制到剪贴板</translation>
+        <source>To replies</source>
+        <translation>在回答中</translation>
     </message>
 </context>
 <context>
@@ -2854,6 +3112,20 @@ You can leave your feedback or report an error here:</source>
         <source>You are not a subscriber of this channel</source>
         <translation>您不是该频道的订阅者</translation>
     </message>
+    <message>
+        <source>File access restrictions</source>
+        <translation>文件访问限制</translation>
+    </message>
+    <message>
+        <source>Restrict file access to trusted devices only
+Only for private groups
+
+This option cannot be disabled</source>
+        <translation>仅允许受信任设备访问文件
+仅限非公开团体
+
+无法禁用设置</translation>
+    </message>
 </context>
 <context>
     <name>head</name>
@@ -2883,6 +3155,30 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Please select a chat to start messaging</source>
         <translation>请选择一个聊天，开始发送讯息</translation>
+    </message>
+    <message>
+        <source>Create a call</source>
+        <translation>创建呼叫</translation>
+    </message>
+    <message>
+        <source>No time limit</source>
+        <translation>没有时间限制</translation>
+    </message>
+    <message>
+        <source>Status is set automatically during call</source>
+        <translation>自动状态显示谁在通话中</translation>
+    </message>
+    <message>
+        <source>Advantages of calls in Myteam</source>
+        <translation>致电 Myteam 的好处</translation>
+    </message>
+    <message>
+        <source>Group calls up to %1 participants</source>
+        <translation>%1人的群组通话</translation>
+    </message>
+    <message>
+        <source>Return to call in chat in one click</source>
+        <translation>一键返回聊天中的通话</translation>
     </message>
 </context>
 <context>
@@ -3050,6 +3346,10 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Cancel request</source>
         <translation>取消请求</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation>一个任务</translation>
     </message>
 </context>
 <context>
@@ -3292,6 +3592,10 @@ You can leave your feedback or report an error here:</source>
         <source>Wrong password</source>
         <translation>密码错误</translation>
     </message>
+    <message>
+        <source>Sign in with Mail.ru</source>
+        <translation>用Mail.ru登录</translation>
+    </message>
 </context>
 <context>
     <name>macos_menu</name>
@@ -3389,7 +3693,7 @@ You can leave your feedback or report an error here:</source>
     </message>
     <message>
         <source>Emoji &amp;&amp; Symbols</source>
-        <translation>表情符号和符号</translation>
+        <translation>表情符号&amp;符号</translation>
     </message>
     <message>
         <source>Zoom</source>
@@ -3944,10 +4248,6 @@ to contact status</source>
     <message>
         <source>Are you sure you want to leave chat?</source>
         <translation>您确定要退出聊天吗？</translation>
-    </message>
-    <message>
-        <source>Contact name</source>
-        <translation>联系人名字</translation>
     </message>
     <message>
         <source>Sign out</source>
@@ -4590,8 +4890,16 @@ to contact status</source>
         <translation>超出会员限制（最大%1）</translation>
     </message>
     <message>
-        <source>Are you sure you want to open external link %1?</source>
-        <translation>您确定要打开外部链接%1吗？</translation>
+        <source>Are you sure you want to open an external link?</source>
+        <translation>您确定要打开外部链接吗？</translation>
+    </message>
+    <message>
+        <source>Add link</source>
+        <translation>新增连结</translation>
+    </message>
+    <message>
+        <source>The link will be displayed as &quot;%1&quot;</source>
+        <translation>该链接将显示为“%1”</translation>
     </message>
     <message>
         <source>Enable net compression</source>
@@ -4640,6 +4948,38 @@ to contact status</source>
     <message>
         <source>User not a member</source>
         <translation>用户不是该组的成员</translation>
+    </message>
+    <message>
+        <source>Link</source>
+        <translation>关联</translation>
+    </message>
+    <message>
+        <source>Invalid url</source>
+        <translation>不是链接</translation>
+    </message>
+    <message>
+        <source>Opening or downloading files will be possible from trusted device only
+
+%1 It will be impossible to disable this setting!</source>
+        <translation>只能从受信任的设备打开或下载文件
+
+%1设置不能被禁用！</translation>
+    </message>
+    <message>
+        <source>File access will be restricted</source>
+        <translation>对文件的访问将受到限制</translation>
+    </message>
+    <message>
+        <source>Only chat members can view replies</source>
+        <translation>只有小组成员可以查看回复</translation>
+    </message>
+    <message>
+        <source>Show seconds in time picker</source>
+        <translation>在时间选择器中显示秒数</translation>
+    </message>
+    <message>
+        <source>Only channel subscribers can view replies</source>
+        <translation>只有频道订阅者可以查看回复</translation>
     </message>
 </context>
 <context>
@@ -5422,6 +5762,10 @@ to contact status</source>
         <translation>运行可执行文件时不询问</translation>
     </message>
     <message>
+        <source>Do not ask when opening external links</source>
+        <translation>打开外部链接时不要问</translation>
+    </message>
+    <message>
         <source>Use system spell checker</source>
         <translation>系统拼写检查</translation>
     </message>
@@ -5468,6 +5812,14 @@ to contact status</source>
     <message>
         <source>Show notifications when app in focus</source>
         <translation>在应用程序激活时显示通知</translation>
+    </message>
+    <message>
+        <source>Call window</source>
+        <translation>通话窗口</translation>
+    </message>
+    <message>
+        <source>Warn about disabled microphone</source>
+        <translation>警告麦克风静音</translation>
     </message>
 </context>
 <context>
@@ -5666,6 +6018,10 @@ to contact status</source>
     <message>
         <source>Set status</source>
         <translation>设定状态</translation>
+    </message>
+    <message>
+        <source>Switch microphone state</source>
+        <translation>更改麦克风状态</translation>
     </message>
 </context>
 <context>
@@ -6024,6 +6380,14 @@ Please edit phone number and try again.</source>
         <source>Close</source>
         <translation>关闭</translation>
     </message>
+    <message>
+        <source>Cannot be disabled due to security reasons</source>
+        <translation>出于安全原因，无法禁用该设置</translation>
+    </message>
+    <message>
+        <source>Replies</source>
+        <translation>答案</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -6060,10 +6424,6 @@ Please edit phone number and try again.</source>
     <message>
         <source>File</source>
         <translation>档案文件</translation>
-    </message>
-    <message>
-        <source>Copied to clipboard</source>
-        <translation>复制到剪贴板</translation>
     </message>
     <message>
         <source>Location</source>
@@ -6213,22 +6573,6 @@ Please edit phone number and try again.</source>
         <source>Status duration</source>
         <translation>状态持续时间</translation>
     </message>
-    <message>
-        <source>Date</source>
-        <translation>日期</translation>
-    </message>
-    <message>
-        <source>dd.mm.yyyy</source>
-        <translation>dd.mm.yyyy</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>时间</translation>
-    </message>
-    <message>
-        <source>hh:mm</source>
-        <translation>hh:mm</translation>
-    </message>
 </context>
 <context>
     <name>stickers</name>
@@ -6280,6 +6624,10 @@ Please edit phone number and try again.</source>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
+    <message>
+        <source>Stickerpack is not available</source>
+        <translation>Stickerpack不可用</translation>
+    </message>
 </context>
 <context>
     <name>tab</name>
@@ -6304,12 +6652,12 @@ Please edit phone number and try again.</source>
         <translation>来电</translation>
     </message>
     <message>
-        <source>Structure</source>
-        <translation>结构</translation>
-    </message>
-    <message>
         <source>Tasks</source>
         <translation>任务</translation>
+    </message>
+    <message>
+        <source>Calendar</source>
+        <translation>日历</translation>
     </message>
 </context>
 <context>
@@ -6337,6 +6685,101 @@ Please edit phone number and try again.</source>
     <message>
         <source>Group call</source>
         <translation>团体通话</translation>
+    </message>
+</context>
+<context>
+    <name>task</name>
+    <message>
+        <source>In progress</source>
+        <translation>工作中</translation>
+    </message>
+    <message>
+        <source>Ready</source>
+        <translation>完毕</translation>
+    </message>
+    <message>
+        <source>Rejected</source>
+        <translation>拒绝了</translation>
+    </message>
+    <message>
+        <source>Closed</source>
+        <translation>关闭</translation>
+    </message>
+    <message>
+        <source>New</source>
+        <translation>使</translation>
+    </message>
+    <message>
+        <source>No assignee</source>
+        <translation>没有表演者</translation>
+    </message>
+</context>
+<context>
+    <name>task_block</name>
+    <message>
+        <source>Not assigned</source>
+        <translation>未分配</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation>一个任务</translation>
+    </message>
+    <message>
+        <source>Task Id copied to clipboard</source>
+        <translation>已复制任务 ID</translation>
+    </message>
+    <message>
+        <source>Not set</source>
+        <translation>未分配</translation>
+    </message>
+    <message>
+        <source>Task edit: an error occured</source>
+        <translation>修改任务：发生错误</translation>
+    </message>
+</context>
+<context>
+    <name>task_popup</name>
+    <message>
+        <source>Edit task</source>
+        <translation>更改任务</translation>
+    </message>
+    <message>
+        <source>Create task</source>
+        <translation>创建任务</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>名称</translation>
+    </message>
+    <message>
+        <source>Maximum length - %1 symbols</source>
+        <translation>最大长度 - %1字符</translation>
+    </message>
+    <message>
+        <source>Assignee</source>
+        <translation>执行者</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>消除</translation>
+    </message>
+    <message>
+        <source>Ok</source>
+        <translation>好的</translation>
+    </message>
+    <message>
+        <source>Create</source>
+        <translation>创建一个</translation>
+    </message>
+    <message>
+        <source>User with this name
+not found</source>
+        <translation>有这个的用户
+未找到姓名</translation>
+    </message>
+    <message>
+        <source>No deadline</source>
+        <translation>没有截止日期</translation>
     </message>
 </context>
 <context>
@@ -6368,6 +6811,21 @@ Please edit phone number and try again.</source>
     <message>
         <source>Welcome to ICQ New</source>
         <translation>欢迎来到ICQ New</translation>
+    </message>
+</context>
+<context>
+    <name>threads_feed</name>
+    <message>
+        <source>There is no threads</source>
+        <translation>没有话题</translation>
+    </message>
+    <message>
+        <source>Threads you subscribed for will be here</source>
+        <translation>您订阅的话题将显示在此处</translation>
+    </message>
+    <message>
+        <source>Replies</source>
+        <translation>答案</translation>
     </message>
 </context>
 <context>
@@ -6419,6 +6877,42 @@ Please edit phone number and try again.</source>
         <source>You are not a member or banned to write in this group</source>
         <translation>您不是聊天成员，或者不允许您写</translation>
     </message>
+    <message>
+        <source>Unable to open invalid url &quot;%1&quot;</source>
+        <translation>无法打开无效地址%1</translation>
+    </message>
+    <message>
+        <source>Error occurred while opening the replies</source>
+        <translation>打开响应时出错</translation>
+    </message>
+    <message>
+        <source>Administrator has set the restrictions on access to files</source>
+        <translation>组管理员设置了访问文件的限制</translation>
+    </message>
+    <message>
+        <source>Awaiting antivirus check, patience</source>
+        <translation>我们正在等待防病毒检查，请耐心等待</translation>
+    </message>
+    <message>
+        <source>Antivirus check in progress, patience</source>
+        <translation>正在进行防病毒检查，请耐心等待</translation>
+    </message>
+    <message>
+        <source>File is blocked by the antivirus</source>
+        <translation>被杀毒软件阻止的文件</translation>
+    </message>
+    <message>
+        <source>Checked</source>
+        <translation>检查过了</translation>
+    </message>
+    <message>
+        <source>No access. You may not have enough rights</source>
+        <translation>没有访问权限。您可能没有足够的权限</translation>
+    </message>
+    <message>
+        <source>File not checked (and never will be). Available to download</source>
+        <translation>该文件尚未经过验证（也不会经过验证）。可供下载</translation>
+    </message>
 </context>
 <context>
     <name>tooltips</name>
@@ -6461,6 +6955,14 @@ Please edit phone number and try again.</source>
     <message>
         <source>Link to call</source>
         <translation>通话连结</translation>
+    </message>
+    <message>
+        <source>Chat gallery</source>
+        <translation>聊天室</translation>
+    </message>
+    <message>
+        <source>Refresh</source>
+        <translation>刷新</translation>
     </message>
 </context>
 <context>
@@ -6596,6 +7098,18 @@ with click</source>
         <translation>忙</translation>
     </message>
     <message>
+        <source>Hold Space key for temporary unmute</source>
+        <translation>按住空格键可暂时取消麦克风静音</translation>
+    </message>
+    <message>
+        <source>Microphone disabled</source>
+        <translation>麦克风关闭</translation>
+    </message>
+    <message>
+        <source>Microphone enabled</source>
+        <translation>麦克风开启</translation>
+    </message>
+    <message>
         <source>Call members</source>
         <translation>致电参加者</translation>
     </message>
@@ -6618,6 +7132,16 @@ with click</source>
     <message>
         <source>CONTACTS</source>
         <translation>联系方式</translation>
+    </message>
+    <message>
+        <source>You are muted now
+Press %1 to unmute your microphone
+
+Press and hold Space key for temporarily unmute</source>
+        <translation>现在您的麦克风已关闭
+按%1打开麦克风
+
+按住空格键可暂时取消麦克风静音</translation>
     </message>
 </context>
 <context>

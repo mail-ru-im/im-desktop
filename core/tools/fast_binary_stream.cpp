@@ -40,13 +40,13 @@ fast_binary_stream::~fast_binary_stream()
 
 uint32_t fast_binary_stream::available() const
 {
-    assert(size_ >= cursor_);
+    im_assert(size_ >= cursor_);
     return (size_ - cursor_);
 }
 
 void fast_binary_stream::seek(uint32_t _pos)
 {
-    assert(_pos < size_);
+    im_assert(_pos < size_);
     cursor_ = _pos;
 }
 
@@ -63,8 +63,8 @@ void fast_binary_stream::write(const char* _lpData, uint32_t _size)
 
 char* fast_binary_stream::read(uint32_t _size)
 {
-    assert(_size <= available());
-    assert(!(_size == 0 && available() == 0));
+    im_assert(_size <= available());
+    im_assert(!(_size == 0 && available() == 0));
 
     data_buffer_pointer return_data = get_return_data_buffer(_size);
 
@@ -155,7 +155,7 @@ bool fast_binary_stream::save_2_file(const std::wstring& _file_name) const
 
             if (!outfile.good())
             {
-                assert(!"save stream to file error");
+                im_assert(!"save stream to file error");
                 return false;
             }
         }
@@ -193,7 +193,7 @@ bool fast_binary_stream::load_from_file(const std::wstring& _file_name)
         infile.read(buffer, bytes_to_read);
         if (!infile.good())
         {
-            assert(!"read stream to file error");
+            im_assert(!"read stream to file error");
             return false;
         }
 

@@ -22,6 +22,14 @@
 #include <VersionHelpers.h>
 #endif //WIN32
 
+#include <cassert>
+#if !defined(_WIN32) && !defined(ABORT_ON_ASSERT) && defined(DEBUG)
+#define im_assert(condition) \
+do { if(!(condition)){ std::cerr << "ASSERT FAILED: " << #condition << " " << __FILE__ << ":" << __LINE__ << std::endl; } } while (0)
+#else
+#define im_assert(condition) do { assert(condition); } while (0)
+#endif
+
 #include <memory>
 #include <functional>
 #include <list>
@@ -30,7 +38,6 @@
 #include <string>
 #include <vector>
 #include <sstream>
-#include <cassert>
 #include <unordered_map>
 #include <set>
 #include <mutex>
@@ -39,10 +46,5 @@
 #include <iostream>
 
 #include "../common.shared/common.h"
-
-#if !defined(_WIN32) && !defined(ABORT_ON_ASSERT) && defined(DEBUG)
-#define assert(condition) \
-do { if(!(condition)){ std::cerr << "ASSERT FAILED: " << #condition << " " << __FILE__ << ":" << __LINE__ << std::endl; } } while (0)
-#endif
 
 // TODO: reference additional headers your program requires here

@@ -24,6 +24,8 @@
 #ifdef __APPLE__
     #include "macos/VideoFrameMacos.h"
     #include "../utils/macos/mac_support.h"
+
+    #include <Carbon/Carbon.h>
 #endif
 namespace
 {
@@ -38,9 +40,24 @@ namespace
     constexpr char videoWndWName[] = "video_window_w";
     constexpr char videoWndHName[] = "video_window_h";
 
-    std::chrono::milliseconds getPanelHideTimeout()
+    constexpr std::chrono::milliseconds getPanelHideTimeout() noexcept
     {
         return std::chrono::milliseconds(1500);
+    };
+
+    constexpr std::chrono::milliseconds getMicMutedToastInterval() noexcept
+    {
+        return std::chrono::seconds(20);
+    };
+
+    constexpr std::chrono::milliseconds getCheckSpacebarInterval() noexcept
+    {
+        return std::chrono::milliseconds(500);
+    };
+
+    constexpr std::chrono::milliseconds getTypingInterval() noexcept
+    {
+        return std::chrono::milliseconds(500);
     };
 
     bool windowIsOverlapped(platform_specific::GraphicsPanel* _window, const std::vector<QWidget*>& _exclude)
@@ -95,6 +112,19 @@ namespace
         return false;
 #endif
     }
+
+    bool isSpacebarDown()
+    {
+#ifdef _WIN32
+        return GetKeyState(VK_SPACE) < 0;
+#elif defined(__APPLE__)
+        unsigned char keyMap[16];
+        GetKeys((BigEndianUInt32*)&keyMap);
+        return (0 != ((keyMap[ kVK_Space >> 3] >> (kVK_Space & 7)) & 1));
+#else
+        return false;
+#endif
+    }
 }
 
 Ui::VideoWindowHeader::VideoWindowHeader(QWidget* parent)
@@ -140,11 +170,18 @@ Ui::VideoWindowHeader::VideoWindowHeader(QWidget* parent)
     rightLayout->addStretch(1);
     auto hideButton = new CustomButton(this, qsl(":/titlebar/minimize_button"), QSize(44, 28));
     Styling::Buttons::setButtonDefaultColors(hideButton);
+    hideButton->setBackgroundNormal(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
+    hideButton->setBackgroundHovered(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE_HOVER));
+    hideButton->setBackgroundPressed(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT));
+
     hideButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     Testing::setAccessibleName(hideButton, qsl("AS VoipWindow hideButton"));
     rightLayout->addWidget(hideButton);
     auto maximizeButton = new CustomButton(this, qsl(":/titlebar/expand_button"), QSize(44, 28));
     Styling::Buttons::setButtonDefaultColors(maximizeButton);
+    maximizeButton->setBackgroundNormal(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
+    maximizeButton->setBackgroundHovered(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE_HOVER));
+    maximizeButton->setBackgroundPressed(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT));
     maximizeButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     Testing::setAccessibleName(maximizeButton, qsl("AS VoipWindow maximizeButton"));
     rightLayout->addWidget(maximizeButton);
@@ -156,21 +193,10 @@ Ui::VideoWindowHeader::VideoWindowHeader(QWidget* parent)
 
     mainLayout->addLayout(rightLayout, 1);
 
-    auto btnBgHideHover = [=](bool _hovered) { hideButton->setBackgroundColor(Styling::getParameters().getColor(_hovered ? Styling::StyleVariable::BASE_BRIGHT_INVERSE_HOVER : Styling::StyleVariable::BASE_BRIGHT_INVERSE)); };
-    auto btnBgHidePress = [=](bool _pressed) { hideButton->setBackgroundColor(Styling::getParameters().getColor(_pressed ? Styling::StyleVariable::BASE_BRIGHT : Styling::StyleVariable::BASE_BRIGHT_INVERSE)); };
-
-    auto btnBgMaximizeHover = [=](bool _hovered) { maximizeButton->setBackgroundColor(Styling::getParameters().getColor(_hovered ? Styling::StyleVariable::BASE_BRIGHT_INVERSE_HOVER : Styling::StyleVariable::BASE_BRIGHT_INVERSE)); };
-    auto btnBgMaximizePress = [=](bool _pressed) { maximizeButton->setBackgroundColor(Styling::getParameters().getColor(_pressed ? Styling::StyleVariable::BASE_BRIGHT : Styling::StyleVariable::BASE_BRIGHT_INVERSE)); };
-
-    closeButton->setBackgroundColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT));
+    closeButton->setBackgroundNormal(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT));
 
     connect(hideButton, &QPushButton::clicked, this, &Ui::VideoWindowHeader::onMinimized);
     connect(maximizeButton, &QPushButton::clicked, this, &Ui::VideoWindowHeader::onFullscreen);
-
-    connect(hideButton, &CustomButton::changedHover, this, btnBgHideHover);
-    connect(hideButton, &CustomButton::changedPress, this, btnBgHidePress);
-    connect(maximizeButton, &CustomButton::changedHover, this, btnBgMaximizeHover);
-    connect(maximizeButton, &CustomButton::changedPress, this, btnBgMaximizePress);
 
     hideButton->setCursor(Qt::PointingHandCursor);
     maximizeButton->setCursor(Qt::PointingHandCursor);
@@ -239,6 +265,11 @@ Ui::VideoWindow::VideoWindow()
     , changeSpaceAnimation_(false)
 #endif
     , microIssue_(MicroIssue::None)
+    , microphoneEnabled_(false)
+    , microphoneEnabledBySpace_(false)
+    , toastMicMutedAllowed_(true)
+    , toastMicMutedTimer_(nullptr)
+    , checkSpacebarTimer_(nullptr)
 {
     callDescription.time = 0;
     buttonStatistic_ = std::make_unique<ButtonStatisticData>();
@@ -297,6 +328,12 @@ Ui::VideoWindow::VideoWindow()
 
 #ifndef _WIN32
     transparentPanels_.push_back(maskPanel_.get());
+#endif
+
+#ifdef __APPLE__
+    Utils::setFullScreenAuxiliaryBehavior(this);
+    for (auto& panel : panels_)
+        Utils::setFullScreenAuxiliaryBehavior(panel);
 #endif
 
 #ifndef STRIP_VOIP
@@ -388,6 +425,10 @@ Ui::VideoWindow::VideoWindow()
         checkPanelsVisibility();
     });
 
+    connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipVoiceEnable, this, &VideoWindow::onVoipVoiceEnable);
+    connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipMediaLocalAudio, this, &VideoWindow::onVoipMediaLocalAudio);
+
+
 #ifdef _WIN32
     connect(header_, &VideoWindowHeader::onMinimized, this, &Ui::VideoWindow::onPanelClickedMinimize);
     connect(header_, &VideoWindowHeader::onFullscreen, this, &Ui::VideoWindow::onPanelClickedMaximize);
@@ -443,12 +484,31 @@ Ui::VideoWindow::VideoWindow()
     //saveMinSize(minimumSize());
 
     resizeToDefaultSize();
+
+    if constexpr (!platform::is_apple())
+    {
+        auto closeShortcut = new QShortcut(Qt::CTRL + Qt::Key_Q, this, nullptr, nullptr, Qt::ApplicationShortcut);
+        connect(closeShortcut, &QShortcut::activated, this, &VideoWindow::closeWindow);
+    }
+    auto switchMicrophoneShortcut = new QShortcut(Qt::CTRL + Qt::SHIFT + Qt::Key_A, this, nullptr, nullptr, Qt::ApplicationShortcut);
+    switchMicrophoneShortcut->setAutoRepeat(false);
+    connect(switchMicrophoneShortcut, &QShortcut::activated, this, &VideoWindow::switchMicrophoneEnableByShortcut);
+
+    keyPressTimer_.setInterval(getTypingInterval());
+    keyPressTimer_.setSingleShot(true);
+    connect(Utils::InterConnector::instance().getMainWindow(), &MainWindow::anyKeyPressed, this, [this]()
+    {
+        keyPressTimer_.start();
+    });
 }
 
 Ui::VideoWindow::~VideoWindow()
 {
     Q_EMIT aboutToHide();
     checkOverlappedTimer_.stop();
+    stopMicMutedToastTimer();
+    ToastManager::instance()->hideToast();
+
 #ifndef STRIP_VOIP
     rootWidget_->clearPanels();
 #endif
@@ -1004,6 +1064,16 @@ void Ui::VideoWindow::changeEvent(QEvent* _e)
             }
         }
     }
+    else if (_e->type() == QEvent::ActivationChange)
+    {
+        if constexpr (platform::is_apple())
+        {
+            // workaround to release keyboard after switching between windows by cmd+tab
+            // cause the keyboard focus remains but the keyboard events are not received
+            if (keyboardGrabber() == this && !isSpacebarDown())
+                QApplication::postEvent(this, new QKeyEvent(QEvent::KeyRelease, Qt::Key_Space, Qt::NoModifier));
+        }
+    }
 }
 
 void Ui::VideoWindow::closeEvent(QCloseEvent* _e)
@@ -1046,6 +1116,12 @@ void Ui::VideoWindow::onVoipCallDestroyed(const voip_manager::ContactEx& _contac
     outgoingNotAccepted_ = false;
     startTalking = false;
     Q_EMIT aboutToHide();
+
+    stopMicMutedToastTimer();
+    ToastManager::instance()->hideToast();
+
+    if constexpr (!platform::is_windows())
+        releaseKeyboard();
 
 #ifdef __APPLE__
     // On mac if video window is fullscreen and on active, we make it active.
@@ -1410,6 +1486,40 @@ void  Ui::VideoWindow::onVoipMainVideoLayoutChanged(const voip_manager::MainVide
     }
 }
 
+void Ui::VideoWindow::onVoipVoiceEnable(bool _enable)
+{
+    if (_enable && !microphoneEnabled_ && toastMicMutedAllowed_ && GetDispatcher()->getVoipController().isLocalAudAllowed() && !keyPressTimer_.isActive())
+    {
+        if (get_gui_settings()->get_value<bool>(settings_warn_about_disabled_microphone, true))
+        {
+            const QString shortcut = platform::is_apple() ? qsl("Shift+Command+A") : qsl("Ctrl+Shift+A");
+            const auto text = QT_TRANSLATE_NOOP("voip_pages", "You are muted now\nPress %1 to unmute your microphone\n\nPress and hold Space key for temporarily unmute").arg(shortcut);
+            if (isActiveWindow())
+                showToast(text, 4);
+            else
+                Utils::showMultiScreenToast(text, 4);
+
+            startMicMutedToastTimer();
+        }
+    }
+}
+
+void Ui::VideoWindow::onVoipMediaLocalAudio(bool _enabled)
+{
+    microphoneEnabled_ = _enabled;
+    if (!_enabled)
+    {
+        microphoneEnabledBySpace_ = false;
+        releaseKeyboard();
+    }
+    else
+    {
+        stopMicMutedToastTimer();
+    }
+
+    updateMicroAlertState();
+}
+
 /*void Ui::VideoWindow::updateTopPanelSecureCall()
 {
 }*/
@@ -1496,27 +1606,61 @@ void Ui::VideoWindow::setHideMaskPanelState()
 
 void Ui::VideoWindow::keyPressEvent(QKeyEvent* _e)
 {
-    if constexpr (!platform::is_apple())
+    const auto key = _e->key();
+    const auto autorepeat = _e->isAutoRepeat();
+    if (key == Qt::Key_Space && !autorepeat && !microphoneEnabled_)
     {
-        const auto key = _e->key();
-        if (_e->modifiers() == Qt::ControlModifier)
+        if (GetDispatcher()->getVoipController().isAudPermissionGranted())
         {
-            if (key == Qt::Key_Q)
+            if (GetDispatcher()->getVoipController().isLocalAudAllowed())
             {
-                close();
-                Q_EMIT finished();
+                // temporarily enable microphone
+                microphoneEnabledBySpace_ = true;
+                grabKeyboard();
+                if constexpr (platform::is_windows())
+                {
+                    if (!checkSpacebarTimer_)
+                    {
+                        checkSpacebarTimer_ = new QTimer(this);
+                        checkSpacebarTimer_->setInterval(getCheckSpacebarInterval());
+                        checkSpacebarTimer_->setSingleShot(false);
+                        connect(checkSpacebarTimer_, &QTimer::timeout, this, [this]()
+                        {
+                            if (!isSpacebarDown())
+                            {
+                                checkSpacebarTimer_->stop();
+                                QApplication::postEvent(this, new QKeyEvent(QEvent::KeyRelease, Qt::Key_Space, Qt::NoModifier));
+                            }
+                        });
+                    }
+                    checkSpacebarTimer_->start();
+                }
+                GetDispatcher()->getVoipController().setSwitchACaptureMute();
+                showToast(QT_TRANSLATE_NOOP("voip_pages", "Hold Space key for temporary unmute"));
+            }
+            else if (videoPanel_)
+            {
+                videoPanel_->showToast(Ui::VideoPanel::ToastType::MicNotAllowed);
             }
         }
     }
-
     QWidget::keyPressEvent(_e);
 }
 
 void Ui::VideoWindow::keyReleaseEvent(QKeyEvent* _e)
 {
     QWidget::keyReleaseEvent(_e);
-    if (_e->key() == Qt::Key_Escape)
+    const auto key = _e->key();
+    if (key == Qt::Key_Escape)
         Q_EMIT onEscPressed();
+    if (key == Qt::Key_Space && !_e->isAutoRepeat() && microphoneEnabledBySpace_)
+    {
+        // disable temporarily enabled microphone
+        microphoneEnabledBySpace_ = false;
+        releaseKeyboard();
+        GetDispatcher()->getVoipController().setSwitchACaptureMute();
+        hideToast();
+    }
 }
 
 void Ui::VideoWindow::onScreenSharing(bool _on)
@@ -1628,6 +1772,33 @@ void Ui::VideoWindow::showMicroPermissionPopup()
         videoPanel_->showPermissionPopup();
 }
 
+void Ui::VideoWindow::switchMicrophoneEnableByShortcut()
+{
+    if (isActiveWindow())
+    {
+        if (GetDispatcher()->getVoipController().isLocalAudAllowed())
+        {
+            // Ctrl+Shift+A  - enable/disable microphone
+            const auto label = microphoneEnabled_ ? QT_TRANSLATE_NOOP("voip_pages", "Microphone disabled") : QT_TRANSLATE_NOOP("voip_pages", "Microphone enabled");
+            showToast(label);
+            GetDispatcher()->getVoipController().setSwitchACaptureMute();
+        }
+        else if (videoPanel_)
+        {
+            videoPanel_->showToast(Ui::VideoPanel::ToastType::MicNotAllowed);
+        }
+    }
+}
+
+void Ui::VideoWindow::closeWindow()
+{
+    if (isActiveWindow())
+    {
+        close();
+        Q_EMIT finished();
+    }
+}
+
 void Ui::VideoWindow::sendStatistic()
 {
     if (buttonStatistic_ && buttonStatistic_->currentTime >= ButtonStatisticData::kMinTimeForStatistic)
@@ -1647,7 +1818,11 @@ void Ui::VideoWindow::sendStatistic()
 
 bool Ui::VideoWindow::isMinimized() const
 {
-    return QWidget::isMinimized() || (detachedWnd_ && detachedWnd_->isMinimized());
+    const auto isMin = QWidget::isMinimized();
+    if constexpr (platform::is_linux())
+        return isMin;
+
+    return isMin || (detachedWnd_ && detachedWnd_->isMinimized());
 }
 
 Ui::VideoPanel* Ui::VideoWindow::getVideoPanel() const
@@ -1697,9 +1872,24 @@ void Ui::VideoWindow::updateMicroAlertState()
     }
 }
 
-void Ui::VideoWindow::onVoipMediaLocalAudio(bool _enabled)
+void Ui::VideoWindow::startMicMutedToastTimer()
 {
-    updateMicroAlertState();
+    toastMicMutedAllowed_ = false;
+    if (!toastMicMutedTimer_)
+    {
+        toastMicMutedTimer_ = new QTimer(this);
+        toastMicMutedTimer_->setInterval(getMicMutedToastInterval());
+        toastMicMutedTimer_->setSingleShot(true);
+        connect(toastMicMutedTimer_, &QTimer::timeout, this, [this]() { toastMicMutedAllowed_ = true; });
+    }
+    toastMicMutedTimer_->start();
+}
+
+void Ui::VideoWindow::stopMicMutedToastTimer()
+{
+    toastMicMutedAllowed_ = true;
+    if (toastMicMutedTimer_)
+        toastMicMutedTimer_->stop();
 }
 
 void Ui::VideoWindow::raiseWindow()

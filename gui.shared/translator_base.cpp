@@ -43,23 +43,13 @@ namespace translate
     {
         if (number == 1)
             return one;
-
-        QString result;
-        int strCase = number % 10;
-        if (strCase == 1 && number % 100 != 11)
-        {
-            result = twentyOne;
-        }
+        
+        if (const auto strCase = number % 10; strCase == 1 && number % 100 != 11)
+            return twentyOne;
         else if (strCase > 4 || strCase == 0 || (number % 100 > 10 && number % 100 < 20))
-        {
-            result = five;
-        }
+            return five;
         else
-        {
-            result = two;
-        }
-
-        return result;
+            return two;
     }
 
     QString translator_base::formatDifferenceToNow(const QDateTime& _dt, bool _withLongTimeAgo) const

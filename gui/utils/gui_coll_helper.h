@@ -7,7 +7,6 @@ namespace Ui
     class gui_coll_helper : public core::coll_helper
     {
     public:
-
         gui_coll_helper(core::icollection* _collection, bool _autoRelease);
 
         void set_value_as_qstring(std::string_view _name, QStringView _value);

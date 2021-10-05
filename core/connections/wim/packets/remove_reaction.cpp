@@ -1,7 +1,7 @@
 #include "stdafx.h"
 
 #include "../../../http_request.h"
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 
 #include "remove_reaction.h"
 

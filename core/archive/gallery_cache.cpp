@@ -4,7 +4,7 @@
 #include "storage.h"
 #include "../network_log.h"
 #include "../core.h"
-#include "../tools/json_helper.h"
+#include "../../common.shared/json_helper.h"
 #include "../../corelib/collection_helper.h"
 
 namespace
@@ -178,7 +178,7 @@ bool gallery_item::unserialize(core::tools::binary_stream& _data)
             break;
 
         default:
-            assert(!"invalid field");
+            im_assert(!"invalid field");
         }
     }
 
@@ -861,7 +861,7 @@ bool gallery_storage::get_next_hole(gallery_entry_id& _from, gallery_entry_id& _
 
     if (!check_consistency())
     {
-        assert(!"gallery is inconsistent");
+        im_assert(!"gallery is inconsistent");
         clear_gallery();
         hole_requested_ = true;
         return true;
@@ -933,7 +933,7 @@ bool gallery_storage::load_cache_from_local()
 {
     if (!cache_storage_)
     {
-        assert(!"cache storage");
+        im_assert(!"cache storage");
         return false;
     }
 
@@ -975,7 +975,7 @@ bool gallery_storage::load_state_from_local()
 {
     if (!state_storage_)
     {
-        assert(!"state storage");
+        im_assert(!"state storage");
         return false;
     }
 
@@ -1049,7 +1049,7 @@ bool gallery_storage::load_state_from_local()
                     break;
 
                 default:
-                    assert(!"invalid field");
+                    im_assert(!"invalid field");
                 }
             }
         }

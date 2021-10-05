@@ -5,7 +5,7 @@
 
 #include <algorithm>
 
-namespace core 
+namespace core
 {
     namespace
     {
@@ -27,17 +27,17 @@ namespace core
         return size_;
     }
 
-    bool ip_address::is_ip_v4() const 
+    bool ip_address::is_ip_v4() const
     {
         return size() == ip_v4_address_size;
     }
 
-    bool ip_address::is_ip_v6() const 
+    bool ip_address::is_ip_v6() const
     {
         return size() == ip_v6_address_size;
     }
 
-    bool ip_address::is_valid() const 
+    bool ip_address::is_valid() const
     {
         return is_ip_v4() || is_ip_v6();
     }
@@ -83,7 +83,7 @@ namespace core
 
     size_t common_prefix_length(const ip_address &a1, const ip_address &a2)
     {
-        assert(a1.size() == a2.size());
+        im_assert(a1.size() == a2.size());
           for (size_t i = 0; i < a1.size(); ++i)
           {
             unsigned diff = a1.data()[i] ^ a2.data()[i];

@@ -202,7 +202,7 @@ namespace Ui
             globalLayout->addSpacing(getBottomSpacing());
         }
 
-        setNickSpinner_ = new LoaderSpinner(this, QSize(), false, false);
+        setNickSpinner_ = new LoaderSpinner(this, QSize(), LoaderSpinner::Option::Cancelable);
         setNickSpinner_->hide();
 
         setNickTimeout_->setSingleShot(true);
@@ -499,10 +499,10 @@ namespace Ui
     void showEditNicknameDialog(EditNicknameWidget* _widget)
     {
         Ui::GeneralDialog::Options options;
-        options.preferredSize_ = QSize(_widget->width(), -1);
-        options.ignoreRejectDlgPairs_.emplace_back(Utils::CloseWindowInfo::Initiator::MacEventFilter, Utils::CloseWindowInfo::Reason::MacEventFilter);
+        options.preferredWidth_ = _widget->width();
+        options.ignoredInfos_.emplace_back(Utils::CloseWindowInfo::Initiator::MacEventFilter, Utils::CloseWindowInfo::Reason::MacEventFilter);
 
-        auto gd = std::make_unique<Ui::GeneralDialog>(_widget, Utils::InterConnector::instance().getMainWindow(), false, true, true, true, options);
+        auto gd = std::make_unique<Ui::GeneralDialog>(_widget, Utils::InterConnector::instance().getMainWindow(), options);
         gd->setIgnoredKeys({ Qt::Key_Return, Qt::Key_Enter });
 
         auto buttonsPair = gd->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "OK"), true, false, false);

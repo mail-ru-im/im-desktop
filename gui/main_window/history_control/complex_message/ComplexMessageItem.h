@@ -7,6 +7,7 @@
 #include "../../../controls/TextUnit.h"
 #include "../../../utils/InterConnector.h"
 #include "SnippetBlock.h"
+#include "ComplexMessageUtils.h"
 
 #include "../HistoryControlPageItem.h"
 
@@ -18,13 +19,7 @@ class HistoryControlPage;
 class MessageTimeWidget;
 class CustomButton;
 enum class MediaType;
-
-
-enum class ReplaceReason
-{
-    NoMeta,
-    OtherReason,
-};
+enum class FileStatus;
 
 UI_NS_END
 
@@ -71,15 +66,12 @@ class ComplexMessageItem final : public HistoryControlPageItem
     Q_OBJECT
 
 Q_SIGNALS:
-    void copy(const QString& text);
-    void quote(const Data::QuotesVec&);
+    void copy();
     void forward(const Data::QuotesVec&);
     void avatarMenuRequest(const QString&);
     void pin(const QString& _chatId, const int64_t _msgId, const bool _isUnpin = false);
 
     void layoutChanged(QPrivateSignal) const;
-
-    void edit(const Data::MessageBuddySptr& _msg, MediaType _mediaType);
 
     void pinPreview(const QPixmap& _preview);
 
@@ -126,7 +118,7 @@ public:
         Formatted
     };
 
-    Data::FormattedString getSelectedText(const bool _isQuote, TextFormat _format = TextFormat::Formatted) const;
+    Data::FString getSelectedText(const bool _isQuote, TextFormat _format = TextFormat::Formatted) const;
 
     const QString& getChatAimid() const;
 
@@ -138,7 +130,7 @@ public:
 
     bool isOutgoing() const override;
     bool isEditable() const override;
-    bool isMediaOnly() const;
+    bool isSingleMedia() const override;
 
     int32_t getTime() const override;
 
@@ -196,7 +188,7 @@ public:
     Data::QuotesVec getQuotes(const bool _selectedTextOnly = true, const bool _isForward = false) const;
     Data::QuotesVec getQuotesForEdit() const;
 
-    void setSourceText(const Data::FormattedString& _text);
+    void setSourceText(const Data::FString& _text);
 
     void setQuoteSelection() override;
     void highlightText(const highlightsV& _highlights) override;
@@ -229,6 +221,8 @@ public:
 
     int buttonsHeight() const;
 
+    void initSize() override;
+
     void updateSize() override;
 
     void callEditing() override;
@@ -243,7 +237,7 @@ public:
 
     void setHideEdit(bool _hideEdit);
 
-    int getBlockCount() const;
+    int getBlockCount(uint32_t _typeMask = uint32_t(IItemBlock::ContentType::Any)) const;
 
     IItemBlock* getHoveredBlock() const;
     void resetHover();
@@ -258,7 +252,6 @@ public:
     const IItemBlocksVec& getBlocks() const;
     std::vector<Ui::ComplexMessage::GenericBlock*> getBlockWidgets() const;
 
-    bool isHeadless() const;
     bool isLastBlock(const IItemBlock* _block) const;
     bool isHeaderRequired() const;
     bool isSmallPreview() const;
@@ -271,7 +264,7 @@ public:
 
     void setUrlAndDescription(const QString& _url, const QString& _description);
 
-    void setUrlAndDescription(const QString& _url, const Data::FormattedString& _description);
+    void setUrlAndDescription(const QString& _url, const Data::FString& _description);
 
     bool hasCaption() const { return !Description_.isEmpty(); }
 
@@ -279,11 +272,9 @@ public:
 
     bool isSenderVisible() const;
 
-    void setCustomBubbleHorPadding(const int32_t _val);
-
     bool hasSharedContact() const;
 
-    GenericBlock* addSnippetBlock(const QString& _link, const bool _linkInText, SnippetBlock::EstimatedType _estimatedType, size_t _insertAt, bool _quoteOrForward = false);
+    GenericBlock* addSnippetBlock(Data::FStringView _link, const bool _linkInText, SnippetBlock::EstimatedType _estimatedType, size_t _insertAt, bool _quoteOrForward = false);
 
     virtual void setSelected(bool _selected) override;
 
@@ -296,18 +287,23 @@ public:
     QRect getBubbleGeometry() const;
 
     QRect messageRect() const override;
+    QRect cornerMenuContentRect() const override;
 
     ReactionsPlateType reactionsPlateType() const override;
 
     void setSpellErrorsVisible(bool _visible) override;
 
-    void setProgress(const QString& _fsId, const int32_t _value);
+    void setProgress(const Utils::FileSharingId& _fsId, const int32_t _value);
 
     QRect avatarRect() const override;
 
     void fillGalleryData(Utils::GalleryData& _data);
 
-    virtual std::optional<Data::FileSharingMeta> getMeta(const QString& _id) const override;
+    std::optional<Data::FileSharingMeta> getMeta(const Utils::FileSharingId& _id) const override;
+
+    bool canBeThreadParent() const override;
+
+    void updateFileStatus(FileStatus _status);
 
 protected:
 
@@ -342,6 +338,8 @@ private:
     void initButtonsTimerIfNeeded();
     void startButtonsTimer(std::chrono::milliseconds _timeout);
     void ensureButtonsAnimationInitialized();
+    void removeBlocks(IItemBlocksVec::const_iterator _first, IItemBlocksVec::const_iterator _last);
+    void insertBlocks(IItemBlocksVec::const_iterator _first, IItemBlocksVec::const_iterator _last, ComplexMessageItem* _other);
 
     enum class InstantEdit
     {
@@ -349,7 +347,7 @@ private:
         Yes
     };
     void callEditingImpl();
-    Data::FormattedString getEditableText(InstantEdit _mode) const;
+    Data::FString getEditableText(InstantEdit _mode) const;
 
     void cleanupMenu();
 
@@ -361,7 +359,7 @@ private:
 
     void drawButtons(QPainter &p, const QColor& quote_color);
 
-    Data::FormattedString getBlocksText(const IItemBlocksVec& _items, const bool _isSelected, TextFormat _format = TextFormat::Formatted) const;
+    Data::FString getBlocksText(const IItemBlocksVec& _items, const bool _isSelected, TextFormat _format = TextFormat::Formatted) const;
 
     void drawGrid(QPainter &p);
 
@@ -406,13 +404,8 @@ private:
 
     void clearBlockSelection();
 
-    enum class WidgetAnimationType
-    {
-        show,
-        hide
-    };
-    void animateShareButton(const int _startPosX, const int _endPosX, const WidgetAnimationType _anim);
-    void animateTime(const int _startPosY, const int _endPosY, const WidgetAnimationType _anim);
+    void animateShareButton(QAbstractAnimation::Direction _direction);
+    void animateTime(const int _startPosY, const int _endPosY, QAbstractAnimation::Direction _direction);
 
     Data::Quote getQuoteFromBlock(IItemBlock* _block, const bool _selectedTextOnly) const;
 
@@ -422,6 +415,20 @@ private:
     void loadSnippetsMetaInfo();
 
     void sendInstantEdit();
+
+    bool isSingleBlockOfType(IItemBlock::ContentType _type) const;
+
+    bool shareButtonEnabled() const;
+
+    bool hasBlockedFilesharings() const;
+    bool hasFilesharingsWithStatus() const;
+
+    struct BubbleHorMargins
+    {
+        int left_ = 0;
+        int right_ = 0;
+    };
+    BubbleHorMargins getBubbleHorMarginAdjust() const;
 
     QPixmap Avatar_;
 
@@ -469,11 +476,11 @@ private:
     QVariantAnimation* shareButtonAnimation_;
     QGraphicsOpacityEffect* shareButtonOpacityEffect_;
 
-    Data::FormattedString SourceText_;
+    Data::FString SourceText_;
 
     MessageTimeWidget* TimeWidget_;
     QVariantAnimation* timeAnimation_;
-    QGraphicsOpacityEffect* timeOpacityEffect_;
+    QPointer<QGraphicsOpacityEffect> timeOpacityEffect_;
 
     int32_t Time_;
 
@@ -489,8 +496,7 @@ private:
 
     QPoint PressPoint_;
     QString Url_;
-    Data::FormattedString Description_;
-    bool isMediaOnly_;
+    Data::FString Description_;
 
     struct SnippetData
     {

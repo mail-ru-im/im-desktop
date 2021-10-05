@@ -3,7 +3,7 @@
 #include "create_conference.h"
 
 #include "../../../http_request.h"
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 
 using namespace core;
 using namespace wim;
@@ -25,8 +25,8 @@ std::string_view create_conference::get_method() const
 
 int32_t create_conference::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
-    assert(_request);
-    assert(!name_.empty());
+    im_assert(_request);
+    im_assert(!name_.empty());
 
     rapidjson::Document doc(rapidjson::Type::kObjectType);
     auto& a = doc.GetAllocator();

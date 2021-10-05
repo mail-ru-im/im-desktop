@@ -208,7 +208,7 @@ namespace Ui
             const auto x = width();
             const auto y = height();
             Utils::drawText(p, QPointF(x, y), Qt::AlignRight | Qt::AlignBottom, QString::number(getSetId()));
-        }        
+        }
 
         QPushButton::paintEvent(_e);
     }
@@ -290,14 +290,28 @@ namespace Ui
 
     Toolbar::~Toolbar() = default;
 
-    void Toolbar::addButtonStore()
+    void Toolbar::initAddButton()
     {
+        if (buttonStore_)
+            return;
+
         buttonStore_ = new AddButton(this);
-        buttonStore_->show();
+        connect(buttonStore_, &AddButton::clicked, this, &Toolbar::buttonStoreClick);
+    }
 
-        QObject::connect(buttonStore_, &AddButton::clicked, this, &Toolbar::buttonStoreClick);
+    void Toolbar::setAddButtonVisible(bool _visible)
+    {
+        int margin = 0;
+        if (_visible)
+        {
+            initAddButton();
+            margin = buttonStore_->width() - gradientSize();
+        }
 
-        viewArea_->setRightMargin(buttonStore_->width() - gradientSize());
+        if (buttonStore_)
+            buttonStore_->setVisible(_visible);
+
+        viewArea_->setRightMargin(margin);
     }
 
     void Toolbar::selectNext()
@@ -356,6 +370,7 @@ namespace Ui
     void Toolbar::buttonStoreClick()
     {
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::stickers_discover_icon_picker);
+        Q_EMIT Utils::InterConnector::instance().setSidebarVisible(false);
         Q_EMIT Utils::InterConnector::instance().showStickersStore();
     }
 
@@ -372,10 +387,8 @@ namespace Ui
 
         if (buttonStore_)
         {
-            QRect thisRect = geometry();
-
-            buttonStore_->setFixedHeight(thisRect.height() - Utils::scale_value(1));
-            buttonStore_->move(thisRect.width() - buttonStore_->width(), 0);
+            buttonStore_->setFixedHeight(height() - Utils::scale_value(1));
+            buttonStore_->move(width() - buttonStore_->width(), 0);
         }
 
         updateItemsVisibility();

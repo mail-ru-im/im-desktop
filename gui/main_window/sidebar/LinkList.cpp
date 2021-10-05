@@ -392,7 +392,7 @@ namespace Ui
     }
 
     LinkList::LinkList(QWidget* _parent)
-        : MediaContentWidget(Type::Links, _parent)
+        : MediaContentWidget(MediaContentType::Links, _parent)
         , timer_(new QTimer(this))
     {
         connect(Ui::GetDispatcher(), &core_dispatcher::linkMetainfoImageDownloaded, this, &LinkList::onImageDownloaded);

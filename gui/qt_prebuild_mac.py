@@ -3,7 +3,7 @@ if __name__ != '__main__':
 
 
 import os
-from pathlib import Path
+import pathlib
 import time
 import sys
 import glob
@@ -11,29 +11,22 @@ import re
 import xml.etree.ElementTree
 
 
-def parse_external_version():
-    walk_dir = Path("..", "requirements", "common.cmake")
-    data = None
-    with open(walk_dir, "r") as cmake_data:
-        data = cmake_data.readlines()
-
-    for item in data:
-        if "set(EXT_LIBS_VERSION" in item:
-            ext_re = re.search(r'(?<=EXT_LIBS_VERSION\s")v.+(?=("))', item.strip(), re.I)
-            if ext_re:
-                return ext_re.group(0)
-    return False
-
-
-external_version = parse_external_version()
-if not external_version:
-    print("ERROR: Can't extract external_version parse_external_version()")
+def get_dependencies_root():
+    current_file_dir = pathlib.Path(__file__).parent.absolute()
+    deps_root_dir = pathlib.Path.joinpath(current_file_dir,
+                                          "..",
+                                          "external_deps")
+    return deps_root_dir
+qt_folder_name = None
+for folder in os.listdir(get_dependencies_root()):
+    if folder.startswith("qt_") and not folder.startswith("qt_utils"):
+        qt_folder_name = pathlib.Path(folder)
+if not qt_folder_name:
+    print(f"ERROR: Can't extract qt_folder_name {get_dependencies_root()}")
     sys.exit(1)
-qt_base_path = f"../external_{external_version}/mac/Qt"
-print(f"-> qt_base_path = {qt_base_path}")
+qt_path = pathlib.Path.joinpath(get_dependencies_root(), qt_folder_name, "bin")
+print(f"-> qt_path = {qt_path}")
 
-if len(sys.argv) == 2:
-    qt_base_path = sys.argv[1]
 
 
 def build_mocs_in(dir):
@@ -49,10 +42,10 @@ def build_mocs_in(dir):
             if os.path.exists(moc_file):
                 if os.path.getmtime(h_file) > os.path.getmtime(moc_file):
                     print(os.path.basename(h_file), "is newer that", os.path.basename(moc_file), ">> rebuild")
-                    os.system('grep Q_OBJECT "' + h_file +'" -q && ' + qt_base_path + "/bin/moc " + '"' + h_file + '"' + " -b stdafx.h" + " -o " + '"' + moc_file + '"')
+                    os.system('grep Q_OBJECT "' + h_file +'" -q && ' + str(qt_path) + "moc " + '"' + h_file + '"' + " -b stdafx.h" + " -o " + '"' + moc_file + '"')
             else:
                 print("build", os.path.basename(moc_file))
-                os.system('grep Q_OBJECT "' + h_file + '" -q && ' + qt_base_path + "/bin/moc " + '"' + h_file + '"' + " -b stdafx.h" + " -o " + '"' + moc_file + '"')
+                os.system('grep Q_OBJECT "' + h_file + '" -q && ' + str(qt_path) + "moc " + '"' + h_file + '"' + " -b stdafx.h" + " -o " + '"' + moc_file + '"')
 
     dirs = glob.glob(dir + "/*/")
     for _dir in dirs:
@@ -71,10 +64,10 @@ def compile_ui_in(dir):
         if os.path.exists(h_file):
             if os.path.getmtime(ui_file) > os.path.getmtime(h_file):
                 print(os.path.basename(ui_file), "is newer that", os.path.basename(h_file),">> rebuild")
-                os.system(qt_base_path + "/bin/uic " + '"' + ui_file + '"' + " -o " + '"' + h_file + '"')
+                os.system(str(qt_path) + "uic " + '"' + ui_file + '"' + " -o " + '"' + h_file + '"')
         else:
             print("build", h_file)
-            os.system(qt_base_path + "/bin/uic " + '"' + ui_file + '"' + " -o " + '"' + h_file + '"')
+            os.system(str(qt_path) + "uic " + '"' + ui_file + '"' + " -o " + '"' + h_file + '"')
 
     dirs = glob.glob(dir + "/*/")
     for _dir in dirs:
@@ -92,10 +85,10 @@ for file in files:
     if os.path.exists(qm_file):
         if os.path.getmtime(ts_file) > os.path.getmtime(qm_file):
             print(os.path.basename(ts_file), "is newer that", os.path.basename(qm_file), ">> rebuild")
-            os.system(qt_base_path + "/bin/lrelease " + '"' + ts_file + '"')
+            os.system(str(qt_path) + "lrelease " + '"' + ts_file + '"')
     else:
         print("build", os.path.basename(qm_file))
-        os.system(qt_base_path + "/bin/lrelease " + '"' + ts_file + '"')
+        os.system(str(qt_path) + "lrelease " + '"' + ts_file + '"')
 
 
 qrc_file = os.path.abspath("resource.qrc").replace("\\", "/")
@@ -104,7 +97,7 @@ if os.path.exists(qrc_cpp_file):
     qrc_cpp_time = os.path.getmtime(qrc_cpp_file)
     if os.path.getmtime(qrc_file) > qrc_cpp_time:
         print(os.path.basename(qrc_file), "is newer that", os.path.basename(qrc_cpp_file), ">> rebuild")
-        os.system(qt_base_path + "/bin/rcc " + '"' + qrc_file + '"' + " -o " + '"' + qrc_cpp_file + '"')
+        os.system(str(qt_path) + "rcc " + '"' + qrc_file + '"' + " -o " + '"' + qrc_cpp_file + '"')
     else:
         changed = False
         e = xml.etree.ElementTree.parse(qrc_file).getroot()
@@ -113,14 +106,14 @@ if os.path.exists(qrc_cpp_file):
                 file = os.path.abspath(chil.text).replace("\\", "/")
                 if (os.path.getmtime(file) > qrc_cpp_time):
                     print(file + " is changed >> rebuild qrc")
-                    os.system(qt_base_path + "/bin/rcc " + '"' + qrc_file + '"' + " -o " + '"' + qrc_cpp_file + '"')
+                    os.system(str(qt_path) + "rcc " + '"' + qrc_file + '"' + " -o " + '"' + qrc_cpp_file + '"')
                     changed = True
                     break
             if changed:
                 break
 else:
     print("build", os.path.basename(qrc_cpp_file))
-    os.system(qt_base_path + "/bin/rcc " + '"' + qrc_file + '"' + " -o " + '"' + qrc_cpp_file + '"')
+    os.system(str(qt_path) + "rcc " + '"' + qrc_file + '"' + " -o " + '"' + qrc_cpp_file + '"')
 
 # compile_ui_in("./ui")
 
@@ -134,9 +127,9 @@ compile_ui_in(".")
 if os.path.exists("moc_core_dispatcher.cpp"):
     if os.path.getmtime("core_dispatcher.h") > os.path.getmtime("moc_core_dispatcher.cpp"):
         print("core_dispatcher.h is newer that moc_core_dispatcher.cpp >> rebuild")
-        os.system(qt_base_path + "/bin/moc core_dispatcher.h -o moc_core_dispatcher.cpp -b stdafx.h")    
+        os.system(str(qt_path) + "moc core_dispatcher.h -o moc_core_dispatcher.cpp -b stdafx.h")    
 else:
     print("build moc_core_dispatcher.cpp")
-    os.system(qt_base_path + "/bin/moc " + '"' + os.path.abspath("core_dispatcher.h") + '"' + " -b stdafx.h"  + " -o " + '"' + os.path.abspath("moc_core_dispatcher.cpp") + '"')
+    os.system(str(qt_path) + "moc " + '"' + os.path.abspath("core_dispatcher.h") + '"' + " -b stdafx.h"  + " -o " + '"' + os.path.abspath("moc_core_dispatcher.cpp") + '"')
 
 sys.exit(0)

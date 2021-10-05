@@ -13,12 +13,12 @@ using namespace Utils;
 FileSharingLoader::FileSharingLoader(const QString &_link, LoadMeta _loadMeta)
     : MediaLoader(_link, _loadMeta)
 {
-    const QString id = Ui::ComplexMessage::extractIdFromFileSharingUri(_link);
-    auto content_type = Ui::ComplexMessage::extractContentTypeFromFileSharingId(id);
+    const auto id = Ui::ComplexMessage::extractIdFromFileSharingUri(_link);
+    auto content_type = Ui::ComplexMessage::extractContentTypeFromFileSharingId(id.fileId);
 
     isVideo_ = content_type.is_video();
     isGif_ = content_type.is_gif();
-    originSize_ = Ui::ComplexMessage::extractSizeFromFileSharingId(id);
+    originSize_ = Ui::ComplexMessage::extractSizeFromFileSharingId(id.fileId);
 }
 
 void FileSharingLoader::load(const QString& _downloadPath)

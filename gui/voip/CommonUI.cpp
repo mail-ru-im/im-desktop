@@ -13,6 +13,15 @@
 #include "styles/ThemeParameters.h"
 #include "../controls/GeneralDialog.h"
 
+namespace
+{
+    void resendKeyEvent(QObject* _receiver, QKeyEvent* _event)
+    {
+        auto e = new QKeyEvent(_event->type(), _event->key(), _event->modifiers(), _event->text(), _event->isAutoRepeat(), _event->count());
+        QCoreApplication::postEvent(_receiver, e);
+    }
+}
+
 Ui::ResizeEventFilter::ResizeEventFilter(std::vector<QPointer<BaseVideoPanel>>& panels,
     ShadowWindow* shadow,
     QObject* _parent)
@@ -237,6 +246,22 @@ bool Ui::BaseVideoPanel::isGrabMouse()
 bool Ui::BaseVideoPanel::isFadedIn()
 {
     return effect_ && effect_->isFadedIn();
+}
+
+void Ui::BaseVideoPanel::keyPressEvent(QKeyEvent* _event)
+{
+    if (auto p = parent(); p && (windowFlags() & Qt::Window))
+        resendKeyEvent(p, _event);
+    else
+        QWidget::keyPressEvent(_event);
+}
+
+void Ui::BaseVideoPanel::keyReleaseEvent(QKeyEvent* _event)
+{
+    if (auto p = parent(); p && (windowFlags() & Qt::Window))
+        resendKeyEvent(p, _event);
+    else
+        QWidget::keyReleaseEvent(_event);
 }
 
 void Ui::BaseVideoPanel::forceFinishFade()
@@ -584,7 +609,7 @@ void Ui::MoveablePanel::changeEvent(QEvent* _e)
 
 void Ui::MoveablePanel::keyReleaseEvent(QKeyEvent* _e)
 {
-    QWidget::keyReleaseEvent(_e);
+    BaseVideoPanel::keyReleaseEvent(_e);
     if (_e->key() == Qt::Key_Escape)
     {
         Q_EMIT onkeyEscPressed();

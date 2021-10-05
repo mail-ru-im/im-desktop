@@ -10,6 +10,22 @@ namespace Tooltip
 namespace Ui
 {
     class ContextMenu;
+    class ScrollAreaWithTrScrollBar;
+
+    enum class MediaContentType
+    {
+        Invalid,
+
+        ImageVideo,
+        Video,
+        Files,
+        Links,
+        Voice,
+    };
+
+    QString getGalleryTitle(MediaContentType _type);
+    int countForType(const Data::DialogGalleryState& _state, MediaContentType _type);
+
 
     class MediaContentWidget : public QWidget
     {
@@ -25,8 +41,6 @@ namespace Ui
                 , link_(_link)
                 , sender_(_sender)
                 , time_(_time)
-                , is_video_(false)
-                , is_gif_(false)
             {
             }
 
@@ -37,20 +51,11 @@ namespace Ui
             QString sender_;
             time_t time_;
 
-            bool is_video_;
-            bool is_gif_;
+            bool is_video_ = false;
+            bool is_gif_ = false;
         };
 
-        enum Type
-        {
-            ImageVideo,
-            Video,
-            Files,
-            Links,
-            Audio
-        };
-
-        MediaContentWidget(Type _type, QWidget* _parent) : QWidget(_parent), type_(_type) {}
+        MediaContentWidget(MediaContentType _type, QWidget* _parent) : QWidget(_parent), type_(_type) {}
         virtual ~MediaContentWidget() = default;
         virtual void processItems(const QVector<Data::DialogGalleryEntry>& _entries) {}
         virtual void processUpdates(const QVector<Data::DialogGalleryEntry>& _entries) {}
@@ -78,7 +83,7 @@ namespace Ui
 
         QString aimId_;
         QPoint pos_;
-        Type type_;
+        MediaContentType type_;
 
         QTimer* tooltipTimer_ = nullptr;
         bool tooltipActivated_ = false;
@@ -97,11 +102,16 @@ namespace Ui
         virtual void markClosed();
 
         void setContentWidget(MediaContentWidget* _contentWidget);
-        void setType(const QString _type);
+        void setType(const QString& _type);
         void setTypes(QStringList _types);
 
+        void openContentFor(const QString& _aimId, MediaContentType _type);
+        void openContentForType(MediaContentType _type);
+
+        void setMaxContentWidth(int _width);
+
     protected:
-        QString currentAimId() const;
+        const QString& currentAimId() const;
         bool exhausted() const;
 
         void resizeEvent(QResizeEvent* _event) override;
@@ -114,7 +124,7 @@ namespace Ui
 
     protected:
         MediaContentWidget* contentWidget_;
-        QScrollArea* area_;
+        ScrollAreaWithTrScrollBar* area_;
 
         QString aimId_;
         QStringList types_;

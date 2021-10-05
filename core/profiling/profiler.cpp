@@ -57,8 +57,8 @@ namespace core
     {
         auto_stop_watch::auto_stop_watch(const char *_process_name)
         {
-            assert(_process_name);
-            assert(::strlen(_process_name));
+            im_assert(_process_name);
+            im_assert(::strlen(_process_name));
 
             id_ = process_started(_process_name);
         }
@@ -75,8 +75,8 @@ namespace core
 
         int64_t process_started(const char *_name)
         {
-            assert(_name);
-            assert(::strlen(_name));
+            im_assert(_name);
+            im_assert(::strlen(_name));
 
             if (!is_profiling_enabled_)
             {
@@ -92,10 +92,10 @@ namespace core
 
         void process_started(const char *_name, const int64_t _process_id, const int64_t _ts)
         {
-            assert(_name);
-            assert(::strlen(_name));
-            assert(_process_id > std::numeric_limits<int32_t>::max());
-            assert(_ts > 0);
+            im_assert(_name);
+            im_assert(::strlen(_name));
+            im_assert(_process_id > std::numeric_limits<int32_t>::max());
+            im_assert(_ts > 0);
 
             if (!is_profiling_enabled_)
             {
@@ -107,7 +107,7 @@ namespace core
 
         void process_stopped(const int64_t _process_id)
         {
-            assert(_process_id > 0);
+            im_assert(_process_id > 0);
 
             if (!is_profiling_enabled_)
             {
@@ -119,8 +119,8 @@ namespace core
 
         void process_stopped(const int64_t _process_id, const int64_t _ts)
         {
-            assert(_process_id > std::numeric_limits<int32_t>::max());
-            assert(_ts > 0);
+            im_assert(_process_id > std::numeric_limits<int32_t>::max());
+            im_assert(_ts > 0);
 
             if (!is_profiling_enabled_)
             {
@@ -217,26 +217,26 @@ namespace
 
     void start_process(const char *_name, const int64_t _process_id, const int64_t _ts)
     {
-        assert(_name);
-        assert(::strlen(_name));
-        assert(_process_id > 0);
-        assert(_ts > 0);
+        im_assert(_name);
+        im_assert(::strlen(_name));
+        im_assert(_process_id > 0);
+        im_assert(_ts > 0);
 
         std::lock_guard<std::mutex> lock(process_info_accum_mutex_);
 
         const auto insertion_result = process_info_accum_.emplace(_process_id, process_info(_name, _ts));
-        assert(insertion_result.second);
+        im_assert(insertion_result.second);
     }
 
     void stop_process(const int64_t _process_id, const int64_t _ts)
     {
-        assert(_process_id > 0);
-        assert(_ts > 0);
+        im_assert(_process_id > 0);
+        im_assert(_ts > 0);
 
         std::lock_guard<std::mutex> lock(process_info_accum_mutex_);
 
         auto iter = process_info_accum_.find(_process_id);
-        assert(iter != process_info_accum_.end());
+        im_assert(iter != process_info_accum_.end());
 
         iter->second.time_ended_ = _ts;
     }
@@ -246,13 +246,13 @@ namespace
         , time_started_(_time_started)
         , time_ended_(-1)
     {
-        assert(!_name.empty());
-        assert(_time_started > 0);
+        im_assert(!_name.empty());
+        im_assert(_time_started > 0);
     }
 
     int64_t process_info::get_duration() const
     {
-        assert(time_ended_ > 0);
+        im_assert(time_ended_ > 0);
         return (time_ended_ - time_started_);
     }
 
@@ -266,7 +266,7 @@ namespace
 
     int64_t process_stat::get_avg_duration() const
     {
-        assert(times_hit_ > 0);
+        im_assert(times_hit_ > 0);
 
         return (overall_duration_ / times_hit_);
     }

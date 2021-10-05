@@ -52,7 +52,7 @@ namespace Ui
         RCLEventFilter(RecentsTab* _cl);
 
     protected:
-        bool eventFilter(QObject* _obj, QEvent* _event);
+        bool eventFilter(QObject* _obj, QEvent* _event) override;
 
     private:
         RecentsTab* recents_;
@@ -96,6 +96,7 @@ namespace Ui
     private Q_SLOTS:
         void itemClicked(const QModelIndex&);
         void itemPressed(const QModelIndex&);
+        void itemPressedImpl(const QModelIndex&, Qt::MouseButtons);
         void statsRecentItemPressed(const QModelIndex&);
         void statsCLItemPressed(const QModelIndex&);
 
@@ -129,8 +130,6 @@ namespace Ui
         bool isSearchMode() const;
         void changeTab(CurrentTab _currTab, bool silent = false);
         CurrentTab currentTab() const;
-        void triggerTapAndHold(bool _value);
-        bool tapAndHoldModifier() const;
         void dragPositionUpdate(const QPoint& _pos, bool fromScroll = false);
         void dropMimeData(const QPoint& _pos, const QMimeData *_mimeData);
 
@@ -147,7 +146,7 @@ namespace Ui
         bool isKeyboardFocused() const;
         void dropKeyboardFocus();
 
-        void switchToRecents();
+        void switchToRecents(const QString& _contactToSelect = {});
         void switchToUnknowns();
 
         enum class SwichType
@@ -213,7 +212,6 @@ namespace Ui
 
         int currentTab_;
         int prevTab_;
-        bool tapAndHold_;
         bool pictureOnlyView_;
         bool nextSelectWithOffset_;
     };

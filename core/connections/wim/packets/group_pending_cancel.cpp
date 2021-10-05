@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "group_pending_cancel.h"
 #include "../../../http_request.h"
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 
 using namespace core;
 using namespace wim;
@@ -10,7 +10,7 @@ group_pending_cancel::group_pending_cancel(wim_packet_params _params, std::strin
     : robusto_packet(std::move(_params))
     , sn_(std::move(_sn))
 {
-    assert(!sn_.empty());
+    im_assert(!sn_.empty());
 }
 
 std::string_view group_pending_cancel::get_method() const

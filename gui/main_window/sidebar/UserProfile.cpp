@@ -2,10 +2,6 @@
 #include "UserProfile.h"
 #include "SidebarUtils.h"
 #include "GalleryList.h"
-#include "ImageVideoList.h"
-#include "LinkList.h"
-#include "FilesList.h"
-#include "PttList.h"
 #include "../MainPage.h"
 #include "../MainWindow.h"
 #include "../GroupChatOperations.h"
@@ -43,28 +39,18 @@ namespace
         common_chats = 2,
     };
 
-    enum gallery_page
-    {
-        photo_and_video = 0,
-        video = 1,
-        files = 2,
-        links = 3,
-        ptt = 4,
-    };
-
     constexpr auto ICON_SIZE = 20;
     constexpr auto BTN_ICON_SIZE = 32;
     constexpr auto AVATAR_SIZE = 52;
     constexpr auto TIMER_INTERVAL = 60000;
     constexpr auto SPACER_MARGIN = 8;
     constexpr auto SMALL_SPACER_HEIGHT = 1;
-    constexpr auto TOAST_OFFSET = 10;
     constexpr auto TOP_OFFSET = 10;
     constexpr auto BOTTOM_OFFSET = 20;
     constexpr auto INFO_SPACER_HEIGHT = 8;
     constexpr auto BOTTOM_SPACER = 40;
-    constexpr auto POPUP_HOR_OFFSET = 8;
-    constexpr auto POPUP_VER_OFFSET = 52;
+
+    constexpr QSize headerIconSize() noexcept { return { 24, 24 }; }
 
     QMap<QString, QVariant> makeData(const QString& command)
     {
@@ -87,7 +73,7 @@ namespace Ui
         , report_(nullptr)
         , remove_(nullptr)
         , frameCountMode_(FrameCountMode::_1)
-        , currentGalleryPage_(-1)
+        , currentGalleryPage_(MediaContentType::Invalid)
         , galleryIsEmpty_(false)
         , shortView_(false)
         , replaceFavorites_(true)
@@ -105,7 +91,7 @@ namespace Ui
         , remove_(nullptr)
         , currentPhone_(_phone)
         , frameCountMode_(FrameCountMode::_1)
-        , currentGalleryPage_(-1)
+        , currentGalleryPage_(MediaContentType::Invalid)
         , galleryIsEmpty_(false)
         , shortView_(true)
         , replaceFavorites_(true)
@@ -168,10 +154,7 @@ namespace Ui
 
             galleryPreview_->setAimId(_aimId);
 
-            const auto& st = Logic::getContactListModel()->getGalleryState(currentAimId_);
-            dialogGalleryState(currentAimId_, st);
-            if (st.isEmpty())
-                Ui::GetDispatcher()->requestDialogGalleryState(currentAimId_);
+            dialogGalleryState(currentAimId_, Logic::getContactListModel()->getGalleryState(currentAimId_));
 
             changeTab(main);
             area_->ensureVisible(0, 0);
@@ -229,8 +212,8 @@ namespace Ui
     {
         if (!shortView_)
         {
-            cl_->setWidthForDelegate(_event->size().width());
-            galleryPopup_->setFixedWidth(std::max(0, _event->size().width() - Utils::scale_value(POPUP_HOR_OFFSET * 2)));
+            cl_->setWidthForDelegate(width());
+            galleryPopup_->setFixedWidth(std::max(0, width() - GalleryPopup::horOffset() * 2));
         }
 
         SidebarPage::resizeEvent(_event);
@@ -248,11 +231,11 @@ namespace Ui
                                                                                               QString::number(Utils::scale_value(1)) % u"px",
                                                                                               Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_BRIGHT)));
         titleBar_->setTitle(isFavorites() ? QT_TRANSLATE_NOOP("sidebar", "Favorites") : QT_TRANSLATE_NOOP("sidebar", "Information"));
-        const auto headerIconSize = QSize(ICON_SIZE, ICON_SIZE);
-        titleBar_->setButtonSize(Utils::scale_value(headerIconSize));
+        titleBar_->setButtonSize(Utils::scale_value(headerIconSize()));
         {
             editButton_ = new HeaderTitleBarButton(this);
-            editButton_->setDefaultImage(qsl(":/context_menu/edit"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY), headerIconSize);
+            Testing::setAccessibleName(editButton_, qsl("AS Sidebar UserProfile editButton"));
+            editButton_->setDefaultImage(qsl(":/context_menu/edit"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY), headerIconSize());
             editButton_->setCustomToolTip(QT_TRANSLATE_NOOP("context_menu", "Edit"));
             titleBar_->addButtonToRight(editButton_);
             connect(editButton_, &HeaderTitleBarButton::clicked, this, &UserProfile::editButtonClicked);
@@ -438,10 +421,11 @@ namespace Ui
         addSpacer(widget, infoContainerLayout);
 
         {
-            share_ = addButton(qsl(":/share_icon"), QT_TRANSLATE_NOOP("sidebar", "Share contact"), widget, infoContainerLayout);
+            share_ = addButton(qsl(":/share_icon"), QT_TRANSLATE_NOOP("sidebar", "Share contact"), widget, infoContainerLayout, qsl("AS Sidebar UserProfile shareButton"));
             connect(share_, &SidebarButton::clicked, this, &UserProfile::sharePhoneClicked);
 
             notifications_ = addCheckbox(qsl(":/notify_icon"), QT_TRANSLATE_NOOP("sidebar", "Notifications"), widget, infoContainerLayout);
+            Testing::setAccessibleName(notifications_, qsl("AS Sidebar UserProfile notificationsCheckbox"));
             connect(notifications_, &SidebarCheckboxButton::checked, this, &UserProfile::notificationsChecked);
         }
 
@@ -453,21 +437,22 @@ namespace Ui
             galleryFader->setEventDirection(QEvent::Show, QPropertyAnimation::Forward);
             auto galleryLayout = Utils::emptyVLayout(galleryWidget_);
 
-            galleryPhoto_ = addButton(qsl(":/background_icon"), QT_TRANSLATE_NOOP("sidebar", "Photo and video"), galleryWidget_, galleryLayout);
+            galleryPhoto_ = addButton(qsl(":/background_icon"), QT_TRANSLATE_NOOP("sidebar", "Photo and video"), galleryWidget_, galleryLayout, qsl("AS Sidebar UserProfile photoVideoButton"));
             connect(galleryPhoto_, &SidebarButton::clicked, this, &UserProfile::galleryPhotoClicked);
 
             galleryPreview_ = addGalleryPrevieWidget(galleryWidget_, galleryLayout);
+            Testing::setAccessibleName(galleryPreview_, qsl("AS Sidebar UserProfile galleryPreview"));
 
-            galleryVideo_ = addButton(qsl(":/video_icon"), QT_TRANSLATE_NOOP("sidebar", "Video"), galleryWidget_, galleryLayout);
+            galleryVideo_ = addButton(qsl(":/video_icon"), QT_TRANSLATE_NOOP("sidebar", "Video"), galleryWidget_, galleryLayout, qsl("AS Sidebar UserProfile videoButton"));
             connect(galleryVideo_, &SidebarButton::clicked, this, &UserProfile::galleryVideoClicked);
 
-            galleryFiles_ = addButton(qsl(":/gallery/file_icon"), QT_TRANSLATE_NOOP("sidebar", "Files"), galleryWidget_, galleryLayout);
+            galleryFiles_ = addButton(qsl(":/gallery/file_icon"), QT_TRANSLATE_NOOP("sidebar", "Files"), galleryWidget_, galleryLayout, qsl("AS Sidebar UserProfile filesButton"));
             connect(galleryFiles_, &SidebarButton::clicked, this, &UserProfile::galleryFilesClicked);
 
-            galleryLinks_ = addButton(qsl(":/copy_link_icon"), QT_TRANSLATE_NOOP("sidebar", "Links"), galleryWidget_, galleryLayout);
+            galleryLinks_ = addButton(qsl(":/copy_link_icon"), QT_TRANSLATE_NOOP("sidebar", "Links"), galleryWidget_, galleryLayout, qsl("AS Sidebar UserProfile linksButton"));
             connect(galleryLinks_, &SidebarButton::clicked, this, &UserProfile::galleryLinksClicked);
 
-            galleryPtt_ = addButton(qsl(":/gallery/micro_icon"), QT_TRANSLATE_NOOP("sidebar", "Voice messages"), galleryWidget_, galleryLayout);
+            galleryPtt_ = addButton(qsl(":/gallery/micro_icon"), QT_TRANSLATE_NOOP("sidebar", "Voice messages"), galleryWidget_, galleryLayout, qsl("AS Sidebar UserProfile voiceButton"));
             connect(galleryPtt_, &SidebarButton::clicked, this, &UserProfile::galleryPttClicked);
 
             layout->addWidget(galleryWidget_);
@@ -476,32 +461,32 @@ namespace Ui
         secondSpacer_ = addSpacer(widget, layout);
 
         {
-            generalGroups_ = addButton(qsl(":/members_icon"), QT_TRANSLATE_NOOP("sidebar", "Common groups"), widget, layout);
+            generalGroups_ = addButton(qsl(":/members_icon"), QT_TRANSLATE_NOOP("sidebar", "Common groups"), widget, layout, qsl("AS Sidebar UserProfile commonGroupsButton"));
             connect(generalGroups_, &SidebarButton::clicked, this, &UserProfile::commonChatsClicked);
 
-            createGroup_ = addButton(qsl(":/header/add_user"), QT_TRANSLATE_NOOP("sidebar", "Create common group"), widget, layout);
+            createGroup_ = addButton(qsl(":/header/add_user"), QT_TRANSLATE_NOOP("sidebar", "Create common group"), widget, layout, qsl("AS Sidebar UserProfile createCommonGroupsButton"));
             connect(createGroup_, &SidebarButton::clicked, this, &UserProfile::createGroupClicked);
 
-            pin_ = addButton(qsl(":/pin_chat_icon"), QT_TRANSLATE_NOOP("sidebar", "Pin"), widget, layout);
+            pin_ = addButton(qsl(":/pin_chat_icon"), QT_TRANSLATE_NOOP("sidebar", "Pin"), widget, layout, qsl("AS Sidebar UserProfile pinButton"));
             connect(pin_, &SidebarButton::clicked, this, &UserProfile::pinClicked);
 
-            theme_ = addButton(qsl(":/colors_icon"), QT_TRANSLATE_NOOP("sidebar", "Wallpapers"), widget, layout);
+            theme_ = addButton(qsl(":/colors_icon"), QT_TRANSLATE_NOOP("sidebar", "Wallpapers"), widget, layout, qsl("AS Sidebar UserProfile wallpapersButton"));
             connect(theme_, &SidebarButton::clicked, this, &UserProfile::themeClicked);
         }
 
         addSpacer(widget, layout);
 
         {
-            clearHistory_ = addButton(qsl(":/clear_chat_icon"), QT_TRANSLATE_NOOP("sidebar", "Clear history"), widget, layout);
+            clearHistory_ = addButton(qsl(":/clear_chat_icon"), QT_TRANSLATE_NOOP("sidebar", "Clear history"), widget, layout, qsl("AS Sidebar UserProfile clearHistoryButton"));
             connect(clearHistory_, &SidebarButton::clicked, this, &UserProfile::clearHistoryClicked);
 
-            block_ = addButton(qsl(":/ignore_icon"), QT_TRANSLATE_NOOP("sidebar", "Block"), widget, layout);
+            block_ = addButton(qsl(":/ignore_icon"), QT_TRANSLATE_NOOP("sidebar", "Block"), widget, layout, qsl("AS Sidebar UserProfile blockButton"));
             connect(block_, &SidebarButton::clicked, this, &UserProfile::blockClicked);
 
-            report_ = addButton(qsl(":/alert_icon"), QT_TRANSLATE_NOOP("sidebar", "Report"), widget, layout);
+            report_ = addButton(qsl(":/alert_icon"), QT_TRANSLATE_NOOP("sidebar", "Report"), widget, layout, qsl("AS Sidebar UserProfile reportButton"));
             connect(report_, &SidebarButton::clicked, this, &UserProfile::reportCliked);
 
-            remove_ = addButton(qsl(":/context_menu/delete"), QT_TRANSLATE_NOOP("sidebar", "Remove"), widget, layout);
+            remove_ = addButton(qsl(":/context_menu/delete"), QT_TRANSLATE_NOOP("sidebar", "Remove"), widget, layout, qsl("AS Sidebar UserProfile removeButton"));
             connect(remove_, &SidebarButton::clicked, this, &UserProfile::removeContact);
         }
 
@@ -570,9 +555,9 @@ namespace Ui
             tooltipText = QT_TRANSLATE_NOOP("sidebar", "Back");
         }
 
-        closeButton_->setDefaultImage(iconPath, Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
-        closeButton_->setHoverImage(iconPath, Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER));
+        closeButton_->setDefaultImage(iconPath, QColor(), headerIconSize());
         closeButton_->setCustomToolTip(tooltipText);
+        Styling::Buttons::setButtonDefaultColors(closeButton_);
     }
 
     void UserProfile::updatePinButton()
@@ -595,7 +580,7 @@ namespace Ui
                 break;
 
             case gallery:
-                titleBar_->setArrowVisible(true);
+                titleBar_->setArrowVisible(galleryPopup_->itemsCount() > 1);
                 break;
 
             case common_chats:
@@ -615,45 +600,11 @@ namespace Ui
         editButton_->setVisibility(_tab == main && canEdit);
     }
 
-    void UserProfile::changeGalleryPage(int _page)
+    void UserProfile::changeGalleryPage(MediaContentType _page)
     {
-        switch (_page)
-        {
-            case photo_and_video:
-                titleBar_->setTitle(QT_TRANSLATE_NOOP("sidebar", "Photo and video"));
-                gallery_->setTypes({ ql1s("image"), ql1s("video") });
-                gallery_->setContentWidget(new ImageVideoList(gallery_, MediaContentWidget::ImageVideo, "Photo+Video"));
-                break;
+        titleBar_->setTitle(getGalleryTitle(_page));
+        gallery_->openContentFor(currentAimId_, _page);
 
-            case video:
-                titleBar_->setTitle(QT_TRANSLATE_NOOP("sidebar", "Video"));
-                gallery_->setType(ql1s("video"));
-                gallery_->setContentWidget(new ImageVideoList(gallery_, MediaContentWidget::Video, "Video"));
-                break;
-
-            case files:
-                titleBar_->setTitle(QT_TRANSLATE_NOOP("sidebar", "Files"));
-                gallery_->setTypes({ ql1s("file"), ql1s("audio") });
-                gallery_->setContentWidget(new FilesList(gallery_));
-                break;
-
-            case links:
-                titleBar_->setTitle(QT_TRANSLATE_NOOP("sidebar", "Links"));
-                gallery_->setType(ql1s("link"));
-                gallery_->setContentWidget(new LinkList(gallery_));
-                break;
-
-            case ptt:
-                titleBar_->setTitle(QT_TRANSLATE_NOOP("sidebar", "Voice messages"));
-                gallery_->setType(ql1s("ptt"));
-                gallery_->setContentWidget(new PttList(gallery_));
-                break;
-
-            default:
-                im_assert(false);
-        }
-
-        gallery_->initFor(currentAimId_);
         currentGalleryPage_ = _page;
 
         emitContentsChanged();
@@ -675,14 +626,10 @@ namespace Ui
         setUpdatesEnabled(false);
 
         if (!currentAimId_.isEmpty())
-        {
-            const auto& st = Logic::getContactListModel()->getGalleryState(currentAimId_);
-            dialogGalleryState(currentAimId_, st);
-            if (st.isEmpty())
-                Ui::GetDispatcher()->requestDialogGalleryState(currentAimId_);
-        }
+            dialogGalleryState(currentAimId_, Logic::getContactListModel()->getGalleryState(currentAimId_));
 
-        const auto selected = Logic::getContactListModel()->selectedContact() == currentAimId_;
+        const auto isMessengerPageCurrent = Utils::InterConnector::instance().getMainWindow()->isMessengerPage();
+        const auto selected = isMessengerPageCurrent && Logic::getContactListModel()->selectedContact() == currentAimId_;
         const auto isIgnored = Logic::getIgnoreModel()->contains(currentAimId_);
         const auto isUnimportant = Logic::getRecentsModel()->isUnimportant(currentAimId_);
         const auto itsMe = (currentAimId_ == Ui::MyInfo()->aimId());
@@ -856,37 +803,27 @@ namespace Ui
 
     void UserProfile::galleryPhotoClicked()
     {
-        galleryPopup_->hide();
-        changeTab(gallery);
-        changeGalleryPage(photo_and_video);
+        switchToGallery(MediaContentType::ImageVideo);
     }
 
     void UserProfile::galleryVideoClicked()
     {
-        galleryPopup_->hide();
-        changeTab(gallery);
-        changeGalleryPage(video);
+        switchToGallery(MediaContentType::Video);
     }
 
     void UserProfile::galleryFilesClicked()
     {
-        galleryPopup_->hide();
-        changeTab(gallery);
-        changeGalleryPage(files);
+        switchToGallery(MediaContentType::Files);
     }
 
     void UserProfile::galleryLinksClicked()
     {
-        galleryPopup_->hide();
-        changeTab(gallery);
-        changeGalleryPage(links);
+        switchToGallery(MediaContentType::Links);
     }
 
     void UserProfile::galleryPttClicked()
     {
-        galleryPopup_->hide();
-        changeTab(gallery);
-        changeGalleryPage(ptt);
+        switchToGallery(MediaContentType::Voice);
     }
 
     void UserProfile::createGroupClicked()
@@ -991,47 +928,26 @@ namespace Ui
 
         galleryIsEmpty_ = _state.isEmpty();
 
-        galleryPhoto_->setCounter(_state.images_count_ + _state.videos_count);
-        galleryVideo_->setCounter(_state.videos_count);
-        galleryFiles_->setCounter(_state.files_count);
-        galleryLinks_->setCounter(_state.links_count);
-        galleryPtt_->setCounter(_state.ptt_count);
-        galleryPopup_->setCounters(_state.images_count_ + _state.videos_count, _state.videos_count, _state.files_count, _state.links_count, _state.ptt_count);
+        galleryPhoto_->setCounter(countForType(_state, MediaContentType::ImageVideo));
+        galleryVideo_->setCounter(countForType(_state, MediaContentType::Video));
+        galleryFiles_->setCounter(countForType(_state, MediaContentType::Files));
+        galleryLinks_->setCounter(countForType(_state, MediaContentType::Links));
+        galleryPtt_->setCounter(countForType(_state, MediaContentType::Voice));
+        galleryPopup_->setCounters(_state);
 
         updateGalleryVisibility();
 
         if (stackedWidget_->currentIndex() == gallery)
         {
-            switch (currentGalleryPage_)
+            if (countForType(_state, currentGalleryPage_) == 0)
             {
-                case photo_and_video:
-                    if (_state.images_count_ + _state.videos_count != 0)
-                        return;
-                    break;
-
-                case video:
-                    if (_state.videos_count != 0)
-                        return;
-                    break;
-
-                case files:
-                    if (_state.files_count != 0)
-                        return;
-                    break;
-
-                case links:
-                    if (_state.links_count != 0)
-                        return;
-                    break;
-
-                case ptt:
-                    if (_state.ptt_count != 0)
-                        return;
-                    break;
+                closeGallery();
+                changeTab(main);
             }
-
-            closeGallery();
-            changeTab(main);
+            else
+            {
+                titleBar_->setArrowVisible(galleryPopup_->itemsCount() > 1);
+            }
         }
     }
 
@@ -1124,7 +1040,7 @@ namespace Ui
         {
             const auto text = params[qsl("text")].toString();
             copy(text);
-            Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("toast", "Copied to clipboard"), Utils::scale_value(TOAST_OFFSET));
+            Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("toast", "Copied to clipboard"), Utils::defaultToastVerOffset());
         }
         else if (command == u"copy_nick")
         {
@@ -1135,7 +1051,7 @@ namespace Ui
             if (auto link = getShareLink(); !link.isEmpty())
             {
                 copy(link);
-                Utils::showToastOverMainWindow(link % QChar::LineFeed % QT_TRANSLATE_NOOP("toast", "Link copied"), Utils::scale_value(TOAST_OFFSET));
+                Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("toast", "Link copied"), Utils::defaultToastVerOffset());
             }
         }
         else if (command == u"share_link_nick")
@@ -1154,12 +1070,8 @@ namespace Ui
 
     void UserProfile::messageClicked()
     {
-        const auto selectedContact = Logic::getContactListModel()->selectedContact();
-        if (selectedContact != currentAimId_)
-                Q_EMIT Utils::InterConnector::instance().addPageToDialogHistory(selectedContact);
-
         Logic::GetFriendlyContainer()->updateFriendly(currentAimId_);
-        Logic::getContactListModel()->setCurrent(currentAimId_, -1, true);
+        chatSelected(currentAimId_);
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::open_chat, { { "From", "Profile" } });
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profilescr_message_action);
     }
@@ -1232,21 +1144,15 @@ namespace Ui
 
     void UserProfile::shortViewAvatarClicked()
     {
-        const auto selectedContact = Logic::getContactListModel()->selectedContact();
-        if (selectedContact != currentAimId_)
-                Q_EMIT Utils::InterConnector::instance().addPageToDialogHistory(selectedContact);
-
-        Logic::getContactListModel()->setCurrent(currentAimId_, -1, true);
+        chatSelected(currentAimId_);
         Utils::InterConnector::instance().showSidebar(currentAimId_);
     }
 
     void UserProfile::chatSelected(const QString& _aimid)
     {
-        const auto selectedContact = Logic::getContactListModel()->selectedContact();
-        if (selectedContact != _aimid)
-                Q_EMIT Utils::InterConnector::instance().addPageToDialogHistory(selectedContact);
-
-        Logic::getContactListModel()->setCurrent(_aimid, -1, true);
+        if (const auto& selected = Logic::getContactListModel()->selectedContact(); selected != _aimid)
+            Q_EMIT Utils::InterConnector::instance().addPageToDialogHistory(selected);
+        Utils::InterConnector::instance().openDialog(_aimid);
     }
 
     void UserProfile::recvPermitDeny(bool)
@@ -1258,19 +1164,19 @@ namespace Ui
     void UserProfile::emailClicked()
     {
         copy(currentAimId_);
-        Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("sidebar", "Email copied"), Utils::scale_value(TOAST_OFFSET));
+        Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("sidebar", "Email copied"), Utils::defaultToastVerOffset());
     }
 
     void UserProfile::emailCopy(const QString& _email)
     {
         copy(_email);
-        Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("sidebar", "Email copied"), Utils::scale_value(TOAST_OFFSET));
+        Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("sidebar", "Email copied"), Utils::defaultToastVerOffset());
     }
 
     void UserProfile::nickCopy(const QString& _nick)
     {
         copy(_nick);
-        Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("sidebar", "Nickname copied"), Utils::scale_value(TOAST_OFFSET));
+        Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("sidebar", "Nickname copied"), Utils::defaultToastVerOffset());
         Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profilescr_groupurl_action, { { "chat_type", "chat" }, { "do", "copy_nick" } });
     }
 
@@ -1288,7 +1194,7 @@ namespace Ui
     void UserProfile::phoneCopy(const QString& _phone)
     {
         copy(_phone);
-        Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("sidebar", "Phone number copied"), Utils::scale_value(TOAST_OFFSET));
+        Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("sidebar", "Phone number copied"), Utils::defaultToastVerOffset());
         Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profilescr_mobilenumber_action, { { "do", "copy" } });
     }
 
@@ -1308,7 +1214,7 @@ namespace Ui
 
     void UserProfile::titleArrowClicked()
     {
-        galleryPopup_->move(mapToGlobal(QPoint(Utils::scale_value(POPUP_HOR_OFFSET), Utils::scale_value(POPUP_VER_OFFSET))));
+        galleryPopup_->move(mapToGlobal({ GalleryPopup::horOffset(), GalleryPopup::verOffset() }));
         galleryPopup_->show();
     }
 
@@ -1338,8 +1244,11 @@ namespace Ui
     {
         setInfoPlaceholderVisible(true);
 
+        {
+            QSignalBlocker b(notifications_);
+            notifications_->setChecked(false);
+        }
         notifications_->setEnabled(false);
-        notifications_->setChecked(false);
 
         controlsWidget_->setVisible(false);
         nick_->setVisible(false);
@@ -1357,6 +1266,13 @@ namespace Ui
         generalGroups_->setVisible(false);
         createGroup_->setVisible(false);
         remove_->setVisible(false);
+    }
+
+    void UserProfile::switchToGallery(MediaContentType _type)
+    {
+        galleryPopup_->hide();
+        changeGalleryPage(_type);
+        changeTab(gallery);
     }
 
     void UserProfile::setInfoPlaceholderVisible(bool _isVisible)

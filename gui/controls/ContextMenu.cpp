@@ -51,8 +51,10 @@ namespace Ui
         QObject::connect(textWidget_, &ClickableTextWidget::hoverChanged, this, [this](bool _v)
         {
             if (_v)
+            {
                 if (auto m = qobject_cast<QMenu*>(parentWidget()))
                     m->setActiveAction(this);
+            }
         });
 
         setDefaultWidget(textWidget_);
@@ -105,6 +107,40 @@ namespace Ui
         applyStyle(menu, withPadding, fonSize, height, Color::Default, _iconSize);
     }
 
+    void ContextMenu::updatePosition(QMenu* _menu, QPoint _position, bool _forceShowAtLeft)
+    {
+        const auto focusWin = QGuiApplication::focusWindow();
+        if (focusWin == nullptr)
+            return;
+        auto screenGeometry = focusWin->screen()->geometry();
+        const bool macScreenHasEmptyGeometry = platform::is_apple() && screenGeometry.isEmpty();
+
+        if (!_forceShowAtLeft && !macScreenHasEmptyGeometry)
+            return;
+
+        auto showAtLeft = _forceShowAtLeft;
+        const auto menuWidth = _menu->sizeHint().width();
+        const auto menuHeight = _menu->sizeHint().height();
+#ifdef __APPLE__
+        // Workaround for https://jira.mail.ru/browse/IMDESKTOP-15672
+        if (macScreenHasEmptyGeometry)
+        {
+            screenGeometry = MacSupport::screenGeometryByPoint(_position).toRect();
+            showAtLeft |= (_position.x() + menuWidth) > screenGeometry.right();
+        }
+#endif // __APPLE__
+
+        const auto needExpandUp = (_position.y() + menuHeight) > screenGeometry.bottom();
+        _position.rx() -= showAtLeft ? menuWidth : 0;
+        _position.ry() -= needExpandUp ? menuHeight : 0;
+
+        if (auto g = _menu->geometry(); g.topLeft() != _position)
+        {
+            g.moveTopLeft(_position);
+            _menu->setGeometry(g);
+        }
+    }
+
     void ContextMenu::applyStyle(QMenu* _menu, bool _withPadding, int _fontSize, int _height, Color color, const QSize& _iconSize)
     {
         const auto itemHeight = _height;
@@ -116,7 +152,7 @@ namespace Ui
         if (platform::is_linux() && !_withPadding) // fix for linux native menu with icons
             itemPaddingLeft += iconPadding;
 
-        QString styleString = color == Color::Default
+        const auto styleString = color == Color::Default
             ? Styling::getParameters().getContextMenuQss(itemHeight, itemPaddingLeft, itemPaddingRight, iconPadding)
             : Styling::getParameters().getContextMenuDarkQss(itemHeight, itemPaddingLeft, itemPaddingRight, iconPadding);
         _menu->setWindowFlags(_menu->windowFlags() | Qt::NoDropShadowWindowHint | Qt::WindowStaysOnTopHint);
@@ -166,7 +202,7 @@ namespace Ui
 
     bool ContextMenu::modifyAction(QStringView _command, const QString& _iconPath, const QString& _name, const QVariant& _data, bool _enable)
     {
-        if (auto action = findAction(_command); action)
+        if (auto action = findAction(_command))
         {
             action->setIcon(makeIcon(_iconPath));
             action->setText(_name);
@@ -185,23 +221,44 @@ namespace Ui
 
     void ContextMenu::removeAction(QStringView _command)
     {
-        if (auto action = findAction(_command); action)
+        if (auto action = findAction(_command))
             QWidget::removeAction(action);
     }
 
-    void ContextMenu::invertRight(bool _invert)
+    void ContextMenu::showAtLeft(bool _invert)
     {
-        InvertRight_ = _invert;
+        needShowAtLeft_ = _invert;
     }
 
-    void ContextMenu::setIndent(int _indent)
+    void ContextMenu::setPosition(const QPoint &_pos)
     {
-        Indent_ = _indent;
+        pos_ = _pos;
+    }
+
+    void ContextMenu::selectBestPositionAroundRectIfNeeded(const QRect& _rect)
+    {
+        auto screenGeometry = QGuiApplication::focusWindow()->screen()->geometry();
+        const bool macScreenHasEmptyGeometry = platform::is_apple() && screenGeometry.isEmpty();
+
+        if (!macScreenHasEmptyGeometry)
+            return;
+
+        const auto menuWidth = sizeHint().width();
+        const auto menuHeight = sizeHint().height();
+        const QPoint menuPosAtLeft = { _rect.x(), _rect.y() + _rect.height() / 2 };
+        const QPoint menuPosAtRight = { _rect.x() + _rect.width(), _rect.y() + _rect.height() / 2 };
+#ifdef __APPLE__
+        // Workaround for https://jira.mail.ru/browse/IMDESKTOP-15672
+        screenGeometry = MacSupport::screenGeometryByPoint(menuPosAtLeft).toRect();
+#endif // __APPLE__
+        const bool needShowAtLeft = (menuPosAtRight.x() + menuWidth) > screenGeometry.right();
+        setPosition(needShowAtLeft ? menuPosAtLeft : menuPosAtRight);
+        showAtLeft(needShowAtLeft);
     }
 
     void ContextMenu::popup(const QPoint& _pos, QAction* _at)
     {
-        Pos_ = _pos;
+        setPosition(_pos);
         QMenu::popup(_pos, _at);
     }
 
@@ -227,23 +284,8 @@ namespace Ui
 
     void ContextMenu::showEvent(QShowEvent*)
     {
-        if (InvertRight_ || Indent_ != 0)
-        {
-            auto g = geometry();
-            QPoint p;
-            if (pos().x() != Pos_.x())
-                p = Pos_;
-            else
-                p = pos();
-
-            if (InvertRight_)
-                p.setX(p.x() - width() - Indent_);
-            else
-                p.setX(p.x() + Indent_);
-            g.moveTopLeft(p);
-            setGeometry(g);
-            resize(g.size());
-        }
+        const auto p = (pos_ && pos() != pos_) ? *pos_ : pos();
+        updatePosition(this, p, needShowAtLeft_);
     }
 
     void ContextMenu::hideEvent(QHideEvent* _event)

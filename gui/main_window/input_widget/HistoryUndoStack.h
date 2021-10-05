@@ -1,4 +1,5 @@
 #pragma once
+#include "../../types/message.h"
 
 
 namespace Ui
@@ -6,11 +7,11 @@ namespace Ui
     class Replacable
     {
     public:
-        Replacable(const QString& _text = QString());
-        QString& Text();
+        Replacable(const Data::FString& _text = {});
+        Data::FString& Text();
         int64_t& Cursor();
     private:
-        QString text_;
+        Data::FString text_;
         int64_t cursor_;
     };
 
@@ -20,7 +21,7 @@ namespace Ui
         HistoryUndoStack();
         HistoryUndoStack(size_t _size);
 
-        void push(const QString& _state);
+        void push(const Data::FString& _state);
         void pop();
         Replacable& top();
         void redo();
@@ -32,11 +33,11 @@ namespace Ui
             Full,
             Last
         };
-        void clear(const ClearType _clearType = ClearType::Last);
+        void clear(ClearType _clearType = ClearType::Last);
         bool isEmpty() const;
     private:
         std::vector<Replacable> vect_;
-        int64_t currentPosition_;
+        size_t currentPosition_;
         const size_t maxSize_;
     };
 }

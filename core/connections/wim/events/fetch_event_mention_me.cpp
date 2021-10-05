@@ -5,7 +5,7 @@
 #include "../wim_packet.h"
 #include "../wim_history.h"
 #include "../../../archive/archive_index.h"
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 
 using namespace core;
 using namespace wim;

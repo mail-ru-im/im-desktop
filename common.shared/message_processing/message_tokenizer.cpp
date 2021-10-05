@@ -3,8 +3,6 @@
 #include "message_tokenizer.h"
 #include "../core/tools/strings.h"
 
-namespace fmt = core::data::format;
-
 
 common::tools::message_token::message_token()
     : type_(type::undefined)
@@ -36,7 +34,7 @@ common::tools::message_tokenizer::message_tokenizer(
 
 common::tools::message_tokenizer::message_tokenizer(
     const tokenizer_string& _message,
-    const fmt::string_formatting& _formatting,
+    const core::data::format& _formatting,
     const std::string& _files_url,
     std::vector<url_parser::compare_item>&& _items)
     : token_text_type_(message_token::type::formatted_text)
@@ -60,24 +58,24 @@ void common::tools::message_tokenizer::next()
         tokens_.pop();
 }
 
-void common::tools::message_tokenizer::parse(const tokenizer_string& _message, const core::data::format::string_formatting& _formatting, const std::string& _files_url, std::vector<url_parser::compare_item>&& _items)
+void common::tools::message_tokenizer::parse(const tokenizer_string& _message, const core::data::format& _formatting, const std::string& _files_url, std::vector<url_parser::compare_item>&& _items)
 {
-    using namespace core::data::format;
-    using manual_url_range = std::pair<fmt::format_range, tokenizer_string_view>;
+    using manual_url_range = std::pair<core::data::range, tokenizer_string_view>;
 
     auto add_text_token = [this](tokenizer_string&& _s, int _source_offset)
     {
         tokens_.push(message_token(std::move(_s), token_text_type_, _source_offset));
     };
 
-    const auto get_ranges_to_skip_sorted = [](const string_formatting& _f)
+    const auto get_ranges_to_skip_sorted = [](const core::data::format& _f)
     {
         auto result = std::vector<manual_url_range>();
 
-        for (const auto& format : _f.formats())
+        for (const auto& [type, range, _] : _f.formats())
         {
-            if (format.type_ == format_type::link || format.type_ == format_type::mention || format.type_ == format_type::pre)
-                result.emplace_back(format.range_, tokenizer_string_view());
+            using ftype = core::data::format_type;
+            if (type == ftype::link || type == ftype::mention || type == ftype::pre)
+                result.emplace_back(range, tokenizer_string_view());
         }
 
         std::sort(result.begin(), result.end(),
@@ -98,16 +96,26 @@ void common::tools::message_tokenizer::parse(const tokenizer_string& _message, c
     url_parser_utf16 parser(_files_url);
     parser.add_fixed_urls(std::move(_items));
 
-    auto append_tokens = [&_message, &parser, &prev, &i, this, &add_text_token]()
+    auto append_tokens = [&_message, &parser, &prev, &i, this, &add_text_token](bool _finish)
     {
-        const auto url_size = parser.raw_url_length();
-        const auto text_size = i - prev - url_size - parser.tail_size();
+        const auto tail_size = parser.tail_size();
+        const auto url_chars_parsed = parser.num_processed_chars_since_url_start() - static_cast<int>(!_finish);
+        const auto url_size = url_chars_parsed - tail_size;
+        const auto url_start = i - std::min(static_cast<size_t>(url_size + tail_size), i);
+        const auto text_size = url_start - prev;
+        im_assert(text_size >= 0);
+
         if (text_size > 0)
             add_text_token(_message.substr(prev, text_size), prev);
 
-        tokens_.push(message_token(parser.get_url(), i - url_size));
-        parser.reset();
+        tokens_.push(message_token(parser.get_url(), url_start));
+
+        if (_finish && tail_size > 0)
+            add_text_token(_message.substr(url_start + url_size, tail_size), url_start + url_size);
+
         prev += text_size + url_size;
+        i = prev;
+        parser.reset();
     };
 
     const auto message_size = _message.size();
@@ -124,7 +132,7 @@ void common::tools::message_tokenizer::parse(const tokenizer_string& _message, c
                 add_text_token(_message.substr(prev, n), prev);
 
             parser.reset();
-            auto range_text = _message.substr(i, skip_range.length_);
+            auto range_text = _message.substr(i, skip_range.size_);
             if (manual_url.empty())
             {
                 add_text_token(std::move(range_text), i);
@@ -139,7 +147,7 @@ void common::tools::message_tokenizer::parse(const tokenizer_string& _message, c
 
                 parser.reset();
             }
-            i += skip_range.length_;
+            i += skip_range.size_;
             if (i >= message_size)
                 i = message_size;
             prev = i;
@@ -153,7 +161,7 @@ void common::tools::message_tokenizer::parse(const tokenizer_string& _message, c
             break;
 
         if (parser.has_url())
-            append_tokens();
+            append_tokens(false);
 
         ++i;
     }
@@ -162,9 +170,7 @@ void common::tools::message_tokenizer::parse(const tokenizer_string& _message, c
 
     if (parser.has_url())
     {
-        append_tokens();
-        if (prev < i)
-            add_text_token(_message.substr(prev, i - prev), prev);
+        append_tokens(true);
     }
     else
     {
@@ -193,7 +199,7 @@ std::ostream& operator<<(std::ostream& _out, common::tools::message_token::type 
         break;
     default:
         _out << "#unknown";
-        assert(!"invalid token type");
+        im_assert(!"invalid token type");
     }
     return _out;
 }

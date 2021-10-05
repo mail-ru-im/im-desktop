@@ -40,7 +40,7 @@ namespace core
         ip_attributes_getter_mac::ip_attributes_getter_mac()
             : ioctl_socket_(socket(AF_INET6, SOCK_DGRAM, 0))
         {
-            assert(ioctl_socket_ >= 0);
+            im_assert(ioctl_socket_ >= 0);
         }
 
         ip_attributes_getter_mac::~ip_attributes_getter_mac()
@@ -91,7 +91,7 @@ namespace core
             return (rv >= 0);
         }
 
-        network_change_notifier::connection_type ip_attributes_getter_mac::get_network_interface_type(const ifaddrs* _if_addr) 
+        network_change_notifier::connection_type ip_attributes_getter_mac::get_network_interface_type(const ifaddrs* _if_addr)
         {
             if (!is_initialized())
                 return network_change_notifier::CONNECTION_UNKNOWN;

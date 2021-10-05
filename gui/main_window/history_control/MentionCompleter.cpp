@@ -50,6 +50,8 @@ namespace Ui
         view_->setAttribute(Qt::WA_MacShowFocusRect, false);
         view_->verticalScrollBar()->setContextMenuPolicy(Qt::NoContextMenu);
         view_->viewport()->grabGesture(Qt::TapAndHoldGesture);
+        view_->viewport()->grabGesture(Qt::TapGesture);
+        view_->setListViewGestureHandler(new ListViewGestureHandler(this));
         Utils::grabTouchWidget(view_->viewport(), true);
         Utils::ApplyStyle(view_->verticalScrollBar(), Styling::getParameters().getScrollBarQss(4, 0));
         Testing::setAccessibleName(view_, qsl("AS Mention view"));
@@ -57,8 +59,16 @@ namespace Ui
         view_->setModel(model_);
         view_->setItemDelegate(delegate_);
 
-        connect(view_, &FocusableListView::clicked, this, &MentionCompleter::itemClicked);
-        connect(view_, &FocusableListView::clicked, this, [this](const QModelIndex& _current) { sendSelectionStats(_current, statSelectSource::mouseClick); });
+        connect(QScroller::scroller(view_->viewport()), &QScroller::stateChanged, this, &MentionCompleter::touchScrollStateChanged, Qt::QueuedConnection);
+
+        auto onItemClick = [this](const QModelIndex& _current)
+        {
+            itemClicked(_current);
+            sendSelectionStats(_current, statSelectSource::mouseClick);
+        };
+
+        connect(view_, &FocusableListView::clicked, this, onItemClick);
+        connect(view_->getListViewGestureHandler(), &ListViewGestureHandler::tapGesture, this, onItemClick);
         connect(model_, &Logic::MentionModel::results, this, &MentionCompleter::onResults);
 
         setGraphicsEffect(opacityEffect_);
@@ -93,7 +103,7 @@ namespace Ui
 
     void MentionCompleter::hideEvent(QHideEvent*)
     {
-        Q_EMIT hidden();
+        Q_EMIT visibilityChanged(false, QPrivateSignal());
     }
 
     void MentionCompleter::keyPressEvent(QKeyEvent * _event)
@@ -153,6 +163,12 @@ namespace Ui
         };
 
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::mentions_inserted, props);
+    }
+
+    void MentionCompleter::touchScrollStateChanged(QScroller::State _state)
+    {
+        view_->blockSignals(_state != QScroller::Inactive);
+        view_->selectionModel()->blockSignals(_state != QScroller::Inactive);
     }
 
     void MentionCompleter::setSearchPattern(const QString& _pattern, const Logic::MentionModel::SearchCondition _cond)
@@ -270,6 +286,9 @@ namespace Ui
 
     void MentionCompleter::showAnimated(const QPoint& _pos)
     {
+        if (isVisible())
+            return;
+
         setArrowPosition(_pos);
 
         if (opacityAnimation_->state() == QAbstractAnimation::State::Running)
@@ -284,6 +303,10 @@ namespace Ui
 
         show();
         raise();
+
+        Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::mentions_popup_show);
+
+        Q_EMIT visibilityChanged(true, QPrivateSignal());
     }
 
     void MentionCompleter::setArrowPosition(const QPoint& _pos)

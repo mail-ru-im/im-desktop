@@ -80,4 +80,12 @@ namespace su
     {
         return join_impl<std::wstring>(first, last, sep);
     }
+
+    template<typename T, typename U>
+    [[nodiscard]] bool starts_with(T source, U prefix)
+    {
+        if (std::size(prefix) > std::size(source))
+            return false;
+        return std::equal(std::cbegin(prefix), std::cend(prefix), std::cbegin(source));
+    }
 }

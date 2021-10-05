@@ -154,7 +154,7 @@ void StartCallButton::showContextMenu()
         });
         if (Features::isVcsCallByLinkEnabled())
             menu_->addActionWithIcon(qsl(":/copy_link_icon"), QT_TRANSLATE_NOOP("tooltips", "Link to call"), this, &StartCallButton::createCallLink);
-        menu_->invertRight(true);
+        menu_->showAtLeft(true);
 
         rotate(Ui::StartCallButton::RotateDirection::Left);
         auto pos = mapToGlobal(mapFromParent(geometry().bottomRight()));

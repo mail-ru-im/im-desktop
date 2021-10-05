@@ -35,24 +35,17 @@ void showAddContactsDialog(const QString& _name, const QString& _phone, AddConta
     auto w = new Ui::AddNewContactStackedWidget(nullptr);
 
     Ui::GeneralDialog::Options options;
-    options.preferredSize_ = QSize(Utils::scale_value(380), -1);
-    options.ignoreRejectDlgPairs_.emplace_back(Utils::CloseWindowInfo::Initiator::MacEventFilter,
-                                               Utils::CloseWindowInfo::Reason::MacEventFilter);
+    options.preferredWidth_ = Utils::scale_value(380);
+    options.ignoredInfos_.emplace_back(Utils::CloseWindowInfo::Initiator::MacEventFilter,
+                                       Utils::CloseWindowInfo::Reason::MacEventFilter);
 
-    auto gd = std::make_unique<Ui::GeneralDialog>(w,
-                                                  Utils::InterConnector::instance().getMainWindow(),
-                                                  false,
-                                                  true,
-                                                  true,
-                                                  true,
-                                                  options);
+    auto gd = std::make_unique<Ui::GeneralDialog>(w, Utils::InterConnector::instance().getMainWindow(), options);
     gd->setIgnoredKeys({
                            Qt::Key_Return,
                            Qt::Key_Enter
                        });
 
-    QObject::connect(w, &Ui::AddNewContactStackedWidget::finished,
-            gd.get(), [&gd]()
+    QObject::connect(w, &Ui::AddNewContactStackedWidget::finished, gd.get(), [&gd]()
     {
         gd->rejectDialog(Utils::CloseWindowInfo());
     });

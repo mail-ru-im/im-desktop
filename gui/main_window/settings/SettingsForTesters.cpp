@@ -187,9 +187,16 @@ namespace Ui
                                                               {},
                                                               Utils::scale_value(36), qsl("AS AdditionalSettingsPage trackInternalCache"));
 
+        showSecondsCheckbox_ = GeneralCreator::addSwitcher(this, mainLayout_,
+                                                           QT_TRANSLATE_NOOP("popup_window", "Show seconds in time picker"),
+                                                           appConfig.WatchGuiMemoryEnabled(),
+                                                           {},
+                                                           Utils::scale_value(36), qsl("AS AdditionalSettingsPage showSeconds"));
+
         connect(fullLogModeCheckbox_, &Ui::SidebarCheckboxButton::checked, this, &SettingsForTesters::onToggleFullLogMode);
         connect(devShowMsgIdsCheckbox_, &Ui::SidebarCheckboxButton::checked, this, &SettingsForTesters::onToggleShowMsgIdsMenu);
         connect(watchGuiMemoryCheckbox_, &Ui::SidebarCheckboxButton::checked, this, &SettingsForTesters::onToggleWatchGuiMemory);
+        connect(showSecondsCheckbox_, &Ui::SidebarCheckboxButton::checked, this, &SettingsForTesters::onToggleShowSeconds);
 
         if constexpr (environment::is_develop())
         {
@@ -280,6 +287,9 @@ namespace Ui
 
         if (netCompressionCheckbox_ && netCompressionCheckbox_->isChecked() != _appConfig.IsNetCompressionEnabled())
             netCompressionCheckbox_->setChecked(_appConfig.IsNetCompressionEnabled());
+
+        if (showSecondsCheckbox_ && showSecondsCheckbox_->isChecked() != _appConfig.showSecondsInTimePicker())
+            showSecondsCheckbox_->setChecked(_appConfig.showSecondsInTimePicker());
     }
 
     void SettingsForTesters::onOpenLogsPath(const QString &_logsPath)
@@ -343,7 +353,8 @@ namespace Ui
         AppConfig appConfig = GetAppConfig();
         appConfig.SetCustomDeviceId(_checked);
 
-        ModifyAppConfig(std::move(appConfig), [this](core::icollection* _coll) {
+        ModifyAppConfig(std::move(appConfig), [this](core::icollection* _coll)
+        {
             initViewElementsFrom(GetAppConfig());
         }, this);
         Utils::removeOmicronFile();
@@ -354,7 +365,19 @@ namespace Ui
         AppConfig appConfig = GetAppConfig();
         appConfig.SetWatchGuiMemoryEnabled(_checked);
 
-        ModifyAppConfig(std::move(appConfig), [this](core::icollection* _coll) {
+        ModifyAppConfig(std::move(appConfig), [this](core::icollection* _coll)
+        {
+            initViewElementsFrom(GetAppConfig());
+        }, this);
+    }
+
+    void SettingsForTesters::onToggleShowSeconds(bool _checked)
+    {
+        AppConfig appConfig = GetAppConfig();
+        appConfig.setShowSecondsInTimePicker(_checked);
+
+        ModifyAppConfig(std::move(appConfig), [this](core::icollection* _coll)
+        {
             initViewElementsFrom(GetAppConfig());
         }, this);
     }
@@ -364,9 +387,10 @@ namespace Ui
         AppConfig appConfig = GetAppConfig();
         appConfig.SetNetCompressionEnabled(_checked);
 
-        ModifyAppConfig(std::move(appConfig), [this](core::icollection* _coll) {
+        ModifyAppConfig(std::move(appConfig), [this](core::icollection* _coll)
+        {
             initViewElementsFrom(GetAppConfig());
-            }, this);
+        }, this);
     }
 
     SettingsForTesters::~SettingsForTesters() = default;

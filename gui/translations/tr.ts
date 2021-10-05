@@ -385,9 +385,144 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <source>You are not a member of this chat or you was banned to write</source>
         <translation>Sohbet üyesi değilsiniz veya yazma izniniz yok</translation>
     </message>
+</context>
+<context>
+    <name>calendar</name>
     <message>
-        <source>Are you sure you want to open an external link %1?</source>
-        <translation>%1 harici bağlantısını açmak istediğinizden emin misiniz?</translation>
+        <source>Mon</source>
+        <translation>Pzt</translation>
+    </message>
+    <message>
+        <source>Tue</source>
+        <translation>Salı</translation>
+    </message>
+    <message>
+        <source>Wed</source>
+        <translation>evlenmek</translation>
+    </message>
+    <message>
+        <source>Thu</source>
+        <translation>NS</translation>
+    </message>
+    <message>
+        <source>Fri</source>
+        <translation>Cuma</translation>
+    </message>
+    <message>
+        <source>Sat</source>
+        <translation>Oturdu</translation>
+    </message>
+    <message>
+        <source>Sun</source>
+        <translation>Güneş</translation>
+    </message>
+    <message>
+        <source>January</source>
+        <translation>Ocak</translation>
+    </message>
+    <message>
+        <source>Febuary</source>
+        <translation>Şubat</translation>
+    </message>
+    <message>
+        <source>March</source>
+        <translation>Mart</translation>
+    </message>
+    <message>
+        <source>April</source>
+        <translation>Nisan</translation>
+    </message>
+    <message>
+        <source>May</source>
+        <translation>Mayıs</translation>
+    </message>
+    <message>
+        <source>June</source>
+        <translation>Haziran</translation>
+    </message>
+    <message>
+        <source>July</source>
+        <translation>Temmuz</translation>
+    </message>
+    <message>
+        <source>August</source>
+        <translation>Ağustos</translation>
+    </message>
+    <message>
+        <source>September</source>
+        <translation>Eylül</translation>
+    </message>
+    <message>
+        <source>October</source>
+        <translation>Ekim</translation>
+    </message>
+    <message>
+        <source>November</source>
+        <translation>Kasım</translation>
+    </message>
+    <message>
+        <source>December</source>
+        <translation>Aralık</translation>
+    </message>
+    <message>
+        <source>Jan</source>
+        <translation>ocak</translation>
+    </message>
+    <message>
+        <source>Feb</source>
+        <translation>Şubat</translation>
+    </message>
+    <message>
+        <source>Mar</source>
+        <translation>Martha</translation>
+    </message>
+    <message>
+        <source>Apr</source>
+        <translation>Nisan</translation>
+    </message>
+    <message>
+        <source>Jun</source>
+        <translation>Haziran</translation>
+    </message>
+    <message>
+        <source>Jul</source>
+        <translation>Temmuz</translation>
+    </message>
+    <message>
+        <source>Aug</source>
+        <translation>ağustos</translation>
+    </message>
+    <message>
+        <source>Sep</source>
+        <translation>eylül</translation>
+    </message>
+    <message>
+        <source>Oct</source>
+        <translation>ekim</translation>
+    </message>
+    <message>
+        <source>Nov</source>
+        <translation>kasım</translation>
+    </message>
+    <message>
+        <source>Dec</source>
+        <translation>Aralık</translation>
+    </message>
+    <message>
+        <source>Today</source>
+        <translation>Bugün</translation>
+    </message>
+    <message>
+        <source>Tomorrow</source>
+        <translation>Yarın</translation>
+    </message>
+    <message>
+        <source>MayS</source>
+        <translation>Mayıs</translation>
+    </message>
+    <message>
+        <source>%1. d, yyyy</source>
+        <translation>%1. d, yyyy</translation>
     </message>
 </context>
 <context>
@@ -988,6 +1123,22 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
 %3
 %4 %5</translation>
     </message>
+    <message>
+        <source>%1 changed task title to &quot;%2&quot;</source>
+        <translation>%1 , görev metnini &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed task deadline to %2</source>
+        <translation>%1 , son tarihi %2</translation>
+    </message>
+    <message>
+        <source>%1 changed task assignee to &quot;%2&quot;</source>
+        <translation>%1 sanatçıyı &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>Task status changed to &quot;%1&quot;</source>
+        <translation>Görev durumu &quot;%1&quot;</translation>
+    </message>
 </context>
 <context>
     <name>chat_page</name>
@@ -1054,6 +1205,22 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     <message>
         <source>Message sent</source>
         <translation>Mesajı gönderildi</translation>
+    </message>
+    <message>
+        <source>Access limited</source>
+        <translation>Erişim sınırlı</translation>
+    </message>
+    <message>
+        <source>File is not available</source>
+        <translation>Dosya mevcut değil</translation>
+    </message>
+    <message>
+        <source>Filesharing Id copied to clipboard</source>
+        <translation>Dosya Paylaşım Kimliği kopyalandı</translation>
+    </message>
+    <message>
+        <source>Filesharing link copied to clipboard</source>
+        <translation>Dosya paylaşımının bağlantısı kopyalandı</translation>
     </message>
 </context>
 <context>
@@ -1176,6 +1343,30 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     <message>
         <source>PINNED</source>
         <translation>SABİT</translation>
+    </message>
+    <message>
+        <source>Threads</source>
+        <translation>Konularᵝ</translation>
+    </message>
+    <message>
+        <source>Reminders</source>
+        <translation>Hatırlatmalar</translation>
+    </message>
+    <message>
+        <source>Scheduled</source>
+        <translation>Planlı</translation>
+    </message>
+    <message>
+        <source>Draft</source>
+        <translation>Taslak</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation>Bir görev</translation>
+    </message>
+    <message>
+        <source>Tasks</source>
+        <translation>Görevler</translation>
     </message>
 </context>
 <context>
@@ -1612,6 +1803,58 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     <message>
         <source>Copy session info</source>
         <translation>Oturum bilgilerini kopyala</translation>
+    </message>
+    <message>
+        <source>Bold</source>
+        <translation>Yağlı</translation>
+    </message>
+    <message>
+        <source>Italic</source>
+        <translation>İtalik</translation>
+    </message>
+    <message>
+        <source>Underline</source>
+        <translation>Altı çizili</translation>
+    </message>
+    <message>
+        <source>Strike through</source>
+        <translation>Üstü çizildi</translation>
+    </message>
+    <message>
+        <source>Monospace</source>
+        <translation>Eş aralıklı</translation>
+    </message>
+    <message>
+        <source>Create link</source>
+        <translation>Link ekle</translation>
+    </message>
+    <message>
+        <source>Clear format</source>
+        <translation>Stilleri Temizle</translation>
+    </message>
+    <message>
+        <source>Format</source>
+        <translation>Biçimlendirme</translation>
+    </message>
+    <message>
+        <source>Edit task</source>
+        <translation>Görevi değiştir</translation>
+    </message>
+    <message>
+        <source>List</source>
+        <translation>Liste</translation>
+    </message>
+    <message>
+        <source>Ordered list</source>
+        <translation>Numaralandırılmış liste</translation>
+    </message>
+    <message>
+        <source>Quote</source>
+        <translation>Alıntı</translation>
+    </message>
+    <message>
+        <source>Code</source>
+        <translation>Kod</translation>
     </message>
 </context>
 <context>
@@ -2648,6 +2891,21 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     </message>
 </context>
 <context>
+    <name>draft</name>
+    <message>
+        <source>Apply draft</source>
+        <translation>Taslağı uygula</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>İptal</translation>
+    </message>
+    <message>
+        <source>Apply another draft version?</source>
+        <translation>Taslağın farklı bir versiyonunu kullanmak ister misiniz?</translation>
+    </message>
+</context>
+<context>
     <name>favorites</name>
     <message>
         <source>
@@ -2758,10 +3016,10 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     </message>
 </context>
 <context>
-    <name>generic_block</name>
+    <name>groupchat</name>
     <message>
-        <source>Copied to clipboard</source>
-        <translation>Panoya kopyalandı</translation>
+        <source>To replies</source>
+        <translation>Cevaplarda</translation>
     </message>
 </context>
 <context>
@@ -2854,6 +3112,20 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <source>You are not a subscriber of this channel</source>
         <translation>Bu kanala abone değilsiniz</translation>
     </message>
+    <message>
+        <source>File access restrictions</source>
+        <translation>Dosya erişim kısıtlamaları</translation>
+    </message>
+    <message>
+        <source>Restrict file access to trusted devices only
+Only for private groups
+
+This option cannot be disabled</source>
+        <translation>Dosyalara yalnızca güvenilir cihazlara erişim izni ver
+Yalnızca halka açık olmayan gruplar için
+
+Ayarı devre dışı bırakmak imkansız</translation>
+    </message>
 </context>
 <context>
     <name>head</name>
@@ -2883,6 +3155,30 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     <message>
         <source>Please select a chat to start messaging</source>
         <translation>Lütfen mesajlaşmaya başlamak için bir sohbet seçin</translation>
+    </message>
+    <message>
+        <source>Create a call</source>
+        <translation>Çağrı oluştur</translation>
+    </message>
+    <message>
+        <source>No time limit</source>
+        <translation>Zaman sınırı yok</translation>
+    </message>
+    <message>
+        <source>Status is set automatically during call</source>
+        <translation>Otomatik durum aramada kimin olduğunu gösterir</translation>
+    </message>
+    <message>
+        <source>Advantages of calls in Myteam</source>
+        <translation>Myteam&apos;i aramanın faydaları</translation>
+    </message>
+    <message>
+        <source>Group calls up to %1 participants</source>
+        <translation>%1 kişiye kadar grup araması</translation>
+    </message>
+    <message>
+        <source>Return to call in chat in one click</source>
+        <translation>Tek bir tıklamayla sohbette bir aramaya geri dönün</translation>
     </message>
 </context>
 <context>
@@ -3050,6 +3346,10 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     <message>
         <source>Cancel request</source>
         <translation>İsteği iptal et</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation>Bir görev</translation>
     </message>
 </context>
 <context>
@@ -3292,6 +3592,10 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <source>Wrong password</source>
         <translation>Yanlış şifre</translation>
     </message>
+    <message>
+        <source>Sign in with Mail.ru</source>
+        <translation>Mail.ru ile giriş yapın</translation>
+    </message>
 </context>
 <context>
     <name>macos_menu</name>
@@ -3389,7 +3693,7 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     </message>
     <message>
         <source>Emoji &amp;&amp; Symbols</source>
-        <translation>Emoji ve Semboller</translation>
+        <translation>Emoji &amp;&amp; Sembolleri</translation>
     </message>
     <message>
         <source>Zoom</source>
@@ -3944,10 +4248,6 @@ to contact status</source>
     <message>
         <source>Are you sure you want to leave chat?</source>
         <translation>Sohbetten ayrılmak istediğinizden emin misiniz?</translation>
-    </message>
-    <message>
-        <source>Contact name</source>
-        <translation>Adı</translation>
     </message>
     <message>
         <source>Sign out</source>
@@ -4590,8 +4890,16 @@ to contact status</source>
         <translation>Üyelik sınırı aşıldı (maks. %1)</translation>
     </message>
     <message>
-        <source>Are you sure you want to open external link %1?</source>
-        <translation>%1harici bağlantısını açmak istediğinizden emin misiniz?</translation>
+        <source>Are you sure you want to open an external link?</source>
+        <translation>Harici bir bağlantı açmak istediğinizden emin misiniz?</translation>
+    </message>
+    <message>
+        <source>Add link</source>
+        <translation>Link ekle</translation>
+    </message>
+    <message>
+        <source>The link will be displayed as &quot;%1&quot;</source>
+        <translation>Bağlantı &quot;%1&quot; olarak görüntülenecek</translation>
     </message>
     <message>
         <source>Enable net compression</source>
@@ -4640,6 +4948,38 @@ to contact status</source>
     <message>
         <source>User not a member</source>
         <translation>Kullanıcı bu grubun üyesi değil</translation>
+    </message>
+    <message>
+        <source>Link</source>
+        <translation>Bağlantı</translation>
+    </message>
+    <message>
+        <source>Invalid url</source>
+        <translation>Bağlantı değil</translation>
+    </message>
+    <message>
+        <source>Opening or downloading files will be possible from trusted device only
+
+%1 It will be impossible to disable this setting!</source>
+        <translation>Dosyaları açmak veya indirmek yalnızca güvenilir bir cihazdan mümkün olacaktır
+
+%1 Ayar devre dışı bırakılamaz!</translation>
+    </message>
+    <message>
+        <source>File access will be restricted</source>
+        <translation>Dosyalara erişim sınırlı olacak</translation>
+    </message>
+    <message>
+        <source>Only chat members can view replies</source>
+        <translation>Yalnızca grup üyeleri yanıtları görüntüleyebilir</translation>
+    </message>
+    <message>
+        <source>Show seconds in time picker</source>
+        <translation>Zaman seçicide saniyeleri göster</translation>
+    </message>
+    <message>
+        <source>Only channel subscribers can view replies</source>
+        <translation>Yalnızca kanal aboneleri yanıtları görüntüleyebilir</translation>
     </message>
 </context>
 <context>
@@ -5422,6 +5762,10 @@ to contact status</source>
         <translation>Yürütülebilir dosyaları çalıştırırken sorma</translation>
     </message>
     <message>
+        <source>Do not ask when opening external links</source>
+        <translation>Harici linkleri açarken sormayın</translation>
+    </message>
+    <message>
         <source>Use system spell checker</source>
         <translation>Sistem yazım denetimi</translation>
     </message>
@@ -5468,6 +5812,14 @@ to contact status</source>
     <message>
         <source>Show notifications when app in focus</source>
         <translation>Uygulama aktif olduğunda bildirimleri göster</translation>
+    </message>
+    <message>
+        <source>Call window</source>
+        <translation>Çağrı penceresi</translation>
+    </message>
+    <message>
+        <source>Warn about disabled microphone</source>
+        <translation>Sessiz mikrofon hakkında uyar</translation>
     </message>
 </context>
 <context>
@@ -5666,6 +6018,10 @@ to contact status</source>
     <message>
         <source>Set status</source>
         <translation>Durumu Ayarla</translation>
+    </message>
+    <message>
+        <source>Switch microphone state</source>
+        <translation>Mikrofon durumunu değiştir</translation>
     </message>
 </context>
 <context>
@@ -6024,6 +6380,14 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <source>Close</source>
         <translation>Kapat</translation>
     </message>
+    <message>
+        <source>Cannot be disabled due to security reasons</source>
+        <translation>Güvenlik nedeniyle, ayar devre dışı bırakılamaz</translation>
+    </message>
+    <message>
+        <source>Replies</source>
+        <translation>Yanıtlar</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -6060,10 +6424,6 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
     <message>
         <source>File</source>
         <translation>dosya</translation>
-    </message>
-    <message>
-        <source>Copied to clipboard</source>
-        <translation>Panoya kopyalandı</translation>
     </message>
     <message>
         <source>Location</source>
@@ -6213,22 +6573,6 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <source>Status duration</source>
         <translation>Durum süresi</translation>
     </message>
-    <message>
-        <source>Date</source>
-        <translation>tarih</translation>
-    </message>
-    <message>
-        <source>dd.mm.yyyy</source>
-        <translation>gg.aa.yyyy</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>Zaman</translation>
-    </message>
-    <message>
-        <source>hh:mm</source>
-        <translation>hh:mm</translation>
-    </message>
 </context>
 <context>
     <name>stickers</name>
@@ -6280,6 +6624,10 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <source>Cancel</source>
         <translation>iptal</translation>
     </message>
+    <message>
+        <source>Stickerpack is not available</source>
+        <translation>Çıkartma paketi mevcut değil</translation>
+    </message>
 </context>
 <context>
     <name>tab</name>
@@ -6304,12 +6652,12 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <translation>aramalar</translation>
     </message>
     <message>
-        <source>Structure</source>
-        <translation>Yapısı</translation>
-    </message>
-    <message>
         <source>Tasks</source>
         <translation>Görevler</translation>
+    </message>
+    <message>
+        <source>Calendar</source>
+        <translation>Takvim</translation>
     </message>
 </context>
 <context>
@@ -6337,6 +6685,101 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
     <message>
         <source>Group call</source>
         <translation>Grup araması</translation>
+    </message>
+</context>
+<context>
+    <name>task</name>
+    <message>
+        <source>In progress</source>
+        <translation>İşte</translation>
+    </message>
+    <message>
+        <source>Ready</source>
+        <translation>bitti</translation>
+    </message>
+    <message>
+        <source>Rejected</source>
+        <translation>Reddedildi</translation>
+    </message>
+    <message>
+        <source>Closed</source>
+        <translation>Kapalı</translation>
+    </message>
+    <message>
+        <source>New</source>
+        <translation>Yapmak</translation>
+    </message>
+    <message>
+        <source>No assignee</source>
+        <translation>Bir icracı olmadan</translation>
+    </message>
+</context>
+<context>
+    <name>task_block</name>
+    <message>
+        <source>Not assigned</source>
+        <translation>Atanmadı</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation>Bir görev</translation>
+    </message>
+    <message>
+        <source>Task Id copied to clipboard</source>
+        <translation>Görev Kimliği kopyalandı</translation>
+    </message>
+    <message>
+        <source>Not set</source>
+        <translation>Atanmadı</translation>
+    </message>
+    <message>
+        <source>Task edit: an error occured</source>
+        <translation>Görevi değiştirme: bir hata oluştu</translation>
+    </message>
+</context>
+<context>
+    <name>task_popup</name>
+    <message>
+        <source>Edit task</source>
+        <translation>Görev değiştirme</translation>
+    </message>
+    <message>
+        <source>Create task</source>
+        <translation>Görev oluştur</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>isim</translation>
+    </message>
+    <message>
+        <source>Maximum length - %1 symbols</source>
+        <translation>Maksimum uzunluk - %1 karakter</translation>
+    </message>
+    <message>
+        <source>Assignee</source>
+        <translation>Yürütücü</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>İptal</translation>
+    </message>
+    <message>
+        <source>Ok</source>
+        <translation>TAMAM MI</translation>
+    </message>
+    <message>
+        <source>Create</source>
+        <translation>Oluşturmak</translation>
+    </message>
+    <message>
+        <source>User with this name
+not found</source>
+        <translation>Bununla kullanıcı
+isim bulunamadı</translation>
+    </message>
+    <message>
+        <source>No deadline</source>
+        <translation>son tarih yok</translation>
     </message>
 </context>
 <context>
@@ -6368,6 +6811,21 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
     <message>
         <source>Welcome to ICQ New</source>
         <translation>ICQ&apos;ya Hoş Geldiniz Yeni</translation>
+    </message>
+</context>
+<context>
+    <name>threads_feed</name>
+    <message>
+        <source>There is no threads</source>
+        <translation>Konu yok</translation>
+    </message>
+    <message>
+        <source>Threads you subscribed for will be here</source>
+        <translation>Abone olduğunuz konular burada görüntülenecektir</translation>
+    </message>
+    <message>
+        <source>Replies</source>
+        <translation>Yanıtlar</translation>
     </message>
 </context>
 <context>
@@ -6419,6 +6877,42 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <source>You are not a member or banned to write in this group</source>
         <translation>Sohbet üyesi değilsiniz veya yazma izniniz yok</translation>
     </message>
+    <message>
+        <source>Unable to open invalid url &quot;%1&quot;</source>
+        <translation>Geçersiz adres açılamıyor %1</translation>
+    </message>
+    <message>
+        <source>Error occurred while opening the replies</source>
+        <translation>Yanıtlar açılırken bir hata oluştu</translation>
+    </message>
+    <message>
+        <source>Administrator has set the restrictions on access to files</source>
+        <translation>Grup yöneticisi, dosyalara erişim konusunda kısıtlamalar belirledi</translation>
+    </message>
+    <message>
+        <source>Awaiting antivirus check, patience</source>
+        <translation>Antivirüs kontrolünü bekliyoruz, sabır</translation>
+    </message>
+    <message>
+        <source>Antivirus check in progress, patience</source>
+        <translation>Antivirüs denetimi devam ediyor, sabır</translation>
+    </message>
+    <message>
+        <source>File is blocked by the antivirus</source>
+        <translation>Dosya antivirüs tarafından engellendi</translation>
+    </message>
+    <message>
+        <source>Checked</source>
+        <translation>Kontrol edildi</translation>
+    </message>
+    <message>
+        <source>No access. You may not have enough rights</source>
+        <translation>Erişim yok. Yeterli haklara sahip olmayabilirsiniz</translation>
+    </message>
+    <message>
+        <source>File not checked (and never will be). Available to download</source>
+        <translation>Dosya doğrulanmadı (ve doğrulanmayacak). Indirilebilir</translation>
+    </message>
 </context>
 <context>
     <name>tooltips</name>
@@ -6461,6 +6955,14 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
     <message>
         <source>Link to call</source>
         <translation>Çağrı bağlantısı</translation>
+    </message>
+    <message>
+        <source>Chat gallery</source>
+        <translation>Sohbet galerisi</translation>
+    </message>
+    <message>
+        <source>Refresh</source>
+        <translation>Yenile</translation>
     </message>
 </context>
 <context>
@@ -6596,6 +7098,18 @@ tıklama ile</translation>
         <translation>Meşgul</translation>
     </message>
     <message>
+        <source>Hold Space key for temporary unmute</source>
+        <translation>Mikrofonun sesini geçici olarak açmak için Boşluk çubuğunu basılı tutun</translation>
+    </message>
+    <message>
+        <source>Microphone disabled</source>
+        <translation>Mikrofon kapalı</translation>
+    </message>
+    <message>
+        <source>Microphone enabled</source>
+        <translation>Mikrofon açık</translation>
+    </message>
+    <message>
         <source>Call members</source>
         <translation>Katılımcıları ara</translation>
     </message>
@@ -6618,6 +7132,16 @@ tıklama ile</translation>
     <message>
         <source>CONTACTS</source>
         <translation>İLETİŞİM</translation>
+    </message>
+    <message>
+        <source>You are muted now
+Press %1 to unmute your microphone
+
+Press and hold Space key for temporarily unmute</source>
+        <translation>Şimdi mikrofonunuz kapalı
+Mikrofonu açmak için %1 tuşuna basın
+
+Mikrofonun sesini geçici olarak açmak için Boşluk çubuğunu basılı tutun</translation>
     </message>
 </context>
 <context>

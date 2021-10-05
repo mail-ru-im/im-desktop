@@ -18,7 +18,7 @@ namespace omicronlib
 #ifdef DEBUG
         return std::chrono::seconds(60);
 #else
-        return std::chrono::hours(6);
+        return std::chrono::hours(1);
 #endif
     }
     //! Internal tick timeout for service thread (milliseconds).

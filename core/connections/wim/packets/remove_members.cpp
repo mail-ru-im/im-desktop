@@ -2,7 +2,7 @@
 
 #include "remove_members.h"
 #include "../../../http_request.h"
-#include "tools/json_helper.h"
+#include "../common.shared/json_helper.h"
 
 using namespace core;
 using namespace wim;
@@ -12,8 +12,8 @@ remove_members::remove_members(wim_packet_params _params, std::string _aimid, st
     , aimid_(std::move(_aimid))
     , members_to_delete_(std::move(_members_to_delete))
 {
-    assert(!aimid_.empty());
-    assert(!members_to_delete_.empty());
+    im_assert(!aimid_.empty());
+    im_assert(!members_to_delete_.empty());
 }
 
 std::string_view remove_members::get_method() const

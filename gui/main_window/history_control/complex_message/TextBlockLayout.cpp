@@ -63,7 +63,7 @@ QSize TextBlockLayout::setTextControlGeometry(const QRect &contentLtr)
                 const auto oneLiner = block->textUnit_->getLinesCount() == 1;
                 const auto mightStretch = block->textUnit_->mightStretchForLargerWidth();
 
-                const auto textWidth = oneLiner && !mightStretch
+                const auto textWidth = (oneLiner && !mightStretch)
                     ? block->textUnit_->desiredWidth()
                     : maxLineWidth;
                 textSize.setWidth(textWidth);
@@ -82,6 +82,9 @@ QSize TextBlockLayout::setTextControlGeometry(const QRect &contentLtr)
             prevWidth_ = contentWidth;
         }
     }
+
+    cachedSize_.setHeight(qMax(1, cachedSize_.height()));
+    cachedSize_.setWidth(qMax(1, cachedSize_.width()));
 
     return cachedSize_;
 }

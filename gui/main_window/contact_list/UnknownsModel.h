@@ -8,6 +8,7 @@
 namespace Ui
 {
     class MainWindow;
+    enum class ClosePage;
 }
 
 namespace Logic
@@ -32,7 +33,7 @@ namespace Logic
         void refresh();
 
     private Q_SLOTS:
-        void activeDialogHide(const QString&);
+        void activeDialogHide(const QString&, Ui::ClosePage _closePage);
         void contactChanged(const QString&);
         void selectedContactChanged(const QString& _new, const QString& _prev);
         void dlgStates(const QVector<Data::DlgState>&);

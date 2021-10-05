@@ -1,7 +1,7 @@
 #include "stdafx.h"
 
 #include "id_info.h"
-#include "../../tools/json_helper.h"
+#include "../../../common.shared/json_helper.h"
 
 namespace core::wim
 {

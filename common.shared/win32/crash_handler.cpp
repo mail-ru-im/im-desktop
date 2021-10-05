@@ -24,6 +24,8 @@
 #include "../version_info.h"
 #include "../common_defs.h"
 #include "common_crash_sender.h"
+#include "d3d9types.h"
+#include "d3d9.h"
 
 #ifndef _AddressOfReturnAddress
 
@@ -398,9 +400,47 @@ namespace core
             auto dump_type = (_MINIDUMP_TYPE)get_dump_type();
             if (dump_type == -1)
             {
-                assert(!"dump_type must be positive");
+                im_assert(!"dump_type must be positive");
                 dump_type = MiniDumpNormal;
             }
+
+            std::string comment;
+            HMODULE d3d9_lib = LoadLibrary(_T("d3d9.dll"));
+            if (d3d9_lib != NULL)
+            {
+                D3DADAPTER_IDENTIFIER9 adapter_id;
+                IDirect3D9* direct_3d9 = nullptr;
+                using PtrDirect3DCreate9 = IDirect3D9 * (WINAPI*)(UINT);
+                if (auto direct_create = (PtrDirect3DCreate9)GetProcAddress(d3d9_lib, "Direct3DCreate9"))
+                    direct_3d9 = direct_create(D3D_SDK_VERSION);
+
+                if (direct_3d9)
+                {
+                    if (SUCCEEDED(direct_3d9->GetAdapterIdentifier(0, 0, &adapter_id)))
+                    {
+                        std::stringstream ss;
+                        ss << std::hex << adapter_id.VendorId;
+                        ss << ":";
+                        ss << std::hex << adapter_id.DeviceId;
+                        ss << " ";
+                        ss << adapter_id.Description;
+                        ss << '\0';
+
+                        comment = ss.str();
+                    }
+                    direct_3d9->Release();
+                }
+
+                FreeLibrary(d3d9_lib);
+            }
+
+            MINIDUMP_USER_STREAM us[1];
+            MINIDUMP_USER_STREAM_INFORMATION ui;
+            ui.UserStreamCount = 1;
+            ui.UserStreamArray = us;
+            us[0].Type = CommentStreamA;
+            us[0].BufferSize = comment.size();
+            us[0].Buffer = &comment.front();
 
             BOOL bWriteDump = pfnMiniDumpWriteDump(
                 hProcess,
@@ -408,7 +448,7 @@ namespace core
                 hFile,
                 dump_type,
                 &mei,
-                NULL,
+                &ui,
                 &mci);
 
             if(!bWriteDump)
@@ -440,7 +480,7 @@ namespace core
             std::stringstream log_stream;
             // TODO (*) : use real info about app
 
-            assert(product_bundle_ != "");
+            im_assert(product_bundle_ != "");
 
             log_stream << "Package: " << product_bundle_ << std::endl;
             log_stream << "Version: " << VERSION_INFO_STR << std::endl;

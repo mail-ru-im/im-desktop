@@ -8,7 +8,7 @@ CORE_DISK_CACHE_NS_BEGIN
 
 disk_cache_sptr disk_cache::make(std::wstring _path)
 {
-    assert(!_path.empty());
+    im_assert(!_path.empty());
 
     return std::make_shared<dir_cache>(std::move(_path));
 }

@@ -114,7 +114,7 @@ namespace Ui
             , highlightColor_(_highlightColor)
             , hightlightTextColor_(_hightlightTextColor)
             , linkColor_(_linkColor)
-            , addSpace_(0)
+            , addSpace_(0.0)
             , d(std::make_unique<TextWordRenderer_p>())
         {
             im_assert(painter_);
@@ -134,6 +134,7 @@ namespace Ui
 
         void TextWordRenderer::drawWord(const TextWord& _word, bool _needsSpace, bool _isLast)
         {
+            im_assert(!_word.hasSubwords());
             const auto text = _word.getText();
             const auto useLinkPen = _word.isLink() && _word.getShowLinks() == Ui::TextRendering::LinksVisible::SHOW_LINKS;
             const auto textColor = useLinkPen ? linkColor_ : _word.getColor();
@@ -144,8 +145,10 @@ namespace Ui
             if (_word.hasSpellError())
             {
                 for (auto e : boost::adaptors::reverse(_word.getSyntaxWords()))
+                {
                     if (e.spellError)
-                        split(text, e.pos, e.pos + e.size, textColor, {}, SpellError::Yes);
+                        split(text, e.offset_, e.end(), textColor, {}, SpellError::Yes);
+                }
             }
 
             if (_word.isHighlighted() && highlightColor_.isValid())
@@ -193,7 +196,9 @@ namespace Ui
                 const auto& part = *it;
                 prepareEngine(part.ref_.toString(), _word.getFont(), visualOrder);
 
-                const auto underLineStyle = (part.hasSpellError_ && !useCustomDots()) ? QTextCharFormat::UnderlineStyle::SpellCheckUnderline : QTextCharFormat::UnderlineStyle::NoUnderline;
+                const auto underLineStyle = part.hasSpellError_ && !useCustomDots()
+                    ? QTextCharFormat::UnderlineStyle::SpellCheckUnderline
+                    : QTextCharFormat::UnderlineStyle::NoUnderline;
                 bool fillHanded = false;
                 const auto startX = point_.x();
                 auto startY = point_.y();
@@ -251,7 +256,9 @@ namespace Ui
                 const auto endX = point_.x();
                 if (useCustomDots() && part.hasSpellError_)
                 {
-                    const qreal fontFactor = qreal(_word.getFont().pixelSize()) / qreal(10.);
+                    im_assert(_word.getFont().pixelSize() > 0);
+                    auto fontFactor = qreal(_word.getFont().pixelSize()) / qreal(10.);
+                    fontFactor = qAbs(fontFactor);
                     startY += Utils::scale_value(3);
                     Utils::PainterSaver painterSaver(*painter_);
                     painter_->setRenderHint(QPainter::Antialiasing);
@@ -324,7 +331,7 @@ namespace Ui
             {
                 QString someSpaces;
                 someSpaces += QChar::Space;
-                const auto fontMetrics = getMetrics(_word.getFont());
+                const auto& fontMetrics = getMetrics(_word.getFont());
                 while (fontMetrics.horizontalAdvance(someSpaces) <= emoji.width() / b)
                     someSpaces += QChar::Space;
                 if (!_needsSpace && _word.isSpaceAfter())
@@ -345,7 +352,7 @@ namespace Ui
             const auto imageRect = QRectF(point_.x(), y, emoji.width() / b, emoji.height() / b);
             painter_->drawImage(imageRect, emoji);
 
-            point_.rx() += (roundToInt(_word.cachedWidth()) + addSpace_);
+            point_.rx() += roundToInt(_word.cachedWidth()) + addSpace_;
         }
 
         void TextWordRenderer::split(const QString& _text, const int _from, const int _to, const QColor& _textColor, const QColor& _fillColor, SpellError _e)

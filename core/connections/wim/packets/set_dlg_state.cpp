@@ -41,7 +41,7 @@ int32_t set_dlg_state::init_request(const std::shared_ptr<core::http_request_sim
             exclude.PushBack("mention", a);
         if (params_.test_exclude(set_dlg_state_params::exclude::ptt))
             exclude.PushBack("pttListen", a);
-        assert(!exclude.Empty());
+        im_assert(!exclude.Empty());
         node_params.AddMember("exclude", std::move(exclude), a);
     }
 

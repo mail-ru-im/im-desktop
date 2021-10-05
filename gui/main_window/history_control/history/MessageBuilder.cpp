@@ -38,7 +38,8 @@ namespace hist::MessageBuilder
             auto serviceMessageItem = std::make_unique<Ui::ServiceMessageItem>(_parent);
             serviceMessageItem->setContact(_msg.AimId_);
             serviceMessageItem->setDate(_msg.GetDate());
-            serviceMessageItem->setWidth(_itemWidth);
+            if (_itemWidth > 0)
+                serviceMessageItem->setWidth(_itemWidth);
             serviceMessageItem->setDeleted(_msg.IsDeleted());
             serviceMessageItem->setEdited(_msg.IsEdited());
             serviceMessageItem->setIsChat(_msg.Chat_);
@@ -53,7 +54,8 @@ namespace hist::MessageBuilder
             item->setContact(_msg.AimId_);
             item->updateStyle();
             item->setHasAvatar(false);
-            item->setFixedWidth(_itemWidth);
+            if (_itemWidth > 0)
+                item->setFixedWidth(_itemWidth);
             item->setDeleted(_msg.IsDeleted());
             item->setEdited(_msg.IsEdited());
             item->setIsChat(Utils::isChat(_msg.AimId_));
@@ -69,7 +71,8 @@ namespace hist::MessageBuilder
 
             auto item = std::make_unique<Ui::VoipEventItem>(_parent, voipEvent);
             item->setTopMargin(_msg.GetIndentBefore());
-            item->setFixedWidth(_itemWidth);
+            if (_itemWidth > 0)
+                item->setFixedWidth(_itemWidth);
             item->setHasAvatar(_msg.HasAvatar());
             item->setHasSenderName(_msg.HasSenderName());
             item->setChainedToPrev(_msg.isChainedToPrev());
@@ -82,16 +85,7 @@ namespace hist::MessageBuilder
             return item;
         }
 
-
-        auto senderAimidForFriendly = QString();
-        if (Logic::getContactListModel()->isChannel(_msg.AimId_))
-            senderAimidForFriendly = _msg.AimId_;
-        else
-            senderAimidForFriendly = _msg.Chat_ ? _msg.getSender() : (_msg.isOutgoingPosition() ? Ui::MyInfo()->aimId() : _msg.AimId_);
-        const auto senderFriendly = Logic::GetFriendlyContainer()->getFriendly(senderAimidForFriendly);
-
         auto item = Ui::ComplexMessage::ComplexMessageItemBuilder::makeComplexItem(_parent, _msg, Ui::ComplexMessage::ComplexMessageItemBuilder::ForcePreview::No);
-
         item->setContact(_msg.AimId_);
         item->setTime(_msg.GetTime());
         item->setHasAvatar(_msg.HasAvatar());
@@ -105,11 +99,12 @@ namespace hist::MessageBuilder
 
         if (_msg.Chat_)
         {
-            if (!senderFriendly.isEmpty())
-                item->setMchatSender(senderFriendly);
+            const auto senderAimid = Logic::getContactListModel()->isChannel(_msg.AimId_) ? _msg.AimId_ : _msg.getSender();
+            item->setMchatSender(Logic::GetFriendlyContainer()->getFriendly(senderAimid));
         }
 
-        item->setFixedWidth(_itemWidth);
+        if (_itemWidth > 0)
+            item->setFixedWidth(_itemWidth);
 
         QObject::connect(Logic::GetFriendlyContainer(), &Logic::FriendlyContainer::friendlyChanged, item.get(),
             [item = item.get()](const QString& _aimId, const QString& _friendly)
@@ -167,9 +162,9 @@ namespace hist::MessageBuilder
                 return { QT_TRANSLATE_NOOP("contact_list", "Video"), Ui::MediaType::mediaTypeVideo };
         }
 
-        const auto emptyTextAllowed = buddy.IsSticker() || !buddy.Quotes_.isEmpty() || buddy.sharedContact_ || buddy.poll_;
+        const auto emptyTextAllowed = buddy.IsSticker() || !buddy.Quotes_.isEmpty() || buddy.sharedContact_ || buddy.poll_ || buddy.task_;
 
-        if (!emptyTextAllowed && Data::FormattedStringView(buddy.GetSourceText()).trimmed().isEmpty())
+        if (!emptyTextAllowed && Data::FStringView(buddy.GetSourceText()).trimmed().isEmpty())
             return {};
 
         auto item = Ui::ComplexMessage::ComplexMessageItemBuilder::makeComplexItem(nullptr, buddy, Ui::ComplexMessage::ComplexMessageItemBuilder::ForcePreview::Yes);

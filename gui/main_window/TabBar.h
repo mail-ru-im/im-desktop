@@ -5,6 +5,8 @@
 
 namespace Ui
 {
+    enum class AppPageType;
+
     class BaseBarItem : public SimpleListItem
     {
         Q_OBJECT
@@ -53,8 +55,10 @@ namespace Ui
         Q_OBJECT
 
     public:
-        explicit AppBarItem(const QString& _iconPath, const QString& _iconActivePath, QWidget* _parent = nullptr);
+        explicit AppBarItem(AppPageType _type, const QString& _iconPath, const QString& _iconActivePath, QWidget* _parent = nullptr);
         void setName(const QString& _name) override;
+
+        AppPageType getType() const noexcept { return type_; }
 
     protected:
         void paintEvent(QPaintEvent* _event) override;
@@ -70,7 +74,19 @@ namespace Ui
 
     private:
         QTimer* tooltipTimer_;
+        AppPageType type_;
         bool tooltipVisible_;
+    };
+
+    class CalendarItem : public AppBarItem
+    {
+        Q_OBJECT
+    public:
+        explicit CalendarItem(AppPageType _type, const QString& _iconPath, const QString& _iconActivePath, QWidget* _parent = nullptr);
+        explicit CalendarItem(const QString& _iconPath, const QString& _iconActivePath, QWidget* _parent = nullptr);
+
+    protected:
+        void paintEvent(QPaintEvent* _event) override;
     };
 
     class TabItem : public BaseBarItem

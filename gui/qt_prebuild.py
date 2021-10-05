@@ -7,29 +7,24 @@ import sys
 import glob
 import re
 import subprocess
-from pathlib import Path
+import pathlib
 
 
-def parse_external_version():
-    walk_dir = Path("..", "requirements", "common.cmake")
-    data = None
-    with open(walk_dir, "r") as cmake_data:
-        data = cmake_data.readlines()
+def get_dependencies_root():
+    current_file_dir = pathlib.Path(__file__).parent.absolute()
+    deps_root_dir = pathlib.Path.joinpath(current_file_dir,
+                                          "..",
+                                          "external_deps")
+    return deps_root_dir
 
-    for item in data:
-        if "set(EXT_LIBS_VERSION" in item:
-            ext_re = re.search(r'(?<=EXT_LIBS_VERSION\s")v.+(?=("))', item.strip(), re.I)
-            if ext_re:
-                return ext_re.group(0)
-    return False
-
-
-external_version = parse_external_version()
-if not external_version:
-    print("ERROR: Can't extract external_version parse_external_version()")
+qt_folder_name = None
+for folder in os.listdir(get_dependencies_root()):
+    if folder.startswith("qt_") and not folder.startswith("qt_utils"):
+        qt_folder_name = pathlib.Path(folder)
+if not qt_folder_name:
+    print(f"ERROR: Can't extract qt_folder_name {get_dependencies_root()}")
     sys.exit(1)
-qt_path = os.path.dirname(os.path.abspath(__file__ + "/..")).replace("\\", "/")
-qt_path += f"/external_{external_version}/windows/qt/bin/"
+qt_path = pathlib.Path.joinpath(get_dependencies_root(), qt_folder_name, "bin")
 print(f"-> qt_path = {qt_path}")
 
 
@@ -76,10 +71,10 @@ def build_mocs_in(dir):
         if os.path.exists(moc_file):
             if os.path.getmtime(h_file) > os.path.getmtime(moc_file):
                 print(os.path.basename(h_file), "is newer that", os.path.basename(moc_file), ">> rebuild")
-                subprocess.call(qt_path + "moc.exe " + '"' + h_file + '"' + " -b stdafx.h" + " -o " + '"' + moc_file + '"')
+                subprocess.call(str(qt_path) + "\\moc.exe " + '"' + h_file + '"' + " -b stdafx.h" + " -o " + '"' + moc_file + '"')
         else:
             print("build", os.path.basename(moc_file))
-            subprocess.call(qt_path + "moc.exe " + '"' + h_file + '"' + " -b stdafx.h" + " -o " + '"' + moc_file + '"')
+            subprocess.call(str(qt_path) + "\\moc.exe " + '"' + h_file + '"' + " -b stdafx.h" + " -o " + '"' + moc_file + '"')
 
     files = glob.glob(dir + "/moc_*.cpp")
     for file in files:
@@ -105,10 +100,10 @@ def compile_ui_in(dir):
         if os.path.exists(h_file):
             if os.path.getmtime(ui_file) > os.path.getmtime(h_file):
                 print(os.path.basename(ui_file), "is newer that", os.path.basename(h_file), ">> rebuild")
-                subprocess.call(qt_path + "uic.exe " + '"' + ui_file + '"' + " -o " + '"' + h_file + '"')
+                subprocess.call(str(qt_path) + "\\uic.exe " + '"' + ui_file + '"' + " -o " + '"' + h_file + '"')
         else:
             print("build", h_file)
-            subprocess.call(qt_path + "uic.exe " + '"' + ui_file + '"' + " -o " + '"' + h_file + '"')
+            subprocess.call(str(qt_path) + "\\uic.exe " + '"' + ui_file + '"' + " -o " + '"' + h_file + '"')
 
     dirs = glob.glob(dir + "/*/")
     for dir in dirs:
@@ -127,12 +122,12 @@ for file in files:
     if os.path.exists(qm_file):
         if os.path.getmtime(ts_file) > os.path.getmtime(qm_file):
             print(os.path.basename(ts_file), "is newer that", os.path.basename(qm_file), ">> rebuild")
-            subprocess.call(qt_path + "lrelease.exe " + '"' + ts_file + '"')
+            subprocess.call(str(qt_path) + "\\lrelease.exe " + '"' + ts_file + '"')
     else:
         print("build", os.path.basename(qm_file))
-        subprocess.call(qt_path + "lrelease.exe " + '"' + ts_file + '"')
+        subprocess.call(str(qt_path) + "\\lrelease.exe " + '"' + ts_file + '"')
 
-subprocess.call(qt_path + "rcc.exe " + '"' + os.path.abspath("resource.qrc").replace("\\", "/") + '"' + " -o " + '"' + os.path.abspath("qresource").replace("\\", "/") + '"' + " --binary")
+subprocess.call(str(qt_path) + "\\rcc.exe " + '"' + os.path.abspath("resource.qrc").replace("\\", "/") + '"' + " -o " + '"' + os.path.abspath("qresource").replace("\\", "/") + '"' + " --binary")
 
 compile_ui_in(".")
 build_mocs_in(".")

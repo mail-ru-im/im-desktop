@@ -11,7 +11,7 @@
 
 #include "../tools/file_sharing.h"
 #include "../tools/system.h"
-#include "../tools/json_helper.h"
+#include "../../common.shared/json_helper.h"
 
 #include "history_patch.h"
 
@@ -40,6 +40,7 @@ namespace
         no_longer_stranger,
         status_reply,
         custom_status_reply,
+        task_changed,
 
         max,
     };
@@ -75,6 +76,7 @@ namespace
     constexpr std::string_view c_contact = "contact";
     constexpr std::string_view c_geo = "geo";
     constexpr std::string_view c_poll = "poll";
+    constexpr std::string_view c_task = "task";
     constexpr std::string_view c_poll_id = "pollId";
     constexpr std::string_view c_buttons = "inlineKeyboardMarkup";
     constexpr std::string_view c_hideedit = "hideEdit";
@@ -82,6 +84,7 @@ namespace
     constexpr std::string_view c_style = "style";
     constexpr std::string_view c_reactions = "reactions";
     constexpr std::string_view c_has_animated_sticker = "hasAnimatedSticker";
+    constexpr std::string_view c_thread = "thread";
 
     constexpr std::string_view c_format = "format";
     constexpr std::string_view c_format_type = "type";
@@ -123,11 +126,14 @@ namespace
 
     constexpr uint8_t header_version() noexcept
     {
-        return 4;
+        return 6;
     }
 
-    void serializePoll(const poll_data& _poll, core::tools::tlvpack& _pack);
-    archive::poll unserializePoll(core::tools::tlvpack& _pack);
+    void serialize_poll(const poll_data& _poll, core::tools::tlvpack& _pack);
+    archive::poll unserialize_poll(core::tools::tlvpack& _pack);
+
+    void serialize_task(const core::tasks::task_data& _task, core::tools::tlvpack& _pack);
+    core::tasks::task unserialize_task(core::tools::tlvpack& _pack);
 
     std::vector<std::vector<button_data>> unserialize_buttons(const rapidjson::Value& _node);
     std::vector<std::vector<button_data>> unserialize_buttons(const std::string& _buttons);
@@ -151,35 +157,6 @@ namespace
         return result;
     }
 
-    namespace core_fmt = core::data::format;
-    core_fmt::format_type read_format_type_from_string(std::string_view _name)
-    {
-        if (_name == c_format_bold)
-            return core_fmt::format_type::bold;
-        else if (_name == c_format_italic)
-            return core_fmt::format_type::italic;
-        else if (_name == c_format_inline_code)
-            return core_fmt::format_type::inline_code;
-        else if (_name == c_format_underline)
-            return core_fmt::format_type::underline;
-        else if (_name == c_format_strikethrough)
-            return core_fmt::format_type::strikethrough;
-        else if (_name == c_format_link)
-            return core_fmt::format_type::link;
-        else if (_name == c_format_mention)
-            return core_fmt::format_type::mention;
-        else if (_name == c_format_pre)
-            return core_fmt::format_type::pre;
-        else if (_name == c_format_ordered_list)
-            return core_fmt::format_type::ordered_list;
-        else if (_name == c_format_unordered_list)
-            return core_fmt::format_type::unordered_list;
-        else if (_name == c_format_quote)
-            return core_fmt::format_type::quote;
-
-        assert(!"unknown format type name");
-        return core_fmt::format_type::none;
-    };
 }
 
 
@@ -187,17 +164,8 @@ namespace
 // message_header class
 //////////////////////////////////////////////////////////////////////////
 message_header::message_header()
-    :
-    id_(-1),
-    version_(header_version()),
-    time_(0),
-    prev_id_(-1),
-    data_offset_(-1),
-    data_size_(0),
-    has_shared_contact_with_sn_(false),
-    has_poll_with_id_(false)
+    : version_(header_version())
 {
-
 }
 
 message_header::message_header(
@@ -210,7 +178,9 @@ message_header::message_header(
     common::tools::patch_version patch_,
     bool _shared_contact_with_sn,
     bool _has_poll_with_id,
-    bool _has_reactions)
+    bool _has_task_with_id,
+    bool _has_reactions,
+    bool _has_thread)
     :
     id_(_id),
     version_(header_version()),
@@ -222,7 +192,9 @@ message_header::message_header(
     update_patch_version_(std::move(patch_)),
     has_shared_contact_with_sn_(_shared_contact_with_sn),
     has_poll_with_id_(_has_poll_with_id),
-    has_reactions_(_has_reactions)
+    has_task_with_id_(_has_task_with_id),
+    has_reactions_(_has_reactions),
+    has_thread_(_has_thread)
 {
 }
 
@@ -253,14 +225,14 @@ uint32_t message_header::get_data_size() const noexcept
 
 void message_header::set_data_size(uint32_t _value) noexcept
 {
-    assert(_value > 0);
+    im_assert(_value > 0);
     data_size_ = _value;
 }
 
 void message_header::set_prev_msgid(int64_t _value) noexcept
 {
-    assert(_value >= -1);
-    assert(!has_id() || (_value < get_id()));
+    im_assert(_value >= -1);
+    im_assert(!has_id() || (_value < get_id()));
 
     prev_id_ = _value;
 }
@@ -288,6 +260,12 @@ uint32_t message_header::min_data_sizeof(uint8_t _version) const noexcept
     constexpr auto version4 = version3 +
         sizeof(bool);       /*reactions*/
 
+    constexpr auto version5 = version4 +
+        sizeof(bool);       /*task_with_id*/
+
+    constexpr auto version6 = version5 +
+        sizeof(bool);       /*thread*/
+
     switch (_version)
     {
     case 0:
@@ -300,8 +278,12 @@ uint32_t message_header::min_data_sizeof(uint8_t _version) const noexcept
         return version3;
     case 4:
         return version4;
+    case 5:
+        return version5;
+    case 6:
+        return version6;
     default:
-        assert(!"invalid version");
+        im_assert(!"invalid version");
         return version0;
     }
 }
@@ -331,10 +313,16 @@ void message_header::serialize(core::tools::binary_stream& _data) const
     if (version_ > 3)
         _data.write<bool>(has_reactions_);
 
+    if (version_ > 4)
+        _data.write<bool>(has_task_with_id_);
+
+    if (version_ > 5)
+        _data.write<bool>(has_thread_);
+
 #ifdef _DEBUG
     if (_data.available() < min_data_sizeof(version_))
     {
-        assert(!"invalid data size");
+        im_assert(!"invalid data size");
     }
 #endif
 }
@@ -370,24 +358,22 @@ bool message_header::unserialize(core::tools::binary_stream& _data)
         }
     }
     if (version_ > 1)
-    {
         has_shared_contact_with_sn_ = _data.read<bool>();
-    }
     if (version_ > 2)
-    {
         has_poll_with_id_ = _data.read<bool>();
-    }
     if (version_ > 3)
-    {
         has_reactions_ = _data.read<bool>();
-    }
+    if (version_ > 4)
+        has_task_with_id_ = _data.read<bool>();
+    if (version_ > 5)
+        has_thread_ = _data.read<bool>();
 
     return true;
 }
 
 void message_header::merge_with(const message_header &rhs)
 {
-    assert(id_ == rhs.id_);
+    im_assert(id_ == rhs.id_);
 
     if ((rhs.is_modified() || rhs.is_updated()) && rhs.is_patch())
     {
@@ -407,7 +393,9 @@ void message_header::merge_with(const message_header &rhs)
 
     has_shared_contact_with_sn_ = rhs.has_shared_contact_with_sn_;
     has_poll_with_id_ = rhs.has_poll_with_id_;
+    has_task_with_id_ = rhs.has_task_with_id_;
     has_reactions_ = rhs.has_reactions_;
+    has_thread_ = rhs.has_thread_;
 
     const auto updateOffset = ((rhs.data_offset_ != -1) && !rhs.is_patch());
     if (updateOffset)
@@ -503,7 +491,7 @@ void message_header::set_updated(bool _value) noexcept
 
 const message_header_vec& message_header::get_modifications() const
 {
-    assert(is_modified() || is_updated());
+    im_assert(is_modified() || is_updated());
 
     return modifications_;
 }
@@ -512,7 +500,6 @@ bool message_header::has_modifications() const
 {
     return (is_modified() || is_updated()) && !modifications_.empty();
 }
-
 
 bool message_header::has_shared_contact_with_sn() const noexcept
 {
@@ -524,9 +511,19 @@ bool message_header::has_poll_with_id() const noexcept
     return has_poll_with_id_;
 }
 
+bool core::archive::message_header::has_task_with_id() const noexcept
+{
+    return has_task_with_id_;
+}
+
 bool message_header::has_reactions() const noexcept
 {
     return has_reactions_;
+}
+
+bool message_header::has_thread() const noexcept
+{
+    return has_thread_;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -661,6 +658,14 @@ enum message_fields : uint32_t
     mf_format_ordered_list = 113,
     mf_format_unordered_list = 114,
     mf_description_format = 115,
+    mf_task = 116,
+    mf_task_id = 117,
+    mf_task_title = 118,
+    mf_task_assignee = 119,
+    mf_task_end_time = 120,
+    mf_thread_id = 121,
+    mf_task_status = 122,
+    mf_chat_event_task_editor = 123
 };
 
 void shared_contact_data::serialize(icollection *_collection) const
@@ -855,7 +860,7 @@ sticker_data::sticker_data()
 sticker_data::sticker_data(std::string _id)
     : id_(std::move(_id))
 {
-    assert(boost::starts_with(id_, "ext:"));
+    im_assert(boost::starts_with(id_, "ext:"));
 }
 
 void core::archive::sticker_data::serialize(core::tools::tlvpack& _pack)
@@ -865,7 +870,7 @@ void core::archive::sticker_data::serialize(core::tools::tlvpack& _pack)
 
 int32_t core::archive::sticker_data::unserialize(core::tools::tlvpack& _pack)
 {
-    assert(id_.empty());
+    im_assert(id_.empty());
 
     auto tlv_id = _pack.get_item(message_fields::mf_sticker_id);
     if (!tlv_id)
@@ -893,20 +898,20 @@ std::pair<int32_t, int32_t> core::archive::sticker_data::get_ids(const std::stri
 
     boost::split(Out components, _id, boost::is_any_of(":"));
 
-    assert(components.size() == 4);
+    im_assert(components.size() == 4);
     if (components.size() != 4)
     {
         return std::make_pair(0, 0);
     }
 
-    assert(components[0] == "ext");
-    assert(components[2] == "sticker");
+    im_assert(components[0] == "ext");
+    im_assert(components[2] == "sticker");
 
     const auto set_id = std::stoul(components[1]);
-    assert(set_id > 0);
+    im_assert(set_id > 0);
 
     const auto sticker_id = std::stoul(components[3]);
-    assert(sticker_id > 0);
+    im_assert(sticker_id > 0);
 
     return std::make_pair(set_id, sticker_id);
 }
@@ -921,7 +926,7 @@ core::archive::voip_data::voip_data()
 
 void core::archive::voip_data::apply_persons(const archive::persons_map &_persons)
 {
-    assert(!sender_aimid_.empty());
+    im_assert(!sender_aimid_.empty());
     sender_friendly_ = find_person(sender_aimid_, _persons);
 }
 
@@ -929,10 +934,10 @@ bool core::archive::voip_data::unserialize(
     const rapidjson::Value &_node,
     const std::string &_sender_aimid)
 {
-    assert(!_sender_aimid.empty());
-    assert(type_ == core::voip_event_type::invalid);
+    im_assert(!_sender_aimid.empty());
+    im_assert(type_ == core::voip_event_type::invalid);
 
-    assert(sender_aimid_.empty());
+    im_assert(sender_aimid_.empty());
     sender_aimid_ = _sender_aimid;
 
     unserialize_duration(_node);
@@ -942,7 +947,7 @@ bool core::archive::voip_data::unserialize(
     std::string_view type;
     if (!tools::unserialize_value(_node, "type", type))
     {
-        assert(!"invalid format");
+        im_assert(!"invalid format");
         return false;
     }
 
@@ -953,7 +958,7 @@ bool core::archive::voip_data::unserialize(
         const auto &subtype_node = subtype_node_iter->value;
         if (!subtype_node.IsString())
         {
-            assert("!invalid format");
+            im_assert("!invalid format");
             return false;
         }
 
@@ -961,7 +966,7 @@ bool core::archive::voip_data::unserialize(
     }
 
     // read event direction
-    assert(is_incoming_ == -1);
+    im_assert(is_incoming_ == -1);
     if (const auto incall_node_iter = _node.FindMember("inCall"); incall_node_iter != _node.MemberEnd())
     {
         const auto &incall_node = incall_node_iter->value;
@@ -971,7 +976,7 @@ bool core::archive::voip_data::unserialize(
         }
         else
         {
-            assert(!"invalid format");
+            im_assert(!"invalid format");
         }
     }
 
@@ -1020,23 +1025,23 @@ bool core::archive::voip_data::unserialize(
 
 void core::archive::voip_data::serialize(Out coll_helper &_coll) const
 {
-    assert(type_ > voip_event_type::min);
-    assert(type_ < voip_event_type::max);
+    im_assert(type_ > voip_event_type::min);
+    im_assert(type_ < voip_event_type::max);
     _coll.set<voip_event_type>("type", type_);
 
     _coll.set<std::string>("sid", sid_);
 
-    assert(!sender_aimid_.empty());
+    im_assert(!sender_aimid_.empty());
     _coll.set<std::string>("sender_aimid", sender_aimid_);
 
-    assert(!sender_friendly_.empty());
+    im_assert(!sender_friendly_.empty());
     _coll.set<std::string>("sender_friendly", sender_aimid_);
 
-    assert(duration_sec_ >= -1);
+    im_assert(duration_sec_ >= -1);
     if (duration_sec_ >= 0)
         _coll.set<int32_t>("duration_sec", duration_sec_);
 
-    assert(is_incoming_ >= -1);
+    im_assert(is_incoming_ >= -1);
     if (is_incoming_ >= 0)
         _coll.set<bool>("is_incoming", is_incoming());
 
@@ -1065,27 +1070,27 @@ int32_t core::archive::voip_data::is_incoming() const
 
 bool core::archive::voip_data::unserialize(const coll_helper &_coll)
 {
-    assert(!"there is no scenario in which the method is called");
+    im_assert(!"there is no scenario in which the method is called");
     return true;
 }
 
 void core::archive::voip_data::serialize(Out core::tools::tlvpack &_pack) const
 {
-    assert(type_ != voip_event_type::invalid);
+    im_assert(type_ != voip_event_type::invalid);
 
     _pack.push_child(core::tools::tlv(message_fields::mf_voip_event_type, (int32_t)type_));
 
-    assert(!sender_aimid_.empty());
+    im_assert(!sender_aimid_.empty());
     _pack.push_child(core::tools::tlv(message_fields::mf_voip_sender_aimid, sender_aimid_));
 
-    assert(!sender_friendly_.empty());
+    im_assert(!sender_friendly_.empty());
     _pack.push_child(core::tools::tlv(message_fields::mf_voip_sender_friendly, sender_friendly_));
 
-    assert(duration_sec_ >= -1);
+    im_assert(duration_sec_ >= -1);
     if (duration_sec_ >= 0)
         _pack.push_child(core::tools::tlv(message_fields::mf_voip_duration, duration_sec_));
 
-    assert(is_incoming_ >= -1);
+    im_assert(is_incoming_ >= -1);
     if (is_incoming_ >= 0)
         _pack.push_child(core::tools::tlv(message_fields::mf_voip_is_incoming, is_incoming_));
 
@@ -1108,28 +1113,28 @@ void core::archive::voip_data::serialize(Out core::tools::tlvpack &_pack) const
 
 bool core::archive::voip_data::unserialize(const core::tools::tlvpack &_pack)
 {
-    assert(type_ == voip_event_type::invalid);
-    assert(sender_friendly_.empty());
-    assert(sender_aimid_.empty());
+    im_assert(type_ == voip_event_type::invalid);
+    im_assert(sender_friendly_.empty());
+    im_assert(sender_aimid_.empty());
 
     const auto tlv_type = _pack.get_item(message_fields::mf_voip_event_type);
-    assert(tlv_type);
+    im_assert(tlv_type);
     if (!tlv_type)
         return false;
 
     const auto tlv_sender_aimid = _pack.get_item(message_fields::mf_voip_sender_aimid);
-    assert(tlv_sender_aimid);
+    im_assert(tlv_sender_aimid);
     if (!tlv_sender_aimid)
         return false;
 
     const auto tlv_sender_friendly = _pack.get_item(message_fields::mf_voip_sender_friendly);
-    assert(tlv_sender_friendly);
+    im_assert(tlv_sender_friendly);
     if (!tlv_sender_friendly)
         return false;
 
     type_ = tlv_type->get_value<voip_event_type>();
     const auto is_valid_type = ((type_ > voip_event_type::min) && (type_ < voip_event_type::max));
-    assert(is_valid_type);
+    im_assert(is_valid_type);
     if (!is_valid_type)
     {
         type_ = voip_event_type::invalid;
@@ -1137,12 +1142,12 @@ bool core::archive::voip_data::unserialize(const core::tools::tlvpack &_pack)
     }
 
     sender_aimid_ = tlv_sender_aimid->get_value<std::string>();
-    assert(!sender_aimid_.empty());
+    im_assert(!sender_aimid_.empty());
     if (sender_aimid_.empty())
         return false;
 
     sender_friendly_ = tlv_sender_friendly->get_value<std::string>();
-    assert(!sender_friendly_.empty());
+    im_assert(!sender_friendly_.empty());
     if (sender_friendly_.empty())
         return false;
 
@@ -1150,14 +1155,14 @@ bool core::archive::voip_data::unserialize(const core::tools::tlvpack &_pack)
     if (tlv_duration)
     {
         duration_sec_ = tlv_duration->get_value<int32_t>(-1);
-        assert(duration_sec_ >= -1);
+        im_assert(duration_sec_ >= -1);
     }
 
     const auto tlv_is_incoming = _pack.get_item(message_fields::mf_voip_is_incoming);
     if (tlv_is_incoming)
     {
         is_incoming_ = tlv_is_incoming->get_value<int32_t>(-1);
-        assert(is_incoming_ >= -1);
+        im_assert(is_incoming_ >= -1);
     }
 
     const auto tlv_is_video = _pack.get_item(message_fields::mf_voip_is_video);
@@ -1187,14 +1192,14 @@ void core::archive::voip_data::unserialize_duration(const rapidjson::Value &_nod
     const auto is_valid_duration = (duration_sec_ >= 0 && duration_sec_ <= max_duration.count());
     if (!is_valid_duration)
     {
-        assert(!"invalid voip event duration value");
+        im_assert(!"invalid voip event duration value");
         duration_sec_ = -1;
     }
 }
 
 void core::archive::voip_data::unserialize_conf_members(const tools::tlvpack& _pack)
 {
-    assert(conf_members_.empty());
+    im_assert(conf_members_.empty());
 
     conf_members_.reserve(_pack.size());
     for (auto index = 0u; index < _pack.size(); ++index)
@@ -1297,15 +1302,15 @@ file_sharing_data::file_sharing_data(
 {
     if (local_path_.empty())
     {
-        assert(!uri_.empty());
-        assert(starts_with(uri_, "http"));
+        im_assert(!uri_.empty());
+        im_assert(starts_with(uri_, "http"));
     }
     else
     {
-        assert(core::tools::system::is_exist(
+        im_assert(core::tools::system::is_exist(
             core::tools::from_utf8(local_path_)
         ));
-        assert(uri_.empty());
+        im_assert(uri_.empty());
     }
 }
 
@@ -1315,12 +1320,12 @@ file_sharing_data::file_sharing_data(icollection* _collection)
 
     if (coll.is_value_exist("uri"))
     {
-        assert(!coll.is_value_exist("local_path"));
+        im_assert(!coll.is_value_exist("local_path"));
         uri_ = coll.get_value_as_string("uri");
     }
     else
     {
-        assert(!coll.is_value_exist("uri"));
+        im_assert(!coll.is_value_exist("uri"));
         local_path_ = coll.get_value_as_string("local_path");
     }
 
@@ -1334,14 +1339,14 @@ file_sharing_data::file_sharing_data(const core::tools::tlvpack &_pack)
 {
     if (const auto uri_item = _pack.get_item(message_fields::mf_file_sharing_uri); uri_item)
     {
-        assert(!_pack.get_item(message_fields::mf_file_sharing_local_path));
+        im_assert(!_pack.get_item(message_fields::mf_file_sharing_local_path));
 
         uri_ = uri_item->get_value<std::string>();
     }
     else
     {
         local_path_ = _pack.get_item(message_fields::mf_file_sharing_local_path)->get_value<std::string>();
-        assert(!local_path_.empty());
+        im_assert(!local_path_.empty());
     }
 
     if (const auto item = _pack.get_item(message_fields::mf_file_sharing_duration); item)
@@ -1364,22 +1369,22 @@ file_sharing_data::~file_sharing_data() = default;
 
 void file_sharing_data::serialize(Out icollection* _collection, const std::string &_internal_id, const bool _is_outgoing) const
 {
-    assert(_collection);
+    im_assert(_collection);
 
     coll_helper coll(_collection, false);
 
     if (!uri_.empty())
     {
-        assert(local_path_.empty());
+        im_assert(local_path_.empty());
 
         coll.set_value_as_string("uri", uri_);
         serialize_metadata_from_uri(uri_, Out coll);
     }
     else
     {
-        assert(!local_path_.empty());
-        assert(!_internal_id.empty());
-        assert(_is_outgoing);
+        im_assert(!local_path_.empty());
+        im_assert(!_internal_id.empty());
+        im_assert(_is_outgoing);
 
         coll.set<std::string>("local_path", local_path_);
         coll.set<std::string>("uploading_id", _internal_id);
@@ -1395,16 +1400,16 @@ void file_sharing_data::serialize(Out icollection* _collection, const std::strin
 
 void file_sharing_data::serialize(Out core::tools::tlvpack& _pack) const
 {
-    assert(_pack.empty());
+    im_assert(_pack.empty());
 
     if (!uri_.empty())
     {
-        assert(local_path_.empty());
+        im_assert(local_path_.empty());
         _pack.push_child(core::tools::tlv(message_fields::mf_file_sharing_uri, uri_));
     }
     else
     {
-        assert(core::tools::system::is_exist(
+        im_assert(core::tools::system::is_exist(
             core::tools::from_utf8(local_path_)
         ));
 
@@ -1466,7 +1471,7 @@ const std::optional<file_sharing_base_content_type>& file_sharing_data::get_base
 
 chat_event_data_sptr chat_event_data::make_added_to_buddy_list(const std::string &_sender_aimid)
 {
-    assert(!_sender_aimid.empty());
+    im_assert(!_sender_aimid.empty());
 
     chat_event_data_sptr result(
         new chat_event_data(
@@ -1475,7 +1480,7 @@ chat_event_data_sptr chat_event_data::make_added_to_buddy_list(const std::string
         );
 
 
-    assert(result->sender_aimid_.empty());
+    im_assert(result->sender_aimid_.empty());
     result->sender_aimid_ = _sender_aimid;
 
     return result;
@@ -1483,7 +1488,7 @@ chat_event_data_sptr chat_event_data::make_added_to_buddy_list(const std::string
 
 chat_event_data_sptr chat_event_data::make_mchat_event(const rapidjson::Value& _node)
 {
-    assert(_node.IsObject());
+    im_assert(_node.IsObject());
 
     auto sender_aimid = parse_sender_aimid(_node);
     if (sender_aimid.empty())
@@ -1514,7 +1519,7 @@ chat_event_data_sptr chat_event_data::make_mchat_event(const rapidjson::Value& _
 
     const auto type_str = rapidjson_get_string_view(type_iter->value);
 
-    assert(!type_str.empty());
+    im_assert(!type_str.empty());
     if (type_str.empty())
     {
         return nullptr;
@@ -1543,7 +1548,7 @@ chat_event_data_sptr chat_event_data::make_mchat_event(const rapidjson::Value& _
 
 chat_event_data_sptr chat_event_data::make_modified_event(const rapidjson::Value& _node)
 {
-    assert(_node.IsObject());
+    im_assert(_node.IsObject());
 
     auto sender_aimid = parse_sender_aimid(_node);
     if (sender_aimid.empty())
@@ -1551,88 +1556,71 @@ chat_event_data_sptr chat_event_data::make_modified_event(const rapidjson::Value
 
     bool is_channel = false;
 
-    if (auto it = _node.FindMember("type"); it != _node.MemberEnd() && it->value.IsString())
-    {
-        if (rapidjson_get_string_view(it->value) == "channel")
-            is_channel = true;
-    }
+    if (std::string_view type; tools::unserialize_value(_node, "type", type) && type == "channel")
+        is_channel = true;
 
     const auto modified_event_iter = _node.FindMember("modifiedInfo");
 
-    assert(modified_event_iter != _node.MemberEnd());
+    im_assert(modified_event_iter != _node.MemberEnd());
     if (modified_event_iter == _node.MemberEnd())
         return nullptr;
 
     const auto &modified_event = modified_event_iter->value;
 
-    assert(modified_event.IsObject());
+    im_assert(modified_event.IsObject());
     if (!modified_event.IsObject())
         return nullptr;
 
     chat_event_data_sptr result;
 
-    const auto new_name_iter = modified_event.FindMember("name");
-    const auto is_name_modified = (new_name_iter != modified_event.MemberEnd() && new_name_iter->value.IsString());
-    if (is_name_modified)
+    if (std::string_view name; tools::unserialize_value(modified_event, "name", name))
     {
         result.reset(new chat_event_data(chat_event_type::chat_name_modified));
-        result->chat_.new_name_ = rapidjson_get_string(new_name_iter->value);
+        result->chat_.new_name_ = name;
     }
 
-    const auto avatar_last_modified_iter = modified_event.FindMember("avatarLastModified");
-    const auto is_avatar_modified = (avatar_last_modified_iter != modified_event.MemberEnd());
-    if (is_avatar_modified)
+    if (modified_event.FindMember("avatarLastModified") != modified_event.MemberEnd())
         result.reset(new chat_event_data(chat_event_type::avatar_modified));
 
-    const auto about_iter = modified_event.FindMember("about");
-    const auto is_about_changed = (
-        (about_iter != modified_event.MemberEnd()) &&
-        about_iter->value.IsString());
-    if (is_about_changed)
+    if (std::string_view about; tools::unserialize_value(modified_event, "about", about))
     {
         result.reset(new chat_event_data(chat_event_type::chat_description_modified));
-        result->chat_.new_description_ = rapidjson_get_string(about_iter->value);
+        result->chat_.new_description_ = about;
     }
 
-    const auto rules_iter = modified_event.FindMember("rules");
-    const auto is_rules_changed = (
-        (rules_iter != modified_event.MemberEnd()) &&
-        rules_iter->value.IsString());
-    if (is_rules_changed)
+    if (std::string_view rules; tools::unserialize_value(modified_event, "rules", rules))
     {
         result.reset(new chat_event_data(chat_event_type::chat_rules_modified));
-        result->chat_.new_rules_ = rapidjson_get_string(rules_iter->value);
+        result->chat_.new_rules_ = rules;
     }
 
-    const auto stamp_iter = modified_event.FindMember("stamp");
-    const auto is_stamp_changed = (
-        (stamp_iter != modified_event.MemberEnd()) &&
-        stamp_iter->value.IsString());
-    if (is_stamp_changed)
+    if (std::string_view stamp; tools::unserialize_value(modified_event, "stamp", stamp))
     {
         result.reset(new chat_event_data(chat_event_type::chat_stamp_modified));
-        result->chat_.new_stamp_ = rapidjson_get_string(stamp_iter->value);
+        result->chat_.new_stamp_ = stamp;
     }
 
-    const auto join_moderation_iter = modified_event.FindMember("joinModeration");
-    const auto join_moderation_changed = join_moderation_iter != modified_event.MemberEnd() && join_moderation_iter->value.IsBool();
-    if (join_moderation_changed)
+    if (bool value; tools::unserialize_value(modified_event, "joinModeration", value))
     {
         result.reset(new chat_event_data(chat_event_type::chat_join_moderation_modified));
-        result->chat_.new_join_moderation_ = join_moderation_iter->value.GetBool();
+        result->chat_.new_join_moderation_ = value;
     }
 
-    const auto public_iter = modified_event.FindMember("public");
-    const auto public_changed = public_iter != modified_event.MemberEnd() && public_iter->value.IsBool();
-    if (public_changed)
+    if (bool value; tools::unserialize_value(modified_event, "public", value))
     {
         result.reset(new chat_event_data(chat_event_type::chat_public_modified));
-        result->chat_.new_public_ = public_iter->value.GetBool();
+        result->chat_.new_public_ = value;
+    }
+
+    if (bool value; tools::unserialize_value(modified_event, "trustRequired", value))
+    {
+        result.reset(new chat_event_data(chat_event_type::chat_trust_requied_modified));
+        result->chat_.new_trust_required_ = value;
     }
 
     if (result)
     {
-        assert(result->sender_aimid_.empty());
+        im_assert(result->sender_aimid_.empty());
         result->sender_aimid_ = std::move(sender_aimid);
         result->is_channel_ = is_channel;
     }
@@ -1649,8 +1637,8 @@ chat_event_data_sptr chat_event_data::make_from_tlv(const tools::tlvpack& _pack)
 
 chat_event_data_sptr chat_event_data::make_simple_event(const chat_event_type _type)
 {
-    assert(_type > chat_event_type::min);
-    assert(_type < chat_event_type::max);
+    im_assert(_type > chat_event_type::min);
+    im_assert(_type < chat_event_type::max);
 
     return chat_event_data_sptr(
         new chat_event_data(_type)
@@ -1659,7 +1647,7 @@ chat_event_data_sptr chat_event_data::make_simple_event(const chat_event_type _t
 
 chat_event_data_sptr chat_event_data::make_generic_event(const rapidjson::Value& _text_node)
 {
-    assert(_text_node.IsString());
+    im_assert(_text_node.IsString());
 
     return make_generic_event(rapidjson_get_string(_text_node));
 }
@@ -1715,20 +1703,46 @@ chat_event_data_sptr chat_event_data::make_custom_status_reply_event(const rapid
     return result;
 }
 
+chat_event_data_sptr core::archive::chat_event_data::make_task_change_event(const rapidjson::Value& _node)
+{
+    chat_event_data_sptr result(new chat_event_data(chat_event_type::task_changed));
+    if (auto data = _node.FindMember("data"); data != _node.MemberEnd())
+    {
+        auto& value = data->value;
+        tools::unserialize_value(value, "user", result->task_.editor_);
+        auto unserialize_value = [](const auto& _data_node, auto _name, auto& _out_param)
+        {
+            if (std::string_view out_param; tools::unserialize_value(_data_node, _name, out_param))
+                _out_param = out_param;
+        };
+        auto& change = result->task_.change_;
+        unserialize_value(value, "title", change.title_);
+        unserialize_value(value, "assignee", change.assignee_);
+
+        if (std::string_view status_string; tools::unserialize_value(value, "status", status_string))
+            change.status_ = tasks::string_to_status(status_string);
+
+        if (int64_t secs; tools::unserialize_value(value, "time", secs))
+            change.set_end_time_from_seconds(secs);
+
+    }
+    return result;
+}
+
 chat_event_data::chat_event_data(const chat_event_type _type)
     : type_(_type)
     , is_captcha_present_(false)
     , is_channel_(false)
 {
-    assert(type_ > chat_event_type::min);
-    assert(type_ < chat_event_type::max);
+    im_assert(type_ > chat_event_type::min);
+    im_assert(type_ < chat_event_type::max);
 }
 
 chat_event_data::chat_event_data(const tools::tlvpack& _pack)
 {
     type_ = _pack.get_item(message_fields::mf_chat_event_type)->get_value<chat_event_type>();
-    assert(type_ > chat_event_type::min);
-    assert(type_ < chat_event_type::max);
+    im_assert(type_ > chat_event_type::min);
+    im_assert(type_ < chat_event_type::max);
 
     if (auto channel_item = _pack.get_item(message_fields::mf_chat_is_channel))
         is_channel_ = channel_item->get_value<bool>();
@@ -1746,7 +1760,7 @@ chat_event_data::chat_event_data(const tools::tlvpack& _pack)
         if (auto item = _pack.get_item(message_fields::mf_chat_event_sender_aimid))
         {
             sender_aimid_ = item->get_value<std::string>(std::string());
-            assert(!sender_aimid_.empty());
+            im_assert(!sender_aimid_.empty());
         }
     }
 
@@ -1754,7 +1768,7 @@ chat_event_data::chat_event_data(const tools::tlvpack& _pack)
     {
         auto item = _pack.get_item(message_fields::mf_chat_event_mchat_members);
 
-        assert(item);
+        im_assert(item);
         if (item)
             deserialize_mchat_members(item->get_value<tools::tlvpack>());
 
@@ -1779,15 +1793,18 @@ chat_event_data::chat_event_data(const tools::tlvpack& _pack)
 
     if (type_ == chat_event_type::status_reply || type_ == chat_event_type::custom_status_reply)
         deserialize_status_reply(_pack);
+
+    if (chat_event_type::task_changed == type_)
+        deserialize_task_change(_pack);
 }
 
 void chat_event_data::apply_persons(const archive::persons_map &_persons)
 {
     if (has_sender_aimid())
     {
-        assert(!sender_aimid_.empty());
+        im_assert(!sender_aimid_.empty());
         sender_friendly_ = find_person(sender_aimid_, _persons);
-        assert(!sender_friendly_.empty());
+        im_assert(!sender_friendly_.empty());
     }
 
     if (has_mchat_members())
@@ -1821,7 +1838,7 @@ bool chat_event_data::contents_equal(const chat_event_data& _rhs) const
 
 void chat_event_data::serialize(Out icollection* _collection) const
 {
-    assert(_collection);
+    im_assert(_collection);
 
     coll_helper coll(_collection, false);
     coll.set_value_as_enum("type", type_);
@@ -1849,9 +1866,12 @@ void chat_event_data::serialize(Out icollection* _collection) const
     if (type_ == chat_event_type::status_reply || type_ == chat_event_type::custom_status_reply)
         serialize_status_reply(Out coll);
 
+    if (chat_event_type::task_changed == type_)
+        serialize_task_change(Out coll);
+
     if (has_generic_text())
     {
-        assert(!generic_.empty());
+        im_assert(!generic_.empty());
         coll.set<std::string>("generic", generic_);
     }
 }
@@ -1866,10 +1886,10 @@ void chat_event_data::serialize(Out tools::tlvpack &_pack) const
 
     if (has_sender_aimid())
     {
-        assert(!sender_aimid_.empty());
+        im_assert(!sender_aimid_.empty());
         _pack.push_child(core::tools::tlv(message_fields::mf_chat_event_sender_aimid, sender_aimid_));
 
-        assert(!sender_friendly_.empty());
+        im_assert(!sender_friendly_.empty());
         _pack.push_child(core::tools::tlv(message_fields::mf_chat_event_sender_friendly, sender_friendly_));
     }
 
@@ -1887,25 +1907,28 @@ void chat_event_data::serialize(Out tools::tlvpack &_pack) const
 
     if (has_generic_text())
     {
-        assert(!generic_.empty());
+        im_assert(!generic_.empty());
         _pack.push_child(core::tools::tlv(message_fields::mf_chat_event_generic_text, generic_));
     }
 
     if (type_ == chat_event_type::status_reply || type_ == chat_event_type::custom_status_reply)
         serialize_status_reply(Out _pack);
+
+    if (chat_event_type::task_changed == type_)
+        serialize_task_change(Out _pack);
 }
 
 void chat_event_data::deserialize_chat_modifications(const tools::tlvpack &_pack)
 {
-    assert(chat_.new_name_.empty());
+    im_assert(chat_.new_name_.empty());
 
     if (type_ == chat_event_type::chat_name_modified)
     {
         const auto new_name_item = _pack.get_item(mf_chat_event_new_chat_name);
-        assert(new_name_item);
+        im_assert(new_name_item);
 
         auto new_name = new_name_item->get_value<std::string>();
-        assert(!new_name.empty());
+        im_assert(!new_name.empty());
 
         chat_.new_name_ = std::move(new_name);
     }
@@ -1913,7 +1936,7 @@ void chat_event_data::deserialize_chat_modifications(const tools::tlvpack &_pack
     if (type_ == chat_event_type::chat_description_modified)
     {
         const auto item = _pack.get_item(mf_chat_event_new_chat_description);
-        assert(item);
+        im_assert(item);
 
         chat_.new_description_ = item->get_value<std::string>();
     }
@@ -1921,7 +1944,7 @@ void chat_event_data::deserialize_chat_modifications(const tools::tlvpack &_pack
     if (type_ == chat_event_type::chat_rules_modified)
     {
         const auto item = _pack.get_item(mf_chat_event_new_chat_rules);
-        assert(item);
+        im_assert(item);
 
         chat_.new_rules_ = item->get_value<std::string>();
     }
@@ -1929,7 +1952,7 @@ void chat_event_data::deserialize_chat_modifications(const tools::tlvpack &_pack
     if (type_ == chat_event_type::chat_stamp_modified)
     {
         const auto item = _pack.get_item(mf_chat_event_new_chat_stamp);
-        assert(item);
+        im_assert(item);
 
         chat_.new_stamp_ = item->get_value<std::string>();
     }
@@ -1937,15 +1960,15 @@ void chat_event_data::deserialize_chat_modifications(const tools::tlvpack &_pack
 
 void chat_event_data::deserialize_mchat_members(const tools::tlvpack &_pack)
 {
-    assert(mchat_.members_friendly_.empty());
+    im_assert(mchat_.members_friendly_.empty());
 
     for (auto index = 0u; index < _pack.size(); ++index)
     {
         const auto item = _pack.get_item(index);
-        assert(item);
+        im_assert(item);
 
         auto member = item->get_value<std::string>();
-        assert(!member.empty());
+        im_assert(!member.empty());
 
         mchat_.members_friendly_.push_back(std::move(member));
     }
@@ -1953,15 +1976,15 @@ void chat_event_data::deserialize_mchat_members(const tools::tlvpack &_pack)
 
 void chat_event_data::deserialize_mchat_members_aimids(const tools::tlvpack &_pack)
 {
-    assert(mchat_.members_.empty());
+    im_assert(mchat_.members_.empty());
 
     for (auto index = 0u; index < _pack.size(); ++index)
     {
         const auto item = _pack.get_item(index);
-        assert(item);
+        im_assert(item);
 
         auto member = item->get_value<std::string>();
-        assert(!member.empty());
+        im_assert(!member.empty());
 
         mchat_.members_.push_back(std::move(member));
     }
@@ -1982,10 +2005,24 @@ void chat_event_data::chat_event_data::deserialize_status_reply(const tools::tlv
         status_reply_.owner_status_descriprion_ = owner_status_description_item->get_value<std::string>();
 }
 
+void chat_event_data::deserialize_task_change(const tools::tlvpack& _pack)
+{
+    if (const auto editor_item = _pack.get_item(mf_chat_event_task_editor))
+        task_.editor_ = editor_item->get_value<std::string>();
+    if (const auto title_item = _pack.get_item(mf_task_title))
+        task_.change_.title_ = title_item->get_value<std::string>();
+    if (const auto assignee_item = _pack.get_item(mf_task_assignee))
+        task_.change_.assignee_ = assignee_item->get_value<std::string>();
+    if (const auto end_time_item = _pack.get_item(mf_task_end_time))
+        task_.change_.set_end_time_from_seconds(end_time_item->get_value<int64_t>());
+    if (const auto status_item = _pack.get_item(mf_task_status))
+        task_.change_.status_ = tasks::string_to_status(status_item->get_value<std::string>());
+}
+
 chat_event_type chat_event_data::get_type() const
 {
-    assert(type_ >= chat_event_type::min);
-    assert(type_ <= chat_event_type::max);
+    im_assert(type_ >= chat_event_type::min);
+    im_assert(type_ <= chat_event_type::max);
 
     return type_;
 }
@@ -2019,14 +2056,15 @@ bool chat_event_data::has_mchat_members() const
 
 bool chat_event_data::has_chat_modifications() const
 {
-    static const auto types_with_chat_modifications =
+    static constexpr auto types_with_chat_modifications =
     {
         chat_event_type::chat_name_modified,
         chat_event_type::chat_description_modified,
         chat_event_type::chat_rules_modified,
         chat_event_type::chat_stamp_modified,
         chat_event_type::chat_join_moderation_modified,
-        chat_event_type::chat_public_modified
+        chat_event_type::chat_public_modified,
+        chat_event_type::chat_trust_requied_modified,
     };
 
     return std::any_of(types_with_chat_modifications.begin(), types_with_chat_modifications.end(), [this](const auto type) { return type == get_type(); });
@@ -2044,7 +2082,8 @@ bool chat_event_data::has_sender_aimid() const
         chat_event_type::generic,
         chat_event_type::message_deleted,
         chat_event_type::warn_about_stranger,
-        chat_event_type::no_longer_stranger
+        chat_event_type::no_longer_stranger,
+        chat_event_type::task_changed
     };
 
     return !std::any_of(types_without_sender.begin(), types_without_sender.end(), [this](const auto type) { return type == get_type(); });
@@ -2052,28 +2091,33 @@ bool chat_event_data::has_sender_aimid() const
 
 void chat_event_data::serialize_chat_modifications(Out coll_helper &_coll) const
 {
-    if (type_ == chat_event_type::chat_name_modified)
+    switch (type_)
     {
-        const auto &new_name = chat_.new_name_;
-        assert(!new_name.empty());
-
-        _coll.set_value_as_string("chat/new_name", new_name);
-    }
-
-    if (type_ == chat_event_type::chat_description_modified)
-        _coll.set<std::string>("chat/new_description", chat_.new_description_);
-
-    if (type_ == chat_event_type::chat_rules_modified)
-        _coll.set<std::string>("chat/new_rules", chat_.new_rules_);
-
-    if (type_ == chat_event_type::chat_stamp_modified)
-        _coll.set<std::string>("chat/new_stamp", chat_.new_stamp_);
-
-    if (type_ == chat_event_type::chat_join_moderation_modified)
+    case chat_event_type::chat_name_modified:
+        im_assert(!chat_.new_name_.empty());
+        _coll.set_value_as_string("chat/new_name", chat_.new_name_);
+        break;
+    case chat_event_type::chat_description_modified:
+        _coll.set_value_as_string("chat/new_description", chat_.new_description_);
+        break;
+    case chat_event_type::chat_rules_modified:
+        _coll.set_value_as_string("chat/new_rules", chat_.new_rules_);
+        break;
+    case chat_event_type::chat_stamp_modified:
+        _coll.set_value_as_string("chat/new_stamp", chat_.new_stamp_);
+        break;
+    case chat_event_type::chat_join_moderation_modified:
         _coll.set<bool>("chat/new_join_moderation", chat_.new_join_moderation_);
-
-    if (type_ == chat_event_type::chat_public_modified)
+        break;
+    case chat_event_type::chat_public_modified:
         _coll.set<bool>("chat/new_public", chat_.new_public_);
+        break;
+    case chat_event_type::chat_trust_requied_modified:
+        _coll.set<bool>("chat/new_trust", chat_.new_trust_required_);
+        break;
+    default:
+        break;
+    }
 }
 
 void chat_event_data::serialize_chat_modifications(Out tools::tlvpack &_pack) const
@@ -2081,7 +2125,7 @@ void chat_event_data::serialize_chat_modifications(Out tools::tlvpack &_pack) co
     if (type_ == chat_event_type::chat_name_modified)
     {
         const auto &new_name = chat_.new_name_;
-        assert(!new_name.empty());
+        im_assert(!new_name.empty());
 
         _pack.push_child(tools::tlv(message_fields::mf_chat_event_new_chat_name, new_name));
     }
@@ -2099,13 +2143,13 @@ void chat_event_data::serialize_chat_modifications(Out tools::tlvpack &_pack) co
 void chat_event_data::serialize_mchat_members(Out coll_helper &_coll) const
 {
     const auto &members_friendly = mchat_.members_friendly_;
-    assert(!members_friendly.empty());
+    im_assert(!members_friendly.empty());
 
     ifptr<iarray> members_array(_coll->create_array());
     members_array->reserve(members_friendly.size());
     for (const auto &friendly : members_friendly)
     {
-        assert(!friendly.empty());
+        im_assert(!friendly.empty());
 
         ifptr<ivalue> friendly_value(_coll->create_value());
         friendly_value->set_as_string(friendly.c_str(), (int32_t)friendly.length());
@@ -2124,7 +2168,7 @@ void chat_event_data::serialize_mchat_members_aimids(Out coll_helper &_coll) con
     members_array->reserve(members.size());
     for (const auto &friendly : members)
     {
-        assert(!friendly.empty());
+        im_assert(!friendly.empty());
 
         ifptr<ivalue> friendly_value(_coll->create_value());
         friendly_value->set_as_string(friendly.c_str(), (int32_t)friendly.length());
@@ -2138,7 +2182,7 @@ void chat_event_data::serialize_mchat_members_aimids(Out coll_helper &_coll) con
 void chat_event_data::serialize_mchat_members(Out tools::tlvpack &_pack) const
 {
     const auto &friendly_members = mchat_.members_friendly_;
-    assert(!friendly_members.empty());
+    im_assert(!friendly_members.empty());
 
     tools::tlvpack members_pack;
 
@@ -2152,7 +2196,7 @@ void chat_event_data::serialize_mchat_members(Out tools::tlvpack &_pack) const
 void chat_event_data::serialize_mchat_members_aimids(Out tools::tlvpack &_pack) const
 {
     const auto &members = mchat_.members_;
-    assert(!members.empty());
+    im_assert(!members.empty());
 
     tools::tlvpack members_pack;
 
@@ -2177,6 +2221,27 @@ void chat_event_data::serialize_status_reply(Out tools::tlvpack& _pack) const
     _pack.push_child(tools::tlv(mf_chat_event_owner_status, status_reply_.owner_status_));
     _pack.push_child(tools::tlv(mf_chat_event_sender_status_desctiprion, status_reply_.sender_status_description_));
     _pack.push_child(tools::tlv(mf_chat_event_owner_status_description, status_reply_.owner_status_descriprion_));
+}
+
+void core::archive::chat_event_data::serialize_task_change(Out coll_helper& _coll) const
+{
+    coll_helper task_collection(_coll->create_collection(), true);
+    task_collection.set_value_as_string("editor", task_.editor_);
+    task_.change_.serialize(task_collection.get());
+    _coll.set_value_as_collection("task_event", task_collection.get());
+}
+
+void core::archive::chat_event_data::serialize_task_change(Out tools::tlvpack& _pack) const
+{
+    if (const auto& title = task_.change_.title_)
+        _pack.push_child(core::tools::tlv(message_fields::mf_task_title, *title));
+    if (const auto& assignee = task_.change_.assignee_)
+        _pack.push_child(core::tools::tlv(message_fields::mf_task_assignee, *assignee));
+    if (task_.change_.end_time_)
+        _pack.push_child(core::tools::tlv(message_fields::mf_task_end_time, task_.change_.end_time_to_seconds()));
+    if (const auto& status = task_.change_.status_)
+        _pack.push_child(core::tools::tlv(message_fields::mf_task_status, core::tasks::status_to_string(*status)));
+    _pack.push_child(core::tools::tlv(message_fields::mf_chat_event_task_editor, task_.editor_));
 }
 
 bool chat_event_data::is_type_deleted() const noexcept
@@ -2224,7 +2289,7 @@ persons_map chat_event_data::get_persons() const
 
 history_message_sptr history_message::make_deleted_patch(const int64_t _archive_id, std::string_view _internal_id)
 {
-    assert(_archive_id > 0 || !_internal_id.empty());
+    im_assert(_archive_id > 0 || !_internal_id.empty());
 
     auto result = std::make_shared<history_message>();
 
@@ -2238,7 +2303,7 @@ history_message_sptr history_message::make_deleted_patch(const int64_t _archive_
 
 history_message_sptr history_message::make_modified_patch(const int64_t _archive_id, std::string_view _internal_id, chat_event_data_sptr _chat_event)
 {
-    assert(_archive_id > 0 || !_internal_id.empty());
+    im_assert(_archive_id > 0 || !_internal_id.empty());
 
     auto result = make_updated_patch(_archive_id, _internal_id);
     result->set_modified(true);
@@ -2250,7 +2315,7 @@ history_message_sptr history_message::make_modified_patch(const int64_t _archive
 
 history_message_sptr history_message::make_updated_patch(const int64_t _archive_id, std::string_view _internal_id)
 {
-    assert(_archive_id > 0 || !_internal_id.empty());
+    im_assert(_archive_id > 0 || !_internal_id.empty());
 
     auto result = std::make_shared<history_message>();
 
@@ -2264,7 +2329,7 @@ history_message_sptr history_message::make_updated_patch(const int64_t _archive_
 
 history_message_sptr history_message::make_updated(const int64_t _archive_id, std::string_view _internal_id)
 {
-    assert(_archive_id > 0 || !_internal_id.empty());
+    im_assert(_archive_id > 0 || !_internal_id.empty());
 
     auto result = std::make_shared<history_message>();
 
@@ -2278,7 +2343,7 @@ history_message_sptr history_message::make_updated(const int64_t _archive_id, st
 
 history_message_sptr core::archive::history_message::make_clear_patch(const int64_t _archive_id, std::string_view _internal_id)
 {
-    assert(_archive_id > 0 || !_internal_id.empty());
+    im_assert(_archive_id > 0 || !_internal_id.empty());
 
     auto result = std::make_shared<history_message>();
 
@@ -2353,14 +2418,14 @@ bool history_message::init_file_sharing_from_local_path(const std::string& _loca
 
     if (core::tools::system::is_exist(core::tools::from_utf8(_local_path)))
     {
-        assert(!file_sharing_);
+        im_assert(!file_sharing_);
 
         file_sharing_ = std::make_unique<core::archive::file_sharing_data>(_local_path, std::string(), _duration, _base_content_type);
         return true;
     }
     else
     {
-        assert(!"is_exist");
+        im_assert(!"is_exist");
         return false;
     }
 }
@@ -2377,7 +2442,7 @@ void core::archive::history_message::init_file_sharing(file_sharing_data&& _data
 
 void history_message::init_sticker_from_text(std::string _text)
 {
-    assert(boost::starts_with(_text, "ext:"));
+    im_assert(boost::starts_with(_text, "ext:"));
 
     sticker_ = std::make_unique<core::archive::sticker_data>(std::move(_text));
 }
@@ -2432,9 +2497,11 @@ void history_message::copy(const history_message& _message)
     shared_contact_.reset();
     geo_.reset();
     poll_.reset();
+    task_.reset();
 
     unsupported_ = _message.unsupported_;
     hide_edit_ = _message.hide_edit_;
+    thread_id_ = _message.thread_id_;
 
     if (_message.sticker_)
         sticker_ = std::make_unique<core::archive::sticker_data>(*_message.sticker_);
@@ -2463,6 +2530,8 @@ void history_message::copy(const history_message& _message)
     if (_message.poll_)
         poll_ = _message.poll_;
 
+    if (_message.task_)
+        task_ = _message.task_;
 }
 
 void history_message::merge(const history_message& _message)
@@ -2478,6 +2547,7 @@ void history_message::merge(const history_message& _message)
     if (_message.description_format_)
         description_format_ = std::make_unique<format_data>(*_message.description_format_);
     hide_edit_ = _message.hide_edit_;
+    thread_id_ = _message.thread_id_;
 
     sticker_.reset();
     mult_.reset();
@@ -2488,6 +2558,7 @@ void history_message::merge(const history_message& _message)
     shared_contact_.reset();
     geo_.reset();
     poll_.reset();
+    task_.reset();
     format_.reset();
 
     if (_message.sticker_)
@@ -2516,6 +2587,9 @@ void history_message::merge(const history_message& _message)
 
     if (_message.poll_)
         poll_ = _message.poll_;
+
+    if (_message.task_)
+        task_ = _message.task_;
 
     if (_message.format_)
         format_ = std::make_unique<format_data>(*_message.format_);
@@ -2548,8 +2622,8 @@ const archive::chat_data* history_message::get_chat_data() const noexcept
 
 void history_message::set_prev_msgid(int64_t _value) noexcept
 {
-    assert(_value >= -1);
-    assert(!has_msgid() || (_value < get_msgid()));
+    im_assert(_value >= -1);
+    im_assert(!has_msgid() || (_value < get_msgid()));
 
     prev_msg_id_ = _value;
 }
@@ -2565,6 +2639,7 @@ void history_message::serialize(icollection* _collection, const time_t _offset, 
     coll.set<bool>("deleted", is_deleted());
     coll.set<bool>("restored_patch", is_restored_patch());
     coll.set_value_as_int("time", static_cast<int32_t>(time_ > 0 ? time_ + _offset : time_));
+    coll.set_value_as_int("server_time", static_cast<int32_t>(time_));
 
     if (_serialize_message)
         coll.set_value_as_string("text", text_);
@@ -2578,6 +2653,8 @@ void history_message::serialize(icollection* _collection, const time_t _offset, 
     coll.set_value_as_string("url", url_);
     coll.set_value_as_bool("unsupported", unsupported_);
     coll.set_value_as_bool("hide_edit", hide_edit_);
+    if (!thread_id_.empty())
+        coll.set_value_as_string("thread_id", thread_id_);
 
     if (chat_event_)
     {
@@ -2690,6 +2767,9 @@ void history_message::serialize(icollection* _collection, const time_t _offset, 
     if (poll_)
         poll_->serialize(coll.get());
 
+    if (task_)
+        task_->serialize(coll.get());
+
     if (reactions_)
         reactions_->serialize(coll.get());
 
@@ -2748,6 +2828,8 @@ void history_message::serialize_call(core::tools::binary_stream& _data, const st
     msg_pack.push_child(core::tools::tlv(mf_sender_aimid, sender_aimid_));
     msg_pack.push_child(core::tools::tlv(mf_buttons, buttons_json_));
     msg_pack.push_child(core::tools::tlv(mf_hide_edit, hide_edit_));
+    if (!thread_id_.empty())
+        msg_pack.push_child(core::tools::tlv(mf_thread_id, thread_id_));
 
     if (format_)
     {
@@ -2825,7 +2907,10 @@ void history_message::serialize_call(core::tools::binary_stream& _data, const st
         geo_->serialize(msg_pack);
 
     if (poll_)
-        serializePoll(*poll_, msg_pack);
+        serialize_poll(*poll_, msg_pack);
+
+    if (task_)
+        serialize_task(*task_, msg_pack);
 
     if (reactions_)
         reactions_->serialize(msg_pack);
@@ -2920,7 +3005,7 @@ int32_t history_message::unserialize_call(core::tools::binary_stream& _data, std
                 const auto pack = tlv_field->get_value<core::tools::tlvpack>();
                 if (!voip_->unserialize(pack))
                 {
-                    assert(!"voip unserialization failed");
+                    im_assert(!"voip unserialization failed");
                     voip_.reset();
                 }
             }
@@ -2999,7 +3084,13 @@ int32_t history_message::unserialize_call(core::tools::binary_stream& _data, std
         case message_fields::mf_poll:
             {
                 auto pack = tlv_field->get_value<core::tools::tlvpack>();
-                poll_ = unserializePoll(pack);
+                poll_ = unserialize_poll(pack);
+            }
+            break;
+        case message_fields::mf_task:
+            {
+                auto pack = tlv_field->get_value<core::tools::tlvpack>();
+                task_ = unserialize_task(pack);
             }
             break;
         case message_fields::mf_reactions:
@@ -3041,6 +3132,9 @@ int32_t history_message::unserialize_call(core::tools::binary_stream& _data, std
         case message_fields::mf_hide_edit:
             hide_edit_ = tlv_field->get_value<bool>(false);
             break;
+        case message_fields::mf_thread_id:
+            thread_id_ = tlv_field->get_value<std::string>({});
+            break;
         case message_fields::mf_call_aimid:
             _aimid = tlv_field->get_value<std::string>(std::string());
             break;
@@ -3054,7 +3148,7 @@ int32_t history_message::unserialize_call(core::tools::binary_stream& _data, std
 
 int32_t history_message::unserialize(const rapidjson::Value& _node, const std::string &_sender_aimid)
 {
-    assert(!_sender_aimid.empty());
+    im_assert(!_sender_aimid.empty());
 
     static const message_fields_set new_message_fields_set = []()
     {
@@ -3113,7 +3207,7 @@ int32_t history_message::unserialize(const rapidjson::Value& _node, const std::s
             voip_ = std::make_unique<core::archive::voip_data>();
             if (!voip_->unserialize(field.value, _sender_aimid))
             {
-                assert(!"voip unserialization failed");
+                im_assert(!"voip unserialization failed");
                 voip_.reset();
             }
         }
@@ -3164,6 +3258,10 @@ int32_t history_message::unserialize(const rapidjson::Value& _node, const std::s
             // check only for field existence
             continue;
         }
+        else if (name == c_thread)
+        {
+            tools::unserialize_value(field.value, "threadId", thread_id_);
+        }
         else if (new_message_fields_set.find(name) != new_message_fields_set.end()) // ! must be the last check
         {
             unsupported_ = true;
@@ -3200,9 +3298,7 @@ int32_t history_message::unserialize(const rapidjson::Value& _node, const std::s
                         }
                         else if (name == c_format)
                         {
-                            if (!format_)
-                                format_ = std::make_unique<format_data>();
-                            format_->unserialize(field.value);
+                            format_ = std::make_unique<format_data>(field.value);
                         }
                         else if (name == c_captioned_content)
                         {
@@ -3213,11 +3309,7 @@ int32_t history_message::unserialize(const rapidjson::Value& _node, const std::s
                                 description_ = rapidjson_get_string(it->value);
 
                             if (const auto it = field.value.FindMember(tools::make_string_ref(c_format)); it != field.value.MemberEnd() && it->value.IsObject())
-                            {
-                                if (!description_format_)
-                                    description_format_ = std::make_unique<format_data>();
-                                description_format_->unserialize(it->value);
-                            }
+                                description_format_ = std::make_unique<format_data>(it->value);
                         }
                         else if (name == c_contact)
                         {
@@ -3236,6 +3328,12 @@ int32_t history_message::unserialize(const rapidjson::Value& _node, const std::s
                             poll_data poll;
                             if (poll.unserialize(field.value))
                                 poll_ = std::move(poll);
+                        }
+                        else if (name == c_task)
+                        {
+                            core::tasks::task_data task;
+                            if (task.unserialize(field.value))
+                                task_ = std::move(task);
                         }
                         else if (name == c_has_animated_sticker)
                         {
@@ -3320,8 +3418,8 @@ int32_t history_message::unserialize(const rapidjson::Value& _node, const std::s
     // try to read a chat event if possible
 
     const auto event_class = probe_for_chat_event(_node);
-    assert(event_class > chat_event_type_class::min);
-    assert(event_class < chat_event_type_class::max);
+    im_assert(event_class > chat_event_type_class::min);
+    im_assert(event_class < chat_event_type_class::max);
 
     switch(event_class)
     {
@@ -3368,12 +3466,16 @@ int32_t history_message::unserialize(const rapidjson::Value& _node, const std::s
         chat_event_ = chat_event_data::make_custom_status_reply_event(_node.FindMember("event")->value);
         break;
 
+    case chat_event_type_class::task_changed:
+        chat_event_ = chat_event_data::make_task_change_event(_node.FindMember("event")->value);
+        break;
+
     case chat_event_type_class::generic:
         chat_event_ = chat_event_data::make_generic_event(_node.FindMember("text")->value);
         break;
 
     default:
-        assert(!"unexpected event class");
+        im_assert(!"unexpected event class");
     }
 
     if (!chat_event_)
@@ -3456,7 +3558,7 @@ int64_t history_message::get_id_field(core::tools::binary_stream& _stream)
     return -1;
 }
 
-void core::archive::history_message::set_description_format(const core::data::format::string_formatting& _format)
+void core::archive::history_message::set_description_format(const core::data::format& _format)
 {
     description_format_ = std::make_unique<format_data>(_format);
 }
@@ -3550,7 +3652,7 @@ void history_message::set_clear(const bool _clear)
 
 void history_message::apply_header_flags(const message_header &_header)
 {
-    assert(!_header.is_patch() || _header.is_updated_message());
+    im_assert(!_header.is_patch() || _header.is_updated_message());
 
     set_deleted(_header.is_deleted());
     set_restored_patch(_header.is_restored_patch());
@@ -3560,8 +3662,8 @@ void history_message::apply_modifications(const history_block &_modifications)
 {
     for (const auto &modification : _modifications)
     {
-        assert(modification->get_msgid() == get_msgid());
-        assert(modification->is_modified() || modification->is_updated());
+        im_assert(modification->get_msgid() == get_msgid());
+        im_assert(modification->is_modified() || modification->is_updated());
 
         if (modification->has_text())
         {
@@ -3668,13 +3770,13 @@ bool history_message::contents_equal(const history_message& _msg) const
             return get_text() == _msg.get_text();
 
         case message_type::file_sharing:
-            assert(file_sharing_);
-            assert(_msg.file_sharing_);
+            im_assert(file_sharing_);
+            im_assert(_msg.file_sharing_);
             return file_sharing_->contents_equal(*_msg.file_sharing_);
 
         case message_type::chat_event:
-            assert(chat_event_);
-            assert(_msg.chat_event_);
+            im_assert(chat_event_);
+            im_assert(_msg.chat_event_);
             return chat_event_->contents_equal(*_msg.chat_event_);
 
         default:
@@ -3736,7 +3838,7 @@ const core::archive::poll& history_message::get_poll() const
     return poll_;
 }
 
-void history_message::set_poll_id(const std::string& _poll_id)
+void history_message::set_poll_id(std::string_view _poll_id)
 {
     if (_poll_id.empty())
         return;
@@ -3745,6 +3847,33 @@ void history_message::set_poll_id(const std::string& _poll_id)
     poll.id_ = _poll_id;
 
     poll_ = poll;
+}
+
+void core::archive::history_message::set_task(const core::tasks::task& _task)
+{
+    task_ = _task;
+}
+
+const core::tasks::task& core::archive::history_message::get_task() const
+{
+    return task_;
+}
+
+void core::archive::history_message::set_task_id(std::string_view _task_id)
+{
+    if (_task_id.empty())
+        return;
+
+    if (task_)
+    {
+        task_->id_ = _task_id;
+    }
+    else
+    {
+        core::tasks::task_data task;
+        task.id_ = _task_id;
+        task_ = task;
+    }
 }
 
 bool history_message::has_shared_contact_with_sn() const
@@ -3757,14 +3886,34 @@ bool history_message::has_poll_with_id() const
     return poll_ && !poll_->id_.empty();
 }
 
+bool core::archive::history_message::has_task_with_id() const
+{
+    return task_ && !task_->id_.empty();
+}
+
 bool history_message::has_reactions() const
 {
     return reactions_ && reactions_->exist_;
 }
 
+bool history_message::has_thread() const
+{
+    return !thread_id_.empty();
+}
+
 const reactions &history_message::get_reactions() const
 {
     return reactions_;
+}
+
+const std::string& core::archive::history_message::get_thread_id() const
+{
+    return thread_id_;
+}
+
+void history_message::set_thread_id(const std::string& _thread_id)
+{
+    thread_id_ = _thread_id;
 }
 
 void history_message::set_update_patch_version(common::tools::patch_version _value)
@@ -3781,7 +3930,7 @@ const std::string& history_message::get_text() const noexcept
 {
     if (is_sticker())
     {
-        assert(sticker_);
+        im_assert(sticker_);
         if (sticker_)
             return sticker_->get_id();
     }
@@ -3799,7 +3948,7 @@ bool history_message::has_text() const noexcept
     return !text_.empty();
 }
 
-void core::archive::history_message::set_format(const core::data::format::string_formatting& _format)
+void core::archive::history_message::set_format(const core::data::format& _format)
 {
     format_ = std::make_unique<format_data>(_format);
 }
@@ -3840,6 +3989,9 @@ void quote::serialize(icollection* _collection) const
 
     if (poll_)
         poll_->serialize(helper.get());
+
+    if (task_)
+        task_->serialize(helper.get());
 
     if (format_)
         format_->serialize(helper.get(), c_coll_format);
@@ -3895,7 +4047,10 @@ void quote::serialize(core::tools::tlvpack& _pack) const
         geo_->serialize(_pack);
 
     if (poll_)
-        serializePoll(*poll_, _pack);
+        serialize_poll(*poll_, _pack);
+
+    if (task_)
+        serialize_task(*task_, _pack);
 
     if (format_)
     {
@@ -3974,6 +4129,14 @@ void quote::unserialize(icollection* _coll)
         if (poll.unserialize(coll))
             poll_ = std::move(poll);
     }
+
+    if (helper.is_value_exist("task"))
+    {
+        auto coll = helper.get_value_as_collection("task");
+        core::tasks::task_data task;
+        if (task.unserialize(coll))
+            task_ = std::move(task);
+    }
 }
 
 bool quote::unserialize(const rapidjson::Value& _node, bool _is_forward, const message_fields_set& _new_fields)
@@ -4020,10 +4183,7 @@ bool quote::unserialize(const rapidjson::Value& _node, bool _is_forward, const m
 
             auto iter_format = field.value.FindMember(tools::make_string_ref(c_format));
             if (iter_format != field.value.MemberEnd() && iter_format->value.IsObject())
-            {
-                format_.emplace();
-                format_->unserialize(iter_format->value);
-            }
+                format_.emplace(iter_format->value);
         }
         else if (c_sticker_id == name)
         {
@@ -4057,6 +4217,12 @@ bool quote::unserialize(const rapidjson::Value& _node, bool _is_forward, const m
             if (poll.unserialize(field.value))
                 poll_ = std::move(poll);
         }
+        else if (c_task == name)
+        {
+            core::tasks::task_data task;
+            if (task.unserialize(field.value))
+                task_ = std::move(task);
+        }
         else if (c_has_animated_sticker == name)
         {
             // only check for field existence
@@ -4064,8 +4230,7 @@ bool quote::unserialize(const rapidjson::Value& _node, bool _is_forward, const m
         }
         else if (c_format == name)
         {
-            format_.emplace();
-            format_->unserialize(field.value);
+            format_.emplace(field.value);
         }
         else if (_new_fields.find(name) != _new_fields.end()) // ! must be the last check
         {
@@ -4121,7 +4286,13 @@ void quote::unserialize(const core::tools::tlvpack &_pack)
     if (auto poll_item = _pack.get_item(message_fields::mf_poll))
     {
         auto pack = poll_item->get_value<core::tools::tlvpack>();
-        poll_ = unserializePoll(pack);
+        poll_ = unserialize_poll(pack);
+    }
+
+    if (auto task_item = _pack.get_item(message_fields::mf_task))
+    {
+        auto pack = task_item->get_value<core::tools::tlvpack>();
+        task_ = unserialize_task(pack);
     }
 
     if (auto format_item = _pack.get_item(message_fields::mf_format))
@@ -4248,7 +4419,7 @@ namespace
         fill_map('a', 'z');
         fill_map('A', 'Z');
 
-        assert(map.size() == INDEX_DIVISOR);
+        im_assert(map.size() == INDEX_DIVISOR);
 
         return map;
     }
@@ -4270,7 +4441,7 @@ namespace
     {
         if (std::string sender; tools::unserialize_value(_node, "sender", sender))
         {
-            assert(!sender.empty());
+            im_assert(!sender.empty());
             return sender;
         }
 
@@ -4279,7 +4450,7 @@ namespace
 
     void serialize_metadata_from_uri(const std::string &uri, Out coll_helper &coll)
     {
-        assert(!uri.empty());
+        im_assert(!uri.empty());
 
         const auto id_opt = tools::parse_new_file_sharing_uri(uri);
         if (!id_opt)
@@ -4287,18 +4458,18 @@ namespace
 
         const auto id = *id_opt;
 
-        assert(!id.empty());
+        im_assert(!id.file_id_.empty());
 
         core::file_sharing_content_type content_type;
 
         if (!tools::get_content_type_from_uri(uri, content_type))
             return;
 
-        const auto width = calculate_size(id[1], id[2]);
-        const auto height = calculate_size(id[3], id[4]);
+        const auto width = calculate_size(id.file_id_[1], id.file_id_[2]);
+        const auto height = calculate_size(id.file_id_[3], id.file_id_[4]);
 
-        assert(width >= 0);
-        assert(height >= 0);
+        im_assert(width >= 0);
+        im_assert(height >= 0);
 
         const auto PREVIEW_SIZE_MIN = 2;
         const auto is_malformed_uri = ((width < PREVIEW_SIZE_MIN) || (height < PREVIEW_SIZE_MIN));
@@ -4324,7 +4495,7 @@ namespace
 
     std::string find_person(const std::string &_aimid, const persons_map &_persons)
     {
-        assert(!_aimid.empty());
+        im_assert(!_aimid.empty());
 
         if (const auto iter_p = _persons.find(_aimid); iter_p != _persons.end())
             return iter_p->second.friendly_;
@@ -4333,7 +4504,7 @@ namespace
 
     bool is_generic_event(const rapidjson::Value& _node)
     {
-        assert(_node.IsObject());
+        im_assert(_node.IsObject());
 
 
         if (const auto it = _node.FindMember("text"); it == _node.MemberEnd()
@@ -4397,7 +4568,7 @@ namespace
 
         if (const auto it = _node.FindMember("event"); it != _node.MemberEnd() && it->value.IsObject())
         {
-            if (auto type = common::json::get_value<std::string_view>(it->value, "type"); type)
+            if (const auto type = common::json::get_value<std::string_view>(it->value, "type"); type)
             {
                 if (*type == "warnAboutStranger")
                     return chat_event_type_class::warn_about_stranger;
@@ -4410,6 +4581,9 @@ namespace
 
                 if (*type == "customStatusReply")
                     return chat_event_type_class::custom_status_reply;
+
+                if (*type == "taskStatusChanged" || *type == "taskAssigneeChanged" || *type == "taskEndDateChanged" || *type == "taskTitleChanged")
+                    return chat_event_type_class::task_changed;
             }
         }
 
@@ -4421,7 +4595,7 @@ namespace
 
     chat_event_type_class probe_for_modified_event(const rapidjson::Value& _node)
     {
-        assert(_node.IsObject());
+        im_assert(_node.IsObject());
 
         const auto chat_node_iter = _node.FindMember("chat");
         if (chat_node_iter == _node.MemberEnd())
@@ -4431,24 +4605,14 @@ namespace
         if (!chat_node.IsObject())
             return chat_event_type_class::unknown;
 
-        if (const auto it = chat_node.FindMember("modifiedInfo"); it != chat_node.MemberEnd())
+        if (const auto it = chat_node.FindMember("modifiedInfo"); it != chat_node.MemberEnd() && it->value.IsObject())
         {
-            const auto &modified_info = it->value;
-
-            if (modified_info.IsObject() && (
-                    modified_info.HasMember("name") ||
-                    modified_info.HasMember("rules") ||
-                    modified_info.HasMember("avatarLastModified") ||
-                    modified_info.HasMember("about") ||
-                    modified_info.HasMember("stamp") ||
-                    modified_info.HasMember("joinModeration") ||
-                    modified_info.HasMember("public")))
-            {
+            static constexpr auto events = { "name", "rules", "avatarLastModified", "about", "stamp", "joinModeration", "public", "trustRequired" };
+            if (std::any_of(events.begin(), events.end(), [&info = it->value](auto e) { return info.HasMember(e); }))
                 return chat_event_type_class::chat_modified;
-            }
         }
 
-        if (const auto it = chat_node.FindMember("memberEvent"); it != chat_node.MemberEnd())
+        if (chat_node.FindMember("memberEvent") != chat_node.MemberEnd())
             return chat_event_type_class::mchat;
 
         return chat_event_type_class::unknown;
@@ -4456,7 +4620,7 @@ namespace
 
     string_vector_t read_members(const rapidjson::Value &_parent)
     {
-        assert(_parent.IsObject());
+        im_assert(_parent.IsObject());
 
         string_vector_t result;
 
@@ -4474,7 +4638,7 @@ namespace
                 continue;
 
             std::string member = rapidjson_get_string(member_value);
-            assert(!member.empty());
+            im_assert(!member.empty());
 
             if (!member.empty())
                 result.push_back(std::move(member));
@@ -4507,13 +4671,13 @@ namespace
             return chat_event_type::invalid;
 
         const auto type = std::get<1>(*iter);
-        assert(type > chat_event_type::min);
-        assert(type < chat_event_type::max);
+        im_assert(type > chat_event_type::min);
+        im_assert(type < chat_event_type::max);
 
         return type;
     }
 
-    void serializePoll(const poll_data& _poll, core::tools::tlvpack& _pack)
+    void serialize_poll(const poll_data& _poll, core::tools::tlvpack& _pack)
     {
         // serialize only the fields which could be in message with poll
         core::tools::tlvpack pack;
@@ -4527,7 +4691,7 @@ namespace
         _pack.push_child(core::tools::tlv(message_fields::mf_poll, pack));
     }
 
-    archive::poll unserializePoll(core::tools::tlvpack& _pack)
+    archive::poll unserialize_poll(core::tools::tlvpack& _pack)
     {
         // unserialize only the fields which could be in message with poll
         poll_data poll;
@@ -4557,6 +4721,37 @@ namespace
         }
 
         return poll;
+    }
+
+    void serialize_task(const core::tasks::task_data& _task, core::tools::tlvpack& _pack)
+    {
+        core::tools::tlvpack pack;
+        if (!_task.id_.empty())
+        {
+            pack.push_child(core::tools::tlv(message_fields::mf_task_id, _task.id_));
+        }
+        else
+        {
+            // store task fields for pending message
+            pack.push_child(core::tools::tlv(message_fields::mf_task_title, _task.params_.title_));
+            pack.push_child(core::tools::tlv(message_fields::mf_task_assignee, _task.params_.assignee_));
+            pack.push_child(core::tools::tlv(message_fields::mf_task_end_time, _task.end_time_to_seconds()));
+        }
+        _pack.push_child(core::tools::tlv(message_fields::mf_task, pack));
+    }
+
+    core::tasks::task unserialize_task(core::tools::tlvpack& _pack)
+    {
+        core::tasks::task_data task;
+        if (const auto id_item = _pack.get_item(message_fields::mf_task_id))
+            task.id_ = id_item->get_value<std::string>();
+        if (const auto assignee_item = _pack.get_item(message_fields::mf_task_title))
+            task.params_.title_ = assignee_item->get_value<std::string>();
+        if (const auto assignee_item = _pack.get_item(message_fields::mf_task_assignee))
+            task.params_.assignee_ = assignee_item->get_value<std::string>();
+        if (const auto time_item = _pack.get_item(message_fields::mf_task_end_time))
+            task.set_end_time_from_seconds(time_item->get_value<int64_t>());
+        return task;
     }
 
     std::vector<std::vector<button_data>> unserialize_buttons(const rapidjson::Value& _node)
@@ -4599,8 +4794,6 @@ namespace
 
 void core::archive::format_data::serialize(icollection* _collection, std::string_view _name) const
 {
-    namespace core_fmt = core::data::format;
-
     auto coll = coll_helper(_collection, false);
     auto coll_format = coll_helper(coll->create_collection(), true);
 
@@ -4611,7 +4804,7 @@ void core::archive::format_data::serialize(icollection* _collection, std::string
         core::coll_helper coll_range(coll->create_collection(), true);
         coll_range.set_value_as_uint(c_format_type, static_cast<uint32_t>(info.type_));
         coll_range.set_value_as_int(c_format_offset, info.range_.offset_);
-        coll_range.set_value_as_int(c_format_length, info.range_.length_);
+        coll_range.set_value_as_int(c_format_length, info.range_.size_);
         if (info.data_.has_value())
             coll_range.set_value_as_string(c_format_data, *(info.data_));
         core::ifptr<core::ivalue> value(coll->create_value());
@@ -4623,36 +4816,35 @@ void core::archive::format_data::serialize(icollection* _collection, std::string
 
 void core::archive::format_data::serialize(tools::tlvpack& _pack) const
 {
-    namespace core_fmt = core::data::format;
-
-    const auto to_mf_type = [](core_fmt::format_type _type)
+    using ftype = core::data::format_type;
+    const auto to_mf_type = [](ftype _type)
     {
         switch (_type)
         {
-        case core_fmt::format_type::bold:
+        case ftype::bold:
             return message_fields::mf_format_bold;
-        case core_fmt::format_type::italic:
+        case ftype::italic:
             return message_fields::mf_format_italic;
-        case core_fmt::format_type::underline:
+        case ftype::underline:
             return message_fields::mf_format_underline;
-        case core_fmt::format_type::strikethrough:
+        case ftype::strikethrough:
             return message_fields::mf_format_strikethrough;
-        case core_fmt::format_type::inline_code:
+        case ftype::monospace:
             return message_fields::mf_format_inline_code;
-        case core_fmt::format_type::link:
+        case ftype::link:
             return message_fields::mf_format_url;
-        case core_fmt::format_type::mention:
+        case ftype::mention:
             return message_fields::mf_format_mention;
-        case core_fmt::format_type::quote:
+        case ftype::quote:
             return message_fields::mf_format_quote;
-        case core_fmt::format_type::pre:
+        case ftype::pre:
             return message_fields::mf_format_pre;
-        case core_fmt::format_type::ordered_list:
+        case ftype::ordered_list:
             return message_fields::mf_format_ordered_list;
-        case core_fmt::format_type::unordered_list:
+        case ftype::unordered_list:
             return message_fields::mf_format_unordered_list;
-        case core_fmt::format_type::none:
-            assert(false);
+        case ftype::none:
+            im_assert(false);
         }
         return message_fields::mf_format_bold;
     };
@@ -4661,55 +4853,10 @@ void core::archive::format_data::serialize(tools::tlvpack& _pack) const
     {
         core::tools::tlvpack pack;
         pack.push_child(core::tools::tlv(message_fields::mf_format_offset, static_cast<int32_t>(params.range_.offset_)));
-        pack.push_child(core::tools::tlv(message_fields::mf_format_length, static_cast<int32_t>(params.range_.length_)));
+        pack.push_child(core::tools::tlv(message_fields::mf_format_length, static_cast<int32_t>(params.range_.size_)));
         if (params.data_.has_value())
             pack.push_child(core::tools::tlv(message_fields::mf_format_data, *(params.data_)));
         _pack.push_child(core::tools::tlv(to_mf_type(params.type_), pack));
-    }
-}
-
-void core::archive::format_data::unserialize(const rapidjson::Value& _node)
-{
-    assert(_node.IsObject());
-    namespace core_fmt = core::data::format;
-
-    if (!_node.IsObject())
-        return;
-
-    const auto read_range = [](const rapidjson::Value& _value)
-    {
-        assert(_value.IsObject());
-        auto result = core_fmt::format_range();
-        tools::unserialize_value(_value, c_format_offset, result.offset_);
-        tools::unserialize_value(_value, c_format_length, result.length_);
-        return result;
-    };
-
-    for (const auto& field : _node.GetObject())
-    {
-        const auto format_type = read_format_type_from_string(rapidjson_get_string_view(field.name));
-        assert(field.value.IsArray());
-        const auto params_array = field.value.GetArray();
-        for (const auto& format_params : params_array)
-        {
-            const auto range = read_range(format_params);
-            auto data = core_fmt::format_data();
-            if (format_type == core_fmt::format_type::link)
-            {
-                auto data_str = std::string();
-                tools::unserialize_value(format_params, c_format_url, data_str);
-                if (!data_str.empty())
-                    data = data_str;
-            }
-            else if (format_type == core_fmt::format_type::pre)
-            {
-                auto data_str = std::string();
-                tools::unserialize_value(format_params, c_format_lang, data_str);
-                if (!data_str.empty())
-                    data = data_str;
-            }
-            formats_.emplace_back(format_type, range, std::move(data));
-        }
     }
 }
 
@@ -4717,7 +4864,7 @@ bool core::archive::format_data::unserialize(core::tools::tlvpack& _pack)
 {
     const auto from_mf_type = [](message_fields _mf_type)
     {
-        using format_type = core::data::format::format_type;
+        using format_type = core::data::format_type;
         switch (_mf_type)
         {
         case message_fields::mf_format_bold:
@@ -4729,7 +4876,7 @@ bool core::archive::format_data::unserialize(core::tools::tlvpack& _pack)
         case message_fields::mf_format_strikethrough:
             return format_type::strikethrough;
         case message_fields::mf_format_inline_code:
-            return format_type::inline_code;
+            return format_type::monospace;
         case message_fields::mf_format_url:
             return format_type::link;
         case message_fields::mf_format_mention:
@@ -4743,16 +4890,14 @@ bool core::archive::format_data::unserialize(core::tools::tlvpack& _pack)
         case message_fields::mf_format_unordered_list:
             return format_type::unordered_list;
         default:
-            assert(false);
+            im_assert(false);
         };
         return format_type::bold;
     };
 
     const auto read_format_info = [](core::tools::tlvpack& _info_pack)
     {
-        namespace core_fmt = core::data::format;
-
-        auto result = core_fmt::format();
+        auto result = core::data::range_format();
         for (auto field = _info_pack.get_first(); field; field = _info_pack.get_next())
         {
             switch (static_cast<message_fields>(field->get_type()))
@@ -4761,13 +4906,13 @@ bool core::archive::format_data::unserialize(core::tools::tlvpack& _pack)
                 result.range_.offset_ = field->get_value<int32_t>();
                 break;
             case message_fields::mf_format_length:
-                result.range_.length_ = field->get_value<int32_t>();
+                result.range_.size_ = field->get_value<int32_t>();
                 break;
             case message_fields::mf_format_data:
                 result.data_ = field->get_value<std::string>();
                 break;
             default:
-                assert(false);
+                im_assert(false);
             }
         }
         return result;
@@ -4794,23 +4939,24 @@ void core::archive::format_data::unserialize(const coll_helper& _coll, std::stri
     clear();
 
     auto array = _coll.get_value_as_array(_name);
+    auto format_builder = core::data::format::builder(array->size());
     for (auto i = 0; i < array->size(); ++i)
     {
         auto coll = array->get_at(i)->get_as_collection();
-        assert(coll);
+        im_assert(coll);
         if (coll)
         {
-            core_fmt::format format;
+            core::data::range_format format;
 
             auto v = coll->get_value(c_format_offset);
             if (v)
                 format.range_.offset_ = v->get_as_int();
 
             if (v = coll->get_value(c_format_length); v)
-                format.range_.length_ = v->get_as_int();
+                format.range_.size_ = v->get_as_int();
 
             if (v = coll->get_value(c_format_type); v)
-                format.type_ = static_cast<core_fmt::format_type>(v->get_as_uint());
+                format.type_ = static_cast<core::data::format_type>(v->get_as_uint());
 
             if (coll->is_value_exist(c_format_data))
             {
@@ -4818,8 +4964,89 @@ void core::archive::format_data::unserialize(const coll_helper& _coll, std::stri
                     format.data_ = v->get_as_string();
             }
 
-            add(std::move(format));
+            im_assert(format.type_ != core::data::format_type::none);
+            format_builder %= std::move(format);
         }
     }
+    *this = format_builder.finalize();
 }
 
+void core::archive::serialize_message_quotes(const quotes_vec& _quotes, rapidjson::Document& _doc, rapidjson_allocator& _a)
+{
+    for (const auto& quote : _quotes)
+    {
+        rapidjson::Value quote_params(rapidjson::Type::kObjectType);
+        quote_params.AddMember("mediaType", quote.get_type(), _a);
+
+        if (!quote.get_description().empty())
+        {
+            quote_params.AddMember("text", "", _a);
+            rapidjson::Value caption_params(rapidjson::Type::kObjectType);
+            caption_params.AddMember("caption", quote.get_description(), _a);
+            if (!quote.get_description_format().empty())
+                caption_params.AddMember("format", quote.get_description_format().serialize(_a), _a);
+            caption_params.AddMember("url", quote.get_url(), _a);
+            quote_params.AddMember("captionedContent", std::move(caption_params), _a);
+        }
+        else if (quote.get_shared_contact())
+        {
+            quote_params.AddMember("text", "", _a);
+            rapidjson::Value contact_params(rapidjson::Type::kObjectType);
+            contact_params.AddMember("name", quote.get_shared_contact()->name_, _a);
+            contact_params.AddMember("phone", quote.get_shared_contact()->phone_, _a);
+            if (!quote.get_shared_contact()->sn_.empty())
+                contact_params.AddMember("sn", quote.get_shared_contact()->sn_, _a);
+            quote_params.AddMember("contact", std::move(contact_params), _a);
+        }
+        else if (quote.get_geo())
+        {
+            quote_params.AddMember("text", quote.get_text(), _a);
+            rapidjson::Value geo_params(rapidjson::Type::kObjectType);
+            geo_params.AddMember("name", quote.get_geo()->name_, _a);
+            geo_params.AddMember("lat", quote.get_geo()->lat_, _a);
+            geo_params.AddMember("long", quote.get_geo()->long_, _a);
+            quote_params.AddMember("geo", std::move(geo_params), _a);
+        }
+        else if (quote.get_poll())
+        {
+            quote_params.AddMember("text", quote.get_text(), _a);
+            rapidjson::Value poll_params(rapidjson::Type::kObjectType);
+            poll_params.AddMember("id", quote.get_poll()->id_, _a);
+            quote_params.AddMember("poll", std::move(poll_params), _a);
+        }
+        else if (quote.get_task())
+        {
+            quote_params.AddMember("text", quote.get_text(), _a);
+            rapidjson::Value task_params(rapidjson::Type::kObjectType);
+            task_params.AddMember("taskId", quote.get_task()->id_, _a);
+            quote_params.AddMember("task", std::move(task_params), _a);
+        }
+        else
+        {
+            if (auto sticker = quote.get_sticker(); !sticker.empty())
+            {
+                quote_params.AddMember("stickerId", std::move(sticker), _a);
+            }
+            else
+            {
+                quote_params.AddMember("text", quote.get_text(), _a);
+                if (const auto& format = quote.get_format(); format && !format->empty())
+                    quote_params.AddMember("format", format->serialize(_a), _a);
+            }
+        }
+        quote_params.AddMember("sn", quote.get_sender(), _a);
+        quote_params.AddMember("msgId", quote.get_msg_id(), _a);
+        quote_params.AddMember("time", quote.get_time(), _a);
+
+        if (const auto& chat_sn = quote.get_chat(); chat_sn.find("@chat.agent") != chat_sn.npos)
+        {
+            rapidjson::Value chat_params(rapidjson::Type::kObjectType);
+            chat_params.AddMember("sn", chat_sn, _a);
+            if (const auto& chat_stamp = quote.get_stamp(); !chat_stamp.empty())
+                chat_params.AddMember("stamp", chat_stamp, _a);
+            quote_params.AddMember("chat", std::move(chat_params), _a);
+        }
+
+        _doc.PushBack(std::move(quote_params), _a);
+    }
+}

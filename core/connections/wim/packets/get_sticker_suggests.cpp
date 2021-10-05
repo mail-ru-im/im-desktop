@@ -5,7 +5,7 @@
 #include "../../../http_request.h"
 #include "../../../smartreply/smartreply_suggest.h"
 #include "../../../../common.shared/smartreply/smartreply_types.h"
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 
 using namespace core;
 using namespace wim;
@@ -26,8 +26,8 @@ std::string_view get_sticker_suggests::get_method() const
 
 int32_t get_sticker_suggests::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
-    assert(_request);
-    assert(!aimid_.empty());
+    im_assert(_request);
+    im_assert(!aimid_.empty());
 
     rapidjson::Document doc(rapidjson::Type::kObjectType);
     auto& a = doc.GetAllocator();

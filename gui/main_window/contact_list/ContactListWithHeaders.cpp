@@ -98,7 +98,7 @@ namespace Logic
             if (row == getIndexAddContact())
             {
                 if (Testing::isAccessibleRole(_role))
-                    return qsl("add_contact");
+                    return qsl("AS Contacts addContactButton");
 
                 static auto hdr = dropDownBtn(qsl("~addContact~"), QT_TRANSLATE_NOOP("contact_list", "Add contact"), qsl(":/header/add_user"));
                 return QVariant::fromValue(&hdr);
@@ -106,7 +106,7 @@ namespace Logic
             else if (row == getIndexCreateGroupchat())
             {
                 if (Testing::isAccessibleRole(_role))
-                    return qsl("new_groupchat");
+                    return qsl("AS Contacts newGroupchatButton");
 
                 static auto hdr = dropDownBtn(qsl("~newGroupchat~"), QT_TRANSLATE_NOOP("contact_list", "Create group"), qsl(":/add_groupchat"));
                 return QVariant::fromValue(&hdr);
@@ -114,7 +114,7 @@ namespace Logic
             else if (row == getIndexNewChannel())
             {
                 if (Testing::isAccessibleRole(_role))
-                    return qsl("new_channel");
+                    return qsl("AS Contacts newChannelsButton");
 
                 static auto hdr = dropDownBtn(qsl("~newChannel~"), QT_TRANSLATE_NOOP("contact_list", "Create channel"), qsl(":/add_channel"));
                 return QVariant::fromValue(&hdr);

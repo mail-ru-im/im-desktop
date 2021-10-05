@@ -133,6 +133,9 @@ namespace Ui
         void updateMicroAlertState();
         //void showPermissionPanel();
 
+        void startMicMutedToastTimer();
+        void stopMicMutedToastTimer();
+
     private Q_SLOTS:
         void checkOverlap();
         void checkPanelsVis();
@@ -149,6 +152,8 @@ namespace Ui
         //void onVoipChangeWindowLayout(intptr_t hwnd, bool bTray, const std::string& layout);
         void onVoipMainVideoLayoutChanged(const voip_manager::MainVideoLayout& mainLayout);
         void onVoipMediaLocalAudio(bool _enabled);
+
+        void onVoipVoiceEnable(bool _enable);
 
         void onEscPressed();
 
@@ -199,6 +204,9 @@ namespace Ui
 
         void showMicroPermissionPopup();
 
+        void switchMicrophoneEnableByShortcut();
+        void closeWindow();
+
     public:
         VideoWindow();
         ~VideoWindow();
@@ -243,6 +251,7 @@ namespace Ui
 
         QTimer checkOverlappedTimer_;
         QTimer showPanelTimer_;
+        QTimer keyPressTimer_;
 
         // Remote video by users.
         QHash <QString, bool> hasRemoteVideo_;
@@ -304,5 +313,12 @@ namespace Ui
 
         MicroIssue microIssue_;
         QPointer<media::permissions::PermissonsChangeNotifier> permissonsChangeNotifier_;
+
+        bool microphoneEnabled_;
+        bool microphoneEnabledBySpace_;
+
+        bool toastMicMutedAllowed_;
+        QTimer* toastMicMutedTimer_;
+        QTimer* checkSpacebarTimer_;
     };
 }

@@ -108,6 +108,7 @@ namespace core
         bool is_send_im_stats_;
         bool multi_;
         bool use_curl_decompression_;
+        bool use_new_connection_;
         data_compression_method compression_method_;
 
     public:
@@ -176,6 +177,7 @@ namespace core
         void set_timeout(std::chrono::milliseconds _timeout);
 
         void set_use_curl_decompresion(bool _enable);
+        void set_use_new_connection(bool _use);
 
         static std::vector<std::unique_ptr<std::mutex>> ssl_sync_objects;
         proxy_settings get_user_proxy() const;

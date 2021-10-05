@@ -43,7 +43,7 @@ loader_errors upload_task::get_gate()
 
     if (res != 0)
     {
-        if (res == wim_protocol_internal_error::wpie_network_error)
+        if (wim_packet::is_network_error(res))
             return loader_errors::network_error;
         else if (res == wim_protocol_internal_error::wpie_error_too_large_file)
             return loader_errors::too_large_file;
@@ -101,7 +101,7 @@ loader_errors upload_task::read_data_from_file()
 
     if (tail <= 0)
     {
-        assert(false);
+        im_assert(false);
         return loader_errors::internal_logic_error;
     }
 
@@ -132,7 +132,7 @@ loader_errors upload_task::send_data_to_server()
     uint32_t res = packet.execute();
     if (res != 0)
     {
-        if (res == wim_protocol_internal_error::wpie_network_error)
+        if (wim_packet::is_network_error(res))
             return loader_errors::network_error;
 
         return loader_errors::send_range;
@@ -144,11 +144,11 @@ loader_errors upload_task::send_data_to_server()
     {
         file_url_ = packet.get_file_url();
         file_id_ = packet.get_file_id();
-        assert(bytes_sent_ == file_size_);
+        im_assert(bytes_sent_ == file_size_);
     }
     else
     {
-        assert(bytes_sent_ < file_size_);
+        im_assert(bytes_sent_ < file_size_);
     }
 
     return loader_errors::success;
@@ -165,7 +165,7 @@ loader_errors upload_task::send_next_range()
 
 bool upload_task::is_end() const
 {
-    assert(bytes_sent_ <= file_size_);
+    im_assert(bytes_sent_ <= file_size_);
 
     return (bytes_sent_ == file_size_);
 }
@@ -203,6 +203,7 @@ std::shared_ptr<web_file_info> upload_task::make_info() const
     auto info = std::make_shared<web_file_info>();
 
     info->set_file_name(file_params_->file_name);
+    info->set_file_name_short(core::tools::from_utf16(file_name_short_));
     info->set_bytes_transfer(bytes_sent_);
     info->set_file_size(file_size_);
     info->set_file_url(file_url_);

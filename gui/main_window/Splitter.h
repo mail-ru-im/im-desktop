@@ -15,6 +15,8 @@ namespace Ui
 
         QSplitterHandle *createHandle() override;
 
+        static QColor defaultHandleColor();
+
     Q_SIGNALS:
         void moved(int desiredPos, int resultPos, int index, QPrivateSignal) const;
 
@@ -38,12 +40,11 @@ namespace Ui
         explicit SplitterHandle(Qt::Orientation, QSplitter* _parent);
         ~SplitterHandle();
 
-        void updateStyle();
+        void setColor(QColor _color);
 
     protected:
         void mouseMoveEvent(QMouseEvent *) override;
         void mousePressEvent(QMouseEvent *) override;
-        void mouseReleaseEvent(QMouseEvent *) override;
         void paintEvent(QPaintEvent *) override;
 
     private:

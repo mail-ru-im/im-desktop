@@ -22,7 +22,11 @@ namespace core
         struct gallery_entry_id;
         struct gallery_item;
         class reactions_storage;
+        class thread_update_storage;
         struct reactions_data;
+        struct thread_update;
+        class draft_storage;
+        struct draft;
 
         using image_list = std::list<image_data>;
         using history_block = std::vector<std::shared_ptr<history_message>>;
@@ -41,6 +45,8 @@ namespace core
             std::unique_ptr<mentions_me> mentions_;
             std::unique_ptr<gallery_storage> gallery_;
             std::unique_ptr<reactions_storage> reactions_;
+            std::unique_ptr<thread_update_storage> thread_updates_;
+            std::unique_ptr<draft_storage> draft_;
 
             bool local_loaded_;
 
@@ -76,12 +82,13 @@ namespace core
             void filter_deleted(std::vector<int64_t>& _ids) const;
 
             std::vector<int64_t> get_messages_for_update() const;
+            bool has_hole_in_range(int64_t _msgid, int32_t _count_before, int32_t _count_after) const;
             archive::archive_hole_error get_next_hole(int64_t _from, archive_hole& _hole, int64_t _depth) const;
             int64_t validate_hole_request(const archive_hole& _hole, const int32_t _count) const;
 
             std::optional<std::string> get_locale() const;
 
-            const dlg_state& get_dlg_state() const;
+            dlg_state get_dlg_state() const;
             void set_dlg_state(const dlg_state& _state, Out dlg_state_changes& _changes);
             void clear_dlg_state();
 
@@ -128,6 +135,10 @@ namespace core
             void get_memory_usage(int64_t& _index_size, int64_t& _gallery_size) const;
             void get_reactions(const msgids_list& _ids_to_load, /*out*/ std::vector<reactions_data>& _reactions, /*out*/ msgids_list& _missing);
             void insert_reactions(std::vector<reactions_data>& _reactions);
+            void get_thread_updates(const msgids_list& _ids_to_load, /*out*/ std::vector<thread_update>& _updates, /*out*/ msgids_list& _missing);
+            void insert_thread_updates(const std::vector<thread_update>& _updates);
+            void set_draft(const draft& _draft);
+            const draft& get_draft();
         };
 
         std::wstring_view db_filename() noexcept;
@@ -139,5 +150,8 @@ namespace core
         std::wstring_view gallery_state_filename() noexcept;
         std::wstring_view reactions_index_filename() noexcept;
         std::wstring_view reactions_data_filename() noexcept;
+        std::wstring_view thread_updates_index_filename() noexcept;
+        std::wstring_view thread_updates_data_filename() noexcept;
+        std::wstring_view draft_filename() noexcept;
     }
 }

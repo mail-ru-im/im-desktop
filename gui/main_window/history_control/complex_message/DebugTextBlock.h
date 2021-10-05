@@ -18,11 +18,10 @@ public:
     Subtype getSubtype() const;
     qint64 getMessageId() const;
 
-    Data::FormattedString getSourceText() const override;
+    Data::FString getSourceText() const override;
     Data::Quote getQuote() const override;
-    Data::FormattedString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
+    Data::FString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
 
-    bool updateFriendly(const QString& _aimId, const QString& _friendly) override;
     bool isAllSelected() const override { return true; }
 
 protected:

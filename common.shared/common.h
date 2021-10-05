@@ -120,6 +120,15 @@ namespace build
 #endif
     }
 
+    constexpr bool has_webengine() noexcept
+    {
+#if defined(HAS_WEB_ENGINE)
+        return true;
+#else
+        return false;
+#endif
+    }
+
 }
 
 namespace environment

@@ -98,8 +98,9 @@ ReleaseNotesWidget::ReleaseNotesWidget(QWidget *_parent)
 
 void showReleaseNotes()
 {
-    auto w = new ReleaseNotesWidget();
-    GeneralDialog d(w, Utils::InterConnector::instance().getMainWindow(), false, false);
+    GeneralDialog::Options opt;
+    opt.fixedSize_ = false;
+    GeneralDialog d(new ReleaseNotesWidget(), Utils::InterConnector::instance().getMainWindow(), opt);
     d.addAcceptButton(QT_TRANSLATE_NOOP("release_notes", "OK"), true);
     d.showInCenter();
 }

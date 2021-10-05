@@ -62,6 +62,7 @@ namespace config
 
             std::shared_ptr<config_p> config_;
             mutable common::tools::spin_lock spin_lock_;
+            bool use_develop_local_config_ = false;
 
         private:
             std::shared_ptr<config_p> get_config() const;

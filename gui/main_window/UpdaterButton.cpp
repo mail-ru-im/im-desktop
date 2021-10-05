@@ -14,8 +14,7 @@
 #include "../core_dispatcher.h"
 #include "../utils/InterConnector.h"
 #include "../utils/application.h"
-#include "../main_window/ContactDialog.h"
-#include "../main_window/input_widget/InputWidget.h"
+#include "../main_window/history_control/HistoryControlPage.h"
 #include "../main_window/MainPage.h"
 #include "../previewer/toast.h"
 
@@ -36,6 +35,7 @@ namespace Ui
             if (isInactiveUpdateAllowed())
                 updateAction();
         });
+        Testing::setAccessibleName(this, qsl("AS UpdaterButton"));
     }
 
     UpdaterButton::~UpdaterButton() = default;
@@ -69,13 +69,6 @@ namespace Ui
         const auto mainWindow = Utils::InterConnector::instance().getMainWindow();
         const auto mainWindowMode = (mainWindow && mainWindow->isMinimized()) ? Utils::Application::MainWindowMode::Minimized : Utils::Application::MainWindowMode::Normal;
 
-        if (mainWindow)
-            mainWindow->exit();
-        else
-            qApp->closeAllWindows();
-
-        qApp->quit();
-
         Utils::Application::updating(mainWindowMode);
 #endif
 #endif
@@ -87,9 +80,12 @@ namespace Ui
         // - empty input widget
         // - user doesn't reply
         // - no active PTT
-        if (const auto contactDialog = Utils::InterConnector::instance().getContactDialog())
-            if (const auto input = contactDialog->getInputWidget(); (input && !input->getInputText().isEmpty()) || contactDialog->isRecordingPtt() || contactDialog->isReplyingToMessage())
+
+        for (auto page : Utils::InterConnector::instance().getVisibleHistoryPages())
+        {
+            if (page && page->isInputWidgetActive())
                 return false;
+        }
 
         // - no multi selection
         if (Utils::InterConnector::instance().isMultiselect())

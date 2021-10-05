@@ -7,6 +7,8 @@
 #include "../main_window/mediatype.h"
 #include "reactions.h"
 #include "poll.h"
+#include "thread.h"
+#include "task.h"
 
 #include "utils/StringComparator.h"
 
@@ -46,6 +48,7 @@ namespace Data
 
     struct Quote;
     struct UrlSnippet;
+    struct ParentTopic;
 
     struct SharedContactData
     {
@@ -88,22 +91,87 @@ namespace Data
         style getStyle() const;
     };
 
+    Q_DECLARE_FLAGS(FormatTypes, core::data::format_type)
+    Q_DECLARE_OPERATORS_FOR_FLAGS(FormatTypes)
 
-    class FormattedStringView;
-    struct FormattedString
+    struct LinkInfo
+    {
+        QString url_;
+
+        //! Not empty only for formatted links
+        QString displayName_;
+
+        //! Relative to GenericBlock
+        QRect rect_;
+
+        bool operator==(const LinkInfo& _other) { return url_ == _other.url_ && displayName_ == _other.displayName_ && rect_ == _other.rect_; }
+        bool isEmpty() const { return url_.isEmpty(); }
+        bool isFormattedLink() const { return !displayName_.isEmpty(); }
+    };
+
+    [[nodiscard]] constexpr QChar singleBackTick() noexcept { return u'`'; }
+    [[nodiscard]] constexpr QStringView tripleBackTick() noexcept { return u"```"; }
+
+    class FStringView;
+    struct FString
     {
     public:
-        FormattedString() = default;
-        FormattedString(const QString& _string, const core::data::format::string_formatting& _format = {})
-            : string_(_string), format_(_format) { }
+        class Builder
+        {
+        public:
+            template <typename T>
+            Builder& operator%=(const T& _part)
+            {
+                if (_part.size() == 0)
+                    return *this;
+
+                size_ += _part.size();
+                parts_.emplace_back(_part);
+                return *this;
+            }
+
+            template <typename T>
+            Builder& operator%=(T&& _part)
+            {
+                if (_part.size() == 0)
+                    return *this;
+
+                size_ += _part.size();
+                parts_.emplace_back(std::move(_part));
+                return *this;
+            }
+
+            FString finalize(bool _mergeMentions = false);
+            qsizetype size() const { return size_; }
+            bool isEmpty() const { return parts_.empty(); }
+        protected:
+            std::vector<std::variant<FString, FStringView, QString, QStringView>> parts_;
+            qsizetype size_ = 0;
+        };
+    public:
+        FString() = default;
+        FString(const QString& _string, const core::data::format& _format = {}, bool _doDebugValidityCheck = true);
+        FString(const QString& _string, core::data::range_format&& _format)
+            : string_(_string), format_(std::move(_format)) { }
+        FString(QString&& _string, core::data::range_format&& _format)
+            : string_(std::move(_string)), format_(std::move(_format)) { }
+        FString(QString&& _string, core::data::format_type _type, core::data::format_data _data = {})
+            : string_(std::move(_string)), format_({ _type, core::data::range{0, static_cast<int>(string_.size())}, _data }) { }
 
         bool hasFormatting() const { return !format_.empty(); }
+        bool containsFormat(core::data::format_type _type) const;
+        bool containsAnyFormatExceptFor(FormatTypes _types) const;
         void replace(QChar _old, QChar _new) { string_.replace(_old, _new); }
         bool isEmpty() const { return string_.isEmpty(); }
+        bool isTrimmedEmpty() const { return QStringView(string_).trimmed().isEmpty(); }
         const QString& string() const { return string_; }
-        const core::data::format::string_formatting& formatting() const { return format_; }
-        core::data::format::string_formatting& formatting() { return format_; }
+        const core::data::format& formatting() const { return format_; }
+        core::data::format& formatting() { return format_; }
         int size() const { return string_.size(); }
+        QChar at(int _pos) const { return string_.at(_pos); }
+
+        template <typename T>
+        Builder operator%(const T& _part) const { return (Builder() %= *this) %= _part; }
 
         bool startsWith(const QString& _prefix) const { return string_.startsWith(_prefix); }
         bool endsWith(const QString& _suffix) const { return string_.endsWith(_suffix); }
@@ -111,78 +179,101 @@ namespace Data
         bool startsWith(QChar _ch) const { return string_.startsWith(_ch); }
         bool endsWith(QChar _ch) const { return string_.endsWith(_ch); }
 
-        bool operator!=(const FormattedString& _other);
+        int indexOf(QChar _ch, int _from = 0) const { return string_.indexOf(_ch, _from); }
+        int lastIndexOf(QChar _char) const { return string_.lastIndexOf(_char); }
+
+        bool operator!=(const FString& _other);
 
         void reserve(int _size) { string_.reserve(_size); }
 
         void chop(int _n);
 
-        FormattedString& operator+=(QChar _ch) { string_ += _ch; return *this; }
-        FormattedString& operator+=(const QString& _other) { string_ += _other; return *this; }
-        FormattedString& operator+=(const FormattedString& _other);
-        FormattedString& operator+=(const FormattedStringView& _other);
+        bool contains(const QString& _str) const { return string().contains(_str); }
+        bool contains(QChar _ch) const { return string().contains(_ch); }
 
-        inline void clear() { string_.clear(); format_.clear(); }
-        inline void clearFormat() { format_.clear(); }
-        void setFormatting(const core::data::format::string_formatting& _formatting);
+        FString& operator+=(QChar _ch) { string_ += _ch; return *this; }
+        FString& operator+=(const QString& _other) { string_ += _other; return *this; }
+        FString& operator+=(QStringView _other);
+        FString& operator+=(const FString& _other);
+        FString& operator+=(FStringView _other);
+
+        void clear() { string_.clear(); format_.clear(); }
+        void clearFormat() { format_.clear(); }
+        void setFormatting(const core::data::format& _formatting);
+        void addFormat(core::data::format_type _type);
+        bool operator==(const FString& _other) const;
+        bool operator!=(const FString& _other) const;
+
+        bool isFormatValid() const;
+
+        void removeAllBlockFormats();
+        void removeMentionFormats();
 
     protected:
-        void fixInvalidRanges();
-
         QString string_;
-        core::data::format::string_formatting format_;
+        core::data::format format_;
     };
 
-    void serializeFormat(const core::data::format::string_formatting& _format, core::icollection* _collection, std::string_view _name);
-    void serializeFormat(const core::data::format::string_formatting& _format, core::coll_helper& _coll, std::string_view _name);
-
-    // TODO-FORMAT-IMPLEMENT
-    //! Calls to this function mark places to be replaced in the cource of further development of formatted text
-    QString stubFromFormattedString(const FormattedString& _string);
+    void serializeFormat(const core::data::format& _format, core::icollection* _collection, std::string_view _name);
+    void serializeFormat(const core::data::format& _format, core::coll_helper& _coll, std::string_view _name);
 
     //! NB: FormattedStringView doesn't take care of keeping any ownership
-    class FormattedStringView
+    class FStringView
     {
     public:
-        FormattedStringView() : string_(&emptyString), offset_(0), size_(0) {}
+        FStringView() : string_(&emptyString), offset_(0), size_(0) {}
+        FStringView(const FString& _string, int _offset = 0, int _size = -1);
 
-        FormattedStringView(const FormattedString& _string, int _offset = 0, int _size = INT_MAX);
-
-        FormattedStringView& operator=(const FormattedStringView& _other) = default;
-
-        inline FormattedStringView mid(int _offset, int _size = -1) const { return { *string_, _offset + offset_, _size == -1 ? std::max(0, size_ - _offset) : _size }; }
-
-        inline FormattedStringView left(int _size) const { return mid(0, _size); }
-
-        [[nodiscard]] FormattedStringView trimmed() const;
-
-        bool tryToAppend(const FormattedStringView& _other);
-
-        bool tryToAppend(QChar _ch);
-
-        bool tryToAppend(QStringView _text);
-
-        QStringView string() const;
+        FStringView& operator=(const FStringView& _other) = default;
 
         bool hasFormatting() const;
-
         bool isEmpty() const { return size_ == 0 || string_->isEmpty(); }
+        int size() const { return size_; }
+        std::vector<core::data::range_format> getStyles() const;
 
-        inline int size() const { return size_; }
+        [[nodiscard]] FStringView trimmed() const;
+        FStringView mid(int _offset, int _size = -1) const { return { *string_, _offset + offset_, _size == -1 ? std::max(0, size_ - _offset) : _size }; }
+        FStringView left(int _size) const { return mid(0, _size); }
+        FStringView right(int _size) const { return mid(size() - _size, _size); }
+        void chop(int _n) { size_ -= qBound(0, _n, size_); }
+        QChar at(int _pos) const { im_assert(_pos < size_);  return string_->at(offset_ + _pos); }
+        QChar lastChar() const { return string().back(); }
+        int indexOf(QChar _char, qsizetype _from = 0) const { return string().indexOf(_char, _from); }
+        int indexOf(QStringView _string, qsizetype _from = 0) const { return string().indexOf(_string, _from); }
+        int lastIndexOf(QChar _char) const { return string().lastIndexOf(_char); }
+        bool startsWith(QStringView _prefix) const { return string().startsWith(_prefix); }
+        bool endsWith(QStringView _prefix) const { return string().endsWith(_prefix); }
 
-        inline int indexOf(QChar _char) const { return string().indexOf(_char); }
+        std::vector<FStringView> splitByTypes(FormatTypes _types) const;
 
-        std::vector<core::data::format::format> getStyles() const;
+        FString toFString() const;
 
-        FormattedString toFormattedString() const;
+        //! Check if entire view has these format types
+        bool isAnyOf(FormatTypes _types) const;
+
+        bool operator==(QStringView _other) const { return string() == _other; }
+        bool operator!=(QStringView _other) const { return !operator==(_other); }
+
+        QStringView string() const;
+        QString toString() const { return string().toString(); }
+        const FString& sourceString() const { return *string_; }
+        core::data::range sourceRange() const { return { offset_, size_ }; }
+
+        //! Replace plain string and extend range if it occupied entire string
+        FString replaceByString(QStringView _newString, bool _keepMentionFormat = true) const;
+
+        bool tryToAppend(FStringView _other);
+        bool tryToAppend(QChar _ch);
+        bool tryToAppend(QStringView _text);
 
     protected:
-        [[nodiscard]] core::data::format::format_range cutRangeToFitView(core::data::format::format_range _range) const;
+        [[nodiscard]] core::data::range cutRangeToFitView(core::data::range _range) const;
+        [[nodiscard]] core::data::format getFormat() const;
 
     protected:
-        static const FormattedString emptyString;
+        static const FString emptyString;
 
-        const FormattedString* string_ = nullptr;
+        const FString* string_ = nullptr;
         int offset_;
         int size_;
     };
@@ -262,11 +353,11 @@ namespace Data
 
         const HistoryControl::StickerInfoSptr& GetSticker() const;
 
-        const FormattedString& GetSourceText() const;
+        const FString& GetSourceText() const;
 
         QString GetText() const;
 
-        inline const FormattedString& getFormattedText() const { return Text_; }
+        const FString& getFormattedText() const { return Text_; }
 
         qint32 GetTime() const;
 
@@ -324,11 +415,11 @@ namespace Data
 
         void SetSticker(const HistoryControl::StickerInfoSptr &sticker);
 
-        void SetFormatting(const core::data::format::string_formatting& _formatting);
+        void SetFormatting(const core::data::format& _formatting);
 
-        //void SetText(const QString &text);
+        void SetText(const FString& _text);
 
-        void SetText(const FormattedString& _text);
+        void SetText(FStringView _text);
 
         void SetTime(const qint32 time);
 
@@ -344,11 +435,11 @@ namespace Data
 
         void SetDescription(const QString& _description);
 
-        void SetDescription(const FormattedString& _description);
+        void SetDescription(const FString& _description);
 
-        inline void SetDescriptionFormat(const core::data::format::string_formatting& _format) { description_.setFormatting(_format); }
+        void SetDescriptionFormat(const core::data::format& _format) { description_.setFormatting(_format); }
 
-        const FormattedString& GetDescription() const;
+        const FString& GetDescription() const;
 
         void SetUrl(const QString& _url);
         const QString& GetUrl() const;
@@ -381,9 +472,11 @@ namespace Data
 
         SharedContact sharedContact_;
         Poll poll_;
+        Task task_;
         Geo geo_;
         std::vector<std::vector<ButtonData>> buttons_;
         MessageReactions reactions_;
+        MessageThreadData threadData_;
 
         //filled by model
         bool Unread_;
@@ -392,13 +485,13 @@ namespace Data
     private:
         qint64 LastId_;
 
-        FormattedString Text_;
+        FString Text_;
 
         QString ChatSender_;
 
         QDate Date_;
 
-        FormattedString description_;
+        FString description_;
 
         QString Url_;
 
@@ -445,10 +538,30 @@ namespace Data
 
     typedef std::pair<QString, QString> DlgStateHead;
 
+    struct Draft
+    {
+        int64_t localTimestamp_ = 0;
+        int32_t serverTimestamp_ = 0;
+        bool synced_ = false;
+        Data::MessageBuddy message_;
+
+        bool isEmpty() const;
+        void unserialize(core::coll_helper& helper, const QString& _aimId);
+    };
+
     class DlgState
     {
     public:
         DlgState();
+
+        enum class PinnedServiceItemType
+        {
+            NonPinnedItem,
+            Favorites,
+            ScheduledMessages,
+            Threads,
+            Reminders
+        };
 
         bool operator==(const DlgState& other) const
         {
@@ -467,6 +580,12 @@ namespace Data
 
         QString getTypers() const;
 
+        PinnedServiceItemType pinnedServiceItemType() const;
+        void setPinnedServiceItemType(PinnedServiceItemType _type);
+
+        bool hasDraft() const;
+        bool hasParentTopic() const;
+
         QString AimId_;
         qint64 UnreadCount_;
         qint64 LastReadMention_;
@@ -478,6 +597,7 @@ namespace Data
         qint64 PinnedTime_;
         qint64 UnimportantTime_;
         qint32 Time_;
+        qint32 serverTime_;
         bool Outgoing_;
         bool Chat_;
         bool Visible_;
@@ -512,8 +632,19 @@ namespace Data
 
         Ui::MediaType mediaType_;
 
+        Draft draft_;
+        QString draftText_;
+        std::optional<std::shared_ptr<ParentTopic>> parentTopic_;
+
     private:
         QString Text_;
+        PinnedServiceItemType pinnedServiceItemType_;
+    };
+
+    enum class ReplaceFilesPolicy
+    {
+        Keep,
+        Replace,
     };
 
     struct Quote
@@ -527,14 +658,14 @@ namespace Data
             other = 100
         };
 
-        FormattedString text_;
+        FString text_;
         QString senderId_;
         QString chatId_;
         QString senderFriendly_;
         QString chatStamp_;
         QString chatName_;
         QString url_;
-        FormattedString description_;
+        FString description_;
         QString quoterId_;    // if exists, it is an id of the user quoted the message
         qint32 time_;
         qint64 msgId_;
@@ -544,6 +675,7 @@ namespace Data
         MentionMap mentions_;
         SharedContact sharedContact_;
         Poll poll_;
+        Task task_;
         Geo geo_;
         FilesPlaceholderMap files_;
 
@@ -572,17 +704,17 @@ namespace Data
         {
         }
 
-        bool isEmpty() const { return text_.isEmpty() && !isSticker() && !sharedContact_ && !poll_; }
+        bool isEmpty() const { return text_.isEmpty() && !isSticker() && !sharedContact_ && !poll_ && !task_; }
         bool isSticker() const { return setId_ != -1 && stickerId_ != -1; }
         bool isInteractive() const;
 
-        void serialize(core::icollection* _collection) const;
+        void serialize(core::icollection* _collection, ReplaceFilesPolicy _replacePolicy) const;
         void unserialize(core::icollection* _collection);
     };
 
     using QuotesVec = QVector<Data::Quote>;
 
-    void serializeQuotes(core::coll_helper& _collection, const Data::QuotesVec& _quotes);
+    void serializeQuotes(core::coll_helper& _collection, const Data::QuotesVec& _quotes, ReplaceFilesPolicy _replacePolicy);
 
     struct UrlSnippet
     {
@@ -620,7 +752,7 @@ namespace Data
 
 
     Data::MessageBuddySptr unserializeMessage(
-        core::coll_helper& _msgColl,
+        const core::coll_helper& _msgColl,
         const QString& _aimId,
         const QString& _myAimid,
         const qint64 _theirs_last_delivered,
@@ -703,6 +835,12 @@ namespace Data
         void unserialize(core::coll_helper& helper);
     };
 }
+
+QDebug operator<<(QDebug _debug, core::data::format_type _type);
+
+QDebug operator<<(QDebug _debug, Data::FormatTypes _types);
+
+QDebug operator<<(QDebug _debug, const Data::FString& _string);
 
 Q_DECLARE_METATYPE(Data::MessageBuddy);
 Q_DECLARE_METATYPE(Data::MessageBuddy*);

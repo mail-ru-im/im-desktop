@@ -219,11 +219,11 @@ namespace Ui
 
         setFixedSize(size);
 
+        tooltipHasParent_ = true;
+
         if (!_text.isEmpty())
         {
-            textUnit_ = TextRendering::MakeTextUnit(_text, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
-            textUnit_->init(getButtonTextFont(), textColor_, QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER, 1);
-            textUnit_->evaluateDesiredSize();
+            initSetText(_text);
 
             if (textUnit_->cachedSize().width() > size.width())
             {
@@ -256,14 +256,7 @@ namespace Ui
 
         if (!_text.isEmpty())
         {
-            if (!textUnit_)
-            {
-                textUnit_ = TextRendering::MakeTextUnit(_text, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
-                textUnit_->init(getButtonTextFont(), textColor_, QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER, 1);
-            }
-
-            textUnit_->setText(_text);
-            textUnit_->evaluateDesiredSize();
+            initSetText(_text);
             textUnit_->setOffsets((getButtonSize(size_).width() - textUnit_->cachedSize().width()) / 2, getButtonTextVerOffset());
             textUnit_->setShadow(0, Utils::scale_value(1), getShadowColor());
         }
@@ -419,10 +412,22 @@ namespace Ui
         }
     }
 
+    void PanelButton::initSetText(const QString& _text)
+    {
+        if (!textUnit_)
+        {
+            textUnit_ = TextRendering::MakeTextUnit(_text, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
+            textUnit_->init(getButtonTextFont(), textColor_, QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER, 2);
+        }
+        else
+        {
+            textUnit_->setText(_text);
+        }
+        textUnit_->evaluateDesiredSize();
+    }
+
     TransparentPanelButton::TransparentPanelButton(QWidget* _parent, const QString& _iconName, const QString& _tooltipText, Qt::Alignment _align, bool _isAnimated)
         : ClickableWidget(_parent)
-        , tooltipTimer_(new QTimer(this))
-        , tooltipText_(_tooltipText)
         , align_(_align)
         , anim_(nullptr)
         , currentAngle_(0)
@@ -456,9 +461,7 @@ namespace Ui
         connect(this, &ClickableWidget::clicked, this, &TransparentPanelButton::onClicked);
 
         setFixedSize(getButtonSize(PanelButton::ButtonSize::Small));
-        tooltipTimer_->setSingleShot(true);
-        tooltipTimer_->setInterval(Tooltip::getDefaultShowDelay());
-        connect(tooltipTimer_, &QTimer::timeout, this, &TransparentPanelButton::onTooltipTimer);
+        setTooltipText(_tooltipText);
     }
 
     void TransparentPanelButton::paintEvent(QPaintEvent* _event)
@@ -477,33 +480,11 @@ namespace Ui
         p.drawPixmap(offsets, pm);
     }
 
-    void TransparentPanelButton::enterEvent(QEvent* _e)
+    void TransparentPanelButton::mouseMoveEvent(QMouseEvent* _e)
     {
-        ClickableWidget::enterEvent(_e);
-        tooltipTimer_->start();
-    }
-
-    void TransparentPanelButton::leaveEvent(QEvent* _e)
-    {
-        ClickableWidget::leaveEvent(_e);
-        tooltipTimer_->stop();
-        hideTooltip();
-    }
-
-    void TransparentPanelButton::setTooltipText(const QString& _text)
-    {
-        tooltipText_ = _text;
-    }
-
-    const QString& TransparentPanelButton::getTooltipText() const
-    {
-        return tooltipText_;
-    }
-
-    void TransparentPanelButton::hideTooltip()
-    {
-        Tooltip::forceShow(false);
-        Tooltip::hide();
+        ClickableWidget::mouseMoveEvent(_e);
+        if (!Tooltip::isVisible() && !tooltipTimer_.isActive() && getTooltipArea().contains(_e->pos()))
+            tooltipTimer_.start();
     }
 
     void TransparentPanelButton::setTooltipBoundingRect(const QRect& _r)
@@ -519,22 +500,14 @@ namespace Ui
         rotateMode_ = RotateAnimationMode::Full;
     }
 
-    void TransparentPanelButton::onTooltipTimer()
-    {
-        if (isHovered())
-            showToolTip();
-    }
-
     void TransparentPanelButton::showToolTip()
     {
-        if (tooltipText_.isEmpty())
+        const auto& tooltipText = getTooltipText();
+        if (tooltipText.isEmpty())
             return;
 
-        const auto offsets = getIconOffset();
-        auto pos = mapToGlobal(rect().topLeft());
-        pos.rx() += offsets.x();
-        pos.ry() += offsets.y();
-        Tooltip::show(tooltipText_, QRect(pos, getButtonIconSize()), { 0, 0 }, Tooltip::ArrowDirection::Down, Tooltip::ArrowPointPos::Top, tooltipBoundingRect_);
+        const auto area = getTooltipArea();
+        Tooltip::show(tooltipText, { mapToGlobal(area.topLeft()), area.size() }, { 0, 0 }, Tooltip::ArrowDirection::Down, Tooltip::ArrowPointPos::Top, tooltipBoundingRect_, Tooltip::TooltipMode::Multiline, parentWidget());
     }
 
     void TransparentPanelButton::onClicked()
@@ -569,6 +542,12 @@ namespace Ui
         const auto dY = (height() - buttonSize) / 2;
 
         return QPoint(dX, dY);
+    }
+
+    QRect TransparentPanelButton::getTooltipArea() const
+    {
+        const auto topLeftPos = rect().topLeft() + QPoint(getIconOffset().x(), 0);
+        return { topLeftPos, QSize(getButtonIconSize().width(), height()) };
     }
 
 

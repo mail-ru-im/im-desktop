@@ -16,19 +16,25 @@ namespace Ui
         virtual void setCompactMode(bool _value);
         virtual bool isCompactMode() const;
 
-        void setPressed(const bool _isPressed);
+        void setPressed(bool _isPressed);
         bool isPressed() const noexcept;
 
+        void setHovered(bool _isHovered);
         bool isHovered() const noexcept;
 
         void setHoverStateCursor(Qt::CursorShape _value);
         Qt::CursorShape getHoverStateCursor() const noexcept;
 
+        virtual std::vector<Qt::MouseButton> acceptedButtons() const { return { Qt::LeftButton, Qt::RightButton }; }
+
     Q_SIGNALS:
-        void hoverChanged(bool, QPrivateSignal) const;
+        void hoverChanged(bool) const;
+        void pressChanged(bool) const;
+        void selectChanged(bool) const;
 
     protected:
-        bool event(QEvent* _event) override;
+        void enterEvent(QEvent* _event) override;
+        void leaveEvent(QEvent* _event) override;
 
     private:
         bool isHovered_ = false;
@@ -46,6 +52,7 @@ namespace Ui
         ~SimpleListWidget();
 
         int addItem(SimpleListItem* _tab);
+        int addItem(SimpleListItem* _tab, int _index);
 
         void setCurrentIndex(int _index);
         int getCurrentIndex() const noexcept;
@@ -53,13 +60,34 @@ namespace Ui
         bool isValidIndex(int _index) const noexcept;
 
         SimpleListItem* itemAt(int _index) const;
+        void removeItemAt(int _index);
 
         int count() const noexcept;
+
+        template<typename UnaryPredicate>
+        int indexOf(UnaryPredicate func) const
+        {
+            for (int i = 0, size = count(); i < size; ++i)
+            {
+                auto item = itemAt(i);
+                if (func(item))
+                    return i;
+            }
+            return -1;
+        }
+
+        template<typename UnaryPredicate>
+        bool contains(UnaryPredicate func) const
+        {
+            return indexOf(std::move(func)) != -1;
+        }
 
         void clear();
         void clearSelection();
 
         void setSpacing(const int _spacing);
+
+        void updateHoverState();
 
     Q_SIGNALS:
         void clicked(int, QPrivateSignal) const;

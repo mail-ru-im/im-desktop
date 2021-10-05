@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SmilesMenu.h"
+#include "../../main_window/history_control/complex_message/FileSharingUtils.h"
 
 namespace Ui
 {
@@ -23,9 +24,9 @@ namespace Ui
             void stickerHovered(const QRect& _stickerRect);
 
         private:
-            void onStickerPreview(const QString& _stickerId);
+            void onStickerPreview(const Utils::FileSharingId& _stickerId);
             void closeStickerPreview();
-            void onStickerHovered(const int32_t _setId, const QString& _stickerId);
+            void onStickerHovered(const int32_t _setId, const Utils::FileSharingId& _stickerId);
 
         protected:
             bool resize(const QSize& _size, bool _force = false) override;
@@ -40,10 +41,10 @@ namespace Ui
             void mouseMoveEvent(QMouseEvent* _e) override;
             void leaveEvent(QEvent* _e) override;
 
-            int32_t getStickerPosInSet(const QString& _stickerId) const override;
+            int32_t getStickerPosInSet(const Utils::FileSharingId& _stickerId) const override;
             const stickersArray& getStickerIds() const override;
 
-            void setSelected(const std::pair<int32_t, QString>& _sticker) override;
+            void setSelected(const std::pair<int32_t, Utils::FileSharingId>& _sticker) override;
             void clearStickers();
         };
 
@@ -53,7 +54,7 @@ namespace Ui
 
         Q_SIGNALS:
 
-            void stickerSelected(const QString&);
+            void stickerSelected(const Utils::FileSharingId&);
             void scrolledToLastItem();
 
         private Q_SLOTS:

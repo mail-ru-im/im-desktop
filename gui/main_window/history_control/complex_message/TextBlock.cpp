@@ -3,6 +3,7 @@
 #include "main_window/containers/LastseenContainer.h"
 #include "controls/TextUnit.h"
 #include "controls/textrendering/TextRendering.h"
+#include "controls/TooltipWidget.h"
 #include "utils/InterConnector.h"
 #include "utils/utils.h"
 #include "utils/features.h"
@@ -24,16 +25,14 @@ TextBlock::TextBlock(ComplexMessageItem* _parent, const QString& _text, TextRend
     : GenericBlock(_parent, _text, MenuFlags(MenuFlagCopyable), false)
     , Layout_(new TextBlockLayout())
     , emojiSizeType_(_emojiSizeType)
-    , shouldParseMarkdown_(true)
 {
     init(_parent);
 }
 
-TextBlock::TextBlock(ComplexMessageItem* _parent, const Data::FormattedStringView& _text, TextRendering::EmojiSizeType _emojiSizeType)
-    : GenericBlock(_parent, _text.toFormattedString(), MenuFlags(MenuFlagCopyable), false)
+TextBlock::TextBlock(ComplexMessageItem* _parent, Data::FStringView _text, TextRendering::EmojiSizeType _emojiSizeType)
+    : GenericBlock(_parent, _text.toFString(), MenuFlags(MenuFlagCopyable), false)
     , Layout_(new TextBlockLayout())
     , emojiSizeType_(_emojiSizeType)
-    , shouldParseMarkdown_(false)
 {
     init(_parent);
 }
@@ -54,14 +53,13 @@ IItemBlockLayout* TextBlock::getBlockLayout() const
     return Layout_;
 }
 
-Data::FormattedString TextBlock::getSelectedText(const bool _isFullSelect, const TextDestination _dest) const
+Data::FString TextBlock::getSelectedText(const bool _isFullSelect, const TextDestination _dest) const
 {
     if (textUnit_)
     {
         const auto textType = _dest == IItemBlock::TextDestination::quote ? TextRendering::TextType::SOURCE : TextRendering::TextType::VISIBLE;
-
-        if (textUnit_->isAllSelected())
-            return textUnit_->sourceModified() ? GenericBlock::getSourceText() : textUnit_->getSelectedText(textType);
+        if (textUnit_->isAllSelected() && textType == TextRendering::TextType::SOURCE)
+            return getSourceText();
 
         return textUnit_->getSelectedText(textType);
     }
@@ -133,9 +131,6 @@ IItemBlock::MenuFlags TextBlock::getMenuFlags(QPoint p) const
     if (!textUnit_ || !ComplexMessageItem::isSpellCheckIsOn())
         return flags;
 
-    if (textUnit_->sourceModified())
-        return flags;
-
     if (const auto w = textUnit_->getWordAt(mapPoint(p)); w && (!textUnit_->isSkippableWordForSpellChecking(*w) || (w->syntaxWord && w->syntaxWord->spellError)))
         return MenuFlags(flags | MenuFlags::MenuFlagSpellItems);
 
@@ -145,7 +140,7 @@ IItemBlock::MenuFlags TextBlock::getMenuFlags(QPoint p) const
 void TextBlock::startSpellChecking()
 {
     needSpellCheck_ = true;
-    if (!textUnit_ || textUnit_->sourceModified() || !ComplexMessageItem::isSpellCheckIsOn())
+    if (!textUnit_ || !ComplexMessageItem::isSpellCheckIsOn())
         return;
 
     textUnit_->startSpellChecking([guard = QPointer(this)]()
@@ -201,6 +196,17 @@ bool TextBlock::isNeedCheckTimeShift() const
     return false;
 }
 
+void TextBlock::anyMouseButtonReleased()
+{
+    hideTooltip();
+}
+
+void TextBlock::updateWith(IItemBlock* _other)
+{
+    Testing::setAccessibleName(this, u"AS HistoryPage messageText " % QString::number(getParentComplexMessage()->getId()));
+    GenericBlock::updateWith(_other);
+}
+
 void TextBlock::drawBlock(QPainter& p, const QRect&, const QColor&)
 {
     if (!textUnit_)
@@ -215,14 +221,31 @@ void TextBlock::initialize()
     return GenericBlock::initialize();
 }
 
+void TextBlock::showTooltip(const QString& _text, QRect _rect)
+{
+    GenericBlock::showTooltip(_text, _rect, Tooltip::ArrowDirection::Down, Tooltip::ArrowPointPos::Top);
+}
+
 void TextBlock::mouseMoveEvent(QMouseEvent *e)
 {
-    if (!Utils::InterConnector::instance().isMultiselect())
+    if (!Utils::InterConnector::instance().isMultiselect(getChatAimid()))
     {
-        if (isOverLink(mapToGlobal(e->pos())))
+        const auto globalPos = mapToGlobal(e->pos());
+        if (const auto link = linkAtPos(globalPos); !link.isEmpty())
+        {
             setCursor(Qt::PointingHandCursor);
+            if (!isTooltipActivated() && link.isFormattedLink() && !Utils::isMentionLink(link.url_))
+            {
+                const auto linkTopLeft = mapToGlobal(rect().topLeft()) + link.rect_.topLeft();
+                const auto linkGlobalRect = QRect{ linkTopLeft, link.rect_.size() };
+                showTooltip(link.url_, linkGlobalRect);
+            }
+        }
         else
+        {
             setCursor(Qt::ArrowCursor);
+            hideTooltip();
+        }
     }
     else
     {
@@ -234,6 +257,9 @@ void TextBlock::mouseMoveEvent(QMouseEvent *e)
 
 void TextBlock::leaveEvent(QEvent *e)
 {
+    if (isTooltipActivated())
+        hideTooltip();
+
     QApplication::restoreOverrideCursor();
     return GenericBlock::leaveEvent(e);
 }
@@ -266,7 +292,8 @@ void TextBlock::initTextUnit()
         getParentComplexMessage()->getMentions(),
         TextRendering::LinksVisible::SHOW_LINKS,
         TextRendering::ProcessLineFeeds::KEEP_LINE_FEEDS,
-        emojiSizeType_);
+        emojiSizeType_,
+        ParseBackticksPolicy::ParseSinglesAndTriples);
 
     const auto linkStyle = Styling::getThemesContainer().getCurrentTheme()->isLinksUnderlined() ? TextRendering::LinksStyle::UNDERLINED : TextRendering::LinksStyle::PLAIN;
     textUnit_->init(MessageStyle::getTextFont()
@@ -282,8 +309,6 @@ void TextBlock::initTextUnit()
                   , linkStyle);
 
     textUnit_->setHighlightedTextColor(MessageStyle::getHighlightTextColor());
-    if (shouldParseMarkdown_)
-        textUnit_->markdown(MessageStyle::getTextMonospaceFont(), MessageStyle::getTextColor());
     textUnit_->setLineSpacing(MessageStyle::getTextLineSpacing());
 
     const auto& contact = getChatAimid();
@@ -384,7 +409,7 @@ void TextBlock::doubleClicked(const QPoint& _p, std::function<void(bool)> _callb
     }
 }
 
-QString TextBlock::linkAtPos(const QPoint& pos) const
+Data::LinkInfo TextBlock::linkAtPos(const QPoint& pos) const
 {
     if (textUnit_)
         return textUnit_->getLink(mapFromGlobal(pos));
@@ -392,31 +417,33 @@ QString TextBlock::linkAtPos(const QPoint& pos) const
     return GenericBlock::linkAtPos(pos);
 }
 
-std::optional<QString> TextBlock::getWordAt(QPoint pos) const
+std::optional<Data::FString> TextBlock::getWordAt(QPoint pos) const
 {
     if (textUnit_)
     {
         if (auto w = textUnit_->getWordAt(mapFromGlobal(pos)); w)
         {
-            auto text = w->word.getText();
+            auto text = Data::FString();
+            if (auto view = w->word.view(); view.isEmpty())
+                text = w->word.getText();
+            else
+                text = view.toFString();
+
             if (w->syntaxWord)
-                return std::move(text).mid(w->syntaxWord->pos, w->syntaxWord->size);
+                return Data::FStringView(text).mid(w->syntaxWord->offset_, w->syntaxWord->size_).toFString();
             return text;
         }
     };
     return {};
 }
 
-bool TextBlock::replaceWordAt(const QString& _old, const QString& _new, QPoint pos)
+bool TextBlock::replaceWordAt(const Data::FString& _old, const Data::FString& _new, QPoint pos)
 {
     return textUnit_ && textUnit_->replaceWordAt(_old, _new, mapFromGlobal(pos));
 }
 
 QString TextBlock::getTrimmedText() const
 {
-    if (textUnit_ && textUnit_->sourceModified())
-        return textUnit_->getText();
-
     return getSourceText().string();
 }
 
@@ -424,10 +451,12 @@ int TextBlock::desiredWidth(int _w) const
 {
     if (textUnit_)
     {
-        auto desired = textUnit_->desiredWidth();
+        if (textUnit_->cachedSize().isEmpty())
+            textUnit_->getHeight(_w);
 
+        auto desired = textUnit_->desiredWidth();
         const auto cm = getParentComplexMessage();
-        if (cm && managesTime() && cm->isLastBlock(this) && textUnit_->getLinesCount() > 0)
+        if (cm && managesTime() && cm->isLastBlock(this) && !textUnit_->isEmpty())
         {
             if (const auto timeWidget = cm->getTimeWidget())
             {
@@ -438,10 +467,10 @@ int TextBlock::desiredWidth(int _w) const
                 }
                 else
                 {
-                    if (textUnit_->getLinesCount() == 1)
+                    if (desired < _w)
                         desired += timeWidth;
-                    else
-                        desired = std::max(textUnit_->getLastLineWidth() + timeWidth, desired);
+                    else if (desired != 0 && desired != _w)
+                        desired = _w % desired;
                 }
             }
         }
@@ -457,22 +486,14 @@ QString TextBlock::getTextForCopy() const
     if (!textUnit_)
         return GenericBlock::getTextForCopy();
 
-    if (textUnit_->sourceModified())
-        return Data::stubFromFormattedString(textUnit_->getSourceText());
-    else
-        return textUnit_->getText();
+    return textUnit_->getText();
 }
 
-Data::FormattedString TextBlock::getTextInstantEdit() const
+Data::FString TextBlock::getTextInstantEdit() const
 {
     if (!textUnit_)
         return GenericBlock::getTextInstantEdit();
     return textUnit_->getTextInstantEdit();
-}
-
-bool TextBlock::getTextStyle() const
-{
-    return textUnit_ && textUnit_->sourceModified();
 }
 
 void TextBlock::releaseSelection()
@@ -524,7 +545,7 @@ bool TextBlock::clickOnFirstLink() const
     return false;
 }
 
-void TextBlock::setText(const Data::FormattedString& _text)
+void TextBlock::setText(const Data::FString& _text)
 {
     setSourceText(_text);
     reinit();

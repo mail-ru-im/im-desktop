@@ -723,16 +723,13 @@ namespace Ui
         if (!imageCropHolder_)
             hostWidget = mainWidget;
 
-        const auto w = avatarCropper->width() + 2 * horMargin;
+        GeneralDialog::Options opt;
+        opt.preferredWidth_ = avatarCropper->width() + 2 * horMargin;
         GeneralDialog imageCropDialog(
             hostWidget,
             imageCropHolder_ ? imageCropHolder_ : Utils::InterConnector::instance().getMainWindow(),
-            false,
-            true,
-            true,
-            true,
-            QSize(w, 0)
-        );
+            opt);
+
         imageCropDialog.setObjectName(qsl("image.cropper"));
         if (imageCropHolder_)
         {

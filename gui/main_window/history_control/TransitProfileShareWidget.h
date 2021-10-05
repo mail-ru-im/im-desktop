@@ -76,7 +76,7 @@ namespace Ui
         Q_OBJECT
 
     public:
-        TransitProfileSharing(QWidget* _parent, const QString& _aimId);
+        TransitProfileSharing(QWidget* _parent, const QString& _aimId, const QString& _targetAimId);
 
         void showProfile();
         const QString& getPhone() const {return phone_;};
@@ -97,6 +97,7 @@ namespace Ui
         QString aimId_;
         QString phone_;
         QString nick_;
+        QString targetAimId_;
         QPair<DialogButton* , DialogButton*> btnPair_;
         TransitState state_;
         bool declinable_;

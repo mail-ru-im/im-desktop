@@ -53,12 +53,12 @@ namespace
         return Utils::scale_value(8);
     }
 
-    QString textFromQuote(const Data::Quote& _quote)
+    QString plainTextFromQuote(const Data::Quote& _quote)
     {
         switch (_quote.mediaType_)
         {
             case Ui::MediaType::noMedia:
-                return Utils::convertFilesPlaceholders(Utils::convertMentions(Data::stubFromFormattedString(_quote.text_), _quote.mentions_), _quote.files_);
+                return Utils::convertFilesPlaceholders(Utils::convertMentions(_quote.text_.string(), _quote.mentions_), _quote.files_);
 
             case Ui::MediaType::mediaTypeSticker:
                 return QT_TRANSLATE_NOOP("contact_list", "Sticker");
@@ -90,6 +90,9 @@ namespace
             case Ui::MediaType::mediaTypePoll:
                 return QT_TRANSLATE_NOOP("contact_list", "Poll");
 
+            case Ui::MediaType::mediaTypeTask:
+                return QT_TRANSLATE_NOOP("contact_list", "Task");
+
             default:
                 return QString();
         }
@@ -107,8 +110,9 @@ namespace Ui
 
     QuoteRow::QuoteRow(const Data::Quote& _quote)
         : msgId_(_quote.msgId_)
+        , chatId_(_quote.chatId_)
     {
-        auto friendly = Logic::GetFriendlyContainer()->getFriendly2(_quote.senderId_);
+        const auto friendly = Logic::GetFriendlyContainer()->getFriendly2(_quote.senderId_);
         if (friendly.default_)
             aimId_ = _quote.quoterId_;
         else
@@ -119,7 +123,7 @@ namespace Ui
         textUnit_ = TextRendering::MakeTextUnit(getName() % u": ", {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
         textUnit_->init(Fonts::appFontScaled(14, Fonts::FontWeight::Medium), textColor, textColor, textColor, QColor(), TextRendering::HorAligment::LEFT, 1);
 
-        auto quoteText = TextRendering::MakeTextUnit(textFromQuote(_quote), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
+        auto quoteText = TextRendering::MakeTextUnit(plainTextFromQuote(_quote), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
         quoteText->init(Fonts::appFontScaled(14, Fonts::FontWeight::Normal), textColor, textColor, textColor, QColor(), TextRendering::HorAligment::LEFT, 1);
         textUnit_->append(std::move(quoteText));
 
@@ -288,7 +292,7 @@ namespace Ui
         {
             if (const auto msgId = it->getMsgId(); msgId != -1)
             {
-                Logic::getContactListModel()->setCurrent(Logic::getContactListModel()->selectedContact(), msgId, true);
+                Utils::InterConnector::instance().openDialog(it->getChatId(), msgId);
                 Q_EMIT rowClicked(std::distance(rows_.begin(), it), QPrivateSignal());
             }
         }

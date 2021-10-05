@@ -67,7 +67,6 @@ namespace Ui
         void callPhone();
         void getSmsResult(int64_t, int, int, const QString& _ivrUrl, const QString& _checks);
         void loginResult(int64_t, int, bool);
-        void loginResultAttachUin(int64_t, int);
         void loginResultAttachPhone(int64_t, int);
         void clearErrors(bool ignorePhoneInfo = false);
         void codeEditChanged(const QString&);
@@ -83,6 +82,11 @@ namespace Ui
         void switchLoginType();
         void openProxySettings();
 
+   private Q_SLOTS:
+        void openOAuth2Dialog();
+        void onAuthCodeReceived(const QString& _token);
+        void onAuthDialogResult(int _result);
+
     public:
         LoginPage(QWidget* _parent);
         ~LoginPage() = default;
@@ -90,9 +94,9 @@ namespace Ui
         static bool isCallCheck(const QString& _checks);
 
     protected:
-        virtual void keyPressEvent(QKeyEvent* _event) override;
-        virtual void paintEvent(QPaintEvent* _event) override;
-        virtual void resizeEvent(QResizeEvent* _event) override;
+        void keyPressEvent(QKeyEvent* _event) override;
+        void paintEvent(QPaintEvent* _event) override;
+        void resizeEvent(QResizeEvent* _event) override;
         bool eventFilter(QObject* _obj, QEvent* _event) override;
 
     private:
@@ -103,6 +107,7 @@ namespace Ui
             SUBPAGE_UIN_LOGIN_INDEX = 2,
             SUBPAGE_INTRODUCEYOURSELF = 3,
             SUBPAGE_REPORT = 4,
+            SUBPAGE_OAUTH2_LOGIN_INDEX = 5
         };
 
         void init();
@@ -162,6 +167,7 @@ namespace Ui
         QWidget*                controlsWidget_;
         QWidget*                hintsWidget_;
 
+        CustomButton*           loginButton_;
         DialogButton*           nextButton_;
         CustomButton*           changePageButton_;
         CustomButton*           proxySettingsButton_;

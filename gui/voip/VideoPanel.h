@@ -1,8 +1,10 @@
 #pragma once
 #include "CommonUI.h"
 #include "VoipProxy.h"
+#include "ScreenFrame.h"
 #include "../controls/ClickWidget.h"
 #include "media/permissions/MediaCapturePermissions.h"
+
 
 namespace voip_manager
 {
@@ -25,59 +27,6 @@ namespace Ui
     namespace TextRendering
     {
         class TextUnit;
-    }
-
-    namespace VideoPanelParts
-    {
-        class ScreenBorderLine : public QWidget
-        {
-            Q_OBJECT
-
-        public:
-            enum class LinePosition
-            {
-                Left,
-                Top,
-                Right,
-                Bottom
-            };
-
-            explicit ScreenBorderLine(LinePosition _position, const Qt::WindowFlags& _wFlags, const QColor& _color);
-            ~ScreenBorderLine();
-
-            void updateForGeometry(const QRect& _rect);
-
-        protected:
-            void paintEvent(QPaintEvent* _event) override;
-
-        private:
-            bool isOverlapped() const;
-
-            LinePosition linePosition_;
-            uint lineWidth_;
-            QColor bgColor_;
-
-            QTimer* checkOverlappedTimer_;
-        };
-
-        class ShareScreenFrame : public QObject
-        {
-            Q_OBJECT
-
-        Q_SIGNALS:
-            void stopScreenSharing(QPrivateSignal) const;
-
-        public:
-            explicit ShareScreenFrame(std::string_view _uid, const QColor& _color = Qt::red, qreal _opacity = 0.5);
-            ~ShareScreenFrame();
-
-        private Q_SLOTS:
-            void screenGeometryChanged(const QRect& _rect);
-
-        private:
-            QPointer<ClickableTextWidget> buttonStopScreenSharing_;
-            std::vector<QPointer<ScreenBorderLine>> borderLines_;
-        };
     }
 
     class VideoPanel : public BaseBottomVideoPanel
@@ -133,10 +82,13 @@ namespace Ui
         void onDeviceSettingsClick(const PanelButton* _button, voip_proxy::EvoipDevTypes _type);
         void addButtonClicked();
 
+        void onShareScreenStateChanged(ScreenSharingManager::SharingState _state, int);
+
     public:
         VideoPanel(QWidget* _parent, QWidget* _container);
         ~VideoPanel();
 
+        static bool isRunningUnderWayland();
         void setVisible(bool _visible) override;
 
         void updatePosition(const QWidget& _parent) override;
@@ -155,6 +107,17 @@ namespace Ui
 
         void callDestroyed();
 
+        enum class ToastType
+        {
+            CamNotAllowed,
+            DesktopNotAllowed,
+            MasksNotAllowed,
+            MicNotAllowed,
+            LinkCopied,
+            EmptyLink,
+            DeviceUnavailable
+        };
+        void showToast(ToastType _type);
         void showToast(const QString& _text, int _maxLineCount = 1);
         void hideToast();
 
@@ -194,28 +157,10 @@ namespace Ui
         void showMenuAtButton(const PanelButton* _button);
         void closeMenu();
 
-        void switchShareScreen(unsigned int _index);
-
         void resetPanelButtons(bool _enable = true);
-
-        void showScreenBorder(std::string_view _uid);
-        void hideScreenBorder();
 
         void onActiveDeviceChange(const voip_proxy::device_desc& _device);
 
-        enum class ToastType
-        {
-            CamNotAllowed,
-            DesktopNotAllowed,
-            MasksNotAllowed,
-            MicNotAllowed,
-            LinkCopied,
-            EmptyLink,
-            DeviceUnavailable
-        };
-
-
-        void showToast(ToastType _type);
         void updateToastPosition();
 
         struct DeviceInfo
@@ -239,33 +184,32 @@ namespace Ui
         bool event(QEvent* _e) override;
 
     private:
-        QWidget* container_;
-        QWidget* parent_;
-        QWidget* rootWidget_;
-        QHBoxLayout* rootLayout_;
+        QWidget* container_ = nullptr;
+        QWidget* parent_ = nullptr;
+        QWidget* rootWidget_ = nullptr;
+        QHBoxLayout* rootLayout_ = nullptr;
 
         std::vector<voip_manager::Contact> activeContact_;
-        PanelButton* stopCallButton_;
-        PanelButton* videoButton_;
-        PanelButton* shareScreenButton_;
-        PanelButton* microphoneButton_;
-        PanelButton* speakerButton_;
-        PanelButton* moreButton_;
-        PanelButton* addButton_;
+        PanelButton* stopCallButton_ = nullptr;
+        PanelButton* videoButton_ = nullptr;
+        PanelButton* shareScreenButton_ = nullptr;
+        PanelButton* microphoneButton_ = nullptr;
+        PanelButton* speakerButton_ = nullptr;
+        PanelButton* moreButton_ = nullptr;
+        PanelButton* addButton_ = nullptr;
 
         QPointer<Previewer::CustomMenu> menu_;
-        QPointer<VideoPanelParts::ShareScreenFrame> shareScreenFrame_;
         QPointer<Toast> toast_;
 
-        bool isFadedVisible_;
-        bool doPreventFadeIn_;
-        bool localVideoEnabled_;
-        bool isScreenSharingEnabled_;
-        bool isCameraEnabled_;
-        bool isConferenceAll_;
-        bool isParentMinimizedFromHere_;
-        bool isBigConference_;
-        bool isMasksAllowed_;
+        bool isFadedVisible_ = false;
+        bool doPreventFadeIn_ = false;
+        bool localVideoEnabled_ = false;
+        bool isScreenSharingEnabled_ = false;
+        bool isCameraEnabled_ = true;
+        bool isConferenceAll_ = true;
+        bool isParentMinimizedFromHere_ = false;
+        bool isBigConference_ = false;
+        bool isMasksAllowed_ = true;
         bool isAddButtonEnabled_ = false;
 
         Qt::WindowStates prevParentState_ = Qt::WindowNoState;

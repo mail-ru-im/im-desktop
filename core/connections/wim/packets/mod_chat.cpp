@@ -4,7 +4,7 @@
 
 #include "../../../http_request.h"
 #include "../../../tools/system.h"
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 
 using namespace core;
 using namespace wim;
@@ -53,6 +53,8 @@ int32_t mod_chat::init_request(const std::shared_ptr<core::http_request_simple>&
         node_params.AddMember("joinModeration", *chat_params_.get_join(), a);
     if (chat_params_.get_stamp())
         node_params.AddMember("stamp", *chat_params_.get_stamp(), a);
+    if (chat_params_.get_trust_required())
+        node_params.AddMember("trustRequired", *chat_params_.get_trust_required(), a);
 
     doc.AddMember("params", std::move(node_params), a);
 

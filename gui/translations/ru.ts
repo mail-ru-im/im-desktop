@@ -405,9 +405,144 @@ You can leave your feedback or report an error here:</source>
         <source>You are not a member of this chat or you was banned to write</source>
         <translation>Вы не участник чата или вам запрещено писать</translation>
     </message>
+</context>
+<context>
+    <name>calendar</name>
     <message>
-        <source>Are you sure you want to open an external link %1?</source>
-        <translation>Вы уверены, что хотите открыть внешнюю ссылку %1?</translation>
+        <source>Mon</source>
+        <translation>Пн</translation>
+    </message>
+    <message>
+        <source>Tue</source>
+        <translation>Вт</translation>
+    </message>
+    <message>
+        <source>Wed</source>
+        <translation>Ср</translation>
+    </message>
+    <message>
+        <source>Thu</source>
+        <translation>Чт</translation>
+    </message>
+    <message>
+        <source>Fri</source>
+        <translation>Пт</translation>
+    </message>
+    <message>
+        <source>Sat</source>
+        <translation>Сб</translation>
+    </message>
+    <message>
+        <source>Sun</source>
+        <translation>Вс</translation>
+    </message>
+    <message>
+        <source>January</source>
+        <translation>Январь</translation>
+    </message>
+    <message>
+        <source>Febuary</source>
+        <translation>Февраль</translation>
+    </message>
+    <message>
+        <source>March</source>
+        <translation>Март</translation>
+    </message>
+    <message>
+        <source>April</source>
+        <translation>Апрель</translation>
+    </message>
+    <message>
+        <source>May</source>
+        <translation>Май</translation>
+    </message>
+    <message>
+        <source>June</source>
+        <translation>Июнь</translation>
+    </message>
+    <message>
+        <source>July</source>
+        <translation>Июль</translation>
+    </message>
+    <message>
+        <source>August</source>
+        <translation>Август</translation>
+    </message>
+    <message>
+        <source>September</source>
+        <translation>Сентябрь</translation>
+    </message>
+    <message>
+        <source>October</source>
+        <translation>Октябрь</translation>
+    </message>
+    <message>
+        <source>November</source>
+        <translation>Ноябрь</translation>
+    </message>
+    <message>
+        <source>December</source>
+        <translation>Декабрь</translation>
+    </message>
+    <message>
+        <source>Jan</source>
+        <translation>янв</translation>
+    </message>
+    <message>
+        <source>Feb</source>
+        <translation>февр</translation>
+    </message>
+    <message>
+        <source>Mar</source>
+        <translation>марта</translation>
+    </message>
+    <message>
+        <source>Apr</source>
+        <translation>апр</translation>
+    </message>
+    <message>
+        <source>Jun</source>
+        <translation>июня</translation>
+    </message>
+    <message>
+        <source>Jul</source>
+        <translation>июля</translation>
+    </message>
+    <message>
+        <source>Aug</source>
+        <translation>авг</translation>
+    </message>
+    <message>
+        <source>Sep</source>
+        <translation>сент</translation>
+    </message>
+    <message>
+        <source>Oct</source>
+        <translation>окт</translation>
+    </message>
+    <message>
+        <source>Nov</source>
+        <translation>нояб</translation>
+    </message>
+    <message>
+        <source>Dec</source>
+        <translation>дек</translation>
+    </message>
+    <message>
+        <source>Today</source>
+        <translation>Сегодня</translation>
+    </message>
+    <message>
+        <source>Tomorrow</source>
+        <translation>Завтра</translation>
+    </message>
+    <message>
+        <source>MayS</source>
+        <translation>мая</translation>
+    </message>
+    <message>
+        <source>%1. d, yyyy</source>
+        <translation>d %1, yyyy</translation>
     </message>
 </context>
 <context>
@@ -1020,6 +1155,22 @@ You can leave your feedback or report an error here:</source>
 %3
 %4 %5</translation>
     </message>
+    <message>
+        <source>%1 changed task title to &quot;%2&quot;</source>
+        <translation>%1 изменил(-а) текст задачи на &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed task deadline to %2</source>
+        <translation>%1 изменил(-а) дедлайн на %2</translation>
+    </message>
+    <message>
+        <source>%1 changed task assignee to &quot;%2&quot;</source>
+        <translation>%1 изменил(-а) исполнителя на &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>Task status changed to &quot;%1&quot;</source>
+        <translation>Статус задачи изменён на &quot;%1&quot;</translation>
+    </message>
 </context>
 <context>
     <name>chat_page</name>
@@ -1086,6 +1237,22 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Message sent</source>
         <translation>Сообщение отправлено</translation>
+    </message>
+    <message>
+        <source>Access limited</source>
+        <translation>Доступ ограничен</translation>
+    </message>
+    <message>
+        <source>File is not available</source>
+        <translation>Файл недоступен</translation>
+    </message>
+    <message>
+        <source>Filesharing Id copied to clipboard</source>
+        <translation>Filesharing Id скопирован</translation>
+    </message>
+    <message>
+        <source>Filesharing link copied to clipboard</source>
+        <translation>Ссылка на файлшаринг скопирована</translation>
     </message>
 </context>
 <context>
@@ -1208,6 +1375,30 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>PINNED</source>
         <translation>ЗАКРЕПЛЕННЫЕ</translation>
+    </message>
+    <message>
+        <source>Threads</source>
+        <translation>Тредыᵝ</translation>
+    </message>
+    <message>
+        <source>Reminders</source>
+        <translation>Напоминания</translation>
+    </message>
+    <message>
+        <source>Scheduled</source>
+        <translation>Запланированные</translation>
+    </message>
+    <message>
+        <source>Draft</source>
+        <translation>Черновик</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation>Задача</translation>
+    </message>
+    <message>
+        <source>Tasks</source>
+        <translation>Задачи</translation>
     </message>
 </context>
 <context>
@@ -1664,6 +1855,58 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Copy session info</source>
         <translation>Скопировать информацию о сессии</translation>
+    </message>
+    <message>
+        <source>Bold</source>
+        <translation>Жирный</translation>
+    </message>
+    <message>
+        <source>Italic</source>
+        <translation>Курсив</translation>
+    </message>
+    <message>
+        <source>Underline</source>
+        <translation>Подчеркнутый</translation>
+    </message>
+    <message>
+        <source>Strike through</source>
+        <translation>Зачеркнутый</translation>
+    </message>
+    <message>
+        <source>Monospace</source>
+        <translation>Моноширинный</translation>
+    </message>
+    <message>
+        <source>Create link</source>
+        <translation>Добавить ссылку</translation>
+    </message>
+    <message>
+        <source>Clear format</source>
+        <translation>Очистить стили</translation>
+    </message>
+    <message>
+        <source>Format</source>
+        <translation>Форматирование</translation>
+    </message>
+    <message>
+        <source>Edit task</source>
+        <translation>Изменить задачу</translation>
+    </message>
+    <message>
+        <source>List</source>
+        <translation>Список</translation>
+    </message>
+    <message>
+        <source>Ordered list</source>
+        <translation>Нумерованный список</translation>
+    </message>
+    <message>
+        <source>Quote</source>
+        <translation>Цитата</translation>
+    </message>
+    <message>
+        <source>Code</source>
+        <translation>Код</translation>
     </message>
 </context>
 <context>
@@ -2700,6 +2943,21 @@ You can leave your feedback or report an error here:</source>
     </message>
 </context>
 <context>
+    <name>draft</name>
+    <message>
+        <source>Apply draft</source>
+        <translation>Применить черновик</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Отмена</translation>
+    </message>
+    <message>
+        <source>Apply another draft version?</source>
+        <translation>Применить другую версию черновика?</translation>
+    </message>
+</context>
+<context>
     <name>favorites</name>
     <message>
         <source>
@@ -2815,10 +3073,10 @@ You can leave your feedback or report an error here:</source>
     </message>
 </context>
 <context>
-    <name>generic_block</name>
+    <name>groupchat</name>
     <message>
-        <source>Copied to clipboard</source>
-        <translation>Скопировано в буфер</translation>
+        <source>To replies</source>
+        <translation>В ответы</translation>
     </message>
 </context>
 <context>
@@ -2911,6 +3169,20 @@ You can leave your feedback or report an error here:</source>
         <source>You are not a subscriber of this channel</source>
         <translation>Вы не подписчик этого канала</translation>
     </message>
+    <message>
+        <source>File access restrictions</source>
+        <translation>Ограничения на доступ к файлам</translation>
+    </message>
+    <message>
+        <source>Restrict file access to trusted devices only
+Only for private groups
+
+This option cannot be disabled</source>
+        <translation>Разрешать доступ к файлам только доверенным устройствам
+Только для непубличных групп
+
+Отключить настройку невозможно</translation>
+    </message>
 </context>
 <context>
     <name>head</name>
@@ -2940,6 +3212,30 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Please select a chat to start messaging</source>
         <translation>Пожалуйста, выберите чат</translation>
+    </message>
+    <message>
+        <source>Create a call</source>
+        <translation>Создать звонок</translation>
+    </message>
+    <message>
+        <source>No time limit</source>
+        <translation>Нет ограничения по времени</translation>
+    </message>
+    <message>
+        <source>Status is set automatically during call</source>
+        <translation>Автостатус показывает, кто в звонке</translation>
+    </message>
+    <message>
+        <source>Advantages of calls in Myteam</source>
+        <translation>Преимущества звонков в Myteam</translation>
+    </message>
+    <message>
+        <source>Group calls up to %1 participants</source>
+        <translation>Групповые звонки до %1 человек</translation>
+    </message>
+    <message>
+        <source>Return to call in chat in one click</source>
+        <translation>Возврат к звонку в чате в один клик</translation>
     </message>
 </context>
 <context>
@@ -3107,6 +3403,10 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Cancel request</source>
         <translation>Отменить запрос</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation>Задача</translation>
     </message>
 </context>
 <context>
@@ -3348,6 +3648,10 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Wrong password</source>
         <translation>Неверный пароль</translation>
+    </message>
+    <message>
+        <source>Sign in with Mail.ru</source>
+        <translation>Войти через Mail.ru</translation>
     </message>
 </context>
 <context>
@@ -4001,10 +4305,6 @@ to contact status</source>
     <message>
         <source>Are you sure you want to leave chat?</source>
         <translation>Вы уверены, что хотите покинуть чат?</translation>
-    </message>
-    <message>
-        <source>Contact name</source>
-        <translation>Имя контакта</translation>
     </message>
     <message>
         <source>Sign out</source>
@@ -4709,8 +5009,16 @@ to contact status</source>
         <translation>Превышен лимит участников (максимум %1)</translation>
     </message>
     <message>
-        <source>Are you sure you want to open external link %1?</source>
-        <translation>Вы уверены, что хотите открыть внешнюю ссылку %1?</translation>
+        <source>Are you sure you want to open an external link?</source>
+        <translation>Вы уверены, что хотите открыть внешнюю ссылку?</translation>
+    </message>
+    <message>
+        <source>Add link</source>
+        <translation>Добавить ссылку</translation>
+    </message>
+    <message>
+        <source>The link will be displayed as &quot;%1&quot;</source>
+        <translation>Ссылка будет отображаться как «%1»</translation>
     </message>
     <message>
         <source>Enable net compression</source>
@@ -4819,6 +5127,38 @@ to contact status</source>
     <message>
         <source>User not a member</source>
         <translation>Пользователь не является участником данной группы</translation>
+    </message>
+    <message>
+        <source>Link</source>
+        <translation>Ссылка</translation>
+    </message>
+    <message>
+        <source>Invalid url</source>
+        <translation>Не является ссылкой</translation>
+    </message>
+    <message>
+        <source>Opening or downloading files will be possible from trusted device only
+
+%1 It will be impossible to disable this setting!</source>
+        <translation>Открыть или скачать файлы будет возможно только с доверенного устройства
+
+%1 Отключить настройку будет невозможно!</translation>
+    </message>
+    <message>
+        <source>File access will be restricted</source>
+        <translation>Доступ к файлам будет ограничен</translation>
+    </message>
+    <message>
+        <source>Only chat members can view replies</source>
+        <translation>Просматривать ответы могут только участники группы</translation>
+    </message>
+    <message>
+        <source>Show seconds in time picker</source>
+        <translation>Отображать секунды в окне выбора времени</translation>
+    </message>
+    <message>
+        <source>Only channel subscribers can view replies</source>
+        <translation>Просматривать ответы могут только подписчики канала</translation>
     </message>
 </context>
 <context>
@@ -5093,18 +5433,10 @@ to contact status</source>
         <translation>OK</translation>
     </message>
     <message>
-        <source> ﻿—  Added display of full file name in the chat and in the chat gallery on hover
- —  Added display of full username, chat or channel name on hover
- —  Made the &quot;Show notifications when the application in focus&quot; setting in Settings → Notifications
- —  Fixed crashes on Linux when playing some animated stickers
- —  Removed the display of your video when watching a screen sharing in the call window
- —  Other fixes and improvements </source>
-        <translation> — Добавили отображение полного имени файла в чате и в галерее чата при наведении курсора
- — Добавили отображение полного имени пользователя, названия чата или канала при наведении курсора
- — Сделали настройку "Показывать уведомления, когда приложение активно" в Настройки → Уведомления
- — Исправили падения на Linux при проигрывании некоторых анимированных стикеров
- — Убрали отображение своего видео при просмотре демонстрации экрана в окне звонка
- — Другие исправления и улучшения</translation>
+        <source> ﻿ ﻿— Updated colors for blue and dark blue themes
+  ﻿— Other fixes and improvements </source>
+        <translation> ﻿ ﻿— Обновили цвета у синей и тёмной синей тем
+ ﻿ ﻿— Другие исправления и улучшения</translation>
     </message>
 </context>
 <context>
@@ -5615,6 +5947,10 @@ to contact status</source>
         <translation>Не спрашивать при запуске исполняемых файлов</translation>
     </message>
     <message>
+        <source>Do not ask when opening external links</source>
+        <translation>Не спрашивать при открытии внешних ссылок</translation>
+    </message>
+    <message>
         <source>Use system spell checker</source>
         <translation>Системная проверка орфографии</translation>
     </message>
@@ -5661,6 +5997,14 @@ to contact status</source>
     <message>
         <source>Show notifications when app in focus</source>
         <translation>Показывать уведомления, когда приложение активно</translation>
+    </message>
+    <message>
+        <source>Call window</source>
+        <translation>Окно звонка</translation>
+    </message>
+    <message>
+        <source>Warn about disabled microphone</source>
+        <translation>Предупреждать об отключенном микрофоне</translation>
     </message>
 </context>
 <context>
@@ -5859,6 +6203,10 @@ to contact status</source>
     <message>
         <source>Set status</source>
         <translation>Установить статус</translation>
+    </message>
+    <message>
+        <source>Switch microphone state</source>
+        <translation>Изменить состояние микрофона</translation>
     </message>
 </context>
 <context>
@@ -6257,6 +6605,14 @@ Please edit phone number and try again.</source>
         <source>Close</source>
         <translation>Закрыть</translation>
     </message>
+    <message>
+        <source>Cannot be disabled due to security reasons</source>
+        <translation>В целях безопасности отключить настройку невозможно</translation>
+    </message>
+    <message>
+        <source>Replies</source>
+        <translation>Ответы</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -6293,10 +6649,6 @@ Please edit phone number and try again.</source>
     <message>
         <source>File</source>
         <translation>Файл</translation>
-    </message>
-    <message>
-        <source>Copied to clipboard</source>
-        <translation>Скопировано в буфер</translation>
     </message>
     <message>
         <source>Location</source>
@@ -6526,22 +6878,6 @@ Please edit phone number and try again.</source>
         <source>Status duration</source>
         <translation>Срок действия статуса</translation>
     </message>
-    <message>
-        <source>Date</source>
-        <translation>Дата</translation>
-    </message>
-    <message>
-        <source>dd.mm.yyyy</source>
-        <translation>дд.мм.гггг</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>Время</translation>
-    </message>
-    <message>
-        <source>hh:mm</source>
-        <translation>чч:мм</translation>
-    </message>
 </context>
 <context>
     <name>stickers</name>
@@ -6593,6 +6929,10 @@ Please edit phone number and try again.</source>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
+    <message>
+        <source>Stickerpack is not available</source>
+        <translation>Стикерпак недоступен</translation>
+    </message>
 </context>
 <context>
     <name>tab</name>
@@ -6617,12 +6957,12 @@ Please edit phone number and try again.</source>
         <translation>Звонки</translation>
     </message>
     <message>
-        <source>Structure</source>
-        <translation>Структура</translation>
-    </message>
-    <message>
         <source>Tasks</source>
         <translation>Задачи</translation>
+    </message>
+    <message>
+        <source>Calendar</source>
+        <translation>Календарь</translation>
     </message>
 </context>
 <context>
@@ -6650,6 +6990,101 @@ Please edit phone number and try again.</source>
     <message>
         <source>Group call</source>
         <translation>Групповой звонок</translation>
+    </message>
+</context>
+<context>
+    <name>task</name>
+    <message>
+        <source>In progress</source>
+        <translation>В работе</translation>
+    </message>
+    <message>
+        <source>Ready</source>
+        <translation>Готово</translation>
+    </message>
+    <message>
+        <source>Rejected</source>
+        <translation>Отклонено</translation>
+    </message>
+    <message>
+        <source>Closed</source>
+        <translation>Закрыто</translation>
+    </message>
+    <message>
+        <source>New</source>
+        <translation>Сделать</translation>
+    </message>
+    <message>
+        <source>No assignee</source>
+        <translation>Без исполнителя</translation>
+    </message>
+</context>
+<context>
+    <name>task_block</name>
+    <message>
+        <source>Not assigned</source>
+        <translation>Не назначен</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation>Задача</translation>
+    </message>
+    <message>
+        <source>Task Id copied to clipboard</source>
+        <translation>Task Id скопирован</translation>
+    </message>
+    <message>
+        <source>Not set</source>
+        <translation>Не назначено</translation>
+    </message>
+    <message>
+        <source>Task edit: an error occured</source>
+        <translation>Изменение задачи: произошла ошибка</translation>
+    </message>
+</context>
+<context>
+    <name>task_popup</name>
+    <message>
+        <source>Edit task</source>
+        <translation>Изменение задачи</translation>
+    </message>
+    <message>
+        <source>Create task</source>
+        <translation>Создать задачу</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>Название</translation>
+    </message>
+    <message>
+        <source>Maximum length - %1 symbols</source>
+        <translation>Максимальная длина — %1 символов</translation>
+    </message>
+    <message>
+        <source>Assignee</source>
+        <translation>Исполнитель</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Отмена</translation>
+    </message>
+    <message>
+        <source>Ok</source>
+        <translation>Ок</translation>
+    </message>
+    <message>
+        <source>Create</source>
+        <translation>Создать</translation>
+    </message>
+    <message>
+        <source>User with this name
+not found</source>
+        <translation>Пользователь с таким
+именем не найден</translation>
+    </message>
+    <message>
+        <source>No deadline</source>
+        <translation>Без дедлайна</translation>
     </message>
 </context>
 <context>
@@ -6681,6 +7116,61 @@ Please edit phone number and try again.</source>
     <message>
         <source>Welcome to ICQ New</source>
         <translation>Добро пожаловать в ICQ New</translation>
+    </message>
+</context>
+<context>
+    <name>threads_feed</name>
+    <message>
+        <source>There is no threads</source>
+        <translation>Треды отсутствуют</translation>
+    </message>
+    <message>
+        <source>Threads you subscribed for will be here</source>
+        <translation>Тут будут отображаться треды, на которые вы подписаны</translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>1</comment>
+        <translation>Показать еще %1 новый</translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>2</comment>
+        <translation>Показать еще %1 новых</translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>5</comment>
+        <translation>Показать еще %1 новых</translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>21</comment>
+        <translation>Показать еще %1 новый</translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>1</comment>
+        <translation>Показать еще %1</translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>2</comment>
+        <translation>Показать еще %1</translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>5</comment>
+        <translation>Показать еще %1</translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>21</comment>
+        <translation>Показать еще %1</translation>
+    </message>
+    <message>
+        <source>Replies</source>
+        <translation>Ответы</translation>
     </message>
 </context>
 <context>
@@ -6732,6 +7222,42 @@ Please edit phone number and try again.</source>
         <source>You are not a member or banned to write in this group</source>
         <translation>Вы не участник чата или вам запрещено писать</translation>
     </message>
+    <message>
+        <source>Unable to open invalid url &quot;%1&quot;</source>
+        <translation>Невозможно открыть некорректный адрес %1</translation>
+    </message>
+    <message>
+        <source>Error occurred while opening the replies</source>
+        <translation>Во время открытия ответов произошла ошибка</translation>
+    </message>
+    <message>
+        <source>Administrator has set the restrictions on access to files</source>
+        <translation>Администратор группы установил(-а) ограничения на доступ к файлам</translation>
+    </message>
+    <message>
+        <source>Awaiting antivirus check, patience</source>
+        <translation>Ждём проверки антивирусом, терпение</translation>
+    </message>
+    <message>
+        <source>Antivirus check in progress, patience</source>
+        <translation>Идет проверка антивирусом, терпение</translation>
+    </message>
+    <message>
+        <source>File is blocked by the antivirus</source>
+        <translation>Файл заблокирован антивирусом</translation>
+    </message>
+    <message>
+        <source>Checked</source>
+        <translation>Проверено</translation>
+    </message>
+    <message>
+        <source>No access. You may not have enough rights</source>
+        <translation>Нет доступа. Возможно, у вас недостаточно прав</translation>
+    </message>
+    <message>
+        <source>File not checked (and never will be). Available to download</source>
+        <translation>Файл не проверен (и не будет проверен). Доступен для скачивания</translation>
+    </message>
 </context>
 <context>
     <name>tooltips</name>
@@ -6774,6 +7300,14 @@ Please edit phone number and try again.</source>
     <message>
         <source>Link to call</source>
         <translation>Ссылка на звонок</translation>
+    </message>
+    <message>
+        <source>Chat gallery</source>
+        <translation>Галерея чата</translation>
+    </message>
+    <message>
+        <source>Refresh</source>
+        <translation>Обновить</translation>
     </message>
 </context>
 <context>
@@ -6909,6 +7443,18 @@ with click</source>
         <translation>Занято</translation>
     </message>
     <message>
+        <source>Hold Space key for temporary unmute</source>
+        <translation>Удерживайте клавишу Пробел для временного включения микрофона</translation>
+    </message>
+    <message>
+        <source>Microphone disabled</source>
+        <translation>Микрофон выключен</translation>
+    </message>
+    <message>
+        <source>Microphone enabled</source>
+        <translation>Микрофон включен</translation>
+    </message>
+    <message>
         <source>Call members</source>
         <translation>Участники звонка</translation>
     </message>
@@ -6931,6 +7477,16 @@ with click</source>
     <message>
         <source>CONTACTS</source>
         <translation>КОНТАКТЫ</translation>
+    </message>
+    <message>
+        <source>You are muted now
+Press %1 to unmute your microphone
+
+Press and hold Space key for temporarily unmute</source>
+        <translation>Сейчас ваш микрофон выключен
+Нажмите %1 для включения микрофона
+
+Нажмите и удерживайте клавишу Пробел для временного включения микрофона</translation>
     </message>
 </context>
 <context>

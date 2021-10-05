@@ -26,13 +26,14 @@
 #include "contact_list/SelectionContactsForGroupChat.h"
 #include "contact_list/AddContactDialogs.h"
 #include "contact_list/FavoritesUtils.h"
+#include "contact_list/ServiceContacts.h"
 #include "settings/GeneralSettingsWidget.h"
 #include "settings/SettingsTab.h"
 #include "settings/SettingsHeader.h"
 #include "sidebar/Sidebar.h"
 #include "containers/FriendlyContainer.h"
 #include "containers/LastseenContainer.h"
-#include "containers/InputTextContainer.h"
+#include "containers/InputStateContainer.h"
 #include "../core_dispatcher.h"
 #include "../gui_settings.h"
 #include "../my_info.h"
@@ -65,6 +66,7 @@
 #include "../main_window/input_widget/AttachFilePopup.h"
 #include "../main_window/input_widget/InputWidget.h"
 #include "../main_window/history_control/HistoryControlPage.h"
+#include "../main_window/history_control/HistoryControl.h"
 
 #include "styles/ThemeParameters.h"
 
@@ -147,23 +149,10 @@ namespace
     {
         return Ui::get_gui_settings()->get_value<bool>(settings_fast_drop_search_results, settings_fast_drop_search_default());
     }
-
-    constexpr std::chrono::milliseconds getToastVisibilityDuration() noexcept
-    {
-        return std::chrono::seconds(1);
-    }
 }
 
 namespace Ui
 {
-    enum class Tabs
-    {
-        Calls,
-        Contacts,
-        Recents,
-        Settings
-    };
-
     UnreadsCounter::UnreadsCounter(QWidget* _parent)
         : QWidget(_parent)
     {
@@ -188,6 +177,19 @@ namespace Ui
     }
 
     std::unique_ptr<MainPage> MainPage::_instance;
+
+    const QString& MainPage::callsTabAccessibleName()
+    {
+        static const auto name = qsl("AS CallsTab");
+        return name;
+    }
+
+    const QString& MainPage::settingsTabAccessibleName()
+    {
+        static const auto name = qsl("AS SettingsTab");
+        return name;
+    }
+
     MainPage* MainPage::instance(QWidget* _parent)
     {
         im_assert(_instance || _parent);
@@ -212,9 +214,13 @@ namespace Ui
     MainPage::MainPage(QWidget* _parent)
         : QWidget(_parent)
         , recentsTab_(new RecentsTab(this))
+        , settingsTab_(nullptr)
+        , contactsTab_(nullptr)
+        , callsTab_(nullptr)
         , videoWindow_(nullptr)
         , pages_(new WidgetsNavigator(this))
         , contactDialog_(new ContactDialog(this))
+        , callsHistoryPage_(new EmptyConnectionInfoPage(this))
         , generalSettings_(new GeneralSettingsWidget(this))
         , stickersStore_(nullptr)
         , settingsTimer_(new QTimer(this))
@@ -230,10 +236,8 @@ namespace Ui
         , clContainer_(nullptr)
         , pagesContainer_(nullptr)
         , sidebar_(new Sidebar(_parent))
+        , sidebarVisibilityOnRecentsFrame_(false)
         , tabWidget_(nullptr)
-        , settingsTab_(nullptr)
-        , contactsTab_(nullptr)
-        , callsTab_(nullptr)
         , spreadedModeLine_(new LineLayoutSeparator(Utils::scale_value(1), LineLayoutSeparator::Direction::Ver, Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT),this))
         , updaterButton_(nullptr)
         , NeedShowUnknownsHeader_(false)
@@ -250,11 +254,16 @@ namespace Ui
             leftPanelState_ = LeftPanelState::picture_only;
 
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::compactModeChanged, this, &MainPage::compactModeChanged);
-        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::contacts, this, &MainPage::contactsClicked);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::contacts, this, &MainPage::openContacts);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::openDialogOrProfileById, this, &MainPage::openDialogOrProfileById);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::loaderOverlayShow, this, &MainPage::showLoaderOverlay);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::loaderOverlayHide, this, &MainPage::hideLoaderOverlay);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::sidebarVisibilityChanged, this, &MainPage::onSidebarVisibilityChanged);
 
+        sidebar_->escCancel_->setCancelCallback([this]() { setSidebarVisible(false); });
+        sidebar_->escCancel_->setCancelPriority(EscPriority::high);
+
+        connect(sidebar_, &Sidebar::pageChanged, this, &MainPage::updateSidebarSplitterColor);
         sidebar_->hide();
 
         semiWindow_->setCloseWindowInfo({ Utils::CloseWindowInfo::Initiator::Unknown, Utils::CloseWindowInfo::Reason::Keep_Sidebar });
@@ -286,7 +295,8 @@ namespace Ui
         recentsHeaderButtons_.newContacts_->setVisibility(Logic::getUnknownsModel()->itemsCount() > 0);
         topWidget_->getRecentsHeader()->addButtonToLeft(recentsHeaderButtons_.newContacts_);
         recentsHeaderButtons_.newContacts_->hide();
-        QObject::connect(recentsHeaderButtons_.newContacts_, &HeaderTitleBarButton::clicked, this, [this]() {
+        QObject::connect(recentsHeaderButtons_.newContacts_, &HeaderTitleBarButton::clicked, this, [this]()
+        {
             prevSearchInput_ = topWidget_->getSearchWidget()->getText();
             if (!prevSearchInput_.isEmpty())
                 recentsTab_->setSearchMode(false);
@@ -367,8 +377,14 @@ namespace Ui
         {
             Testing::setAccessibleName(contactDialog_, qsl("AS Dialog"));
             pages_->addWidget(contactDialog_);
+
             Testing::setAccessibleName(generalSettings_, qsl("AS Settings"));
             pages_->addWidget(generalSettings_);
+
+            Testing::setAccessibleName(callsHistoryPage_, qsl("AS CallsHistoryPage"));
+            callsHistoryPage_->setPageType(EmptyConnectionInfoPage::OnlineWidgetType::Calls);
+            pages_->addWidget(callsHistoryPage_);
+
             pages_->push(contactDialog_);
         }
 
@@ -376,21 +392,21 @@ namespace Ui
         tabWidget_ = new TabWidget();
 
         callsTab_ = new CallsTab();
-        Testing::setAccessibleName(callsTab_, qsl("AS CallsTab"));
+        Testing::setAccessibleName(callsTab_, callsTabAccessibleName());
         auto tab = tabWidget_->addTab(callsTab_, QT_TRANSLATE_NOOP("tab", "Calls"), qsl(":/tab/calls"), qsl(":/tab/calls_active"));
-        indexToTabs_.emplace_back(tab.first, Tabs::Calls);
+        indexToTabs_.emplace_back(tab.first, TabType::Calls);
         callsTabButton_ = tab.second;
         updateCallsTabButton();
 
         contactsTab_ = new ContactsTab();
         Testing::setAccessibleName(contactsTab_, qsl("AS ContactsTab"));
-        indexToTabs_.emplace_back(tabWidget_->addTab(contactsTab_, QT_TRANSLATE_NOOP("tab", "Contacts"), qsl(":/tab/contacts"), qsl(":/tab/contacts_active")).first, Tabs::Contacts);
+        indexToTabs_.emplace_back(tabWidget_->addTab(contactsTab_, QT_TRANSLATE_NOOP("tab", "Contacts"), qsl(":/tab/contacts"), qsl(":/tab/contacts_active")).first, TabType::Contacts);
 
-        indexToTabs_.emplace_back(tabWidget_->addTab(contactsWidget_, QT_TRANSLATE_NOOP("tab", "Chats"), qsl(":/tab/chats"), qsl(":/tab/chats_active")).first, Tabs::Recents);
+        indexToTabs_.emplace_back(tabWidget_->addTab(contactsWidget_, QT_TRANSLATE_NOOP("tab", "Chats"), qsl(":/tab/chats"), qsl(":/tab/chats_active")).first, TabType::Recents);
 
         settingsTab_ = new SettingsTab();
-        Testing::setAccessibleName(settingsTab_, qsl("AS SettingsTab"));
-        indexToTabs_.emplace_back(tabWidget_->addTab(settingsTab_, QT_TRANSLATE_NOOP("tab", "Settings"), qsl(":/tab/settings"), qsl(":/tab/settings_active")).first, Tabs::Settings);
+        Testing::setAccessibleName(settingsTab_, settingsTabAccessibleName());
+        indexToTabs_.emplace_back(tabWidget_->addTab(settingsTab_, QT_TRANSLATE_NOOP("tab", "Settings"), qsl(":/tab/settings"), qsl(":/tab/settings_active")).first, TabType::Settings);
 
         selectRecentsTab();
 
@@ -438,7 +454,7 @@ namespace Ui
             clContainer_->setFixedWidth(getRecentMiniModeWidth());
         }
 
-        if (!Features::isTabBarVisible())
+        if (!Features::isMessengerTabBarVisible())
             tabWidget_->hideTabbar();
 
         splitter_->setChildrenCollapsible(false);
@@ -490,12 +506,11 @@ namespace Ui
         connect(recentsTab_, &RecentsTab::itemSelected, this, &MainPage::onContactSelected);
         connect(recentsTab_, &RecentsTab::itemSelected, this, &MainPage::hideRecentsPopup);
         connect(recentsTab_, &RecentsTab::itemSelected, contactDialog_, &ContactDialog::onContactSelected);
-        connect(contactDialog_, &ContactDialog::sendMessage, this, &MainPage::onMessageSent);
-        connect(contactDialog_, &ContactDialog::clicked, this, &MainPage::hideRecentsPopup);
 
         connect(contactsTab_->getContactListWidget(), &ContactListWidget::itemSelected, this, &MainPage::onContactSelected);
         connect(contactsTab_->getContactListWidget(), &ContactListWidget::itemSelected, contactDialog_, &ContactDialog::onContactSelected);
 
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::messageSent, this, &MainPage::onMessageSent);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::showSettingsHeader, this, &MainPage::showSettingsHeader);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::hideSettingsHeader, this, &MainPage::hideSettingsHeader);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::myProfileBack, this, &MainPage::settingsHeaderBack);
@@ -505,6 +520,7 @@ namespace Ui
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::dialogClosed, this, &MainPage::onDialogClosed);
         connect(Logic::getContactListModel(), &Logic::ContactListModel::selectedContactChanged, this, &MainPage::onSelectedContactChanged);
 
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::openThread, this, &MainPage::openThread);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::profileSettingsShow, this, &MainPage::onProfileSettingsShow);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::sharedProfileShow, this, &MainPage::onSharedProfileShow);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::generalSettingsShow, this, &MainPage::onGeneralSettingsShow);
@@ -545,10 +561,6 @@ namespace Ui
         QObject::connect(settingsTimer_, &QTimer::timeout, this, &MainPage::post_stats_with_settings);
         settingsTimer_->start(Ui::period_for_stats_settings_ms);
 
-        connect(Ui::GetDispatcher(), &core_dispatcher::im_created, this, &MainPage::loggedIn);
-
-        connect(Ui::GetDispatcher(), &core_dispatcher::historyUpdate, contactDialog_, &ContactDialog::onContactSelectedToLastMessage);
-
         connect(Ui::GetDispatcher(), &core_dispatcher::idInfo, this, &MainPage::onIdInfo);
 
         connect(pages_, &QStackedWidget::currentChanged, this, &MainPage::currentPageChanged);
@@ -556,7 +568,7 @@ namespace Ui
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::showStickersStore, this, &MainPage::showStickersStore);
 
         connect(tabWidget_, &TabWidget::currentChanged, this, &MainPage::tabBarCurrentChanged);
-        connect(tabWidget_, &TabWidget::tabBarClicked, this, &MainPage::tabBarClicked);
+        connect(tabWidget_, &TabWidget::tabBarClicked, this, qOverload<int>(&MainPage::onTabClicked));
         connect(tabWidget_->tabBar(), &TabBar::rightClicked, this, &MainPage::tabBarRightClicked);
         connect(expandButton_, &ExpandButton::clicked, this, &MainPage::expandButtonClicked);
 
@@ -572,7 +584,8 @@ namespace Ui
             setSidebarVisible(false);
         });
 
-        connect(get_gui_settings(), &Ui::qt_gui_settings::changed, this, [this](const QString& _key) {
+        connect(get_gui_settings(), &Ui::qt_gui_settings::changed, this, [this](const QString& _key)
+        {
             if (_key == ql1s(settings_notify_new_mail_messages))
                 updateNewMailButton();
             else if (_key == ql1s(settings_show_calls_tab))
@@ -587,8 +600,6 @@ namespace Ui
             clContainer_->resize(getRecentsDefaultWidth(), clContainer_->height());
 
         chatUnreadChanged();
-
-        loggedIn();
     }
 
     MainPage::~MainPage()
@@ -617,8 +628,14 @@ namespace Ui
 
     void MainPage::setFrameCountMode(FrameCountMode _mode)
     {
-        frameCountMode_ = _mode;
-        for_each([_mode](auto w) { if (w) w->setFrameCountMode(_mode); }, contactDialog_, sidebar_, stickersStore_);
+        if (frameCountMode_ != _mode)
+        {
+            frameCountMode_ = _mode;
+            for_each([_mode](auto w) { if (w) w->setFrameCountMode(_mode); }, contactDialog_, sidebar_, stickersStore_);
+
+            if (frameCountMode_ == FrameCountMode::_1 && pages_->currentWidget() == callsHistoryPage_)
+                switchToTabFrame();
+        }
     }
 
     void MainPage::setOneFrameMode(OneFrameMode _mode)
@@ -630,7 +647,7 @@ namespace Ui
 
     void MainPage::updateSettingHeader()
     {
-        if (frameCountMode_ == FrameCountMode::_1 && oneFrameMode_ == OneFrameMode::Content && getCurrentTab() == Tabs::Settings)
+        if (frameCountMode_ == FrameCountMode::_1 && oneFrameMode_ == OneFrameMode::Content && getCurrentTab() == TabType::Settings)
             settingsHeader_->show();
         else
             settingsHeader_->hide();
@@ -656,7 +673,7 @@ namespace Ui
     void MainPage::switchToContentFrame()
     {
         setOneFrameMode(OneFrameMode::Content);
-        if (getCurrentTab() == Tabs::Settings && settingsHeader_->hasText())
+        if (getCurrentTab() == TabType::Settings && settingsHeader_->hasText())
             settingsHeader_->show();
         pagesContainer_->show();
         clContainer_->hide();
@@ -707,9 +724,10 @@ namespace Ui
                     if (_info.isBot_)
                     {
                         Logic::GetLastseenContainer()->setContactBot(_info.sn_);
-                        Utils::openDialogWithContact(_info.sn_, -1, true, [params = std::move(dialogIdLoader_.botParams_)](HistoryControlPage* page)
+                        Utils::openDialogWithContact(_info.sn_, -1, true, [params = std::move(dialogIdLoader_.botParams_)](PageBase* page)
                         {
-                            page->setBotParameters(params);
+                            if (auto historyPage = qobject_cast<HistoryControlPage*>(page))
+                                historyPage->setBotParameters(params);
                         });
                     }
                     else
@@ -761,7 +779,7 @@ namespace Ui
     bool MainPage::canSetSearchFocus() const
     {
         return !isSemiWindowVisible() &&
-            getCurrentTab() == Tabs::Recents &&
+            getCurrentTab() == TabType::Recents &&
             recentsTab_->currentTab() == RECENTS;
     }
 
@@ -847,7 +865,12 @@ namespace Ui
 
     bool MainPage::isInSettingsTab() const
     {
-        return getCurrentTab() == Tabs::Settings;
+        return getCurrentTab() == TabType::Settings;
+    }
+
+    bool MainPage::isInRecentsTab() const
+    {
+        return getCurrentTab() == TabType::Recents;
     }
 
     void MainPage::openDialogOrProfileById(const QString& _id, bool _forceDialogOpen, std::optional<QString> _botParams)
@@ -877,12 +900,20 @@ namespace Ui
 
     void MainPage::closeAndHighlightDialog()
     {
-        if (const auto aimid = Logic::getContactListModel()->selectedContact(); !aimid.isEmpty())
+        if (const auto aimId = Logic::getContactListModel()->selectedContact(); !aimId.isEmpty())
         {
-            window()->setFocus();
-
-            Logic::getContactListModel()->setCurrent(QString(), -1);
-            recentsTab_->highlightContact(aimid);
+            if (isSearchActive() && getFrameCount() != FrameCountMode::_1)
+            {
+                openRecents();
+                stopNavigatingInRecents();
+                Q_EMIT Utils::InterConnector::instance().setFocusOnInput(aimId);
+            }
+            else
+            {
+                window()->setFocus();
+                Utils::InterConnector::instance().closeDialog();
+                recentsTab_->highlightContact(aimId);
+            }
         }
     }
 
@@ -956,10 +987,16 @@ namespace Ui
 
                 if (confirmed)
                 {
-                    auto text = isChannel
+                    const auto text = isChannel
                         ? QT_TRANSLATE_NOOP("popup_window", "Subscribe the channel %1").arg(link)
                         : QT_TRANSLATE_NOOP("popup_window", "Join the group %1").arg(link);
-                    Logic::InputTextContainer::instance().setText(contacts.front(), std::move(text));
+
+                    Data::MessageBuddy msg;
+                    msg.SetText(text);
+                    msg.AimId_ = contacts.front();
+                    GetDispatcher()->setDraft(msg, QDateTime::currentMSecsSinceEpoch());
+                    Q_EMIT Utils::InterConnector::instance().reloadDraft(contacts.front());
+
                     Utils::openDialogWithContact(contacts.front());
                 }
             }
@@ -1176,8 +1213,17 @@ namespace Ui
         }
     }
 
+    QString MainPage::getSidebarSelectedText() const //TODO FIXME maybe will not work for threads in sidebar
+    {
+        if (sidebar_)
+            return sidebar_->getSelectedText();
+        return QString();
+    }
+
     void MainPage::resizeEvent(QResizeEvent* _event)
     {
+        auto prevFocused = qobject_cast<QWidget*>(qApp->focusObject());
+
         if (const int newWidth = width(); width() != _event->oldSize().width())
         {
             if ((!isManualRecentsMiniMode_ && newWidth < getFrame2MinWith())
@@ -1192,20 +1238,14 @@ namespace Ui
                 switch (oneFrameMode_)
                 {
                 case OneFrameMode::Tab:
-                {
                     switchToTabFrame();
-                }
-                break;
+                    break;
                 case OneFrameMode::Content:
-                {
                     switchToContentFrame();
-                }
-                break;
+                    break;
                 case OneFrameMode::Sidebar:
-                {
                     switchToSidebarFrame();
-                }
-                break;
+                    break;
                 }
 
             }
@@ -1221,8 +1261,10 @@ namespace Ui
                 {
                     for_each([width = getRecentMiniModeWidth()](auto w) { w->setFixedWidth(width); }, clContainer_);
                 }
-                setFrameCountMode(sidebar_->isVisible() && isSideBarInSplitter() ? FrameCountMode::_3 : FrameCountMode::_2);
-                if (pages_->currentWidget() == contactDialog_ && getCurrentTab() == Tabs::Settings)
+                setFrameCountMode((sidebar_->isVisible() || sidebar_->wasVisible()) && isSideBarInSplitter() ? FrameCountMode::_3 : FrameCountMode::_2);
+                Q_EMIT Utils::InterConnector::instance().currentPageChanged();
+
+                if (pages_->currentWidget() == contactDialog_ && getCurrentTab() == TabType::Settings)
                     selectSettings(settingsTab_->currentSettingsItem());
                 pagesContainer_->show();
                 clContainer_->show();
@@ -1247,9 +1289,9 @@ namespace Ui
             updateSplitterStretchFactors();
         }
 
-        AttachFilePopup::hidePopup();
-
         saveSplitterState();
+
+        QMetaObject::invokeMethod(this, [prevFocused, this]() { resizeUpdateFocus(prevFocused); }, Qt::QueuedConnection);
     }
 
     bool MainPage::eventFilter(QObject* _obj, QEvent* _event)
@@ -1267,21 +1309,6 @@ namespace Ui
             }
         }
         return QWidget::eventFilter(_obj, _event);
-    }
-
-    bool MainPage::isSuggestVisible() const
-    {
-        return contactDialog_->isSuggestVisible();
-    }
-
-    void MainPage::hideSuggest()
-    {
-        contactDialog_->hideSuggest();
-    }
-
-    Stickers::StickersSuggest* MainPage::getStickersSuggest()
-    {
-        return contactDialog_->getStickersSuggests();
     }
 
     void MainPage::showSemiWindow()
@@ -1335,6 +1362,9 @@ namespace Ui
 
     void MainPage::onProfileSettingsShow(const QString& _uin)
     {
+        if (!isVisible())
+            return;
+
         hideRecentsPopup();
         if (!_uin.isEmpty())
         {
@@ -1353,7 +1383,7 @@ namespace Ui
         profilePage_->initFor(_uin);
         pages_->push(profilePage_);
 
-        if (frameCountMode_ == FrameCountMode::_1 && getCurrentTab() == Tabs::Settings)
+        if (frameCountMode_ == FrameCountMode::_1 && getCurrentTab() == TabType::Settings)
             switchToContentFrame();
     }
 
@@ -1428,7 +1458,7 @@ namespace Ui
 
     void MainPage::onGeneralSettingsShow(int _type)
     {
-        if (frameCountMode_ == FrameCountMode::_1 && getCurrentTab() == Tabs::Settings)
+        if (frameCountMode_ == FrameCountMode::_1 && getCurrentTab() == TabType::Settings)
             switchToContentFrame();
 
         generalSettings_->setType(_type);
@@ -1477,7 +1507,7 @@ namespace Ui
             else
             {
                 window()->setFocus();
-                Logic::getContactListModel()->setCurrent(QString(), -1);
+                Utils::InterConnector::instance().closeDialog();
             }
             switchToTabFrame();
         }
@@ -1498,11 +1528,6 @@ namespace Ui
     {
         im_assert(contactDialog_);
         return contactDialog_;
-    }
-
-    HistoryControlPage* MainPage::getHistoryPage(const QString& _aimId) const
-    {
-        return contactDialog_->getHistoryPage(_aimId);
     }
 
     VideoWindow* Ui::MainPage::getVideoWindow() const
@@ -1531,11 +1556,11 @@ namespace Ui
         showSidebarWithParams(_aimId, { true, frameCountMode_ }, _selectionChanged);
     }
 
-    void MainPage::showSidebarWithParams(const QString& _aimId, SidebarParams _params, bool _selectionChanged)
+    void MainPage::showSidebarWithParams(const QString& _aimId, SidebarParams _params, bool _selectionChanged, bool _animate)
     {
         updateSidebarPos(width());
         sidebar_->preparePage(_aimId, _params, _selectionChanged);
-        setSidebarVisible(true);
+        setSidebarVisible(true, _animate);
         if (frameCountMode_ == FrameCountMode::_1)
         {
             clContainer_->hide();
@@ -1566,35 +1591,54 @@ namespace Ui
         return sidebar_->isVisible();
     }
 
-    void MainPage::setSidebarVisible(bool _visible)
+    void MainPage::onSidebarVisibilityChanged(bool _visible)
     {
-        setSidebarVisible(Utils::SidebarVisibilityParams(_visible, false));
+        if (isVisible())
+            setSidebarVisible(_visible);
     }
 
-    void MainPage::setSidebarVisible(const Utils::SidebarVisibilityParams &_params)
+    void MainPage::setSidebarVisible(bool _visible, bool _animate)
     {
-        if (!_params.show_ && oneFrameMode_ == OneFrameMode::Sidebar)
+        if (pages_->currentWidget() == contactDialog_)
+            sidebarVisibilityOnRecentsFrame_ = isSidebarVisible();
+
+        if (!_visible && oneFrameMode_ == OneFrameMode::Sidebar)
         {
             setOneFrameMode(prevOneFrameMode_);
             sidebarBackClicked();
+            contactDialog_->escCancel_->removeChild(sidebar_);
         }
 
-        if (sidebar_->isVisible() == _params.show_)
+        if (sidebar_->isVisible() == _visible)
             return;
 
-        if (_params.show_)
+        if (_visible)
         {
-            sidebar_->showAnimated();
+            if (frameCountMode_ == FrameCountMode::_1 || !_animate)
+                sidebar_->show();
+            else
+                sidebar_->showAnimated();
 
             if (frameCountMode_ == FrameCountMode::_2 && isSideBarInSplitter())
                 setFrameCountMode(FrameCountMode::_3);
+
+            contactDialog_->escCancel_->addChild(sidebar_);
         }
         else
         {
             if (frameCountMode_ == FrameCountMode::_3)
                 setFrameCountMode(FrameCountMode::_2);
-            sidebar_->hideAnimated();
+
+            if (frameCountMode_ == FrameCountMode::_1 || !_animate)
+                sidebar_->hide();
+            else
+                sidebar_->hideAnimated();
+
             splitter_->refresh();
+
+            contactDialog_->escCancel_->removeChild(sidebar_);
+
+            Q_EMIT Utils::InterConnector::instance().setFocusOnInput();
         }
 
         updateSplitterHandle(width());
@@ -1603,7 +1647,7 @@ namespace Ui
     void MainPage::restoreSidebar()
     {
         const auto cont = Logic::getContactListModel()->selectedContact();
-        if (isSidebarVisible() && !cont.isEmpty())
+        if (sidebar_->wasVisible() && !cont.isEmpty())
             showSidebar(cont);
         else
             setSidebarVisible(false);
@@ -1612,6 +1656,11 @@ namespace Ui
     int MainPage::getSidebarWidth() const
     {
         return (frameCountMode_ == FrameCountMode::_3 && isSidebarVisible()) ? sidebar_->width() : 0;
+    }
+
+    QString MainPage::getSidebarAimid() const
+    {
+        return sidebar_->currentAimId();
     }
 
     bool MainPage::isContactDialog() const
@@ -1643,13 +1692,15 @@ namespace Ui
 
         hideRecentsPopup();
 
-        if (auto tab = getCurrentTab(); tab != Tabs::Contacts && tab != Tabs::Recents)
+        if (const auto tab = getCurrentTab(); tab != TabType::Contacts && tab != TabType::Recents)
             selectRecentsTab();
 
-        if (!_contact.isEmpty() && frameCountMode_ == FrameCountMode::_3 && sidebar_->isVisible() && isSideBarInSplitter())
+        if (!_contact.isEmpty() && !ServiceContacts::isServiceContact(_contact) && frameCountMode_ == FrameCountMode::_3 && sidebar_->isVisible() && isSideBarInSplitter())
         {
             Q_EMIT Utils::InterConnector::instance().closeAnySemitransparentWindow({ Utils::CloseWindowInfo::Initiator::Unknown, Utils::CloseWindowInfo::Reason::Keep_Sidebar });
-            showSidebar(_contact, true);
+
+            if (!sidebar_->isThreadOpen() || sidebar_->parentAimId() != _contact)
+                showSidebar(_contact, true);
         }
         else
         {
@@ -1692,17 +1743,6 @@ namespace Ui
             openRecents();
     }
 
-    void MainPage::loggedIn()
-    {
-        connect(Logic::getRecentsModel(), &Logic::RecentsModel::dlgStatesHandled, this, &MainPage::chatUnreadChanged, Qt::UniqueConnection);
-        connect(Logic::getRecentsModel(), &Logic::RecentsModel::updated, this, &MainPage::chatUnreadChanged, Qt::UniqueConnection);
-        connect(Logic::getUnknownsModel(), &Logic::UnknownsModel::dlgStatesHandled, this, &MainPage::chatUnreadChanged, Qt::UniqueConnection);
-        connect(Logic::getUnknownsModel(), &Logic::UnknownsModel::updatedMessages, this, &MainPage::chatUnreadChanged, Qt::UniqueConnection);
-        connect(Logic::getUnknownsModel(), &Logic::UnknownsModel::updatedSize, this, &MainPage::chatUnreadChanged, Qt::UniqueConnection);
-        connect(Logic::getContactListModel(), &Logic::ContactListModel::contactChanged, this, &MainPage::chatUnreadChanged, Qt::UniqueConnection);
-        connect(Logic::getContactListModel(), &Logic::ContactListModel::contact_removed, this, &MainPage::chatUnreadChanged, Qt::UniqueConnection);
-    }
-
     void MainPage::chatUnreadChanged()
     {
         const auto unknownsUnread = Logic::getUnknownsModel()->totalUnreads();
@@ -1711,8 +1751,8 @@ namespace Ui
 
         const auto totalUnreadsStr = Utils::getUnreadsBadgeStr(unreadCounters_.unreadMessages_);
 
-        tabWidget_->setBadgeText(getIndexByTab(Tabs::Recents), totalUnreadsStr);
-        tabWidget_->setBadgeIcon(getIndexByTab(Tabs::Recents), unreadCounters_.attention_ ? qsl(":/tab/attention") : QString());
+        tabWidget_->setBadgeText(getIndexByTab(TabType::Recents), totalUnreadsStr);
+        tabWidget_->setBadgeIcon(getIndexByTab(TabType::Recents), unreadCounters_.attention_ ? qsl(":/tab/attention") : QString());
         recentsHeaderButtons_.newContacts_->setBadgeText(Utils::getUnreadsBadgeStr(unknownsUnread));
 
         if (stickersStore_)
@@ -1821,7 +1861,35 @@ namespace Ui
                                             nullptr);
     }
 
-    void MainPage::contactsClicked()
+    void MainPage::openThread(const QString& _threadAimId, int64_t _msgId, const QString& _fromPage)
+    {
+        Q_UNUSED(_msgId);
+        Q_UNUSED(_fromPage);
+        if (_threadAimId.isEmpty())
+            return;
+
+        if (_fromPage != ServiceContacts::contactId(ServiceContacts::ContactType::ThreadsFeed))
+        {
+            if (!Logic::getContactListModel()->contains(_fromPage) || Logic::getContactListModel()->getYourRole(_fromPage) == u"notamember")
+            {
+                Utils::showTextToastOverContactDialog(Logic::getContactListModel()->isChannel(_fromPage)
+                    ? QT_TRANSLATE_NOOP("popup_window", "Only channel subscribers can view replies")
+                    : QT_TRANSLATE_NOOP("popup_window", "Only chat members can view replies"));
+                return;
+            }
+        }
+
+        hideRecentsPopup();
+
+        SidebarParams params;
+        params.parentPageId_ = _fromPage;
+        params.frameCountMode_ = frameCountMode_;
+        showSidebarWithParams(Sidebar::getThreadPrefix() % _threadAimId, params);
+
+        Q_EMIT Utils::InterConnector::instance().setFocusOnInput(_threadAimId);
+    }
+
+    void MainPage::openContacts()
     {
         openRecents();
 
@@ -1838,7 +1906,7 @@ namespace Ui
 
         Q_EMIT Utils::InterConnector::instance().generalSettingsShow((int)Utils::CommonSettingsType::CommonSettingsType_General);
         Q_EMIT Utils::InterConnector::instance().showSettingsHeader(QT_TRANSLATE_NOOP("main_page", "General settings"));
-        selectTab(Tabs::Settings);
+        selectTab(TabType::Settings);
     }
 
     void MainPage::searchBegin()
@@ -2041,7 +2109,7 @@ namespace Ui
 
     void MainPage::selectRecentsTab()
     {
-        selectTab(Tabs::Recents);
+        selectTab(TabType::Recents);
     }
 
     void MainPage::selectRecentChat(const QString& _aimId)
@@ -2053,17 +2121,17 @@ namespace Ui
 
     void MainPage::settingsTabActivate(Utils::CommonSettingsType _item)
     {
-        selectTab(Tabs::Settings);
+        selectTab(TabType::Settings);
         selectSettings(_item);
 
         if (frameCountMode_ == FrameCountMode::_1)
             switchToContentFrame();
     }
 
-    void MainPage::hideInput()
+    void MainPage::onSwitchedToEmpty()
     {
         setSidebarVisible(false);
-        contactDialog_->hideInput();
+        contactDialog_->onSwitchedToEmpty();
     }
 
     void MainPage::post_stats_with_settings()
@@ -2083,6 +2151,8 @@ namespace Ui
 
     void MainPage::updateSidebarPos(int _width)
     {
+        auto prevFocused = qobject_cast<QWidget*>(qApp->focusObject());
+
         if (_width >= getFrame3MinWith()
             || (clContainer_->width() != getRecentMiniModeWidth() && _width < getFrame2MinWith())
             || (clContainer_->width() == getRecentMiniModeWidth() && _width < getFrame2MiniModeMinWith()))
@@ -2091,22 +2161,16 @@ namespace Ui
         }
         else if (isSideBarInSplitter())
         {
-            if (sidebar_->isVisible())
-            {
-                if (pagesContainer_->width() <= getChatMinWidth())
-                    takeSidebarFromSplitter();
-            }
-            else
-            {
-                if (pagesContainer_->width() < (getChatMinWidth() + Sidebar::getDefaultWidth() + splitterHandleWidth()))
-                    takeSidebarFromSplitter();
-            }
+            if (pagesContainer_->width() <= (getChatMinWidth() + Sidebar::getDefaultWidth() + splitterHandleWidth()))
+                takeSidebarFromSplitter();
         }
         else
         {
             if (pagesContainer_->width() >= (getChatMinWidth() + Sidebar::getDefaultWidth() + splitterHandleWidth()))
                 insertSidebarToSplitter();
         }
+
+        resizeUpdateFocus(prevFocused);
 
         updateSplitterHandle(_width);
     }
@@ -2134,6 +2198,8 @@ namespace Ui
             splitter_->addWidget(sidebar_);
             if (auto handle = splitter_->handle(splitter_->count() - 1))
                 handle->setDisabled(true);
+
+            updateSidebarSplitterColor();
         }
         sidebar_->setNeedShadow(false);
     }
@@ -2187,7 +2253,7 @@ namespace Ui
             recentsTab_->setPictureOnlyView(false);
             callsTab_->setPictureOnlyView(false);
             settingsTab_->setCompactMode(false);
-            if (Features::isTabBarVisible())
+            if (Features::isMessengerTabBarVisible())
                 tabWidget_->showTabbar();
             if (updaterButton_)
                 updaterButton_->show();
@@ -2210,7 +2276,7 @@ namespace Ui
             expandButton_->show();
             spacerBetweenHeaderAndRecents_->hide();
 
-            if (getCurrentTab() == Tabs::Recents)
+            if (getCurrentTab() == TabType::Recents)
                 openRecents();
 
             if (currentTab_ != RECENTS)
@@ -2289,21 +2355,9 @@ namespace Ui
 #endif
     }
 
-    void MainPage::setFocusOnInput()
-    {
-        if (contactDialog_)
-            contactDialog_->setFocusOnInputWidget();
-    }
-
     void MainPage::clearSearchFocus()
     {
         topWidget_->getSearchWidget()->clearFocus();
-    }
-
-    void MainPage::onSendMessage(const QString& contact)
-    {
-        if (contactDialog_)
-            contactDialog_->onSendMessage(contact);
     }
 
     void MainPage::startSearchInDialog(const QString& _aimid)
@@ -2368,13 +2422,13 @@ namespace Ui
         if (frameCountMode_ == FrameCountMode::_1 && oneFrameMode_ != OneFrameMode::Tab)
             switchToTabFrame();
 
-        if (getCurrentTab() == Tabs::Settings)
+        if (getCurrentTab() == TabType::Settings)
             selectRecentsTab();
 
         SearchWidget* widget = nullptr;
-        if (getCurrentTab() == Tabs::Contacts)
+        if (getCurrentTab() == TabType::Contacts)
             widget = contactsTab_->getSearchWidget();
-        else if (getCurrentTab() == Tabs::Calls)
+        else if (getCurrentTab() == TabType::Calls)
             widget = callsTab_->getSearchWidget();
         else
             widget = topWidget_->getSearchWidget();
@@ -2431,15 +2485,23 @@ namespace Ui
 
     void MainPage::openRecents()
     {
+        const auto contactToSelect = recentsTab_->getContactListWidget()->getSearchInDialog()
+            ? recentsTab_->getContactListWidget()->getSearchInDialogContact()
+            : QString();
+
         searchEnd();
         Q_EMIT Utils::InterConnector::instance().hideSearchDropdown();
         topWidget_->setRegime(TopPanelWidget::Regime::Recents);
-        recentsTab_->switchToRecents();
+
+        recentsTab_->switchToRecents(contactToSelect);
     }
 
-    void MainPage::onShowWindowForTesters()
+    void Ui::MainPage::openCalls()
     {
-        Q_EMIT Utils::InterConnector::instance().showDebugSettings();
+        setSidebarVisible(false);
+        if (frameCountMode_ != FrameCountMode::_1)
+            selectSettings(settingsTab_->currentSettingsItem());
+        notifyApplicationWindowActive(true);
     }
 
     void MainPage::compactModeChanged()
@@ -2516,17 +2578,46 @@ namespace Ui
         }
 
         const auto tab = getTabByIndex(_index);
+        if (tab != TabType::Settings)
+            settingsHeader_->hide();
+
         switch (tab)
         {
-        case Tabs::Recents:
-        case Tabs::Contacts:
-        case Tabs::Calls:
-            settingsHeader_->hide();
+        case TabType::Recents:
+        {
+            pages_->setCurrentWidget(contactDialog_);
+            const auto aimId = contactDialog_->currentAimId();
+
+            if (frameCountMode_ == FrameCountMode::_1 && sidebarVisibilityOnRecentsFrame_)
+            {
+                showSidebarWithParams(aimId, { true, frameCountMode_ }, false, false);
+                switchToSidebarFrame();
+            }
+            else if ((frameCountMode_ == FrameCountMode::_2 || frameCountMode_ == FrameCountMode::_3) && sidebarVisibilityOnRecentsFrame_)
+            {
+                showSidebarWithParams(aimId, { true, frameCountMode_ }, false, false);
+            }
+            else if (frameCountMode_ == FrameCountMode::_1)
+            {
+                if (aimId.isEmpty())
+                    switchToTabFrame();
+                else
+                    switchToContentFrame();
+            }
+            break;
+        }
+        case TabType::Contacts:
             pages_->setCurrentWidget(contactDialog_);
             break;
-        case Tabs::Settings:
-            setSidebarVisible(false);
-            if (frameCountMode_ != FrameCountMode::_1)
+        case TabType::Calls:
+            setSidebarVisible(false, false);
+            pages_->setCurrentWidget(callsHistoryPage_);
+            break;
+        case TabType::Settings:
+            setSidebarVisible(false, false);
+            if (frameCountMode_ == FrameCountMode::_1)
+                switchToTabFrame();
+            else
                 selectSettings(settingsTab_->currentSettingsItem());
             break;
         default:
@@ -2534,30 +2625,38 @@ namespace Ui
             break;
         }
 
-        notifyApplicationWindowActive(tab != Tabs::Settings);
+        notifyApplicationWindowActive(tab != TabType::Settings);
 
-        if (tab != Tabs::Recents && topWidget_->getSearchWidget()->isEmpty())
+        if (tab != TabType::Recents && tab != TabType::Calls && topWidget_->getSearchWidget()->isEmpty())
             openRecents();
     }
 
-    void MainPage::tabBarClicked(int _index)
+    void MainPage::onTabClicked(int _index)
     {
-        const auto tab = getTabByIndex(_index);
-        if (tab == Tabs::Recents && getCurrentTab() == tab)
-        {
-            changeCLHeadToSearchSlot();
-            if (unreadCounters_.unreadMessages_ == 0 && !unreadCounters_.attention_)
-                return;
+        const auto tabType = getTabByIndex(_index);
+        onTabClicked(tabType, getCurrentTab() == tabType);
+    }
 
-            Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::titlebar_message);
-
-            Q_EMIT Utils::InterConnector::instance().activateNextUnread();
-        }
-        else if (tab == Tabs::Recents)
+    void MainPage::onTabClicked(TabType _tabType, bool _isSameTabClicked)
+    {
+        if (_tabType == TabType::Recents)
         {
-            Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_view);
+            if (_isSameTabClicked)
+            {
+                changeCLHeadToSearchSlot();
+                if (unreadCounters_.unreadMessages_ == 0 && !unreadCounters_.attention_)
+                    return;
+
+                Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::titlebar_message);
+
+                Q_EMIT Utils::InterConnector::instance().activateNextUnread();
+            }
+            else
+            {
+                Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_view);
+            }
         }
-        else if (tab == Tabs::Settings)
+        else if (_tabType == TabType::Settings)
         {
             Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::settingsscr_view);
         }
@@ -2565,24 +2664,23 @@ namespace Ui
 
     void MainPage::tabBarRightClicked(int _index)
     {
-        const auto tab = getTabByIndex(_index);
-        if (tab == Tabs::Settings)
+        if (const auto tab = getTabByIndex(_index); tab == TabType::Settings)
         {
             if (Utils::keyboardModifiersCorrespondToKeyComb(QGuiApplication::keyboardModifiers(), Utils::KeyCombination::Ctrl_or_Cmd_AltShift))
-                onShowWindowForTesters();
+                Q_EMIT Utils::InterConnector::instance().showDebugSettings();
         }
     }
 
-    Tabs MainPage::getTabByIndex(int _index) const
+    TabType MainPage::getTabByIndex(int _index) const
     {
         const auto it = std::find_if(indexToTabs_.begin(), indexToTabs_.end(), [_index](auto x) { return x.first == _index; });
         if (it != indexToTabs_.end())
             return it->second;
         im_assert(false);
-        return Tabs::Recents;
+        return TabType::Recents;
     }
 
-    int MainPage::getIndexByTab(Tabs _tab) const
+    int MainPage::getIndexByTab(TabType _tab) const
     {
         const auto it = std::find_if(indexToTabs_.begin(), indexToTabs_.end(), [_tab](auto x) { return x.second == _tab; });
         if (it != indexToTabs_.end())
@@ -2591,7 +2689,7 @@ namespace Ui
         return 0;
     }
 
-    Tabs MainPage::getCurrentTab() const
+    TabType MainPage::getCurrentTab() const
     {
         return getTabByIndex(tabWidget_->currentIndex());
     }
@@ -2601,7 +2699,7 @@ namespace Ui
         settingsTab_->selectSettings(_type);
     }
 
-    void MainPage::selectTab(Tabs _tab)
+    void MainPage::selectTab(TabType _tab)
     {
         tabWidget_->setCurrentIndex(getIndexByTab(_tab));
     }
@@ -2653,20 +2751,28 @@ namespace Ui
         }
     }
 
-    void MainPage::keyPressEvent(QKeyEvent* _e)
+    void MainPage::updateSidebarSplitterColor()
     {
-        if (_e->matches(QKeySequence::Copy))
+        if (!sidebar_ || !splitter_)
+            return;
+
+        if (auto handle = qobject_cast<SplitterHandle*>(splitter_->handle(splitter_->count() - 1)))
         {
-            if (isSidebarVisible() && !(contactDialog_ && contactDialog_->inputHasSelection()))
-            {
-                const auto text = sidebar_->getSelectedText();
-                if (!text.isEmpty())
-                {
-                    QApplication::clipboard()->setText(text);
-                    Utils::showCopiedToast(getToastVisibilityDuration());
-                }
-            }
+            if (sidebar_->isThreadOpen())
+                handle->setColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_TERTIARY));
+            else
+                handle->setColor(splitter_->defaultHandleColor());
         }
-        QWidget::keyPressEvent(_e);
+    }
+
+    void MainPage::resizeUpdateFocus(QWidget* _prevFocused)
+    {
+        if (!_prevFocused)
+            return;
+
+        if (isSideBarInSplitter() || sidebar_->isAncestorOf(_prevFocused))
+            _prevFocused->setFocus();
+        else if (sidebar_->isThreadOpen())
+            Q_EMIT Utils::InterConnector::instance().setFocusOnInput(sidebar_->currentAimId(Sidebar::ResolveThread::Yes));
     }
 }

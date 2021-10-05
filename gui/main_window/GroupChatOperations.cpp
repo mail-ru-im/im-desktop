@@ -39,13 +39,11 @@ namespace
         {
             Logic::getRecentsModel()->moveToTop(_aimId);
 
-            const auto selectedContact = Logic::getContactListModel()->selectedContact();
-            if (selectedContact != _aimId)
-                Q_EMIT Utils::InterConnector::instance().addPageToDialogHistory(selectedContact);
+            if (const auto& selected = Logic::getContactListModel()->selectedContact(); selected != _aimId)
+                Q_EMIT Utils::InterConnector::instance().addPageToDialogHistory(selected);
+            Utils::InterConnector::instance().openDialog(_aimId);
 
-            Logic::getContactListModel()->setCurrent(_aimId, -1, true);
-
-            Utils::InterConnector::instance().onSendMessage(_aimId);
+            Q_EMIT Utils::InterConnector::instance().messageSent(_aimId);
         };
 
         if (Logic::getRecentsModel()->contains(_contact))
@@ -85,6 +83,12 @@ namespace
         default: return std::string_view("Unknown");
         }
     }
+
+    constexpr int kContentWidth = 360;
+    constexpr int kContentTopMargin = 12;
+    constexpr int kContentBottomMargin = 0;
+    constexpr int kContentLeftMargin = 16;
+    constexpr int kContentRightMargin = 16;
 }
 
 namespace Ui
@@ -94,11 +98,14 @@ namespace Ui
     {
         content_ = new QWidget(parent);
         content_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
-        content_->setFixedWidth(Utils::scale_value(360));
+        content_->setFixedWidth(Utils::scale_value(kContentWidth));
         Utils::ApplyStyle(content_, qsl("height: 10dip;"));
 
         auto layout = Utils::emptyVLayout(content_);
-        layout->setContentsMargins(Utils::scale_value(16), Utils::scale_value(12), Utils::scale_value(16), 0);
+        layout->setContentsMargins(Utils::scale_value(kContentLeftMargin),
+                                   Utils::scale_value(kContentTopMargin),
+                                   Utils::scale_value(kContentRightMargin),
+                                   Utils::scale_value(kContentBottomMargin));
 
         // name and photo
         auto subContent = new QWidget(content_);
@@ -126,7 +133,7 @@ namespace Ui
             chatName_->setAutoFillBackground(false);
             chatName_->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
             chatName_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-            chatName_->setTextInteractionFlags(Qt::TextEditable | Qt::TextEditorInteraction);
+            chatName_->setTextInteractionFlags(Qt::TextEditorInteraction);
             chatName_->setEnterKeyPolicy(TextEditEx::EnterKeyPolicy::CatchEnter);
             chatName_->setMinimumWidth(Utils::scale_value(200));
             chatName_->document()->setDocumentMargin(0);
@@ -151,21 +158,25 @@ namespace Ui
                 Utils::ApplyStyle(textpart, qsl("background-color: transparent; border: none;"));
                 {
                     {
-                        auto t = new TextEmojiWidget(textpart, Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), Utils::scale_value(16));
-                        t->setText(topic);
-                        t->setObjectName(qsl("topic"));
-                        t->setContentsMargins(0, 0, 0, 0);
-                        t->setContextMenuPolicy(Qt::NoContextMenu);
-                        textpartlayout->addWidget(t);
+                        auto textUnit = Ui::TextRendering::MakeTextUnit(topic, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
+                        textUnit->init(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+
+                        auto label = new Ui::TextUnitLabel(textpart, std::move(textUnit), Ui::TextRendering::VerPosition::TOP, textpart->width(), true);
+                        label->setObjectName(qsl("topic"));
+                        label->setContentsMargins(0, 0, 0, 0);
+                        label->setContextMenuPolicy(Qt::NoContextMenu);
+                        textpartlayout->addWidget(label);
                     }
                     {
-                        auto t = new TextEmojiWidget(textpart, Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), Utils::scale_value(16));
-                        t->setText(text);
-                        t->setObjectName(qsl("text"));
-                        t->setContentsMargins(0, 0, 0, 0);
-                        t->setContextMenuPolicy(Qt::NoContextMenu);
-                        t->setMultiline(true);
-                        textpartlayout->addWidget(t);
+                        auto textUnit = Ui::TextRendering::MakeTextUnit(text, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
+                        textUnit->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+
+                        auto label = new Ui::TextUnitLabel(textpart, std::move(textUnit), Ui::TextRendering::VerPosition::TOP, textpart->width(), true);
+                        label->setObjectName(qsl("text"));
+                        label->setContentsMargins(0, 0, 0, 0);
+                        label->setContextMenuPolicy(Qt::NoContextMenu);
+                        label->setFixedWidth(textpart->width());
+                        textpartlayout->addWidget(label);
                     }
                 }
                 wholelayout->addWidget(textpart);
@@ -194,7 +205,6 @@ namespace Ui
                 approvedJoin));
             approvedJoin->setChecked(chatData.approvedJoin);
             connect(approvedJoin, &SwitcherCheckbox::toggled, approvedJoin, [&chatData](bool checked) { chatData.approvedJoin = checked; });
-
         }
         else
         {
@@ -204,16 +214,19 @@ namespace Ui
 
         if (channel_)
         {
-            auto t = new TextEmojiWidget(content_, Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), Utils::scale_value(16));
-            t->setText(QT_TRANSLATE_NOOP("groupchats", "Channels are public by default, but you can change it after in settings"));
-            t->setContentsMargins(0, 0, 0, 0);
-            t->setContextMenuPolicy(Qt::NoContextMenu);
-            t->setMultiline(true);
-            layout->addWidget(t);
+            auto text = Ui::TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("groupchats", "Channels are public by default, but you can change it after in settings"), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
+            text->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+
+            const QMargins margins = layout->contentsMargins();
+            const int maxWidth = content_->width() - (margins.left() + margins.right());
+            auto label = new Ui::TextUnitLabel(content_, std::move(text), Ui::TextRendering::VerPosition::TOP, maxWidth, true);
+            label->setContentsMargins(QMargins());
+            label->setContextMenuPolicy(Qt::NoContextMenu);
+            label->setFixedWidth(maxWidth);
+            layout->addWidget(label);
         }
         else
         {
-
             SwitcherCheckbox *publicChat;
             layout->addWidget(createItem(content_, QT_TRANSLATE_NOOP("groupchats", "Public chat"),
                 QT_TRANSLATE_NOOP("groupchats", "Public group can be found in the search"),
@@ -221,7 +234,6 @@ namespace Ui
             publicChat->setChecked(chatData.publicChat);
             connect(publicChat, &SwitcherCheckbox::toggled, publicChat, [&chatData](bool checked) { chatData.publicChat = checked; });
         }
-
 
         // general dialog
         dialog_ = std::make_unique<Ui::GeneralDialog>(content_, Utils::InterConnector::instance().getMainWindow());
@@ -238,7 +250,6 @@ namespace Ui
         cursor.select(QTextCursor::Document);
         chatName_->setTextCursor(cursor);
         chatName_->setFrameStyle(QFrame::NoFrame);
-
         chatName_->setFocus();
 
         // editor
@@ -254,7 +265,6 @@ namespace Ui
             editor->setObjectName(qsl("editor"));
             editor->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
             Utils::ApplyStyle(editor, qsl("background-color: #ffffff; margin: 0; padding: 0dip; border: none;"));
-            //photo_->SetImageCropHolder(editor);
             {
                 auto effect = new QGraphicsOpacityEffect(editor);
                 effect->setOpacity(.0);
@@ -308,7 +318,6 @@ namespace Ui
 
     GroupChatSettings::~GroupChatSettings()
     {
-        //
     }
 
     bool GroupChatSettings::show()
@@ -353,7 +362,6 @@ namespace Ui
                 const auto editorRect = editor->geometry();
                 const auto hollowRect = hollow->geometry();
                 const auto between = (hollowRect.left() - dialogRect.right());
-//                rect.setX((screenRect.size().width() - dialogRect.size().width() - editorRect.size().width() - Utils::scale_value(24)) / 2);
                 rect.setX((screenRect.size().width() - dialogRect.size().width() - editorRect.size().width()) / 2 - between);
             }
             geometry->setEndValue(rect);
@@ -564,7 +572,6 @@ namespace Ui
 
     void postCreateChatInfoToCore(const QString &_aimId, const GroupChatOperations::ChatData &chatData, const QString& avatarId)
     {
-
         if (chatData.approvedJoin)
             GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chats_create_approval);
         if (chatData.readOnly)
@@ -778,7 +785,7 @@ namespace Ui
         contactsArray->push_back(collection.create_qstring_value(_recieverAimId).get());
         collection.set_value_as_array("contacts", contactsArray.get());
 
-        collection.set_value_as_qstring("message", Data::stubFromFormattedString(_contact.text_));
+        collection.set_value_as_qstring("message", _contact.text_.string());
 
         if (_contact.sharedContact_)
             _contact.sharedContact_->serialize(collection.get());
@@ -786,7 +793,8 @@ namespace Ui
         collection.set_value_as_qstring("url", _contact.url_);
         collection.set_value_as_qstring("description", _contact.description_.string());
 
-        Data::serializeQuotes(collection, _quotes);
+        Data::serializeQuotes(collection, _quotes, Data::ReplaceFilesPolicy::Replace);
+
         Data::MentionMap mentions;
         for (const auto& q : _quotes)
             mentions.insert(q.mentions_.begin(), q.mentions_.end());
@@ -859,7 +867,7 @@ namespace Ui
 
         collection.set_value_as_collection("shared_contact", contactCollection.get());
 
-        Data::serializeQuotes(collection, _quotes);
+        Data::serializeQuotes(collection, _quotes, Data::ReplaceFilesPolicy::Replace);
         Data::MentionMap mentions;
         for (const auto& q : _quotes)
             mentions.insert(q.mentions_.begin(), q.mentions_.end());
@@ -878,28 +886,6 @@ namespace Ui
                 collection.set_value_as_string("message", std::string());
 
                 return collection;
-            };
-
-            auto serializeMentions = [](Ui::gui_coll_helper& _helper, const Data::MentionMap& _mentions)
-            {
-                if (_mentions.empty())
-                    return;
-
-                core::ifptr<core::iarray> mentArray(_helper->create_array());
-                mentArray->reserve(_mentions.size());
-                for (const auto& [aimid, friendly]: _mentions)
-                {
-                    core::ifptr<core::icollection> mentCollection(_helper->create_collection());
-                    Ui::gui_coll_helper coll(mentCollection.get(), false);
-                    coll.set_value_as_qstring("aimid", aimid);
-                    coll.set_value_as_qstring("friendly", friendly);
-
-                    core::ifptr<core::ivalue> val(_helper->create_value());
-                    val->set_as_collection(mentCollection.get());
-                    mentArray->push_back(val.get());
-                }
-
-                _helper.set_value_as_array("mentions", mentArray.get());
             };
 
             auto collection = createCollection();
@@ -925,15 +911,14 @@ namespace Ui
 
                     core::ifptr<core::icollection> quoteCollection(collection->create_collection());
                     quote.isForward_ = true;
-                    quote.text_ = Utils::replaceFilesPlaceholders(quote.text_, quote.files_);
-                    quote.serialize(quoteCollection.get());
+                    quote.serialize(quoteCollection.get(), Data::ReplaceFilesPolicy::Replace);
                     core::ifptr<core::ivalue> val(collection->create_value());
                     val->set_as_collection(quoteCollection.get());
                     quotesArray->push_back(val.get());
 
                     if (_forwardSeparately == ForwardSeparately::Yes)
                     {
-                        serializeMentions(collection, quote.mentions_);
+                        Data::serializeMentions(collection, quote.mentions_);
                         core::ifptr<core::iarray> qs(collection->create_array());
                         qs->push_back(val.get());
                         collection.set_value_as_array("quotes", qs.get());
@@ -947,7 +932,7 @@ namespace Ui
                 if (_forwardSeparately == ForwardSeparately::No)
                 {
                     collection.set_value_as_array("quotes", quotesArray.get());
-                    serializeMentions(collection, mentions);
+                    Data::serializeMentions(collection, mentions);
                 }
             }
 
@@ -956,7 +941,7 @@ namespace Ui
         }
         else
         {
-            for (auto quote : _quotes)
+            for (const auto& quote : _quotes)
             {
                 Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
                 core::ifptr<core::iarray> contactsArray(collection->create_array());
@@ -965,26 +950,7 @@ namespace Ui
                     contactsArray->push_back(collection.create_qstring_value(contact).get());
                 collection.set_value_as_array("contacts", contactsArray.get());
 
-                Data::MentionMap mentions;
-                mentions.insert(quote.mentions_.begin(), quote.mentions_.end());
-
-                if (!mentions.empty())
-                {
-                    core::ifptr<core::iarray> mentArray(collection->create_array());
-                    mentArray->reserve(mentions.size());
-                    for (const auto&[aimid, friendly] : mentions)
-                    {
-                        core::ifptr<core::icollection> mentCollection(collection->create_collection());
-                        Ui::gui_coll_helper coll(mentCollection.get(), false);
-                        coll.set_value_as_qstring("aimid", aimid);
-                        coll.set_value_as_qstring("friendly", friendly);
-
-                        core::ifptr<core::ivalue> val(collection->create_value());
-                        val->set_as_collection(mentCollection.get());
-                        mentArray->push_back(val.get());
-                    }
-                    collection.set_value_as_array("mentions", mentArray.get());
-                }
+                Data::serializeMentions(collection, quote.mentions_);
 
                 if (quote.isSticker())
                 {
@@ -994,7 +960,9 @@ namespace Ui
                 }
                 else
                 {
-                    collection.set_value_as_qstring("message", Utils::replaceFilesPlaceholders(quote.text_.string(), quote.files_));
+                    auto text = quote.text_;
+                    Utils::replaceFilesPlaceholders(text, quote.files_);
+                    collection.set_value_as_qstring("message", text.string());
                     Data::serializeFormat(quote.text_.formatting(), collection, "message_format");
                 }
 
@@ -1006,6 +974,9 @@ namespace Ui
 
                 if (quote.poll_)
                     quote.poll_->serialize(collection.get());
+
+                if (quote.task_)
+                    quote.task_->serialize(collection.get());
 
                 collection.set_value_as_qstring("url", quote.url_);
                 collection.set_value_as_qstring("description", quote.description_.string());

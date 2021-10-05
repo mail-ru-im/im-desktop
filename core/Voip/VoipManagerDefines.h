@@ -140,6 +140,7 @@ namespace voip_manager
 
         //kNotificationType_MinimalBandwidthChanged,
         kNotificationType_MaskEngineEnable,
+        kNotificationType_VoiceDetect,
 
         //kNotificationType_ConnectionDestroyed,
         kNotificationType_MainVideoLayoutChanged,

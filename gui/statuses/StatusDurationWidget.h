@@ -19,6 +19,7 @@ namespace Statuses
         ~StatusDurationWidget();
 
         void setStatus(const QString& _status, const QString& _description);
+        void setDateTime(const QDateTime& _dateTime);
 
     Q_SIGNALS:
         void backClicked(QPrivateSignal);
@@ -27,11 +28,10 @@ namespace Statuses
         void showEvent(QShowEvent* _event) override;
 
     private Q_SLOTS:
-        bool validateInput();
+        bool validateDate();
         void applyNewDuration();
 
     private:
         std::unique_ptr<StatusDurationWidget_p> d;
     };
-
 }

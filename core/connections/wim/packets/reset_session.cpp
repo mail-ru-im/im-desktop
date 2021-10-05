@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "reset_session.h"
 #include "../../../http_request.h"
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 
 using namespace core;
 using namespace wim;

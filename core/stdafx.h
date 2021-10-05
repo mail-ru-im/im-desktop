@@ -22,10 +22,18 @@
 #pragma warning( error : 35038)
 #endif //WIN32
 
+#include <cassert>
+#include <assert.h>
+#if !defined(_WIN32) && !defined(ABORT_ON_ASSERT) && defined(DEBUG)
+#define im_assert(condition) \
+do { if(!(condition)){ std::cerr << "ASSERT FAILED: " << #condition << " " << __FILE__ << ":" << __LINE__ << std::endl; } } while (0)
+#else
+#define im_assert(condition) do { assert(condition); } while (0)
+#endif
+
 #include <algorithm>
 #include <numeric>
 #include <atomic>
-#include <cassert>
 #include <ctime>
 #include <codecvt>
 #include <condition_variable>
@@ -57,7 +65,6 @@
 #include <type_traits>
 #include <charconv>
 #include <typeinfo>
-#include <assert.h>
 
 #if defined(_WIN32) || defined(__linux__)
 #include <filesystem>
@@ -115,11 +122,6 @@ using rapidjson_allocator = rapidjson::MemoryPoolAllocator<rapidjson::CrtAllocat
 //#       define DEBUG__OUTPUT_NET_PACKETS
 #   endif // defined(DEBUG) || defined(_DEBUG)
 #endif // __APPLE__
-
-#if !defined(_WIN32) && !defined(ABORT_ON_ASSERT) && defined(DEBUG)
-#define assert(condition) \
-do { if(!(condition)){ std::cerr << "ASSERT FAILED: " << #condition << " " << __FILE__ << ":" << __LINE__ << std::endl; } } while (0)
-#endif
 
 namespace core
 {

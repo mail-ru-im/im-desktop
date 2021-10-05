@@ -81,9 +81,6 @@ namespace Ui
         Logic::AbstractSearchModel* getSearchModel() const;
         FocusableListView* getView() const;
 
-        void triggerTapAndHold(bool _value);
-        bool tapAndHoldModifier() const;
-
         void showSearch();
 
         void rewindToTop();
@@ -103,6 +100,7 @@ namespace Ui
     private Q_SLOTS:
         void onItemClicked(const QModelIndex&);
         void onItemPressed(const QModelIndex&);
+        void onItemPressedImpl(const QModelIndex&, Qt::MouseButtons);
         void onMouseMoved(const QPoint& _pos, const QModelIndex& _index);
         void onMouseWheeled();
         void onMouseWheeledStats();
@@ -113,7 +111,9 @@ namespace Ui
         void showPopupMenu(QAction* _action);
 
         void onSearchInputCleared();
+    public Q_SLOTS:
         void searchPatternChanged(const QString&);
+    private Q_SLOTS:
         void onDisableSearchInDialog();
         void touchScrollStateChanged(QScroller::State _state);
 
@@ -190,6 +190,5 @@ namespace Ui
         bool searchResultsRcvdFirst_;
         bool searchResultsStatsSent_;
         bool initial_;
-        bool tapAndHold_;
     };
 }

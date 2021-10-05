@@ -18,6 +18,7 @@
 #include "../../controls/DialogButton.h"
 #include "../../controls/TooltipWidget.h"
 #include "../contact_list/AddContactDialogs.h"
+#include "../contact_list/ContactListModel.h"
 #include "previewer/toast.h"
 #include "../../styles/ThemeParameters.h"
 
@@ -72,14 +73,12 @@ namespace
 
     QColor primaryTextColor()
     {
-        const auto static c = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
-        return c;
+        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
     }
 
     QColor secondaryTextColor()
     {
-        const auto static c = Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
-        return c;
+        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
     }
 
     QString getCaption(TransitState _errors)
@@ -124,13 +123,13 @@ namespace
 
     QColor getButtonColor(bool _isPhoneSelected, bool _isHovered, bool _isPressed)
     {
-        static const ButtonColors normalColors =
+        static constexpr ButtonColors normalColors =
         {
             Styling::StyleVariable::PRIMARY,
             Styling::StyleVariable::PRIMARY_HOVER,
             Styling::StyleVariable::PRIMARY_ACTIVE
         };
-        static const ButtonColors disabledColors =
+        static constexpr ButtonColors disabledColors =
         {
             Styling::StyleVariable::BASE_SECONDARY,
             Styling::StyleVariable::BASE_SECONDARY_HOVER,
@@ -141,18 +140,26 @@ namespace
             return Styling::getParameters().getColor((_isPressed ? disabledColors.pressed_ : ( _isHovered ? disabledColors.hover_ : disabledColors.normal_)));
         else
             return Styling::getParameters().getColor((_isPressed ? normalColors.pressed_ : (_isHovered ? normalColors.hover_ : normalColors.normal_)));
+    }
 
+    GeneralDialog::Options getDialogOptions(const QString& _targetAimId)
+    {
+        GeneralDialog::Options opt;
+        opt.threadBadge_ = Logic::getContactListModel()->isThread(_targetAimId);
+
+        return opt;
     }
 }
 
-TransitProfileSharing::TransitProfileSharing(QWidget* _parent, const QString& _aimId)
+TransitProfileSharing::TransitProfileSharing(QWidget* _parent, const QString& _aimId, const QString& _targetAimId)
     : QWidget(_parent)
     , userProfile_(nullptr)
     , aimId_(_aimId)
+    , targetAimId_(_targetAimId)
     , declinable_(true)
 {
     transitProfile_ = new TransitProfileSharingWidget(parentWidget(), _aimId);
-    userProfile_ = new GeneralDialog(transitProfile_, Utils::InterConnector::instance().getMainWindow());
+    userProfile_ = new GeneralDialog(transitProfile_, Utils::InterConnector::instance().getMainWindow(), getDialogOptions(targetAimId_));
     userProfile_->addLabel(getCaption(TransitState::ON_PROFILE));
     btnPair_ = userProfile_->addButtonsPair(leftButtonText(), rightButtonText(TransitState::ON_PROFILE), false);
     userProfile_->installEventFilter(this);
@@ -259,7 +266,7 @@ void TransitProfileSharing::setState(const TransitState _state)
     else if (_state == TransitState::UNCHECKED)
     {
         errorUnchecked_ = new GeneralDialog(new TransitProfileSharingWidget(parentWidget(), TransitState::UNCHECKED),
-            Utils::InterConnector::instance().getMainWindow());
+            Utils::InterConnector::instance().getMainWindow(), getDialogOptions(targetAimId_));
         errorUnchecked_->addLabel(getCaption(TransitState::UNCHECKED));
         errorUnchecked_->addButtonsPair(leftButtonText(), rightButtonText(TransitState::UNCHECKED), true);
         errorUnchecked_->installEventFilter(this);
@@ -276,7 +283,7 @@ void TransitProfileSharing::setState(const TransitState _state)
             errorUnchecked_->hide();
             if (!userProfile_)
             {
-                userProfile_ = new GeneralDialog(transitProfile_, Utils::InterConnector::instance().getMainWindow());
+                userProfile_ = new GeneralDialog(transitProfile_, Utils::InterConnector::instance().getMainWindow(), getDialogOptions(targetAimId_));
                 userProfile_->addLabel(getCaption(TransitState::ON_PROFILE));
                 btnPair_ = userProfile_->addButtonsPair(leftButtonText(), rightButtonText(TransitState::ON_PROFILE), true);
                 userProfile_->installEventFilter(this);

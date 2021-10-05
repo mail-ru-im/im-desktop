@@ -24,9 +24,9 @@ namespace core {
         }
 
         int32_t wim_allocate::init_request(const std::shared_ptr<core::http_request_simple>& _request) {
-            if (!_request) { assert(false); return 1; }
-            if (params_.a_token_.empty()) { assert(false); return 1; }
-            if (params_.dev_id_.empty()) { assert(false); return 1; }
+            if (!_request) { im_assert(false); return 1; }
+            if (params_.aimsid_.empty()) { im_assert(false); return 1; }
+            if (params_.dev_id_.empty()) { im_assert(false); return 1; }
 
             std::stringstream ss_host;
             ss_host << urls::get_url(urls::url_type::webrtc_host) << std::string_view("/webrtc/alloc");
@@ -53,7 +53,7 @@ namespace core {
                         if (!nam.empty() && !val.empty()) {
                             params[std::move(nam)] = std::move(val);
                         } else {
-                            assert(false);
+                            im_assert(false);
                         }
                     }
                 } while(amp_pos != std::string::npos);
@@ -90,7 +90,7 @@ namespace core {
 
         int32_t wim_allocate::parse_response(const std::shared_ptr<core::tools::binary_stream>& response) {
             if (!response->available()) {
-                assert(false);
+                im_assert(false);
                 return wpie_http_empty_response;
             }
 
@@ -119,7 +119,7 @@ namespace core {
         }
 
         int32_t wim_webrtc::init_request(const std::shared_ptr<core::http_request_simple>& _request) {
-            if (!_request) { assert(false); return 1; }
+            if (!_request) { im_assert(false); return 1; }
 
             std::stringstream ss_host;
             ss_host << urls::get_url(urls::url_type::webrtc_host) << std::string_view("/voip/webrtcMsg");
@@ -160,7 +160,7 @@ namespace core {
 
         int32_t wim_webrtc::parse_response(const std::shared_ptr<core::tools::binary_stream>& response) {
             if (!response->available()) {
-                assert(false);
+                im_assert(false);
                 return wpie_http_empty_response;
             }
 

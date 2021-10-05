@@ -4,7 +4,7 @@
 
 #include "preview_proxy.h"
 
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 #include "../../urls_cache.h"
 #include "../common.shared/string_utils.h"
 
@@ -60,13 +60,13 @@ link_meta::link_meta(const std::string &_title,
     , fileformat_(_fileformat)
     , status_code_(0)
 {
-    assert(!site_name_.empty());
-    assert(!content_type_.empty());
-    assert(std::get<0>(preview_size_) >= 0);
-    assert(std::get<1>(preview_size_) >= 0);
-    assert(std::get<0>(origin_size_) >= 0);
-    assert(std::get<1>(origin_size_) >= 0);
-    assert(file_size_ >= -1);
+    im_assert(!site_name_.empty());
+    im_assert(!content_type_.empty());
+    im_assert(std::get<0>(preview_size_) >= 0);
+    im_assert(std::get<1>(preview_size_) >= 0);
+    im_assert(std::get<0>(origin_size_) >= 0);
+    im_assert(std::get<1>(origin_size_) >= 0);
+    im_assert(file_size_ >= -1);
 }
 
 link_meta::link_meta(int64_t _status_code)
@@ -83,8 +83,8 @@ std::string link_meta::get_preview_uri(
     const int32_t_opt _width,
     const int32_t_opt _height) const
 {
-    assert(!_width || (*_width >= 0));
-    assert(!_height || (*_height >= 0));
+    im_assert(!_width || (*_width >= 0));
+    im_assert(!_height || (*_height >= 0));
 
     std::string result;
 
@@ -115,7 +115,7 @@ const std::string& link_meta::get_annotation() const
 
 const std::string& link_meta::get_content_type() const
 {
-    assert(!content_type_.empty());
+    im_assert(!content_type_.empty());
 
     return content_type_;
 }
@@ -132,7 +132,7 @@ const std::string& link_meta::get_favicon_uri() const
 
 int64_t link_meta::get_file_size() const
 {
-    assert(file_size_ >= -1);
+    im_assert(file_size_ >= -1);
     return file_size_;
 }
 
@@ -148,7 +148,7 @@ origin_size link_meta::get_origin_size() const
 
 const std::string& link_meta::get_site_name() const
 {
-    assert(!site_name_.empty());
+    im_assert(!site_name_.empty());
 
     return site_name_;
 }
@@ -190,10 +190,10 @@ str_2_str_map format_get_preview_params(
     const bool _crop,
     const favicon_size _favicon_size)
 {
-    assert(!_width || (*_width >= 0));
-    assert(!_height || (*_height >= 0));
-    assert(_favicon_size > favicon_size::min);
-    assert(_favicon_size < favicon_size::max);
+    im_assert(!_width || (*_width >= 0));
+    im_assert(!_height || (*_height >= 0));
+    im_assert(_favicon_size > favicon_size::min);
+    im_assert(_favicon_size < favicon_size::max);
 
     str_2_str_map result;
 
@@ -211,12 +211,12 @@ str_2_str_map format_get_preview_params(
 
     if (_crop)
     {
-        assert(_width || _height);
+        im_assert(_width || _height);
         result.emplace("crop", "1");
     }
 
     const auto favicon_size_px = favicon_size_2_px(_favicon_size);
-    assert(favicon_size_px > 0);
+    im_assert(favicon_size_px > 0);
 
     if (const auto is_favicon_enabled = favicon_size_px > 0; is_favicon_enabled)
     {
@@ -234,8 +234,8 @@ str_2_str_map format_get_url_content_params(std::string_view _uri)
 
 link_meta_uptr parse_json(InOut char *_json, const std::string &_uri)
 {
-    assert(_json);
-    assert(!_uri.empty());
+    im_assert(_json);
+    im_assert(!_uri.empty());
 
     rapidjson::Document doc;
     if (doc.ParseInsitu(_json).HasParseError())
@@ -317,7 +317,7 @@ namespace
 
     std::string extract_host(const std::string &_uri)
     {
-        assert(!_uri.empty());
+        im_assert(!_uri.empty());
 
         using namespace boost::xpressive;
 
@@ -335,15 +335,15 @@ namespace
 
     int32_t favicon_size_2_px(const favicon_size _size)
     {
-        assert(_size > favicon_size::min);
-        assert(_size < favicon_size::max);
+        im_assert(_size > favicon_size::min);
+        im_assert(_size < favicon_size::max);
 
         switch(_size)
         {
             case favicon_size::small: return 16;
             case favicon_size::med: return 32;
             default:
-                assert(!"unknown favicon size");
+                im_assert(!"unknown favicon size");
                 return -1;
         }
     }
@@ -514,11 +514,11 @@ namespace
             }
             catch (std::invalid_argument&)
             {
-                assert(!"invalid orig size string");
+                im_assert(!"invalid orig size string");
             }
             catch (std::out_of_range&)
             {
-                assert(!"invalid orig size value");
+                im_assert(!"invalid orig size value");
             }
 
             const auto is_orig_size_valid = (orig_size > 0);

@@ -7,7 +7,7 @@
 #include "tools/binary_stream.h"
 #include "tools/strings.h"
 #include "tools/system.h"
-#include "tools/json_helper.h"
+#include "../common.shared/json_helper.h"
 #include "tools/tlv.h"
 #include "http_request.h"
 #include "async_task.h"
@@ -235,7 +235,7 @@ void im_stats::serialize(tools::binary_stream& _bs) const
 
 bool im_stats::unserialize_props(tools::tlvpack& prop_pack, event_props_type* props)
 {
-    assert(!!props);
+    im_assert(!!props);
 
     for (auto tlv_prop_val = prop_pack.get_first(); tlv_prop_val; tlv_prop_val = prop_pack.get_next())
     {
@@ -244,7 +244,7 @@ bool im_stats::unserialize_props(tools::tlvpack& prop_pack, event_props_type* pr
         tools::tlvpack pack_val;
         if (!pack_val.unserialize(val_data))
         {
-            assert(false);
+            im_assert(false);
             return false;
         }
 
@@ -253,7 +253,7 @@ bool im_stats::unserialize_props(tools::tlvpack& prop_pack, event_props_type* pr
 
         if (!tlv_event_name || !tlv_event_value)
         {
-            assert(false);
+            im_assert(false);
             return false;
         }
 
@@ -266,7 +266,7 @@ bool im_stats::unserialize(tools::binary_stream& _bs)
 {
     if (!_bs.available())
     {
-        assert(false);
+        im_assert(false);
         return false;
     }
 
@@ -289,7 +289,7 @@ bool im_stats::unserialize(tools::binary_stream& _bs)
 
             if (!tlv_last_sent_time)
             {
-                assert(false);
+                im_assert(false);
                 return false;
             }
 
@@ -301,7 +301,7 @@ bool im_stats::unserialize(tools::binary_stream& _bs)
             auto curr_event_name = pack_val.get_item(im_stats_info_types::event_name);
             if (!curr_event_name)
             {
-                assert(false);
+                im_assert(false);
                 return false;
             }
             auto name = curr_event_name->get_value<im_stat_event_names>();
@@ -309,20 +309,20 @@ bool im_stats::unserialize(tools::binary_stream& _bs)
             auto tlv_event_time = pack_val.get_item(im_stats_info_types::event_time);
             if (!tlv_event_time)
             {
-                assert(false);
+                im_assert(false);
                 return false;
             }
             auto read_event_time = std::chrono::system_clock::from_time_t(tlv_event_time->get_value<int64_t>());
 
             event_props_type props;
             const auto tlv_prop_pack = pack_val.get_item(im_stats_info_types::event_props);
-            assert(tlv_prop_pack);
+            im_assert(tlv_prop_pack);
             if (tlv_prop_pack)
             {
                 auto prop_pack = tlv_prop_pack->get_value<tools::tlvpack>();
                 if (!unserialize_props(prop_pack, &props))
                 {
-                    assert(false);
+                    im_assert(false);
                     return false;
                 }
             }

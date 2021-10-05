@@ -43,10 +43,7 @@ namespace Styling
         QColor getColor(const StyleVariable _variable) const;
 
         const auto& getProperties() const { return properties_; }
-        void setProperty(const StyleVariable _var, Property _property)
-        {
-            properties_[_var] = std::move(_property);
-        }
+        void setProperty(const StyleVariable _var, Property _property);
 
         void setProperties(const Properties& _properties)
         {
@@ -61,12 +58,14 @@ namespace Styling
         WallpapersVector availableWallpapers_;
         WallpaperId defaultWallpaperId_;
         bool underlinedLinks_;
+        bool isDark_;
 
     public:
         Theme();
         const QString& getId() const { return id_; };
         const QString& getName() const { return name_; };
         bool isLinksUnderlined() const { return underlinedLinks_; };
+        bool isDark() const { return isDark_; }
         void addWallpaper(WallpaperPtr _wallpaper);
         WallpaperPtr getWallpaper(const WallpaperId& _id) const;
         const WallpapersVector& getAvailableWallpapers() const { return availableWallpapers_; }

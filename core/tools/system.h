@@ -86,6 +86,8 @@ std::ofstream open_file_for_write(std::wstring_view _file_name, std::ios_base::o
 size_t get_file_size(std::string_view _file_name);
 size_t get_file_size(std::wstring_view _file_name);
 
+uint64_t get_file_lastmodified(const std::wstring& _path);
+
 bool is_do_not_dirturb_on();
 
 CORE_TOOLS_SYSTEM_NS_END

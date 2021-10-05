@@ -29,7 +29,7 @@ Q_SIGNALS:
 public:
     TextBlock(ComplexMessageItem* _parent, const QString& _text, TextRendering::EmojiSizeType _emojiSizeType = TextRendering::EmojiSizeType::ALLOW_BIG);
 
-    TextBlock(ComplexMessageItem* _parent, const Data::FormattedStringView& _text, TextRendering::EmojiSizeType _emojiSizeType = TextRendering::EmojiSizeType::ALLOW_BIG);
+    TextBlock(ComplexMessageItem* _parent, Data::FStringView _text, TextRendering::EmojiSizeType _emojiSizeType = TextRendering::EmojiSizeType::ALLOW_BIG);
 
     virtual ~TextBlock() override;
 
@@ -37,7 +37,7 @@ public:
 
     IItemBlockLayout* getBlockLayout() const override;
 
-    Data::FormattedString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
+    Data::FString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
 
     bool updateFriendly(const QString& _aimId, const QString& _friendly) override;
 
@@ -65,11 +65,11 @@ public:
 
     void doubleClicked(const QPoint& _p, std::function<void(bool)> _callback = std::function<void(bool)>()) override;
 
-    QString linkAtPos(const QPoint& pos) const override;
+    Data::LinkInfo linkAtPos(const QPoint& pos) const override;
 
-    std::optional<QString> getWordAt(QPoint) const override;
+    std::optional<Data::FString> getWordAt(QPoint) const override;
 
-    bool replaceWordAt(const QString&, const QString&, QPoint) override;
+    bool replaceWordAt(const Data::FString&, const Data::FString&, QPoint) override;
 
     QString getTrimmedText() const override;
 
@@ -77,15 +77,13 @@ public:
 
     QString getTextForCopy() const override;
 
-    Data::FormattedString getTextInstantEdit() const override;
-
-    bool getTextStyle() const;
+    Data::FString getTextInstantEdit() const override;
 
     void releaseSelection() override;
 
     bool isOverLink(const QPoint& _mousePosGlobal) const override;
 
-    void setText(const Data::FormattedString& _text) override;
+    void setText(const Data::FString& _text) override;
 
     bool clickOnFirstLink() const;
 
@@ -107,6 +105,10 @@ public:
     void stretchToWidth(const int _width) override;
 
     bool isNeedCheckTimeShift() const override;
+
+    void anyMouseButtonReleased() override;
+
+    void updateWith(IItemBlock* _other) override;
 
 protected:
     void drawBlock(QPainter &p, const QRect& _rect, const QColor& _quoteColor) override;
@@ -134,6 +136,8 @@ private:
 
     void startSpellCheckingIfNeeded();
 
+    void showTooltip(const QString& _text, QRect _size);
+
 private:
     TextBlockLayout* Layout_;
 
@@ -142,7 +146,6 @@ private:
     QTimer* TripleClickTimer_ = nullptr;
     TextRendering::EmojiSizeType emojiSizeType_;
     bool needSpellCheck_ = false;
-    bool shouldParseMarkdown_;
 };
 
 UI_COMPLEX_MESSAGE_NS_END

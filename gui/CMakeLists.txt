@@ -2,7 +2,13 @@ cmake_minimum_required(VERSION 3.17)
 
 project(${APP_PROJECT_NAME})
 
-message(STATUS "APP_PROJECT_NAME is ${APP_PROJECT_NAME}")
+message(STATUS "")
+message(STATUS "[CMAKE]")
+message(STATUS "[CMAKE] including <gui/CMakeLists.txt>")
+message(STATUS "[CMAKE]")
+
+message(STATUS "[INFO] APP_PROJECT_NAME is ${APP_PROJECT_NAME}")
+
 
 macro(QT5_MAKE_OUTPUT_FILE infile prefix ext outfile )
     string(LENGTH ${CMAKE_CURRENT_BINARY_DIR} _binlength)
@@ -85,7 +91,7 @@ function(ICQ_ADD_BIG_RESOURCES outfiles )
         _QT5_PARSE_QRC_FILE(${infile} _out_depends _rc_depends)
         set_source_files_properties(${infile} PROPERTIES SKIP_AUTORCC ON)
         add_custom_command(OUTPUT ${tmpoutfile}
-                           COMMAND ${ICQ_RCC_EXE} ${rcc_options} --name ${outfilename} --pass 1 --output ${tmpoutfile} ${infile}
+                           COMMAND ${IM_QT_BIN_RCC} ${rcc_options} --name ${outfilename} --pass 1 --output ${tmpoutfile} ${infile}
                            DEPENDS ${infile} ${_rc_depends} "${out_depends}" VERBATIM)
         set_source_files_properties(${tmpoutfile} PROPERTIES SKIP_AUTOMOC ON)
         set_source_files_properties(${tmpoutfile} PROPERTIES SKIP_AUTOUIC ON)
@@ -93,7 +99,7 @@ function(ICQ_ADD_BIG_RESOURCES outfiles )
         add_library(rcc_object_${outfilename} OBJECT ${tmpoutfile})
         add_dependencies(rcc_object_${outfilename} big_resources_${outfilename})
         add_custom_command(OUTPUT ${outfile}
-                           COMMAND ${ICQ_RCC_EXE}
+                           COMMAND ${IM_QT_BIN_RCC}
                            ARGS ${rcc_options} --name ${outfilename} --pass 2 --temp $<TARGET_OBJECTS:rcc_object_${outfilename}> --output ${outfile} ${infile}
                            DEPENDS rcc_object_${outfilename}
                            VERBATIM)
@@ -136,17 +142,21 @@ if (LOTTIE_FRAME_CACHE)
 endif()
 
 if(IM_AUTO_TESTING)
-    message(STATUS "... CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE")
+    message(STATUS "[INFO] CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE")
     SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 endif()
 
-message(STATUS "ICQ_ROOT is ${ICQ_ROOT}")
+message(STATUS "[INFO] ICQ_ROOT is ${ICQ_ROOT}")
 if(MSVC)
     add_definitions(/FI"stdafx.h")
     set(SYSTEM_LIBRARIES d3d9 dxguid opengl32 Ws2_32 Imm32 Winmm runtimeobject strmiids secur32 glu32 psapi userenv version dwmapi shell32 rpcrt4 wtsapi32)
 elseif(APPLE)
     set(ICQ_MAC_ROOT "${ICQ_ROOT}/mac/ICQ")
-    message(STATUS "ICQ_MAC_ROOT is ${ICQ_MAC_ROOT}")
+    message(STATUS "[INFO] ICQ_MAC_ROOT is ${ICQ_MAC_ROOT}")
+    
+    set(IM_SPARKLE "${pkg_sparkle_location}")
+    message(STATUS "[INFO] IM_SPARKLE is ${IM_SPARKLE}")
+
     add_definitions(-include "stdafx.h")
     include_directories(${ICQ_MAC_ROOT})
     find_library(MAC_OPENGL OpenGL)
@@ -169,11 +179,11 @@ elseif(APPLE)
     find_library(MAC_IOSURFACE IOSurface)
     find_library(MAC_GSS GSS)
     find_library(MAC_METAL_KIT MetalKit)
-    find_library(MAC_XCTEST XCTest PATHS ${ICQ_PLATFORM_SPECIFIC})
+    find_library(MAC_XCTEST XCTest PATHS ${ICQ_PLATFORM_SPECIFIC}/macos_xctest)
     find_library(MAC_SCRIPTING_BRIDGE ScriptingBridge)
     find_library(MAC_VIDEO_TOOLBOX VideoToolbox)
     find_library(MAC_VIDEO_DECODE_ACCELERATION VideoDecodeAcceleration)
-    find_library(MAC_SPARKLE Sparkle PATHS ${ICQ_PLATFORM_SPECIFIC})
+    find_library(MAC_SPARKLE Sparkle PATHS ${IM_SPARKLE})
 
     include_directories(${MAC_SPARKLE})
 
@@ -231,55 +241,53 @@ elseif(APPLE)
         bsm)
 
     if(ICQ_UPDATE)
-        message(STATUS "Updates: ON [ICQ_UPDATE]")
-        message(STATUS "add_definitions(-DUPDATES)")
+        message(STATUS "[INFO] Updates: ON [ICQ_UPDATE]")
+        message(STATUS "[INFO] add_definitions(-DUPDATES)")
         add_definitions(-DUPDATES)
         set(SYSTEM_LIBRARIES ${SYSTEM_LIBRARIES} ${MAC_SPARKLE})
     else()
-        message(STATUS "Updates: OFF")
+        message(STATUS "[INFO] Updates: OFF")
     endif()
 
     if(IM_AUTO_TESTING)
-        message(STATUS "... add XCTest, libQt5Test.a")
-        message(STATUS "... 1 linking -weak_framework XCTest")
+        message(STATUS "[INFO] add XCTest, libQt5Test.a")
+        message(STATUS "[INFO] 1 linking -weak_framework XCTest")
         set(SYSTEM_LIBRARIES ${SYSTEM_LIBRARIES} ${MAC_XCTEST})
         set(SYSTEM_LIBRARIES ${SYSTEM_LIBRARIES} ${ICQ_QT_LIB_DIR}/libQt5Test.a)
         set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} -F${ICQ_FRAMEWORKS_BUNDLE_DIR} -weak_framework XCTest")
     endif()
 
-    message(STATUS "PRODUCT_SPEC_DIR = ${PRODUCT_SPEC_DIR}")
+    message(STATUS "[INFO] PRODUCT_SPEC_DIR = ${PRODUCT_SPEC_DIR}")
     set(PRODUCT_MAC "${PRODUCT_SPEC_DIR}/mac")
-    message(STATUS "PRODUCT_MAC = ${PRODUCT_MAC}")
+    message(STATUS "[INFO] PRODUCT_MAC = ${PRODUCT_MAC}")
     set(MACOSX_BUNDLE_ICON_FILE ${PRODUCT_MAC}/icons-bundle.icns)
-    message(STATUS "MACOSX_BUNDLE_ICON_FILE = ${MACOSX_BUNDLE_ICON_FILE}")
+    message(STATUS "[INFO] MACOSX_BUNDLE_ICON_FILE = ${MACOSX_BUNDLE_ICON_FILE}")
 
     set_source_files_properties(${MACOSX_BUNDLE_ICON_FILE} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
     set_source_files_properties(${MACOSX_BUNDLE_ICON_FILE} PROPERTIES XCODE_EXPLICIT_FILE_TYPE "compiled")
 
 elseif(LINUX)
     # add_definitions(-include "stdafx.h")
-    message("Linux: Set SYSTEM_LIBRARIES")
-
-    set_lib_var(DBUS_LIBRARYDIR libdbus_${deps_lib_version_libdbus})
-
+    message("[INFO] Linux: Set SYSTEM_LIBRARIES")
     set(SYSTEM_LIBRARIES
         corelib
         core
         ${CURL_LIBRARIES}
         ${OPENSSL_LIBRARIES}
-        ${ICQ_PLATFORM_SPECIFIC}/libXi.a
-        ${ICQ_PLATFORM_SPECIFIC}/libxkbcommon-x11.a
-        ${ICQ_PLATFORM_SPECIFIC}/libxkbcommon.a
-        ${DBUS_LIBRARYDIR}/libdbus-1.a
-        ${ICQ_PLATFORM_SPECIFIC}/libxcb-util.a
-        ${ICQ_PLATFORM_SPECIFIC}/libXext.a
-        ${ICQ_PLATFORM_SPECIFIC}/libXau.a
-        ${ICQ_PLATFORM_SPECIFIC}/libXdmcp.a
         ${VOIP_LIBRARIES}
-        -Wl,-Bdynamic -ldl -lstdc++fs -lgpg-error -lfontconfig -lfreetype -luuid -lrt -lexpat -lz -lpthread -lX11 -lX11-xcb -lxcb -lXrandr -lXinerama -lXcursor -lXext -lXdamage -lXfixes -lXcomposite)
+        -ldl -lstdc++fs -lgpg-error -lfontconfig -lfreetype -luuid
+        -lpthread -lm -lrt -lexpat -lz -Wl,-Bstatic -Wl,-Bdynamic
+        -lX11 -lX11-xcb -lxcb -lXrandr -lXcursor -lXext -lXdamage -lXfixes -lXcomposite)
+
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 10.2)
+        message(STATUS "WARNING: GCC version is ${CMAKE_CXX_COMPILER_VERSION}")
+        execute_process(COMMAND bash "-c" "g++ -print-file-name=libstdc++.a" OUTPUT_VARIABLE LIBSTD OUTPUT_STRIP_TRAILING_WHITESPACE)
+        message(STATUS "linking against ${LIBSTD}")
+        set(SYSTEM_LIBRARIES ${SYSTEM_LIBRARIES} ${LIBSTD})
+    endif()
 
     if(ICQ_DEBUG)
-        message(STATUS "ICQ_DEBUG = ${ICQ_DEBUG}")
+        message(STATUS "[INFO] ICQ_DEBUG = ${ICQ_DEBUG}")
         set(SYSTEM_LIBRARIES ${SYSTEM_LIBRARIES} -ludev)
     endif()
 
@@ -297,7 +305,7 @@ endif()
 
 # ------------------------- release notes  -----------------------
 find_package(PythonInterp 3 REQUIRED)
-message(STATUS "PYTHON_EXECUTABLE = ${PYTHON_EXECUTABLE}")
+message(STATUS "[INFO] PYTHON_EXECUTABLE = ${PYTHON_EXECUTABLE}")
 execute_process(COMMAND
                     ${PYTHON_EXECUTABLE} buildsystem/update_release_notes.py
                 WORKING_DIRECTORY
@@ -306,7 +314,7 @@ execute_process(COMMAND
 # --------------------------    gui      -------------------------
 set(SUBPROJECT_ROOT "${ICQ_ROOT}/gui")
 
-message(STATUS "SUBPROJECT_ROOT = ${SUBPROJECT_ROOT}")
+message(STATUS "[INFO] SUBPROJECT_ROOT = ${SUBPROJECT_ROOT}")
 find_sources(SUBPROJECT_SOURCES "${SUBPROJECT_ROOT}" "cpp")
 if(APPLE)
     find_sources(SUBPROJECT_MM_SOURCES "${SUBPROJECT_ROOT}" "mm")
@@ -314,10 +322,11 @@ endif()
 find_sources(SUBPROJECT_HEADERS "${SUBPROJECT_ROOT}" "h")
 
 if(IM_AUTO_TESTING)
-    message(STATUS "Webconsole Testing: on")
+    message(STATUS "")
+    message(STATUS "[Testing] Webconsole Testing: on")
     add_definitions(-DIM_AUTO_TESTING=1)
     if(LINUX)
-        message(STATUS "Qt5Test LINUX READY")
+        message(STATUS "[INFO] Qt5Test LINUX READY")
         set(CMAKE_CXX_STANDARD_REQUIRED ON)
         set(CMAKE_CXX_EXTENSIONS OFF)
         find_package(Qt5Gui REQUIRED HINTS ${Qt5Tests_PREFIX_PATH})
@@ -339,15 +348,17 @@ if(IM_AUTO_TESTING)
         # )
 
         if(NOT Qt5Test_FOUND)
-            message(STATUS "Qt5Test not found, autotests will not be built.")
+            message(STATUS "[INFO] Qt5Test not found, autotests will not be built.")
             return()
         endif()
     endif()
+    message(STATUS "")
 else()
-    message(STATUS "Webconsole Testing: off")
-    message(STATUS "skipped: " "${ICQ_ROOT}/gui/webserver/webserver.h")
+    message(STATUS "")
+    message(STATUS "[INFO] Webconsole Testing: off")
+    message(STATUS "[INFO] skipped: " "${ICQ_ROOT}/gui/webserver/webserver.h")
     list(REMOVE_ITEM SUBPROJECT_HEADERS "${ICQ_ROOT}/gui/webserver/webserver.h")
-    message(STATUS "skipped: " "${ICQ_ROOT}/gui/webserver/webserver.cpp")
+    message(STATUS "[INFO] skipped: " "${ICQ_ROOT}/gui/webserver/webserver.cpp")
     list(REMOVE_ITEM SUBPROJECT_SOURCES "${ICQ_ROOT}/gui/webserver/webserver.cpp")
 endif()
 
@@ -383,6 +394,17 @@ if (STRIP_AV_MEDIA)
     list(FILTER SUBPROJECT_SOURCES EXCLUDE REGEX  "${ICQ_ROOT}/gui/main_window/sounds/*")
 endif()
 
+if (NOT (IM_QT_DYNAMIC AND HAS_WEB_ENGINE))
+    list(REMOVE_ITEM SUBPROJECT_HEADERS "${ICQ_ROOT}/gui/controls/WebPage.h")
+    list(REMOVE_ITEM SUBPROJECT_SOURCES "${ICQ_ROOT}/gui/controls/WebPage.cpp")
+    list(REMOVE_ITEM SUBPROJECT_HEADERS "${ICQ_ROOT}/gui/main_window/WebAppPage.h")
+    list(REMOVE_ITEM SUBPROJECT_SOURCES "${ICQ_ROOT}/gui/main_window/WebAppPage.cpp")
+endif()
+if (NOT (IM_QT_DYNAMIC AND HAS_OAUTH2))
+    list(REMOVE_ITEM SUBPROJECT_HEADERS "${ICQ_ROOT}/gui/main_window/OAuth2Dialog.h")
+    list(REMOVE_ITEM SUBPROJECT_SOURCES "${ICQ_ROOT}/gui/main_window/OAuth2Dialog.cpp")
+endif()
+
 set_source_group("sources" "${SUBPROJECT_ROOT}" ${SUBPROJECT_SOURCES} ${SUBPROJECT_MM_SOURCES} ${SUBPROJECT_HEADERS})
 
 
@@ -415,26 +437,28 @@ set_source_group("sources" "${GUI_SHARED_ROOT}" ${GUI_SHARED_SOURCES} ${GUI_SHAR
 
 # ----------------------------   mac   ---------------------------
 if(APPLE)
-    set(ICQ_PROTOLIB_ROOT "${ICQ_PLATFORM_SPECIFIC}/protolib")
 
-    include_directories(${ICQ_PROTOLIB_ROOT})
+    set(IM_ITUNES_ROOT "${pkg_additional_macos_itunes_location}")
+    include_directories(${IM_ITUNES_ROOT})
+    find_sources(IM_ITUNES_HEADERS "${IM_ITUNES_ROOT}" "h")
 
-    find_sources(ICQ_PROTOLIB_SOURCES "${ICQ_PROTOLIB_ROOT}" "cpp")
-    find_sources(ICQ_PROTOLIB_MM_SOURCES "${ICQ_PROTOLIB_ROOT}" "mm")
-    find_sources(ICQ_PROTOLIB_HEADERS "${ICQ_PROTOLIB_ROOT}" "h")
+    set(IM_PROTOLIB_ROOT "${pkg_additional_macos_protolib_location}")
+    include_directories(${IM_PROTOLIB_ROOT})
 
-    set_source_group("protolib" "${ICQ_PROTOLIB_ROOT}"
-        ${ICQ_PROTOLIB_SOURCES} ${ICQ_PROTOLIB_MM_SOURCES} ${ICQ_PROTOLIB_HEADERS})
+    find_sources(IM_PROTOLIB_SOURCES "${IM_PROTOLIB_ROOT}" "cpp")
+    find_sources(IM_PROTOLIB_MM_SOURCES "${IM_PROTOLIB_ROOT}" "mm")
+    find_sources(IM_PROTOLIB_HEADERS "${IM_PROTOLIB_ROOT}" "h")
 
-    set(ICQ_SSKEYCHAIN_ROOT "${ICQ_PLATFORM_SPECIFIC}/SSKeychain")
+    set_source_group("protolib" "${IM_PROTOLIB_ROOT}"
+        ${IM_PROTOLIB_SOURCES} ${IM_PROTOLIB_MM_SOURCES} ${IM_PROTOLIB_HEADERS})
 
-    include_directories(${ICQ_SSKEYCHAIN_ROOT})
+    set(IM_SSKEYCHAIN_ROOT "${pkg_additional_macos_sskeychain_location}")
+    include_directories(${IM_SSKEYCHAIN_ROOT})
+    find_sources(IM_SSKEYCHAIN_MM_SOURCES "${IM_SSKEYCHAIN_ROOT}" "mm")
+    find_sources(IM_SSKEYCHAIN_HEADERS "${IM_SSKEYCHAIN_ROOT}" "h")
 
-    find_sources(ICQ_SSKEYCHAIN_MM_SOURCES "${ICQ_SSKEYCHAIN_ROOT}" "mm")
-    find_sources(ICQ_SSKEYCHAIN_HEADERS "${ICQ_SSKEYCHAIN_ROOT}" "h")
-
-    set_source_group("SSKeychain" "${ICQ_SSKEYCHAIN_ROOT}"
-        ${ICQ_SSKEYCHAIN_MM_SOURCES} ${ICQ_SSKEYCHAIN_HEADERS})
+    set_source_group("SSKeychain" "${IM_SSKEYCHAIN_ROOT}"
+        ${IM_SSKEYCHAIN_MM_SOURCES} ${IM_SSKEYCHAIN_HEADERS})
 
 endif()
 
@@ -448,17 +472,14 @@ set(ICQ_TRANSLATIONS_DIR "${SUBPROJECT_ROOT}/translations")
 set(ICQ_LANGUAGE_FILES)
 set(ICQ_QM_FILES)
 
-message(STATUS "ICQ_LANGUAGES = ${ICQ_LANGUAGES}")
-message(STATUS "ICQ_TRANSLATIONS_DIR = ${ICQ_TRANSLATIONS_DIR}")
-message(STATUS "ICQ_LANGUAGE_FILES = ${ICQ_LANGUAGE_FILES}")
-message(STATUS "ICQ_QM_FILES = ${ICQ_QM_FILES}")
+message(STATUS "[translations] ICQ_LANGUAGES = ${ICQ_LANGUAGES}")
+message(STATUS "[translations] ICQ_TRANSLATIONS_DIR = ${ICQ_TRANSLATIONS_DIR}")
 
-get_filename_component(ICQ_LRELEASE_EXE "${ICQ_QT_BIN_DIR}/lrelease" ABSOLUTE)
 foreach(lang IN ITEMS ${ICQ_LANGUAGES})
     set(lang_file "${ICQ_TRANSLATIONS_DIR}/${lang}.ts")
     set(qm_file "${ICQ_TRANSLATIONS_DIR}/${lang}.qm")
     add_custom_command(OUTPUT "${qm_file}"
-        COMMAND ${ICQ_LRELEASE_EXE} ${lang_file} -qm ${qm_file}
+        COMMAND ${IM_QT_BIN_LRELEASE} ${lang_file} -qm ${qm_file}
         DEPENDS ${lang_file})
     list(APPEND ICQ_LANGUAGE_FILES "${lang_file}")
     list(APPEND ICQ_QM_FILES "${qm_file}")
@@ -466,20 +487,24 @@ endforeach()
 source_group("translations" FILES ${ICQ_LANGUAGE_FILES})
 source_group("translations" FILES ${ICQ_QM_FILES})
 
+message(STATUS "[translations] ICQ_LANGUAGE_FILES = ${ICQ_LANGUAGE_FILES}")
+message(STATUS "[translations] ICQ_QM_FILES = ${ICQ_QM_FILES}")
+
 # ----------------------------------------------------------------
 
 set(ICQ_RESOURCES_DIR "${SUBPROJECT_ROOT}/resources")
-message(STATUS "ICQ_RESOURCES_DIR = ${ICQ_RESOURCES_DIR}")
+message(STATUS "[INFO] ICQ_RESOURCES_DIR = ${ICQ_RESOURCES_DIR}")
 
 # ----------------------  check themes json  ---------------------
 set(ICQ_THEMES_META_PATH "${PRODUCT_SPEC_DIR}/app/resources/themes/meta.json")
 set(ICQ_THEMES_CHECKER "${ICQ_ROOT}/buildsystem/check_json.py")
 set(ICQ_THEMES_CHECKER_STAMP "${PROJECT_BINARY_DIR}/json_check.stamp")
 
-find_package(PythonInterp)
+find_package(PythonInterp 3 REQUIRED)
+message(STATUS "[INFO] PYTHON_EXECUTABLE = ${PYTHON_EXECUTABLE}")
 # configure time
-message(STATUS "Configure time checking themes JSON ${ICQ_THEMES_META_PATH}")
-message(STATUS "Executing ${PYTHON_EXECUTABLE} ${ICQ_THEMES_CHECKER} ${ICQ_THEMES_META_PATH}")
+message(STATUS "[INFO] Configure time checking themes JSON ${ICQ_THEMES_META_PATH}")
+message(STATUS "[INFO] Executing ${PYTHON_EXECUTABLE} ${ICQ_THEMES_CHECKER} ${ICQ_THEMES_META_PATH}")
 execute_process(
         WORKING_DIRECTORY ${ICQ_ROOT}
         COMMAND ${PYTHON_EXECUTABLE} ${ICQ_THEMES_CHECKER} ${ICQ_THEMES_META_PATH}
@@ -488,7 +513,7 @@ execute_process(
 if (NOT RETURN_VALUE EQUAL 0)
     message(FATAL_ERROR "Themes JSON check failed, return value ${RETURN_VALUE}")
 else()
-    message(STATUS "Themes JSON ${ICQ_THEMES_META_PATH} is valid")
+    message(STATUS "[INFO] Themes JSON ${ICQ_THEMES_META_PATH} is valid")
 endif()
 
 # build time
@@ -532,15 +557,12 @@ if(APPLE)
 endif()
 
 set(ICQ_RESOURCES "${SUBPROJECT_ROOT}/resource.qrc")
-
 set(PRODUCT_RESOURCES "${PRODUCT_SPEC_DIR}/app/resources/product.qrc")
-message(STATUS "ICQ_RESOURCES = ${ICQ_RESOURCES}")
+message(STATUS "[INFO] ICQ_RESOURCES = ${ICQ_RESOURCES}")
+message(STATUS "[INFO] PRODUCT_RESOURCES = ${PRODUCT_RESOURCES}")
 
-message(STATUS "PRODUCT_RESOURCES = ${PRODUCT_RESOURCES}")
-
-get_filename_component(ICQ_RCC_EXE "${ICQ_QT_BIN_DIR}/rcc" ABSOLUTE)
 if(MSVC)
-    message(STATUS "Making BIG resources from ${ICQ_RESOURCES} and ${PRODUCT_RESOURCES}")
+    message(STATUS "Making BIG resources from ${ICQ_RESOURCES}, and ${PRODUCT_RESOURCES}")
     icq_add_big_resources(RCC_FILES ${ICQ_RESOURCES} ${PRODUCT_RESOURCES})
 
     set(RC_FILE "${SUBPROJECT_ROOT}/Resource.rc")
@@ -558,7 +580,7 @@ if(MSVC)
 else()
     set(ICQ_RESOURCES_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/qresource.cpp")
     add_custom_command(OUTPUT ${ICQ_RESOURCES_OUTPUT}
-        COMMAND ${ICQ_RCC_EXE} ${ICQ_RESOURCES} ${PRODUCT_RESOURCES} -o ${ICQ_RESOURCES_OUTPUT}
+        COMMAND ${IM_QT_BIN_RCC} ${ICQ_RESOURCES} ${PRODUCT_RESOURCES} -o ${ICQ_RESOURCES_OUTPUT}
         DEPENDS ${ICQ_QM_FILES} ${ICQ_RESOURCES} ${PRODUCT_RESOURCES} ${ICQ_RESOURCE_FILES})
 endif()
 source_group("resources" FILES ${ICQ_RESOURCES})
@@ -583,8 +605,9 @@ add_executable(${PROJECT_NAME} MACOSX_BUNDLE WIN32
     ${COMMON_SOURCES} ${COMMON_HEADERS}
     ${GUI_SHARED_SOURCES} ${GUI_SHARED_HEADERS}
     ${BREAKPAD_SOURCE}
-    ${ICQ_PROTOLIB_SOURCES} ${ICQ_PROTOLIB_MM_SOURCES} ${ICQ_PROTOLIB_HEADERS}
-    ${ICQ_SSKEYCHAIN_MM_SOURCES} ${ICQ_SSKEYCHAIN_HEADERS}
+    ${IM_PROTOLIB_SOURCES} ${IM_PROTOLIB_MM_SOURCES} ${IM_PROTOLIB_HEADERS}
+    ${IM_SSKEYCHAIN_MM_SOURCES} ${IM_SSKEYCHAIN_HEADERS}
+    ${IM_ITUNES_HEADERS}
     ${ICQ_MOC_FILES}
     ${ICQ_LANGUAGE_FILES}
     ${ICQ_QM_FILES}
@@ -605,11 +628,12 @@ add_dependencies(${PROJECT_NAME} check_themes_meta)
 
 set_property(DIRECTORY ${SUBPROJECT_ROOT} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
 
-if(MSVC)
-    #add_dependencies(${PROJECT_NAME} GENERATE_RC)
-endif()
+# if(MSVC)
+#     add_dependencies(${PROJECT_NAME} GENERATE_RC)
+# endif()
 
 if(ICQ_CORELIB_STATIC_LINKING)
+    message(STATUS "[gui] -> target_link_libraries ICQ_CORELIB_STATIC_LINKING = TRUE [static linking]")
     if(MSVC)
         target_link_libraries(${PROJECT_NAME}
             ${OPEN_AL_LIBRARIES}
@@ -627,18 +651,16 @@ if(ICQ_CORELIB_STATIC_LINKING)
             Iphlpapi.lib
             corelib)
     else()
-        message(STATUS "-> target_link_libraries [static linking]")
         if(IM_AUTO_TESTING)
-            message(STATUS "... LINUX_TESTING: target_link_libraries with Qt5::Test STATIC_LINKING")
+            message(STATUS "[INFO] LINUX_TESTING: target_link_libraries with Qt5::Test STATIC_LINKING")
         endif()
-        message(STATUS "ICU_LIBRARIES -> ${ICU_LIBRARIES}")
         target_link_libraries(${PROJECT_NAME}
         ${OPEN_AL_LIBRARIES}
         ${FFMPEG_LIBRARIES}
         ${RLOTTIE_LIBRARIES}
         ${QT_LIBRARIES}
+        ${ADDITIONAL_LIBRARIES}
         ${PHONENUMBER_LIBRARIES}
-        ${ICU_LIBRARIES}
         ${SYSTEM_LIBRARIES}
         ${BREAKPAD_LIBRARIES}
         ${CRASHPAD_LIBRARIES}
@@ -646,6 +668,7 @@ if(ICQ_CORELIB_STATIC_LINKING)
         corelib)
     endif()
 else()
+    message(STATUS "[gui] -> target_link_libraries ICQ_CORELIB_STATIC_LINKING = FALSE [dynamic linking]")
     if(MSVC)
         target_link_libraries(${PROJECT_NAME}
             ${OPEN_AL_LIBRARIES}
@@ -658,9 +681,8 @@ else()
             ${BREAKPAD_LIBRARIES}
             ${CRASHPAD_LIBRARIES})
     else()
-        message(STATUS "-> target_link_libraries [dynamic linking]")
         if(IM_AUTO_TESTING)
-            message(STATUS "... LINUX_TESTING: target_link_libraries with Qt5::Test DYNAMIC_LINKING")
+            message(STATUS "[INFO] LINUX_TESTING: target_link_libraries with Qt5::Test DYNAMIC_LINKING")
             target_link_libraries(${PROJECT_NAME}
                 ${OPEN_AL_LIBRARIES}
                 ${FFMPEG_LIBRARIES}
@@ -717,76 +739,76 @@ if(APPLE)
     set(MACOSX_BUNDLE_INFO_PLIST "${PRODUCT_MAC}/Info.plist")
     SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${PRODUCT_MAC}/Info.plist")
 
-    message(STATUS "DIR ICQ_BIN_DIR    = ${ICQ_BIN_DIR}")
-    message(STATUS "DIR ICQ_BUNDLE     = ${ICQ_BUNDLE}")
-    message(STATUS "DIR ICQ_BUNDLE_DIR = ${ICQ_BUNDLE_DIR}")
-    message(STATUS "DIR ICQ_PLIST      = ${ICQ_PLIST}")
+    message(STATUS "[INFO] DIR ICQ_BIN_DIR    = ${ICQ_BIN_DIR}")
+    message(STATUS "[INFO] DIR ICQ_BUNDLE     = ${ICQ_BUNDLE}")
+    message(STATUS "[INFO] DIR ICQ_BUNDLE_DIR = ${ICQ_BUNDLE_DIR}")
+    message(STATUS "[INFO] DIR ICQ_PLIST      = ${ICQ_PLIST}")
 
-    message(STATUS "-> copy ${PRODUCT_MAC}/Info.plist to ${ICQ_PLIST}")
+    message(STATUS "[INFO] -> copy ${PRODUCT_MAC}/Info.plist to ${ICQ_PLIST}")
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
             COMMAND cp -f "${PRODUCT_MAC}/Info.plist" ${ICQ_PLIST})
 
     string(TIMESTAMP COPYRIGHT_YEAR "%Y")
-    message(STATUS "-> COPYRIGHT_YEAR = ${COPYRIGHT_YEAR}")
+    message(STATUS "[INFO] -> COPYRIGHT_YEAR = ${COPYRIGHT_YEAR}")
     set(PLIST_COPYRIGHT_MESSAGE "Copyright © ${COPYRIGHT_YEAR} Mail.ru. All rights reserved.")
 
-    message(STATUS "-> plist Set :NSHumanReadableCopyright ${PLIST_COPYRIGHT_MESSAGE}")
+    message(STATUS "[INFO] -> plist Set :NSHumanReadableCopyright ${PLIST_COPYRIGHT_MESSAGE}")
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${PLIST_BUDDY} -c "Set :NSHumanReadableCopyright ${PLIST_COPYRIGHT_MESSAGE}" ${ICQ_PLIST} VERBATIM)
 
-    message(STATUS "-> plist Set :LSMinimumSystemVersion ${CMAKE_OSX_DEPLOYMENT_TARGET}")
+    message(STATUS "[INFO] -> plist Set :LSMinimumSystemVersion ${CMAKE_OSX_DEPLOYMENT_TARGET}")
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${PLIST_BUDDY} -c "Set :LSMinimumSystemVersion ${CMAKE_OSX_DEPLOYMENT_TARGET}" ${ICQ_PLIST} VERBATIM)
 
-    message(STATUS "copy ${ICQ_MAC_ROOT}/PkgInfo")
+    message(STATUS "[INFO] copy ${ICQ_MAC_ROOT}/PkgInfo")
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy "${ICQ_MAC_ROOT}/PkgInfo" ${ICQ_BUNDLE_DIR})
 
     set(ICQ_FRAMEWORKS_BUNDLE_DIR "${ICQ_BUNDLE_DIR}/Frameworks")
-    message(STATUS "DIR ICQ_FRAMEWORKS_BUNDLE_DIR = ${ICQ_FRAMEWORKS_BUNDLE_DIR}")
+    message(STATUS "[INFO] DIR ICQ_FRAMEWORKS_BUNDLE_DIR = ${ICQ_FRAMEWORKS_BUNDLE_DIR}")
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_FRAMEWORKS_BUNDLE_DIR})
 
     set(ICQ_QT_BUNDLE_DIR "${ICQ_FRAMEWORKS_BUNDLE_DIR}/Qt")
-    message(STATUS "DIR ICQ_QT_BUNDLE_DIR = ${ICQ_QT_BUNDLE_DIR}")
+    message(STATUS "[INFO] DIR ICQ_QT_BUNDLE_DIR = ${ICQ_QT_BUNDLE_DIR}")
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_QT_BUNDLE_DIR})
 
-    message(STATUS "make_directory ${ICQ_PLUGINS_BUNDLE_DIR}")
+    message(STATUS "[INFO] make_directory ${ICQ_PLUGINS_BUNDLE_DIR}")
     set(ICQ_PLUGINS_BUNDLE_DIR "${ICQ_BUNDLE_DIR}/PlugIns")
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_PLUGINS_BUNDLE_DIR})
 
     if ((NOT BUILD_FOR_STORE) AND (NOT STRIP_CRASH_HANDLER))
-        message(STATUS "make_directory ${ICQ_HELPERS_BUNDLE_DIR}")
+        message(STATUS "[INFO] make_directory ${ICQ_HELPERS_BUNDLE_DIR}")
         set(ICQ_HELPERS_BUNDLE_DIR "${ICQ_BUNDLE_DIR}/Helpers")
             add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_HELPERS_BUNDLE_DIR})
 
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND cp -f ${ICQ_CRASHPAD}/bin/crashpad_handler ${ICQ_HELPERS_BUNDLE_DIR})
+            COMMAND cp -f ${IM_CRASHPAD}/crashpad_handler ${ICQ_HELPERS_BUNDLE_DIR})
     endif()
 
     if(ICQ_UPDATE)
-        message(STATUS "-> copy Autoupdate.app")
+        message(STATUS "[INFO] -> copy Autoupdate.app")
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_PLATFORM_SPECIFIC}/Sparkle.framework/Versions/A/Resources/Autoupdate.app/Contents/PlugIns)
-        message(STATUS "-> copy Sparkle.framework")
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${IM_SPARKLE}/Sparkle.framework/Versions/A/Resources/Autoupdate.app/Contents/PlugIns)
+        message(STATUS "[INFO] -> copy Sparkle.framework")
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND rsync -K -a --exclude=Headers --exclude=Versions/A/Headers "${ICQ_PLATFORM_SPECIFIC}/Sparkle.framework" "${ICQ_FRAMEWORKS_BUNDLE_DIR}")
-        message(STATUS "-> install_name_tool Sparkle.framework")
+            COMMAND rsync -K -a --exclude=Headers --exclude=Versions/A/Headers "${IM_SPARKLE}/Sparkle.framework" "${ICQ_FRAMEWORKS_BUNDLE_DIR}")
+        message(STATUS "[INFO] -> install_name_tool Sparkle.framework")
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
             COMMAND install_name_tool -change "@rpath/Sparkle.framework/Versions/A/Sparkle" "@executable_path/../Frameworks/Sparkle.framework/Sparkle" ${ICQ_BUNDLE_DIR}/MacOS/${PROJECT_NAME})
     endif()
 
     if(IM_AUTO_TESTING)
-        message(STATUS "... copying XCTest.framework")
+        message(STATUS "[INFO] copying XCTest.framework")
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND rsync -K -a --exclude=Headers --exclude=Versions/A/Headers "${ICQ_PLATFORM_SPECIFIC}/XCTest.framework" "${ICQ_FRAMEWORKS_BUNDLE_DIR}")
+            COMMAND rsync -K -a --exclude=Headers --exclude=Versions/A/Headers "${ICQ_PLATFORM_SPECIFIC}/macos_xctest/XCTest.framework" "${ICQ_FRAMEWORKS_BUNDLE_DIR}")
     endif()
 
     set(ICQ_RESOURCES_BUNDLE_DIR "${ICQ_BUNDLE_DIR}/Resources")
-    message(STATUS "DIR ICQ_RESOURCES_BUNDLE_DIR = ${ICQ_RESOURCES_BUNDLE_DIR}")
+    message(STATUS "[INFO] DIR ICQ_RESOURCES_BUNDLE_DIR = ${ICQ_RESOURCES_BUNDLE_DIR}")
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_RESOURCES_BUNDLE_DIR})
 
@@ -800,10 +822,23 @@ if(APPLE)
             add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_PLUGINS_IMAGE_BUNDLE_DIR})
 
+            set(ICQ_PLUGINS_ICONENGINES_BUNDLE_DIR "${ICQ_PLUGINS_BUNDLE_DIR}/iconengines")
+            add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_PLUGINS_ICONENGINES_BUNDLE_DIR})
+
+
             FOREACH(PLUGIN ${QT_IMAGE_PLUGINS_TO_COPY})
                 get_filename_component(FILE_NAME ${PLUGIN} NAME)
                 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
                     COMMAND cp -f ${PLUGIN} ${ICQ_PLUGINS_IMAGE_BUNDLE_DIR})
+                add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                    COMMAND install_name_tool -change ${FILE_NAME} @rpath/${FILE_NAME} ${ICQ_BUNDLE_DIR}/MacOS/${PROJECT_NAME})
+            ENDFOREACH()
+
+            FOREACH(PLUGIN ${QT_ICONENGINES_PLUGINS_TO_COPY})
+                get_filename_component(FILE_NAME ${PLUGIN} NAME)
+                add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                    COMMAND cp -f ${PLUGIN} ${ICQ_PLUGINS_ICONENGINES_BUNDLE_DIR})
                 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
                     COMMAND install_name_tool -change ${FILE_NAME} @rpath/${FILE_NAME} ${ICQ_BUNDLE_DIR}/MacOS/${PROJECT_NAME})
             ENDFOREACH()
@@ -820,8 +855,16 @@ if(APPLE)
                 get_filename_component(LIBEXEC_NAME ${LIBEXEC} NAME)
                 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
                     COMMAND cp -f ${LIBEXEC} ${ICQ_BUNDLE_DIR}/MacOS)
-                add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-                    COMMAND install_name_tool -add_rpath @loader_path/../Frameworks/Qt ${ICQ_BUNDLE_DIR}/MacOS/${LIBEXEC_NAME})
+                if("${LIBEXEC_NAME}" STREQUAL "${QT_WEBENGINE_PROCESS_NAME}")
+                    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                        COMMAND mv -f ${ICQ_BUNDLE_DIR}/MacOS/${QT_WEBENGINE_PROCESS_NAME} ${ICQ_BUNDLE_DIR}/MacOS/${QT_WEBENGINE_PROCESS_TARGET_NAME} )
+                    set(LIBEXEC_NAME ${QT_WEBENGINE_PROCESS_TARGET_NAME})
+                    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                        COMMAND install_name_tool -add_rpath @loader_path/../Frameworks/Qt ${ICQ_BUNDLE_DIR}/MacOS/${QT_WEBENGINE_PROCESS_TARGET_NAME})
+                else()
+                    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                        COMMAND install_name_tool -add_rpath @loader_path/../Frameworks/Qt ${ICQ_BUNDLE_DIR}/MacOS/${LIBEXEC_NAME})
+                endif()
             ENDFOREACH()
 
             FOREACH(LIBRARY ${QT_LIBRARIES_TO_COPY})
@@ -834,8 +877,13 @@ if(APPLE)
                     COMMAND install_name_tool -change @rpath/${FILE_NAME} @rpath/${ORIGINAL_FILE_NAME} ${ICQ_BUNDLE_DIR}/MacOS/${PROJECT_NAME})
                 FOREACH(LIBEXEC ${QT_LIBEXEC_TO_COPY})
                     get_filename_component(LIBEXEC_NAME ${LIBEXEC} NAME)
-                    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-                        COMMAND install_name_tool -change @rpath/${FILE_NAME} @rpath/${ORIGINAL_FILE_NAME} ${ICQ_BUNDLE_DIR}/MacOS/${LIBEXEC_NAME})
+                    if("${LIBEXEC_NAME}" STREQUAL "${QT_WEBENGINE_PROCESS_NAME}")
+                        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                            COMMAND install_name_tool -change @rpath/${FILE_NAME} @rpath/${ORIGINAL_FILE_NAME} ${ICQ_BUNDLE_DIR}/MacOS/${QT_WEBENGINE_PROCESS_TARGET_NAME})
+                    else()
+                        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                            COMMAND install_name_tool -change @rpath/${FILE_NAME} @rpath/${ORIGINAL_FILE_NAME} ${ICQ_BUNDLE_DIR}/MacOS/${LIBEXEC_NAME})
+                    endif()
                 ENDFOREACH()
             ENDFOREACH()
 
@@ -844,12 +892,27 @@ if(APPLE)
                     COMMAND cp -f -R ${RESOURCE} ${ICQ_BUNDLE_DIR}/Resources)
             ENDFOREACH()
 
+            if(HAS_WEB_ENGINE)
+                message(STATUS "[INFO] -> copy ${PRODUCT_MAC}/qt.conf to ${ICQ_BUNDLE_DIR}/Resources")
+                add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                    COMMAND cp -f "${PRODUCT_MAC}/qt.conf" ${ICQ_BUNDLE_DIR}/Resources)
+
+                set(ICQ_TRANSLATIONS_DIR "${ICQ_BUNDLE_DIR}/Resources/translations")
+                add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_TRANSLATIONS_DIR})
+
+                add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E copy_directory ${QT_TRANSLATIONS_DIR} ${ICQ_TRANSLATIONS_DIR})
+            endif()
+
             add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
                 COMMAND install_name_tool -add_rpath @loader_path/../Frameworks ${ICQ_BUNDLE_DIR}/MacOS/${PROJECT_NAME})
             add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
                 COMMAND install_name_tool -add_rpath @loader_path/../Frameworks/Qt ${ICQ_BUNDLE_DIR}/MacOS/${PROJECT_NAME})
             add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
                 COMMAND install_name_tool -add_rpath @loader_path/../PlugIns/imageformats ${ICQ_BUNDLE_DIR}/MacOS/${PROJECT_NAME})
+            add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                COMMAND install_name_tool -add_rpath @loader_path/../PlugIns/iconengines ${ICQ_BUNDLE_DIR}/MacOS/${PROJECT_NAME})
             add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
                 COMMAND install_name_tool -add_rpath @loader_path/../PlugIns/platforms ${ICQ_BUNDLE_DIR}/MacOS/${PROJECT_NAME})
 
@@ -862,7 +925,7 @@ if(APPLE)
 
     # rename bundle
     if(NOT "${PROJECT_NAME}" STREQUAL "${APP_OUTPUT_NAME}")
-        message(STATUS "[rename] Bundle will be renamed from [${PROJECT_NAME}] to [${APP_OUTPUT_NAME}.app]")
+        message(STATUS "[INFO] [rename] Bundle will be renamed from [${PROJECT_NAME}] to [${APP_OUTPUT_NAME}.app]")
 
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E rename "${ICQ_BUNDLE}/Contents/MacOS/${PROJECT_NAME}" "${ICQ_BUNDLE}/Contents/MacOS/${APP_OUTPUT_NAME}"
@@ -872,4 +935,86 @@ if(APPLE)
     endif()
 
 
+endif()
+
+if(IM_QT_DYNAMIC)
+    if(LINUX)
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND cp -f ${QT_CONF_FILE} ${ICQ_BIN_DIR})
+
+        set(PLUGINS_DIR "${ICQ_BIN_DIR}/plugins")
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${PLUGINS_DIR})
+
+        set(PLATFORM_PLUGINS_DIR "${PLUGINS_DIR}/platforms")
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${PLATFORM_PLUGINS_DIR})
+
+        FOREACH(PLATFORM_PLUGIN ${QT_PLATFORMS_PLUGINS_TO_COPY})
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND cp -f ${PLATFORM_PLUGIN} ${PLATFORM_PLUGINS_DIR})
+        ENDFOREACH()
+
+        set(XCBGLINTERGRATIONS_PLUGINS_DIR "${PLUGINS_DIR}/xcbglintegrations")
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${XCBGLINTERGRATIONS_PLUGINS_DIR})
+
+        FOREACH(XCBGLINTERGRATIONS_PLUGIN ${QT_XCBGLINTERGRATIONS_PLUGINS_TO_COPY})
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND cp -f ${XCBGLINTERGRATIONS_PLUGIN} ${XCBGLINTERGRATIONS_PLUGINS_DIR})
+        ENDFOREACH()
+
+        set(BEARER_PLUGINS_DIR "${PLUGINS_DIR}/bearer")
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${BEARER_PLUGINS_DIR})
+
+        FOREACH(BEARER_PLUGIN ${QT_BEARER_PLUGINS_TO_COPY})
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND cp -f ${BEARER_PLUGIN} ${BEARER_PLUGINS_DIR})
+        ENDFOREACH()
+
+        set(IMAGE_PLUGINS_DIR "${PLUGINS_DIR}/imageformats")
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${IMAGE_PLUGINS_DIR})
+
+        FOREACH(IMAGE_PLUGIN ${QT_IMAGE_PLUGINS_TO_COPY})
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND cp -f ${IMAGE_PLUGIN} ${IMAGE_PLUGINS_DIR})
+        ENDFOREACH()
+
+        if (HAS_WEB_ENGINE)
+            set(RESOURCES_DIR "${ICQ_BIN_DIR}/resources")
+            add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E make_directory ${RESOURCES_DIR})
+
+            FOREACH(RESOURCE ${QT_RESOURCES_TO_COPY})
+            add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                    COMMAND cp -f ${RESOURCE} ${RESOURCES_DIR})
+            ENDFOREACH()
+
+            set(LIBEXEC_DIR "${ICQ_BIN_DIR}/libexec")
+            add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E make_directory ${LIBEXEC_DIR})
+
+            FOREACH(LIBEXEC ${QT_LIBEXEC_TO_COPY})
+            add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                COMMAND cp -f ${LIBEXEC} ${LIBEXEC_DIR})
+            ENDFOREACH()
+        endif()
+
+        set(LIB_DIR "${ICQ_BIN_DIR}/lib")
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${LIB_DIR})
+
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND patchelf --set-rpath '$$ORIGIN/lib' ${ICQ_BIN_DIR}/${PROJECT_NAME})
+
+        FOREACH(LIBRARY ${QT_LIBRARIES_TO_COPY})
+            get_filename_component(FILE_NAME ${LIBRARY} NAME)
+            set(ORIGINAL_FILE_NAME ${FILE_NAME})
+            string(REPLACE "${QT_LIB_EXT}.${ICQ_QT_VERSION}" "${QT_LIB_EXT}.${QT_MAJOR_VERSION}" FILE_NAME ${FILE_NAME})
+            add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                COMMAND cp -f ${LIBRARY} ${LIB_DIR}/${FILE_NAME})
+        ENDFOREACH()
+    endif()
 endif()

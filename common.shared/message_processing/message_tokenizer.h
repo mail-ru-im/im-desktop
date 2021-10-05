@@ -39,16 +39,18 @@ namespace common
         class message_tokenizer final
         {
         public:
-            message_tokenizer(const tokenizer_string& _message, const std::string& _files_url, std::vector<url_parser::compare_item> &&_items);
-            message_tokenizer(const tokenizer_string& _message, const core::data::format::string_formatting& _formatting, const std::string& _files_url, std::vector<url_parser::compare_item> &&_items);
+            message_tokenizer(const tokenizer_string& _message, const std::string& _files_url, std::vector<url_parser::compare_item>&& _items);
+            message_tokenizer(const tokenizer_string& _message, const core::data::format& _formatting, const std::string& _files_url, std::vector<url_parser::compare_item>&& _items);
 
             bool has_token() const;
             const message_token& current() const;
 
             void next();
 
+            message_token::type token_text_type() const { return token_text_type_; }
+
         private:
-            void parse(const tokenizer_string& _message, const core::data::format::string_formatting& _formatting, const std::string& _files_url, std::vector<url_parser::compare_item>&& _items);
+            void parse(const tokenizer_string& _message, const core::data::format& _formatting, const std::string& _files_url, std::vector<url_parser::compare_item>&& _items);
 
             std::queue<message_token> tokens_;
             message_token::type token_text_type_;

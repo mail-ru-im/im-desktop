@@ -2,6 +2,7 @@
 
 #include "../Spellchecker_p.h"
 #include "../SpellcheckUtils.h"
+#include "../../utils/macos/mac_support.h"
 
 #import <AppKit/AppKit.h>
 
@@ -38,10 +39,15 @@ namespace spellcheck
 
         public:
 
-            [[nodiscard]] const std::vector<QString>& languages() const
+            [[nodiscard]] const std::vector<QString>& languages(const std::vector<QString>& _keyboardLanguages) const
             {
-                const static auto languages = utils::systemLanguages();
-                return languages;
+                if (_keyboardLanguages.empty())
+                {
+                    const static auto languages = utils::systemLanguages();
+                    return languages;
+                }
+
+                return _keyboardLanguages;
             }
 
             [[nodiscard]]  const std::vector<QChar::Script>& scripts() const
@@ -103,7 +109,7 @@ namespace spellcheck
                 });
             }
 
-            [[nodiscard]] Suggests getSuggests(QStringView word, size_t maxCount) const
+            [[nodiscard]] Suggests getSuggests(QStringView word, size_t maxCount, const std::vector<QString>& _keyboardLanguages) const
             {
                 Suggests res;
 
@@ -121,7 +127,7 @@ namespace spellcheck
                 size_t wordCounter = 0;
                 const auto wordScript = utils::wordScript(word);
 
-                for (const auto &lang : languages())
+                for (const auto &lang : languages(_keyboardLanguages))
                 {
                     if (wordScript != utils::localeToScriptCode(QStringRef(&lang)))
                         continue;
@@ -153,13 +159,13 @@ namespace spellcheck
 
     std::vector<QString> SpellCheckerImpl::languages() const
     {
-        return platform_ ? platform_->languages() : std::vector<QString>{};
+        return platform_ ? platform_->languages(keyboardLanguages_) : std::vector<QString>{};
     }
 
     std::optional<Suggests> SpellCheckerImpl::getSuggests(const QString& word, size_t maxCount) const
     {
         if (platform_)
-            return platform_->getSuggests(word, maxCount);
+            return platform_->getSuggests(word, maxCount, keyboardLanguages_);
         return {};
     }
 
@@ -196,5 +202,10 @@ namespace spellcheck
         if (platform_)
             return platform_->checkText(text);
         return {};
+    }
+
+    void SpellCheckerImpl::updateKeyboardLanguages()
+    {
+        keyboardLanguages_ = MacSupport::getKeyboardLanguages();
     }
 }

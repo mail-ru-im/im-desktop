@@ -178,6 +178,7 @@ namespace Previewer
         int controlWidgetHeight_;
 
         bool isClosing_;
+        bool fromThreadFeed_;
 
         friend class AccessibleGalleryWidget;
     };

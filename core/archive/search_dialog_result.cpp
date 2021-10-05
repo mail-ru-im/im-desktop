@@ -2,7 +2,7 @@
 #include "search_dialog_result.h"
 #include "history_message.h"
 
-#include "../tools/json_helper.h"
+#include "../../common.shared/json_helper.h"
 
 namespace core::search
 {
@@ -123,7 +123,7 @@ namespace core::search
 
         if (!cursor_next_.empty())
         {
-            assert(!messages_.empty());
+            im_assert(!messages_.empty());
             _root_coll.set_value_as_string("cursor_next", cursor_next_);
         }
 

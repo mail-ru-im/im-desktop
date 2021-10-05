@@ -25,7 +25,7 @@ namespace core
             auto_scope_impl(std::function<void()> _lambda)
                 : end_lambda_(std::move(_lambda))
             {
-                assert(end_lambda_);
+                im_assert(end_lambda_);
             }
 
             ~auto_scope_impl()
@@ -58,7 +58,7 @@ namespace core
             auto_scope_bool_impl(std::function<void(const bool)> _lambda)
                 : end_lambda_(std::move(_lambda))
             {
-                assert(end_lambda_);
+                im_assert(end_lambda_);
             }
 
             ~auto_scope_bool_impl()

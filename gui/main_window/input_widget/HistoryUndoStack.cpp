@@ -5,13 +5,13 @@
 
 namespace Ui
 {
-    Replacable::Replacable(const QString& _text)
+    Replacable::Replacable(const Data::FString& _text)
     {
         text_ = _text;
-        cursor_ = text_.isEmpty() ? -1 : text_.length();
+        cursor_ = text_.isEmpty() ? -1 : text_.size();
     }
 
-    QString& Replacable::Text()
+    Data::FString& Replacable::Text()
     {
         return text_;
     }
@@ -35,7 +35,7 @@ namespace Ui
         vect_.reserve(maxSize_);
     }
 
-    void HistoryUndoStack::push(const QString& _state)
+    void HistoryUndoStack::push(const Data::FString& _state)
     {
         if (currentPosition_ == 0 || (currentPosition_ < maxSize_ && vect_.size() < maxSize_))
         {
@@ -56,7 +56,7 @@ namespace Ui
         }
         else
         {
-            std::rotate(vect_.begin(), vect_.begin() + 1, vect_.end());
+            std::rotate(vect_.begin(), std::next(vect_.begin()), vect_.end());
             clear();
             vect_[currentPosition_ - 1] = _state;
         }
@@ -93,9 +93,9 @@ namespace Ui
         return currentPosition_ > 0;
     }
 
-    void HistoryUndoStack::clear(const ClearType _clearType)
+    void HistoryUndoStack::clear(ClearType _clearType /* = ClearType::Last */)
     {
-        if (_clearType == ClearType::Full || currentPosition_ == 0)
+        if (ClearType::Full == _clearType || currentPosition_ == 0)
         {
             vect_.clear();
             currentPosition_ = 0;

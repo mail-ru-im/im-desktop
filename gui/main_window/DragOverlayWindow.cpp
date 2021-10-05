@@ -1,12 +1,10 @@
 #include "stdafx.h"
 
 #include "DragOverlayWindow.h"
-#include "ContactDialog.h"
 #include "MainWindow.h"
 #include "FilesWidget.h"
 
 #include "history_control/HistoryControlPage.h"
-#include "input_widget/InputWidget.h"
 #include "contact_list/ContactListModel.h"
 #include "utils/utils.h"
 #include "utils/async/AsyncTask.h"
@@ -16,6 +14,7 @@
 #include "styles/ThemeParameters.h"
 #include "controls/GeneralDialog.h"
 #include "core_dispatcher.h"
+#include "main_window/containers/InputStateContainer.h"
 
 namespace
 {
@@ -59,11 +58,11 @@ namespace
 
 namespace Ui
 {
-    DragOverlayWindow::DragOverlayWindow(ContactDialog* _parent)
+    DragOverlayWindow::DragOverlayWindow(const QString& _aimId, QWidget* _parent)
         : QWidget(_parent)
-        , Parent_(_parent)
         , top_(false)
         , mode_(QuickSend)
+        , aimId_(_aimId)
     {
         setWindowFlags(Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint | Qt::WindowSystemMenuHint);
         setAttribute(Qt::WA_TranslucentBackground);
@@ -94,71 +93,23 @@ namespace Ui
         setMode(overlayModeFromMimeData(_mimeData));
     }
 
-    void DragOverlayWindow::paintEvent(QPaintEvent *)
+    void DragOverlayWindow::processMimeData(const QMimeData* _mimeData)
     {
-        QPainter painter(this);
-
-        painter.setPen(Qt::NoPen);
-        painter.setRenderHint(QPainter::Antialiasing);
-
-        static const QColor overlayColor = Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE, 0.98);
-
-        painter.fillRect(rect(), overlayColor);
-
-        drawSendWithCaption(painter);
-        drawQuickSend(painter);
-    }
-
-    void DragOverlayWindow::dragEnterEvent(QDragEnterEvent *_e)
-    {
-        dragMouseoverTimer_.start();
-
-        _e->acceptProposedAction();
-    }
-
-    void DragOverlayWindow::dragLeaveEvent(QDragLeaveEvent *_e)
-    {
-        dragMouseoverTimer_.stop();
-
-        hide();
-        _e->accept();
-        Utils::InterConnector::instance().setDragOverlay(false);
-    }
-
-    void DragOverlayWindow::dragMoveEvent(QDragMoveEvent *_e)
-    {
-        _e->acceptProposedAction();
-        if (mode_ == (QuickSend | SendWithCaption))
-            top_ = _e->pos().y() < rect().height() / 2;
-        else
-            top_ = ((mode_ == QuickSend) ? false : true);
-        update();
-    }
-
-    void DragOverlayWindow::dropEvent(QDropEvent *_e)
-    {
-        dragMouseoverTimer_.stop();
-        onTimer();
-
-        const QMimeData* mimeData = _e->mimeData();
-
-        auto mimeDataWithImage = Utils::isMimeDataWithImage(mimeData);
-
-        if (mimeData->hasUrls() || mimeDataWithImage)
+        const auto mimeDataWithImage = Utils::isMimeDataWithImage(_mimeData);
+        if (_mimeData->hasUrls() || mimeDataWithImage)
         {
-            const QList<QUrl> urlList = mimeData->urls();
-
-            QString contact = Logic::getContactListModel()->selectedContact();
+            const auto& inputState = Logic::InputStateContainer::instance().getState(aimId_);
             FilesToSend files;
 
             if (mimeDataWithImage)
             {
-                files.emplace_back(QPixmap::fromImage(Utils::getImageFromMimeData(mimeData)));
+                files.emplace_back(QPixmap::fromImage(Utils::getImageFromMimeData(_mimeData)));
             }
             else
             {
-                const auto& quotes = Utils::InterConnector::instance().getContactDialog()->getInputWidget()->getInputQuotes();
                 auto sendQuotesOnce = true;
+
+                const auto urlList = _mimeData->urls();
                 for (const QUrl& url : urlList)
                 {
                     if (url.isLocalFile())
@@ -170,13 +121,13 @@ namespace Ui
                     }
                     else if (url.isValid())
                     {
-                        Ui::GetDispatcher()->sendMessageToContact(contact, url.toString(), sendQuotesOnce ? quotes : Data::QuotesVec());
-                        Parent_->onSendMessage(contact);
+                        Ui::GetDispatcher()->sendMessageToContact(aimId_, url.toString(), sendQuotesOnce ? inputState->quotes_ : Data::QuotesVec());
+                        Q_EMIT Utils::InterConnector::instance().messageSent(aimId_);
 
-                        if (sendQuotesOnce && !quotes.isEmpty())
+                        if (sendQuotesOnce && !inputState->quotes_.isEmpty())
                         {
-                            GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::quotes_messagescount, { { "Quotes_MessagesCount", std::to_string(quotes.size()) } });
-                            Q_EMIT Utils::InterConnector::instance().getContactDialog()->getInputWidget()->needClearQuotes();
+                            GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::quotes_messagescount, { { "Quotes_MessagesCount", std::to_string(inputState->quotes_.size()) } });
+                            Q_EMIT Utils::InterConnector::instance().clearInputQuotes(aimId_);
                         }
 
                         sendQuotesOnce = false;
@@ -184,25 +135,25 @@ namespace Ui
                 }
             }
 
-            if (auto page = Utils::InterConnector::instance().getHistoryPage(contact))
+            if (auto page = Utils::InterConnector::instance().getHistoryPage(aimId_))
                 page->hideSmartreplies();
 
-            auto inputWidget = Utils::InterConnector::instance().getContactDialog()->getInputWidget();
-            auto inputText = inputWidget->getInputText();
-            auto inputMentions = inputWidget->getInputMentions();
+            auto inputText = inputState->text_.text_;
+            auto inputMentions = inputState->mentions_;
+            auto quotes = inputState->quotes_;
             if (top_ && !inputText.isEmpty())
-                inputWidget->setInputText(QString());
+                Q_EMIT Utils::InterConnector::instance().filesWidgetOpened(aimId_);
 
-            QTimer::singleShot(100, this, [this,
+            QTimer::singleShot(100, this,
+                [this,
                 files = std::move(files),
-                contact = std::move(contact),
                 inputText = std::move(inputText),
-                inputMentions = std::move(inputMentions)]()
+                inputMentions = std::move(inputMentions),
+                quotes = std::move(quotes)]()
             {
-                const auto& quotes = Utils::InterConnector::instance().getContactDialog()->getInputWidget()->getInputQuotes();
                 bool mayQuotesSent = false;
 
-                const auto sendFiles = [this, &contact, &mayQuotesSent, &quotes](const FilesToSend& _files, const QString& desc, const Data::MentionMap& descMentions)
+                const auto sendFiles = [&contact = aimId_, &mayQuotesSent, &quotes](const FilesToSend& _files, const QString& desc, const Data::MentionMap& descMentions)
                 {
                     if (_files.empty())
                         return;
@@ -256,7 +207,7 @@ namespace Ui
                             });
                         }
 
-                        Parent_->onSendMessage(contact);
+                        Q_EMIT Utils::InterConnector::instance().messageSent(contact);
                         if (sendQuotesOnce)
                         {
                             mayQuotesSent = true;
@@ -272,22 +223,31 @@ namespace Ui
 
                 if (top_)
                 {
-                    auto filesWidget = new FilesWidget(this, files);
+                    const auto target = Logic::getContactListModel()->isThread(aimId_) ? FilesWidget::Target::Thread : FilesWidget::Target::Chat;
+                    auto filesWidget = new FilesWidget(files, target, this);
 
                     GeneralDialog::Options options;
-                    options.preferredSize_.setWidth(filesWidget->width());
+                    options.preferredWidth_ = filesWidget->width();
 
-                    GeneralDialog generalDialog(filesWidget, Utils::InterConnector::instance().getMainWindow(), false, true, true, true, options);
+                    GeneralDialog generalDialog(filesWidget, Utils::InterConnector::instance().getMainWindow(), options);
                     connect(filesWidget, &FilesWidget::setButtonActive, &generalDialog, &GeneralDialog::setButtonActive);
                     generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("files_widget", "Cancel"), QT_TRANSLATE_NOOP("files_widget", "Send"), true);
 
-                    filesWidget->setDescription(inputText, inputMentions);
+                    filesWidget->setDescription(inputText.string(), inputMentions);
                     filesWidget->setFocusOnInput();
 
                     if (generalDialog.showInCenter())
+                    {
                         sendFiles(filesWidget->getFiles(), filesWidget->getDescription(), filesWidget->getMentions());
-                    else if (!inputText.isEmpty())
-                        Utils::InterConnector::instance().getContactDialog()->getInputWidget()->setInputText(inputText);
+                    }
+                    else if (!filesWidget->getDescription().isEmpty())
+                    {
+                        auto state = Logic::InputStateContainer::instance().getOrCreateState(aimId_);
+                        state->setText(filesWidget->getDescription(), filesWidget->getCursorPos());
+                        state->mentions_.insert(filesWidget->getMentions().begin(), filesWidget->getMentions().end());
+
+                        Q_EMIT Utils::InterConnector::instance().inputTextUpdated(aimId_);
+                    }
                 }
                 else
                 {
@@ -297,10 +257,59 @@ namespace Ui
                 if (mayQuotesSent && !quotes.isEmpty())
                 {
                     GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::quotes_messagescount, { { "Quotes_MessagesCount", std::to_string(quotes.size()) } });
-                    Q_EMIT Utils::InterConnector::instance().getContactDialog()->getInputWidget()->needClearQuotes();
+                    Q_EMIT Utils::InterConnector::instance().clearInputQuotes(aimId_);
                 }
             });
         }
+    }
+
+    void DragOverlayWindow::paintEvent(QPaintEvent *)
+    {
+        QPainter painter(this);
+
+        painter.setPen(Qt::NoPen);
+        painter.setRenderHint(QPainter::Antialiasing);
+
+        static const QColor overlayColor = Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE, 0.98);
+
+        painter.fillRect(rect(), overlayColor);
+
+        drawSendWithCaption(painter);
+        drawQuickSend(painter);
+    }
+
+    void DragOverlayWindow::dragEnterEvent(QDragEnterEvent *_e)
+    {
+        dragMouseoverTimer_.start();
+
+        _e->acceptProposedAction();
+    }
+
+    void DragOverlayWindow::dragLeaveEvent(QDragLeaveEvent *_e)
+    {
+        dragMouseoverTimer_.stop();
+
+        hide();
+        _e->accept();
+        Utils::InterConnector::instance().setDragOverlay(false);
+    }
+
+    void DragOverlayWindow::dragMoveEvent(QDragMoveEvent *_e)
+    {
+        _e->acceptProposedAction();
+        if (mode_ == (QuickSend | SendWithCaption))
+            top_ = _e->pos().y() < rect().height() / 2;
+        else
+            top_ = ((mode_ == QuickSend) ? false : true);
+        update();
+    }
+
+    void DragOverlayWindow::dropEvent(QDropEvent* _e)
+    {
+        dragMouseoverTimer_.stop();
+        onTimer();
+
+        processMimeData(_e->mimeData());
 
         _e->acceptProposedAction();
         hide();

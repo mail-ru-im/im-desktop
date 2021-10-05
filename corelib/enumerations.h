@@ -20,8 +20,8 @@ namespace core
     // don't change texts in this func - it uses for sending to server
     inline std::ostream& operator<<(std::ostream &oss, const profile_state arg)
     {
-        assert(arg > profile_state::min);
-        assert(arg < profile_state::max);
+        im_assert(arg > profile_state::min);
+        im_assert(arg < profile_state::max);
 
         switch(arg)
         {
@@ -32,7 +32,7 @@ namespace core
             case profile_state::offline:   oss << "offline"; break;
 
         default:
-            assert(!"unknown core::profile_state value");
+            im_assert(!"unknown core::profile_state value");
             break;
         }
 
@@ -103,6 +103,7 @@ namespace core
         constexpr bool is_lottie() const noexcept { return type_ == file_sharing_base_content_type::lottie; }
         constexpr bool is_sticker() const noexcept { return subtype_ == file_sharing_sub_content_type::sticker; }
         constexpr bool is_undefined() const noexcept { return type_ == file_sharing_base_content_type::undefined; }
+        constexpr bool is_plain_file() const noexcept { return is_undefined(); }
 
         constexpr file_sharing_content_type() noexcept = default;
         constexpr file_sharing_content_type(file_sharing_base_content_type _type, file_sharing_sub_content_type _subtype = file_sharing_sub_content_type::undefined) noexcept
@@ -189,6 +190,7 @@ namespace core
         chat_stamp_modified,
         chat_join_moderation_modified,
         chat_public_modified,
+        chat_trust_requied_modified,
 
         mchat_adm_granted,
         mchat_adm_revoked,
@@ -204,6 +206,8 @@ namespace core
 
         status_reply,
         custom_status_reply,
+
+        task_changed,
 
         max
     };
@@ -243,7 +247,7 @@ namespace core
             break;
 
         default:
-            assert(!"unknown core::message_type value");
+            im_assert(!"unknown core::message_type value");
             break;
         }
 
@@ -252,8 +256,8 @@ namespace core
 
     inline std::ostream& operator<<(std::ostream &oss, const file_sharing_function arg)
     {
-        assert(arg > file_sharing_function::min);
-        assert(arg < file_sharing_function::max);
+        im_assert(arg > file_sharing_function::min);
+        im_assert(arg < file_sharing_function::max);
 
         switch(arg)
         {
@@ -274,7 +278,7 @@ namespace core
             break;
 
         default:
-            assert(!"unknown core::file_sharing_function value");
+            im_assert(!"unknown core::file_sharing_function value");
             break;
         }
 
@@ -283,8 +287,8 @@ namespace core
 
     inline std::ostream& operator<<(std::ostream &oss, const sticker_size arg)
     {
-        assert(arg > sticker_size::min);
-        assert(arg < sticker_size::max);
+        im_assert(arg > sticker_size::min);
+        im_assert(arg < sticker_size::max);
 
         switch(arg)
         {
@@ -309,7 +313,7 @@ namespace core
             break;
 
         default:
-            assert(!"unknown core::sticker_size value");
+            im_assert(!"unknown core::sticker_size value");
             break;
         }
 
@@ -318,8 +322,8 @@ namespace core
 
     inline std::wostream& operator<<(std::wostream &oss, const sticker_size arg)
     {
-        assert(arg > sticker_size::min);
-        assert(arg < sticker_size::max);
+        im_assert(arg > sticker_size::min);
+        im_assert(arg < sticker_size::max);
 
         switch(arg)
         {
@@ -344,7 +348,7 @@ namespace core
             break;
 
         default:
-            assert(!"unknown core::sticker_size value");
+            im_assert(!"unknown core::sticker_size value");
             break;
         }
 
@@ -749,6 +753,7 @@ namespace core
             chatscr_webinar_action = 65017,
             chatscr_invite_by_sms = 65018,
             chatscr_block_sms_invite = 65019,
+            chatscr_createtask_action = 65020,
 
             sharecontactscr_contact_action = 66000,
 
@@ -779,8 +784,8 @@ namespace core
 
         constexpr std::string_view stat_event_to_string(const stats_event_names _arg)
         {
-            assert(_arg > stats_event_names::min);
-            assert(_arg < stats_event_names::max);
+            im_assert(_arg > stats_event_names::min);
+            im_assert(_arg < stats_event_names::max);
 
             switch (_arg)
             {
@@ -1176,6 +1181,7 @@ namespace core
             case stats_event_names::chatscr_webinar_action: return std::string_view("ChatScr_Webinar_Action");
             case stats_event_names::chatscr_invite_by_sms: return std::string_view("ChatScr_InviteBySMS_ICQP377");
             case stats_event_names::chatscr_block_sms_invite: return std::string_view("ChatScr_BlockSMSInvite_ICQP377");
+            case stats_event_names::chatscr_createtask_action: return std::string_view("ChatScr_CreateTask_Action");
 
             case stats_event_names::sharecontactscr_contact_action: return std::string_view("ShareContactScr_Contact_Action");
 
@@ -1239,14 +1245,14 @@ namespace core
             case file_sharing_base_content_type::video: return (oss << "type = video");
             case file_sharing_base_content_type::lottie: return (oss << "type = lottie");
             default:
-                assert(!"unexpected file sharing content type");
+                im_assert(!"unexpected file sharing content type");
         }
 
         switch (arg.subtype_)
         {
         case file_sharing_sub_content_type::sticker: return (oss << "subtype = sticker");
         default:
-            assert(!"unexpected file sharing content subtype");
+            im_assert(!"unexpected file sharing content subtype");
         }
 
         return oss;
@@ -1278,7 +1284,7 @@ namespace core
             break;
         }
 
-        assert(!"unknown value");
+        im_assert(!"unknown value");
         return std::string();
     }
 
@@ -1291,7 +1297,7 @@ namespace core
         else if (_string == "nobody")
             return privacy_access_right::nobody;
 
-        assert(!"unknown value");
+        im_assert(!"unknown value");
         return privacy_access_right::not_set;
     }
 
@@ -1339,7 +1345,7 @@ namespace core
         remote_federation_error,
     };
 
-    constexpr chat_member_failure string_to_failure(std::string_view _s) noexcept
+    inline chat_member_failure string_to_failure(std::string_view _s) noexcept
     {
         if (_s == "user_waiting_for_approve")
             return chat_member_failure::user_waiting_for_approve;
@@ -1368,7 +1374,7 @@ namespace core
         else if (_s == "remote_federation_error")
             return chat_member_failure::remote_federation_error;
 
-        assert(false);
+        im_assert(false);
         return chat_member_failure::invalid;
     }
 }

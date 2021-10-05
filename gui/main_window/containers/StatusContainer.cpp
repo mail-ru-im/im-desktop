@@ -3,11 +3,17 @@
 #include "StatusContainer.h"
 #include "core_dispatcher.h"
 #include "utils/InterConnector.h"
+#include "utils/features.h"
+#include "main_window/contact_list/ServiceContacts.h"
 #include "my_info.h"
 
 namespace
 {
     constexpr std::chrono::milliseconds updateInterval = std::chrono::seconds(5);
+    bool isValidContact(const QString& _contact)
+    {
+        return !_contact.isEmpty() && !ServiceContacts::isServiceContact(_contact);
+    }
 }
 
 namespace Logic
@@ -26,11 +32,15 @@ namespace Logic
 
         updateTimer_->setInterval(updateInterval);
         connect(updateTimer_, &QTimer::timeout, this, &StatusContainer::onUpdateTimer);
+
+        connect(Ui::GetDispatcher(), &Ui::core_dispatcher::externalUrlConfigUpdated, this, &StatusContainer::updateStatusBannerEmoji);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated, this, &StatusContainer::updateStatusBannerEmoji);
+        updateStatusBannerEmoji();
     }
 
     const Statuses::Status& StatusContainer::getStatus(const QString& _aimid) const
     {
-        if (!_aimid.isEmpty())
+        if (isValidContact(_aimid))
         {
             const auto it = statuses_.find(_aimid);
             if (_aimid != Ui::MyInfo()->aimId())
@@ -46,7 +56,7 @@ namespace Logic
 
     void StatusContainer::setStatus(const QString& _aimid, const Statuses::Status& _status)
     {
-        if (_aimid.isEmpty())
+        if (!isValidContact(_aimid))
             return;
 
         const auto endTime = _status.getEndTime();
@@ -56,6 +66,12 @@ namespace Logic
             statuses_[_aimid] = _status;
 
         Q_EMIT statusChanged(_aimid, QPrivateSignal());
+    }
+
+    bool StatusContainer::isStatusBannerNeeded(const QString& _aimid) const
+    {
+        const auto& status = getStatus(_aimid);
+        return !status.isEmpty() && getStatusBannerEmoji().contains(status.toString());
     }
 
     void StatusContainer::onUpdateTimer()
@@ -128,9 +144,16 @@ namespace Logic
         }
     }
 
+    void StatusContainer::updateStatusBannerEmoji()
+    {
+        statusBannerEmoji_ = Features::statusBannerEmojis().split(ql1c(','), Qt::SkipEmptyParts);
+        for (auto& e : statusBannerEmoji_)
+            e = std::move(e).trimmed();
+    }
+
     void StatusContainer::setAvatarVisible(const QString& _aimid, bool _visible)
     {
-        if (_aimid.isEmpty() || _aimid == Ui::MyInfo()->aimId())
+        if (!isValidContact(_aimid) || _aimid == Ui::MyInfo()->aimId())
             return;
 
         auto node = visibleAvatars_.extract(_aimid);

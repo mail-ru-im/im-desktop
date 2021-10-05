@@ -34,31 +34,31 @@ const std::vector<filesharing_preview_size_info>& get_available_fs_preview_sizes
     return infos;
 }
 
-std::string format_file_sharing_preview_uri(const std::string_view _id, const filesharing_preview_size _size)
+std::string format_file_sharing_preview_uri(const filesharing_id& _id, const filesharing_preview_size _size)
 {
-    assert(!_id.empty());
-    assert(_size > filesharing_preview_size::min);
-    assert(_size < filesharing_preview_size::max);
+    im_assert(!_id.file_id_.empty());
+    im_assert(_size > filesharing_preview_size::min);
+    im_assert(_size < filesharing_preview_size::max);
 
     std::string result;
-    if (_id.size() < new_id_min_size())
+    if (_id.file_id_.size() < new_id_min_size())
         return result;
 
     const auto& infos = get_available_fs_preview_sizes();
     const auto it = std::find_if(infos.begin(), infos.end(), [_size](const auto& _i) { return _i.size_ == _size; });
     if (it == infos.end())
     {
-        assert(!"unknown preview size");
+        im_assert(!"unknown preview size");
         return result;
     }
 
-    return su::concat(urls::get_url(urls::url_type::files_preview), "/max/", it->url_path_, '/', _id);
+    return su::concat(urls::get_url(urls::url_type::files_preview), "/max/", it->url_path_, '/', _id.file_id_, _id.source_id_ ? su::concat("?source=", *_id.source_id_) : "");
 }
 
 bool get_content_type_from_uri(std::string_view _uri, Out core::file_sharing_content_type& _type)
 {
     if (auto id = tools::parse_new_file_sharing_uri(_uri); id)
-        return get_content_type_from_file_sharing_id(*id, Out _type);
+        return get_content_type_from_file_sharing_id(id->file_id_, Out _type);
 
     return false;
 }
@@ -118,9 +118,9 @@ std::optional<core::file_sharing_content_type> get_content_type_from_file_sharin
     return type;
 }
 
-std::optional<std::string_view> parse_new_file_sharing_uri(std::string_view _uri)
+std::optional<filesharing_id> parse_new_file_sharing_uri(std::string_view _uri)
 {
-    assert(!_uri.empty());
+    im_assert(!_uri.empty());
 
     const static auto additional_urls = []() {
         std::vector<std::string> urls;
@@ -139,7 +139,10 @@ std::optional<std::string_view> parse_new_file_sharing_uri(std::string_view _uri
 
     parser.finish();
     if (parser.has_url() && parser.get_url().is_filesharing())
-        return get_file_id(_uri);
+    {
+        auto source = get_source_id(_uri);
+        return std::optional<filesharing_id>({ std::string(get_file_id(_uri)), source ? std::optional<std::string>(*source) : std::nullopt });
+    }
 
     return std::nullopt;
 }
@@ -148,10 +151,24 @@ std::string_view get_file_id(std::string_view _uri)
 {
     const auto id = core::tools::trim_right_copy(_uri, '/');
 
-    if (const auto pos = id.rfind('/'); std::string_view::npos != pos)
-        return id.substr(pos + 1);
+    if (const auto lastSlash = id.rfind('/'); std::string_view::npos != lastSlash)
+    {
+        const auto lastQuestion = id.rfind('?');
+        const auto idLength = lastQuestion == std::string_view::npos ? std::string_view::npos : (lastQuestion - lastSlash - 1);
+        return id.substr(lastSlash + 1, idLength);
+    }
 
     return std::string_view();
+}
+
+std::optional<std::string_view> get_source_id(std::string_view _uri)
+{
+    const auto id = core::tools::trim_right_copy(_uri, '/');
+
+    if (const auto pos = id.rfind('='); std::string_view::npos != pos)
+        return id.substr(pos + 1);
+
+    return std::nullopt;
 }
 
 CORE_TOOLS_NS_END

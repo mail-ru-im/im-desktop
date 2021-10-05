@@ -2,7 +2,7 @@
 #include "group_inviteblacklist_search.h"
 
 #include "../../../http_request.h"
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 
 using namespace core;
 using namespace wim;
@@ -14,7 +14,7 @@ group_inviteblacklist_search::group_inviteblacklist_search(wim_packet_params _pa
     , page_size_(_page_size)
     , persons_(std::make_shared<core::archive::persons_map>())
 {
-    assert(page_size_ > 0);
+    im_assert(page_size_ > 0);
 }
 
 group_inviteblacklist_search::~group_inviteblacklist_search() = default;
@@ -54,7 +54,7 @@ int32_t group_inviteblacklist_search::init_request(const std::shared_ptr<core::h
 
 int32_t group_inviteblacklist_search::parse_results(const rapidjson::Value& _node_results)
 {
-    if (get_status_code() == robusto_protocol_error::reset_search_page)
+    if (get_status_code() == robusto_protocol_error::reset_page)
         reset_pages_ = true;
 
     tools::unserialize_value(_node_results, "cursor", cursor_);
@@ -76,7 +76,7 @@ int32_t group_inviteblacklist_search::parse_results(const rapidjson::Value& _nod
 
 bool group_inviteblacklist_search::is_status_code_ok() const
 {
-    return get_status_code() == robusto_protocol_error::reset_search_page || robusto_packet::is_status_code_ok();
+    return get_status_code() == robusto_protocol_error::reset_page || robusto_packet::is_status_code_ok();
 }
 
 bool group_inviteblacklist_search::is_search_request() const

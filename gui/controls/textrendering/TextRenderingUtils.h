@@ -28,10 +28,11 @@ namespace Ui
         int getEmojiSize(const QFont& _font, int _emojiCount);
         int getEmojiSizeSmartreply(const QFont& _font, int _emojiCount);
 
+        bool isEmoji(QStringView _text, qsizetype& pos);
         bool isEmoji(QStringView _text);
 
         QString elideText(const QFont& _font, const QString& _text, int _width);
-        Data::FormattedStringView elideText(const QFont& _font, Data::FormattedStringView _text, int _width);
+        Data::FStringView elideText(const QFont& _font, Data::FStringView _text, int _width);
 
         QString stringFromCode(int _code);
         QString spaceAsString();

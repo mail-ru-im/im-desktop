@@ -12,6 +12,7 @@
 #include "styles/ThemeParameters.h"
 #include "../controls/DialogButton.h"
 #include "../controls/TextUnit.h"
+#include "main_window/history_control/ThreadPlate.h"
 
 namespace
 {
@@ -64,36 +65,35 @@ namespace Ui
 {
     bool GeneralDialog::inExec_ = false;
 
-    GeneralDialog::GeneralDialog(QWidget* _mainWidget, QWidget* _parent, bool _ignoreKeyPressEvents/* = false*/, bool _fixed_size/* = true*/, bool _rejectable/* = true*/, bool _withSemiwindow/*= true*/, const Options& _options)
+    GeneralDialog::GeneralDialog(QWidget* _mainWidget, QWidget* _parent, const Options& _options)
         : QDialog(nullptr)
         , mainWidget_(_mainWidget)
         , nextButton_(nullptr)
         , semiWindow_(new SemitransparentWindowAnimated(_parent, animationDuration.count()))
         , headerLabelHost_(nullptr)
         , areaWidget_(nullptr)
-        , ignoreKeyPressEvents_(_ignoreKeyPressEvents)
         , shadow_(true)
         , leftButtonDisableOnClicked_(false)
         , rightButtonDisableOnClicked_(false)
-        , rejectable_(_rejectable)
-        , withSemiwindow_(_withSemiwindow)
         , options_(_options)
     {
         setParent(semiWindow_);
 
         semiWindow_->setCloseWindowInfo({ Utils::CloseWindowInfo::Initiator::Unknown, Utils::CloseWindowInfo::Reason::Keep_Sidebar });
         semiWindow_->hide();
+        if (_options.withSemiwindow_)
+            qApp->processEvents();
 
         mainHost_ = new QWidget(this);
         Utils::setDefaultBackground(mainHost_);
         Testing::setAccessibleName(mainHost_, qsl("AS GeneralPopup"));
 
-        if (_fixed_size)
+        if (options_.fixedSize_)
         {
-            if (options_.preferredSize_.isNull())
+            if (options_.preferredWidth_ <= 0)
                 mainHost_->setFixedWidth(Utils::scale_value(defaultDialogWidth()));
             else
-                mainHost_->setFixedWidth(options_.preferredSize_.width());
+                mainHost_->setFixedWidth(options_.preferredWidth_);
         }
         else
         {
@@ -144,7 +144,7 @@ namespace Ui
         setWindowFlags(Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint | Qt::WindowSystemMenuHint | Qt::SubWindow);
         setSizePolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Preferred);
 
-        if (rejectable_)
+        if (options_.rejectable_)
         {
             connect(&Utils::InterConnector::instance(), &Utils::InterConnector::closeAnySemitransparentWindow, this, &GeneralDialog::rejectDialog);
             connect(&Utils::InterConnector::instance(), &Utils::InterConnector::closeAnyPopupWindow, this, &GeneralDialog::rejectDialog);
@@ -194,11 +194,7 @@ namespace Ui
 
     void GeneralDialog::rejectDialog(const Utils::CloseWindowInfo& _info)
     {
-        if (std::any_of(
-                options_.ignoreRejectDlgPairs_.begin(),
-                options_.ignoreRejectDlgPairs_.end(),
-                [&_info](const auto& _p) { return _p.first == _info.initiator_ && _p.second == _info.reason_; })
-            )
+        if (options_.isIgnored(_info))
             return;
 
         rejectDialogInternal();
@@ -206,10 +202,10 @@ namespace Ui
 
     void GeneralDialog::rejectDialogInternal()
     {
-        if (!rejectable_)
+        if (!options_.rejectable_)
             return;
 
-        if (withSemiwindow_)
+        if (options_.withSemiwindow_)
             semiWindow_->hideAnimated();
 
         QDialog::reject();
@@ -217,7 +213,7 @@ namespace Ui
 
     void GeneralDialog::acceptDialog()
     {
-        if (withSemiwindow_)
+        if (options_.withSemiwindow_)
             semiWindow_->hideAnimated();
 
         QDialog::accept();
@@ -248,15 +244,22 @@ namespace Ui
         text->init(Fonts::appFontScaled(22), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, _maxLinesNumber, TextRendering::LineBreakType::PREFER_SPACES);
 
         const auto maxWidth = mainHost_->maximumWidth() - 2 * getMargin();
-        auto label = new TextUnitLabel(textHost_, std::move(text), Ui::TextRendering::VerPosition::TOP, maxWidth, true);
+        auto label = new TextUnitLabel(this, std::move(text), Ui::TextRendering::VerPosition::TOP, maxWidth, true);
         label->setMaximumWidth(maxWidth);
 
         const auto leftMargin = (_alignment & Qt::AlignHCenter) ? (maxWidth - label->width()) / 2 + getMargin() : getMargin();
         const auto topMargin = (_alignment & Qt::AlignVCenter) ? getExtendedVerMargin() : getTopMargin();
         hostLayout->setContentsMargins(leftMargin, topMargin, 0, 0);
-        hostLayout->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+        hostLayout->setAlignment(hostLayout->alignment() | Qt::AlignTop);
         Testing::setAccessibleName(label, qsl("AS GeneralPopup label"));
         hostLayout->addWidget(label);
+
+        if (options_.threadBadge_)
+        {
+            hostLayout->addSpacing(getMargin());
+            hostLayout->addWidget(ThreadPlate::plateForPopup(this), 0, Qt::AlignRight);
+            hostLayout->addSpacing(getMargin());
+        }
     }
 
     void GeneralDialog::addText(const QString& _messageText, int _upperMarginPx)
@@ -272,7 +275,7 @@ namespace Ui
         const auto maxWidth = mainHost_->maximumWidth() - 2 * getMargin();
         auto label = new TextUnitLabel(textHost_, std::move(text), Ui::TextRendering::VerPosition::TOP, maxWidth);
         label->setFixedWidth(maxWidth);
-        label->sizeHint();
+        label->resize(label->sizeHint());
         Testing::setAccessibleName(label, qsl("AS GeneralPopup textLabel"));
 
         auto textLayout = Utils::emptyHLayout(textHost_);
@@ -399,7 +402,7 @@ namespace Ui
             Utils::addShadowToWindow(shadowHost_, true);
         }
 
-        if (withSemiwindow_)
+        if (options_.withSemiwindow_)
         {
             if (!semiWindow_->isVisible())
                 semiWindow_->showAnimated();
@@ -411,6 +414,7 @@ namespace Ui
         }
 
         show();
+
         inExec_ = true;
         const auto guard = QPointer(this);
         const auto result = (exec() == QDialog::Accepted);
@@ -458,7 +462,7 @@ namespace Ui
     {
         QDialog::mousePressEvent(_e);
 
-        if (rejectable_ && !mainHost_->rect().contains(mainHost_->mapFrom(this, _e->pos())))
+        if (options_.rejectable_ && !mainHost_->rect().contains(mainHost_->mapFrom(this, _e->pos())))
             close();
         else
             _e->accept();
@@ -476,7 +480,7 @@ namespace Ui
         }
         else if (_e->key() == Qt::Key_Return || _e->key() == Qt::Key_Enter)
         {
-            if (!ignoreKeyPressEvents_ && (!nextButton_ || nextButton_->isEnabled()))
+            if (!options_.ignoreKeyPressEvents_ && (!nextButton_ || nextButton_->isEnabled()))
                 accept();
             else
                 _e->ignore();
@@ -510,13 +514,13 @@ namespace Ui
         Q_EMIT shown(this);
     }
 
-    void GeneralDialog::hideEvent(QHideEvent *event)
+    void GeneralDialog::hideEvent(QHideEvent* _event)
     {
         Q_EMIT hidden(this);
-        QDialog::hideEvent(event);
+        QDialog::hideEvent(_event);
     }
 
-    void GeneralDialog::moveEvent(QMoveEvent *_event)
+    void GeneralDialog::moveEvent(QMoveEvent* _event)
     {
         QDialog::moveEvent(_event);
         Q_EMIT moved(this);
@@ -583,7 +587,6 @@ namespace Ui
 
         auto upperSpacer2 = new QSpacerItem(0, Utils::scale_value(16), QSizePolicy::Minimum);
         textLayout->addSpacerItem(upperSpacer2);
-
     }
 
     void GeneralDialog::leftButtonClick()
@@ -632,6 +635,11 @@ namespace Ui
             Utils::updateBgColor(mainHost_, Qt::transparent);
         else
             Utils::setDefaultBackground(mainHost_);
+    }
+
+    QSize GeneralDialog::sizeHint() const
+    {
+        return layout()->sizeHint();
     }
 
     OptionWidget::OptionWidget(QWidget* _parent, const QString& _icon, const QString& _caption)
@@ -697,5 +705,10 @@ namespace Ui
 
         setFixedHeight(getOptionHeight() * _options.size() + getMargin());
         Testing::setAccessibleName(this, qsl("AS optionsWidget"));
+    }
+
+    bool GeneralDialog::Options::isIgnored(const Utils::CloseWindowInfo& _info) const
+    {
+        return std::any_of(ignoredInfos_.begin(), ignoredInfos_.end(), [&_info](const auto& i) { return i == _info; });
     }
 }

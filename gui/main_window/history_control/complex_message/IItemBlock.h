@@ -4,10 +4,12 @@
 #include "../../../types/message.h"
 #include "../../../types/StickerId.h"
 #include "../../../types/filesharing_meta.h"
+#include "FileSharingUtils.h"
 
 namespace Ui
 {
     enum class MediaType;
+    enum class FileStatus;
     using highlightsV = std::vector<QString>;
 }
 
@@ -44,21 +46,28 @@ public:
         MenuFlagRevokeVote = (1 << 5),
         MenuFlagStopPoll = (1 << 6),
         MenuFlagSpellItems = (1 << 7),
+        MenuFlagEditTask = (1 << 8)
     };
 
     enum class ContentType
     {
         Other = 0,
-        Text = 1,
-        FileSharing = 2,
-        Link = 3,
-        Quote = 4,
-        Sticker = 5,
-        DebugText = 6,
-        Poll = 7
+        Text = 1 << 1,
+        FileSharing = 1 << 2,
+        Link = 1 << 3,
+        Quote = 1 << 4,
+        Sticker = 1 << 5,
+        DebugText = 1 << 6,
+        Poll = 1 << 7,
+        Profile = 1 << 8,
+        Task = 1 << 9,
+        Any = 0xffff,
+        ExcludeDebug_Mask = (uint32_t(Any) & ~uint32_t(DebugText)),
     };
 
     virtual ~IItemBlock() = 0;
+
+    virtual void setParentMessage(ComplexMessageItem* _parent) = 0;
 
     virtual QSize blockSizeForMaxWidth(const int32_t maxWidth) = 0;
 
@@ -99,11 +108,11 @@ public:
         selection,
         quote
     };
-    virtual Data::FormattedString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const = 0;
+    virtual Data::FString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const = 0;
 
-    virtual Data::FormattedString getSourceText() const = 0;
+    virtual Data::FString getSourceText() const = 0;
 
-    virtual Data::FormattedString getTextInstantEdit() const = 0;
+    virtual Data::FString getTextInstantEdit() const = 0;
 
     virtual QString getPlaceholderText() const = 0;
 
@@ -133,7 +142,7 @@ public:
 
     virtual bool isSimple() const { return true; }
 
-    virtual bool updateFriendly(const QString& _aimId, const QString& _friendly) = 0;
+    virtual bool updateFriendly(const QString& /*_aimId*/, const QString& /*_friendly*/) { return false; } // return true if friendly changed/block need to be updated
 
     virtual Data::Quote getQuote() const;
 
@@ -163,10 +172,10 @@ public:
 
     virtual void doubleClicked(const QPoint& _p, std::function<void(bool)> _callback = std::function<void(bool)>()) { if (_callback) _callback(true); };
 
-    virtual QString linkAtPos(const QPoint& pos) const { return QString(); }
+    virtual Data::LinkInfo linkAtPos(const QPoint& pos) const { return {}; }
 
-    [[nodiscard]] virtual std::optional<QString> getWordAt(QPoint) const { return {}; }
-    [[nodiscard]] virtual bool replaceWordAt(const QString&, const QString&, QPoint) { return false; }
+    [[nodiscard]] virtual std::optional<Data::FString> getWordAt(QPoint) const { return {}; }
+    [[nodiscard]] virtual bool replaceWordAt(const Data::FString&, const Data::FString&, QPoint) { return false; }
 
     virtual int desiredWidth(int _width = 0) const { return 0; }
 
@@ -194,8 +203,8 @@ public:
     virtual void shiftHorizontally(const int _shift) {}
 
     virtual void setText(const QString& _text) {}
-    
-    virtual void setText(const Data::FormattedString& _text) {}
+
+    virtual void setText(const Data::FString& _text) {}
 
     virtual void startSpellChecking() {}
 
@@ -235,14 +244,36 @@ public:
 
     virtual void setSpellErrorsVisible(bool _visible) {}
 
-    virtual bool setProgress(const QString& _fsId, const int32_t _val) { return false; }
+    virtual bool setProgress(const Utils::FileSharingId& _fsId, const int32_t _val) { return false; }
 
-    virtual std::optional<Data::FileSharingMeta> getMeta(const QString& _id) const { return std::nullopt; }
+    virtual std::optional<Data::FileSharingMeta> getMeta(const Utils::FileSharingId& _id) const { return std::nullopt; }
+
+    virtual void updateFileStatus(FileStatus _status) {}
+    virtual bool isBlockedFileSharing() const { return false; }
+    virtual bool isFileSharingWithStatus() const { return false; }
+
+    virtual void anyMouseButtonReleased() {}
 
 protected:
     virtual IItemBlockLayout* getBlockLayout() const = 0;
 };
 
 using IItemBlocksVec = std::vector<IItemBlock*>;
+
+template<class _BlockIt>
+size_t countBlocks(_BlockIt _first, _BlockIt _last, uint32_t _mask = uint32_t(IItemBlock::ContentType::Any))
+{
+    if (_mask == uint32_t(IItemBlock::ContentType::Any))
+        return std::distance(_first, _last);
+    return std::count_if(_first, _last, [_mask](auto b) { return static_cast<uint32_t>(b->getContentType()) & _mask; });
+}
+
+template<class _BlockIt>
+IItemBlock* findBlock(_BlockIt _first, _BlockIt _last, uint32_t _mask)
+{
+    auto it = std::find_if(_first, _last, [_mask](auto b) { return static_cast<uint32_t>(b->getContentType()) & _mask; });
+    return (it != _last ? (*it) : nullptr);
+}
+
 
 UI_COMPLEX_MESSAGE_NS_END

@@ -97,7 +97,7 @@ namespace Ui
 
         void updateTextOffsets();
 
-        QString getStickerId() const;
+        Utils::FileSharingId getStickerId() const;
         void makeStickerPreview();
 
     private:

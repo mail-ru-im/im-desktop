@@ -9,9 +9,10 @@
 using namespace core;
 using namespace wim;
 
-group_subscribe::group_subscribe(wim_packet_params _params, const std::string& _stamp)
+group_subscribe::group_subscribe(wim_packet_params _params, std::string_view _stamp, std::string_view _aimid)
     : robusto_packet(std::move(_params))
     , stamp_(_stamp)
+    , aimid_(_aimid)
 {
 }
 
@@ -31,7 +32,11 @@ int32_t group_subscribe::init_request(const std::shared_ptr<core::http_request_s
     auto& a = doc.GetAllocator();
 
     rapidjson::Value node_params(rapidjson::Type::kObjectType);
-    node_params.AddMember("stamp", stamp_, a);
+
+    if (!stamp_.empty())
+        node_params.AddMember("stamp", stamp_, a);
+    else if (!aimid_.empty())
+        node_params.AddMember("chatId", aimid_, a);
 
     doc.AddMember("params", std::move(node_params), a);
 

@@ -29,6 +29,7 @@ namespace Ui
     class EditNicknameWidget;
     class DialogButton;
     class StartCallButton;
+    enum class MediaContentType;
 
     enum class CallType;
 
@@ -57,6 +58,7 @@ namespace Ui
     protected:
         void resizeEvent(QResizeEvent* _event) override;
         void mousePressEvent(QMouseEvent* _event) override;
+        void showEvent(QShowEvent* _event) override;
 
     private:
         void init();
@@ -66,7 +68,6 @@ namespace Ui
         QWidget* initGallery(QWidget* _parent);
         void initTexts();
         QString pageTitle(int _pageIndex) const;
-        QString galleryTitle(int _pageIndex) const;
 
         void updateCloseIcon();
         void updatePinButton();
@@ -74,7 +75,7 @@ namespace Ui
         void closeGallery();
 
         void changeTab(int _tab);
-        void changeGalleryPage(int _page);
+        void changeGalleryPage(MediaContentType _page);
 
         void updateRegim();
         void updateChatControls();
@@ -90,6 +91,10 @@ namespace Ui
 
         void setInfoPlaceholderVisible(bool _isVisible);
         void updateGalleryVisibility();
+        void updateSettingsCheckboxes();
+
+        bool isThread() const;
+        bool isChannel() const;
 
     private Q_SLOTS:
         void refresh();
@@ -149,6 +154,7 @@ namespace Ui
         void memberActionResult();
         void chatEvents(const QString&);
         void onContactChanged(const QString& _aimid);
+        void onRoleChanged(const QString& _aimId);
         void updateMuteState();
 
         void avatarClicked();
@@ -156,8 +162,13 @@ namespace Ui
         void applyChatSettings();
         void checkApplyButton();
         void publicClicked();
+        void opposePublicTrustRequired();
 
         void updateActiveChatMembersModel(const QString& _aimId);
+
+        void switchToGallery(MediaContentType _type);
+
+        bool validateTrustRequiredCheck(bool _desiredValue);
 
     private:
         QElapsedTimer elapsedTimer_;
@@ -209,10 +220,12 @@ namespace Ui
         SidebarButton* leave_;
         ContactListWidget* cl_;
 
-        SidebarCheckboxButton* public_;
-        SidebarCheckboxButton* joinModeration_;
-        TextLabel* approvalLabel_;
-        TextLabel* publicLabel_;
+        SidebarCheckboxButton* public_ = nullptr;
+        SidebarCheckboxButton* trustRequired_ = nullptr;
+        SidebarCheckboxButton* joinModeration_ = nullptr;
+        TextLabel* approvalLabel_ = nullptr;
+        TextLabel* publicLabel_ = nullptr;
+        TextLabel* trustLabel_ = nullptr;
 
         std::unique_ptr<InfoBlock> aboutLinkToChat_;
         QWidget* aboutLinkToChatBlock_;
@@ -232,7 +245,7 @@ namespace Ui
         Logic::ChatMembersModel* listChatModel_;
         std::shared_ptr<Data::ChatInfo> chatInfo_;
 
-        int currentGalleryPage_;
+        MediaContentType currentGalleryPage_;
         int currentListPage_;
         int mainAction_;
 

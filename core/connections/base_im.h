@@ -2,7 +2,6 @@
 
 #include "../../common.shared/patch_version.h"
 
-#include "accept_agreement_info.h"
 #include "wim/privacy_settings.h"
 #include "archive/history_message.h"
 #include "smartreply/smartreply_marker.h"
@@ -52,6 +51,7 @@ namespace core
         class quote;
         struct shared_contact_data;
         struct geo_data;
+        struct thread_parent_topic;
 
         struct gallery_entry_id;
         typedef std::vector<int64_t> msgids_list;
@@ -64,22 +64,24 @@ namespace core
         struct message_pack
         {
             std::string message_;
-            core::data::format::string_formatting message_format_;
+            core::data::format message_format_;
             quotes_vec quotes_;
             mentions_map mentions_;
             std::string internal_id_;
             core::message_type type_;
             uint64_t message_time_ = 0;
             std::string description_;
-            core::data::format::string_formatting description_format_;
+            core::data::format description_format_;
             std::string url_;
             common::tools::patch_version version_;
             shared_contact shared_contact_;
             geo geo_;
             poll poll_;
+            core::tasks::task task_;
             smartreply::marker_opt smartreply_marker_;
             bool channel_ = false;
             std::string chat_sender_;
+            std::optional<int64_t> draft_delete_time_;
         };
 
         struct delete_message_info
@@ -120,6 +122,11 @@ namespace core
         using request_id = int64_t;
     }
 
+    namespace tools
+    {
+        struct filesharing_id;
+    }
+
     class base_im
     {
         std::shared_ptr<voip_manager::VoipManager> voip_manager_;
@@ -152,6 +159,7 @@ namespace core
         std::wstring get_search_history_path() const;
         std::wstring get_call_log_file_name() const;
         std::wstring get_inviters_blacklist_file_name() const;
+        std::wstring get_tasks_file_name() const;
 
         virtual std::string _get_protocol_uid() = 0;
         void set_id(int32_t _id);
@@ -181,6 +189,7 @@ namespace core
         virtual void login_normalize_phone(int64_t _seq, const std::string& _country, const std::string& _raw_phone, const std::string& _locale, bool _is_login) = 0;
         virtual void login_get_sms_code(int64_t _seq, const phone_info& _info, bool _is_login) = 0;
         virtual void login_by_phone(int64_t _seq, const phone_info& _info) = 0;
+        virtual void login_by_oauth2(int64_t _seq, std::string_view _authcode) = 0;
 
         virtual void start_attach_phone(int64_t _seq, const phone_info& _info) = 0;
 
@@ -213,6 +222,8 @@ namespace core
             const std::string& _contact,
             core::archive::message_pack _pack) = 0;
 
+        virtual void set_draft(const std::string& _contact, core::archive::message_pack _pack, int64_t _timestamp, bool _sync) = 0;
+        virtual void get_draft(const std::string& _contact) = 0;
 
         virtual void send_message_typing(const int64_t _seq, const std::string& _contact, const core::typing_status& _status, const std::string& _id) = 0;
 
@@ -251,9 +262,9 @@ namespace core
         virtual void remove_opened_dialog(const std::string& _contact) = 0;
 
         virtual void get_stickers_meta(int64_t _seq, std::string_view _size) = 0;
-        virtual void get_sticker(const int64_t _seq, const int32_t _set_id, const int32_t _sticker_id, std::string_view _fs_id, const core::sticker_size _size) = 0;
-        virtual void get_sticker_cancel(std::vector<std::string> _fs_ids, core::sticker_size _size) = 0;
-        virtual void get_stickers_pack_info(const int64_t _seq, const int32_t _set_id, const std::string& _store_id, const std::string& _file_id) = 0;
+        virtual void get_sticker(const int64_t _seq, const int32_t _set_id, const int32_t _sticker_id, const core::tools::filesharing_id& _fs_id, const core::sticker_size _size) = 0;
+        virtual void get_sticker_cancel(std::vector<core::tools::filesharing_id> _fs_ids, core::sticker_size _size) = 0;
+        virtual void get_stickers_pack_info(const int64_t _seq, const int32_t _set_id, const std::string& _store_id, const core::tools::filesharing_id& _file_id) = 0;
         virtual void add_stickers_pack(const int64_t _seq, const int32_t _set_id, std::string _store_id) = 0;
         virtual void remove_stickers_pack(const int64_t _seq, const int32_t _set_id, std::string _store_id) = 0;
         virtual void get_stickers_store(const int64_t _seq) = 0;
@@ -397,7 +408,7 @@ namespace core
             const std::string& _extension,
             const core::archive::quotes_vec& _quotes,
             const std::string& _description,
-            const core::data::format::string_formatting& _description_format,
+            const core::data::format& _description_format,
             const core::archive::mentions_map& _mentions,
             const std::optional<int64_t>& _duration,
             const bool _strip_exif,
@@ -494,7 +505,7 @@ namespace core
         virtual void report_sticker(const std::string& _id, const std::string& _reason, const std::string& _aimid, const std::string& _chatId) = 0;
         virtual void report_message(const int64_t _id, const std::string& _text, const std::string& _reason, const std::string& _aimid, const std::string& _chatId) = 0;
 
-        virtual void user_accept_gdpr(int64_t _seq, const accept_agreement_info& _accept_info) = 0;
+        virtual void user_accept_gdpr(int64_t _seq) = 0;
 
         virtual void send_stat() = 0;
 
@@ -545,8 +556,14 @@ namespace core
         virtual void revoke_vote(const int64_t _seq, const std::string& _poll_id) = 0;
         virtual void stop_poll(const int64_t _seq, const std::string& _poll_id) = 0;
 
-        virtual void group_subscribe(const int64_t _seq, const std::string& _stamp) = 0;
-        virtual void cancel_group_subscription(const int64_t _seq, const std::string& _stamp) = 0;
+        virtual void create_task(int64_t _seq, const core::tasks::task_data& _task) = 0;
+        virtual void edit_task(const int64_t _seq, const core::tasks::task_change& _task) = 0;
+        virtual void request_initial_tasks(const int64_t _seq) = 0;
+        virtual void update_task_last_used(const int64_t _seq, const std::string& _task_id) = 0;
+
+        virtual void group_subscribe(const int64_t _seq, std::string_view _stamp, std::string_view _aimid) = 0;
+        virtual void cancel_group_subscription(const int64_t _seq, std::string_view _stamp, std::string_view _aimid) = 0;
+
         virtual void suggest_group_nick(const int64_t _seq, const std::string& _sn, bool _public) = 0;
 
         virtual void get_bot_callback_answer(const int64_t& _seq, const std::string_view _chat_id, const std::string_view _callback_data, int64_t _msg_id) = 0;
@@ -579,6 +596,12 @@ namespace core
         virtual void subscribe_call_room_info(const std::string& _room_id) = 0;
         virtual void unsubscribe_call_room_info(const std::string& _room_id) = 0;
 
+        virtual void subscribe_task(const std::string& _task_id) = 0;
+        virtual void unsubscribe_task(const std::string& _task_id) = 0;
+
+        virtual void subscribe_thread_updates(std::vector<std::string> _thread_ids) = 0;
+        virtual void unsubscribe_thread_updates(std::vector<std::string> _thread_ids) = 0;
+
         virtual void get_emoji(int64_t _seq, std::string_view _code, int _size) = 0;
 
         virtual void add_to_inviters_blacklist(std::vector<std::string> _contacts) = 0;
@@ -587,6 +610,11 @@ namespace core
         virtual void get_blacklisted_cl_inviters(std::string_view _cursor, uint32_t _page_size) = 0;
 
         virtual void misc_support(int64_t _seq, std::string_view _aimid, std::string_view _message, std::string_view _attachment_file_name, std::vector<std::string> _screenshot_file_name_list) = 0;
+
+        virtual void add_thread(int64_t _seq, archive::thread_parent_topic _topic) = 0;
+        virtual void get_threads_feed(int64_t _seq, const std::string& _cursor) = 0;
+
+        virtual void start_miniapp_session(std::string_view _miniapp_id) = 0;
     };
 
 }

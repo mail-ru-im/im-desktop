@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../history_control/complex_message/FileSharingUtils.h"
 
 namespace Utils
 {
@@ -27,12 +28,12 @@ namespace Ui
             StickerPreview(
                 QWidget* _parent,
                 const int32_t _setId,
-                const QString& _stickerId,
+                const Utils::FileSharingId& _stickerId,
                 Context _context);
 
             ~StickerPreview();
 
-            void showSticker(const QString& _stickerId);
+            void showSticker(const Utils::FileSharingId& _stickerId);
 
             void hide();
 
@@ -45,7 +46,7 @@ namespace Ui
             void resizeEvent(QResizeEvent* _e) override;
 
         private:
-            void init(const QString& _stickerId);
+            void init(const Utils::FileSharingId& _stickerId);
             void drawSticker(QPainter& _p);
             void drawEmoji(QPainter& _p);
             void updateEmoji();
@@ -56,10 +57,10 @@ namespace Ui
             void updatePlayerSize();
             void onAnimatedStickerLoaded(const QString& _path);
             void onActivationChanged(bool _active);
-            void onStickerLoaded(int _error, const QString& _id);
+            void onStickerLoaded(int _error, const Utils::FileSharingId& _id);
 
         private:
-            QString stickerId_;
+            Utils::FileSharingId stickerId_;
 
             QPixmap sticker_;
             std::vector<QImage> emojis_;

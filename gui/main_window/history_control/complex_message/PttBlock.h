@@ -117,9 +117,7 @@ public:
 
     QSize getCtrlButtonSize() const;
 
-    Data::FormattedString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
-
-    bool updateFriendly(const QString& _aimId, const QString& _friendly) override;
+    Data::FString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
 
     QSize getTextButtonSize() const;
 
@@ -156,7 +154,7 @@ public:
 
     IItemBlock::MenuFlags getMenuFlags(QPoint p) const override;
 
-    bool setProgress(const QString& _fsId, const int32_t _value) override;
+    bool setProgress(const Utils::FileSharingId& _fsId, const int32_t _value) override;
 
     //void setEmojiSizeType(const TextRendering::EmojiSizeType& _emojiSizeType) {};
 
@@ -173,7 +171,7 @@ protected:
 
     void onDownloadedAction() override;
 
-    void onDataTransfer(const int64_t _bytesTransferred, const int64_t _bytesTotal) override;
+    void onDataTransfer(const int64_t _bytesTransferred, const int64_t _bytesTotal, bool _showBytes = true) override;
 
     void onDownloadingFailed(const int64_t requestId) override;
 

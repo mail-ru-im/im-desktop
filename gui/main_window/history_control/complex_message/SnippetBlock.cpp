@@ -26,6 +26,7 @@
 #include "controls/FileSharingIcon.h"
 #include "../SnippetCache.h"
 #include "controls/TooltipWidget.h"
+#include "previewer/toast.h"
 
 #include "../../../common.shared/config/config.h"
 
@@ -47,11 +48,6 @@ namespace
         }
 
         return QT_TRANSLATE_NOOP("snippet_block", "File");
-    }
-
-    void copyLinkToClipboard(const QString& _link)
-    {
-        QApplication::clipboard()->setText(_link);
     }
 
     QPainterPath calcMediaClipPath(Ui::ComplexMessage::SnippetBlock* _block, const QRect& _contentRect)
@@ -120,6 +116,12 @@ namespace
     }
 
     constexpr auto BLUR_RADIOUS = 150;
+
+    void copyLink(const QString& _link)
+    {
+        QApplication::clipboard()->setText(_link);
+        Utils::showCopiedToast();
+    }
 }
 
 
@@ -129,9 +131,9 @@ UI_COMPLEX_MESSAGE_NS_BEGIN
 // SnippetBlock
 //////////////////////////////////////////////////////////////////////////
 
-SnippetBlock::SnippetBlock(ComplexMessageItem* _parent, const QString& _link, const bool _hasLinkInMessage, EstimatedType _estimatedType)
-    : GenericBlock(_parent, _link, MenuFlagLinkCopyable, false)
-    , link_(_link)
+SnippetBlock::SnippetBlock(ComplexMessageItem* _parent, Data::FStringView _link, const bool _hasLinkInMessage, EstimatedType _estimatedType)
+    : GenericBlock(_parent, _link.toFString(), MenuFlagLinkCopyable, false)
+    , link_(_link.string().toString())
     , hasLinkInMessage_(_hasLinkInMessage)
     , visible_(false)
     , estimatedType_(_estimatedType)
@@ -142,12 +144,15 @@ SnippetBlock::SnippetBlock(ComplexMessageItem* _parent, const QString& _link, co
     setMouseTracking(true);
 }
 
+SnippetBlock::SnippetBlock(ComplexMessageItem* _parent, const QString& _link, const bool _hasLinkInMessage, EstimatedType _estimatedType)
+    : SnippetBlock(_parent, Data::FString(_link), _hasLinkInMessage, _estimatedType) { }
+
 IItemBlockLayout* SnippetBlock::getBlockLayout() const
 {
     return nullptr; // SnippetBlock doesn't use a layout
 }
 
-Data::FormattedString SnippetBlock::getSelectedText(const bool _isFullSelect, const IItemBlock::TextDestination _dest) const
+Data::FString SnippetBlock::getSelectedText(const bool _isFullSelect, const IItemBlock::TextDestination _dest) const
 {
     if (isSelected())
         return getTextForCopy();
@@ -405,6 +410,9 @@ void SnippetBlock::initialize()
 {
     GenericBlock::initialize();
 
+    if (link_.isEmpty())
+        return;
+
     if (const auto meta = SnippetCache::instance()->get(link_))
     {
         initWithMeta(*meta);
@@ -423,7 +431,7 @@ void SnippetBlock::mouseMoveEvent(QMouseEvent* _event)
 {
     setCursor(rect().contains(_event->pos()) ? Qt::PointingHandCursor : Qt::ArrowCursor);
 
-    if (Features::longPathTooltipsAllowed() && content_->needsTooltip() && content_->isOverLink(_event->pos()))
+    if (Features::longPathTooltipsAllowed() && content_ && content_->needsTooltip() && content_->isOverLink(_event->pos()))
     {
         if (!isTooltipActivated())
         {
@@ -452,8 +460,7 @@ void SnippetBlock::leaveEvent(QEvent *_event)
 
 void SnippetBlock::onMenuCopyLink()
 {
-    copyLinkToClipboard(link_);
-    showToast(QT_TRANSLATE_NOOP("snippet_block", "Copied to clipboard"));
+    copyLink(link_);
 }
 
 void SnippetBlock::onMenuCopyFile()
@@ -512,7 +519,8 @@ void SnippetBlock::onLinkMetainfoMetaDownloaded(int64_t _seq, bool _success, Dat
 void SnippetBlock::onContentLoaded()
 {
     content_ = std::move(loadingContent_);
-    content_->showControls();
+    if (content_)
+        content_->showControls();
 
     notifyBlockContentsChanged();
     getParentComplexMessage()->updateTimeWidgetUnderlay();
@@ -537,7 +545,8 @@ void SnippetBlock::initWithMeta(const Data::LinkMetadata& _meta)
     {
         connect(content.get(), &SnippetContent::loaded, this, &SnippetBlock::onContentLoaded);
         loadingContent_ = std::move(content);
-        loadingContent_->hideControls();
+        if (loadingContent_)
+            loadingContent_->hideControls();
 
         if (!content_)
         {
@@ -1180,7 +1189,7 @@ void MediaContent::onMenuCopyFile()
         if (_success)
         {
             Utils::copyFileToClipboard(_savedPath);
-            GenericBlock::showFileCopiedToast();
+            Utils::showCopiedToast();
         }
         else
         {
@@ -1426,11 +1435,7 @@ DialogPlayer* MediaContent::createPlayer()
     });
 
     connect(player, &DialogPlayer::mouseClicked, this, &MediaContent::clicked);
-    connect(player, &DialogPlayer::copyLink, this, [this]()
-    {
-        copyLinkToClipboard(link_);
-        snippetBlock_->showToast(QT_TRANSLATE_NOOP("snippet_block", "Copied to clipboard"));
-    });
+    connect(player, &DialogPlayer::copyLink, this, [this]() { copyLink(link_); });
 
     player->setParent(snippetBlock_);
 
@@ -1464,11 +1469,7 @@ void MediaContent::createControls()
     controls_ = new MediaControls(controls, 0, snippetBlock_);
 
     connect(controls_, &MediaControls::clicked, this, &MediaContent::clicked);
-    connect(controls_, &MediaControls::copyLink, this, [this]()
-    {
-        copyLinkToClipboard(link_);
-        snippetBlock_->showToast(QT_TRANSLATE_NOOP("snippet_block", "Copied to clipboard"));
-    });
+    connect(controls_, &MediaControls::copyLink, this, [this]() { copyLink(link_); });
 
     QUrl url(link_);
     controls_->setSiteName(removeWWW(url.host()));

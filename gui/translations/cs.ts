@@ -385,9 +385,144 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
         <source>You are not a member of this chat or you was banned to write</source>
         <translation>Nejste členem chatu nebo nemáte povoleno psát</translation>
     </message>
+</context>
+<context>
+    <name>calendar</name>
     <message>
-        <source>Are you sure you want to open an external link %1?</source>
-        <translation>Opravdu chcete otevřít externí odkaz %1 ?</translation>
+        <source>Mon</source>
+        <translation>Po</translation>
+    </message>
+    <message>
+        <source>Tue</source>
+        <translation>Út</translation>
+    </message>
+    <message>
+        <source>Wed</source>
+        <translation>Středa</translation>
+    </message>
+    <message>
+        <source>Thu</source>
+        <translation>NS</translation>
+    </message>
+    <message>
+        <source>Fri</source>
+        <translation>Pá</translation>
+    </message>
+    <message>
+        <source>Sat</source>
+        <translation>So</translation>
+    </message>
+    <message>
+        <source>Sun</source>
+        <translation>slunce</translation>
+    </message>
+    <message>
+        <source>January</source>
+        <translation>leden</translation>
+    </message>
+    <message>
+        <source>Febuary</source>
+        <translation>Únor</translation>
+    </message>
+    <message>
+        <source>March</source>
+        <translation>březen</translation>
+    </message>
+    <message>
+        <source>April</source>
+        <translation>duben</translation>
+    </message>
+    <message>
+        <source>May</source>
+        <translation>Smět</translation>
+    </message>
+    <message>
+        <source>June</source>
+        <translation>červen</translation>
+    </message>
+    <message>
+        <source>July</source>
+        <translation>červenec</translation>
+    </message>
+    <message>
+        <source>August</source>
+        <translation>srpen</translation>
+    </message>
+    <message>
+        <source>September</source>
+        <translation>září</translation>
+    </message>
+    <message>
+        <source>October</source>
+        <translation>říjen</translation>
+    </message>
+    <message>
+        <source>November</source>
+        <translation>Listopad</translation>
+    </message>
+    <message>
+        <source>December</source>
+        <translation>prosinec</translation>
+    </message>
+    <message>
+        <source>Jan</source>
+        <translation>Jan</translation>
+    </message>
+    <message>
+        <source>Feb</source>
+        <translation>únor</translation>
+    </message>
+    <message>
+        <source>Mar</source>
+        <translation>Marta</translation>
+    </message>
+    <message>
+        <source>Apr</source>
+        <translation>Duben</translation>
+    </message>
+    <message>
+        <source>Jun</source>
+        <translation>červen</translation>
+    </message>
+    <message>
+        <source>Jul</source>
+        <translation>červenec</translation>
+    </message>
+    <message>
+        <source>Aug</source>
+        <translation>Srpna</translation>
+    </message>
+    <message>
+        <source>Sep</source>
+        <translation>září</translation>
+    </message>
+    <message>
+        <source>Oct</source>
+        <translation>října</translation>
+    </message>
+    <message>
+        <source>Nov</source>
+        <translation>listopad</translation>
+    </message>
+    <message>
+        <source>Dec</source>
+        <translation>Prosince</translation>
+    </message>
+    <message>
+        <source>Today</source>
+        <translation>Dnes</translation>
+    </message>
+    <message>
+        <source>Tomorrow</source>
+        <translation>Zítra</translation>
+    </message>
+    <message>
+        <source>MayS</source>
+        <translation>Smět</translation>
+    </message>
+    <message>
+        <source>%1. d, yyyy</source>
+        <translation>%1. d, yyyy</translation>
     </message>
 </context>
 <context>
@@ -988,6 +1123,22 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
 %3
 %4 %5</translation>
     </message>
+    <message>
+        <source>%1 changed task title to &quot;%2&quot;</source>
+        <translation>%1 změnil text úkolu na &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed task deadline to %2</source>
+        <translation>%1 změnil termín na %2</translation>
+    </message>
+    <message>
+        <source>%1 changed task assignee to &quot;%2&quot;</source>
+        <translation>%1 změnil umělce na &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>Task status changed to &quot;%1&quot;</source>
+        <translation>Stav úkolu změněn na &quot;%1&quot;</translation>
+    </message>
 </context>
 <context>
     <name>chat_page</name>
@@ -1054,6 +1205,22 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
     <message>
         <source>Message sent</source>
         <translation>Zpráva odeslána</translation>
+    </message>
+    <message>
+        <source>Access limited</source>
+        <translation>Přístup omezen</translation>
+    </message>
+    <message>
+        <source>File is not available</source>
+        <translation>Soubor není k dispozici</translation>
+    </message>
+    <message>
+        <source>Filesharing Id copied to clipboard</source>
+        <translation>ID sdílení souborů zkopírováno</translation>
+    </message>
+    <message>
+        <source>Filesharing link copied to clipboard</source>
+        <translation>Odkaz na sdílení souborů byl zkopírován</translation>
     </message>
 </context>
 <context>
@@ -1176,6 +1343,30 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
     <message>
         <source>PINNED</source>
         <translation>PŘIPNUL</translation>
+    </message>
+    <message>
+        <source>Threads</source>
+        <translation>Vláknaᵝ</translation>
+    </message>
+    <message>
+        <source>Reminders</source>
+        <translation>Připomenutí</translation>
+    </message>
+    <message>
+        <source>Scheduled</source>
+        <translation>Plánováno</translation>
+    </message>
+    <message>
+        <source>Draft</source>
+        <translation>Návrh</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation>Úkol</translation>
+    </message>
+    <message>
+        <source>Tasks</source>
+        <translation>Úkoly</translation>
     </message>
 </context>
 <context>
@@ -1612,6 +1803,58 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
     <message>
         <source>Copy session info</source>
         <translation>Zkopírujte informace o relaci</translation>
+    </message>
+    <message>
+        <source>Bold</source>
+        <translation>Mastné</translation>
+    </message>
+    <message>
+        <source>Italic</source>
+        <translation>Kurzíva</translation>
+    </message>
+    <message>
+        <source>Underline</source>
+        <translation>Podtrženo</translation>
+    </message>
+    <message>
+        <source>Strike through</source>
+        <translation>Přeškrtnuto</translation>
+    </message>
+    <message>
+        <source>Monospace</source>
+        <translation>Neproporcionální</translation>
+    </message>
+    <message>
+        <source>Create link</source>
+        <translation>Přidat odkaz</translation>
+    </message>
+    <message>
+        <source>Clear format</source>
+        <translation>Vymazat styly</translation>
+    </message>
+    <message>
+        <source>Format</source>
+        <translation>Formátování</translation>
+    </message>
+    <message>
+        <source>Edit task</source>
+        <translation>Změnit úkol</translation>
+    </message>
+    <message>
+        <source>List</source>
+        <translation>Seznam</translation>
+    </message>
+    <message>
+        <source>Ordered list</source>
+        <translation>Číslovaný seznam</translation>
+    </message>
+    <message>
+        <source>Quote</source>
+        <translation>Citát</translation>
+    </message>
+    <message>
+        <source>Code</source>
+        <translation>Kód</translation>
     </message>
 </context>
 <context>
@@ -2648,6 +2891,21 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
     </message>
 </context>
 <context>
+    <name>draft</name>
+    <message>
+        <source>Apply draft</source>
+        <translation>Použít koncept</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Zrušení</translation>
+    </message>
+    <message>
+        <source>Apply another draft version?</source>
+        <translation>Chcete použít jinou verzi konceptu?</translation>
+    </message>
+</context>
+<context>
     <name>favorites</name>
     <message>
         <source>
@@ -2758,10 +3016,10 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
     </message>
 </context>
 <context>
-    <name>generic_block</name>
+    <name>groupchat</name>
     <message>
-        <source>Copied to clipboard</source>
-        <translation>Zkopírováno do schránky</translation>
+        <source>To replies</source>
+        <translation>V odpovědích</translation>
     </message>
 </context>
 <context>
@@ -2854,6 +3112,20 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
         <source>You are not a subscriber of this channel</source>
         <translation>Nejste předplatitelem tohoto kanálu</translation>
     </message>
+    <message>
+        <source>File access restrictions</source>
+        <translation>Omezení přístupu k souboru</translation>
+    </message>
+    <message>
+        <source>Restrict file access to trusted devices only
+Only for private groups
+
+This option cannot be disabled</source>
+        <translation>Povolte přístup k souborům pouze důvěryhodným zařízením
+Pouze pro neveřejné skupiny
+
+Vypnutí nastavení je nemožné</translation>
+    </message>
 </context>
 <context>
     <name>head</name>
@@ -2883,6 +3155,30 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
     <message>
         <source>Please select a chat to start messaging</source>
         <translation>Pokud chcete začít posílat zprávy, vyberte chat</translation>
+    </message>
+    <message>
+        <source>Create a call</source>
+        <translation>Vytvořit hovor</translation>
+    </message>
+    <message>
+        <source>No time limit</source>
+        <translation>Žádné časové omezení</translation>
+    </message>
+    <message>
+        <source>Status is set automatically during call</source>
+        <translation>Autostatus ukazuje, kdo volá</translation>
+    </message>
+    <message>
+        <source>Advantages of calls in Myteam</source>
+        <translation>Výhody volání na Myteam</translation>
+    </message>
+    <message>
+        <source>Group calls up to %1 participants</source>
+        <translation>Skupinové volání až %1 osobě</translation>
+    </message>
+    <message>
+        <source>Return to call in chat in one click</source>
+        <translation>Jedním kliknutím se vrátíte k hovoru v chatu</translation>
     </message>
 </context>
 <context>
@@ -3050,6 +3346,10 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
     <message>
         <source>Cancel request</source>
         <translation>Zrušit žádost</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation>Úkol</translation>
     </message>
 </context>
 <context>
@@ -3291,6 +3591,10 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
     <message>
         <source>Wrong password</source>
         <translation>Špatné heslo</translation>
+    </message>
+    <message>
+        <source>Sign in with Mail.ru</source>
+        <translation>Přihlaste se pomocí Mail.ru</translation>
     </message>
 </context>
 <context>
@@ -3946,10 +4250,6 @@ Kontakt</translation>
         <translation>Opravdu chceš chat opustit?</translation>
     </message>
     <message>
-        <source>Contact name</source>
-        <translation>Kontaktní jméno</translation>
-    </message>
-    <message>
         <source>Sign out</source>
         <translation>Odhlásit se</translation>
     </message>
@@ -4590,8 +4890,16 @@ Kontakt</translation>
         <translation>Byl překročen limit členství (max %1)</translation>
     </message>
     <message>
-        <source>Are you sure you want to open external link %1?</source>
-        <translation>Opravdu chcete otevřít externí odkaz %1?</translation>
+        <source>Are you sure you want to open an external link?</source>
+        <translation>Opravdu chcete otevřít externí odkaz?</translation>
+    </message>
+    <message>
+        <source>Add link</source>
+        <translation>Přidat odkaz</translation>
+    </message>
+    <message>
+        <source>The link will be displayed as &quot;%1&quot;</source>
+        <translation>Odkaz se zobrazí jako „%1“</translation>
     </message>
     <message>
         <source>Enable net compression</source>
@@ -4640,6 +4948,38 @@ Kontakt</translation>
     <message>
         <source>User not a member</source>
         <translation>Uživatel není členem této skupiny</translation>
+    </message>
+    <message>
+        <source>Link</source>
+        <translation>Odkaz</translation>
+    </message>
+    <message>
+        <source>Invalid url</source>
+        <translation>Není odkaz</translation>
+    </message>
+    <message>
+        <source>Opening or downloading files will be possible from trusted device only
+
+%1 It will be impossible to disable this setting!</source>
+        <translation>Otevírání nebo stahování souborů bude možné pouze z důvěryhodného zařízení
+
+%1 Nastavení nelze deaktivovat!</translation>
+    </message>
+    <message>
+        <source>File access will be restricted</source>
+        <translation>Přístup k souborům bude omezen</translation>
+    </message>
+    <message>
+        <source>Only chat members can view replies</source>
+        <translation>Odpovědi mohou zobrazit pouze členové skupiny</translation>
+    </message>
+    <message>
+        <source>Show seconds in time picker</source>
+        <translation>Zobrazení sběrače času v sekundách</translation>
+    </message>
+    <message>
+        <source>Only channel subscribers can view replies</source>
+        <translation>Odpovědi mohou zobrazit pouze předplatitelé kanálu</translation>
     </message>
 </context>
 <context>
@@ -5422,6 +5762,10 @@ Kontakt</translation>
         <translation>Při spuštění spustitelných souborů se zeptat</translation>
     </message>
     <message>
+        <source>Do not ask when opening external links</source>
+        <translation>Neptejte se při otevírání externích odkazů</translation>
+    </message>
+    <message>
         <source>Use system spell checker</source>
         <translation>Kontrola pravopisu systému</translation>
     </message>
@@ -5468,6 +5812,14 @@ Kontakt</translation>
     <message>
         <source>Show notifications when app in focus</source>
         <translation>Zobrazit oznámení, když je aplikace aktivní</translation>
+    </message>
+    <message>
+        <source>Call window</source>
+        <translation>Okno hovoru</translation>
+    </message>
+    <message>
+        <source>Warn about disabled microphone</source>
+        <translation>Varovat před ztlumeným mikrofonem</translation>
     </message>
 </context>
 <context>
@@ -5666,6 +6018,10 @@ Kontakt</translation>
     <message>
         <source>Set status</source>
         <translation>Nastavit stav</translation>
+    </message>
+    <message>
+        <source>Switch microphone state</source>
+        <translation>Změnit stav mikrofonu</translation>
     </message>
 </context>
 <context>
@@ -6024,6 +6380,14 @@ Uprav telefonní číslo a opakuj akci.</translation>
         <source>Close</source>
         <translation>Zavřít</translation>
     </message>
+    <message>
+        <source>Cannot be disabled due to security reasons</source>
+        <translation>Z bezpečnostních důvodů nelze nastavení deaktivovat</translation>
+    </message>
+    <message>
+        <source>Replies</source>
+        <translation>Odpovědi</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -6060,10 +6424,6 @@ Uprav telefonní číslo a opakuj akci.</translation>
     <message>
         <source>File</source>
         <translation>Soubor</translation>
-    </message>
-    <message>
-        <source>Copied to clipboard</source>
-        <translation>Zkopírováno do schránky</translation>
     </message>
     <message>
         <source>Location</source>
@@ -6213,22 +6573,6 @@ Uprav telefonní číslo a opakuj akci.</translation>
         <source>Status duration</source>
         <translation>Doba trvání</translation>
     </message>
-    <message>
-        <source>Date</source>
-        <translation>Datum</translation>
-    </message>
-    <message>
-        <source>dd.mm.yyyy</source>
-        <translation>dd.mm.rrrr</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>Čas</translation>
-    </message>
-    <message>
-        <source>hh:mm</source>
-        <translation>hh:mm</translation>
-    </message>
 </context>
 <context>
     <name>stickers</name>
@@ -6280,6 +6624,10 @@ Uprav telefonní číslo a opakuj akci.</translation>
         <source>Cancel</source>
         <translation>Zrušit</translation>
     </message>
+    <message>
+        <source>Stickerpack is not available</source>
+        <translation>Nálepka není k dispozici</translation>
+    </message>
 </context>
 <context>
     <name>tab</name>
@@ -6304,12 +6652,12 @@ Uprav telefonní číslo a opakuj akci.</translation>
         <translation>Volání</translation>
     </message>
     <message>
-        <source>Structure</source>
-        <translation>Struktura</translation>
-    </message>
-    <message>
         <source>Tasks</source>
         <translation>Úkoly</translation>
+    </message>
+    <message>
+        <source>Calendar</source>
+        <translation>Kalendář</translation>
     </message>
 </context>
 <context>
@@ -6337,6 +6685,101 @@ Uprav telefonní číslo a opakuj akci.</translation>
     <message>
         <source>Group call</source>
         <translation>Skupinový hovor</translation>
+    </message>
+</context>
+<context>
+    <name>task</name>
+    <message>
+        <source>In progress</source>
+        <translation>V práci</translation>
+    </message>
+    <message>
+        <source>Ready</source>
+        <translation>Hotovo</translation>
+    </message>
+    <message>
+        <source>Rejected</source>
+        <translation>Odmítnuto</translation>
+    </message>
+    <message>
+        <source>Closed</source>
+        <translation>Zavřeno</translation>
+    </message>
+    <message>
+        <source>New</source>
+        <translation>Dělat</translation>
+    </message>
+    <message>
+        <source>No assignee</source>
+        <translation>Bez umělce</translation>
+    </message>
+</context>
+<context>
+    <name>task_block</name>
+    <message>
+        <source>Not assigned</source>
+        <translation>Nepřiřazený</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation>Úkol</translation>
+    </message>
+    <message>
+        <source>Task Id copied to clipboard</source>
+        <translation>ID úkolu zkopírováno</translation>
+    </message>
+    <message>
+        <source>Not set</source>
+        <translation>Nepřiřazený</translation>
+    </message>
+    <message>
+        <source>Task edit: an error occured</source>
+        <translation>Úprava úlohy: došlo k chybě</translation>
+    </message>
+</context>
+<context>
+    <name>task_popup</name>
+    <message>
+        <source>Edit task</source>
+        <translation>Změna úkolu</translation>
+    </message>
+    <message>
+        <source>Create task</source>
+        <translation>Vytvořit úkol</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>název</translation>
+    </message>
+    <message>
+        <source>Maximum length - %1 symbols</source>
+        <translation>Maximální délka - %1 znaků</translation>
+    </message>
+    <message>
+        <source>Assignee</source>
+        <translation>Vykonavatel</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Zrušení</translation>
+    </message>
+    <message>
+        <source>Ok</source>
+        <translation>OK</translation>
+    </message>
+    <message>
+        <source>Create</source>
+        <translation>Vytvořit</translation>
+    </message>
+    <message>
+        <source>User with this name
+not found</source>
+        <translation>Uživatel s tímto
+název nebyl nalezen</translation>
+    </message>
+    <message>
+        <source>No deadline</source>
+        <translation>Žádný termín</translation>
     </message>
 </context>
 <context>
@@ -6368,6 +6811,21 @@ Uprav telefonní číslo a opakuj akci.</translation>
     <message>
         <source>Welcome to ICQ New</source>
         <translation>Vítejte v ICQ New</translation>
+    </message>
+</context>
+<context>
+    <name>threads_feed</name>
+    <message>
+        <source>There is no threads</source>
+        <translation>Žádná vlákna</translation>
+    </message>
+    <message>
+        <source>Threads you subscribed for will be here</source>
+        <translation>Zde se zobrazí vlákna, k jejichž odběru jste přihlášeni</translation>
+    </message>
+    <message>
+        <source>Replies</source>
+        <translation>Odpovědi</translation>
     </message>
 </context>
 <context>
@@ -6419,6 +6877,42 @@ Uprav telefonní číslo a opakuj akci.</translation>
         <source>You are not a member or banned to write in this group</source>
         <translation>Nejste členem nebo máte zakázáno psát v této skupině</translation>
     </message>
+    <message>
+        <source>Unable to open invalid url &quot;%1&quot;</source>
+        <translation>Neplatnou adresu %1</translation>
+    </message>
+    <message>
+        <source>Error occurred while opening the replies</source>
+        <translation>Při otevírání odpovědí došlo k chybě</translation>
+    </message>
+    <message>
+        <source>Administrator has set the restrictions on access to files</source>
+        <translation>Správce skupiny nastavil omezení přístupu k souborům</translation>
+    </message>
+    <message>
+        <source>Awaiting antivirus check, patience</source>
+        <translation>Čekáme na antivirovou kontrolu, trpělivost</translation>
+    </message>
+    <message>
+        <source>Antivirus check in progress, patience</source>
+        <translation>Probíhá kontrola antiviru, trpělivost</translation>
+    </message>
+    <message>
+        <source>File is blocked by the antivirus</source>
+        <translation>Soubor zablokován antivirem</translation>
+    </message>
+    <message>
+        <source>Checked</source>
+        <translation>Odhlásil</translation>
+    </message>
+    <message>
+        <source>No access. You may not have enough rights</source>
+        <translation>Žádný přístup. Možná nemáte dostatečná práva</translation>
+    </message>
+    <message>
+        <source>File not checked (and never will be). Available to download</source>
+        <translation>Soubor nebyl ověřen (a nebude ověřen). K dispozici ke stažení</translation>
+    </message>
 </context>
 <context>
     <name>tooltips</name>
@@ -6461,6 +6955,14 @@ Uprav telefonní číslo a opakuj akci.</translation>
     <message>
         <source>Link to call</source>
         <translation>Volat odkaz</translation>
+    </message>
+    <message>
+        <source>Chat gallery</source>
+        <translation>Galerie chatu</translation>
+    </message>
+    <message>
+        <source>Refresh</source>
+        <translation>Obnovit</translation>
     </message>
 </context>
 <context>
@@ -6596,6 +7098,18 @@ kliknutím</translation>
         <translation>Zaneprázdněný</translation>
     </message>
     <message>
+        <source>Hold Space key for temporary unmute</source>
+        <translation>Podržením mezerníku dočasně zapnete mikrofon</translation>
+    </message>
+    <message>
+        <source>Microphone disabled</source>
+        <translation>Mikrofon vypnutý</translation>
+    </message>
+    <message>
+        <source>Microphone enabled</source>
+        <translation>Mikrofon zapnutý</translation>
+    </message>
+    <message>
         <source>Call members</source>
         <translation>Zavolejte účastníkům</translation>
     </message>
@@ -6618,6 +7132,16 @@ kliknutím</translation>
     <message>
         <source>CONTACTS</source>
         <translation>KONTAKTY</translation>
+    </message>
+    <message>
+        <source>You are muted now
+Press %1 to unmute your microphone
+
+Press and hold Space key for temporarily unmute</source>
+        <translation>Nyní je váš mikrofon vypnutý
+Stisknutím %1 zapněte mikrofon
+
+Stisknutím a podržením mezerníku dočasně zapnete mikrofon</translation>
     </message>
 </context>
 <context>

@@ -24,7 +24,7 @@ void webrtc_event::on_im(std::shared_ptr<core::wim::im> _im, std::shared_ptr<aut
     if (!!_im) {
         _im->on_voip_proto_msg(false, _raw.c_str(), (int32_t)_raw.length(), _on_complete);
     } else {
-        assert(false);
+        im_assert(false);
     }
 #endif
 }

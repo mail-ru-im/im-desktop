@@ -15,11 +15,17 @@ namespace core
     {
         typedef std::chrono::time_point<std::chrono::system_clock, std::chrono::system_clock::duration> timepoint;
 
+        struct miniapp_auth_parameters
+        {
+            std::string aimsid_;
+        };
+
         struct auth_parameters
         {
             std::string aimid_;
+            std::optional<std::string> o2token_;
+            std::optional<std::string> o2refresh_;
             std::string a_token_;
-            std::string session_key_;
             std::string dev_id_;
             std::string aimsid_;
             std::string locale_;
@@ -40,12 +46,16 @@ namespace core
             std::string login_;
             std::string fetch_url_;
 
+            std::map<std::string, miniapp_auth_parameters> miniapps_;
+
             auth_parameters();
             bool is_valid_agent_token() const;
             bool is_valid_token() const;
+            bool is_valid_o2token() const;
             bool is_valid_md5() const;
             bool is_valid() const;
             bool is_robusto_valid() const;
+            bool is_valid_miniapp(const std::string& _id) const;
 
             void reset_robusto();
             void clear();

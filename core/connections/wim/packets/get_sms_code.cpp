@@ -8,7 +8,7 @@
 #include "../../../core.h"
 #include "../../../../corelib/enumerations.h"
 #include "../../../tools/system.h"
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 #include "../../urls_cache.h"
 
 using namespace core;

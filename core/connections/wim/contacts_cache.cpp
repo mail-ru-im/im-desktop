@@ -3,7 +3,7 @@
 #include "contacts_cache.h"
 
 #include "../../../corelib/collection_helper.h"
-#include "../../tools/json_helper.h"
+#include "../../../common.shared/json_helper.h"
 
 using namespace core;
 using namespace wim;
@@ -179,7 +179,7 @@ void contacts_multicache::set_contacts(std::string_view _cache_name, std::vector
 
 const std::vector<cached_contact>& core::wim::contacts_multicache::get_contacts(std::string_view _cache_name) const
 {
-    assert(has_cache(_cache_name));
+    im_assert(has_cache(_cache_name));
     const auto it = std::find_if(caches_.begin(), caches_.end(), [_cache_name](const auto& c) { return c.get_name() == _cache_name; });
     if (it != caches_.end())
         return it->contacts();

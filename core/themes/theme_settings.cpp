@@ -44,7 +44,7 @@ void core::theme_settings::reset_default_wallpaper()
 
 void core::theme_settings::set_wallpaper_urls(const themes::wallpaper_info_v& _wallpapers)
 {
-    assert(wallpapers_.empty());
+    im_assert(wallpapers_.empty());
 
     wallpapers_ = _wallpapers;
 }

@@ -93,7 +93,7 @@ namespace core
         void wallpaper_loader::set_wallpaper_urls()
         {
             wallpapers_ = g_core->get_wallpaper_urls();
-            assert(!wallpapers_.empty());
+            im_assert(!wallpapers_.empty());
         }
 
         std::shared_ptr<next_dl_task_handler> wallpaper_loader::get_next_download_task()
@@ -243,7 +243,7 @@ namespace core
 
         void wallpaper_loader::create_download_task_full(const wallpaper_info& _wall, const bool _is_requested)
         {
-            assert(std::none_of(download_tasks_.begin(), download_tasks_.end(), [&_wall](const auto& _task) { return _task.get_source_url() == _wall.preview_url_; }));
+            im_assert(std::none_of(download_tasks_.begin(), download_tasks_.end(), [&_wall](const auto& _task) { return _task.get_source_url() == _wall.preview_url_; }));
 
             const auto image_file_name = get_wp_path(_wall.id_);
             const auto image_time = get_wp_file_time(_wall.id_);
@@ -253,7 +253,7 @@ namespace core
 
         void wallpaper_loader::create_download_task_preview(const wallpaper_info& _wall, const bool _is_requested)
         {
-            assert(std::none_of(download_tasks_.begin(), download_tasks_.end(), [&_wall](const auto& _task) { return _task.get_source_url() == _wall.preview_url_; }));
+            im_assert(std::none_of(download_tasks_.begin(), download_tasks_.end(), [&_wall](const auto& _task) { return _task.get_source_url() == _wall.preview_url_; }));
 
             const auto thumb_file_name = get_preview_path(_wall.id_);
             const auto thumb_time = get_preview_file_time(_wall.id_);

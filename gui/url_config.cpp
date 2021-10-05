@@ -4,11 +4,13 @@
 #include "utils/gui_coll_helper.h"
 #include "utils/features.h"
 #include "../common.shared/config/config.h"
+#include "../core/core.h"
 
 namespace Ui
 {
     void UrlConfig::updateUrls(const core::coll_helper& _coll)
     {
+        base_ = _coll.get<QString>("base");
         baseBinary_ = _coll.get<QString>("baseBinary");
         filesParse_ = _coll.get<QString>("filesParse");
         stickerShare_= _coll.get<QString>("stickerShare");
@@ -21,6 +23,15 @@ namespace Ui
 
         if (Features::isUpdateFromBackendEnabled())
             appUpdate_ = _coll.get<QString>("appUpdate");
+
+        di_ = _coll.get<QString>("di", "");
+        diDark_ = _coll.get<QString>("di_dark", "");
+
+        tasks_ = _coll.get<QString>("tasks", "");
+
+        calendar_ = _coll.get<QString>("calendar", "");
+
+        configHost_ = _coll.get<QString>("config-host", "");
 
         vcsUrls_ = Utils::toContainerOfString<QVector<QString>>(_coll.get_value_as_array("vcs_urls"));
         if (vcsUrls_.empty())

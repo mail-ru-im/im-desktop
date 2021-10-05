@@ -5,12 +5,13 @@
 #include "utils/InterConnector.h"
 #include "utils/DrawUtils.h"
 #include "main_window/MainWindow.h"
-#include "main_window/ContactDialog.h"
 #include "controls/TooltipWidget.h"
 #include "styles/ThemeParameters.h"
+#include "main_window/history_control/HistoryControlPage.h"
 #include "../MessageStyle.h"
 #include "core_dispatcher.h"
 #include "DefaultReactions.h"
+#include "main_window/ContactDialog.h"
 
 #include "AddReactionPlate.h"
 
@@ -54,7 +55,7 @@ int32_t bottomOffsetFromButton()
 
 int32_t plateOffsetVBottomMode()
 {
-    return plateAreaSize().height() - plateOffsetV() - plateSize().height() - Ui::MessageStyle::Reactions::addReactionButtonSize().height() - bottomOffsetFromButton();
+    return plateAreaSize().height() - plateOffsetV() - plateSize().height() - Ui::MessageStyle::Plates::addReactionButtonSize().height() - bottomOffsetFromButton();
 }
 
 int32_t plateTopOffsetFromDialog()
@@ -369,26 +370,28 @@ void AddReactionPlate::setChatId(const QString& _chatId)
 
 void AddReactionPlate::showOverButton(const QPoint& _buttonTopCenterGlobal)
 {
-    auto contactDialog = Utils::InterConnector::instance().getContactDialog();
-    if (!contactDialog)
+    auto page = Utils::InterConnector::instance().getPage(d->chatId_);
+    if (!page)
         return;
 
-    auto dialogRect = contactDialog->rect();
+    auto dialogRect = page->rect();
+    if (auto topWidget = page->getTopWidget())
+        dialogRect.setTop(dialogRect.top() - topWidget->height());
 
     const auto left = _buttonTopCenterGlobal.x() - plateAreaSize().width() / 2;
     const auto right = left + plateAreaSize().width();
     auto top = _buttonTopCenterGlobal.y() - bottomOffsetFromButton() - plateSize().height() - plateOffsetV();
 
-    if (contactDialog->mapFromGlobal(QPoint(left, top)).y() < dialogRect.top() + plateTopOffsetFromDialog())
+    if (page->mapFromGlobal(QPoint(left, top)).y() < dialogRect.top() + plateTopOffsetFromDialog())
         top = _buttonTopCenterGlobal.y() - plateOffsetVBottomMode();
 
     auto topLeft = QPoint(left, top);
     const auto topRight = QPoint(right, top);
 
-    if (contactDialog->mapFromGlobal(topLeft).x() < dialogRect.left())
-        topLeft.setX(contactDialog->mapToGlobal(dialogRect.topLeft()).x());
-    if (contactDialog->mapFromGlobal(topRight).x() > dialogRect.right())
-        topLeft.setX(contactDialog->mapToGlobal(dialogRect.topRight()).x() - plateAreaSize().width());
+    if (page->mapFromGlobal(topLeft).x() < dialogRect.left())
+        topLeft.setX(page->mapToGlobal(dialogRect.topLeft()).x());
+    if (page->mapFromGlobal(topRight).x() > dialogRect.right())
+        topLeft.setX(page->mapToGlobal(dialogRect.topRight()).x() - plateAreaSize().width());
 
     Q_EMIT plateShown();
     Q_EMIT Utils::InterConnector::instance().addReactionPlateActivityChanged(d->chatId_, true);

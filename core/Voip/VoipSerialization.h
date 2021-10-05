@@ -9,7 +9,7 @@ inline void operator>>(const std::vector<std::string>& _contacts, core::coll_hel
         const std::string& contact = _contacts[ix];
         if (contact.empty())
         {
-            assert(false);
+            im_assert(false);
             continue;
         }
 
@@ -29,7 +29,7 @@ inline void operator>>(const DeviceType& _type, core::coll_helper& _coll)
     case AudioRecording: _coll.set_value_as_string(name, "audio_capture"); return;
     case AudioPlayback: _coll.set_value_as_string(name, "audio_playback"); return;
 
-    default: assert(false); break;
+    default: im_assert(false); break;
     }
 }
 
@@ -50,7 +50,7 @@ inline void operator<<(DeviceType& _type, const core::coll_helper& _coll)
     }
     else
     {
-        assert(false);
+        im_assert(false);
     }
 }
 
@@ -64,7 +64,7 @@ inline void operator<<(DeviceType& _type, const core::coll_helper& _coll)
     case voip2::LayoutType_Three: _coll.set_value_as_string(name, "primary_with_detach_preview"); return;
     case voip2::LayoutType_Four: _coll.set_value_as_string(name, "primary_with_attach_preview"); return;
 
-    default: assert(false); break;
+    default: im_assert(false); break;
     }
 }*/
 
@@ -77,7 +77,7 @@ inline void operator>>(const MouseTapEnum& _type, core::coll_helper& _coll)
     case MouseTap_Double: _coll.set_value_as_string(name, "double"); return;
     case MouseTap_Long: _coll.set_value_as_string(name, "long"); return;
     case MouseTap_Over: _coll.set_value_as_string(name, "over"); return;
-    default: assert(false); break;
+    default: im_assert(false); break;
     }
 }
 
@@ -91,7 +91,7 @@ inline void operator>>(const ViewArea& _type, core::coll_helper& _coll)
     case ViewArea_Default:    _coll.set_value_as_string(name, "default"); return;
     case ViewArea_Background: _coll.set_value_as_string(name, "background"); return;
     case ViewArea_Tray:       _coll.set_value_as_string(name, "tray"); return;
-    default: assert(false); break;
+    default: im_assert(false); break;
     }
 }
 
@@ -105,7 +105,7 @@ inline void operator>>(const voip_manager::DeviceState& _state, core::coll_helpe
     }
     else
     {
-        assert(false);
+        im_assert(false);
     }
 }
 
@@ -224,7 +224,7 @@ inline void operator<<(voip_manager::Contact& _contact, core::coll_helper& _coll
     _contact.call_id = _coll.get_value_as_string("account");
     _contact.contact = _coll.get_value_as_string("contact");
 
-    assert(!_contact.call_id.empty());
+    im_assert(!_contact.call_id.empty());
 }
 
 inline void operator>>(const voip_manager::ContactEx& _contact_ex, core::coll_helper& _coll)
@@ -340,7 +340,7 @@ template <typename T> void readVector (std::vector<T>& _vector, core::coll_helpe
         ss << _prefix << ix;
 
         auto contact = _coll.get_value_as_collection(ss.str().c_str());
-        assert(contact);
+        im_assert(contact);
         if (!contact)
         {
             continue;
@@ -464,6 +464,7 @@ inline void operator>>(const voip_manager::eNotificationTypes& _type, core::coll
 
     //case kNotificationType_MinimalBandwidthChanged: _coll.set_value_as_string(name, "voip_minimal_bandwidth_state_changed"); return;
     case kNotificationType_MaskEngineEnable: _coll.set_value_as_string(name, "voip_mask_engine_enable"); return;
+    case kNotificationType_VoiceDetect: _coll.set_value_as_string(name, "voice_detect"); return;
 
     //case kNotificationType_ConnectionDestroyed: /* Nothing to do for now */ return;
 
@@ -472,6 +473,6 @@ inline void operator>>(const voip_manager::eNotificationTypes& _type, core::coll
 
     case kNotificationType_HideControlsWhenRemDesktopSharing: _coll.set_value_as_string(name, "hide_ctrls_when_remote_sharing"); return;
 
-    default: assert(false); return;
+    default: im_assert(false); return;
     }
 }

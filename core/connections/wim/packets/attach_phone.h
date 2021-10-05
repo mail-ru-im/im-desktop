@@ -1,10 +1,6 @@
-#ifndef __WIM_ATTACH_PHONE_H_
-#define __WIM_ATTACH_PHONE_H_
-
 #pragma once
-
 #include "../../login_info.h"
-#include "../wim_packet.h"
+#include "../robusto_packet.h"
 
 namespace core
 {
@@ -14,33 +10,28 @@ namespace core
     }
 }
 
-
 namespace core
 {
     namespace wim
     {
-        class attach_phone : public wim_packet
+        class attach_phone : public robusto_packet
         {
-            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
-            virtual int32_t parse_response_data(const rapidjson::Value& _data) override;
-            virtual int32_t on_response_error_code() override;
-            int32_t execute_request(const std::shared_ptr<core::http_request_simple>& request) override;
-            virtual int32_t on_empty_data() override;
+            phone_info phone_info_;
 
-            phone_info      phone_info_;
+            int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+
         public:
+            attach_phone(wim_packet_params _params, const phone_info& _phone_info);
+            ~attach_phone();
 
-            attach_phone(wim_packet_params _params, const phone_info& _info);
             int32_t get_response_error_code();
             bool is_valid() const override { return true; }
-            virtual bool is_post() const override { return true; }
-            virtual ~attach_phone();
-            virtual std::string_view get_method() const override;
+            bool is_post() const override { return true; }
+
+            std::string_view get_method() const override;
         };
 
     }
 
 }
 
-
-#endif// __WIM_ATTACH_PHONE_H_

@@ -21,8 +21,29 @@ namespace Ui
     class CheckBox;
     class MessagesScrollArea;
     class HistoryControlPage;
+    class PageBase;
     enum class ConferenceType;
 }
+
+namespace Debug
+{
+    void debugFormattedText(QMimeData* _mime);
+    void dumpQtEvent(QEvent* _event, QStringView _context = {});
+
+    template <typename This, typename FuncName>
+    void debugMemberCallImpl(This _this, FuncName _funcName)
+    {
+#ifdef _DEBUG
+        qDebug() << typeid(*_this).name() << _funcName;
+#else
+        Q_UNUSED(_this)
+        Q_UNUSED(_funcName)
+#endif
+    }
+}
+
+#define imDebugMemberCall Debug::debugMemberCallImpl(this, __func__)
+
 
 namespace Utils
 {
@@ -99,21 +120,29 @@ namespace Utils
     class [[nodiscard]] PainterSaver
     {
     public:
-        PainterSaver(QPainter& _painter)
+        Q_DISABLE_COPY_MOVE(PainterSaver)
+
+        PainterSaver(QPainter* _painter)
             : painter_(_painter)
         {
-            painter_.save();
+            im_assert(_painter != nullptr);
+            if (painter_)
+                painter_->save();
+        }
+
+        PainterSaver(QPainter& _painter)
+            : painter_(&_painter)
+        {
+            painter_->save();
         }
 
         ~PainterSaver() noexcept
         {
-            painter_.restore();
+            if (painter_)
+                painter_->restore();
         }
-
-        PainterSaver(const PainterSaver&) = delete;
-        PainterSaver& operator=(const PainterSaver&) = delete;
     private:
-        QPainter& painter_;
+        QPainter* painter_;
     };
 
     bool isUin(const QString& _aimId);
@@ -153,36 +182,36 @@ namespace Utils
 
     bool foregroundWndIsFullscreened();
 
-    double fscale_value(const double _px) noexcept;
-    int scale_value(const int _px) noexcept;
-    QSize scale_value(const QSize& _px) noexcept;
-    QSizeF scale_value(const QSizeF& _px) noexcept;
-    QRect scale_value(const QRect& _px) noexcept;
-    QPoint scale_value(const QPoint& _px) noexcept;
-    QMargins scale_value(const QMargins& _px) noexcept;
+    [[nodiscard]] double fscale_value(const double _px) noexcept;
+    [[nodiscard]] int scale_value(const int _px) noexcept;
+    [[nodiscard]] QSize scale_value(const QSize& _px) noexcept;
+    [[nodiscard]] QSizeF scale_value(const QSizeF& _px) noexcept;
+    [[nodiscard]] QRect scale_value(const QRect& _px) noexcept;
+    [[nodiscard]] QPoint scale_value(const QPoint& _px) noexcept;
+    [[nodiscard]] QMargins scale_value(const QMargins& _px) noexcept;
 
-    int unscale_value(int _px) noexcept;
-    QSize unscale_value(const QSize& _px) noexcept;
-    QRect unscale_value(const QRect& _px) noexcept;
-    QPoint unscale_value(const QPoint& _px) noexcept;
+    [[nodiscard]] int unscale_value(int _px) noexcept;
+    [[nodiscard]] QSize unscale_value(const QSize& _px) noexcept;
+    [[nodiscard]] QRect unscale_value(const QRect& _px) noexcept;
+    [[nodiscard]] QPoint unscale_value(const QPoint& _px) noexcept;
 
-    int scale_bitmap_ratio() noexcept;
-    int scale_bitmap(const int _px) noexcept;
-    double fscale_bitmap(const double _px) noexcept;
-    QSize scale_bitmap(const QSize& _px) noexcept;
-    QSizeF scale_bitmap(const QSizeF& _px) noexcept;
-    QRect scale_bitmap(const QRect& _px) noexcept;
+    [[nodiscard]] int scale_bitmap_ratio() noexcept;
+    [[nodiscard]] int scale_bitmap(const int _px) noexcept;
+    [[nodiscard]] double fscale_bitmap(const double _px) noexcept;
+    [[nodiscard]] QSize scale_bitmap(const QSize& _px) noexcept;
+    [[nodiscard]] QSizeF scale_bitmap(const QSizeF& _px) noexcept;
+    [[nodiscard]] QRect scale_bitmap(const QRect& _px) noexcept;
 
-    int unscale_bitmap(const int _px) noexcept;
-    QSize unscale_bitmap(const QSize& _px) noexcept;
-    QRect unscale_bitmap(const QRect& _px) noexcept;
+    [[nodiscard]] int unscale_bitmap(const int _px) noexcept;
+    [[nodiscard]] QSize unscale_bitmap(const QSize& _px) noexcept;
+    [[nodiscard]] QRect unscale_bitmap(const QRect& _px) noexcept;
 
-    int scale_bitmap_with_value(const int _px) noexcept;
-    double fscale_bitmap_with_value(const double _px) noexcept;
-    QSize scale_bitmap_with_value(const QSize& _px) noexcept;
-    QSizeF scale_bitmap_with_value(const QSizeF& _px) noexcept;
-    QRect scale_bitmap_with_value(const QRect& _px) noexcept;
-    QRectF scale_bitmap_with_value(const QRectF& _px) noexcept;
+    [[nodiscard]] int scale_bitmap_with_value(const int _px) noexcept;
+    [[nodiscard]] double fscale_bitmap_with_value(const double _px) noexcept;
+    [[nodiscard]] QSize scale_bitmap_with_value(const QSize& _px) noexcept;
+    [[nodiscard]] QSizeF scale_bitmap_with_value(const QSizeF& _px) noexcept;
+    [[nodiscard]] QRect scale_bitmap_with_value(const QRect& _px) noexcept;
+    [[nodiscard]] QRectF scale_bitmap_with_value(const QRectF& _px) noexcept;
 
     int getBottomPanelHeight();
     int getTopPanelHeight();
@@ -256,7 +285,25 @@ namespace Utils
         QByteArray array;
         QBuffer b(&array);
         b.open(QIODevice::WriteOnly);
-        _pixmap.save(&b, _format, _quality);
+
+        // WebP format can only works in RGBA8888 mode, but it's endian
+        // dependant, and Qt webp image handler does this conversion for
+        // us behind the scenes, but this could lead to incorrect colors
+        // in the resulting image. The following code forces the Big/Little
+        // Endianess conversion for original image by simply drawing
+        // original image into temporary image with correct RGBA8888 format.
+        // Also the PNG format can have custom iCCC profile, and that can lead
+        // to the same incorrect visual colors of the image.
+        // Note that we use a premultiplied format version to speed-up painting.
+        QImage image(_pixmap.size(), QImage::Format_RGBA8888_Premultiplied);
+        image.fill(Qt::transparent);
+        QPainter painter(&image);
+        if constexpr (std::is_same_v<T, QPixmap>)
+            painter.drawPixmap(0, 0, _pixmap);
+        else
+            painter.drawImage(0, 0, _pixmap);
+        image.save(&b, _format, _quality);
+
         return array;
     }
 
@@ -297,6 +344,11 @@ namespace Utils
         const QString& _headerText,
         Out QString& resultChatName,
         bool acceptEnter = true);
+
+    bool UrlEditor(
+        QWidget* _parent,
+        QStringView _linkDisplayName,
+        InOut QString& _url);
 
     bool GetConfirmationWithTwoButtons(
         const QString& _buttonLeft,
@@ -363,6 +415,8 @@ namespace Utils
         static QString proxyTypeStr(core::proxy_type _type);
 
         static QString proxyAuthStr(core::proxy_auth _type);
+
+        static QNetworkProxy::ProxyType proxyType(core::proxy_type _type);
     };
 
     ProxySettings* get_proxy_settings();
@@ -488,7 +542,14 @@ namespace Utils
 
     QImage iconWithCounter(int size, int count, QColor bg, QColor fg, QImage back = QImage());
 
-    void openUrl(QStringView _url);
+    QStringView extractAimIdFromMention(QStringView _mention);
+
+    enum class OpenUrlConfirm
+    {
+        No,
+        Yes,
+    };
+    void openUrl(QStringView _url, OpenUrlConfirm _confirm = OpenUrlConfirm::No);
 
     enum class OpenAt
     {
@@ -502,28 +563,42 @@ namespace Utils
         Yes,
     };
 
-    void openFileOrFolder(QStringView _path, OpenAt _openAt, OpenWithWarning _withWarning = OpenWithWarning::Yes);
+    void openFileOrFolder(const QString& _chatAimId, QStringView _path, OpenAt _openAt, OpenWithWarning _withWarning = OpenWithWarning::Yes);
 
-    QString convertMentions(const QString& _source, const Data::MentionMap& _mentions);
-    Data::FormattedString convertMentions(const Data::FormattedString& _source, const Data::MentionMap& _mentions);
-    QString convertFilesPlaceholders(const QStringRef& _source, const Data::FilesPlaceholderMap& _files);
+    [[nodiscard]] QString convertMentions(const QString& _source, const Data::MentionMap& _mentions);
+    void convertMentions(Data::FString& _source, const Data::MentionMap& _mentions);
+
+    //! Keeps other styles on mentions
+    void convertMentionsToFriendlyPlainText(Data::FString& _source, const Data::MentionMap& _mentions);
+
+    //! Replace ` and ``` by format if text is plaintext (mentions do not count)
+    void convertOldStyleMarkdownToFormats(Data::FString& _text, Ui::ParseBackticksPolicy _backticksPolicy = Ui::ParseBackticksPolicy::ParseSinglesAndTriples);
+
+    void convertMentions(
+        Data::FString& _source,
+        std::function<Data::FString(const core::data::range_format&, Data::FStringView)> _converter);
+
+    [[nodiscard]] QString convertFilesPlaceholders(const QStringRef& _source, const Data::FilesPlaceholderMap& _files);
+
     inline QString convertFilesPlaceholders(const QString& _source, const Data::FilesPlaceholderMap& _files)
     {
         return convertFilesPlaceholders(QStringRef(&_source), _files);
     }
 
-    QString replaceFilesPlaceholders(QString _text, const Data::FilesPlaceholderMap& _files);
-    Data::FormattedString replaceFilesPlaceholders(const Data::FormattedString& _text, const Data::FilesPlaceholderMap& _files);
+    void convertFilesPlaceholders(Data::FString& _source, const Data::FilesPlaceholderMap& _files);
 
-    QString setFilesPlaceholders(QString _text, const Data::FilesPlaceholderMap& _files);
-    Data::FormattedString setFilesPlaceholders(const Data::FormattedString& _text, const Data::FilesPlaceholderMap& _files);
+    [[nodiscard]] QString replaceFilesPlaceholders(QString _text, const Data::FilesPlaceholderMap& _files);
+    void replaceFilesPlaceholders(Data::FString& _text, const Data::FilesPlaceholderMap& _files);
 
-    bool isNick(const QString& _text);
+    [[nodiscard]] QString setFilesPlaceholders(QString _text, const Data::FilesPlaceholderMap& _files);
+    [[nodiscard]] Data::FString setFilesPlaceholders(const Data::FString& _text, const Data::FilesPlaceholderMap& _files);
+
+    bool isNick(QStringView _text);
     QString makeNick(const QString& _text);
 
     bool isMentionLink(QStringView _url);
 
-    bool isContainsMentionLink(QStringView _url);
+    bool doesContainMentionLink(QStringView _url);
 
     bool isServiceLink(const QString& _url);
     void clearContentCache();
@@ -544,14 +619,21 @@ namespace Utils
     };
 
     OpenDOPResult openDialogOrProfile(const QString& _contact, const OpenDOPParam _paramType = OpenDOPParam::aimid);
-    void openDialogWithContact(const QString& _contact, qint64 _id = -1, bool _sel = true, std::function<void(Ui::HistoryControlPage*)> _getPageCallback = nullptr);
+    void openDialogWithContact(const QString& _contact, qint64 _id = -1, bool _sel = true, std::function<void (Ui::PageBase*)> _getPageCallback = nullptr);
 
     bool clicked(const QPoint& _prev, const QPoint& _cur, int dragDistance = 0);
 
     void drawBubbleRect(QPainter& _p, const QRectF& _rect, const QColor& _color, int _bWidth, int _bRadious);
 
-    int getShadowMargin();
+    int getShadowMargin() noexcept;
     void drawBubbleShadow(QPainter& _p, const QPainterPath& _bubble, const int _clipLength = -1, const int _shadowMargin = -1, const QColor _shadowColor = QColor());
+
+    //! Used for reaction and thread plates
+    QGraphicsDropShadowEffect* initPlateShadowEffect(QWidget* _parent, double _opacity = 1.0);
+
+    QColor plateShadowColorWithAlpha(double _opacity = 1.0);
+
+    void drawPlateSolidShadow(QPainter& _p, const QPainterPath& _path);
 
     enum class StatusBadgeState
     {
@@ -634,18 +716,14 @@ namespace Utils
 
         Initiator initiator_ = Initiator::Unknown;
         Reason reason_ = Reason::MW_Resizing;
-    };
 
-    struct SidebarVisibilityParams
-    {
-        SidebarVisibilityParams(bool _show = false, bool _returnToMain = false)
-            : show_(_show),
-              returnMenuToMain_(_returnToMain)
+        CloseWindowInfo() = default;
+        CloseWindowInfo(Initiator _initiator, Reason _reason) : initiator_(_initiator), reason_(_reason) {}
+
+        bool operator==(const CloseWindowInfo& _other) const
         {
+            return initiator_ == _other.initiator_ && reason_ == _other.reason_;
         }
-
-        bool show_;
-        bool returnMenuToMain_;
     };
 
     class PhoneValidator : public QValidator
@@ -803,7 +881,6 @@ namespace Utils
 }
 
 Q_DECLARE_METATYPE(Utils::CloseWindowInfo)
-Q_DECLARE_METATYPE(Utils::SidebarVisibilityParams)
 
 namespace Logic
 {
@@ -817,14 +894,18 @@ namespace Logic
 
 namespace MimeData
 {
+    QMimeData* toMimeData(Data::FString&& _text, const Data::MentionMap& _mentions, const Data::FilesPlaceholderMap& _files);
+
     QString getMentionMimeType();
     QString getRawMimeType();
     QString getFileMimeType();
+    QString getTextFormatMimeType();
 
-    QByteArray convertMapToArray(const std::map<QString, QString, Utils::StringComparator>& _map);
-    std::map<QString, QString, Utils::StringComparator> convertArrayToMap(const QByteArray& _array);
+    [[nodiscard]] QByteArray convertMapToArray(const std::map<QString, QString, Utils::StringComparator>& _map);
+    [[nodiscard]] std::map<QString, QString, Utils::StringComparator> convertArrayToMap(const QByteArray& _array);
 
     void copyMimeData(const Ui::MessagesScrollArea& _area);
+    [[nodiscard]] QByteArray serializeTextFormatAsJson(const core::data::format& _format);
 
     const std::vector<QStringView>& getFilesPlaceholderList();
 }

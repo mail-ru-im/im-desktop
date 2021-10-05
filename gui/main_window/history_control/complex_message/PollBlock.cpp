@@ -240,9 +240,9 @@ namespace
         return (_outgoing ? outgoingColor : incomingColor);
     }
 
-    void sendPollStat(const std::string_view _action)
+    void sendPollStat(const QString& _contact, const std::string_view _action)
     {
-        Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::polls_action, { {"chat_type", Ui::getStatsChatType() }, { "action", std::string(_action) }});
+        Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::polls_action, { {"chat_type", Ui::getStatsChatType(_contact) }, { "action", std::string(_action) }});
     }
 }
 
@@ -586,7 +586,7 @@ public:
         auto contentSize = layout_->getBlockGeometry().size();
         auto currentY = 0;
 
-        for (auto i = 0; i < placeholderAnswersCount(); ++i)
+        for (size_t i = 0, n = std::max(poll_.answers_.size(), size_t(2)); i < n; ++i)
         {
             auto answerRect = QRect(0, currentY, contentSize.width(), minAnswerHeight());
             auto checkBoxPos = QPointF(checkBoxLeftMargin() + checkBoxSize().width() / 2., currentY + answerRect.height() / 2.);
@@ -748,7 +748,6 @@ PollBlock::PollBlock(ComplexMessageItem* _parent, const Data::PollData& _poll, c
 
 PollBlock::~PollBlock()
 {
-
 }
 
 IItemBlockLayout *PollBlock::getBlockLayout() const
@@ -756,7 +755,7 @@ IItemBlockLayout *PollBlock::getBlockLayout() const
     return d->layout_;
 }
 
-Data::FormattedString PollBlock::getSelectedText(const bool _isFullSelect, const IItemBlock::TextDestination _dest) const
+Data::FString PollBlock::getSelectedText(const bool _isFullSelect, const IItemBlock::TextDestination _dest) const
 {
     Q_UNUSED(_isFullSelect)
     Q_UNUSED(_dest)
@@ -815,7 +814,7 @@ bool PollBlock::clicked(const QPoint& _p)
     if (!answerId.isEmpty())
     {
         d->executeRequest([this, answerId]() { return GetDispatcher()->voteInPoll(d->poll_.id_, answerId); });
-        sendPollStat("vote");
+        sendPollStat(getChatAimid(), "vote");
 
         d->myLocalAnswerId_ = answerId;
         setCursor(Qt::ArrowCursor);
@@ -853,7 +852,7 @@ void PollBlock::updateWith(IItemBlock* _other)
     }
 }
 
-Data::FormattedString PollBlock::getSourceText() const
+Data::FString PollBlock::getSourceText() const
 {
     return d->question_;
 }
@@ -865,7 +864,7 @@ bool PollBlock::onMenuItemTriggered(const QVariantMap& _params)
     if (command == u"revoke_vote")
     {
         d->executeRequest([this]() { return GetDispatcher()->revokeVote(d->poll_.id_); });
-        sendPollStat("revote");
+        sendPollStat(getChatAimid(), "revote");
         return true;
     }
     else if(command == u"stop_poll")
@@ -883,11 +882,11 @@ bool PollBlock::onMenuItemTriggered(const QVariantMap& _params)
         if (confirm)
         {
             d->executeRequest([this]() { return GetDispatcher()->stopPoll(d->poll_.id_); });
-            sendPollStat("stop");
+            sendPollStat(getChatAimid(), "stop");
         }
         return true;
     }
-    else if (command == u"copy_poll_id")
+    else if (command == u"dev:copy_poll_id")
     {
         QApplication::clipboard()->setText(d->poll_.id_);
         showToast(QT_TRANSLATE_NOOP("poll_block", "Poll Id copied to clipboard"));
@@ -964,7 +963,7 @@ void PollBlock::mouseMoveEvent(QMouseEvent* _event)
 
     auto handCursor = false;
 
-    if (d->isQuote_ || Utils::InterConnector::instance().isMultiselect())
+    if (d->isQuote_ || Utils::InterConnector::instance().isMultiselect(getChatAimid()))
         handCursor = true;
     else if (d->currentMode() == PollBlock_p::Answers && d->enabled())
         handCursor = std::any_of(d->items_.begin(), d->items_.end(), [_event](const auto& _item) { return _item.rect_.contains(_event->pos()); });

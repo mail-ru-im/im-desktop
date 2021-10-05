@@ -5,6 +5,7 @@
 #include "../utils/InterConnector.h"
 #include "../utils/StringComparator.h"
 #include "../fonts.h"
+#include "main_window/history_control/MessageStyle.h"
 
 using namespace FileSharing;
 
@@ -13,23 +14,18 @@ namespace
     constexpr auto QT_ANGLE_MULT = 16;
     constexpr auto animDuration = std::chrono::milliseconds(700);
 
-    QSize getIconSize()
-    {
-        return Utils::scale_value(QSize(44, 44));
-    }
-
     QSize getButtonSize()
     {
         return QSize(20, 20);
     }
 
-    QPixmap getDownloadIcon()
+    const QPixmap& getDownloadIcon()
     {
         static const auto download_icon = Utils::renderSvgScaled(qsl(":/filesharing/download_icon"), getButtonSize(), Qt::white);
         return download_icon;
     }
 
-    QPixmap getCancelIcon()
+    const QPixmap& getCancelIcon()
     {
         static const auto cancel_icon = Utils::renderSvgScaled(qsl(":/filesharing/cancel_icon"), getButtonSize(), Qt::white);
         return cancel_icon;
@@ -43,14 +39,14 @@ namespace
         FileTypeInfo() = default;
 
         FileTypeInfo(const QString& _iconPath, const QColor& _color)
-            : icon_(Utils::renderSvg(_iconPath, getIconSize()))
+            : icon_(Utils::renderSvg(_iconPath, Ui::FileSharingIcon::getIconSize()))
             , color_(_color)
         {
         }
     };
 
     using FileInfoArray = std::array<std::pair<FileType, FileTypeInfo>, static_cast<size_t>(FileType::max_val)>;
-    static FileInfoArray getFileInfoArray()
+    FileInfoArray getFileInfoArray()
     {
         FileInfoArray fileinfo =
         {
@@ -115,7 +111,7 @@ namespace
         if (it == fontSizes.end())
             return otherIcon.icon_;
 
-        QPixmap pm(Utils::scale_bitmap(getIconSize()));
+        QPixmap pm(Utils::scale_bitmap(Ui::FileSharingIcon::getIconSize()));
         pm.fill(Qt::transparent);
         {
             QPainter p(&pm);
@@ -149,24 +145,44 @@ namespace
     {
         return getTypeInfo(getFSType(_filename)).color_;
     }
+
+    const QPixmap& getBlockedIcon(bool _isOutgoing)
+    {
+        auto makeIcon = [](bool _isOutgoing)
+        {
+            QPixmap pm(Utils::scale_bitmap(Ui::FileSharingIcon::getIconSize()));
+            pm.fill(Qt::transparent);
+            {
+                QPainter p(&pm);
+                p.setRenderHint(QPainter::Antialiasing);
+
+                p.setBrush(Ui::MessageStyle::getBlockedFileIconBackground(_isOutgoing));
+                p.setPen(Qt::transparent);
+                p.drawEllipse(pm.rect());
+
+                auto icon = Utils::renderSvg(qsl(":/filesharing/blocked"), Ui::FileSharingIcon::getIconSize(), Ui::MessageStyle::getBlockedFileIconColor(_isOutgoing));
+                icon.setDevicePixelRatio(1);
+
+                p.drawPixmap(0, 0, icon);
+            }
+            Utils::check_pixel_ratio(pm);
+            return pm;
+        };
+
+        static const auto in = makeIcon(false);
+        static const auto out = makeIcon(true);
+        return _isOutgoing ? out : in;
+    }
 }
 
 namespace Ui
 {
-    FileSharingIcon::FileSharingIcon(QWidget* _parent)
+    FileSharingIcon::FileSharingIcon(bool _isOutgoing, QWidget* _parent)
         : ClickableWidget(_parent)
         , iconColor_(getTypeInfo(FileType::unknown).color_)
-        , bytesTotal_(0)
-        , bytesCurrent_(0)
-        , anim_(new QVariantAnimation(this))
+        , isOutgoing_(_isOutgoing)
     {
         setFixedSize(getIconSize());
-
-        anim_->setStartValue(0.0);
-        anim_->setEndValue(360.0);
-        anim_->setDuration(animDuration.count());
-        anim_->setLoopCount(-1);
-        connect(anim_, &QVariantAnimation::valueChanged, this, qOverload<>(&ClickableWidget::update));
     }
 
     FileSharingIcon::~FileSharingIcon()
@@ -233,28 +249,58 @@ namespace Ui
         return getProgressColor(_fileName);
     }
 
+    QSize FileSharingIcon::getIconSize()
+    {
+        return Utils::scale_value(QSize(44, 44));
+    }
+
     void FileSharingIcon::startAnimation()
     {
         if (!isAnimating())
+        {
+            initAnimation();
             anim_->start();
+        }
     }
 
     void FileSharingIcon::stopAnimation()
     {
-        anim_->stop();
+        if (anim_)
+            anim_->stop();
     }
 
     bool FileSharingIcon::isAnimating() const
     {
-        return anim_->state() == QAbstractAnimation::State::Running;
+        return anim_ && anim_->state() == QAbstractAnimation::State::Running;
     }
 
     void FileSharingIcon::onVisibilityChanged(const bool _isVisible)
     {
-        if (_isVisible && anim_->state() == QAbstractAnimation::Paused)
+        if (_isVisible && anim_ && anim_->state() == QAbstractAnimation::Paused)
             anim_->resume();
-        else if (!_isVisible && anim_->state() == QAbstractAnimation::Running)
+        else if (!_isVisible && isAnimating())
             anim_->pause();
+    }
+
+    void FileSharingIcon::setBlocked(BlockReason _reason)
+    {
+        switch (_reason)
+        {
+        case BlockReason::NoBlock:
+            overrideIcon_ = {};
+            update();
+            break;
+        case BlockReason::Antivirus:
+            im_assert(!"to be implemented");
+            break;
+        case BlockReason::TrustCheck:
+            overrideIcon_ = getBlockedIcon(isOutgoing_);
+            update();
+            break;
+        default:
+            im_assert(!"invalid reaason");
+            break;
+        }
     }
 
     void FileSharingIcon::paintEvent(QPaintEvent*)
@@ -271,7 +317,11 @@ namespace Ui
             }
         };
 
-        if (!isFileDownloaded())
+        if (!overrideIcon_.isNull())
+        {
+            drawIcon(overrideIcon_);
+        }
+        else if (!isFileDownloaded())
         {
             const auto animAngle = isAnimating() ? anim_->currentValue().toDouble() : 0.0;
             const auto baseAngle = (animAngle * QT_ANGLE_MULT);
@@ -323,5 +373,18 @@ namespace Ui
     bool FileSharingIcon::isFileDownloaded() const
     {
         return bytesTotal_ > 0 && bytesCurrent_ >= bytesTotal_;
+    }
+
+    void FileSharingIcon::initAnimation()
+    {
+        if (anim_)
+            return;
+
+        anim_ = new QVariantAnimation(this);
+        anim_->setStartValue(0.0);
+        anim_->setEndValue(360.0);
+        anim_->setDuration(animDuration.count());
+        anim_->setLoopCount(-1);
+        connect(anim_, &QVariantAnimation::valueChanged, this, qOverload<>(&ClickableWidget::update));
     }
 }

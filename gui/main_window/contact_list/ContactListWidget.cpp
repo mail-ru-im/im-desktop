@@ -19,6 +19,8 @@
 #include "CountryListItemDelegate.h"
 #include "CallsSearchModel.h"
 #include "CallItemDelegate.h"
+#include "TaskAssigneeListDelegate.h"
+#include "TaskAssigneeModel.h"
 
 #include "ContactListUtils.h"
 #include "FavoritesUtils.h"
@@ -85,6 +87,8 @@ namespace
             delegate = new Logic::SearchItemDelegate(parent);
         else if (_regim == Logic::MembersWidgetRegim::CALLS_LIST)
             delegate = new Logic::CallItemDelegate(parent);
+        else if (_regim == Logic::MembersWidgetRegim::TASK_ASSIGNEE)
+            delegate = new Logic::TaskAssigneeListDelegate(parent);
         else
             delegate = new Logic::ContactListItemDelegate(parent, _regim, _membersModel);
 
@@ -115,6 +119,7 @@ namespace
             Logic::MembersWidgetRegim::SELECT_MEMBERS,
             Logic::MembersWidgetRegim::SHARE,
             Logic::MembersWidgetRegim::SHARE_CONTACT,
+            Logic::MembersWidgetRegim::TASK_ASSIGNEE,
             Logic::MembersWidgetRegim::SHARE_VIDEO_CONFERENCE,
             Logic::MembersWidgetRegim::VIDEO_CONFERENCE,
             Logic::MembersWidgetRegim::CONTACT_LIST,
@@ -153,6 +158,9 @@ namespace
         if (_regim == Logic::MembersWidgetRegim::CALLS_LIST)
             return new Logic::CallsSearchModel(parent);
 
+        if (_regim == Logic::MembersWidgetRegim::TASK_ASSIGNEE)
+            return new Logic::TaskAssigneeModel(parent);
+
         if (!Logic::is_members_regim(_regim) && !Logic::is_select_chat_members_regim(_regim))
         {
             const auto contactsOnly =
@@ -165,13 +173,15 @@ namespace
                     : (Features::isGlobalContactSearchAllowed() && Logic::is_share_regims(_regim)) ? Logic::SearchDataSource::server
                         : Logic::SearchDataSource::none;
 
+            const auto shareOrTask = Logic::is_share_regims(_regim) || _regim == Logic::MembersWidgetRegim::SHARE_CONTACT || _regim == Logic::MembersWidgetRegim::TASK_ASSIGNEE;
+
             auto m = new Logic::SearchModel(parent);
             m->setSearchInDialogs(false);
             m->setExcludeChats(excludeChats);
-            m->setHideReadonly(Logic::is_share_regims(_regim) ||  _regim == Logic::MembersWidgetRegim::SHARE_CONTACT);
+            m->setHideReadonly(shareOrTask);
             m->setServerSearchEnabled(isServerSearchSupported(_regim));
             m->setCategoriesEnabled(_regim == Logic::MembersWidgetRegim::CONTACT_LIST_POPUP);
-            m->setSortByTime(Logic::is_share_regims(_regim) ||  _regim == Logic::MembersWidgetRegim::SHARE_CONTACT);
+            m->setSortByTime(shareOrTask);
             m->setFavoritesOnTop(Logic::is_share_regims(_regim));
             m->setForceAddFavorites(Logic::is_share_regims(_regim) || _regim == Logic::MembersWidgetRegim::CONTACT_LIST_POPUP);
             return m;
@@ -207,7 +217,6 @@ namespace Ui
         , searchResultsRcvdFirst_(false)
         , searchResultsStatsSent_(false)
         , initial_(false)
-        , tapAndHold_(false)
     {
         initSearchModel(_searchModel);
         clModel_ = new Logic::ContactListWithHeaders(this, Logic::getContactListModel(), false);
@@ -234,10 +243,12 @@ namespace Ui
         view_->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
         view_->setSelectByMouseHover(true);
         view_->setResizeMode(QListView::Adjust);
+        view_->setListViewGestureHandler(new ListViewGestureHandler(view_));
 
         view_->setAttribute(Qt::WA_MacShowFocusRect, false);
         view_->verticalScrollBar()->setContextMenuPolicy(Qt::NoContextMenu);
         view_->viewport()->grabGesture(Qt::TapAndHoldGesture);
+        view_->viewport()->grabGesture(Qt::TapGesture);
         Utils::grabTouchWidget(view_->viewport(), true);
 
         Testing::setAccessibleName(view_, qsl("AS Search view"));
@@ -253,7 +264,15 @@ namespace Ui
 
         connect(view_, &Ui::FocusableListView::activated, this, &ContactListWidget::searchClicked, Qt::QueuedConnection);
         connect(view_, &Ui::FocusableListView::clicked, this, &ContactListWidget::onItemClicked);
+        connect(view_->getListViewGestureHandler(), &Ui::ListViewGestureHandler::tapGesture, this, [this](const auto& idx)
+        {
+            Q_EMIT onItemClicked(idx);
+        }, Qt::QueuedConnection); // to avoid GeneralDialog closing in call log
         connect(view_, &Ui::FocusableListView::pressed, this, &ContactListWidget::onItemPressed);
+        connect(view_->getListViewGestureHandler(), &Ui::ListViewGestureHandler::rightClick, this, [this](const auto& _idx)
+        {
+            onItemPressedImpl(_idx, Qt::MouseButtons(Qt::MouseButton::RightButton));
+        });
         connect(view_, &Ui::FocusableListView::mousePosChanged, this, &ContactListWidget::onMouseMoved);
         connect(view_, &Ui::FocusableListView::wheeled, this, &ContactListWidget::onMouseWheeled);
         connect(view_->verticalScrollBar(), &QScrollBar::valueChanged, Logic::getContactListModel(), &Logic::ContactListModel::scrolled);
@@ -291,7 +310,8 @@ namespace Ui
         {
             _widget->setNeedClear(false);
         });
-        connect(_widget, &SearchWidget::escapePressed, this, []() {
+        connect(_widget, &SearchWidget::escapePressed, this, []()
+        {
             Logic::updatePlaceholders({ Logic::Placeholder::Contacts });
         });
     }
@@ -453,16 +473,6 @@ namespace Ui
         return view_;
     }
 
-    void ContactListWidget::triggerTapAndHold(bool _value)
-    {
-        tapAndHold_ = _value;
-    }
-
-    bool ContactListWidget::tapAndHoldModifier() const
-    {
-        return tapAndHold_;
-    }
-
     void ContactListWidget::showSearch()
     {
         switchToInitial(false);
@@ -538,7 +548,7 @@ namespace Ui
         const auto isSelectMembers = isSelectMembersRegim();
 
         if (!isSelectMembers && regim_ != Logic::MembersWidgetRegim::IGNORE_LIST && regim_ != Logic::MembersWidgetRegim::COUNTRY_LIST)
-            Logic::getContactListModel()->setCurrent(_aimId, _messageId, regim_ == Logic::MembersWidgetRegim::CONTACT_LIST_POPUP);
+            Utils::InterConnector::instance().openDialog(_aimId, _messageId, regim_ == Logic::MembersWidgetRegim::CONTACT_LIST_POPUP);
 
         if (_messageId == -1 || _mode == Logic::UpdateChatSelection::Yes)
             Q_EMIT changeSelected(_aimId);
@@ -617,7 +627,7 @@ namespace Ui
                     else
                     {
                         const auto aimid = searchRes->getAimId();
-                        Logic::getContactListModel()->setCurrent(aimid, -1, false);
+                        Utils::InterConnector::instance().openDialog(aimid, -1, false);
                         Q_EMIT itemSelected(aimid, -1, {});
 
                         statResType = searchRes->isChat() ? "public_chats" : "contacts";
@@ -672,14 +682,17 @@ namespace Ui
 
     void ContactListWidget::onItemPressed(const QModelIndex& _current)
     {
+        onItemPressedImpl(_current, QApplication::mouseButtons());
+    }
+
+    void ContactListWidget::onItemPressedImpl(const QModelIndex& _current, Qt::MouseButtons _buttons)
+    {
         if ((regim_ == Logic::MembersWidgetRegim::CONTACT_LIST_POPUP || regim_ == Logic::MembersWidgetRegim::CONTACT_LIST)
-                && (QApplication::mouseButtons() & Qt::RightButton || tapAndHoldModifier()))
+            && (_buttons & Qt::RightButton))
         {
             const auto model = qobject_cast<const Logic::CustomAbstractListModel*>(_current.model());
             if (model && model->isServiceItem(_current))
                 return;
-
-            triggerTapAndHold(false);
 
             const auto srchModel = qobject_cast<const Logic::SearchModel*>(_current.model());
             if (srchModel)
@@ -700,7 +713,7 @@ namespace Ui
             }
         }
 
-        if ((regim_ == Logic::MembersWidgetRegim::CALLS_LIST) && (QApplication::mouseButtons() & Qt::RightButton || tapAndHoldModifier()))
+        if ((regim_ == Logic::MembersWidgetRegim::CALLS_LIST) && (_buttons & Qt::RightButton))
         {
             showCallsPopupMenu(_current.data().value<Data::CallInfoPtr>());
         }
@@ -1183,6 +1196,7 @@ namespace Ui
             Logic::MembersWidgetRegim::IGNORE_LIST,
             Logic::MembersWidgetRegim::COUNTRY_LIST,
             Logic::MembersWidgetRegim::DISALLOWED_INVITERS_ADD,
+            Logic::MembersWidgetRegim::DISALLOWED_INVITERS_ADD,
         };
 
         if (isSearchMode() || std::any_of(std::begin(noNeedPlaceholder), std::end(noNeedPlaceholder), [regim = regim_](auto r) { return r == regim; }))
@@ -1468,6 +1482,7 @@ namespace Ui
             || regim_ == Logic::MembersWidgetRegim::VIDEO_CONFERENCE
             || regim_ == Logic::MembersWidgetRegim::SHARE
             || regim_ == Logic::MembersWidgetRegim::SHARE_CONTACT
+            || regim_ == Logic::MembersWidgetRegim::TASK_ASSIGNEE
             || regim_ == Logic::MembersWidgetRegim::SHARE_VIDEO_CONFERENCE
             || regim_ == Logic::MembersWidgetRegim::SELECT_CHAT_MEMBERS;
     }

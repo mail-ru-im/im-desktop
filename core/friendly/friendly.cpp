@@ -11,7 +11,7 @@ namespace core
 
     friendly_container::friendly_updates friendly_container::insert_friendly(const std::string& _uin, const std::string_view _name, const std::string_view _nick, std::optional<bool> _official, const friendly_source _type, const friendly_add_mode _mode)
     {
-        assert(std::this_thread::get_id() == thread_id_);
+        im_assert(std::this_thread::get_id() == thread_id_);
         auto& friendly = container_[_uin];
 
         const auto is_different = [&friendly, &_name, &_nick, &_official]()
@@ -48,7 +48,7 @@ namespace core
 
     friendly_container::friendly_updates friendly_container::insert_friendly(const core::archive::persons_map& _map, const friendly_source _type, const friendly_add_mode _mode)
     {
-        assert(std::this_thread::get_id() == thread_id_);
+        im_assert(std::this_thread::get_id() == thread_id_);
         friendly_container::friendly_updates result;
         for (const auto& [uin, person] : _map)
         {
@@ -60,7 +60,7 @@ namespace core
 
     std::optional<friendly> friendly_container::get_friendly(const std::string& _uin) const
     {
-        assert(std::this_thread::get_id() == thread_id_);
+        im_assert(std::this_thread::get_id() == thread_id_);
         if (const auto it = container_.find(_uin); it != container_.end())
             return it->second;
         return std::nullopt;
@@ -68,7 +68,7 @@ namespace core
 
     std::string friendly_container::get_nick(const std::string& _uin) const
     {
-        assert(std::this_thread::get_id() == thread_id_);
+        im_assert(std::this_thread::get_id() == thread_id_);
         if (auto res = get_friendly(_uin); res)
             return (*res).nick_;
         return {};

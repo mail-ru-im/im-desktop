@@ -15,7 +15,7 @@
 #include "controls/TextUnit.h"
 #include "main_window/MainWindow.h"
 #include "main_window/ContactDialog.h"
-#include "ContactListModel.h"
+#include "main_window/contact_list/ContactListModel.h"
 #include "fonts.h"
 #include "../common.shared/config/config.h"
 #include "previewer/Drawable.h"
@@ -25,7 +25,7 @@ namespace
     QString firstMessageImageLink()
     {
         const auto id = Utils::GetTranslator()->getLang() == u"ru" ? Features::favoritesImageIdRussian() : Features::favoritesImageIdEnglish();
-        return Utils::replaceFilesPlaceholders(ql1s("[Photo: %1]").arg(id), Data::FilesPlaceholderMap());
+        return Utils::replaceFilesPlaceholders(ql1s("[Photo: %1]").arg(id), {});
     }
 
     QString translateWithDefault(QTranslator& _translator, const char* _context, const char* _sourceText)
@@ -238,10 +238,9 @@ namespace Favorites
 
         if (click)
         {
-            const auto selectedContact = Logic::getContactListModel()->selectedContact();
-            Q_EMIT Utils::InterConnector::instance().addPageToDialogHistory(selectedContact);
-
-            Logic::getContactListModel()->setCurrent(aimId(), -1, true);
+            if (const auto& selected = Logic::getContactListModel()->selectedContact(); selected != aimId())
+                Q_EMIT Utils::InterConnector::instance().addPageToDialogHistory(selected);
+            Utils::InterConnector::instance().openDialog(aimId());
             Utils::InterConnector::instance().getMainWindow()->closeGallery();
         }
         update();

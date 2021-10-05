@@ -9,7 +9,6 @@ namespace core
     {
         [[nodiscard]] std::string from_utf16(std::wstring_view _source_16);
         [[nodiscard]] std::wstring from_utf8(std::string_view _source_8);
-        [[nodiscard]] std::string wstring_to_string(const std::wstring& wstr);
 
         [[nodiscard]] bool is_digit(char _c);
         [[nodiscard]] bool is_latin(char _c);

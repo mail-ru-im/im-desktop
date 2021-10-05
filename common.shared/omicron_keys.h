@@ -102,6 +102,8 @@ namespace omicron
         constexpr auto subscr_renew_interval_status = "subscr_renew_interval_status";
         constexpr auto subscr_renew_interval_antivirus = "subscr_renew_interval_antivirus";
         constexpr auto subscr_renew_interval_call_room_info = "subscr_renew_interval_call_room_info";
+        constexpr auto subscr_renew_interval_thread = "subscr_renew_interval_thread";
+        constexpr auto subscr_renew_interval_task = "subscr_renew_interval_task";
 
         constexpr auto statuses_json = "statuses_json";
         constexpr auto statuses_enabled = "statuses_enabled";
@@ -151,11 +153,33 @@ namespace omicron
         constexpr auto status_banner_emoji_csv = "status_banner_emoji_csv";
 
         constexpr auto formatting_in_bubbles = "formatting_in_bubbles";
-
         constexpr auto formatting_in_input = "formatting_in_input";
 
         constexpr auto link_metainfo_repeat_interval = "link_metainfo_repeat_interval";
         constexpr auto metainfo_repeat_interval = "metainfo_repeat_interval";
         constexpr auto preview_repeat_interval = "preview_repeat_interval";
+        constexpr auto login_by_oauth2_allowed = "login_by_oauth2_allowed";
+        constexpr auto oauth2_refresh_interval = "oauth2_refresh_interval";
+
+        constexpr auto threads_enabled = "threads_enabled";
+        constexpr auto organization_structure_enabled = "organization_structure_enabled";
+
+        constexpr auto url_ftp_protocols_allowed = "url_ftp_protocols_allowed";
+
+        constexpr auto draft_enabled = "draft_enabled";
+        constexpr auto draft_timeout = "draft_timeout";
+        constexpr auto draft_max_len = "draft_max_len";
+
+        constexpr auto tasks_enabled = "tasks_enabled";
+        constexpr auto task_creation_in_chat_enabled = "task_creation_in_chat_enabled";
+        constexpr auto task_cache_lifetime = "task_cache_lifetime";
+
+        constexpr auto expanded_gallery_enabled = "expanded_gallery_enabled";
+
+        constexpr auto restricted_files_enabled = "restricted_files_enabled";
+        constexpr auto antivirus_check_enabled = "antivirus_check_enabled";
+
+        constexpr auto calendar_enabled = "calendar_enabled";
+        constexpr auto base_retry_interval_sec = "base_retry_interval_sec";
     }
 }

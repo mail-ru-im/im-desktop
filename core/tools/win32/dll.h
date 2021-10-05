@@ -29,14 +29,14 @@ imported_proc<T>::imported_proc(const HMODULE _module_handle, const T _proc_addr
 	: module_handle_(_module_handle)
 	, proc_address_(_proc_address)
 {
-	assert(module_handle_);
-	assert(proc_address_);
+	im_assert(module_handle_);
+	im_assert(proc_address_);
 }
 
 template<class T>
 imported_proc<T>::~imported_proc()
 {
-	assert(module_handle_);
+	im_assert(module_handle_);
 
 	::FreeLibrary(module_handle_);
 }
@@ -44,7 +44,7 @@ imported_proc<T>::~imported_proc()
 template<class T>
 T imported_proc<T>::get() const
 {
-	assert(proc_address_);
+	im_assert(proc_address_);
 
 	return proc_address_;
 }
@@ -52,8 +52,8 @@ T imported_proc<T>::get() const
 template<class T>
 typename imported_proc<T>::sptr import_proc(const std::wstring &dll_path, const std::string &proc_name)
 {
-	assert(!dll_path.empty());
-	assert(!proc_name.empty());
+	im_assert(!dll_path.empty());
+	im_assert(!proc_name.empty());
 
 	const auto handle = ::LoadLibraryEx(dll_path.c_str(), nullptr, 0);
 	if (!handle)

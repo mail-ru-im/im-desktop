@@ -2,14 +2,9 @@
 #include "GroupProfile.h"
 #include "SidebarUtils.h"
 #include "GalleryList.h"
-#include "ImageVideoList.h"
-#include "LinkList.h"
-#include "FilesList.h"
-#include "PttList.h"
 #include "EditNicknameWidget.h"
 #include "../MainWindow.h"
 #include "../GroupChatOperations.h"
-#include "../MainPage.h"
 #include "../ReportWidget.h"
 #include "../containers/FriendlyContainer.h"
 #include "../contact_list/TopPanel.h"
@@ -52,15 +47,6 @@ namespace
         gallery = 3,
     };
 
-    enum gallery_page
-    {
-        photo_and_video = 0,
-        video = 1,
-        files = 2,
-        links = 3,
-        ptt = 4,
-    };
-
     enum list_page
     {
         all = 0,
@@ -84,48 +70,21 @@ namespace
     constexpr auto SPACER_MARGIN = 8;
     constexpr auto SHORT_MEMBERS_COUNT = 5;
     constexpr auto APPROVE_ALL_BUTTON_HEIGHT = 48;
-    constexpr auto TOAST_OFFSET = 10;
     constexpr auto INFO_SPACER_HEIGHT = 8;
     constexpr auto BOTTOM_SPACER = 40;
-    constexpr auto POPUP_HOR_OFFSET = 8;
-    constexpr auto POPUP_VER_OFFSET = 52;
     constexpr auto ABOUT_LINK_SPACER_HEIGHT = 24;
     constexpr auto ABOUT_LINK_RIGHT_OFFSET = 16;
     constexpr auto APPLY_SETTINGS_MARGIN = 24;
     constexpr auto SETTINGS_LEFT_OFFSET = 20;
     constexpr auto SETTINGS_ADD_OFFSET = 4;
 
-    bool isYouAdmin(const std::shared_ptr<Data::ChatInfo>& _info)
-    {
-        if (!_info)
-            return false;
-
-        return _info->YourRole_ == u"admin" || _info->Creator_ == Ui::MyInfo()->aimId();
-    }
-
-    bool isYouModer(const std::shared_ptr<Data::ChatInfo>& _info)
-    {
-        return _info && _info->YourRole_ == u"moder";
-    }
-
-    bool isYouAdminOrModer(const std::shared_ptr<Data::ChatInfo>& _info)
-    {
-        return isYouAdmin(_info) || isYouModer(_info);
-    }
-
-    bool isChatControlled(const std::shared_ptr<Data::ChatInfo>& _info)
-    {
-        return _info && _info->Controlled_;
-    }
-
-    bool isChannel(const std::shared_ptr<Data::ChatInfo>& _info)
-    {
-        return _info && _info->isChannel();
-    }
+    constexpr QSize headerIconSize() noexcept { return { 24, 24 }; }
 
     QString addToChatText(const std::shared_ptr<Data::ChatInfo>& _info)
     {
-        return isChannel(_info) ? QT_TRANSLATE_NOOP("sidebar", "Add to channel") : QT_TRANSLATE_NOOP("sidebar", "Add to group");
+        return Data::ChatInfo::isChannel(_info)
+            ? QT_TRANSLATE_NOOP("sidebar", "Add to channel")
+            : QT_TRANSLATE_NOOP("sidebar", "Add to group");
     }
 
     QMap<QString, QVariant> makeData(const QString& command, const QString& aimId)
@@ -147,6 +106,21 @@ namespace
     {
         return QSize(BTN_ICON_SIZE, BTN_ICON_SIZE);
     }
+
+    void setCheckedBlocking(Ui::SidebarCheckboxButton* _checkbox, bool _isChecked)
+    {
+        if (_checkbox)
+        {
+            QSignalBlocker sb(_checkbox);
+            _checkbox->setChecked(_isChecked);
+        }
+    }
+
+    void setCheckboxEnabled(Ui::SidebarCheckboxButton* _checkbox, bool _isEnabled)
+    {
+        if (_checkbox)
+            _checkbox->setEnabled(_isEnabled);
+    }
 }
 
 namespace Ui
@@ -157,7 +131,7 @@ namespace Ui
         , frameCountMode_(FrameCountMode::_1)
         , shortChatModel_(new Logic::ChatMembersModel(this))
         , listChatModel_(new Logic::ChatMembersModel(this))
-        , currentGalleryPage_(-1)
+        , currentGalleryPage_(MediaContentType::Invalid)
         , currentListPage_(-1)
         , mainAction_(-1)
         , galleryIsEmpty_(false)
@@ -167,10 +141,7 @@ namespace Ui
         init();
     }
 
-    GroupProfile::~GroupProfile()
-    {
-
-    }
+    GroupProfile::~GroupProfile() = default;
 
     void GroupProfile::initFor(const QString& _aimId, SidebarParams _params)
     {
@@ -200,10 +171,7 @@ namespace Ui
             updatePinButton();
             updateMuteState();
 
-            const auto& st = Logic::getContactListModel()->getGalleryState(currentAimId_);
-            dialogGalleryState(currentAimId_, st);
-            if (st.isEmpty())
-                Ui::GetDispatcher()->requestDialogGalleryState(currentAimId_);
+            dialogGalleryState(currentAimId_, Logic::getContactListModel()->getGalleryState(currentAimId_));
 
             about_->hide();
             rules_->hide();
@@ -265,10 +233,10 @@ namespace Ui
 
     void GroupProfile::resizeEvent(QResizeEvent* _event)
     {
-        cl_->setWidthForDelegate(_event->size().width());
-        membersWidget_->setFixedWidth(_event->size().width());
-        galleryPopup_->setFixedWidth(std::max(0, _event->size().width() - Utils::scale_value(POPUP_HOR_OFFSET * 2)));
-        aboutLinkToChatBlock_->setFixedWidth(_event->size().width());
+        cl_->setWidthForDelegate(width());
+        membersWidget_->setFixedWidth(width());
+        galleryPopup_->setFixedWidth(std::max(0, width() - GalleryPopup::horOffset() * 2));
+        aboutLinkToChatBlock_->setFixedWidth(width());
 
         SidebarPage::resizeEvent(_event);
     }
@@ -284,12 +252,12 @@ namespace Ui
         titleBar_->setStyleSheet(ql1s("background-color: %1; border-bottom: %2 solid %3;").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE),
             QString::number(Utils::scale_value(1)) % u"px",
             Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_BRIGHT)));
-        titleBar_->setTitle(QT_TRANSLATE_NOOP("sidebar", "Information"));
-        const auto headerIconSize = QSize(ICON_SIZE, ICON_SIZE);
-        titleBar_->setButtonSize(Utils::scale_value(headerIconSize));
+        titleBar_->setTitle(pageTitle(main));
+        titleBar_->setButtonSize(Utils::scale_value(headerIconSize()));
         {
             editButton_ = new HeaderTitleBarButton(this);
-            editButton_->setDefaultImage(qsl(":/context_menu/edit"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY), headerIconSize);
+            Testing::setAccessibleName(editButton_, qsl("AS Sidebar GroupProfile editButton"));
+            editButton_->setDefaultImage(qsl(":/context_menu/edit"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY), headerIconSize());
             editButton_->setCustomToolTip(QT_TRANSLATE_NOOP("context_menu", "Edit"));
             titleBar_->addButtonToRight(editButton_);
             connect(editButton_, &HeaderTitleBarButton::clicked, this, &GroupProfile::editButtonClicked);
@@ -346,6 +314,7 @@ namespace Ui
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::chatEvents, this, &GroupProfile::chatEvents);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::updateActiveChatMembersModel, this, &GroupProfile::updateActiveChatMembersModel);
         connect(Logic::getContactListModel(), &Logic::ContactListModel::contactChanged, this, &GroupProfile::onContactChanged);
+        connect(Logic::getContactListModel(), &Logic::ContactListModel::yourRoleChanged, this, &GroupProfile::onRoleChanged);
         connect(Logic::getRecentsModel(), &Logic::RecentsModel::favoriteChanged, this, &GroupProfile::favoriteChanged);
     }
 
@@ -407,13 +376,14 @@ namespace Ui
         addSpacer(widget, layout);
 
         {
-            share_ = addButton(qsl(":/share_icon"), QT_TRANSLATE_NOOP("sidebar", "Share group"), widget, layout);
+            share_ = addButton(qsl(":/share_icon"), QT_TRANSLATE_NOOP("sidebar", "Share group"), widget, layout, qsl("AS Sidebar GroupProfile shareButton"));
             connect(share_, &SidebarButton::clicked, this, &GroupProfile::shareClicked);
 
             notifications_ = addCheckbox(qsl(":/notify_icon"), QT_TRANSLATE_NOOP("sidebar", "Notifications"), widget, layout);
+            Testing::setAccessibleName(notifications_, qsl("AS Sidebar GroupProfile notificationsCheckbox"));
             connect(notifications_, &SidebarCheckboxButton::checked, this, &GroupProfile::notificationsChecked);
 
-            settings_ = addButton(qsl(":/settings_icon_sidebar"), QT_TRANSLATE_NOOP("sidebar", "Group settings"), widget, layout);
+            settings_ = addButton(qsl(":/settings_icon_sidebar"), QT_TRANSLATE_NOOP("sidebar", "Group settings"), widget, layout, qsl("AS Sidebar GroupProfile settingsButton"));
             connect(settings_, &SidebarButton::clicked, this, &GroupProfile::settingsClicked);
         }
 
@@ -425,21 +395,22 @@ namespace Ui
             galleryFader->setEventDirection(QEvent::Show, QPropertyAnimation::Forward);
             auto galleryLayout = Utils::emptyVLayout(galleryWidget_);
 
-            galleryPhoto_ = addButton(qsl(":/background_icon"), QT_TRANSLATE_NOOP("sidebar", "Photo and video"), galleryWidget_, galleryLayout);
+            galleryPhoto_ = addButton(qsl(":/background_icon"), QT_TRANSLATE_NOOP("sidebar", "Photo and video"), galleryWidget_, galleryLayout, qsl("AS Sidebar GroupProfile photoVideoButton"));
             connect(galleryPhoto_, &SidebarButton::clicked, this, &GroupProfile::galleryPhotoClicked);
 
             galleryPreview_ = addGalleryPrevieWidget(galleryWidget_, galleryLayout);
+            Testing::setAccessibleName(galleryPreview_, qsl("AS Sidebar GroupProfile galleryPreview"));
 
-            galleryVideo_ = addButton(qsl(":/video_icon"), QT_TRANSLATE_NOOP("sidebar", "Video"), galleryWidget_, galleryLayout);
+            galleryVideo_ = addButton(qsl(":/video_icon"), QT_TRANSLATE_NOOP("sidebar", "Video"), galleryWidget_, galleryLayout, qsl("AS Sidebar GroupProfile videoButton"));
             connect(galleryVideo_, &SidebarButton::clicked, this, &GroupProfile::galleryVideoClicked);
 
-            galleryFiles_ = addButton(qsl(":/gallery/file_icon"), QT_TRANSLATE_NOOP("sidebar", "Files"), galleryWidget_, galleryLayout);
+            galleryFiles_ = addButton(qsl(":/gallery/file_icon"), QT_TRANSLATE_NOOP("sidebar", "Files"), galleryWidget_, galleryLayout, qsl("AS Sidebar GroupProfile filesButton"));
             connect(galleryFiles_, &SidebarButton::clicked, this, &GroupProfile::galleryFilesClicked);
 
-            galleryLinks_ = addButton(qsl(":/copy_link_icon"), QT_TRANSLATE_NOOP("sidebar", "Links"), galleryWidget_, galleryLayout);
+            galleryLinks_ = addButton(qsl(":/copy_link_icon"), QT_TRANSLATE_NOOP("sidebar", "Links"), galleryWidget_, galleryLayout, qsl("AS Sidebar GroupProfile linksButton"));
             connect(galleryLinks_, &SidebarButton::clicked, this, &GroupProfile::galleryLinksClicked);
 
-            galleryPtt_ = addButton(qsl(":/gallery/micro_icon"), QT_TRANSLATE_NOOP("sidebar", "Voice messages"), galleryWidget_, galleryLayout);
+            galleryPtt_ = addButton(qsl(":/gallery/micro_icon"), QT_TRANSLATE_NOOP("sidebar", "Voice messages"), galleryWidget_, galleryLayout, qsl("AS Sidebar GroupProfile voiceButton"));
             connect(galleryPtt_, &SidebarButton::clicked, this, &GroupProfile::galleryPttClicked);
 
             layout->addWidget(galleryWidget_);
@@ -454,12 +425,13 @@ namespace Ui
             auto membersLayout = Utils::emptyVLayout(membersWidget_);
 
             members_ = addMembersPlate(membersWidget_, membersLayout);
+            Testing::setAccessibleName(members_, qsl("AS Sidebar GroupProfile membersButton"));
             connect(members_, &MembersPlate::searchClicked, this, &GroupProfile::searchMembersClicked);
 
-            addToChat_ = addButton(qsl(":/add_groupchat"), addToChatText({}), membersWidget_, membersLayout);
+            addToChat_ = addButton(qsl(":/add_groupchat"), addToChatText({}), membersWidget_, membersLayout, qsl("AS Sidebar GroupProfile addGroupChatButton"));
             connect(addToChat_, &SidebarButton::clicked, this, &GroupProfile::addToChatClicked);
 
-            pendings_ = addButton(qsl(":/pending_icon"), QT_TRANSLATE_NOOP("sidebar", "Waiting for approval"), membersWidget_, membersLayout);
+            pendings_ = addButton(qsl(":/pending_icon"), QT_TRANSLATE_NOOP("sidebar", "Waiting for approval"), membersWidget_, membersLayout, qsl("AS Sidebar GroupProfile WaitingApprovalButton"));
             connect(pendings_, &SidebarButton::clicked, this, &GroupProfile::pendingsClicked);
             connect(&Utils::InterConnector::instance(), &Utils::InterConnector::showPendingMembers, this, &GroupProfile::pendingsClicked);
 
@@ -467,19 +439,20 @@ namespace Ui
             connect(yourInvites_, &SidebarButton::clicked, this, &GroupProfile::yourInvitesClicked);
 
             shortMembersList_ = addMembersWidget(shortChatModel_, delegate_, SHORT_MEMBERS_COUNT, membersWidget_, membersLayout);
+            Testing::setAccessibleName(shortMembersList_, qsl("AS GroupProfile shortMembersList"));
             connect(shortMembersList_, &MembersWidget::selected, this, &GroupProfile::contactSelected);
             connect(shortMembersList_, &MembersWidget::removeClicked, this, &GroupProfile::contactRemoved);
             connect(shortMembersList_, &MembersWidget::moreClicked, this, &GroupProfile::contactMenuRequested);
             if (auto scrollArea = qobject_cast<QScrollArea*>(_parent); scrollArea)
                 shortMembersList_->setScrollArea(scrollArea);
 
-            admins_ = addButton(qsl(":/admins_icon"), QT_TRANSLATE_NOOP("sidebar", "Admins"), membersWidget_, membersLayout);
+            admins_ = addButton(qsl(":/admins_icon"), QT_TRANSLATE_NOOP("sidebar", "Admins"), membersWidget_, membersLayout, qsl("AS GroupProfile adminsList"));
             connect(admins_, &SidebarButton::clicked, this, &GroupProfile::adminsClicked);
 
-            allMembers_ = addButton(qsl(":/members_icon"), QT_TRANSLATE_NOOP("sidebar", "All members"), membersWidget_, membersLayout);
+            allMembers_ = addButton(qsl(":/members_icon"), QT_TRANSLATE_NOOP("sidebar", "All members"), membersWidget_, membersLayout, qsl("AS GroupProfile allMembersList"));
             connect(allMembers_, &SidebarButton::clicked, this, &GroupProfile::allMembersClicked);
 
-            blockedMembers_ = addButton(qsl(":/blocked_users_icon"), QT_TRANSLATE_NOOP("sidebar", "Deleted and blocked"), membersWidget_, membersLayout);
+            blockedMembers_ = addButton(qsl(":/blocked_users_icon"), QT_TRANSLATE_NOOP("sidebar", "Deleted and blocked"), membersWidget_, membersLayout, qsl("AS GroupProfile blockedMembersList"));
             connect(blockedMembers_, &SidebarButton::clicked, this, &GroupProfile::blockedMembersClicked);
 
             layout->addWidget(membersWidget_);
@@ -488,26 +461,26 @@ namespace Ui
         fourthSpacer_ = addSpacer(widget, layout);
 
         {
-            pin_ = addButton(qsl(":/pin_chat_icon"), QT_TRANSLATE_NOOP("sidebar", "Pin"), widget, layout);
+            pin_ = addButton(qsl(":/pin_chat_icon"), QT_TRANSLATE_NOOP("sidebar", "Pin"), widget, layout, qsl("AS Sidebar GroupProfile pinButton"));
             connect(pin_, &SidebarButton::clicked, this, &GroupProfile::pinClicked);
 
-            theme_ = addButton(qsl(":/colors_icon"), QT_TRANSLATE_NOOP("sidebar", "Wallpapers"), widget, layout);
+            theme_ = addButton(qsl(":/colors_icon"), QT_TRANSLATE_NOOP("sidebar", "Wallpapers"), widget, layout, qsl("AS Sidebar GroupProfile wallpapersButton"));
             connect(theme_, &SidebarButton::clicked, this, &GroupProfile::themeClicked);
         }
 
         fifthSpacer_ = addSpacer(widget, layout);
 
         {
-            clearHistory_ = addButton(qsl(":/clear_chat_icon"), QT_TRANSLATE_NOOP("sidebar", "Clear history"), widget, layout);
+            clearHistory_ = addButton(qsl(":/clear_chat_icon"), QT_TRANSLATE_NOOP("sidebar", "Clear history"), widget, layout, qsl("AS Sidebar GroupProfile clearHistoryButton"));
             connect(clearHistory_, &SidebarButton::clicked, this, &GroupProfile::clearHistoryClicked);
 
-            block_ = addButton(qsl(":/ignore_icon"), QT_TRANSLATE_NOOP("sidebar", "Block"), widget, layout);
+            block_ = addButton(qsl(":/ignore_icon"), QT_TRANSLATE_NOOP("sidebar", "Block"), widget, layout, qsl("AS Sidebar GroupProfile blockButton"));
             connect(block_, &SidebarButton::clicked, this, &GroupProfile::blockClicked);
 
-            report_ = addButton(qsl(":/alert_icon"), QT_TRANSLATE_NOOP("sidebar", "Report and block"), widget, layout);
+            report_ = addButton(qsl(":/alert_icon"), QT_TRANSLATE_NOOP("sidebar", "Report and block"), widget, layout, qsl("AS Sidebar GroupProfile reportButton"));
             connect(report_, &SidebarButton::clicked, this, &GroupProfile::reportCliked);
 
-            leave_ = addButton(qsl(":/exit_icon"), QT_TRANSLATE_NOOP("sidebar", "Leave and delete"), widget, layout);
+            leave_ = addButton(qsl(":/exit_icon"), QT_TRANSLATE_NOOP("sidebar", "Leave and delete"), widget, layout, qsl("AS Sidebar GroupProfile leaveButton"));
             connect(leave_, &SidebarButton::clicked, this, &GroupProfile::leaveClicked);
         }
 
@@ -527,7 +500,9 @@ namespace Ui
         layout->setAlignment(Qt::AlignTop);
 
         public_ = addCheckbox(QString(), QT_TRANSLATE_NOOP("groupchats", "Public chat"), widget, layout);
+        Testing::setAccessibleName(public_, qsl("AS Sidebar GroupProfile publicChatCheckbox"));
         connect(public_, &SidebarCheckboxButton::checked, this, &GroupProfile::publicClicked);
+        connect(public_, &SidebarCheckboxButton::checked, this, &GroupProfile::opposePublicTrustRequired);
 
         publicLabel_ = addLabel(QT_TRANSLATE_NOOP("groupchats", "Public group can be found in the search"), widget, layout, Utils::scale_value(SETTINGS_ADD_OFFSET), TextRendering::HorAligment::LEFT, Fading::On);
 
@@ -557,6 +532,7 @@ namespace Ui
             }
 
             makeNewLink_ = addText(QT_TRANSLATE_NOOP("groupchats", "Make new link"), aboutLinkToChatBlock_, aboutLinkToChatLayout, Utils::scale_value(SETTINGS_ADD_OFFSET), -1, Fading::On);
+            Testing::setAccessibleName(makeNewLink_, qsl("AS Sidebar GroupProfile makeNewLink"));
             makeNewLink_->setCursorForText();
             makeNewLink_->setColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
             connect(makeNewLink_, &TextLabel::textClicked, this, &GroupProfile::makeNewLink);
@@ -583,7 +559,26 @@ namespace Ui
             editGroupLinkWidget_->hide();
         }
 
+        if (Features::isRestrictedFilesEnabled())
+        {
+            trustRequired_ = addCheckbox({}, QT_TRANSLATE_NOOP("groupchats", "File access restrictions"), widget, layout);
+            Testing::setAccessibleName(trustRequired_, qsl("AS Sidebar GroupProfile trustCheckbox"));
+
+            trustRequired_->setCheckValidator([this](bool _desiredValue) { return validateTrustRequiredCheck(_desiredValue); });
+
+            connect(trustRequired_, &SidebarCheckboxButton::clicked, this, &GroupProfile::checkApplyButton);
+            connect(trustRequired_, &SidebarCheckboxButton::disabledClicked, this, [this]()
+            {
+                if (chatInfo_ && chatInfo_->trustRequired_)
+                    Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("sidebar", "Cannot be disabled due to security reasons"), Utils::defaultToastVerOffset());
+            });
+            connect(trustRequired_, &SidebarCheckboxButton::checked, this, &GroupProfile::opposePublicTrustRequired);
+
+            trustLabel_ = addLabel(QT_TRANSLATE_NOOP("groupchats", "Restrict file access to trusted devices only\nOnly for private groups\n\nThis option cannot be disabled"), widget, layout, Utils::scale_value(SETTINGS_ADD_OFFSET), TextRendering::HorAligment::LEFT, Fading::On);
+        }
+
         joinModeration_ = addCheckbox(QString(), QT_TRANSLATE_NOOP("groupchats", "Join with Approval"), widget, layout);
+        Testing::setAccessibleName(joinModeration_, qsl("AS Sidebar GroupProfile joinModerationCheckbox"));
         connect(joinModeration_, &SidebarCheckboxButton::checked, this, &GroupProfile::checkApplyButton);
 
         approvalLabel_ = addLabel(QT_TRANSLATE_NOOP("groupchats", "New members are waiting for admin approval"), widget, layout, Utils::scale_value(SETTINGS_ADD_OFFSET), TextRendering::HorAligment::LEFT, Fading::On);
@@ -660,17 +655,19 @@ namespace Ui
 
     void GroupProfile::initTexts()
     {
-        share_->setText(isChannel(chatInfo_) ? QT_TRANSLATE_NOOP("sidebar", "Share channel") : QT_TRANSLATE_NOOP("sidebar", "Share group"));
-        settings_->setText(isChannel(chatInfo_) ? QT_TRANSLATE_NOOP("sidebar", "Channel settings") : QT_TRANSLATE_NOOP("sidebar", "Group settings"));
+        const auto chan = isChannel();
+
+        share_->setText(chan ? QT_TRANSLATE_NOOP("sidebar", "Share channel") : QT_TRANSLATE_NOOP("sidebar", "Share group"));
+        settings_->setText(chan ? QT_TRANSLATE_NOOP("sidebar", "Channel settings") : QT_TRANSLATE_NOOP("sidebar", "Group settings"));
         addToChat_->setText(addToChatText(chatInfo_));
-        public_->setText(isChannel(chatInfo_) ? QT_TRANSLATE_NOOP("groupchats", "Public channel") : QT_TRANSLATE_NOOP("sidebar", "Public group"));
+        public_->setText(chan ? QT_TRANSLATE_NOOP("groupchats", "Public channel") : QT_TRANSLATE_NOOP("sidebar", "Public group"));
         const auto appName = config::get().string(config::values::product_name_full);
         const QString argName = QString::fromUtf8(appName.data(), appName.size());
-        aboutLinkToChat_->setHeaderText(QString(isChannel(chatInfo_) ? QT_TRANSLATE_NOOP("groupchats", "The link will open the channel in %1") : QT_TRANSLATE_NOOP("groupchats", "The link will open the group in %1")).arg(argName));
+        aboutLinkToChat_->setHeaderText(QString(chan ? QT_TRANSLATE_NOOP("groupchats", "The link will open the channel in %1") : QT_TRANSLATE_NOOP("groupchats", "The link will open the group in %1")).arg(argName));
         aboutLinkToChat_->setHeaderLinkColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
-        allMembers_->setText(isChannel(chatInfo_) ? QT_TRANSLATE_NOOP("sidebar", "All subscribers") : QT_TRANSLATE_NOOP("sidebar", "All members"));
-        publicLabel_->setText(isChannel(chatInfo_) ? QT_TRANSLATE_NOOP("groupchats", "The public channel can be found in the search and its link will be available to all members") : QT_TRANSLATE_NOOP("groupchats", "The public group can be found in the search and its link will be available to all members"));
-        approvalLabel_->setText(isChannel(chatInfo_) ? QT_TRANSLATE_NOOP("groupchats", "New subscribers are waiting for admin approval") : QT_TRANSLATE_NOOP("groupchats", "New members are waiting for admin approval"));
+        allMembers_->setText(chan ? QT_TRANSLATE_NOOP("sidebar", "All subscribers") : QT_TRANSLATE_NOOP("sidebar", "All members"));
+        publicLabel_->setText(chan ? QT_TRANSLATE_NOOP("groupchats", "The public channel can be found in the search and its link will be available to all members") : QT_TRANSLATE_NOOP("groupchats", "The public group can be found in the search and its link will be available to all members"));
+        approvalLabel_->setText(chan ? QT_TRANSLATE_NOOP("groupchats", "New subscribers are waiting for admin approval") : QT_TRANSLATE_NOOP("groupchats", "New members are waiting for admin approval"));
     }
 
     QString GroupProfile::pageTitle(int _pageIndex) const
@@ -678,38 +675,19 @@ namespace Ui
         switch (_pageIndex)
         {
         case main:
-            return (QT_TRANSLATE_NOOP("sidebar", "Information"));
+            return QT_TRANSLATE_NOOP("sidebar", "Information");
         case settings:
-            return (isChannel(chatInfo_) ? QT_TRANSLATE_NOOP("sidebar", "Channel settings") : QT_TRANSLATE_NOOP("sidebar", "Group settings"));
+            return isChannel() ? QT_TRANSLATE_NOOP("sidebar", "Channel settings") : QT_TRANSLATE_NOOP("sidebar", "Group settings");
         case list:
-            return (isChannel(chatInfo_) ? QT_TRANSLATE_NOOP("sidebar", "Subscribers") : QT_TRANSLATE_NOOP("sidebar", "Members"));
+            return isChannel() ? QT_TRANSLATE_NOOP("sidebar", "Subscribers") : QT_TRANSLATE_NOOP("sidebar", "Members");
         case gallery:
-            return galleryTitle(currentGalleryPage_);
-        }
-        return QString();
-    }
-
-    QString GroupProfile::galleryTitle(int _pageIndex) const
-    {
-        switch (_pageIndex)
-        {
-        case photo_and_video:
-            return (QT_TRANSLATE_NOOP("sidebar", "Photo and video"));
-        case video:
-            return (QT_TRANSLATE_NOOP("sidebar", "Video"));
-        case files:
-            return (QT_TRANSLATE_NOOP("sidebar", "Files"));
-        case links:
-            return (QT_TRANSLATE_NOOP("sidebar", "Links"));
-        case ptt:
-            return (QT_TRANSLATE_NOOP("sidebar", "Voice messages"));
+            return getGalleryTitle(currentGalleryPage_);
         }
         return QString();
     }
 
     void GroupProfile::updateCloseIcon()
     {
-        const auto headerIconSize = QSize(ICON_SIZE, ICON_SIZE);
         QString iconPath;
         QString tooltipText;
         if (frameCountMode_ == FrameCountMode::_1 || stackedWidget_->currentIndex() != main)
@@ -723,7 +701,7 @@ namespace Ui
             tooltipText = QT_TRANSLATE_NOOP("sidebar", "Close");
         }
 
-        closeButton_->setDefaultImage(iconPath, QColor(), headerIconSize);
+        closeButton_->setDefaultImage(iconPath, QColor(), headerIconSize());
         closeButton_->setCustomToolTip(tooltipText);
         Styling::Buttons::setButtonDefaultColors(closeButton_);
     }
@@ -741,7 +719,7 @@ namespace Ui
         Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
         collection.set_value_as_qstring("aimid", currentAimId_);
 
-        if (currentAimId_.isEmpty() || Logic::getContactListModel()->youAreNotAMember(currentAimId_))
+        if (currentAimId_.isEmpty() || Logic::getContactListModel()->areYouNotAMember(currentAimId_))
         {
             const auto stamp = Logic::getContactListModel()->getChatStamp(currentAimId_);
             if (stamp.isEmpty())
@@ -762,89 +740,44 @@ namespace Ui
 
     void GroupProfile::changeTab(int _tab)
     {
-        titleBar_->setTitle(pageTitle(_tab));
-        switch (_tab)
-        {
-        case main:
-            titleBar_->setArrowVisible(false);
-            break;
+        if (cl_)
+            Q_EMIT cl_->forceSearchClear(true);
 
-        case settings:
-            titleBar_->setArrowVisible(false);
+        titleBar_->setTitle(pageTitle(_tab));
+        titleBar_->setArrowVisible(_tab == gallery && galleryPopup_->itemsCount() > 1);
+
+        if (_tab == settings)
+        {
             editGroupLinkWidget_->setVisible(chatInfo_ && chatInfo_->Public_);
             if (chatInfo_)
                 editGroupLinkWidget_->setNick(chatInfo_->Stamp_);
             editGroupLinkWidget_->clearHint();
             aboutLinkToChatBlock_->setVisible(chatInfo_ && !chatInfo_->Public_);
 
-            public_->blockSignals(true);
-            public_->setChecked(chatInfo_ && chatInfo_->Public_);
-            public_->blockSignals(false);
-
-            joinModeration_->blockSignals(true);
-            joinModeration_->setChecked(chatInfo_ && chatInfo_->ApprovedJoin_);
-            joinModeration_->blockSignals(false);
+            updateSettingsCheckboxes();
 
             applyChatSettings_->setEnabled(false);
-            break;
-
-        case list:
-            titleBar_->setArrowVisible(false);
-            break;
-
-        case gallery:
-            titleBar_->setArrowVisible(true);
-            break;
         }
 
+        const auto prevTab = stackedWidget_->currentIndex();
+
         stackedWidget_->setCurrentIndex(_tab);
-        searchWidget_->setNeedClear(_tab != list);
+        searchWidget_->setNeedClear(prevTab == list && _tab != list);
         searchWidget_->searchCompleted();
 
         updateCloseIcon();
         updateRegim();
 
-        const auto canEdit = isYouAdminOrModer(chatInfo_) || !isChatControlled(chatInfo_);
+        const auto canEdit = Data::ChatInfo::areYouAdminOrModer(chatInfo_) || !Data::ChatInfo::isChatControlled(chatInfo_);
         editButton_->setVisible((_tab == main) && canEdit);
         editButton_->setVisibility((_tab == main) && canEdit);
         area_->ensureVisible(0, 0);
     }
 
-    void GroupProfile::changeGalleryPage(int _page)
+    void GroupProfile::changeGalleryPage(MediaContentType _page)
     {
-        titleBar_->setTitle(galleryTitle(_page));
-        switch (_page)
-        {
-        case photo_and_video:
-            gallery_->setTypes({ qsl("image"), qsl("video") });
-            gallery_->setContentWidget(new ImageVideoList(gallery_, MediaContentWidget::ImageVideo, "Photo+Video"));
-            break;
-
-        case video:
-            gallery_->setType(qsl("video"));
-            gallery_->setContentWidget(new ImageVideoList(gallery_, MediaContentWidget::Video, "Video"));
-            break;
-
-        case files:
-            gallery_->setTypes({ qsl("file"), qsl("audio") });
-            gallery_->setContentWidget(new FilesList(gallery_));
-            break;
-
-        case links:
-            gallery_->setType(qsl("link"));
-            gallery_->setContentWidget(new LinkList(gallery_));
-            break;
-
-        case ptt:
-            gallery_->setType(qsl("ptt"));
-            gallery_->setContentWidget(new PttList(gallery_));
-            break;
-
-        default:
-            im_assert(false);
-        }
-
-        gallery_->initFor(currentAimId_);
+        titleBar_->setTitle(getGalleryTitle(_page));
+        gallery_->openContentFor(currentAimId_, _page);
         currentGalleryPage_ = _page;
 
         emitContentsChanged();
@@ -868,7 +801,7 @@ namespace Ui
                 return;
 
             case blocked:
-                delegate_->setRegim(isYouAdminOrModer(chatInfo_) ? Logic::MembersWidgetRegim::MEMBERS_LIST : Logic::MembersWidgetRegim::CONTACT_LIST);
+                delegate_->setRegim(Data::ChatInfo::areYouAdminOrModer(chatInfo_) ? Logic::MembersWidgetRegim::MEMBERS_LIST : Logic::MembersWidgetRegim::CONTACT_LIST);
                 return;
 
             default:
@@ -876,7 +809,7 @@ namespace Ui
             }
         }
 
-        delegate_->setRegim(isYouAdminOrModer(chatInfo_) ? Logic::MembersWidgetRegim::ADMIN_MEMBERS : Logic::MembersWidgetRegim::CONTACT_LIST);
+        delegate_->setRegim(Data::ChatInfo::areYouAdminOrModer(chatInfo_) ? Logic::MembersWidgetRegim::ADMIN_MEMBERS : Logic::MembersWidgetRegim::CONTACT_LIST);
     }
 
     void GroupProfile::updateChatControls()
@@ -884,7 +817,9 @@ namespace Ui
         if (!chatInfo_)
             return;
 
-        Utils::ScopedPropertyRollback blocker(this, "updatesEnabled", false);
+        std::unique_ptr<Utils::ScopedPropertyRollback> blocker;
+        if (isVisible())
+            blocker = std::make_unique<Utils::ScopedPropertyRollback>(this, "updatesEnabled", false);
 
         const auto chatInCL = Logic::getContactListModel()->hasContact(currentAimId_);
         const auto isIgnored = Logic::getIgnoreModel()->contains(currentAimId_);
@@ -893,8 +828,9 @@ namespace Ui
         const auto youPending = chatInfo_->YouPending_;
         const auto youNotMember = chatInfo_->YourRole_.isEmpty();
         const auto justAMember = !isIgnored && !youBlocked && !youNotMember && !youPending;
-        const auto chatIsChannel = isChannel(chatInfo_);
-        const auto canEdit = isYouAdminOrModer(chatInfo_) || !isChatControlled(chatInfo_);
+        const auto chatIsChannel = isChannel();
+        const auto adminOrModer = Data::ChatInfo::areYouAdminOrModer(chatInfo_);
+        const auto canEdit = adminOrModer || !Data::ChatInfo::isChatControlled(chatInfo_);
 
         const auto makeIcon = [](const auto& _path, const QSize& _iconSize = QSize(BTN_ICON_SIZE, BTN_ICON_SIZE))
         {
@@ -979,8 +915,9 @@ namespace Ui
                 callButton_->show();
         }
 
-        link_->setVisible(chatInfo_->Public_ || isYouAdminOrModer(chatInfo_));
-        if (link_->isVisible())
+        const auto linkVisible = chatInfo_->Public_ || adminOrModer;
+        link_->setVisible(linkVisible);
+        if (linkVisible)
         {
             link_->text_->clearMenuActions();
 
@@ -991,16 +928,13 @@ namespace Ui
         }
 
         setInfoPlaceholderVisible(false);
-        const auto& st = Logic::getContactListModel()->getGalleryState(currentAimId_);
-        dialogGalleryState(currentAimId_, st);
-        if (st.isEmpty())
-            Ui::GetDispatcher()->requestDialogGalleryState(currentAimId_);
+        dialogGalleryState(currentAimId_, Logic::getContactListModel()->getGalleryState(currentAimId_));
 
-        share_->setVisible(chatInfo_->Public_ || isYouAdminOrModer(chatInfo_));
+        share_->setVisible(chatInfo_->Public_ || adminOrModer);
         notifications_->setVisible(chatInCL || (!isIgnored && !youNotMember));
         notifications_->setEnabled(true);
-        settings_->setVisible(isYouAdminOrModer(chatInfo_));
-        membersWidget_->setVisible(justAMember && (!chatIsChannel || isYouAdminOrModer(chatInfo_)));
+        settings_->setVisible(adminOrModer);
+        membersWidget_->setVisible(justAMember && (!chatIsChannel || adminOrModer));
         about_->setHeaderText(chatIsChannel ? QT_TRANSLATE_NOOP("siderbar", "About the channel") : QT_TRANSLATE_NOOP("siderbar", "About the group"));
         about_->setVisible(!chatInfo_->About_.isEmpty());
         rules_->setVisible(!chatInfo_->Rules_.isEmpty());
@@ -1015,7 +949,8 @@ namespace Ui
         editButton_->setVisibility(stackedWidget_->currentIndex() == main && canEdit);
         titleBar_->setTitle(pageTitle(stackedWidget_->currentIndex()));
 
-        blocker.rollback();
+        if (blocker)
+            blocker->rollback();
 
         emitContentsChanged();
     }
@@ -1075,7 +1010,7 @@ namespace Ui
         const auto confirmed = Utils::GetConfirmationWithTwoButtons(
             QT_TRANSLATE_NOOP("popup_window", "Cancel"),
             QT_TRANSLATE_NOOP("popup_window", "Yes"),
-            Utils::getReadOnlyString(action, isChannel(chatInfo_)),
+            Utils::getReadOnlyString(action, isChannel()),
             Logic::GetFriendlyContainer()->getFriendly(_aimId),
             nullptr);
 
@@ -1107,7 +1042,7 @@ namespace Ui
             Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
             collection.set_value_as_qstring("aimid", currentAimId_);
             collection.set_value_as_qstring("contact", aimId);
-            collection.set_value_as_qstring("role", _action == ActionType::POSITIVE ? u"moder" : (isChannel(chatInfo_) ? u"readonly" : u"member"));
+            collection.set_value_as_qstring("role", _action == ActionType::POSITIVE ? u"moder" : (isChannel() ? u"readonly" : u"member"));
             Ui::GetDispatcher()->post_message_to_core("chats/role/set", collection.get());
         }
     }
@@ -1184,21 +1119,21 @@ namespace Ui
         }
 
         link_->setText(Utils::getDomainUrl() % u'/' % chatInfo_->Stamp_, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
-        link_->setVisible(chatInfo_->Public_ || isYouAdminOrModer(chatInfo_));
+        link_->setVisible(chatInfo_->Public_ || Data::ChatInfo::areYouAdminOrModer(chatInfo_));
 
-        share_->setVisible(chatInfo_->Public_ || isYouAdminOrModer(chatInfo_));
+        share_->setVisible(chatInfo_->Public_ || Data::ChatInfo::areYouAdminOrModer(chatInfo_));
 
         members_->setMembersCount(chatInfo_->MembersCount_, chatInfo_->isChannel());
         allMembers_->setCounter(chatInfo_->MembersCount_);
         approveAll_->setCounter(chatInfo_->PendingCount_, false);
 
-        const auto canEdit = isYouAdminOrModer(chatInfo_) || !isChatControlled(chatInfo_);
+        const auto canEdit = Data::ChatInfo::areYouAdminOrModer(chatInfo_) || !Data::ChatInfo::isChatControlled(chatInfo_);
 
-        settings_->setVisible(isYouAdminOrModer(chatInfo_));
+        settings_->setVisible(Data::ChatInfo::areYouAdminOrModer(chatInfo_));
         editButton_->setVisible(canEdit && stackedWidget_->currentIndex() == main);
         editButton_->setVisibility(canEdit && stackedWidget_->currentIndex() == main);
 
-        if (isYouAdminOrModer(chatInfo_))
+        if (Data::ChatInfo::areYouAdminOrModer(chatInfo_))
         {
             pendings_->setCounter(chatInfo_->PendingCount_);
             blockedMembers_->setCounter(chatInfo_->BlockedCount_);
@@ -1209,29 +1144,22 @@ namespace Ui
             blockedMembers_->hide();
         }
 
-        if (Features::isYourInvitesButtonVisible())
+        if (Features::areYourInvitesButtonVisible())
             yourInvites_->setCounter(chatInfo_->YourInvitesCount_);
         else
             yourInvites_->hide();
 
-        if (isChannel(chatInfo_))
+        if (isChannel())
         {
             admins_->setCounter(chatInfo_->AdminsCount_, false);
-            admins_->setVisible(isYouAdminOrModer(chatInfo_));
+            admins_->setVisible(Data::ChatInfo::areYouAdminOrModer(chatInfo_));
         }
         else
         {
             admins_->setCounter(chatInfo_->AdminsCount_);
         }
 
-        auto setCheckedBlocking = [](SidebarCheckboxButton* _checkbox, const bool _isChecked)
-        {
-            QSignalBlocker sb(_checkbox);
-            _checkbox->setChecked(_isChecked);
-        };
-
-        setCheckedBlocking(public_, chatInfo_->Public_);
-        setCheckedBlocking(joinModeration_, chatInfo_->ApprovedJoin_);
+        updateSettingsCheckboxes();
 
         aboutLinkToChat_->setText(Utils::getDomainUrl() % ql1c('/') % chatInfo_->Stamp_);
         editGroupLinkWidget_->setNick(chatInfo_->Stamp_);
@@ -1303,47 +1231,26 @@ namespace Ui
 
         galleryIsEmpty_ = _state.isEmpty();
 
-        galleryPhoto_->setCounter(_state.images_count_ + _state.videos_count);
-        galleryVideo_->setCounter(_state.videos_count);
-        galleryFiles_->setCounter(_state.files_count);
-        galleryLinks_->setCounter(_state.links_count);
-        galleryPtt_->setCounter(_state.ptt_count);
-        galleryPopup_->setCounters(_state.images_count_ + _state.videos_count, _state.videos_count, _state.files_count, _state.links_count, _state.ptt_count);
+        galleryPhoto_->setCounter(countForType(_state, MediaContentType::ImageVideo));
+        galleryVideo_->setCounter(countForType(_state, MediaContentType::Video));
+        galleryFiles_->setCounter(countForType(_state, MediaContentType::Files));
+        galleryLinks_->setCounter(countForType(_state, MediaContentType::Links));
+        galleryPtt_->setCounter(countForType(_state, MediaContentType::Voice));
+        galleryPopup_->setCounters(_state);
 
         updateGalleryVisibility();
 
         if (stackedWidget_->currentIndex() == gallery)
         {
-            switch (currentGalleryPage_)
+            if (countForType(_state, currentGalleryPage_) == 0)
             {
-            case photo_and_video:
-                if (_state.images_count_ + _state.videos_count != 0)
-                    return;
-                break;
-
-            case video:
-                if (_state.videos_count != 0)
-                    return;
-                break;
-
-            case files:
-                if (_state.files_count != 0)
-                    return;
-                break;
-
-            case links:
-                if (_state.links_count != 0)
-                    return;
-                break;
-
-            case ptt:
-                if (_state.ptt_count != 0)
-                    return;
-                break;
+                closeGallery();
+                changeTab(main);
             }
-
-            closeGallery();
-            changeTab(main);
+            else
+            {
+                titleBar_->setArrowVisible(galleryPopup_->itemsCount() > 1);
+            }
         }
     }
 
@@ -1411,37 +1318,27 @@ namespace Ui
 
     void GroupProfile::galleryPhotoClicked()
     {
-        galleryPopup_->hide();
-        changeTab(gallery);
-        changeGalleryPage(photo_and_video);
+        switchToGallery(MediaContentType::ImageVideo);
     }
 
     void GroupProfile::galleryVideoClicked()
     {
-        galleryPopup_->hide();
-        changeTab(gallery);
-        changeGalleryPage(video);
+        switchToGallery(MediaContentType::Video);
     }
 
     void GroupProfile::galleryFilesClicked()
     {
-        galleryPopup_->hide();
-        changeTab(gallery);
-        changeGalleryPage(files);
+        switchToGallery(MediaContentType::Files);
     }
 
     void GroupProfile::galleryLinksClicked()
     {
-        galleryPopup_->hide();
-        changeTab(gallery);
-        changeGalleryPage(links);
+        switchToGallery(MediaContentType::Links);
     }
 
     void GroupProfile::galleryPttClicked()
     {
-        galleryPopup_->hide();
-        changeTab(gallery);
-        changeGalleryPage(ptt);
+        switchToGallery(MediaContentType::Voice);
     }
 
     void GroupProfile::searchMembersClicked()
@@ -1501,7 +1398,7 @@ namespace Ui
     {
         currentListPage_ = all;
         changeTab(list);
-        titleBar_->setTitle(isChannel(chatInfo_) ? QT_TRANSLATE_NOOP("sidebar", "Subscribers") : QT_TRANSLATE_NOOP("sidebar", "Members"));
+        titleBar_->setTitle(isChannel() ? QT_TRANSLATE_NOOP("sidebar", "Subscribers") : QT_TRANSLATE_NOOP("sidebar", "Members"));
         listChatModel_->loadAllMembers();
         approveAll_->hide();
         searchWidget_->setFocus();
@@ -1547,7 +1444,7 @@ namespace Ui
         const auto confirmed = Utils::GetConfirmationWithTwoButtons(
             QT_TRANSLATE_NOOP("popup_window", "Cancel"),
             QT_TRANSLATE_NOOP("popup_window", "Yes"),
-            isChannel(chatInfo_) ? QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to clear history?") : QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to erase chat history?"),
+            isChannel() ? QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to clear history?") : QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to erase chat history?"),
             Logic::GetFriendlyContainer()->getFriendly(currentAimId_),
             nullptr);
 
@@ -1586,7 +1483,7 @@ namespace Ui
     {
         closeGallery();
 
-        const auto text = isChannel(chatInfo_)
+        const auto text = isChannel()
             ? QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to erase history and leave channel?")
             : QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to erase history and leave chat?");
 
@@ -1610,7 +1507,7 @@ namespace Ui
             return;
 
         copy(u"https://" % Utils::getDomainUrl() % u'/' % chatInfo_->Stamp_);
-        Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("sidebar", "Link copied"), Utils::scale_value(TOAST_OFFSET));
+        Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("sidebar", "Link copied"), Utils::defaultToastVerOffset());
         Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profilescr_groupurl_action, { { "chat_type", Utils::chatTypeByAimId(currentAimId_) }, { "do", "copy_url" } });
     }
 
@@ -1620,7 +1517,7 @@ namespace Ui
             return;
 
         copy(u"https://" % aboutLinkToChat_->text_->getText());
-        Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("sidebar", "Link copied"), Utils::scale_value(TOAST_OFFSET));
+        Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("sidebar", "Link copied"), Utils::defaultToastVerOffset());
     }
 
     void GroupProfile::linkCopy()
@@ -1629,7 +1526,7 @@ namespace Ui
             return;
 
         copy(u"https://" % Utils::getDomainUrl() % u'/' % chatInfo_->Stamp_);
-        Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("sidebar", "Link copied"), Utils::scale_value(TOAST_OFFSET));
+        Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("sidebar", "Link copied"), Utils::defaultToastVerOffset());
         Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profilescr_groupurl_action, { { "chat_type", Utils::chatTypeByAimId(currentAimId_) }, { "do", "copy_url" } });
     }
 
@@ -1677,7 +1574,7 @@ namespace Ui
 
         if (Utils::getDomainUrl() % ql1c('/') % chatInfo_->Stamp_ == aboutLinkToChat_->text_->getText())
         {
-            const QString text = isChannel(chatInfo_) ? QT_TRANSLATE_NOOP("popup_window", "If you generate a new link to the channel the old one will stop working") : QT_TRANSLATE_NOOP("popup_window", "If you generate a new link to the group the old one will stop working");
+            const QString text = isChannel() ? QT_TRANSLATE_NOOP("popup_window", "If you generate a new link to the channel the old one will stop working") : QT_TRANSLATE_NOOP("popup_window", "If you generate a new link to the group the old one will stop working");
             auto confirm = Utils::GetConfirmationWithTwoButtons(
                 QT_TRANSLATE_NOOP("popup_window", "Cancel"),
                 QT_TRANSLATE_NOOP("popup_window", "Generate"),
@@ -1706,7 +1603,7 @@ namespace Ui
     void GroupProfile::contactRemoved(const QString& _aimid)
     {
         const auto isList = stackedWidget_->currentIndex() == list;
-        if (isYouAdminOrModer(chatInfo_))
+        if (Data::ChatInfo::areYouAdminOrModer(chatInfo_))
         {
             const auto action = (isList && currentListPage_ == blocked) ? ActionType::NEGATIVE : ActionType::POSITIVE;
             blockUser(_aimid, action);
@@ -1736,7 +1633,7 @@ namespace Ui
             else
             {
                 const auto role = model->getMemberItem(_aimid)->getRole();
-                if (role != u"admin" && isYouAdmin(chatInfo_))
+                if (role != u"admin" && Data::ChatInfo::areYouAdmin(chatInfo_))
                 {
                     if (role == u"moder")
                         menu->addActionWithIcon(
@@ -1755,7 +1652,7 @@ namespace Ui
                     QT_TRANSLATE_NOOP("sidebar", "Profile"),
                     makeData(qsl("profile"), _aimid));
 
-                if (isYouAdminOrModer(chatInfo_))
+                if (Data::ChatInfo::areYouAdminOrModer(chatInfo_))
                 {
                     if (role == u"member")
                         menu->addActionWithIcon(
@@ -1785,7 +1682,7 @@ namespace Ui
                 }
             }
         }
-        menu->invertRight(true);
+        menu->showAtLeft(true);
         connect(menu, &ContextMenu::triggered, this, &GroupProfile::memberMenu, Qt::QueuedConnection);
         connect(menu, &ContextMenu::triggered, menu, &ContextMenu::deleteLater, Qt::QueuedConnection);
         connect(menu, &ContextMenu::aboutToHide, menu, &ContextMenu::deleteLater, Qt::QueuedConnection);
@@ -1938,7 +1835,7 @@ namespace Ui
         {
             const auto text = params[qsl("text")].toString();
             copy(text);
-            Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("toast", "Copied to clipboard"), Utils::scale_value(TOAST_OFFSET));
+            Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("toast", "Copied to clipboard"), Utils::defaultToastVerOffset());
         }
     }
 
@@ -1961,6 +1858,10 @@ namespace Ui
 
             case blocked:
                 listChatModel_->loadBlocked();
+                break;
+
+            case admins:
+                listChatModel_->loadAdmins();
                 break;
 
             case invites:
@@ -1990,10 +1891,21 @@ namespace Ui
         updateMuteState();
     }
 
+    void GroupProfile::onRoleChanged(const QString& _aimId)
+    {
+        if (!isActive() || currentAimId_ != _aimId)
+            return;
+
+        if (stackedWidget_->currentIndex() == gallery)
+        {
+            closeGallery();
+            changeTab(main);
+        }
+    }
+
     void GroupProfile::updateMuteState()
     {
-        QSignalBlocker b(notifications_);
-        notifications_->setChecked(!Logic::getContactListModel()->isMuted(currentAimId_));
+        setCheckedBlocking(notifications_, !Logic::getContactListModel()->isMuted(currentAimId_));
     }
 
     void GroupProfile::avatarClicked()
@@ -2004,7 +1916,7 @@ namespace Ui
 
     void GroupProfile::titleArrowClicked()
     {
-        galleryPopup_->move(mapToGlobal(QPoint(Utils::scale_value(POPUP_HOR_OFFSET), Utils::scale_value(POPUP_VER_OFFSET))));
+        galleryPopup_->move(mapToGlobal({ GalleryPopup::horOffset(), GalleryPopup::verOffset() }));
         galleryPopup_->show();
     }
 
@@ -2013,21 +1925,14 @@ namespace Ui
         if (!chatInfo_)
             return;
 
-        bool somethingChanged = false;
-
         Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-        collection.set_value_as_qstring("aimid", currentAimId_);
         if (public_->isChecked() != chatInfo_->Public_)
-        {
             collection.set_value_as_bool("public", public_->isChecked());
-            somethingChanged = true;
-        }
 
         if (chatInfo_->Stamp_ != editGroupLinkWidget_->getNick() && !invalidNick_)
         {
             auto nick = editGroupLinkWidget_->getNick();
             collection.set_value_as_qstring("stamp", nick);
-            somethingChanged = true;
 
             aboutLinkToChat_->setText(Utils::getDomainUrl() % ql1c('/') % nick);
 
@@ -2035,15 +1940,18 @@ namespace Ui
         }
 
         if (joinModeration_->isChecked() != chatInfo_->ApprovedJoin_)
-        {
             collection.set_value_as_bool("approved", joinModeration_->isChecked());
-            somethingChanged = true;
+
+        if (trustRequired_ && trustRequired_->isChecked() != chatInfo_->trustRequired_)
+            collection.set_value_as_bool("trustRequired", trustRequired_->isChecked());
+
+        if (!collection->empty())
+        {
+            collection.set_value_as_qstring("aimid", currentAimId_);
+            GetDispatcher()->post_message_to_core("chats/mod/params", collection.get());
         }
 
-        if (somethingChanged)
-            Ui::GetDispatcher()->post_message_to_core("chats/mod/params", collection.get());
-
-        Utils::InterConnector::instance().setFocusOnInput();
+        Q_EMIT Utils::InterConnector::instance().setFocusOnInput(currentAimId_);
 
         editGroupLinkWidget_->clearHint();
     }
@@ -2056,41 +1964,24 @@ namespace Ui
         editGroupLinkWidget_->setVisible(public_->isChecked());
         aboutLinkToChatBlock_->setVisible(!public_->isChecked());
 
-        if (invalidNick_)
+        const auto paramsChanged =
+            public_->isChecked() != chatInfo_->Public_ ||
+            chatInfo_->Stamp_ != editGroupLinkWidget_->getNick() ||
+            joinModeration_->isChecked() != chatInfo_->ApprovedJoin_ ||
+            (trustRequired_ && trustRequired_->isChecked() != chatInfo_->trustRequired_);
+
+        applyChatSettings_->setEnabled(!invalidNick_ && paramsChanged);
+
+        if (invalidNick_ || !paramsChanged)
         {
             aboutLinkToChat_->setTextLinkColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
             aboutLinkToChat_->text_->setCursorForText();
-            applyChatSettings_->setEnabled(false);
-            return;
         }
-
-        if (public_->isChecked() != chatInfo_->Public_)
+        else
         {
             aboutLinkToChat_->setTextLinkColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
             aboutLinkToChat_->text_->unsetCursorForText();
-            applyChatSettings_->setEnabled(true);
-            return;
         }
-
-        if (chatInfo_->Stamp_ != editGroupLinkWidget_->getNick())
-        {
-            aboutLinkToChat_->setTextLinkColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
-            aboutLinkToChat_->text_->unsetCursorForText();
-            applyChatSettings_->setEnabled(true);
-            return;
-        }
-
-        if (joinModeration_->isChecked() != chatInfo_->ApprovedJoin_)
-        {
-            aboutLinkToChat_->setTextLinkColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
-            aboutLinkToChat_->text_->unsetCursorForText();
-            applyChatSettings_->setEnabled(true);
-            return;
-        }
-
-        aboutLinkToChat_->setTextLinkColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
-        aboutLinkToChat_->text_->setCursorForText();
-        applyChatSettings_->setEnabled(false);
     }
 
     void GroupProfile::publicClicked()
@@ -2102,10 +1993,10 @@ namespace Ui
         {
             if (chatInfo_->Public_)
             {
-                const auto text = isChannel(chatInfo_)
+                const auto text = isChannel()
                                   ? QT_TRANSLATE_NOOP("popup_window", "If you change the channel type to private, the channel link will change and the old one will stop working")
                                   : QT_TRANSLATE_NOOP("popup_window", "If you change the group type to private, the group link will change and the old one will stop working");
-                const auto confText = isChannel(chatInfo_) ? QT_TRANSLATE_NOOP("popup_window", "Make private channel") : QT_TRANSLATE_NOOP("popup_window", "Make private");
+                const auto confText = isChannel() ? QT_TRANSLATE_NOOP("popup_window", "Make private channel") : QT_TRANSLATE_NOOP("popup_window", "Make private");
                 const auto confirm = Utils::GetConfirmationWithTwoButtons(
                     QT_TRANSLATE_NOOP("popup_window", "Cancel"),
                     confText,
@@ -2115,8 +2006,7 @@ namespace Ui
 
                 if (!confirm)
                 {
-                    QSignalBlocker sb(public_);
-                    public_->setChecked(true);
+                    setCheckedBlocking(public_, true);
                     return;
                 }
 
@@ -2146,12 +2036,32 @@ namespace Ui
         checkApplyButton();
     }
 
+    void GroupProfile::opposePublicTrustRequired()
+    {
+        if (!chatInfo_ || !trustRequired_)
+            return;
+
+        const auto turnedOnPublic = public_->isChecked() && !chatInfo_->Public_;
+        const auto turnedOnTrustReq = trustRequired_->isChecked() && !chatInfo_->trustRequired_;
+
+        if (turnedOnPublic != turnedOnTrustReq)
+            return;
+
+        if (sender() == public_)
+            trustRequired_->setChecked(false);
+        else
+            public_->setChecked(false);
+    }
+
     void GroupProfile::hideControls()
     {
         setInfoPlaceholderVisible(true);
 
+        {
+            QSignalBlocker b(notifications_);
+            notifications_->setChecked(false);
+        }
         notifications_->setEnabled(false);
-        notifications_->setChecked(false);
 
         mainActionButton_->setVisible(false);
         callButton_->setVisible(false);
@@ -2183,6 +2093,30 @@ namespace Ui
             listChatModel_->setSearchPattern(searchWidget_->getText());
     }
 
+    void GroupProfile::switchToGallery(MediaContentType _type)
+    {
+        galleryPopup_->hide();
+        changeGalleryPage(_type);
+        changeTab(gallery);
+    }
+
+    bool GroupProfile::validateTrustRequiredCheck(bool _desiredValue)
+    {
+        if (_desiredValue)
+        {
+            const auto warn = Emoji::EmojiCode::toQString(Emoji::EmojiCode(0x26a0));
+            const auto text = QT_TRANSLATE_NOOP("popup_window", "Opening or downloading files will be possible from trusted device only\n\n%1 It will be impossible to disable this setting!");
+            return Utils::GetConfirmationWithTwoButtons(
+                QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+                QT_TRANSLATE_NOOP("popup_window", "OK"),
+                text.arg(warn),
+                QT_TRANSLATE_NOOP("popup_window", "File access will be restricted"),
+                nullptr);
+        }
+
+        return _desiredValue;
+    }
+
     void GroupProfile::setInfoPlaceholderVisible(bool _isVisible)
     {
         info_->setEnabled(!_isVisible);
@@ -2207,8 +2141,31 @@ namespace Ui
             const auto visible = !galleryIsEmpty_ && !notAMember;
             galleryWidget_->setVisible(visible);
             thirdSpacer_->setVisible(visible);
-            fourthSpacer_->setVisible(Logic::getIgnoreModel()->contains(currentAimId_) && !chatInfo_->YouBlocked_ && !notAMember && (!isChannel(chatInfo_) || isYouAdminOrModer(chatInfo_)));
+            fourthSpacer_->setVisible(Logic::getIgnoreModel()->contains(currentAimId_) && !chatInfo_->YouBlocked_ && !notAMember && (!isChannel() || Data::ChatInfo::areYouAdminOrModer(chatInfo_)));
         }
+    }
+
+    void GroupProfile::updateSettingsCheckboxes()
+    {
+        const auto isPublic = chatInfo_ && chatInfo_->Public_;
+        const auto isTrustRequired = chatInfo_ && chatInfo_->trustRequired_;
+
+        setCheckedBlocking(public_, isPublic);
+        setCheckedBlocking(joinModeration_, chatInfo_ && chatInfo_->ApprovedJoin_);
+        setCheckedBlocking(trustRequired_, isTrustRequired);
+
+        setCheckboxEnabled(public_, !isTrustRequired);
+        setCheckboxEnabled(trustRequired_, !isPublic && !isTrustRequired);
+    }
+
+    bool GroupProfile::isThread() const
+    {
+        return Logic::getContactListModel()->isThread(currentAimId_);
+    }
+
+    bool GroupProfile::isChannel() const
+    {
+        return Data::ChatInfo::isChannel(chatInfo_);
     }
 
     QString GroupProfile::getSelectedText() const
@@ -2224,5 +2181,13 @@ namespace Ui
         rules_->text_->tryClearSelection(pos);
 
         QWidget::mousePressEvent(_event);
+    }
+
+    void GroupProfile::showEvent(QShowEvent* _event)
+    {
+        if (searchWidget_ && stackedWidget_ && stackedWidget_->currentIndex() == list)
+            searchWidget_->setFocus();
+
+        SidebarPage::showEvent(_event);
     }
 }

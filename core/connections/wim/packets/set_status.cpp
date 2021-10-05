@@ -4,7 +4,7 @@
 
 #include "../../../http_request.h"
 #include "../../../tools/system.h"
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 
 namespace
 {

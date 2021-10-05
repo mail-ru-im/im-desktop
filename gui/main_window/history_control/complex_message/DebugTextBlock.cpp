@@ -26,7 +26,7 @@ void DebugTextBlock::setMessageId(qint64 _id)
     id_ = _id;
 }
 
-Data::FormattedString DebugTextBlock::getSourceText() const
+Data::FString DebugTextBlock::getSourceText() const
 {
     return {};
 }
@@ -46,14 +46,9 @@ Data::Quote DebugTextBlock::getQuote() const
     return Data::Quote();
 }
 
-Data::FormattedString DebugTextBlock::getSelectedText(const bool _isFullSelect, const TextDestination) const
+Data::FString DebugTextBlock::getSelectedText(const bool _isFullSelect, const TextDestination) const
 {
     return TextBlock::getSelectedText(_isFullSelect);
-}
-
-bool DebugTextBlock::updateFriendly(const QString&/* _aimId*/, const QString&/* _friendly*/)
-{
-    return false;
 }
 
 UI_COMPLEX_MESSAGE_NS_END

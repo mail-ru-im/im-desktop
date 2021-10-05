@@ -3,6 +3,7 @@
 #include "VideoPanel.h"
 #include "CommonUI.h"
 #include "VoipProxy.h"
+#include "ScreenFrame.h"
 #include "media/permissions/MediaCapturePermissions.h"
 
 namespace voip_manager
@@ -52,6 +53,7 @@ namespace Ui
         void onVoipMediaLocalAudio(bool _enabled);
         void onVoipMediaLocalVideo(bool _enabled);
         void onShareScreen();
+        void onShareScreenStateChanged(ScreenSharingManager::SharingState _state, int _screenIndex);
         void onVoipVideoDeviceSelected(const voip_proxy::device_desc& _desc);
 
     public:

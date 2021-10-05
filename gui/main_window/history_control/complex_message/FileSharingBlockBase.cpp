@@ -2,20 +2,22 @@
 
 #include "../../../../corelib/enumerations.h"
 #include "../../../../common.shared/loader_errors.h"
+#include "../../../../gui.shared/constants.h"
 
 #include "../../../core_dispatcher.h"
 #include "../../../gui_settings.h"
 #include "../../../utils/log/log.h"
 #include "../../../utils/utils.h"
+#include "../../../utils/features.h"
 #include "previewer/toast.h"
 #include "utils/medialoader.h"
 
 #include "../FileSizeFormatter.h"
 #include "../MessageStyle.h"
 #include "../HistoryControlPage.h"
-
-
+#include "main_window/history_control/FileStatus.h"
 #include "../../mediatype.h"
+#include "../../contact_list/ContactListModel.h"
 
 #include "IFileSharingBlockLayout.h"
 #include "FileSharingUtils.h"
@@ -51,11 +53,12 @@ FileSharingBlockBase::FileSharingBlockBase(
     , IsSelected_(false)
     , Layout_(nullptr)
     , Link_(Utils::normalizeLink(_link).toString())
+    , fileId_(extractIdFromFileSharingUri(getLink()))
     , PreviewMetaRequestId_(-1)
     , Type_(std::make_unique<core::file_sharing_content_type>(_type))
     , inited_(false)
     , loadedFromLocal_(false)
-    , dataTransferTimeout_(nullptr)
+    , status_(FileStatus::NoStatus)
 {
     Testing::setAccessibleName(this, u"AS HistoryPage messageFileSharing " % QString::number(_parent->getId()));
 }
@@ -148,14 +151,21 @@ QString FileSharingBlockBase::getProgressText() const
     return ::HistoryControl::formatProgressText(Meta_.size_, BytesTransferred_);
 }
 
-Data::FormattedString FileSharingBlockBase::getSourceText() const
+Data::FString FileSharingBlockBase::getSourceText() const
 {
     if (Link_.isEmpty())
-        return Data::FormattedString(Link_);
+        return Data::FString(Link_);
 
     const auto mediaType = getPlaceholderFormatText();
     const auto id = getFileSharingId();
-    return QString(u'[' % mediaType % u": " % id % u']');
+    const auto idText = isBlockedFileSharing() ? filesharingPlaceholder().toString() : id.fileId;
+    const auto source = (isBlockedFileSharing() || !id.sourceId) ? QString() : (u"?source=" % *id.sourceId);
+    return QString(u'[' % mediaType % u": " % idText % source % u']');
+}
+
+Data::FString FileSharingBlockBase::getTextInstantEdit() const
+{
+    return Data::FString(Link_);
 }
 
 QString FileSharingBlockBase::getPlaceholderText() const
@@ -163,7 +173,7 @@ QString FileSharingBlockBase::getPlaceholderText() const
     return u'[' % QT_TRANSLATE_NOOP("placeholders", "Failed to download file or media") % u']';
 }
 
-Data::FormattedString FileSharingBlockBase::getSelectedText(const bool, const TextDestination) const
+Data::FString FileSharingBlockBase::getSelectedText(const bool, const TextDestination) const
 {
     if (IsSelected_)
         return getSourceText();
@@ -216,9 +226,9 @@ IFileSharingBlockLayout* FileSharingBlockBase::getFileSharingLayout() const
     return Layout_;
 }
 
-QString FileSharingBlockBase::getFileSharingId() const
+const Utils::FileSharingId& FileSharingBlockBase::getFileSharingId() const
 {
-    return extractIdFromFileSharingUri(getLink());
+    return fileId_;
 }
 
 int64_t FileSharingBlockBase::getFileSize() const
@@ -298,6 +308,29 @@ Data::FilesPlaceholderMap FileSharingBlockBase::getFilePlaceholders()
     return files;
 }
 
+bool FileSharingBlockBase::isDownloadAllowed() const
+{
+    return !isPlainFile() || !isFileSharingWithStatus() || (isBlockedFileSharing() && MyInfo()->isTrusted());
+}
+
+bool FileSharingBlockBase::isBlockedFileSharing() const
+{
+    return status_ == FileStatus::Blocked;
+}
+
+bool FileSharingBlockBase::isFileSharingWithStatus() const
+{
+    return status_ != FileStatus::NoStatus;
+}
+
+bool FileSharingBlockBase::isDraggable() const
+{
+    if (isPlainFile())
+        return !Logic::getContactListModel()->isTrustRequired(getChatAimid());
+
+    return GenericBlock::isDraggable();
+}
+
 bool FileSharingBlockBase::isPlainFile() const
 {
     return !isPreviewable();
@@ -333,7 +366,7 @@ void FileSharingBlockBase::showFileInDir(const Utils::OpenAt _inFolder)
             return onMenuSaveFileAs();
     }
 
-    Utils::openFileOrFolder(getFileLocalPath(), _inFolder);
+    Utils::openFileOrFolder(getChatAimid(), getFileLocalPath(), _inFolder);
 }
 
 void FileSharingBlockBase::onMenuCopyFile()
@@ -341,31 +374,21 @@ void FileSharingBlockBase::onMenuCopyFile()
     if (QFile::exists(getFileLocalPath()))
     {
         Utils::copyFileToClipboard(getFileLocalPath());
-        showFileCopiedToast();
-        return;
+        Utils::showCopiedToast();
     }
-
-    CopyFile_ = true;
-
-    if (isFileDownloading())
+    else if (isBlockedFileSharing() && !MyInfo()->isTrusted())
     {
-        return;
+        showFileStatusToast(status_);
     }
-
-    QUrl urlParser(getLink());
-
-    auto filename = urlParser.fileName();
-    if (filename.isEmpty())
+    else
     {
-        static const QRegularExpression re(
-            qsl("[{}-]"),
-            QRegularExpression::UseUnicodePropertiesOption);
+        CopyFile_ = true;
 
-        filename = QUuid::createUuid().toString();
-        filename.remove(re);
+        if (isFileDownloading())
+            return;
+
+        startDownloading(true);
     }
-
-    startDownloading(true);
 }
 
 void FileSharingBlockBase::onMenuSaveFileAs()
@@ -398,14 +421,21 @@ void FileSharingBlockBase::onMenuSaveFileAs()
     });
 }
 
-void FileSharingBlockBase::requestMetainfo(const bool _isPreview)
+void FileSharingBlockBase::requestMetainfo(const bool _isPreview, const MetainfoCache _cache)
 {
     if (loadedFromLocal_)
         return;
 
     const auto& link = getLink();
     const auto id = extractIdFromFileSharingUri(link);
-    if (auto page = Utils::InterConnector::instance().getHistoryPage(getChatAimid()))
+    if (id.fileId == filesharingPlaceholder())
+    {
+        if (!Features::isRestrictedFilesEnabled())
+            getParentComplexMessage()->replaceBlockWithSourceText(this, ReplaceReason::NoMeta);
+        return;
+    }
+
+    if (auto page = Utils::InterConnector::instance().getHistoryPage(getChatAimid()); _cache == MetainfoCache::Check && page)
     {
         auto meta = page->getMeta(id);
         if (meta)
@@ -429,9 +459,9 @@ void FileSharingBlockBase::requestMetainfo(const bool _isPreview)
     if (_isPreview)
     {
         auto origMaxSize = -1;
-        if (!id.isEmpty())
+        if (!id.fileId.isEmpty())
         {
-            if (const auto originalSize = extractSizeFromFileSharingId(id); !originalSize.isEmpty())
+            if (const auto originalSize = extractSizeFromFileSharingId(id.fileId); !originalSize.isEmpty())
                 origMaxSize = Utils::scale_bitmap(std::max(originalSize.width(), originalSize.height()));
         }
 
@@ -453,7 +483,7 @@ void FileSharingBlockBase::requestMetainfo(const bool _isPreview)
             "prefetch",
             "initiated file sharing preview metadata downloading\n"
             "    contact=<" << getSenderAimid() << ">\n"
-            "    fsid=<" << getFileSharingId() << ">\n"
+            "    fsid=<" << getFileSharingId().fileId << ">\n"
             "    request_id=<" << requestId << ">");
 
         return;
@@ -485,17 +515,41 @@ void FileSharingBlockBase::setSelected(const bool _isSelected)
 
 void FileSharingBlockBase::startDownloading(const bool _sendStats, const bool _forceRequestMetainfo, bool _highPriority)
 {
+    if (!isDownloadAllowed())
+    {
+        showFileStatusToast(status_);
+        return;
+    }
+
     im_assert(!isFileDownloading());
 
-    if (_sendStats)
-        GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::filesharing_download_file);
+    auto downloading = [guard = QPointer(this), _sendStats, _forceRequestMetainfo, _highPriority]()
+    {
+        if (!guard)
+            return;
 
-    DownloadRequestId_ = GetDispatcher()->downloadSharedFile(
-        getChatAimid(),
-        getLink(),
-        _forceRequestMetainfo,
-        SaveAs_, //QString(), // don't loose user's 'save as' path
-        _highPriority);
+        if (_sendStats)
+            GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::filesharing_download_file);
+
+        guard->DownloadRequestId_ = GetDispatcher()->downloadSharedFile(
+            guard->getChatAimid(),
+            guard->getLink(),
+            _forceRequestMetainfo,
+            guard->SaveAs_, //QString(), // don't loose user's 'save as' path
+            _highPriority);
+    };
+
+    if (FileMetaRequestId_ == -1 && Meta_.size_ != -1  && !Meta_.downloadUri_.isEmpty())
+    {
+        downloading();
+        delayedCallDownloading_ = {};
+    }
+    else
+    {
+        delayedCallDownloading_ = std::move(downloading);
+        if (isBlockedFileSharing() && Meta_.downloadUri_.isEmpty())
+            requestMetainfo(false);
+    }
 
     startDataTransferTimeoutTimer();
 
@@ -521,6 +575,8 @@ void FileSharingBlockBase::stopDataTransfer()
     uploadId_.clear();
 
     BytesTransferred_ = -1;
+
+    delayedCallDownloading_ = {};
 
     onDataTransferStopped();
 }
@@ -580,7 +636,7 @@ bool FileSharingBlockBase::isInited() const
     return inited_;
 }
 
-std::optional<Data::FileSharingMeta> FileSharingBlockBase::getMeta(const QString& _id) const
+std::optional<Data::FileSharingMeta> FileSharingBlockBase::getMeta(const Utils::FileSharingId& _id) const
 {
     if (_id == getFileSharingId())
     {
@@ -660,7 +716,7 @@ void FileSharingBlockBase::startDataTransferTimeoutTimer()
         connect(dataTransferTimeout_, &QTimer::timeout, this, [this]()
         {
             // emulate 1% of transferred data for the spinner
-            onDataTransfer(1, 100);
+            onDataTransfer(1, 100, false);
         });
     }
 
@@ -700,7 +756,7 @@ void FileSharingBlockBase::onFileDownloaded(qint64 _seq, const Data::FileSharing
     {
         CopyFile_ = false;
         Utils::copyFileToClipboard(_result.filename_);
-        showFileCopiedToast();
+        Utils::showCopiedToast();
 
         return;
     }
@@ -708,7 +764,7 @@ void FileSharingBlockBase::onFileDownloaded(qint64 _seq, const Data::FileSharing
     onDownloadedAction();
 
     if (isDownload(_result) && isPlainFile() && !isPtt())
-        Utils::showDownloadToast(_result);
+        Utils::showDownloadToast(getChatAimid(), _result);
 }
 
 void FileSharingBlockBase::onFileDownloading(qint64 _seq, QString /*_rawUri*/, qint64 _bytesTransferred, qint64 _bytesTotal)
@@ -730,29 +786,19 @@ void FileSharingBlockBase::onFileMetainfoDownloaded(qint64 _seq, const Data::Fil
     if (FileMetaRequestId_ != _seq)
         return;
 
-    auto miniPreview = Meta_.miniPreviewUri_;
-    auto fullPreview = Meta_.fullPreviewUri_;
-    auto preview = Meta_.preview_;
-
-    Meta_ = _meta;
-
-    if (Meta_.miniPreviewUri_.isEmpty())
-        Meta_.miniPreviewUri_ = miniPreview;
-
-    if (Meta_.fullPreviewUri_.isEmpty())
-        Meta_.fullPreviewUri_ = fullPreview;
-
-    if (Meta_.preview_.isNull())
-        Meta_.preview_ = preview;
+    Meta_.mergeWith(_meta);
 
     FileMetaRequestId_ = -1;
 
     onMetainfoDownloaded();
 
     notifyBlockContentsChanged();
+
+    if (delayedCallDownloading_)
+        delayedCallDownloading_();
 }
 
-void FileSharingBlockBase::onFileSharingError(qint64 _seq, QString /*_rawUri*/, qint32 _errorCode)
+void FileSharingBlockBase::onFileSharingError(qint64 _seq, QString _rawUri, qint32 _errorCode)
 {
     im_assert(_seq > 0);
 
@@ -824,6 +870,7 @@ void FileSharingBlockBase::fileSharingUploadingResult(const QString& _seq, bool 
 
     loadedFromLocal_ = false;
     Link_ = _uri;
+    fileId_ = extractIdFromFileSharingUri(getLink());
     setFileName(QFileInfo(localPath).fileName());
     setSourceText(_uri);
     uploadId_.clear();
@@ -835,6 +882,23 @@ void FileSharingBlockBase::fileSharingUploadingResult(const QString& _seq, bool 
     onFileDownloaded(DownloadRequestId_, result);
 
     Q_EMIT uploaded(QPrivateSignal());
+}
+
+bool FileSharingBlockBase::onMenuItemTriggered(const QVariantMap& _params)
+{
+    const auto command = _params[qsl("command")].toString();
+    if (command == u"dev:copy_fs_id")
+    {
+        QApplication::clipboard()->setText(getFileSharingId().fileId);
+        showToast(QT_TRANSLATE_NOOP("chat_page", "Filesharing Id copied to clipboard"));
+    }
+    else if (command == u"dev:copy_fs_link")
+    {
+        QApplication::clipboard()->setText(getLink());
+        showToast(QT_TRANSLATE_NOOP("chat_page", "Filesharing link copied to clipboard"));
+    }
+
+    return GenericBlock::onMenuItemTriggered(_params);
 }
 
 IItemBlock::MenuFlags FileSharingBlockBase::getMenuFlags(QPoint _p) const

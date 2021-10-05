@@ -66,9 +66,8 @@ namespace core
 
         void report_sender::insert_imstat_event()
         {
-            boost::system::error_code e;
-            auto last_modified = boost::filesystem::last_write_time(utils::get_report_path(), e);
-            auto crash_interval = std::min<time_t>(core::stats::round_to_hours(std::time(nullptr) - last_modified), max_crash_stat_interval);
+            const auto last_modified = tools::system::get_file_lastmodified(utils::get_report_path());
+            const auto crash_interval = std::min<time_t>(core::stats::round_to_hours(std::time(nullptr) - last_modified), max_crash_stat_interval);
 
             core::stats::event_props_type props;
             props.emplace_back("time", std::to_string(crash_interval));

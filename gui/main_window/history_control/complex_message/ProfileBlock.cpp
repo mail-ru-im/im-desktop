@@ -224,7 +224,7 @@ using namespace Ui::ComplexMessage;
 //////////////////////////////////////////////////////////////////////////
 
 ProfileBlockBase::ProfileBlockBase(ComplexMessageItem* _parent, const QString& _link)
-    : GenericBlock(_parent, Data::FormattedString(_link), MenuFlags::MenuFlagCopyable, false)
+    : GenericBlock(_parent, Data::FString(_link), MenuFlags::MenuFlagCopyable, false)
     , Layout_(new ProfileBlockLayout())
 {
     Testing::setAccessibleName(this, u"AS HistoryPage messageProfile " % QString::number(_parent->getId()));
@@ -293,7 +293,7 @@ bool ProfileBlockBase::pressed(const QPoint &_p)
 
     clickAreaPressed_ = getClickArea(Layout_->getContentRect()).contains(mappedPoint);
 
-    if (button_ && !Utils::InterConnector::instance().isMultiselect())
+    if (button_ && !Utils::InterConnector::instance().isMultiselect(getChatAimid()))
         button_->setPressed(button_->rect().contains(mappedPoint));
 
     update();
@@ -307,13 +307,13 @@ bool ProfileBlockBase::clicked(const QPoint &_p)
 
     auto clickHandled = false;
 
-    if (getClickArea(Layout_->getContentRect()).contains(mappedPoint) && !Utils::InterConnector::instance().isMultiselect())
+    if (getClickArea(Layout_->getContentRect()).contains(mappedPoint) && !Utils::InterConnector::instance().isMultiselect(getChatAimid()))
     {
         onClickAreaPressed();
         clickHandled = true;
     }
 
-    if (button_ && button_->rect().contains(mappedPoint) && !Utils::InterConnector::instance().isMultiselect())
+    if (button_ && button_->rect().contains(mappedPoint) && !Utils::InterConnector::instance().isMultiselect(getChatAimid()))
     {
         onButtonPressed();
         clickHandled = true;
@@ -408,20 +408,19 @@ void ProfileBlockBase::initialize()
 
 void ProfileBlockBase::mouseMoveEvent(QMouseEvent* _event)
 {
-    if (Utils::InterConnector::instance().isMultiselect())
+    if (Utils::InterConnector::instance().isMultiselect(getChatAimid()))
     {
         setCursor(Qt::PointingHandCursor);
     }
     else if (loaded_)
     {
         const auto pos = _event->pos();
-        auto clickAreaHovered = getClickArea(Layout_->getContentRect()).contains(pos) && !Utils::InterConnector::instance().isMultiselect();
+        auto clickAreaHovered = getClickArea(Layout_->getContentRect()).contains(pos);
         auto buttonHovered = button_->rect().contains(pos);
 
         auto needUpdate = buttonHovered != button_->hovered() || clickAreaHovered != clickAreaHovered_;
 
-        if (!Utils::InterConnector::instance().isMultiselect())
-            button_->setHovered(buttonHovered);
+        button_->setHovered(buttonHovered);
         clickAreaHovered_ = clickAreaHovered;
 
         if (Features::longPathTooltipsAllowed() && nameUnit_->isElided() && nameUnit_->contains(pos))
@@ -570,7 +569,7 @@ QString ProfileBlock::extractProfileId(const QString& _link)
     return QString();
 }
 
-Data::FormattedString ProfileBlock::getSelectedText(const bool _isFullSelect, const IItemBlock::TextDestination _dest) const
+Data::FString ProfileBlock::getSelectedText(const bool _isFullSelect, const IItemBlock::TextDestination _dest) const
 {
     Q_UNUSED(_isFullSelect)
     Q_UNUSED(_dest)
@@ -722,7 +721,7 @@ PhoneProfileBlock::~PhoneProfileBlock()
 
 }
 
-Data::FormattedString PhoneProfileBlock::getSourceText() const
+Data::FString PhoneProfileBlock::getSourceText() const
 {
     return {};
 }
@@ -732,7 +731,7 @@ QString PhoneProfileBlock::getTextForCopy() const
     return name_ % ql1c(' ') % phone_;
 }
 
-Data::FormattedString PhoneProfileBlock::getSelectedText(const bool _isFullSelect, const IItemBlock::TextDestination _dest) const
+Data::FString PhoneProfileBlock::getSelectedText(const bool _isFullSelect, const IItemBlock::TextDestination _dest) const
 {
     Q_UNUSED(_isFullSelect)
     if (_dest == IItemBlock::TextDestination::selection)

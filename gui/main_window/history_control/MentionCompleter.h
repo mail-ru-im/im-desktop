@@ -23,7 +23,8 @@ namespace Ui
     Q_SIGNALS:
         void contactSelected(const QString& _aimId, const QString& _friendly);
         void results(int _count);
-        void hidden();
+
+        void visibilityChanged(bool _visible, QPrivateSignal);
 
     private Q_SLOTS:
         bool itemClicked(const QModelIndex& _current);
@@ -73,5 +74,6 @@ namespace Ui
             keyEnter
         };
         void sendSelectionStats(const QModelIndex& _current, const statSelectSource _source);
+        void touchScrollStateChanged(QScroller::State);
     };
 }

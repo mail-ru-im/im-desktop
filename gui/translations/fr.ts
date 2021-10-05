@@ -385,9 +385,144 @@ Vous pouvez laisser vos commentaires ou signaler une erreur ici:</translation>
         <source>You are not a member of this chat or you was banned to write</source>
         <translation>Vous n&apos;êtes pas membre du chat ou vous n&apos;êtes pas autorisé à écrire</translation>
     </message>
+</context>
+<context>
+    <name>calendar</name>
     <message>
-        <source>Are you sure you want to open an external link %1?</source>
-        <translation>Voulez-vous vraiment ouvrir le lien externe %1 ?</translation>
+        <source>Mon</source>
+        <translation>lun</translation>
+    </message>
+    <message>
+        <source>Tue</source>
+        <translation>Mar</translation>
+    </message>
+    <message>
+        <source>Wed</source>
+        <translation>mer</translation>
+    </message>
+    <message>
+        <source>Thu</source>
+        <translation>Jeu</translation>
+    </message>
+    <message>
+        <source>Fri</source>
+        <translation>ven</translation>
+    </message>
+    <message>
+        <source>Sat</source>
+        <translation>Sam</translation>
+    </message>
+    <message>
+        <source>Sun</source>
+        <translation>soleil</translation>
+    </message>
+    <message>
+        <source>January</source>
+        <translation>janvier</translation>
+    </message>
+    <message>
+        <source>Febuary</source>
+        <translation>février</translation>
+    </message>
+    <message>
+        <source>March</source>
+        <translation>Mars</translation>
+    </message>
+    <message>
+        <source>April</source>
+        <translation>avril</translation>
+    </message>
+    <message>
+        <source>May</source>
+        <translation>Peut</translation>
+    </message>
+    <message>
+        <source>June</source>
+        <translation>juin</translation>
+    </message>
+    <message>
+        <source>July</source>
+        <translation>juillet</translation>
+    </message>
+    <message>
+        <source>August</source>
+        <translation>août</translation>
+    </message>
+    <message>
+        <source>September</source>
+        <translation>septembre</translation>
+    </message>
+    <message>
+        <source>October</source>
+        <translation>Octobre</translation>
+    </message>
+    <message>
+        <source>November</source>
+        <translation>Novembre</translation>
+    </message>
+    <message>
+        <source>December</source>
+        <translation>décembre</translation>
+    </message>
+    <message>
+        <source>Jan</source>
+        <translation>Jan</translation>
+    </message>
+    <message>
+        <source>Feb</source>
+        <translation>fév</translation>
+    </message>
+    <message>
+        <source>Mar</source>
+        <translation>Marthe</translation>
+    </message>
+    <message>
+        <source>Apr</source>
+        <translation>avr</translation>
+    </message>
+    <message>
+        <source>Jun</source>
+        <translation>juin</translation>
+    </message>
+    <message>
+        <source>Jul</source>
+        <translation>juillet</translation>
+    </message>
+    <message>
+        <source>Aug</source>
+        <translation>août</translation>
+    </message>
+    <message>
+        <source>Sep</source>
+        <translation>SEP</translation>
+    </message>
+    <message>
+        <source>Oct</source>
+        <translation>Oct</translation>
+    </message>
+    <message>
+        <source>Nov</source>
+        <translation>nov</translation>
+    </message>
+    <message>
+        <source>Dec</source>
+        <translation>déc</translation>
+    </message>
+    <message>
+        <source>Today</source>
+        <translation>Aujourd&apos;hui</translation>
+    </message>
+    <message>
+        <source>Tomorrow</source>
+        <translation>Demain</translation>
+    </message>
+    <message>
+        <source>MayS</source>
+        <translation>Peut</translation>
+    </message>
+    <message>
+        <source>%1. d, yyyy</source>
+        <translation>%1. d, yyyy</translation>
     </message>
 </context>
 <context>
@@ -988,6 +1123,22 @@ Vous pouvez laisser vos commentaires ou signaler une erreur ici:</translation>
 %3
 %4 %5</translation>
     </message>
+    <message>
+        <source>%1 changed task title to &quot;%2&quot;</source>
+        <translation>%1 changé le texte de la tâche en &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed task deadline to %2</source>
+        <translation>%1 changé la date limite en %2</translation>
+    </message>
+    <message>
+        <source>%1 changed task assignee to &quot;%2&quot;</source>
+        <translation>%1 changé l&apos;artiste en &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>Task status changed to &quot;%1&quot;</source>
+        <translation>L&apos;état de la tâche est passé à &quot;%1&quot;</translation>
+    </message>
 </context>
 <context>
     <name>chat_page</name>
@@ -1054,6 +1205,22 @@ Vous pouvez laisser vos commentaires ou signaler une erreur ici:</translation>
     <message>
         <source>Message sent</source>
         <translation>Message envoyé</translation>
+    </message>
+    <message>
+        <source>Access limited</source>
+        <translation>Accès limité</translation>
+    </message>
+    <message>
+        <source>File is not available</source>
+        <translation>fichier non disponible</translation>
+    </message>
+    <message>
+        <source>Filesharing Id copied to clipboard</source>
+        <translation>Identifiant de partage de fichiers copié</translation>
+    </message>
+    <message>
+        <source>Filesharing link copied to clipboard</source>
+        <translation>Lien vers le partage de fichiers copié</translation>
     </message>
 </context>
 <context>
@@ -1176,6 +1343,30 @@ Vous pouvez laisser vos commentaires ou signaler une erreur ici:</translation>
     <message>
         <source>PINNED</source>
         <translation>ÉPINGLÉ</translation>
+    </message>
+    <message>
+        <source>Threads</source>
+        <translation>Fils</translation>
+    </message>
+    <message>
+        <source>Reminders</source>
+        <translation>Rappels</translation>
+    </message>
+    <message>
+        <source>Scheduled</source>
+        <translation>Prévu</translation>
+    </message>
+    <message>
+        <source>Draft</source>
+        <translation>Brouillon</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation>Une tâche</translation>
+    </message>
+    <message>
+        <source>Tasks</source>
+        <translation>Tâches</translation>
     </message>
 </context>
 <context>
@@ -1612,6 +1803,58 @@ Vous pouvez laisser vos commentaires ou signaler une erreur ici:</translation>
     <message>
         <source>Copy session info</source>
         <translation>Copier les informations de session</translation>
+    </message>
+    <message>
+        <source>Bold</source>
+        <translation>Gras</translation>
+    </message>
+    <message>
+        <source>Italic</source>
+        <translation>Italique</translation>
+    </message>
+    <message>
+        <source>Underline</source>
+        <translation>Souligné</translation>
+    </message>
+    <message>
+        <source>Strike through</source>
+        <translation>Barrée</translation>
+    </message>
+    <message>
+        <source>Monospace</source>
+        <translation>Monospace</translation>
+    </message>
+    <message>
+        <source>Create link</source>
+        <translation>Ajouter un lien</translation>
+    </message>
+    <message>
+        <source>Clear format</source>
+        <translation>Effacer les styles</translation>
+    </message>
+    <message>
+        <source>Format</source>
+        <translation>Mise en page</translation>
+    </message>
+    <message>
+        <source>Edit task</source>
+        <translation>Changer de tâche</translation>
+    </message>
+    <message>
+        <source>List</source>
+        <translation>Lister</translation>
+    </message>
+    <message>
+        <source>Ordered list</source>
+        <translation>Liste numérotée</translation>
+    </message>
+    <message>
+        <source>Quote</source>
+        <translation>Citation</translation>
+    </message>
+    <message>
+        <source>Code</source>
+        <translation>Code</translation>
     </message>
 </context>
 <context>
@@ -2648,6 +2891,21 @@ Vous pouvez laisser vos commentaires ou signaler une erreur ici:</translation>
     </message>
 </context>
 <context>
+    <name>draft</name>
+    <message>
+        <source>Apply draft</source>
+        <translation>Appliquer le brouillon</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Annulation</translation>
+    </message>
+    <message>
+        <source>Apply another draft version?</source>
+        <translation>Souhaitez-vous utiliser une version différente du brouillon?</translation>
+    </message>
+</context>
+<context>
     <name>favorites</name>
     <message>
         <source>
@@ -2758,10 +3016,10 @@ Vous pouvez laisser vos commentaires ou signaler une erreur ici:</translation>
     </message>
 </context>
 <context>
-    <name>generic_block</name>
+    <name>groupchat</name>
     <message>
-        <source>Copied to clipboard</source>
-        <translation>Copié dans le presse-papiers</translation>
+        <source>To replies</source>
+        <translation>Dans les réponses</translation>
     </message>
 </context>
 <context>
@@ -2854,6 +3112,20 @@ Vous pouvez laisser vos commentaires ou signaler une erreur ici:</translation>
         <source>You are not a subscriber of this channel</source>
         <translation>Vous n&apos;êtes pas abonné à cette chaîne</translation>
     </message>
+    <message>
+        <source>File access restrictions</source>
+        <translation>Restrictions d&apos;accès aux fichiers</translation>
+    </message>
+    <message>
+        <source>Restrict file access to trusted devices only
+Only for private groups
+
+This option cannot be disabled</source>
+        <translation>Autoriser l&apos;accès aux fichiers uniquement aux appareils de confiance
+Pour les groupes non publics uniquement
+
+Il est impossible de désactiver le paramètre</translation>
+    </message>
 </context>
 <context>
     <name>head</name>
@@ -2883,6 +3155,30 @@ Vous pouvez laisser vos commentaires ou signaler une erreur ici:</translation>
     <message>
         <source>Please select a chat to start messaging</source>
         <translation>Veuillez sélectionner un chat pour commencer à envoyer des messages</translation>
+    </message>
+    <message>
+        <source>Create a call</source>
+        <translation>Créer un appel</translation>
+    </message>
+    <message>
+        <source>No time limit</source>
+        <translation>Pas de limite de temps</translation>
+    </message>
+    <message>
+        <source>Status is set automatically during call</source>
+        <translation>L&apos;état automatique indique qui est en communication</translation>
+    </message>
+    <message>
+        <source>Advantages of calls in Myteam</source>
+        <translation>Avantages d&apos;appeler Myteam</translation>
+    </message>
+    <message>
+        <source>Group calls up to %1 participants</source>
+        <translation>Appels de groupe jusqu&apos;à %1 personne</translation>
+    </message>
+    <message>
+        <source>Return to call in chat in one click</source>
+        <translation>Revenir à un appel dans un chat en un clic</translation>
     </message>
 </context>
 <context>
@@ -3050,6 +3346,10 @@ Vous pouvez laisser vos commentaires ou signaler une erreur ici:</translation>
     <message>
         <source>Cancel request</source>
         <translation>Demande d&apos;annulation</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation>Une tâche</translation>
     </message>
 </context>
 <context>
@@ -3291,6 +3591,10 @@ Vous pouvez laisser vos commentaires ou signaler une erreur ici:</translation>
     <message>
         <source>Wrong password</source>
         <translation>Mauvais mot de passe</translation>
+    </message>
+    <message>
+        <source>Sign in with Mail.ru</source>
+        <translation>Connectez-vous avec Mail.ru</translation>
     </message>
 </context>
 <context>
@@ -3946,10 +4250,6 @@ contact</translation>
         <translation>Êtes-vous certain(e) de vouloir quitter le chat ?</translation>
     </message>
     <message>
-        <source>Contact name</source>
-        <translation>Nom du contact</translation>
-    </message>
-    <message>
         <source>Sign out</source>
         <translation>Se déconnecter</translation>
     </message>
@@ -4590,8 +4890,16 @@ contact</translation>
         <translation>Limite d&apos;adhésion dépassée (max %1)</translation>
     </message>
     <message>
-        <source>Are you sure you want to open external link %1?</source>
-        <translation>Voulez-vous vraiment ouvrir le lien externe %1?</translation>
+        <source>Are you sure you want to open an external link?</source>
+        <translation>Êtes-vous sûr de vouloir ouvrir un lien externe&#xa0;?</translation>
+    </message>
+    <message>
+        <source>Add link</source>
+        <translation>Ajouter un lien</translation>
+    </message>
+    <message>
+        <source>The link will be displayed as &quot;%1&quot;</source>
+        <translation>Le lien sera affiché sous la forme «%1»</translation>
     </message>
     <message>
         <source>Enable net compression</source>
@@ -4640,6 +4948,38 @@ contact</translation>
     <message>
         <source>User not a member</source>
         <translation>L&apos;utilisateur n&apos;est pas membre de ce groupe</translation>
+    </message>
+    <message>
+        <source>Link</source>
+        <translation>Relier</translation>
+    </message>
+    <message>
+        <source>Invalid url</source>
+        <translation>N&apos;est pas un lien</translation>
+    </message>
+    <message>
+        <source>Opening or downloading files will be possible from trusted device only
+
+%1 It will be impossible to disable this setting!</source>
+        <translation>L&apos;ouverture ou le téléchargement de fichiers ne sera possible qu&apos;à partir d&apos;un appareil de confiance
+
+%1 réglage ne peut pas être désactivé&#xa0;!</translation>
+    </message>
+    <message>
+        <source>File access will be restricted</source>
+        <translation>L&apos;accès aux fichiers sera limité</translation>
+    </message>
+    <message>
+        <source>Only chat members can view replies</source>
+        <translation>Seuls les membres du groupe peuvent voir les réponses</translation>
+    </message>
+    <message>
+        <source>Show seconds in time picker</source>
+        <translation>Afficher les secondes dans le sélecteur de temps</translation>
+    </message>
+    <message>
+        <source>Only channel subscribers can view replies</source>
+        <translation>Seuls les abonnés à la chaîne peuvent voir les réponses</translation>
     </message>
 </context>
 <context>
@@ -5422,6 +5762,10 @@ contact</translation>
         <translation>Ne pas demander lors de l&apos;exécution de fichiers exécutables</translation>
     </message>
     <message>
+        <source>Do not ask when opening external links</source>
+        <translation>Ne pas demander lors de l&apos;ouverture des liens externes</translation>
+    </message>
+    <message>
         <source>Use system spell checker</source>
         <translation>Vérification orthographique du système</translation>
     </message>
@@ -5468,6 +5812,14 @@ contact</translation>
     <message>
         <source>Show notifications when app in focus</source>
         <translation>Afficher les notifications lorsque l&apos;application est active</translation>
+    </message>
+    <message>
+        <source>Call window</source>
+        <translation>Fenêtre d&apos;appel</translation>
+    </message>
+    <message>
+        <source>Warn about disabled microphone</source>
+        <translation>Avertir le microphone en sourdine</translation>
     </message>
 </context>
 <context>
@@ -5666,6 +6018,10 @@ contact</translation>
     <message>
         <source>Set status</source>
         <translation>Définir le statut</translation>
+    </message>
+    <message>
+        <source>Switch microphone state</source>
+        <translation>Changer l&apos;état du microphone</translation>
     </message>
 </context>
 <context>
@@ -6024,6 +6380,14 @@ Modifiez le numéro et réessayez.</translation>
         <source>Close</source>
         <translation>Fermer</translation>
     </message>
+    <message>
+        <source>Cannot be disabled due to security reasons</source>
+        <translation>Pour des raisons de sécurité, le paramètre ne peut pas être désactivé</translation>
+    </message>
+    <message>
+        <source>Replies</source>
+        <translation>Réponses</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -6060,10 +6424,6 @@ Modifiez le numéro et réessayez.</translation>
     <message>
         <source>File</source>
         <translation>Fichier</translation>
-    </message>
-    <message>
-        <source>Copied to clipboard</source>
-        <translation>Copié dans le presse-papiers</translation>
     </message>
     <message>
         <source>Location</source>
@@ -6213,22 +6573,6 @@ Modifiez le numéro et réessayez.</translation>
         <source>Status duration</source>
         <translation>Durée du statut</translation>
     </message>
-    <message>
-        <source>Date</source>
-        <translation>Date</translation>
-    </message>
-    <message>
-        <source>dd.mm.yyyy</source>
-        <translation>jj.mm.aaaa</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>Temps</translation>
-    </message>
-    <message>
-        <source>hh:mm</source>
-        <translation>hh:mm</translation>
-    </message>
 </context>
 <context>
     <name>stickers</name>
@@ -6280,6 +6624,10 @@ Modifiez le numéro et réessayez.</translation>
         <source>Cancel</source>
         <translation>Annuler</translation>
     </message>
+    <message>
+        <source>Stickerpack is not available</source>
+        <translation>Pack d&apos;autocollants non disponible</translation>
+    </message>
 </context>
 <context>
     <name>tab</name>
@@ -6304,12 +6652,12 @@ Modifiez le numéro et réessayez.</translation>
         <translation>Appels</translation>
     </message>
     <message>
-        <source>Structure</source>
-        <translation>Structure</translation>
-    </message>
-    <message>
         <source>Tasks</source>
         <translation>Tâches</translation>
+    </message>
+    <message>
+        <source>Calendar</source>
+        <translation>Calendrier</translation>
     </message>
 </context>
 <context>
@@ -6337,6 +6685,101 @@ Modifiez le numéro et réessayez.</translation>
     <message>
         <source>Group call</source>
         <translation>Appel de groupe</translation>
+    </message>
+</context>
+<context>
+    <name>task</name>
+    <message>
+        <source>In progress</source>
+        <translation>Au travail</translation>
+    </message>
+    <message>
+        <source>Ready</source>
+        <translation>Fait</translation>
+    </message>
+    <message>
+        <source>Rejected</source>
+        <translation>Rejeté</translation>
+    </message>
+    <message>
+        <source>Closed</source>
+        <translation>Fermé</translation>
+    </message>
+    <message>
+        <source>New</source>
+        <translation>Faire</translation>
+    </message>
+    <message>
+        <source>No assignee</source>
+        <translation>Sans interprète</translation>
+    </message>
+</context>
+<context>
+    <name>task_block</name>
+    <message>
+        <source>Not assigned</source>
+        <translation>Non attribué</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation>Une tâche</translation>
+    </message>
+    <message>
+        <source>Task Id copied to clipboard</source>
+        <translation>Identifiant de tâche copié</translation>
+    </message>
+    <message>
+        <source>Not set</source>
+        <translation>Non attribué</translation>
+    </message>
+    <message>
+        <source>Task edit: an error occured</source>
+        <translation>Tâche de modification&#xa0;: une erreur s&apos;est produite</translation>
+    </message>
+</context>
+<context>
+    <name>task_popup</name>
+    <message>
+        <source>Edit task</source>
+        <translation>Modification d&apos;une tâche</translation>
+    </message>
+    <message>
+        <source>Create task</source>
+        <translation>Créer une tâche</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>Nom</translation>
+    </message>
+    <message>
+        <source>Maximum length - %1 symbols</source>
+        <translation>Longueur maximale - %1 caractères</translation>
+    </message>
+    <message>
+        <source>Assignee</source>
+        <translation>Exécuteur</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Annulation</translation>
+    </message>
+    <message>
+        <source>Ok</source>
+        <translation>d&apos;accord</translation>
+    </message>
+    <message>
+        <source>Create</source>
+        <translation>Créer un</translation>
+    </message>
+    <message>
+        <source>User with this name
+not found</source>
+        <translation>Utilisateur avec ceci
+nom non trouvé</translation>
+    </message>
+    <message>
+        <source>No deadline</source>
+        <translation>Pas de date limite</translation>
     </message>
 </context>
 <context>
@@ -6368,6 +6811,21 @@ Modifiez le numéro et réessayez.</translation>
     <message>
         <source>Welcome to ICQ New</source>
         <translation>Bienvenue chez ICQ New</translation>
+    </message>
+</context>
+<context>
+    <name>threads_feed</name>
+    <message>
+        <source>There is no threads</source>
+        <translation>Pas de fils</translation>
+    </message>
+    <message>
+        <source>Threads you subscribed for will be here</source>
+        <translation>Les fils de discussion auxquels vous êtes abonné seront affichés ici</translation>
+    </message>
+    <message>
+        <source>Replies</source>
+        <translation>Réponses</translation>
     </message>
 </context>
 <context>
@@ -6419,6 +6877,42 @@ Modifiez le numéro et réessayez.</translation>
         <source>You are not a member or banned to write in this group</source>
         <translation>Vous n&apos;êtes pas membre ou interdit d&apos;écrire dans ce groupe</translation>
     </message>
+    <message>
+        <source>Unable to open invalid url &quot;%1&quot;</source>
+        <translation>Impossible d&apos;ouvrir l&apos;adresse non valide %1</translation>
+    </message>
+    <message>
+        <source>Error occurred while opening the replies</source>
+        <translation>Une erreur s&apos;est produite lors de l&apos;ouverture des réponses</translation>
+    </message>
+    <message>
+        <source>Administrator has set the restrictions on access to files</source>
+        <translation>L&apos;administrateur du groupe a défini des restrictions d&apos;accès aux fichiers</translation>
+    </message>
+    <message>
+        <source>Awaiting antivirus check, patience</source>
+        <translation>On attend la vérification antivirus, patience</translation>
+    </message>
+    <message>
+        <source>Antivirus check in progress, patience</source>
+        <translation>Vérification antivirus en cours, patience</translation>
+    </message>
+    <message>
+        <source>File is blocked by the antivirus</source>
+        <translation>Fichier bloqué par l&apos;antivirus</translation>
+    </message>
+    <message>
+        <source>Checked</source>
+        <translation>Extrait</translation>
+    </message>
+    <message>
+        <source>No access. You may not have enough rights</source>
+        <translation>Pas d&apos;accès. Vous n&apos;avez peut-être pas assez de droits</translation>
+    </message>
+    <message>
+        <source>File not checked (and never will be). Available to download</source>
+        <translation>Le fichier n&apos;a pas été vérifié (et ne sera pas vérifié). Disponible pour le téléchargement</translation>
+    </message>
 </context>
 <context>
     <name>tooltips</name>
@@ -6461,6 +6955,14 @@ Modifiez le numéro et réessayez.</translation>
     <message>
         <source>Link to call</source>
         <translation>Lien d&apos;appel</translation>
+    </message>
+    <message>
+        <source>Chat gallery</source>
+        <translation>Galerie de discussion</translation>
+    </message>
+    <message>
+        <source>Refresh</source>
+        <translation>Rafraîchir</translation>
     </message>
 </context>
 <context>
@@ -6596,6 +7098,18 @@ par clic</translation>
         <translation>Occupé</translation>
     </message>
     <message>
+        <source>Hold Space key for temporary unmute</source>
+        <translation>Maintenez la barre d&apos;espace pour réactiver temporairement le microphone</translation>
+    </message>
+    <message>
+        <source>Microphone disabled</source>
+        <translation>Microphone désactivé</translation>
+    </message>
+    <message>
+        <source>Microphone enabled</source>
+        <translation>Microphone activé</translation>
+    </message>
+    <message>
         <source>Call members</source>
         <translation>Appelez les participants</translation>
     </message>
@@ -6618,6 +7132,16 @@ par clic</translation>
     <message>
         <source>CONTACTS</source>
         <translation>CONTACTS</translation>
+    </message>
+    <message>
+        <source>You are muted now
+Press %1 to unmute your microphone
+
+Press and hold Space key for temporarily unmute</source>
+        <translation>Maintenant ton micro est éteint
+Appuyez sur %1 pour activer le microphone
+
+Appuyez sur la barre d&apos;espace et maintenez-la enfoncée pour réactiver temporairement le microphone</translation>
     </message>
 </context>
 <context>

@@ -2,7 +2,7 @@
 #include "get_user_last_seen.h"
 
 #include "../../../http_request.h"
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 #include "../lastseen.h"
 
 using namespace core;

@@ -8,9 +8,12 @@
 #include "../types/typing.h"
 #include "../types/masks.h"
 #include "../types/session_info.h"
+#include "../types/thread.h"
 #include "../cache/stickers/stickers.h"
+#include "../main_window/input_widget/AttachFilePopup.h"
 #include "../main_window/contact_list/ContactListModel.h"
 #include "../main_window/history_control/history/History.h"
+#include "../main_window/history_control/corner_menu/CornerMenu.h"
 #include "../main_window/tray/RecentMessagesAlert.h"
 #include "../voip/quality/ShowQualityStarsPopupConfig.h"
 #include "../voip/quality/ShowQualityReasonsPopupConfig.h"
@@ -70,7 +73,7 @@
     Q_IMPORT_PLUGIN(QWbmpPlugin)
     Q_IMPORT_PLUGIN(QWebpPlugin)
     Q_IMPORT_PLUGIN(QSvgPlugin)
-
+    Q_IMPORT_PLUGIN(QSvgIconPlugin)
 #endif
 
 namespace
@@ -101,6 +104,158 @@ namespace
         getrlimit(RLIMIT_NOFILE, &r);
         qInfo() << ql1s("new limit for file descriptors: ") << r.rlim_cur;
 #endif //__APPLE__
+    }
+
+    void handleGpuBlacklist()
+    {
+#ifdef _WIN32
+        wchar_t thisModuleName[1024];
+        if (!::GetModuleFileName(0, thisModuleName, 1024))
+            return;
+
+        QDir dir = QFileInfo(QString::fromUtf16((const ushort*)thisModuleName)).absoluteDir();
+        const QString blackList = dir.absolutePath() % u'/' % qsl("gpu_blacklist.json");
+        if (QFile::exists(blackList))
+            qputenv("QT_OPENGL_BUGLIST", blackList.toLatin1());
+#endif //_WIN32
+    }
+
+    bool checkDesktopGl()
+    {
+        //qtbase\src\plugins\platforms\windows\qwindowsopengltester.cpp
+        //we try this code before it crashes
+#ifdef _WIN32
+        typedef HGLRC(WINAPI* CreateContextType)(HDC);
+        typedef BOOL(WINAPI* DeleteContextType)(HGLRC);
+        typedef BOOL(WINAPI* MakeCurrentType)(HDC, HGLRC);
+        typedef PROC(WINAPI* WglGetProcAddressType)(LPCSTR);
+
+        HMODULE lib = nullptr;
+        HWND wnd = nullptr;
+        HDC dc = nullptr;
+        HGLRC context = nullptr;
+        LPCTSTR className = L"opengltest";
+
+        CreateContextType CreateContext = nullptr;
+        DeleteContextType DeleteContext = nullptr;
+        MakeCurrentType MakeCurrent = nullptr;
+        WglGetProcAddressType WGL_GetProcAddress = nullptr;
+
+        bool result = false;
+
+        lib = LoadLibraryA("opengl32.dll");
+        if (lib) 
+        {
+            CreateContext = reinterpret_cast<CreateContextType>(reinterpret_cast<QFunctionPointer>(::GetProcAddress(lib, "wglCreateContext")));
+            if (!CreateContext)
+                goto cleanup;
+            DeleteContext = reinterpret_cast<DeleteContextType>(reinterpret_cast<QFunctionPointer>(::GetProcAddress(lib, "wglDeleteContext")));
+            if (!DeleteContext)
+                goto cleanup;
+            MakeCurrent = reinterpret_cast<MakeCurrentType>(reinterpret_cast<QFunctionPointer>(::GetProcAddress(lib, "wglMakeCurrent")));
+            if (!MakeCurrent)
+                goto cleanup;
+            WGL_GetProcAddress = reinterpret_cast<WglGetProcAddressType>(reinterpret_cast<QFunctionPointer>(::GetProcAddress(lib, "wglGetProcAddress")));
+            if (!WGL_GetProcAddress)
+                goto cleanup;
+
+            WNDCLASS wclass;
+            wclass.cbClsExtra = 0;
+            wclass.cbWndExtra = 0;
+            wclass.hInstance = static_cast<HINSTANCE>(GetModuleHandle(nullptr));
+            wclass.hIcon = nullptr;
+            wclass.hCursor = nullptr;
+            wclass.hbrBackground = HBRUSH(COLOR_BACKGROUND);
+            wclass.lpszMenuName = nullptr;
+            wclass.lpfnWndProc = DefWindowProc;
+            wclass.lpszClassName = className;
+            wclass.style = CS_OWNDC;
+            if (!RegisterClass(&wclass))
+                goto cleanup;
+            wnd = CreateWindow(className, L"openglproxytest", WS_OVERLAPPED, 0, 0, 640, 480, nullptr, nullptr, wclass.hInstance, nullptr);
+            if (!wnd)
+                goto cleanup;
+            dc = GetDC(wnd);
+            if (!dc)
+                goto cleanup;
+
+            PIXELFORMATDESCRIPTOR pfd;
+            memset(&pfd, 0, sizeof(PIXELFORMATDESCRIPTOR));
+            pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
+            pfd.nVersion = 1;
+            pfd.dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW | PFD_GENERIC_FORMAT;
+            pfd.iPixelType = PFD_TYPE_RGBA;
+            int pixelFormat = ChoosePixelFormat(dc, &pfd);
+            if (!pixelFormat)
+                goto cleanup;
+            if (!SetPixelFormat(dc, pixelFormat, &pfd))
+                goto cleanup;
+            context = CreateContext(dc);
+            if (!context)
+                goto cleanup;
+            if (!MakeCurrent(dc, context))
+                goto cleanup;
+
+            typedef const GLubyte* (APIENTRY* GetString_t)(GLenum name);
+            auto GetString = reinterpret_cast<GetString_t>(reinterpret_cast<QFunctionPointer>(::GetProcAddress(lib, "glGetString")));
+            if (GetString) 
+            {
+                if (const char* versionStr = reinterpret_cast<const char*>(GetString(GL_VERSION))) {
+                    const QByteArray version(versionStr);
+                    const int majorDot = version.indexOf('.');
+                    if (majorDot != -1) 
+                    {
+                        int minorDot = version.indexOf('.', majorDot + 1);
+                        if (minorDot == -1)
+                            minorDot = version.size();
+
+                        const int major = version.mid(0, majorDot).toInt();
+                        const int minor = version.mid(majorDot + 1, minorDot - majorDot - 1).toInt();
+                        if (major == 1)
+                            result = false;
+                    }
+                }
+            }
+            else 
+            {
+                result = false;
+            }
+
+            if (WGL_GetProcAddress("glCreateShader"))
+                result = true;
+        }
+
+    cleanup:
+        if (MakeCurrent)
+            MakeCurrent(nullptr, nullptr);
+        if (context)
+            DeleteContext(context);
+        if (dc && wnd)
+            ReleaseDC(wnd, dc);
+        if (wnd) 
+        {
+            DestroyWindow(wnd);
+            UnregisterClass(className, GetModuleHandle(nullptr));
+        }
+
+        return result;
+#else
+        return false;
+#endif //_WIN32
+    }
+
+    void checkGpuDrivers()
+    {
+#ifdef _WIN32
+        __try
+        {
+            checkDesktopGl();
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER)
+        {
+            MessageBoxW(NULL, L"Please update your graphics card driver", L"Error", MB_OK);
+        }
+#endif //_WIN32
     }
 }
 
@@ -192,27 +347,27 @@ static const QString& getLoggingCategoryFilter()
 
 static QtMessageHandler defaultHandler = nullptr;
 
-static void debugMessageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
+static void debugMessageHandler(QtMsgType _type, const QMessageLogContext& _context, const QString& _msg)
 {
-    switch (type) {
+    switch (_type) {
     case QtWarningMsg:
     {
         constexpr QStringView whiteList[] = {
             u"libpng warning:"
         };
 
-        if (std::none_of(std::begin(whiteList), std::end(whiteList), [&msg](auto str) { return msg.startsWith(str); }))
+        if (std::none_of(std::begin(whiteList), std::end(whiteList), [&_msg](auto str) { return _msg.startsWith(str); }))
         {
             im_assert(false);
         }
+        break;
     }
-    break;
     default:
         break;
     }
 
     if (defaultHandler)
-        defaultHandler(type, context, msg);
+        defaultHandler(_type, _context, _msg);
 }
 
 int launch::main(int _argc, char* _argv[])
@@ -223,6 +378,8 @@ int launch::main(int _argc, char* _argv[])
         defaultHandler = qInstallMessageHandler(debugMessageHandler);
 
     handleRlimits();
+    checkGpuDrivers();
+    handleGpuBlacklist();
 
     int result;
     bool restarting;
@@ -291,6 +448,8 @@ int launch::main(int _argc, char* _argv[])
 
         int argCount = int(v_args.size());
 
+        //qputenv("QTWEBENGINE_CHROMIUM_FLAGS", QByteArray::fromStdString("--enable-logging --log-level=0 --v=1 --single-process"));
+
         Utils::Application app(argCount, v_args.data());
         QLoggingCategory::setFilterRules(getLoggingCategoryFilter());
 
@@ -346,7 +505,6 @@ int launch::main(int _argc, char* _argv[])
             qRegisterMetaType<Ui::AlertType>("Ui::AlertType");
             qRegisterMetaType<Emoji::EmojiCode>("Emoji::EmojiCode");
             qRegisterMetaType<Utils::CloseWindowInfo>("Utils::CloseWindowInfo");
-            qRegisterMetaType<Utils::SidebarVisibilityParams>("Utils::SidebarVisibilityParams");
             qRegisterMetaType<QVector<Data::DialogGalleryEntry>>("QVector<Data::DialogGalleryEntry>");
             qRegisterMetaType<Data::FileSharingMeta>("Data::FileSharingMeta");
             qRegisterMetaType<Data::FileSharingDownloadResult>("Data::FileSharingDownloadResult");
@@ -368,6 +526,13 @@ int launch::main(int _argc, char* _argv[])
             qRegisterMetaType<Data::CallInfoPtr>("Data::CallInfoPtr");
             qRegisterMetaType<Data::CallInfoVec>("Data::CallInfoVec");
             qRegisterMetaType<Statuses::Status>("Statuses::Status");
+            qRegisterMetaType<Ui::AttachMediaType>("Ui::AttachMediaType");
+            qRegisterMetaType<Utils::FileSharingId>("Utils::FileSharingId");
+            qRegisterMetaType<Data::ThreadUpdates>("Data::ThreadUpdates");
+            qRegisterMetaType<Data::MessageParentTopic>("Data::MessageParentTopic");
+            qRegisterMetaType<Data::DlgState::PinnedServiceItemType>("Data::DlgState::PinnedServiceItemType");
+            qRegisterMetaType<Ui::MenuButtonType>("Ui::MenuButtonType");
+            qRegisterMetaType<Ui::ClosePage>("Ui::ClosePage");
 #ifndef STRIP_AV_MEDIA
             qRegisterMetaType<ptt::State2>("ptt::State2");
             qRegisterMetaType<ptt::Error2>("ptt::Error2");
@@ -382,6 +547,8 @@ int launch::main(int _argc, char* _argv[])
             qRegisterMetaType<voip_proxy::device_desc>("voip_proxy::device_desc");
             qRegisterMetaType<voip_proxy::device_desc_vector>("voip_proxy::device_desc_vector");
 #endif
+            qRegisterMetaType<Data::TaskData>("Data::TaskData");
+            qRegisterMetaType<Data::TaskChange>("Data::TaskChange");
         }
         else
         {

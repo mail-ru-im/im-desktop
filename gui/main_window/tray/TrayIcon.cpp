@@ -132,6 +132,7 @@ namespace Ui
 #endif //_WIN32
     {
 #ifdef _WIN32
+        ::CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
         HRESULT hr = CoCreateInstance(CLSID_TaskbarList, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&ptbl));
         if (FAILED(hr))
             ptbl = nullptr;
@@ -186,6 +187,9 @@ namespace Ui
     {
         cleanupWinIcons();
         clearAllNotifications();
+#ifdef _WIN32
+        CoUninitialize();
+#endif
     }
 
     void TrayIcon::cleanupWinIcons()
@@ -524,6 +528,7 @@ namespace Ui
                     !_state.isSuspicious_ &&
                     (!ShowedMessages_.contains(_state.AimId_) || (_state.LastMsgId_ != -1 && ShowedMessages_[_state.AimId_] < _state.LastMsgId_)) &&
                     _state.HasText() &&
+                    !Logic::getContactListModel()->isThread(_state.AimId_) &&
                     !Logic::getUnknownsModel()->contains(_state.AimId_) &&
                     !Logic::getContactListModel()->isMuted(_state.AimId_);
 
@@ -566,6 +571,9 @@ namespace Ui
         if (canShowNotifications(NotificationType::messages))
         {
             if (auto state = Logic::getRecentsModel()->getDlgState(_contact); state.YoursLastRead_ >= _mention->Id_ || state.LastReadMention_ >= _mention->Id_)
+                return;
+
+            if (Logic::getContactListModel()->isThread(_contact))
                 return;
 
             Data::DlgState state;
@@ -739,7 +747,7 @@ namespace Ui
                             if (_aimId != Logic::getContactListModel()->selectedContact())
                                 Utils::InterConnector::instance().getMainWindow()->skipRead();
 
-                            Logic::getContactListModel()->setCurrent(_aimId, -1, true);
+                            Utils::InterConnector::instance().openDialog(_aimId);
                         };
 
                         break;
@@ -798,8 +806,10 @@ namespace Ui
         }
     }
 
-    void TrayIcon::showMessage(const Data::DlgState& state, const AlertType _alertType)
+    void TrayIcon::showMessage(Data::DlgState state, const AlertType _alertType)
     {
+        state.draft_ = {}; // do not show draft alert
+
         Notifications_.push_back(state.AimId_);
 
         const auto isMail = (_alertType == AlertType::alertTypeEmail);
@@ -978,10 +988,12 @@ namespace Ui
             auto parentWindow = qobject_cast<MainWindow*>(parent());
 
             if constexpr (platform::is_linux())
+            {
                 Menu_->addActionWithIcon(QIcon(), QT_TRANSLATE_NOOP("tray_menu", "Open"), parentWindow, [parentWindow]()
                 {
                     parentWindow->activateFromEventLoop();
                 });
+            }
 
             const auto iconPath = platform::is_windows() ? qsl(":/context_menu/quit") : QString();
             Menu_->addActionWithIcon(iconPath, QT_TRANSLATE_NOOP("tray_menu", "Quit"), parentWindow, &Ui::MainWindow::exit);

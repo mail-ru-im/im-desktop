@@ -9,8 +9,11 @@
 #include "mentions_me.h"
 #include "gallery_cache.h"
 #include "reactions.h"
+#include "thread_update_storage.h"
+#include "draft_storage.h"
 
-#include "../tools/time_measure.h"
+#include "tools/time_measure.h"
+#include "tools/features.h"
 
 #include "../common.shared/string_utils.h"
 
@@ -29,6 +32,8 @@ contact_archive::contact_archive(std::wstring _archive_path, const std::string& 
     , mentions_(std::make_unique<mentions_me>(su::wconcat(path_, L'/', mentions_filename())))
     , gallery_(std::make_unique<gallery_storage>(su::wconcat(path_, L'/', gallery_cache_filename()), su::wconcat(path_, L'/', gallery_state_filename())))
     , reactions_(std::make_unique<reactions_storage>(su::wconcat(path_, L'/', reactions_index_filename()), su::wconcat(path_, L'/', reactions_data_filename())))
+    , thread_updates_(std::make_unique<thread_update_storage>(su::wconcat(path_, L'/', thread_updates_index_filename()), su::wconcat(path_, L'/', thread_updates_data_filename())))
+    , draft_(std::make_unique<draft_storage>(su::wconcat(path_, L'/', draft_filename())))
     , local_loaded_(false)
     , load_metrics_({0})
 {
@@ -93,7 +98,7 @@ bool contact_archive::get_messages_buddies_from_ids(const archive::msgids_list& 
 
         if (!index_->get_header(id, Out msg_header))
         {
-            assert(!"message header not found");
+            im_assert(!"message header not found");
             continue;
         }
 
@@ -132,9 +137,18 @@ bool contact_archive::get_messages_buddies(const headers_list& _headers, const s
     return get_messages_buddies_from_headers(_headers, *_messages, *_errors);
 }
 
-const dlg_state& contact_archive::get_dlg_state() const
+dlg_state contact_archive::get_dlg_state() const
 {
-    return state_->get_state();
+    auto state = state_->get_state();
+
+    if (features::is_draft_enabled())
+    {
+        const auto& draft = draft_->get_draft();
+        if (!draft.empty() && draft.state_ != archive::draft::state::local)
+            state.set_draft(draft_->get_draft());
+    }
+
+    return state;
 }
 
 void contact_archive::set_dlg_state(const dlg_state& _state, Out dlg_state_changes& _changes)
@@ -244,8 +258,8 @@ void contact_archive::insert_history_block(
 
     for (const auto &message : *_data)
     {
-        assert(message);
-        assert(message->has_msgid());
+        im_assert(message);
+        im_assert(message->has_msgid());
 
         message_header existing_header;
         if (index_->get_header(message->get_msgid(), Out existing_header))
@@ -265,13 +279,17 @@ void contact_archive::insert_history_block(
 
             const bool poll_id_added = message->has_poll_with_id() && !existing_header.has_poll_with_id();
 
+            const bool task_id_added = message->has_task_with_id() && !existing_header.has_task_with_id();
+
             const bool reactions_changed = message->has_reactions() != existing_header.has_reactions();
+
+            const bool thread_id_changed = message->has_thread() != existing_header.has_thread();
 
             const bool skip_duplicate = !is_patch_operation && !quote_with_chat_name &&
                                         !is_prev_id_changed && !is_version_updated &&
                                         is_valid_data && !shared_contact_sn_added &&
-                                        !poll_id_added && !reactions_changed;
-
+                                        !poll_id_added && !reactions_changed &&
+                                        !thread_id_changed && !task_id_added;
             if (skip_duplicate)
             {
                 // message is already in the db, no need in quote header replacement,
@@ -279,7 +297,9 @@ void contact_archive::insert_history_block(
                 // prev_ids are not changed, no need to fix linked list,
                 // no shared contact sn added,
                 // no poll id added,
+                // no task id added,
                 // and no reactions changed,
+                // thread id not changed
                 // thus just skip it
                 continue;
             }
@@ -291,7 +311,7 @@ void contact_archive::insert_history_block(
         );
         if (is_message_obsolete)
         {
-            assert(message->is_patch());
+            im_assert(message->is_patch());
 
             __INFO(
                 "delete_history",
@@ -337,7 +357,7 @@ void contact_archive::insert_history_block(
         error_vector v;
         if (_from != -1 && !_has_older_message_id && get_messages_buddies_from_ids({ _from }, insert_data, v))
         {
-            assert(insert_data.size() < 2);
+            im_assert(insert_data.size() < 2);
             if (!insert_data.empty())
                 insert_data.front()->set_prev_msgid(-1);
         }
@@ -350,14 +370,14 @@ void contact_archive::insert_history_block(
     _result = data_->update(insert_data);
     if (!_result)
     {
-        assert(!"update data error");
+        im_assert(!"update data error");
         return;
     }
 
     _result = index_->update(insert_data, _inserted_messages);
     if (!_result)
     {
-        assert(!"update index error");
+        im_assert(!"update index error");
         return;
     }
 }
@@ -381,7 +401,7 @@ void contact_archive::update_message_data(const history_message& _message)
     auto _result = data_->update(block);
     if (!_result)
     {
-        assert(!"update data error");
+        im_assert(!"update data error");
         return;
     }
 
@@ -390,7 +410,7 @@ void contact_archive::update_message_data(const history_message& _message)
     _result = index_->update(block, headers);
     if (!_result)
     {
-        assert(!"update index error");
+        im_assert(!"update index error");
         return;
     }
 
@@ -420,7 +440,7 @@ int32_t contact_archive::load_from_local(/*out*/ bool& _first_load)
         {
             if (index_->get_last_error() != archive::error::file_not_exist)
             {
-                assert(!"index file crash, need repair");
+                im_assert(!"index file crash, need repair");
                 index_->save_all();
             }
         }
@@ -473,6 +493,11 @@ std::string core::archive::contact_archive::get_load_metrics_for_log() const
 std::vector<int64_t> core::archive::contact_archive::get_messages_for_update() const
 {
     return index_->get_messages_for_update();
+}
+
+bool contact_archive::has_hole_in_range(int64_t _msgid, int32_t _count_before, int32_t _count_after) const
+{
+    return index_->has_hole_in_range(_msgid, _count_before, _count_after);
 }
 
 archive::archive_hole_error contact_archive::get_next_hole(int64_t _from, archive_hole& _hole, int64_t _depth) const
@@ -535,7 +560,7 @@ void contact_archive::free()
 
 void contact_archive::delete_messages_up_to(const int64_t _up_to)
 {
-    assert(_up_to > -1);
+    im_assert(_up_to > -1);
 
     auto dlg_state = state_->get_state();
 
@@ -577,19 +602,39 @@ void contact_archive::insert_reactions(std::vector<reactions_data>& _reactions)
     reactions_->insert_reactions(_reactions);
 }
 
+void contact_archive::get_thread_updates(const msgids_list& _ids_to_load, std::vector<thread_update>& _updates, msgids_list& _missing)
+{
+    thread_updates_->get_thread_updates(_ids_to_load, _updates, _missing);
+}
+
+void contact_archive::insert_thread_updates(const std::vector<thread_update>& _updates)
+{
+    thread_updates_->insert_thread_updates(_updates);
+}
+
+void contact_archive::set_draft(const draft& _draft)
+{
+    draft_->set_draft(_draft);
+}
+
+const draft& contact_archive::get_draft()
+{
+    return draft_->get_draft();
+}
+
 std::wstring_view archive::db_filename() noexcept
 {
-    return L"_db2";
+    return L"_db3";
 }
 
 std::wstring_view archive::index_filename() noexcept
 {
-    return L"_idx2";
+    return L"_idx3";
 }
 
 std::wstring_view archive::dlg_state_filename() noexcept
 {
-    return L"_ste2";
+    return L"_ste3";
 }
 
 std::wstring_view archive::cache_filename() noexcept
@@ -620,4 +665,19 @@ std::wstring_view archive::reactions_index_filename() noexcept
 std::wstring_view archive::reactions_data_filename() noexcept
 {
     return L"_reactions_db";
+}
+
+std::wstring_view archive::thread_updates_index_filename() noexcept
+{
+    return L"_thrd_idx";
+}
+
+std::wstring_view archive::thread_updates_data_filename() noexcept
+{
+    return L"_thrd_db";
+}
+
+std::wstring_view archive::draft_filename() noexcept
+{
+    return L"_draft";
 }

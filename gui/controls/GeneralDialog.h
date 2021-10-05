@@ -42,22 +42,25 @@ namespace Ui
     public:
         struct Options
         {
-            Options(const QSize& _prefSize = QSize(0, 0))
-                : preferredSize_(_prefSize)
+            Options()
             {
-                ignoreRejectDlgPairs_ = {
-                    { Utils::CloseWindowInfo::Initiator::MainWindow, Utils::CloseWindowInfo::Reason::MW_Resizing }
-                };
+                ignoredInfos_.emplace_back(Utils::CloseWindowInfo::Initiator::MainWindow, Utils::CloseWindowInfo::Reason::MW_Resizing);
             }
 
-            QSize preferredSize_;
-            std::vector<std::pair<Utils::CloseWindowInfo::Initiator, Utils::CloseWindowInfo::Reason>> ignoreRejectDlgPairs_;
+            std::vector<Utils::CloseWindowInfo> ignoredInfos_;
+            int preferredWidth_ = 0;
             bool rejectOnMWResize_ = false;
+            bool ignoreKeyPressEvents_ = false;
+            bool fixedSize_ = true;
+            bool rejectable_ = true;
+            bool withSemiwindow_ = true;
+            bool threadBadge_ = false;
+
+            bool isIgnored(const Utils::CloseWindowInfo& _info) const;
         };
 
     public:
-        GeneralDialog(QWidget* _mainWidget, QWidget* _parent, bool _ignoreKeyPressEvents = false, bool _fixed_size = true, bool _rejectable = true, bool _withSemiwindow = true,
-                      const Options& _options = Options());
+        GeneralDialog(QWidget* _mainWidget, QWidget* _parent, const Options& _options = {});
         ~GeneralDialog();
 
         bool showInCenter();
@@ -96,6 +99,8 @@ namespace Ui
 
         void setTransparentBackground(bool _enable);
 
+        QSize sizeHint() const override;
+
     protected:
         void showEvent(QShowEvent *) override;
         void hideEvent(QHideEvent *) override;
@@ -121,13 +126,10 @@ namespace Ui
         QWidget* headerLabelHost_;
         QWidget* areaWidget_;
 
-        bool ignoreKeyPressEvents_;
         bool shadow_;
 
         bool leftButtonDisableOnClicked_;
         bool rightButtonDisableOnClicked_;
-        bool rejectable_;
-        bool withSemiwindow_;
         KeysContainer ignoredKeys_;
         Options options_;
 

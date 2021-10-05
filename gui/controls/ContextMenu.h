@@ -35,6 +35,9 @@ namespace Ui
        Q_OBJECT
 
    public:
+       static QSize defaultIconSize() { return QSize(20, 20); }
+
+   public:
        enum class Color
        {
            Default,
@@ -44,8 +47,10 @@ namespace Ui
        ContextMenu(QWidget* parent, Color _color, int _iconSize = 20);
        ContextMenu(QWidget* parent, int _iconSize);
 
-       static void applyStyle(QMenu* menu, bool withPadding, int fonSize, int height, Color color, const QSize& _iconSize = QSize(20, 20));
-       static void applyStyle(QMenu* menu, bool withPadding, int fonSize, int height, const QSize& _iconSize = QSize(20, 20));
+       static void applyStyle(QMenu* menu, bool withPadding, int fonSize, int height, Color color, const QSize& _iconSize = defaultIconSize());
+       static void applyStyle(QMenu* menu, bool withPadding, int fonSize, int height, const QSize& _iconSize = defaultIconSize());
+
+       static void updatePosition(QMenu* _menu, QPoint _position, bool _forceShowAtLeft = false);
 
        template<class Obj, typename Func1>
        QAction* addActionWithIcon(const QIcon& _icon, const QString& _name, const Obj* _receiver, Func1 _member)
@@ -59,6 +64,12 @@ namespace Ui
            return addAction(makeIcon(_iconPath), _name, _receiver, std::move(_member));
        }
 
+       template<typename Func1>
+       QAction* addActionWithIconAndFunc(const QString& _iconPath, const QString& _name, Func1 _func)
+       {
+           return addAction(makeIcon(_iconPath), _name, std::move(_func));
+       }
+
        QAction* addActionWithIcon(const QString& _iconPath, const QString& _name, const QVariant& _data);
 
        bool modifyAction(QStringView _command, const QString& _iconPath, const QString& _name, const QVariant& _data, bool _enable);
@@ -67,9 +78,10 @@ namespace Ui
 
        void removeAction(QStringView _command);
 
-       void invertRight(bool _invert);
-       void setIndent(int _indent);
+       void showAtLeft(bool _invert);
 
+       void setPosition(const QPoint& _pos);
+       void selectBestPositionAroundRectIfNeeded(const QRect& _rect);
        void popup(const QPoint& _pos, QAction* _at = nullptr);
        void clear();
 
@@ -96,9 +108,8 @@ namespace Ui
        QAction* findAction(QStringView _command) const;
 
    private:
-       bool InvertRight_ = false;
-       int Indent_ = 0;
-       QPoint Pos_;
+       bool needShowAtLeft_ = false;
+       std::optional<QPoint> pos_;
        Color color_ = Color::Default;
        bool showAsync_ = false;
        QSize iconSize_;

@@ -15,7 +15,7 @@ namespace
 {
     void sampling(const std::vector<double>& a, std::vector<double>& res, size_t newSize)
     {
-        if (a.empty())
+        if (a.size() <= 1)
         {
             res.clear();
             return;

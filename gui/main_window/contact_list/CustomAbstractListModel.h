@@ -29,6 +29,7 @@ namespace Logic
 
         virtual bool isServiceItem(const QModelIndex& _index) const;
         virtual bool isClickableItem(const QModelIndex& _index) const;
+        virtual bool isDropableItem(const QModelIndex& _index) const;
         virtual bool contains(const QString& _name) const;
 
         virtual void clearCheckedItems();

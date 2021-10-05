@@ -17,12 +17,15 @@ namespace core
             int32_t parse_results(const rapidjson::Value& _node_results) override;
 
             std::string stamp_;
+            std::string aimid_;
             int32_t resubscribe_in_;
 
         public:
-            group_subscribe(wim_packet_params _params, const std::string& _stamp);
+            group_subscribe(wim_packet_params _params, std::string_view _stamp, std::string_view _aimid);
             int32_t get_resubscribe_in() const;
-            virtual std::string_view get_method() const override;
+            std::string_view get_method() const override;
+
+            const std::string& get_param() const noexcept { return stamp_.empty() ? aimid_ : stamp_; }
         };
     }
 }

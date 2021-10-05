@@ -9,7 +9,7 @@
 #include "../../../network_log.h"
 #include "../../../tools/file_sharing.h"
 #include "../../../tools/system.h"
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 #include "../../../tools/features.h"
 #include "../../../utils.h"
 #include "../../../configuration/host_config.h"
@@ -229,14 +229,20 @@ void core::wim::async_loader::download(download_params_with_default_handler _par
             {
                 const auto response_code = request->get_response_code();
                 tools::system::create_directory_if_not_exists(boost::filesystem::wpath(params.file_name_).parent_path());
-                if (response_code != 304)
+                if (response_code != 304 && response_code != 425)
                 {
                     tools::system::delete_file(params.file_name_);
-                    if (!tools::system::move_file(tmp_file_name, params.file_name_))
+                    // for downloading the metainfo removing the temporary file has been moved to the callback body
+                    const auto res = params.is_binary_data_
+                        ? tools::system::move_file(tmp_file_name, params.file_name_)
+                        : tools::system::copy_file(tmp_file_name, params.file_name_);
+                    if (!res)
                     {
+                        tools::system::delete_file(tmp_file_name);
                         fire_callback(loader_errors::move_file, default_data_t(), completion_callback);
                         return 0;
                     }
+
                 }
                 else if (tools::system::is_exist(tmp_file_name))
                 {
@@ -248,8 +254,8 @@ void core::wim::async_loader::download(download_params_with_default_handler _par
                 if (response_code == 200)
                 {
                     default_data_t data(request->get_response_code(), request->get_header());
-                    data.additional_data_ = std::make_shared<core::wim::downloaded_file_info>(url, params.file_name_);
-                    fire_callback(loader_errors::success, data, completion_callback);
+                    data.additional_data_ = std::make_shared<core::wim::downloaded_file_info>(url, params.is_binary_data_ ? params.file_name_ : tmp_file_name);
+                    fire_callback(loader_errors::success, std::move(data), completion_callback);
                 }
                 else if (response_code == 425)
                 {
@@ -397,17 +403,19 @@ void core::wim::async_loader::download_image_metainfo(const std::string& _url, c
 
 void core::wim::async_loader::download_file_sharing_metainfo(const std::string& _url, const wim_packet_params& _wim_params, file_sharing_meta_handler_t _handler, int64_t _id)
 {
-    const auto id = tools::get_file_id(_url);
-    assert(!id.empty());
+    std::string id{ tools::get_file_id(_url) };
+    const auto source_id = tools::get_source_id(_url);
+    im_assert(!id.empty());
 
-    std::string signed_url;
-    signed_url += urls::get_url(urls::url_type::files_info);
-    signed_url += id;
-    signed_url += "/?f=json&ptt_text=1&aimsid=";
-    signed_url += _wim_params.aimsid_;
+    auto signed_url = su::concat(urls::get_url(urls::url_type::files_info), id, "/?f=json&ptt_text=1&aimsid=", _wim_params.aimsid_);
+    if (source_id)
+        signed_url += su::concat("&source=", *source_id);
+
     if (features::is_webp_original_accepted())
         signed_url += "&support_webp=1";
-    download_metainfo(_url, signed_url, &file_sharing_meta::parse_json, _wim_params, _handler, _id, "filesDownloadMetadata", make_filesharing_log_params({}));
+
+    auto log_params = make_filesharing_log_params({ std::move(id), source_id ? std::make_optional<std::string>(*source_id) : std::nullopt });
+    download_metainfo(_url, signed_url, &file_sharing_meta::parse_json, _wim_params, _handler, _id, "filesDownloadMetadata", std::move(log_params));
 }
 
 void core::wim::async_loader::download_image_preview(priority_t _priority, const std::string& _url, const wim_packet_params& _wim_params,
@@ -593,14 +601,13 @@ void core::wim::async_loader::download_file_sharing(
                 auto meta_info = file_sharing_meta::parse_json(json.data(), _url);
                 if (meta_info && meta_info->local_ && !meta_info->local_->local_path_.empty())
                 {
-                    boost::filesystem::wpath local(tools::from_utf8(meta_info->local_->local_path_));
+                    const auto local = tools::from_utf8(meta_info->local_->local_path_);
                     if (tools::system::is_exist(local))
                     {
-                        boost::system::error_code e;
-                        uint64_t last_modified = boost::filesystem::last_write_time(local, e);
-                        if (tools::system::get_file_size(local.wstring()) == meta_info->info_.file_size_ && last_modified == meta_info->local_->last_modified_)
+                        const auto last_modified = tools::system::get_file_lastmodified(local);
+                        if (tools::system::get_file_size(local) == meta_info->info_.file_size_ && last_modified == meta_info->local_->last_modified_)
                         {
-                            force_request_metainfo = false;
+                            force_request_metainfo = meta_info->info_.dlink_.empty();
                             if (_file_name.empty())
                                 _file_name = meta_info->local_->local_path_;
                         }
@@ -659,25 +666,24 @@ void core::wim::async_loader::download_file_sharing(
 
             if (meta->local_ && !meta->local_->local_path_.empty() && !_file_name.empty())
             {
-                boost::filesystem::wpath local(tools::from_utf8(meta->local_->local_path_));
-                boost::filesystem::wpath dest(tools::from_utf8(_file_name));
+                auto local = tools::from_utf8(meta->local_->local_path_);
 
                 if (tools::system::is_exist(local))
                 {
-                    boost::system::error_code e;
-                    uint64_t last_modified = boost::filesystem::last_write_time(local, e);
-                    if (tools::system::get_file_size(local.wstring()) == meta->info_.file_size_ && last_modified == meta->local_->last_modified_)
+                    const auto last_modified = tools::system::get_file_lastmodified(local);
+                    if (tools::system::get_file_size(local) == meta->info_.file_size_ && last_modified == meta->local_->last_modified_)
                     {
-                        ptr_this->file_save_thread_->run_async_function([local = std::move(local), dest = std::move(dest), _handler = std::move(_handler), _url = std::move(_url), _file_name = std::move(_file_name)]() mutable
+                        ptr_this->file_save_thread_->run_async_function([local = std::move(local), _handler = std::move(_handler), _url = std::move(_url), _file_name = std::move(_file_name)]() mutable
                         {
+                            const auto dest = tools::from_utf8(_file_name);
                             if (local != dest)
                             {
-                                tools::system::copy_file(local.wstring(), dest.wstring());
+                                tools::system::copy_file(local, dest);
                                 if (_file_name.empty())
-                                    tools::system::delete_file(local.wstring());
+                                    tools::system::delete_file(local);
                             }
 
-                            file_info_data_t data(std::make_shared<core::wim::downloaded_file_info>(_url, dest.wstring()));
+                            file_info_data_t data(std::make_shared<core::wim::downloaded_file_info>(_url, dest));
                             fire_callback(loader_errors::success, std::move(data), _handler.completion_callback_);
                             return 0;
                         });
@@ -737,8 +743,7 @@ void core::wim::async_loader::download_file_sharing(
                 {
                     if (_meta->local_)
                     {
-                        boost::system::error_code e;
-                        const uint64_t last_modified = boost::filesystem::last_write_time(_local_path, e);
+                        const auto last_modified = tools::system::get_file_lastmodified(_local_path);
                         return last_modified == _meta->local_->last_modified_ && tools::system::get_file_size(_local_path) == _meta->info_.file_size_;
                     }
 
@@ -894,35 +899,33 @@ void core::wim::async_loader::save_filesharing_local_path(const std::wstring& _m
             if (meta_info)
             {
                 if (!_path.empty())
-                {
-                    const boost::filesystem::wpath path(_path);
-                    boost::system::error_code e;
-                    auto last_modified = boost::filesystem::last_write_time(path, e);
-                    meta_info->local_ = fs_meta_local{ uint64_t(last_modified), tools::from_utf16(_path) };
-                }
+                    meta_info->local_ = fs_meta_local{ tools::system::get_file_lastmodified(_path), tools::from_utf16(_path) };
                 else
-                {
                     meta_info->local_ = std::nullopt;
-                }
 
-                rapidjson::Document doc(rapidjson::Type::kObjectType);
-                meta_info->serialize(doc, doc.GetAllocator());
-
-                rapidjson::StringBuffer buffer;
-                rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-                doc.Accept(writer);
-
-                const auto json_string = rapidjson_get_string_view(buffer);
-
-                if (json_string.empty())
-                {
-                    assert(false);
-                    return;
-                }
-                core::tools::binary_stream::save_2_file(json_string, _meta_path);
+                save_metainfo(*meta_info, _meta_path);
             }
         }
     }
+}
+
+void core::wim::async_loader::save_metainfo(const file_sharing_meta& _meta, const std::wstring& _path)
+{
+    rapidjson::Document doc(rapidjson::Type::kObjectType);
+    _meta.serialize(doc, doc.GetAllocator());
+
+    rapidjson::StringBuffer buffer;
+    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+    doc.Accept(writer);
+
+    const auto json_string = rapidjson_get_string_view(buffer);
+
+    if (json_string.empty())
+    {
+        im_assert(false);
+        return;
+    }
+    core::tools::binary_stream::save_2_file(json_string, _path);
 }
 
 void core::wim::async_loader::save_filesharing_local_path(std::string_view _url, const std::wstring& _path)
@@ -935,13 +938,17 @@ std::string core::wim::async_loader::path_in_cache(const std::string& _url)
     return tools::from_utf16(get_path_in_cache(content_cache_dir_, _url, path_type::file));
 }
 
-core::wim::async_loader_log_params core::wim::async_loader::make_filesharing_log_params(std::string_view _fs_id)
+core::wim::async_loader_log_params core::wim::async_loader::make_filesharing_log_params(const core::tools::filesharing_id& _fs_id)
 {
     async_loader_log_params params;
     params.need_log_ = true;
     params.log_functor_.add_marker("aimsid", aimsid_range_evaluator());
-    if (!_fs_id.empty())
-        params.log_functor_.add_url_marker(_fs_id, distance_range_evaluator(-std::ptrdiff_t(_fs_id.size())));
+    if (!_fs_id.file_id_.empty())
+    {
+        params.log_functor_.add_url_marker(_fs_id.file_id_, distance_range_evaluator(-std::ptrdiff_t(_fs_id.file_id_.size())));
+        if (_fs_id.source_id_ && !_fs_id.source_id_->empty())
+            params.log_functor_.add_marker("source");
+    }
 
     return params;
 }
@@ -1119,7 +1126,7 @@ void core::wim::async_loader::fire_chunks_callback(loader_errors _error, const s
     {
         std::scoped_lock lock(in_progress_mutex_);
         auto it = in_progress_.find(_url);
-        assert(it != in_progress_.end());
+        im_assert(it != in_progress_.end());
         if (it != in_progress_.end())
         {
             file_chunks = it->second;
@@ -1176,7 +1183,7 @@ void core::wim::async_loader::cleanup_cache()
             {
                 if (boost::filesystem::is_regular_file(dir_iter->status()))
                 {
-                    const auto write_time = std::chrono::system_clock::from_time_t(boost::filesystem::last_write_time(dir_iter->path(), error));
+                    const auto write_time = std::chrono::system_clock::from_time_t(tools::system::get_file_lastmodified(dir_iter->path().wstring()));
                     if ((current_time - write_time) > delete_files_older)
                         files_to_delete.push_back(*dir_iter);
                 }

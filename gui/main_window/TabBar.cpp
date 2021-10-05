@@ -93,17 +93,12 @@ namespace
 
     auto appBarContentMargin() noexcept
     {
-        return Utils::scale_value(8);
-    }
-
-    auto appBarSpacing() noexcept
-    {
-        return Utils::scale_value(8);
+        return Utils::scale_value(4);
     }
 
     auto appBarItemSize() noexcept
     {
-        return Utils::scale_value(52);
+        return Utils::scale_value(60);
     }
 
     auto appBarItemCornerRadius() noexcept
@@ -223,9 +218,10 @@ namespace Ui
             badgeTextUnit_->init(_font, badgeTextColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
     }
 
-    AppBarItem::AppBarItem(const QString& _iconPath, const QString& _iconActivePath, QWidget* _parent)
+    AppBarItem::AppBarItem(AppPageType _type, const QString& _iconPath, const QString& _iconActivePath, QWidget* _parent)
         : BaseBarItem(_iconPath, _iconActivePath, appBarIconActiveColor(), appBarIconNormalColor(), appBarIconNormalColor(), _parent)
         , tooltipTimer_(new QTimer(this))
+        , type_(_type)
         , tooltipVisible_(false)
     {
         setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
@@ -260,20 +256,22 @@ namespace Ui
         p.setRenderHint(QPainter::Antialiasing);
         p.setRenderHint(QPainter::SmoothPixmapTransform);
 
+        const auto m = appBarContentMargin();
         const auto iconSize = tabIconSize();
         const auto w = width();
         const auto padding = itemPadding();
         const auto cornerRadius = appBarItemCornerRadius();
+        const auto r = rect().marginsRemoved({ m, m, m, m });
         p.setPen(Qt::NoPen);
         if (isSelected())
         {
             p.setBrush(appBarItemSelectedColor());
-            p.drawRoundedRect(rect(), cornerRadius, cornerRadius);
+            p.drawRoundedRect(r, cornerRadius, cornerRadius);
         }
         else if (isHovered())
         {
             p.setBrush(appBarItemHoveredColor());
-            p.drawRoundedRect(rect(), cornerRadius, cornerRadius);
+            p.drawRoundedRect(r, cornerRadius, cornerRadius);
 
         }
 
@@ -282,13 +280,13 @@ namespace Ui
         if (!badgeText_.isEmpty())
         {
             const auto balloonX = (w - iconSize) / 2 + badgeOffset();
-            Utils::Badge::drawBadge(badgeTextUnit_, p, balloonX, badgeTopOffset(), Utils::Badge::Color::Red);
+            Utils::Badge::drawBadge(badgeTextUnit_, p, balloonX, badgeTopOffset() + m, Utils::Badge::Color::Red);
         }
         else if (!badgePixmap_.isNull())
         {
             const auto h = badgeHeight();
             const auto balloonX = (w - iconSize) / 2.0 + badgeOffset();
-            p.drawPixmap(balloonX, badgeTopOffset(), h, h, badgePixmap_);
+            p.drawPixmap(balloonX, badgeTopOffset() + m, h, h, badgePixmap_);
         }
     }
 
@@ -338,6 +336,31 @@ namespace Ui
     {
         tooltipVisible_ = false;
         Tooltip::hide();
+    }
+
+    CalendarItem::CalendarItem(AppPageType _type, const QString& _iconPath, const QString& _iconActivePath, QWidget* _parent)
+        : CalendarItem(_iconPath, _iconActivePath, _parent)
+    {
+
+    }
+
+    CalendarItem::CalendarItem(const QString& _iconPath, const QString& _iconActivePath, QWidget* _parent)
+        : AppBarItem(AppPageType::calendar, _iconPath, _iconActivePath, _parent)
+    {
+
+    }
+
+    void CalendarItem::paintEvent(QPaintEvent* _event)
+    {
+        AppBarItem::paintEvent(_event);
+        QPainter p(this);
+        p.setFont(Fonts::appFontScaled(14, Fonts::FontWeight::Medium));
+        p.setPen(Styling::getParameters().getColor(isSelected() ? Styling::StyleVariable::BASE_GLOBALWHITE : Styling::StyleVariable::BASE_PRIMARY));
+        p.setRenderHint(QPainter::TextAntialiasing);
+        if constexpr (platform::is_apple())
+            p.translate(0, Utils::scale_value(1));
+
+        p.drawText(rect(), QDate::currentDate().toString(qsl("dd")), QTextOption(Qt::AlignCenter));
     }
 
     TabItem::TabItem(const QString& _iconPath, const QString& _iconActivePath, QWidget* _parent)
@@ -457,7 +480,6 @@ namespace Ui
         setFixedWidth(AppsNavigationBar::defaultWidth());
         const auto margin = appBarContentMargin();
         setContentsMargins(margin, margin, margin, margin);
-        setSpacing(appBarSpacing());
     }
 
     TabBar::TabBar(QWidget* _parent)

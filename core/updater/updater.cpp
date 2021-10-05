@@ -9,10 +9,10 @@
 #include "../../common.shared/config/config.h"
 #include "../../common.shared/string_utils.h"
 #include "../../common.shared/omicron_keys.h"
+#include "../../common.shared/json_helper.h"
 #include "openssl/md5.h"
 #include "../configuration/app_config.h"
 #include "../configuration/host_config.h"
-#include "../tools/json_helper.h"
 #include "../tools/features.h"
 #include "../libomicron/include/omicron/omicron.h"
 
@@ -189,7 +189,7 @@ namespace core
                 return error::network_error;
 
             auto response = dynamic_cast<tools::binary_stream*>(request.get_response().get());
-            assert(response);
+            im_assert(response);
 
             if (!response->available())
                 return error::network_error;
@@ -251,7 +251,7 @@ namespace core
                 return error::network_error;
 
             auto response = dynamic_cast<tools::binary_stream*>(request.get_response().get());
-            assert(response);
+            im_assert(response);
 
             if (!response->available())
                 return error::network_error;

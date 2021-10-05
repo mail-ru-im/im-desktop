@@ -34,48 +34,49 @@ namespace
     constexpr auto leaveTimerInterval() noexcept { return std::chrono::milliseconds(50); }
     constexpr auto statusTimeUpdateTimeInterval() noexcept { return std::chrono::milliseconds(1000); }
     constexpr auto heightAnimationDuration() noexcept { return std::chrono::milliseconds(150); }
+    constexpr std::chrono::seconds defaultCustomStatusDuration() noexcept { return std::chrono::hours(1); }
 
-    int listWidth()
+    int listWidth() noexcept
     {
         return Utils::scale_value(360);
     }
 
-    int32_t statusContentSideMargin()
+    int32_t statusContentSideMargin() noexcept
     {
         return Utils::scale_value(16);
     }
 
-    double listHeightWindowHeightRatio()
+    constexpr double listHeightWindowHeightRatio()
     {
         return 0.8;
     }
 
-    QSize itemSize()
+    QSize itemSize() noexcept
     {
         return QSize(listWidth(), Utils::scale_value(44));
     }
 
-    int emojiLeftMargin()
+    int emojiLeftMargin() noexcept
     {
         return Utils::scale_value(12);
     }
 
-    int emojiSize()
+    int emojiSize() noexcept
     {
         return Utils::scale_value(34);
     }
 
-    int32_t descriptionLeftMargin()
+    int32_t descriptionLeftMargin() noexcept
     {
         return Utils::scale_value(12);
     }
 
-    int32_t descriptionRightMargin()
+    int32_t descriptionRightMargin() noexcept
     {
         return Utils::scale_value(16);
     }
 
-    int32_t descriptionTopMargin()
+    int32_t descriptionTopMargin() noexcept
     {
         if constexpr (platform::is_apple())
             return Utils::scale_value(12);
@@ -141,7 +142,7 @@ namespace
         return Utils::scale_value(4);
     }
 
-    int twoLineTextBottomMargin()
+    int twoLineTextBottomMargin() noexcept
     {
         if constexpr (platform::is_apple())
             return Utils::scale_value(2);
@@ -155,7 +156,7 @@ namespace
         return color;
     }
 
-    QSize buttonSize()
+    QSize buttonSize() noexcept
     {
         return Utils::scale_value(QSize(20, 20));
     }
@@ -179,12 +180,12 @@ namespace
         }
     }
 
-    QSize buttonPressRectSize()
+    QSize buttonPressRectSize() noexcept
     {
         return Utils::scale_value(QSize(44, 44));
     }
 
-    int buttonRightMargin()
+    int buttonRightMargin() noexcept
     {
         return Utils::scale_value(8);
     }
@@ -194,7 +195,7 @@ namespace
         return Utils::renderSvg(qsl(":/smile"), Utils::scale_value(QSize(34, 34)), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY)).toImage();
     }
 
-    QSize placeholderSize()
+    QSize placeholderSize() noexcept
     {
         return Utils::scale_value(QSize(84, 84));
     }
@@ -212,7 +213,7 @@ namespace
         return Fonts::appFontScaled(22);
     }
 
-    int avatarTopMargin()
+    int avatarTopMargin() noexcept
     {
         if constexpr (platform::is_apple())
             return Utils::scale_value(6);
@@ -220,9 +221,14 @@ namespace
         return Utils::scale_value(12);
     }
 
-    int labelsWidgetMaximumHeight()
+    int labelsWidgetMaximumHeight() noexcept
     {
         return Utils::scale_value(40);
+    }
+
+    QSize datepickerSize() noexcept
+    {
+        return Utils::scale_value(QSize(360, 170));
     }
 }
 
@@ -318,6 +324,7 @@ public:
     {
         startAnimation(QPropertyAnimation::Forward);
     }
+
     void animateCancelSearchMode()
     {
         startAnimation(QPropertyAnimation::Backward);
@@ -570,8 +577,10 @@ SelectStatusWidget::SelectStatusWidget(QWidget* _parent)
     d->customStatusWidget_ = new CustomStatusWidget(this);
     d->customStatusWidget_->setVisible(false);
     Testing::setAccessibleName(d->customStatusWidget_, qsl("AS Statuses CustomStatusWidget"));
+
     d->statusDurationWidget_ = new StatusDurationWidget(this);
     d->statusDurationWidget_->setVisible(false);
+    d->statusDurationWidget_->setFixedSize(datepickerSize());
     Testing::setAccessibleName(d->statusDurationWidget_, qsl("AS Statuses StatusDurationWidget"));
 
     connect(d->customStatusWidget_, &CustomStatusWidget::backClicked, this, &SelectStatusWidget::showMainDialog);
@@ -652,6 +661,11 @@ void SelectStatusWidget::showCustomDurationDialog(const QString& _status, const 
 {
     d->statusDurationWidget_->setStatus(_status, _description);
     d->statusSelectionContent_->setVisible(false);
+
+    auto dateValue = QDateTime::currentDateTime().addSecs(defaultCustomStatusDuration().count());
+    if (const auto date = d->status_.getEndTime(); date.isValid() && d->status_.toString() == _status)
+        dateValue = date;
+    d->statusDurationWidget_->setDateTime(dateValue);
     d->statusDurationWidget_->setVisible(true);
 }
 

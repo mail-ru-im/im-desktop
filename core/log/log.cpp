@@ -93,8 +93,8 @@ namespace core
         void determine_log_index()
         {
             boost::system::error_code error;
-            assert(fs::is_directory(logs_dir_, Out error));
-            assert(log_file_index_ == -1);
+            im_assert(fs::is_directory(logs_dir_, Out error));
+            im_assert(log_file_index_ == -1);
 
             using namespace boost::xpressive;
 
@@ -122,7 +122,7 @@ namespace core
 
                     const auto &index_str = match["index"].str();
                     const auto index = std::stoi(index_str);
-                    assert(index >= 0);
+                    im_assert(index >= 0);
                     max_index = std::max(max_index, index);
                 }
             }
@@ -132,7 +132,7 @@ namespace core
             }
 
             log_file_index_ = (max_index + 1);
-            assert(log_file_index_ >= 0);
+            im_assert(log_file_index_ >= 0);
         }
 
         bool create_logs_directory(const fs::wpath &_path)
@@ -151,7 +151,7 @@ namespace core
 
         void init(const fs::wpath &_logs_dir, const bool _is_html)
         {
-            assert(!logging_thread_);
+            im_assert(!logging_thread_);
 
             log_file_index_ = -1;
             stop_signal_ = false;
@@ -170,7 +170,7 @@ namespace core
 
             if (!create_logs_directory(_logs_dir))
             {
-                assert(!"cannot create logs directory");
+                im_assert(!"cannot create logs directory");
                 return;
             }
 
@@ -195,7 +195,7 @@ namespace core
             {
                 auto file = pair.second;
 
-                assert(file);
+                im_assert(file);
                 ::fclose(file);
             }
 
@@ -213,18 +213,18 @@ namespace
         , text_(_text)
         , ts_(_ts)
     {
-        assert(type_ >= record_type::min);
-        assert(type_ <= record_type::max);
-        assert(!area_.empty());
-        assert(!text_.empty());
+        im_assert(type_ >= record_type::min);
+        im_assert(type_ <= record_type::max);
+        im_assert(!area_.empty());
+        im_assert(!text_.empty());
     }
 
     void enqueue_record(const record_type _type, const std::string &_area, const std::string &_text)
     {
-        assert(_type >= record_type::min);
-        assert(_type <= record_type::max);
-        assert(!_area.empty());
-        assert(!_text.empty());
+        im_assert(_type >= record_type::min);
+        im_assert(_type <= record_type::max);
+        im_assert(!_area.empty());
+        im_assert(!_text.empty());
 
         const auto skip_trace_record = ((_type == record_type::trace) && !trace_data_enabled_);
         if (skip_trace_record)
@@ -279,7 +279,7 @@ namespace
             break;
 
         default:
-            assert(!"unknown record type");
+            im_assert(!"unknown record type");
         }
 
 
@@ -299,7 +299,7 @@ namespace
 
     void format_body_html(const log_record &_record, std::stringstream &_wss)
     {
-        assert(!_record.text_.empty());
+        im_assert(!_record.text_.empty());
 
         const auto &text = _record.text_;
 
@@ -367,7 +367,7 @@ namespace
             break;
 
         default:
-            assert(!"unknown record type");
+            im_assert(!"unknown record type");
         }
 
         _wss << "] ";
@@ -387,7 +387,7 @@ namespace
 
     void format_body_plain(const log_record &_record, std::stringstream &_wss)
     {
-        assert(!_record.text_.empty());
+        im_assert(!_record.text_.empty());
 
         _wss << _record.text_;
     }
@@ -401,8 +401,8 @@ namespace
 
     fs::wpath get_area_file_path(std::string_view _area)
     {
-        assert(!_area.empty());
-        assert(!log_files_ext_.empty());
+        im_assert(!_area.empty());
+        im_assert(!log_files_ext_.empty());
 
         std::wstring w_area = from_utf8(_area);
 
@@ -417,12 +417,12 @@ namespace
 
     FILE *get_area_file(const std::string &_area)
     {
-        assert(!_area.empty());
+        im_assert(!_area.empty());
 
         auto iter = log_files_.find(_area);
         if (iter != log_files_.end())
         {
-            assert(iter->second);
+            im_assert(iter->second);
             return iter->second;
         }
 
@@ -430,14 +430,14 @@ namespace
 
 #ifdef _WIN32
         auto file = ::_wfsopen(path.c_str(), L"wt", _SH_DENYWR);
-        assert(file);
+        im_assert(file);
 
         log_files_.emplace(_area, file);
 
         return file;
 #else
         auto file = ::fopen(path.c_str(), "wt, ccs=UTF-8");
-        assert(file);
+        im_assert(file);
 
         log_files_.emplace(_area, file);
 
@@ -451,19 +451,19 @@ namespace
 
         for (const auto &record : records)
         {
-            assert(record);
+            im_assert(record);
 
             auto iter = to_write.find(record->area_);
             if (iter == to_write.end())
             {
                 const auto inserted = to_write.emplace(record->area_, std::stringstream());
-                assert(inserted.second);
+                im_assert(inserted.second);
                 iter = inserted.first;
             }
 
             auto &text = iter->second;
 
-            assert(record_formatter_);
+            im_assert(record_formatter_);
             record_formatter_(*record, text);
         }
 
@@ -532,7 +532,7 @@ namespace
     {
         using namespace core::tools;
 
-        assert(!logs_dir_.empty());
+        im_assert(!logs_dir_.empty());
 
         static const auto log_areas_file_name = L"!enabled";
 
@@ -572,8 +572,8 @@ namespace
 #define LOG_IMPL(id, type)                                                    \
     void id(const std::string &_area,const std::string &_str)                \
 {                                                                        \
-    assert(!_area.empty());                                                \
-    assert(!_str.empty());                                              \
+    im_assert(!_area.empty());                                                \
+    im_assert(!_str.empty());                                              \
     enqueue_record(type, _area, _str);                                    \
 }                                                                        \
     \

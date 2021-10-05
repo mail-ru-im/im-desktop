@@ -22,7 +22,7 @@
 #include "../win32/winsock_util.h"
 #endif
 
-namespace core 
+namespace core
 {
     namespace
     {
@@ -31,7 +31,7 @@ namespace core
 #define COMPILER_MSVC 1
 #endif
 
-        uint64_t byte_swap(uint16_t x) 
+        uint64_t byte_swap(uint16_t x)
         {
 #if defined(COMPILER_MSVC)
             return _byteswap_ushort(x);
@@ -47,7 +47,7 @@ namespace core
         // Extracts the address and port portions of a sockaddr.
         bool get_ip_address_from_sock_addr(const struct sockaddr* _sock_addr, socklen_t _sock_addr_len, const uint8_t** _address, size_t* _address_len, uint16_t* _port)
         {
-            if (_sock_addr->sa_family == AF_INET) 
+            if (_sock_addr->sa_family == AF_INET)
             {
                 if (_sock_addr_len < static_cast<socklen_t>(sizeof(struct sockaddr_in)))
                     return false;
@@ -59,7 +59,7 @@ namespace core
                 return true;
             }
 
-            if (_sock_addr->sa_family == AF_INET6) 
+            if (_sock_addr->sa_family == AF_INET6)
             {
                 if (_sock_addr_len < static_cast<socklen_t>(sizeof(struct sockaddr_in6)))
                     return false;
@@ -84,20 +84,20 @@ namespace core
     ip_endpoint::ip_endpoint(const ip_address& _address, uint16_t _port)
         : address_(_address), port_(_port) {}
 
-    ip_endpoint::ip_endpoint(const ip_endpoint& _endpoint) 
+    ip_endpoint::ip_endpoint(const ip_endpoint& _endpoint)
     {
         address_ = _endpoint.address_;
         port_ = _endpoint.port_;
     }
 
-    address_family ip_endpoint::get_family() const 
+    address_family ip_endpoint::get_family() const
     {
         return get_address_family(address_);
     }
 
     int ip_endpoint::get_sock_addr_family() const
     {
-        switch (address_.size()) 
+        switch (address_.size())
         {
         case ip_address::ip_v4_address_size:
             return AF_INET;
@@ -108,13 +108,13 @@ namespace core
         }
     }
 
-    bool ip_endpoint::to_sock_addr(struct sockaddr* _address, socklen_t* _address_length) const 
+    bool ip_endpoint::to_sock_addr(struct sockaddr* _address, socklen_t* _address_length) const
     {
-        assert(_address);
-        assert(_address_length);
-        switch (address_.size()) 
+        im_assert(_address);
+        im_assert(_address_length);
+        switch (address_.size())
         {
-        case ip_address::ip_v4_address_size: 
+        case ip_address::ip_v4_address_size:
         {
             if (*_address_length < sockaddr_in_size())
                 return false;
@@ -127,7 +127,7 @@ namespace core
                 ip_address::ip_v4_address_size);
             break;
         }
-        case ip_address::ip_v6_address_size: 
+        case ip_address::ip_v6_address_size:
         {
             if (*_address_length < sockaddr_in6_size())
                 return false;
@@ -145,14 +145,14 @@ namespace core
         return true;
     }
 
-    bool ip_endpoint::from_sock_addr(const struct sockaddr* _sock_addr, socklen_t _sock_addr_len) 
+    bool ip_endpoint::from_sock_addr(const struct sockaddr* _sock_addr, socklen_t _sock_addr_len)
     {
-        assert(_sock_addr);
+        im_assert(_sock_addr);
 
         const uint8_t* address;
         size_t address_len;
         uint16_t port;
-        if (!get_ip_address_from_sock_addr(_sock_addr, _sock_addr_len, &address, &address_len, &port)) 
+        if (!get_ip_address_from_sock_addr(_sock_addr, _sock_addr_len, &address, &address_len, &port))
             return false;
 
         address_ = ip_address(address, address_len);
@@ -160,24 +160,24 @@ namespace core
         return true;
     }
 
-    
+
     bool operator<(const ip_endpoint& _lhs, const ip_endpoint& _rhs)
     {
         // Sort IPv4 before IPv6.
         if (_lhs.address_.size() != _rhs.address_.size()) {
             return _lhs.address_.size() < _rhs.address_.size();
         }
-        return std::tie(_lhs.address_, _lhs.port_) < std::tie(_rhs.address_, _rhs.port_);        
+        return std::tie(_lhs.address_, _lhs.port_) < std::tie(_rhs.address_, _rhs.port_);
     }
 
     bool operator==(const ip_endpoint& _lhs, const ip_endpoint& _rhs)
     {
-        return _lhs.address_ == _rhs.address_ && _lhs.port_ == _rhs.port_;        
+        return _lhs.address_ == _rhs.address_ && _lhs.port_ == _rhs.port_;
     }
 
     bool operator!=(const ip_endpoint& _lhs, const ip_endpoint& _rhs)
     {
-        return !(_lhs == _rhs);        
+        return !(_lhs == _rhs);
     }
 
 }  // namespace core

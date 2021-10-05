@@ -76,6 +76,7 @@ namespace common
             bool is_email() const;
             bool is_ftp() const;
             bool has_prtocol() const;
+            bool has_prohibited_protocols() const;
 
             bool operator==(const url& _right) const;
             bool operator!=(const url& _right) const;
@@ -194,6 +195,7 @@ namespace common
             bool skipping_chars() const;
 
             int32_t raw_url_length() const;
+            int32_t num_processed_chars_since_url_start() const { return num_processed_chars_since_url_start_; }
             int32_t tail_size() const;
 
             static url_vector_t parse_urls(const std::string& _source, const std::string& _files_url);
@@ -256,6 +258,7 @@ namespace common
             const char* to_compare_;
             int32_t compare_pos_;
 
+            int num_processed_chars_since_url_start_ = 0;
             std::vector<compare_item> fixed_urls_;
             std::set<char> compare_set_;
 
@@ -301,6 +304,9 @@ namespace common
 
             void process(char c) = delete;
 
+        public:
+            static url_vector_t parse_urls(std::u16string_view _source, const std::string& _files_url);
+
         protected:
             void process();
 
@@ -315,5 +321,8 @@ namespace common
 const char* to_string(common::tools::url::type _value);
 const char* to_string(common::tools::url::protocol _value);
 const char* to_string(common::tools::url::extension _value);
+
+//! For debug purposes (in unit tests)
+const char* to_string(std::string_view _string);
 
 std::ostream& operator<<(std::ostream& _out, const common::tools::url& _url);

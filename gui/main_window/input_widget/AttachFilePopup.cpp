@@ -1,7 +1,6 @@
 #include "stdafx.h"
 
 #include "AttachFilePopup.h"
-#include "InputWidget.h"
 #include "InputWidgetUtils.h"
 
 #include "utils/utils.h"
@@ -12,9 +11,7 @@
 #include "fonts.h"
 #include "core_dispatcher.h"
 
-#include "main_window/history_control/MessageStyle.h"
 #include "main_window/MainPage.h"
-#include "main_window/ContactDialog.h"
 
 namespace
 {
@@ -81,7 +78,7 @@ namespace
     constexpr std::chrono::milliseconds showHideDuration() noexcept { return std::chrono::milliseconds(100); }
     constexpr std::chrono::milliseconds leaveHideDelay() noexcept { return std::chrono::milliseconds(500); }
 
-    static QPointer<Ui::AttachFilePopup> popupInstance;
+    static QPointer<Ui::AttachFilePopup> shownInstance;
 }
 
 namespace Ui
@@ -174,15 +171,13 @@ namespace Ui
         p.drawRoundedRect(fillRect, radius, radius);
     }
 
-    AttachFilePopup::AttachFilePopup(QWidget* _parent, InputWidget* _input)
+    AttachFilePopup::AttachFilePopup(QWidget* _parent)
         : ClickableWidget(_parent)
-        , input_(_input)
         , opacityEffect_(new Utils::OpacityEffect(this))
         , opacityAnimation_ (new QVariantAnimation(this))
         , persistent_(false)
+        , pttEnabled_(true)
     {
-        im_assert(!popupInstance);
-        im_assert(_input);
         setCursor(Qt::ArrowCursor);
 
         listWidget_ = new SimpleListWidget(Qt::Vertical, this);
@@ -192,14 +187,6 @@ namespace Ui
         listWidget_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Minimum);
 
         connect(this, &ClickableWidget::pressed, this, &AttachFilePopup::onBackgroundClicked);
-        connect(this, &AttachFilePopup::photoVideoClicked, input_, &InputWidget::onAttachPhotoVideo);
-        connect(this, &AttachFilePopup::fileClicked, input_, &InputWidget::onAttachFile);
-        connect(this, &AttachFilePopup::cameraClicked, input_, &InputWidget::onAttachCamera);
-        connect(this, &AttachFilePopup::contactClicked, input_, &InputWidget::onAttachContact);
-        connect(this, &AttachFilePopup::pttClicked, input_, &InputWidget::onAttachPtt);
-        connect(this, &AttachFilePopup::pollClicked, input_, &InputWidget::onAttachPoll);
-        connect(this, &AttachFilePopup::callClicked, input_, &InputWidget::onAttachCallByLink);
-        connect(this, &AttachFilePopup::webinarClicked, input_, &InputWidget::onAttachWebinar);
 
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated, this, &AttachFilePopup::initItems);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::externalUrlConfigUpdated, this, &AttachFilePopup::initItems);
@@ -229,7 +216,6 @@ namespace Ui
 
         initItems();
         hide();
-        popupInstance = this;
     }
 
     void AttachFilePopup::initItems()
@@ -237,10 +223,10 @@ namespace Ui
         items_.clear();
         listWidget_->clear();
 
-        const auto addItem = [this](const auto& _icon, const auto& _capt, const auto _iconBg, const auto _id, const auto& _testingName)
+        const auto addItem = [this](const auto& _icon, const auto& _capt, const auto _iconBg, const auto _id, QStringView _testingName)
         {
             auto item = new AttachFileMenuItem(listWidget_, _icon, _capt, Styling::getParameters().getColor(_iconBg));
-            Testing::setAccessibleName(item, ql1s("AS AttachPopup %1").arg(_testingName));
+            Testing::setAccessibleName(item, u"AS AttachPopup " % _testingName);
             const auto idx = listWidget_->addItem(item);
             connect(item, &AttachFileMenuItem::hoverChanged, this, [this, idx](const bool _hovered)
             {
@@ -252,68 +238,44 @@ namespace Ui
             items_.push_back({ idx, _id });
         };
 
-        addItem(qsl(":/input/attach_photo"), QT_TRANSLATE_NOOP("input_widget", "Photo or Video"), Styling::StyleVariable::SECONDARY_RAINBOW_PINK, MenuItemId::photoVideo, QString());
-        addItem(qsl(":/input/attach_documents"), QT_TRANSLATE_NOOP("input_widget", "File"), Styling::StyleVariable::SECONDARY_RAINBOW_MAIL, MenuItemId::file, QString());
+        addItem(qsl(":/input/attach_photo"), QT_TRANSLATE_NOOP("input_widget", "Photo or Video"), Styling::StyleVariable::SECONDARY_RAINBOW_PINK, AttachMediaType::photoVideo, u"PhotoVideo");
+        addItem(qsl(":/input/attach_documents"), QT_TRANSLATE_NOOP("input_widget", "File"), Styling::StyleVariable::SECONDARY_RAINBOW_MAIL, AttachMediaType::file, u"File");
         //addItem(qsl(":/input/attach_camera"), QT_TRANSLATE_NOOP("input_widget", "Camera"), Styling::StyleVariable::SECONDARY_RAINBOW_AQUA, MenuItemId::camera);
 
         if (Features::pollsEnabled())
-            addItem(qsl(":/input/attach_poll"), QT_TRANSLATE_NOOP("input_widget", "Poll"), Styling::StyleVariable::SECONDARY_RAINBOW_PURPLE, MenuItemId::poll, QString());
+            addItem(qsl(":/input/attach_poll"), QT_TRANSLATE_NOOP("input_widget", "Poll"), Styling::StyleVariable::SECONDARY_RAINBOW_PURPLE, AttachMediaType::poll, u"Poll");
 
-        addItem(qsl(":/input/attach_contact"), QT_TRANSLATE_NOOP("input_widget", "Contact"), Styling::StyleVariable::SECONDARY_RAINBOW_WARM, MenuItemId::contact, QString());
+        addItem(qsl(":/input/attach_contact"), QT_TRANSLATE_NOOP("input_widget", "Contact"), Styling::StyleVariable::SECONDARY_RAINBOW_WARM, AttachMediaType::contact, u"Contact");
         //addItem(qsl(":/message_type_contact_icon"), QT_TRANSLATE_NOOP("input_widget", "Location"), Styling::StyleVariable::SECONDARY_RAINBOW_AQUA, MenuItemId::geo);
 
-        if (Features::isVcsCallByLinkEnabled())
-            addItem(qsl(":/copy_link_icon"), QT_TRANSLATE_NOOP("input_widget", "Call link"), Styling::StyleVariable::SECONDARY_RAINBOW_AQUA, MenuItemId::callLink, qsl("Link"));
-        if (Features::isVcsWebinarEnabled())
-            addItem(qsl(":/input/webinar"), QT_TRANSLATE_NOOP("input_widget", "Webinar"), Styling::StyleVariable::SECONDARY_RAINBOW_EMERALD, MenuItemId::webinar, qsl("Webinar"));
+        if (Features::isTaskCreationInChatEnabled())
+            addItem(qsl(":/input/attach_task"), QT_TRANSLATE_NOOP("input_widget", "Task"), Styling::StyleVariable::SECONDARY_RAINBOW_YELLOW, AttachMediaType::task, u"Task");
 
-        addItem(qsl(":/input/attach_ptt"), QT_TRANSLATE_NOOP("input_widget", "Voice Message"), Styling::StyleVariable::SECONDARY_ATTENTION, MenuItemId::ptt, QString());
+        if (Features::isVcsCallByLinkEnabled())
+            addItem(qsl(":/copy_link_icon"), QT_TRANSLATE_NOOP("input_widget", "Call link"), Styling::StyleVariable::SECONDARY_RAINBOW_AQUA, AttachMediaType::callLink, u"Link");
+        if (Features::isVcsWebinarEnabled())
+            addItem(qsl(":/input/webinar"), QT_TRANSLATE_NOOP("input_widget", "Webinar"), Styling::StyleVariable::SECONDARY_RAINBOW_EMERALD, AttachMediaType::webinar, u"Webinar");
+
+        if (pttEnabled_)
+            addItem(qsl(":/input/attach_ptt"), QT_TRANSLATE_NOOP("input_widget", "Voice Message"), Styling::StyleVariable::SECONDARY_ATTENTION, AttachMediaType::ptt, u"Ptt");
 
         updateSizeAndPos();
     }
 
-    AttachFilePopup& AttachFilePopup::instance()
-    {
-        if (!popupInstance)
-        {
-            if (auto mainPage = Utils::InterConnector::instance().getMessengerPage())
-            {
-                auto inputWidget = mainPage->getContactDialog()->getInputWidget();
-                im_assert(mainPage);
-                im_assert(inputWidget);
-
-                popupInstance = new AttachFilePopup(mainPage, inputWidget);
-            }
-        }
-
-        return *popupInstance;
-    }
-
-    bool AttachFilePopup::isOpen()
-    {
-        return popupInstance && popupInstance->isVisible();
-    }
-
-    void AttachFilePopup::showPopup(const AttachFilePopup::ShowMode _mode)
-    {
-        auto& i = instance();
-        i.setPersistent(_mode == AttachFilePopup::ShowMode::Persistent);
-        i.showAnimated();
-    }
-
-    void AttachFilePopup::hidePopup()
-    {
-        if (popupInstance)
-            popupInstance->hideAnimated();
-    }
-
-    void AttachFilePopup::showAnimated()
+    void AttachFilePopup::showAnimated(const QRect& _plusButtonRect)
     {
         if (animState_ == AnimState::Showing)
             return;
 
+        if (shownInstance && shownInstance != this)
+            shownInstance->hideAnimated();
+
+        shownInstance = this;
+
+        buttonRect_ = _plusButtonRect;
+        buttonRect_.moveTopLeft(parentWidget()->mapFromGlobal(buttonRect_.topLeft()));
+
         updateSizeAndPos();
-        buttonRect_ = getPlusButtonRect();
         mouseAreaPoly_ = getMouseAreaPoly();
         listWidget_->clearSelection();
 
@@ -333,6 +295,9 @@ namespace Ui
         if (!isVisible() || animState_ == AnimState::Hiding)
             return;
 
+        if (shownInstance == this)
+            shownInstance.clear();
+
         const auto startValue = animState_ == AnimState::Showing ? opacityEffect_->opacity() : 1.0;
         animState_ = AnimState::Hiding;
 
@@ -351,30 +316,31 @@ namespace Ui
     {
         persistent_ = _persistent;
         if (persistent_)
-            window()->installEventFilter(this);
+            parentWidget()->installEventFilter(this);
         else
-            window()->removeEventFilter(this);
+            parentWidget()->removeEventFilter(this);
     }
 
     void AttachFilePopup::updateSizeAndPos()
     {
-        const auto inputRect = input_->rect().translated(parentWidget()->mapFromGlobal(input_->mapToGlobal({ 0, 0 })));
-        const auto popupSize = QSize(widget_->sizeHint().width(), widget_->heightForContent(items_.size() * itemHeight()));
+        const auto w = widget_->sizeHint().width();
+        const auto h = widget_->heightForContent(items_.size() * itemHeight());
 
-        auto x = inputRect.left() - getShadowSize() + popupLeftOffset();
-        if (inputRect.width() > MessageStyle::getHistoryWidgetMaxWidth())
-            x += (inputRect.width() - MessageStyle::getHistoryWidgetMaxWidth()) / 2;
-
-        const auto y = inputRect.bottom() + 1 - popupBottomOffset() - popupSize.height() + getShadowSize();
-        setGeometry(x, y, popupSize.width(), popupSize.height() + popupBottomOffset());
-        widget_->setFixedHeight(popupSize.height());
-
+        widget_->setFixedHeight(h);
         widget_->move(0, 0);
+        resize(w, h + popupBottomOffset());
+
+        if (buttonRect_.isValid())
+        {
+            const auto x = buttonRect_.left() - getShadowSize() - popupLeftOffset();
+            const auto y = buttonRect_.top() - h;
+            move(x, y);
+        }
     }
 
     bool AttachFilePopup::eventFilter(QObject* _obj, QEvent* _event)
     {
-        constexpr QEvent::Type events[] =
+        static constexpr QEvent::Type events[] =
         {
             QEvent::MouseMove,
             QEvent::HoverMove,
@@ -386,7 +352,17 @@ namespace Ui
             if (!geometry().contains(mouseEvent->pos()))
                 hideWithDelay();
         }
+
         return false;
+    }
+
+    void AttachFilePopup::setPttEnabled(bool _enabled)
+    {
+        if (pttEnabled_ != _enabled)
+        {
+            pttEnabled_ = _enabled;
+            initItems();
+        }
     }
 
     void AttachFilePopup::mouseMoveEvent(QMouseEvent* _e)
@@ -458,22 +434,12 @@ namespace Ui
 
     void AttachFilePopup::showEvent(QShowEvent*)
     {
-        Q_EMIT Utils::InterConnector::instance().attachFilePopupVisiblityChanged(true);
+        Q_EMIT visiblityChanged(true, QPrivateSignal());
     }
 
     void AttachFilePopup::hideEvent(QHideEvent*)
     {
-        Q_EMIT Utils::InterConnector::instance().attachFilePopupVisiblityChanged(false);
-
-        const auto mainPage = Utils::InterConnector::instance().getMessengerPage();
-        if (input_ && mainPage && !mainPage->isSemiWindowVisible())
-        {
-            if (persistent_)
-                input_->setFocusOnAttach();
-            else
-                input_->setFocusOnInput();
-        }
-
+        Q_EMIT visiblityChanged(false, QPrivateSignal());
         setPersistent(false);
     }
 
@@ -485,55 +451,7 @@ namespace Ui
         if (it == items_.end())
             return;
 
-        switch (it->second)
-        {
-        case MenuItemId::photoVideo:
-            Q_EMIT photoVideoClicked(QPrivateSignal());
-            sendStat(core::stats::stats_event_names::chatscr_openmedgallery_action, "plus");
-            break;
-
-        case MenuItemId::file:
-            Q_EMIT fileClicked(QPrivateSignal());
-            sendStat(core::stats::stats_event_names::chatscr_openfile_action, "plus");
-            break;
-
-        case MenuItemId::camera:
-            Q_EMIT cameraClicked(QPrivateSignal());
-            sendStat(core::stats::stats_event_names::chatscr_opencamera_action, "plus");
-            break;
-
-        case MenuItemId::contact:
-            Q_EMIT contactClicked(QPrivateSignal());
-            sendStat(core::stats::stats_event_names::chatscr_opencontact_action, "plus");
-            break;
-
-        case MenuItemId::poll:
-            Q_EMIT pollClicked(QPrivateSignal());
-            break;
-
-        case MenuItemId::ptt:
-            Q_EMIT pttClicked(QPrivateSignal());
-            sendStat(core::stats::stats_event_names::chatscr_openptt_action, "plus");
-            break;
-
-        case MenuItemId::geo:
-            Q_EMIT geoClicked(QPrivateSignal());
-            sendStat(core::stats::stats_event_names::chatscr_opengeo_action, "plus");
-            break;
-
-        case MenuItemId::callLink:
-            Q_EMIT callClicked(QPrivateSignal());
-            sendStat(core::stats::stats_event_names::chatscr_callbylink_action, "plus");
-            break;
-
-        case MenuItemId::webinar:
-            Q_EMIT webinarClicked(QPrivateSignal());
-            sendStat(core::stats::stats_event_names::chatscr_webinar_action, "plus");
-            break;
-
-        default:
-            return;
-        }
+        Q_EMIT itemClicked(it->second, QPrivateSignal());
     }
 
     void AttachFilePopup::onBackgroundClicked()
@@ -559,13 +477,6 @@ namespace Ui
     bool AttachFilePopup::isMouseInArea(const QPoint& _pos) const
     {
         return mouseAreaPoly_.containsPoint(_pos, Qt::OddEvenFill);
-    }
-
-    QRect AttachFilePopup::getPlusButtonRect() const
-    {
-        auto rect = input_->getAttachFileButtonRect();
-        rect.moveTopLeft(mapFromGlobal(rect.topLeft()));
-        return rect;
     }
 
     QPolygon AttachFilePopup::getMouseAreaPoly() const

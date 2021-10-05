@@ -3,9 +3,11 @@
 #include "../../common.shared/url_parser/url_parser.h"
 
 #include "Text2DocConverter.h"
+#include "fonts.h"
 #include "../cache/emoji/Emoji.h"
 #include "../cache/emoji/EmojiDb.h"
 #include "../controls/TextEditEx.h"
+#include "../controls/textrendering/FormattedTextRendering.h"
 #include "../utils/log/log.h"
 #include "../utils/SChar.h"
 #include "../url_config.h"
@@ -13,15 +15,28 @@
 namespace
 {
     using namespace Logic;
+    using ftype = core::data::format_type;
+
+    constexpr auto textFormatLogicalBoldProperty = QTextFormat::UserProperty + 0x000001;
+    constexpr auto textFormatLogicalUnderlineProperty = QTextFormat::UserProperty + 0x000002;
+    constexpr auto textFormatLogicalMonospaceProperty = QTextFormat::UserProperty + 0x000003;
+
+    constexpr auto textBlockFormatFirst = QTextFormat::UserProperty + 0x000011;
+    constexpr auto textBlockFormatLast = QTextFormat::UserProperty + 0x000012;
+
+    constexpr auto textBlockIsQuote = QTextFormat::UserProperty + 0x000020;
+    constexpr auto textBlockIsCode = QTextFormat::UserProperty + 0x000021;
+    constexpr auto textBlockIsUnorderedList = QTextFormat::UserProperty + 0x000022;
+    constexpr auto textBlockIsOrderedList = QTextFormat::UserProperty + 0x000023;
 
     class Text2DocConverter
     {
     public:
         Text2DocConverter();
 
-        void Convert(const QString &text, QTextCursor &cursor, const Text2DocHtmlMode htmlMode, const bool convertLinks, const bool breakDocument, const Text2HtmlUriCallback uriCallback, const Emoji::EmojiSizePx _emojiSize, const QTextCharFormat::VerticalAlignment _aligment);
+        void Convert(const QString& text, QTextCursor& cursor, const Text2DocHtmlMode htmlMode, const bool convertLinks, const bool breakDocument, const Text2HtmlUriCallback uriCallback, const Emoji::EmojiSizePx _emojiSize, const QTextCharFormat::VerticalAlignment _alignment, bool _placeEachNewLineInSeparateTextBlock = false);
 
-        void ConvertEmoji(const QString& text, QTextCursor &cursor, const Emoji::EmojiSizePx _emojiSize, const QTextCharFormat::VerticalAlignment _aligment);
+        void ConvertEmoji(const QString& text, QTextCursor &cursor, const Emoji::EmojiSizePx _emojiSize, const QTextCharFormat::VerticalAlignment _alignment);
 
         const ResourceMap& InsertEmoji(const Emoji::EmojiCode& _code, QTextCursor& cursor);
 
@@ -33,18 +48,20 @@ namespace
 
         int GetSymbolWidth(const QString &text, int& ind, const QFontMetrics& metrics, const Text2DocHtmlMode htmlMode
         , const bool convertLinks, const bool breakDocument, const Text2HtmlUriCallback uriCallback
-        , const Emoji::EmojiSizePx _emojiSize, const QTextCharFormat::VerticalAlignment _aligment, bool _to_right);
+        , const Emoji::EmojiSizePx _emojiSize, const QTextCharFormat::VerticalAlignment _alignment, bool _toRight);
 
         void setMentions(Data::MentionMap _mentions);
 
+        const ReplacementsInfo& replacements() const { return replacements_; }
+
     private:
 
-        bool ConvertEmoji(const Emoji::EmojiSizePx _emojiSize, const QTextCharFormat::VerticalAlignment _aligment);
+        int ConvertEmoji(const Emoji::EmojiSizePx _emojiSize, const QTextCharFormat::VerticalAlignment _alignment);
 
         bool ParseUrl(bool breakDocument);
-        bool ParseMention();
+        int ParseMention();
 
-        bool ConvertNewline();
+        bool ConvertNewline(bool _placeEachNewLineInSeparateTextBlock);
 
         void ConvertPlainCharacter(const bool isWordWrapEnabled);
 
@@ -67,7 +84,8 @@ namespace
 
         QString ReadString(const int length);
 
-        void ReplaceEmoji(const Emoji::EmojiCode& _code, const Emoji::EmojiSizePx _emojiSize, const QTextCharFormat::VerticalAlignment _aligment);
+        int ReplaceEmoji(const Emoji::EmojiCode& _code, const Emoji::EmojiSizePx _emojiSize, const QTextCharFormat::VerticalAlignment _alignment);
+        QTextImageFormat handleEmoji(const Emoji::EmojiCode& _code, const Emoji::EmojiSizePx _emojiSize, const QTextCharFormat::VerticalAlignment _alignment);
 
         void SaveAsHtml(const QString& _text, const common::tools::url& _url, bool isWordWrapEnabled);
 
@@ -76,6 +94,8 @@ namespace
         QTextStream Input_;
 
         QTextCursor Writer_;
+
+        qint64 WriterPosAfterFlush_ = 0;
 
         QString LastWord_;
 
@@ -97,6 +117,8 @@ namespace
         bool MakeUniqResources_;
 
         common::tools::url_parser parser_;
+
+        ReplacementsInfo replacements_;
     };
 
     void ReplaceUrlSpec(const QString &url, QString &out, bool isWordWrapEnabled = false);
@@ -106,7 +128,96 @@ namespace
 
 namespace Logic
 {
-    void Text4Edit(
+    bool hasBoldStyle(const QTextCharFormat& _format)
+    {
+        return _format.boolProperty(textFormatLogicalBoldProperty);
+    }
+
+    bool hasUnderlineStyle(const QTextCharFormat& _format)
+    {
+        return _format.boolProperty(textFormatLogicalUnderlineProperty);
+    }
+
+    bool hasMonospaceStyle(const QTextCharFormat& _format)
+    {
+        return _format.boolProperty(textFormatLogicalMonospaceProperty);
+    }
+
+    void setBoldStyle(QTextCharFormat& _format, bool _isOn)
+    {
+        _format.setProperty(textFormatLogicalBoldProperty, _isOn);
+        _format.setFontWeight(_isOn ? QFont::Weight::Bold : QFont::Weight::Normal);
+    }
+
+    void setUnderlineStyle(QTextCharFormat& _format, bool _isOn)
+    {
+        _format.setProperty(textFormatLogicalUnderlineProperty, _isOn);
+        _format.setFontUnderline(_isOn || hasStyle(_format, ftype::link).first);
+    }
+
+    void setMonospaceStyle(QTextCharFormat& _format, bool _isOn)
+    {
+        _format.setProperty(textFormatLogicalMonospaceProperty, _isOn);
+        setMonospaceFont(_format, _isOn);
+    }
+
+    void setMonospaceFont(QTextCharFormat& _charFormat, bool _isOn)
+    {
+        const auto fontUnderline = _charFormat.fontUnderline();
+        auto font = _charFormat.font();
+        const auto newFont = _isOn ? Fonts::getInputMonospaceTextFont() : Fonts::getInputTextFont();
+        font.setFamily(newFont.family());
+        font.setPixelSize(newFont.pixelSize());
+        _charFormat.setFont(font);
+        _charFormat.setFontUnderline(fontUnderline);
+    }
+
+    core::data::format_type getBlockType(const QTextBlock& _block)
+    {
+        return getBlockType(_block.blockFormat());
+    }
+
+    core::data::format_type getBlockType(const QTextBlockFormat& _blockFormat)
+    {
+        if (_blockFormat.boolProperty(textBlockIsQuote))
+            return ftype::quote;
+        else if (_blockFormat.boolProperty(textBlockIsCode))
+            return ftype::pre;
+        else if (_blockFormat.boolProperty(textBlockIsUnorderedList))
+            return ftype::unordered_list;
+        else if (_blockFormat.boolProperty(textBlockIsOrderedList))
+            return ftype::ordered_list;
+        else
+            return ftype::none;
+    }
+
+    std::pair<bool, core::data::format_data> hasStyle(const QTextCharFormat& _charFormat, ftype _type)
+    {
+        im_assert(core::data::is_style(_type));
+
+        const auto url = _charFormat.anchorHref();
+        switch (_type)
+        {
+        case ftype::italic:
+            return { _charFormat.fontItalic(),{} };
+        case ftype::bold:
+            return { Logic::hasBoldStyle(_charFormat),{} };
+        case ftype::underline:
+            return { Logic::hasUnderlineStyle(_charFormat),{} };
+        case ftype::monospace:
+            return { Logic::hasMonospaceStyle(_charFormat),{} };
+        case ftype::strikethrough:
+            return { _charFormat.fontStrikeOut(),{} };
+        case ftype::mention:
+            return { (!url.isEmpty() && Utils::isMentionLink(url)), url.toStdString() };
+        case ftype::link:
+            return { (!url.isEmpty() && !Utils::isMentionLink(url)), url.toStdString() };
+        default:
+            return { false,{} };
+        }
+    }
+
+    ReplacementsInfo Text4Edit(
         const QString& _text,
         Ui::TextEditEx& _edit,
         const Text2DocHtmlMode _htmlMode,
@@ -114,8 +225,10 @@ namespace Logic
         const bool _breakDocument,
         const Text2HtmlUriCallback _uriCallback,
         const Emoji::EmojiSizePx _emojiSize,
-        const QTextCharFormat::VerticalAlignment _aligment)
+        const QTextCharFormat::VerticalAlignment _alignment,
+        bool _placeEachNewLineInSeparateTextBlock)
     {
+        auto result = ReplacementsInfo();
         {
             QSignalBlocker sbEdit(_edit);
             QSignalBlocker sbDoc(_edit.document());
@@ -128,23 +241,22 @@ namespace Logic
 
             auto cursor = _edit.textCursor();
             cursor.beginEditBlock();
-
-            converter.Convert(_text, cursor, _htmlMode, _convertLinks, _breakDocument, _uriCallback, _emojiSize, _aligment);
-
+            converter.Convert(_text, cursor, _htmlMode, _convertLinks, _breakDocument, _uriCallback, _emojiSize, _alignment, _placeEachNewLineInSeparateTextBlock);
             cursor.endEditBlock();
 
             _edit.mergeResources(converter.GetResources());
-
             _edit.setUpdatesEnabled(true);
+            result = converter.replacements();
         }
 
         Q_EMIT (_edit.document()->contentsChanged());
+        return result;
     }
 
     void Text4Edit(const QString& _text, Ui::TextEditEx& _edit, const Text2DocHtmlMode _htmlMode, const bool _convertLinks, Emoji::EmojiSizePx _emojiSize)
     {
-        auto cur = _edit.textCursor();
-        Text4Edit(_text, _edit, cur, _htmlMode, _convertLinks, _emojiSize);
+        auto cursor = _edit.textCursor();
+        Text4Edit(_text, _edit, cursor, _htmlMode, _convertLinks, _emojiSize);
     }
 
     void Text4Edit(const QString& _text, Ui::TextEditEx& _edit, QTextCursor& _cursor, const Text2DocHtmlMode _htmlMode, const bool _convertLinks, Emoji::EmojiSizePx _emojiSize)
@@ -173,7 +285,7 @@ namespace Logic
         Q_EMIT (_edit.document()->contentsChanged());
     }
 
-    void Text4EditEmoji(const QString& text, Ui::TextEditEx& _edit, Emoji::EmojiSizePx _emojiSize, const QTextCharFormat::VerticalAlignment _aligment)
+    void Text4EditEmoji(const QString& text, Ui::TextEditEx& _edit, Emoji::EmojiSizePx _emojiSize, const QTextCharFormat::VerticalAlignment _alignment)
     {
         {
             QSignalBlocker sbEdit(_edit);
@@ -187,7 +299,7 @@ namespace Logic
             auto cursor = _edit.textCursor();
             cursor.beginEditBlock();
 
-            converter.ConvertEmoji(text, cursor, _emojiSize, _aligment);
+            converter.ConvertEmoji(text, cursor, _emojiSize, _alignment);
 
             cursor.endEditBlock();
 
@@ -295,6 +407,116 @@ namespace Logic
         QTextCursor cursor = _edit.textCursor();
         return converter.InsertEmoji(_code, cursor);
     }
+
+    core::data::format_type TextBlockFormat::type() const
+    {
+        return getBlockType(*this);
+    }
+
+    bool TextBlockFormat::isFirst() const
+    {
+        return boolProperty(textBlockFormatFirst);
+    }
+
+    bool TextBlockFormat::isLast() const
+    {
+        return boolProperty(textBlockFormatLast);
+    }
+
+    void TextBlockFormat::setIsFirst(bool _isFirst, bool _updateMargins)
+    {
+        setProperty(textBlockFormatFirst, _isFirst);
+
+        if (_updateMargins)
+            updateMargins();
+    }
+
+    void TextBlockFormat::setIsLast(bool _isLast, bool _updateMargins)
+    {
+        setProperty(textBlockFormatLast, _isLast);
+
+        if (_updateMargins)
+            updateMargins();
+    }
+
+    void TextBlockFormat::setType(core::data::format_type _type, bool _updateMargins)
+    {
+        *this = QTextBlockFormat();
+        if (ftype::quote == _type)
+            setProperty(textBlockIsQuote, true);
+        else if (ftype::pre == _type)
+            setProperty(textBlockIsCode, true);
+        else if (ftype::unordered_list == _type)
+            setProperty(textBlockIsUnorderedList, true);
+        else if (ftype::ordered_list == _type)
+            setProperty(textBlockIsOrderedList, true);
+
+        if (_updateMargins)
+            updateMargins();
+    }
+
+    void TextBlockFormat::set(ftype _type, bool _isFirst, bool _isLast)
+    {
+        setType(_type, false);
+        setIsFirst(_type == ftype::none ? false : _isFirst, false);
+        setIsLast(_type == ftype::none ? false : _isLast, false);
+        updateMargins();
+    }
+
+    int TextBlockFormat::vPadding() const
+    {
+        return type() == ftype::pre
+            ? Ui::TextRendering::getPreVPadding()
+            : 0;
+    }
+
+    void TextBlockFormat::setMargins(const QMargins& _margins)
+    {
+        setLeftMargin(_margins.left());
+        setRightMargin(_margins.right());
+        setTopMargin(_margins.top());
+        setBottomMargin(_margins.bottom());
+    }
+
+    void TextBlockFormat::updateMargins()
+    {
+        auto margins = QMargins();
+        const auto blockType = type();
+
+        if (ftype::none != blockType)
+        {
+            const auto baseVMargin = Ui::TextRendering::getParagraphVMargin();
+            margins.setTop(isFirst() ? baseVMargin : 0);
+            margins.setBottom(isLast() ? baseVMargin : 0);
+        }
+
+        if (blockType == ftype::quote)
+        {
+            margins.setLeft(Ui::TextRendering::getQuoteTextLeftMargin());
+        }
+        else if (blockType == ftype::pre)
+        {
+            const auto horizontal = Ui::TextRendering::getPreHPadding();
+            margins.setLeft(horizontal);
+            margins.setRight(horizontal);
+
+            if (isFirst())
+                margins.setTop(margins.top() + vPadding());
+
+            if (isLast())
+                margins.setBottom(margins.bottom() + vPadding());
+        }
+        else if (blockType == ftype::unordered_list)
+        {
+            margins.setLeft(Ui::TextRendering::getUnorderedListLeftMargin());
+        }
+        else if (blockType == ftype::ordered_list)
+        {
+            margins.setLeft(Ui::TextRendering::getOrderedListLeftMargin());
+        }
+
+        setMargins(margins);
+    }
 }
 
 namespace
@@ -317,7 +539,7 @@ namespace
         InputCursorStack_.reserve(32);
     }
 
-    void Text2DocConverter::Convert(const QString &text, QTextCursor &cursor, const Text2DocHtmlMode htmlMode, const bool convertLinks, const bool breakDocument, const Text2HtmlUriCallback uriCallback, const Emoji::EmojiSizePx _emojiSize, const QTextCharFormat::VerticalAlignment _aligment)
+    void Text2DocConverter::Convert(const QString& text, QTextCursor& cursor, const Text2DocHtmlMode htmlMode, const bool convertLinks, const bool breakDocument, const Text2HtmlUriCallback uriCallback, const Emoji::EmojiSizePx _emojiSize, const QTextCharFormat::VerticalAlignment _alignment, bool _placeEachNewLineInSeparateTextBlock)
     {
         im_assert(!UriCallback_);
         im_assert(htmlMode >= Text2DocHtmlMode::Min);
@@ -330,30 +552,31 @@ namespace
 
         while (!IsEos())
         {
+            const auto sourcePos = Input_.pos();
+            auto cursorPos = qint64(Writer_.position()) + Buffer_.size();
             InputCursorStack_.resize(0);
+            auto needReplacement = false;
+            auto replacementSize = 0;
 
-            if (ConvertNewline())
+            if (ConvertNewline(_placeEachNewLineInSeparateTextBlock))
+                needReplacement = false;
+            else if (replacementSize = ParseMention())
+                needReplacement = true;
+            else if (convertLinks && ParseUrl(breakDocument))
+                needReplacement = true;
+            else if (replacementSize = ConvertEmoji(_emojiSize, _alignment))
+                needReplacement = true;
+            else
+                ConvertPlainCharacter(breakDocument);
+
+            if (needReplacement && replacementSize > 0)
             {
-                continue;
+                cursorPos = qMax(cursorPos, WriterPosAfterFlush_);
+                const auto sourceSize = Input_.pos() - sourcePos;
+                im_assert(sourceSize > 0);
+                im_assert(replacementSize > 0);
+                replacements_.push_back({sourcePos, sourceSize, replacementSize});
             }
-
-            if (ParseMention())
-            {
-                continue;
-            }
-
-            if (convertLinks && ParseUrl(breakDocument))
-            {
-                continue;
-            }
-
-            if (//!platform::is_apple() &&
-                ConvertEmoji(_emojiSize, _aligment))
-            {
-                continue;
-            }
-
-            ConvertPlainCharacter(breakDocument);
         }
 
         FlushBuffers();
@@ -366,7 +589,7 @@ namespace
         UriCallback_ = nullptr;
     }
 
-    void Text2DocConverter::ConvertEmoji(const QString& text, QTextCursor &cursor, const Emoji::EmojiSizePx _emojiSize, const QTextCharFormat::VerticalAlignment _aligment)
+    void Text2DocConverter::ConvertEmoji(const QString& text, QTextCursor &cursor, const Emoji::EmojiSizePx _emojiSize, const QTextCharFormat::VerticalAlignment _alignment)
     {
         Input_.setString((QString*)&text, QIODevice::ReadOnly);
         Writer_ = cursor;
@@ -374,11 +597,8 @@ namespace
         while (!IsEos())
         {
             InputCursorStack_.resize(0);
-            if (//!platform::is_apple() &&
-                ConvertEmoji(_emojiSize, _aligment))
-            {
+            if (ConvertEmoji(_emojiSize, _alignment))
                 continue;
-            }
 
             Buffer_ += ReadSChar().ToQString();
         }
@@ -394,11 +614,11 @@ namespace
 
     int Text2DocConverter::GetSymbolWidth(const QString &text, int& ind, const QFontMetrics& metrics, const Text2DocHtmlMode htmlMode
         , const bool convertLinks, const bool breakDocument, const Text2HtmlUriCallback uriCallback
-        , const Emoji::EmojiSizePx _emojiSize, const QTextCharFormat::VerticalAlignment _aligment, bool _to_right)
+        , const Emoji::EmojiSizePx _emojiSize, const QTextCharFormat::VerticalAlignment _alignment, bool _toRight)
     {
         Input_.setString((QString*)&text, QIODevice::ReadOnly);
 
-        if (_to_right)
+        if (_toRight)
         {
             Input_.seek(ind);
 
@@ -462,41 +682,31 @@ namespace
 
         const auto applyHyphen = (isWordWrapEnabled && (word.length() >= WORD_WRAP_LIMIT));
         if (applyHyphen)
-        {
             output += QChar::SoftHyphen;
-        }
         return applyHyphen;
     }
 
     const ResourceMap& Text2DocConverter::InsertEmoji(const Emoji::EmojiCode& _code, QTextCursor& _cursor)
     {
         Writer_ = _cursor;
-
         ReplaceEmoji(_code, Emoji::EmojiSizePx::Auto, QTextCharFormat::AlignBottom);
-
         return Resources_;
     }
 
-    bool Text2DocConverter::ConvertEmoji(const Emoji::EmojiSizePx _emojiSize, const QTextCharFormat::VerticalAlignment _aligment)
+    int Text2DocConverter::ConvertEmoji(const Emoji::EmojiSizePx _emojiSize, const QTextCharFormat::VerticalAlignment _alignment)
     {
-        const auto code = PeekEmojiCode();
-
-        if (!code.isNull())
+        if (const auto code = PeekEmojiCode(); !code.isNull())
         {
             ReadEmojiCode();
-            ReplaceEmoji(code, _emojiSize, _aligment);
-            return true;
+            return ReplaceEmoji(code, _emojiSize, _alignment);
         }
-
-        return false;
+        return 0;
     }
 
     bool Text2DocConverter::ParseUrl(bool breakDocument)
     {
         if (!IsHtmlEscapingEnabled())
-        {
             return false;
-        }
 
         const bool isWordWrapEnabled = breakDocument;
 
@@ -513,9 +723,7 @@ namespace
             const auto urlAsString = QString::fromUtf8(url.original_.c_str(), url.original_.size());
             const auto charsProcessed = urlAsString.size();
             if (!Input_.seek(Input_.pos() + charsProcessed))
-            {
                 Input_.readAll(); // end of stream
-            }
             SaveAsHtml(urlAsString, url, isWordWrapEnabled);
         };
 
@@ -580,24 +788,24 @@ namespace
         }
     }
 
-    bool Text2DocConverter::ParseMention()
+    int Text2DocConverter::ParseMention()
     {
         if (mentions_.empty())
-            return false;
+            return 0;
 
         PushInputCursor();
         const auto c1 = ReadSChar();
         if (!c1.IsAtSign() || c1.IsNull())
         {
             PopInputCursor();
-            return false;
+            return 0;
         }
 
         const auto c2 = ReadSChar();
         if (!c2.EqualTo('[') || c2.IsNull())
         {
             PopInputCursor();
-            return false;
+            return 0;
         }
 
         static QString buf;
@@ -621,7 +829,7 @@ namespace
         if (buf.isEmpty() || !endFound || (endFound && buf.size() == sizeof(']')))
         {
             PopInputCursor();
-            return false;
+            return 0;
         }
 
         const auto view = QStringView(buf).left(buf.length() - 1);
@@ -629,49 +837,54 @@ namespace
         if (it == mentions_.end())
         {
             PopInputCursor();
-            return false;
+            return 0;
         }
 
         ConvertMention(view, it->second);
-        return true;
+        return it->second.size();
     }
 
-    bool Text2DocConverter::ConvertNewline()
+    bool Text2DocConverter::ConvertNewline(bool _placeEachNewLineInSeparateTextBlock)
     {
         const auto ch = PeekSChar();
 
         const auto isNewline = (ch.IsNewline() || ch.IsCarriageReturn());
         if (!isNewline)
-        {
             return false;
-        }
 
         ReadSChar();
 
-        auto insertNewLine = [this] ()
+        auto insertNewLine = [this, _placeEachNewLineInSeparateTextBlock] ()
         {
-            if (IsHtmlEscapingEnabled())
+            if (_placeEachNewLineInSeparateTextBlock)
             {
-                static const auto HTML_NEWLINE = ql1s("<br/>");
-                Buffer_ += HTML_NEWLINE;
+                FlushBuffers();
+                auto blockFormat = TextBlockFormat(Writer_.blockFormat());
+
+                const auto wasLast = blockFormat.isLast();
+                if (wasLast)
+                    blockFormat.setIsLast(false);
+                Writer_.setBlockFormat(blockFormat);
+
+                blockFormat.setIsFirst(false);
+                blockFormat.setIsLast(wasLast);
+                Writer_.insertBlock(blockFormat);
+            }
+            else if (IsHtmlEscapingEnabled())
+            {
+                Buffer_ += ql1s("<br/>");
             }
             else
             {
-                static const auto TEXT_NEWLINE = ql1c('\n');
-                Buffer_ += TEXT_NEWLINE;
+                Buffer_ += ql1c('\n');
             }
         };
 
         insertNewLine();
         LastWord_.resize(0);
 
-        if (PeekSChar().IsEmoji())
-            insertNewLine();
-
         if (!ch.IsCarriageReturn())
-        {
             return true;
-        }
 
         const auto hasTrailingNewline = PeekSChar().IsNewline();
         if (hasTrailingNewline)
@@ -686,13 +899,9 @@ namespace
     void Text2DocConverter::ConvertPlainCharacter(const bool isWordWrapEnabled)
     {
         const auto nextChar = ReadSChar();
-
         const auto nextCharStr = nextChar.ToQString();
-
         const auto isNextCharSpace = nextChar.IsSpace();
-
         const auto isEmoji = nextChar.IsEmoji();
-
         const auto isDelimeter = nextChar.IsDelimeter();
 
         if (isNextCharSpace || isDelimeter)
@@ -701,34 +910,18 @@ namespace
         }
         else
         {
-            if (IsHtmlEscapingEnabled())
-            {
-                const auto htmlEscaped = nextCharStr.toHtmlEscaped();
-
-                LastWord_ += htmlEscaped;
-            }
-            else
-            {
-                LastWord_ += nextCharStr;
-            }
+            LastWord_ += IsHtmlEscapingEnabled() ? nextCharStr.toHtmlEscaped() : nextCharStr;
 
             if (!isEmoji && !platform::is_apple())
-            {
                 AddSoftHyphenIfNeed(LastWord_, LastWord_, isWordWrapEnabled);
-            }
         }
 
         if (IsHtmlEscapingEnabled())
         {
             if (isNextCharSpace)
-            {
                 Buffer_ += SPACE_ENTITY;
-            }
             else
-            {
-                const auto htmlEscaped = nextCharStr.toHtmlEscaped();
-                Buffer_ += htmlEscaped;
-            }
+                Buffer_ += nextCharStr.toHtmlEscaped();
         }
         else
         {
@@ -736,21 +929,7 @@ namespace
         }
 
         if (!isEmoji || platform::is_apple())
-        {
             AddSoftHyphenIfNeed(Buffer_, LastWord_, isWordWrapEnabled);
-        }
-
-        /* this crushes emojis with skin tones
-        const auto applyOsxEmojiFix = (
-            platform::is_apple() &&
-            isEmoji &&
-            !Buffer_.endsWith(QChar::SoftHyphen));
-        if (applyOsxEmojiFix)
-        {
-            Buffer_ += QChar::SoftHyphen;
-        }
-        */
-
     }
 
     bool Text2DocConverter::IsEos(const int offset) const
@@ -781,6 +960,8 @@ namespace
             Writer_.insertHtml(Buffer_);
         else
             Writer_.insertText(Buffer_);
+
+        WriterPosAfterFlush_ = Writer_.position();
 
         Buffer_.resize(0);
         LastWord_.resize(0);
@@ -866,43 +1047,41 @@ namespace
         return Input_.read(length);
     }
 
-    void Text2DocConverter::ReplaceEmoji(const Emoji::EmojiCode& _code, const Emoji::EmojiSizePx _emojiSize, const QTextCharFormat::VerticalAlignment _aligment)
+    QTextImageFormat Text2DocConverter::handleEmoji(const Emoji::EmojiCode& _code, const Emoji::EmojiSizePx _emojiSize, const QTextCharFormat::VerticalAlignment _alignment)
     {
-        im_assert(!_code.isNull());
-
-        FlushBuffers();
-
-        const auto charFormat = Writer_.charFormat();
-
-        QImage img = Emoji::GetEmoji(_code, _emojiSize);
+        auto img = Emoji::GetEmoji(_code, _emojiSize);
         Utils::check_pixel_ratio(img);
 
         static int64_t uniq_index = 0;
 
         QString resource_name;
-        if (!MakeUniqResources_)
+        if (MakeUniqResources_)
         {
-            resource_name = QString::number(img.cacheKey());
-        }
-        else
-        {
-            QString str = Emoji::EmojiCode::toQString(_code);
+            auto str = Emoji::EmojiCode::toQString(_code);
             resource_name = str % u'_' % QString::number(++uniq_index);
             Resources_[resource_name] = std::move(str);
         }
+        else
+        {
+            resource_name = QString::number(img.cacheKey());
+        }
 
-        Writer_.document()->addResource(
-            QTextDocument::ImageResource,
-            QUrl(resource_name),
-            img
-        );
+        Writer_.document()->addResource(QTextDocument::ImageResource, QUrl(resource_name), img);
 
         QTextImageFormat format;
         format.setName(resource_name);
-        format.setVerticalAlignment(_aligment);
-        Writer_.insertText(QString(QChar::ObjectReplacementCharacter), format);
+        format.setVerticalAlignment(_alignment);
+        return format;
+    }
 
+    int Text2DocConverter::ReplaceEmoji(const Emoji::EmojiCode& _code, const Emoji::EmojiSizePx _emojiSize, const QTextCharFormat::VerticalAlignment _alignment)
+    {
+        im_assert(!_code.isNull());
+        FlushBuffers();
+        const auto charFormat = Writer_.charFormat();
+        Writer_.insertText(QString(QChar::ObjectReplacementCharacter), handleEmoji(_code, _emojiSize, _alignment));
         Writer_.setCharFormat(charFormat);
+        return 1; // size of QChar
     }
 
     void Text2DocConverter::SaveAsHtml(const QString& _text, const common::tools::url& _url, bool isWordWrapEnabled)
@@ -919,9 +1098,7 @@ namespace
         const auto bufferPos2 = Buffer_.length();
 
         if (UriCallback_)
-        {
             UriCallback_(Buffer_.mid(bufferPos1, bufferPos2 - bufferPos1), Writer_.position());
-        }
     }
 
     void Text2DocConverter::ConvertMention(QStringView _sn, const QString& _friendly)
@@ -963,9 +1140,7 @@ namespace
             }
 
             if (isWordWrapEnabled && !ch.isHighSurrogate())
-            {
                 Text2DocConverter::AddSoftHyphenIfNeed(out, out, isWordWrapEnabled);
-            }
         }
     }
 }

@@ -60,6 +60,7 @@ namespace core
             bool live_ = false;
             bool controlled_ = false;
             bool joinModeration_ = false;
+            bool trust_required_ = false;
 
             std::vector<chat_member_info> members_;
             std::shared_ptr<core::archive::persons_map> persons_;

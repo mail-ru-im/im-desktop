@@ -6,8 +6,8 @@ CORE_DISK_CACHE_NS_BEGIN
 
 std::ostream& operator<<(std::ostream &oss, const entity_type arg)
 {
-    assert(arg > entity_type::min);
-    assert(arg < entity_type::max);
+    im_assert(arg > entity_type::min);
+    im_assert(arg < entity_type::max);
 
     switch(arg)
     {
@@ -17,7 +17,7 @@ std::ostream& operator<<(std::ostream &oss, const entity_type arg)
 
         case entity_type::preview: oss << "preview"; break;
 
-        default: assert(!"unexpected entity type"); break;
+        default: im_assert(!"unexpected entity type"); break;
     }
 
     return oss;

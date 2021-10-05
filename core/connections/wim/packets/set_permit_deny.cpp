@@ -16,9 +16,9 @@ set_permit_deny::set_permit_deny(
         aimid_(_aimid),
         op_(_op)
 {
-    assert(op_ > operation::min);
-    assert(op_ < operation::max);
-    assert(!aimid_.empty());
+    im_assert(op_ > operation::min);
+    im_assert(op_ < operation::max);
+    im_assert(!aimid_.empty());
 }
 
 set_permit_deny::~set_permit_deny()
@@ -32,8 +32,8 @@ std::string_view set_permit_deny::get_method() const
 
 const char* operation_2_str(const set_permit_deny::operation _op)
 {
-    assert(_op > set_permit_deny::operation::min);
-    assert(_op < set_permit_deny::operation::max);
+    im_assert(_op > set_permit_deny::operation::min);
+    im_assert(_op < set_permit_deny::operation::max);
 
     switch (_op)
     {
@@ -46,7 +46,7 @@ const char* operation_2_str(const set_permit_deny::operation _op)
         break;
     };
 
-    assert(false);
+    im_assert(false);
     return "";
 }
 

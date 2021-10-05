@@ -1,11 +1,13 @@
 #include "stdafx.h"
 #include "MainWindow.h"
 
-#include "ContactDialog.h"
 #include "LoginPage.h"
 #include "MainPage.h"
 #include "AppsPage.h"
 #include "controls/GeneralDialog.h"
+#include "ContactDialog.h"
+#include "controls/ContextMenu.h"
+#include "contact_list/ServiceContacts.h"
 #include "contact_list/ContactListModel.h"
 #include "contact_list/RecentsModel.h"
 #include "contact_list/UnknownsModel.h"
@@ -16,8 +18,8 @@
 #include "contact_list/SelectionContactsForGroupChat.h"
 #include "history_control/HistoryControlPage.h"
 #include "history_control/MessagesScrollArea.h"
-#include "history_control/MentionCompleter.h"
 #include "containers/PrivacySettingsContainer.h"
+#include "containers/ThreadSubContainer.h"
 #include "statuses/LocalStatuses.h"
 #ifndef STRIP_AV_MEDIA
 #include "mplayer/VideoPlayer.h"
@@ -33,7 +35,8 @@
 
 #include "controls/TooltipWidget.h"
 #include "main_window/contact_list/SearchWidget.h"
-#include "main_window/containers/InputTextContainer.h"
+#include "main_window/containers/InputStateContainer.h"
+#include "main_window/containers/TaskContainer.h"
 #include "../controls/CustomButton.h"
 #include "../previewer/GalleryWidget.h"
 #include "../utils/utils.h"
@@ -45,8 +48,6 @@
 #include "../cache/stickers/stickers.h"
 #include "../my_info.h"
 #include "main_window/ReleaseNotes.h"
-#include "main_window/input_widget/AttachFilePopup.h"
-#include "main_window/input_widget/HistoryTextEdit.h"
 #include "../../../common.shared/version_info_constants.h"
 #include "user_activity/user_activity.h"
 #include "../voip/quality/CallQualityStatsMgr.h"
@@ -56,7 +57,6 @@
 #include "LocalPIN.h"
 
 #include "styles/ThemeParameters.h"
-#include "../utils/InterConnector.h"
 #include "previewer/toast.h"
 
 #include "../core_dispatcher.h"
@@ -482,8 +482,8 @@ namespace Ui
         if constexpr (platform::is_linux())
             return QObject::eventFilter(_obj, _event);
 
-        bool ignore = std::any_of(ignoredWidgets_.begin(),
-                                  ignoredWidgets_.end(),
+        bool ignore = std::any_of(ignoredWidgets_.cbegin(),
+                                  ignoredWidgets_.cend(),
                                   [](QWidget* _wdg) { return _wdg->underMouse(); });
         if (!ignore && (_event->type() == QEvent::MouseButtonDblClick || _event->type() == QEvent::MouseButtonPress
             || _event->type() == QEvent::MouseMove || _event->type() == QEvent::MouseButtonRelease))
@@ -574,18 +574,6 @@ namespace Ui
     void MainWindow::showMenuBarIcon(bool _show)
     {
         trayIcon_->setVisible(_show);
-    }
-
-    void MainWindow::setFocusOnInput()
-    {
-        if (MainPage::hasInstance())
-            MainPage::instance()->setFocusOnInput();
-    }
-
-    void MainWindow::onSendMessage(const QString& contact)
-    {
-        if (MainPage::hasInstance())
-            MainPage::instance()->onSendMessage(contact);
     }
 
     int MainWindow::getTitleHeight() const
@@ -699,6 +687,43 @@ namespace Ui
         getMacSupport()->listenSystemEvents();
 #endif // __APPLE__
 
+        // initialize format actions
+        const auto normalIconColor = Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY);
+        const auto disabledIconColor = Styling::getParameters().getColor(Styling::StyleVariable::BASE_TERTIARY);
+        auto loadIcon = [&normalIconColor, &disabledIconColor](const QString& _name)
+        {
+            auto icon = QIcon(Utils::renderSvgScaled(_name, ContextMenu::defaultIconSize(), normalIconColor));
+            icon.addPixmap(Utils::renderSvgScaled(_name, ContextMenu::defaultIconSize(), disabledIconColor), QIcon::Mode::Disabled);
+            return icon;
+        };
+        auto makeFormatActionData = [](const QString& _command)
+        {
+            QMap<QString, QVariant> result;
+            result[qsl("command")] = _command;
+            return result;
+        };
+        const auto actionsData = std::array{
+            std::make_tuple(core::data::format_type::bold, QT_TRANSLATE_NOOP("context_menu", "Bold"), qsl("Ctrl+B"), loadIcon(qsl(":/context_menu/bold")), qsl("format/bold")),
+            std::make_tuple(core::data::format_type::italic, QT_TRANSLATE_NOOP("context_menu", "Italic"), qsl("Ctrl+I"), loadIcon(qsl(":/context_menu/italic")), qsl("format/italic")),
+            std::make_tuple(core::data::format_type::underline, QT_TRANSLATE_NOOP("context_menu", "Underline"), qsl("Ctrl+U"), loadIcon(qsl(":/context_menu/underline")), qsl("format/underline")),
+            std::make_tuple(core::data::format_type::strikethrough, QT_TRANSLATE_NOOP("context_menu", "Strike through"), qsl("Ctrl+Shift+X"), loadIcon(qsl(":/context_menu/strikethrough")), qsl("format/strikethrough")),
+            std::make_tuple(core::data::format_type::monospace, QT_TRANSLATE_NOOP("context_menu", "Monospace"), qsl("Ctrl+Shift+M"), loadIcon(qsl(":/context_menu/monospace")), qsl("format/monospace")),
+            std::make_tuple(core::data::format_type::link, QT_TRANSLATE_NOOP("context_menu", "Create link"), qsl("Ctrl+Shift+K"), loadIcon(qsl(":/context_menu/link")), qsl("format/link")),
+            std::make_tuple(core::data::format_type::unordered_list, QT_TRANSLATE_NOOP("context_menu", "List"), qsl("Ctrl+Shift+8"), loadIcon(qsl(":/context_menu/unordered_list")), qsl("format/unordered_list")),
+            std::make_tuple(core::data::format_type::ordered_list, QT_TRANSLATE_NOOP("context_menu", "Ordered list"), qsl("Ctrl+Shift+7"), loadIcon(qsl(":/context_menu/ordered_list")), qsl("format/ordered_list")),
+            std::make_tuple(core::data::format_type::quote, QT_TRANSLATE_NOOP("context_menu", "Quote"), qsl("Ctrl+Shift+9"), loadIcon(qsl(":/context_menu/quote")), qsl("format/quote")),
+            std::make_tuple(core::data::format_type::pre, QT_TRANSLATE_NOOP("context_menu", "Code"), qsl("Ctrl+Shift+Alt+C"), loadIcon(qsl(":/context_menu/code")), qsl("format/code")),
+            std::make_tuple(core::data::format_type::none, QT_TRANSLATE_NOOP("context_menu", "Clear format"), qsl("Ctrl+Shift+N"), loadIcon(qsl(":/context_menu/close")), qsl("format/clear")),
+        };
+        for (const auto& [type, name, shortcut, icon, command] : actionsData)
+        {
+            auto action = new QAction(name, this);
+            action->setShortcut(QKeySequence(shortcut));
+            action->setShortcutVisibleInContextMenu(true);
+            action->setIcon(icon);
+            action->setData(makeFormatActionData(command));
+            formatActions_[type] = action;
+        }
 
         setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
         setLayoutDirection(Qt::LeftToRight);
@@ -744,24 +769,17 @@ namespace Ui
         spacer_ = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
         titleLayout_->addItem(spacer_);
 
-        const auto connectStates = [this](CustomButton* _btn, const auto _hoverClr, const auto _pressClr)
-        {
-            const auto onHover = [_btn, _hoverClr](const bool _hovered) { _btn->setBackgroundColor(Styling::getParameters().getColor(_hovered ? _hoverClr : Styling::StyleVariable::BASE_BRIGHT_INVERSE)); };
-            const auto onPress = [_btn, _pressClr](const bool _pressed) { _btn->setBackgroundColor(Styling::getParameters().getColor(_pressed ? _pressClr : Styling::StyleVariable::BASE_BRIGHT_INVERSE)); };
-            connect(_btn, &CustomButton::changedHover, this, onHover);
-            connect(_btn, &CustomButton::changedPress, this, onPress);
-        };
-
-        const auto titleBtn = [p = titleWidget_, connectStates](const auto& _path, const auto& _accName, const auto _hoverClr, const auto _pressClr)
+        const auto titleBtn = [p = titleWidget_](const auto& _path, const auto& _accName, const auto _hoverClr, const auto _pressClr)
         {
             auto btn = new CustomButton(p, _path, getTitleButtonOriginalSize());
-            btn->setBackgroundColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
+            btn->setBackgroundNormal(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
+            btn->setBackgroundHovered(Styling::getParameters().getColor(_hoverClr));
+            btn->setBackgroundPressed(Styling::getParameters().getColor(_pressClr));
             btn->setFixedSize(getTitleButtonSize());
             btn->setFocusPolicy(Qt::NoFocus);
             Testing::setAccessibleName(btn, _accName);
             Styling::Buttons::setButtonDefaultColors(btn);
 
-            connectStates(btn, _hoverClr, _pressClr);
             return btn;
         };
 
@@ -870,6 +888,7 @@ namespace Ui
         connect(get_gui_settings(), &Ui::qt_gui_settings::changed, this, &MainWindow::guiSettingsChanged);
 
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::memberAddFailed, this, Ui::memberAddFailed);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated, this, &MainWindow::omicronUpdated);
 #if 0
         if constexpr (platform::is_windows())
         {
@@ -977,9 +996,7 @@ namespace Ui
         activate();
 
         if (!_contact.empty())
-        {
-            Logic::getContactListModel()->setCurrent(QString::fromStdString(_contact), -1, true);
-        }
+            Utils::InterConnector::instance().openDialog(QString::fromStdString(_contact));
     }
 
     void MainWindow::activateWithReason(ActivateReason _reason)
@@ -1029,9 +1046,9 @@ namespace Ui
         trayIcon_->hideAlerts();
         showHideGallery();
 
-        auto currentHistoryPage = Utils::InterConnector::instance().getHistoryPage(Logic::getContactListModel()->selectedContact());
-        if (currentHistoryPage)
-            currentHistoryPage->updateItems();
+        for (auto page : Utils::InterConnector::instance().getVisibleHistoryPages())
+            page->updateItems();
+
         updateMainMenu();
     }
 
@@ -1111,6 +1128,11 @@ namespace Ui
         return isAppsPage() && appsPage_->isContactDialog();
     }
 
+    bool MainWindow::isWebAppTasksPage() const
+    {
+        return isAppsPage() && appsPage_->isTasksPage();
+    }
+
     int MainWindow::getScreen() const
     {
         return QApplication::desktop()->screenNumber(this);
@@ -1183,14 +1205,6 @@ namespace Ui
         Q_EMIT Utils::InterConnector::instance().closeAnySemitransparentWindow(_info);
     }
 
-    HistoryControlPage* MainWindow::getHistoryPage(const QString& _aimId) const
-    {
-        if (MainPage::hasInstance())
-            return MainPage::instance()->getHistoryPage(_aimId);
-        else
-            return nullptr;
-    }
-
     MainPage* MainWindow::getMessengerPage() const
     {
         return appsPage_ ? appsPage_->messengerPage() : nullptr;
@@ -1204,41 +1218,6 @@ namespace Ui
     QLabel* MainWindow::getWindowLogo() const
     {
         return logo_;
-    }
-
-    void MainWindow::showSidebar(const QString& _aimId)
-    {
-        if (MainPage::hasInstance())
-            MainPage::instance()->showSidebar(_aimId);
-    }
-
-    void MainWindow::showSidebarWithParams(const QString& _aimId, SidebarParams _params)
-    {
-        if (MainPage::hasInstance())
-            MainPage::instance()->showSidebarWithParams(_aimId, std::move(_params));
-    }
-
-    void MainWindow::showMembersInSidebar(const QString& _aimId)
-    {
-        if (MainPage::hasInstance())
-            MainPage::instance()->showMembersInSidebar(_aimId);
-    }
-
-    void MainWindow::setSidebarVisible(const Utils::SidebarVisibilityParams& _params)
-    {
-        if (MainPage::hasInstance())
-            MainPage::instance()->setSidebarVisible(_params);
-    }
-
-    bool MainWindow::isSidebarVisible() const
-    {
-        return MainPage::hasInstance() && MainPage::instance()->isSidebarVisible();
-    }
-
-    void MainWindow::restoreSidebar()
-    {
-        if (MainPage::hasInstance())
-            MainPage::instance()->restoreSidebar();
     }
 
     void MainWindow::notifyWindowActive(const bool _active)
@@ -1287,13 +1266,9 @@ namespace Ui
 
     void MainWindow::onEscPressed(const QString& _aimId, const bool _autorepeat)
     {
-        if (!MainPage::hasInstance())
-            return;
-
         auto mainPage = MainPage::instance();
-        const auto histPage = mainPage->getHistoryPage(_aimId);
-        const auto contDialog = mainPage->getContactDialog();
-        const auto isReplying = contDialog && contDialog->isReplyingToMessage();
+        if (!mainPage)
+            return;
 
         if (mainPage->isNavigatingInRecents())
         {
@@ -1302,43 +1277,17 @@ namespace Ui
             if (_aimId.isEmpty())
                 setFocus();
             else
-                setFocusOnInput();
+                Q_EMIT Utils::InterConnector::instance().setFocusOnInput(_aimId);
         }
-        else if (mainPage->isSuggestVisible())
+        else if (auto contactDialog = mainPage->getContactDialog(); mainPage->isInRecentsTab() && contactDialog->escCancel_->canCancel())
         {
-            mainPage->hideSuggest();
-        }
-        else if (contDialog && contDialog->isShowingSmileMenu())
-        {
-            contDialog->hideSmilesMenu();
-        }
-        else if (histPage && histPage->getMentionCompleter() && histPage->getMentionCompleter()->completerVisible())
-        {
-            Q_EMIT Utils::InterConnector::instance().hideMentionCompleter();
-        }
-        else if (AttachFilePopup::isOpen())
-        {
-            AttachFilePopup::hidePopup();
-        }
-        else if (histPage && histPage->isSmartrepliesVisible() && !isReplying && !(mainPage->isSidebarVisible() && !mainPage->isSideBarInSplitter()))
-        {
-            histPage->hideSmartreplies();
-        }
-        else if (contDialog && contDialog->isRecordingPtt())
-        {
-            contDialog->closePttRecording();
-        }
-        else if (contDialog && contDialog->isEditingMessage())
-        {
-            Q_EMIT Utils::InterConnector::instance().cancelEditing();
-        }
-        else if (isReplying)
-        {
-            contDialog->dropReply();
-        }
-        else if (mainPage->isSidebarVisible())
-        {
-            mainPage->setSidebarVisible(false);
+            if constexpr (build::is_debug())
+                contactDialog->escCancel_->dumpTree(0);
+
+            contactDialog->escCancel_->cancel();
+
+            if (mainPage->isSearchActive() && mainPage->getFrameCount() == FrameCountMode::_1)
+                mainPage->setSearchFocus();
         }
         else if (!_autorepeat)
         {
@@ -1346,7 +1295,7 @@ namespace Ui
             if (cur != this && (qobject_cast<Ui::ClickableWidget*>(cur) || qobject_cast<QAbstractButton*>(cur)))
             {
                 cur->clearFocus();
-                setFocusOnInput();
+                Q_EMIT Utils::InterConnector::instance().setFocusOnInput(_aimId);
             }
             else if (mainPage->isSearchActive())
             {
@@ -1356,10 +1305,6 @@ namespace Ui
             {
                  if (get_gui_settings()->get_value<bool>(settings_fast_drop_search_results, settings_fast_drop_search_default()))
                     mainPage->setSearchFocus();
-            }
-            else
-            {
-                mainPage->closeAndHighlightDialog();
             }
         }
     }
@@ -1555,21 +1500,7 @@ namespace Ui
         }
         else if (((msg->message == WM_SYSCOMMAND && msg->wParam == SC_RESTORE) || (msg->message == WM_SHOWWINDOW && msg->wParam == TRUE)) && msg->hwnd == hwnd)
         {
-            setVisible(true);
-            if (Shadow_)
-                SetWindowPos((HWND)Shadow_->winId(), (HWND)winId(), 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
-            trayIcon_->hideAlerts();
-            if (!SkipRead_ && isMessengerPageContactDialog())
-            {
-                Logic::getRecentsModel()->sendLastRead();
-                Logic::getUnknownsModel()->sendLastRead();
-            }
-
-            notifyWindowActive(isActive());
-
-            if (!TaskBarIconHidden_)
-                SkipRead_ = false;
-            TaskBarIconHidden_ = false;
+            unhideWindow();
         }
         else if (msg->message == WM_SYSCOMMAND && msg->wParam == SC_CLOSE)
         {
@@ -1823,7 +1754,7 @@ namespace Ui
             *_result = 0;
             return true;
         }
-        else if (msg->message == WM_CLOSE)
+        else if (msg->message == WM_CLOSE && msg->hwnd == hwnd)
         {
             hideWindow();
             return true;
@@ -1845,15 +1776,18 @@ namespace Ui
             case QEvent::KeyPress:
             {
                 userActivity();
+                Q_EMIT anyKeyPressed(QPrivateSignal());
 
                 if (isAppsPage() && MainPage::hasInstance() && !MainPage::instance()->isSemiWindowVisible())
                 {
                     const auto keyEvent = static_cast<QKeyEvent*>(_event);
                     const auto isSearchWidgetActive = (qobject_cast<Ui::SearchEdit*>(QApplication::focusWidget()) != nullptr);
                     const auto isGalleryActive = gallery_ && gallery_->isActiveWindow();
+                    auto page = Utils::InterConnector::instance().getHistoryPage(Logic::getContactListModel()->selectedContact());
+
                     if (!isSearchWidgetActive && !isGalleryActive)
                     {
-                        if (Utils::InterConnector::instance().isMultiselect())
+                        if (Utils::InterConnector::instance().isMultiselect() && Utils::InterConnector::instance().getVisibleHistoryPages().size() == 1)
                         {
                             bool handled = true;
                             if (keyEvent->key() == Qt::Key_Right)
@@ -1881,7 +1815,7 @@ namespace Ui
                         else if (keyEvent->key() == Qt::Key_Up && (keyEvent->modifiers() & Qt::ShiftModifier && keyEvent->modifiers() & Qt::AltModifier))
                         {
                             Utils::InterConnector::instance().setMultiselect(true, QString(), true);
-                            if (auto page = Utils::InterConnector::instance().getHistoryPage(Logic::getContactListModel()->selectedContact()))
+                            if (page)
                                 page->setFocusOnArea();
 
                             return true;
@@ -1890,7 +1824,7 @@ namespace Ui
 
                     if ((keyEvent->key() == Qt::Key_Tab || keyEvent->key() == Qt::Key_Backtab) && !(keyEvent->modifiers() & Qt::ControlModifier))
                     {
-                        if (const auto contDialog = Utils::InterConnector::instance().getContactDialog(); contDialog && contDialog->isPttRecordingHoldByMouse())
+                        if (page && page->isPttRecordingHoldByMouse())
                             return true;
 
                         const auto cur = static_cast<QWidget*>(qApp->focusObject());
@@ -1900,10 +1834,11 @@ namespace Ui
                             const auto setToInput =
                                 tabForward &&
                                 !Logic::getContactListModel()->selectedContact().isEmpty() &&
-                                MainPage::instance()->getContactDialog()->canSetFocusOnInput();
+                                page &&
+                                page->canSetFocusOnInput();
 
                             if (setToInput)
-                                MainPage::instance()->getContactDialog()->setFocusOnInputFirstFocusable();
+                                page->setFocusOnInputFirstFocusable();
                             else
                                 MainPage::instance()->setSearchTabFocus();
 
@@ -1912,15 +1847,15 @@ namespace Ui
                     }
                     else if (keyEvent->key() == Qt::Key_Escape)
                     {
-                        if (const auto contDialog = Utils::InterConnector::instance().getContactDialog(); contDialog && contDialog->isRecordingPtt())
+                        if (page && page->isRecordingPtt())
                         {
-                            contDialog->closePttRecording();
+                            page->closePttRecording();
                             return true;
                         }
                     }
                     else if (keyEvent->key() == Qt::Key_Space)
                     {
-                        if (const auto contDialog = Utils::InterConnector::instance().getContactDialog(); contDialog && (contDialog->tryPlayPttRecord() || contDialog->tryPausePttRecord()))
+                        if (page && (page->tryPlayPttRecord() || page->tryPausePttRecord()))
                             return true;
                     }
                 }
@@ -2115,22 +2050,23 @@ namespace Ui
 
             if (MainPage::hasInstance() && !MainPage::instance()->isSemiWindowVisible())
             {
-                const auto searchCode = get_gui_settings()->get_value<int>(settings_shortcuts_search_action, static_cast<int>(ShortcutsSearchAction::Default));
-                const auto searchAct = static_cast<ShortcutsSearchAction>(searchCode);
+                if (_event->modifiers() & Qt::ControlModifier && _event->key() == Qt::Key_F)
+                {
+                    const auto searchCode = get_gui_settings()->get_value<int>(settings_shortcuts_search_action, static_cast<int>(ShortcutsSearchAction::Default));
+                    const auto searchAct = static_cast<ShortcutsSearchAction>(searchCode);
+                    const auto isGlobalAct = searchAct == ShortcutsSearchAction::GlobalSearch;
+                    const bool isGlobalHotkey = _event->modifiers() & Qt::ShiftModifier;
+                    const auto isSearchInDialog = isGlobalAct == isGlobalHotkey;
 
-                if (_event->matches(QKeySequence::Find))
-                {
-                    if (searchAct == ShortcutsSearchAction::GlobalSearch || aimId.isEmpty())
-                        Q_EMIT Utils::InterConnector::instance().setSearchFocus();
-                    else if (!aimId.isEmpty())
-                        Q_EMIT Utils::InterConnector::instance().startSearchInDialog(aimId);
-                }
-                else if (_event->modifiers() == (Qt::ControlModifier | Qt::ShiftModifier) && _event->key() == Qt::Key_F)
-                {
-                    if (searchAct == ShortcutsSearchAction::GlobalSearch && !aimId.isEmpty())
-                        Q_EMIT Utils::InterConnector::instance().startSearchInDialog(aimId);
+                    if (isSearchInDialog)
+                    {
+                        if (!aimId.isEmpty() && !ServiceContacts::isServiceContact(aimId))
+                            Q_EMIT Utils::InterConnector::instance().startSearchInDialog(aimId);
+                    }
                     else
+                    {
                         Q_EMIT Utils::InterConnector::instance().setSearchFocus();
+                    }
                 }
             }
 
@@ -2138,7 +2074,7 @@ namespace Ui
             {
                 activateShortcutsClose();
             }
-            else if (MainPage::hasInstance() && _event->modifiers() == Qt::ControlModifier && _event->key() == Qt::Key_R)
+            else if (MainPage::hasInstance() && MainPage::instance()->isInRecentsTab() && _event->modifiers() == Qt::ControlModifier && _event->key() == Qt::Key_R)
             {
                 Logic::getRecentsModel()->markAllRead();
             }
@@ -2158,21 +2094,19 @@ namespace Ui
             }
             else if (_event->key() == Qt::Key_Enter || _event->key() == Qt::Key_Return)
             {
-                const auto contDialog = Utils::InterConnector::instance().getContactDialog();
-                if (contDialog && contDialog->isRecordingPtt())
-                    contDialog->sendPttRecord();
+                auto page = Utils::InterConnector::instance().getHistoryPage(aimId);
+                if (page && page->isVisible() && page->isRecordingPtt())
+                    page->sendPttRecord();
             }
             else if (_event->key() == Qt::Key_Space)
             {
-                const auto contDialog = Utils::InterConnector::instance().getContactDialog();
-                if (contDialog && contDialog->isRecordingPtt())
-                    contDialog->stopPttRecord();
+                Q_EMIT Utils::InterConnector::instance().stopPttRecord();
             }
             else if (_event->modifiers() == Qt::ControlModifier && _event->key() == Qt::Key_T)
             {
-                const auto contDialog = Utils::InterConnector::instance().getContactDialog();
-                if (contDialog && !contDialog->isRecordingPtt())
-                    contDialog->startPttRecordingLock();
+                auto page = Utils::InterConnector::instance().getHistoryPage(aimId);
+                if (page && page->isVisible() && !page->isRecordingPtt())
+                    page->startPttRecordingLock();
             }
 
             if (MainPage::hasInstance() && !MainPage::instance()->isSearchActive() && qApp->focusObject() == this)
@@ -2222,9 +2156,17 @@ namespace Ui
                 LocalPIN::instance()->lock();
         }
 
+        if (isWebAppTasksPage())
+        {
+            if (_event->key() == Qt::Key_Escape)
+                Q_EMIT Utils::InterConnector::instance().closeSidebar();
+        }
+
         if constexpr (platform::is_linux() || platform::is_windows())
+        {
             if (_event->modifiers() == Qt::ControlModifier && _event->key() == Qt::Key_Q)
                 exit();
+        }
 
         QMainWindow::keyPressEvent(_event);
     }
@@ -2467,7 +2409,15 @@ namespace Ui
         else
         {
             const auto mainRect = Ui::get_gui_settings()->get_value(settings_main_window_rect, getDefaultWindowSize());
-            setGeometry(mainRect);
+            if constexpr (platform::is_linux())
+            {
+                move(mainRect.left(), mainRect.top());
+                resize(mainRect.width(), mainRect.height());
+            }
+            else
+            {
+                setGeometry(mainRect);
+            }
         }
         QMainWindow::showNormal();
 
@@ -2564,7 +2514,7 @@ namespace Ui
             Q_EMIT Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
             if (MainPage::hasInstance())
             {
-                Logic::getContactListModel()->setCurrent(QString(), -1);
+                Utils::InterConnector::instance().closeDialog();
                 MainPage::instance()->update();
                 setFocus();
             }
@@ -2767,7 +2717,7 @@ namespace Ui
     {
         // delete messenger & super app page page
         if (appsPage_)
-            appsPage_->resetMessengerPage();
+            appsPage_->resetPages();
 
         Logic::ResetMentionModel();
         Logic::ResetContactListModel();
@@ -2776,12 +2726,16 @@ namespace Ui
         Logic::ResetCallsModel();
         Logic::resetLastSearchPatterns();
 
-        Logic::InputTextContainer::instance().clearAll();
+        Logic::InputStateContainer::instance().clearAll();
         Logic::ResetPrivacySettingsContainer();
+        Logic::ThreadSubContainer::instance().clear();
 
         Ui::ResetMyInfo();
         Statuses::LocalStatuses::instance()->resetToDefaults();
         Logic::ResetPrivacySettingsContainer();
+
+        Utils::InterConnector::instance().clearInternalCaches();
+        Logic::ResetTaskContainer();
 
 #ifndef STRIP_VOIP
         Ui::GetDispatcher()->getVoipController().resetMaskManager();
@@ -2938,7 +2892,8 @@ namespace Ui
 
             if constexpr (platform::is_apple())
             {
-                if (auto area = qobject_cast<Ui::MessagesScrollArea*>(focused))
+                const auto area = qobject_cast<Ui::MessagesScrollArea*>(focused);
+                if (area)
                 {
                 #ifdef __APPLE__
                     MimeData::copyMimeData(*area);
@@ -2947,7 +2902,10 @@ namespace Ui
                 }
 
                 if (!Utils::InterConnector::instance().isMultiselect())
-                    setFocusOnInput();
+                {
+                    const auto aimId = area ? area->getAimid() : QString{};
+                    Q_EMIT Utils::InterConnector::instance().setFocusOnInput(aimId);
+                }
             }
 
             if (!handled)
@@ -2986,7 +2944,6 @@ namespace Ui
         }
     }
 
-
     void MainWindow::undo()
     {
         if (auto focused = QApplication::focusWidget(); focused && focused->inputMethodHints() != Qt::ImhNone)
@@ -2998,7 +2955,6 @@ namespace Ui
             QApplication::postEvent(focused, new QKeyEvent(QEvent::KeyRelease, Qt::Key_Z, Qt::ControlModifier));
         }
     }
-
 
     void MainWindow::redo()
     {
@@ -3049,16 +3005,6 @@ namespace Ui
         }
     }
 
-    void MainWindow::activateProfile()
-    {
-        if (MainPage::hasInstance())
-        {
-            activate();
-            showMessengerPage();
-            MainPage::instance()->settingsTabActivate(Utils::CommonSettingsType::CommonSettingsType_Profile);
-        }
-    }
-
     void MainWindow::activateSettings()
     {
         if (MainPage::hasInstance())
@@ -3072,7 +3018,7 @@ namespace Ui
     {
         activate();
 
-        if (const auto selectedContact = Logic::getContactListModel()->selectedContact(); selectedContact.isEmpty())
+        if (const auto& selectedContact = Logic::getContactListModel()->selectedContact(); selectedContact.isEmpty())
             hideWindow();
         else
             Logic::getRecentsModel()->hideChat(selectedContact);
@@ -3117,6 +3063,8 @@ namespace Ui
 
     void MainWindow::hideWindow()
     {
+        Q_EMIT windowHiddenToTray();
+
         TaskBarIconHidden_ = true;
 
 #if defined __APPLE__
@@ -3134,6 +3082,29 @@ namespace Ui
 #endif //_WIN32
     }
 
+    void MainWindow::unhideWindow()
+    {
+        Q_EMIT windowUnhiddenFromTray();
+
+#ifdef _WIN32
+        setVisible(true);
+        if (Shadow_)
+            SetWindowPos((HWND)Shadow_->winId(), (HWND)winId(), 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+        trayIcon_->hideAlerts();
+        if (!SkipRead_ && isMessengerPageContactDialog())
+        {
+            Logic::getRecentsModel()->sendLastRead();
+            Logic::getUnknownsModel()->sendLastRead();
+        }
+
+        notifyWindowActive(isActive());
+
+        if (!TaskBarIconHidden_)
+            SkipRead_ = false;
+        TaskBarIconHidden_ = false;
+#endif
+    }
+
     void MainWindow::pasteEmoji()
     {
         if (!Logic::getContactListModel()->selectedContact().isEmpty())
@@ -3141,7 +3112,7 @@ namespace Ui
 #ifdef __APPLE__
             MacSupport::showEmojiPanel();
 #else
-            MainPage::instance()->getContactDialog()->onSmilesMenu();
+            Q_EMIT Utils::InterConnector::instance().showStickersPicker();
 #endif
         }
     }
@@ -3236,7 +3207,15 @@ namespace Ui
     {
         auto w = new Statuses::SelectStatusWidget();
         Testing::setAccessibleName(w, qsl("AS SelectStatusWidget"));
-        Ui::GeneralDialog dialog(w, this, false, false);
+
+        Ui::GeneralDialog::Options opt;
+        opt.fixedSize_ = false;
+        Ui::GeneralDialog dialog(w, this, opt);
         dialog.showInCenter();
+    }
+
+    void MainWindow::omicronUpdated()
+    {
+        setMinimumWidth(getMinWindowWidth());
     }
 }

@@ -385,9 +385,144 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
         <source>You are not a member of this chat or you was banned to write</source>
         <translation>Bạn không phải là thành viên trò chuyện hoặc bạn không được phép viết</translation>
     </message>
+</context>
+<context>
+    <name>calendar</name>
     <message>
-        <source>Are you sure you want to open an external link %1?</source>
-        <translation>Bạn có chắc chắn muốn mở liên kết ngoài %1 không?</translation>
+        <source>Mon</source>
+        <translation>Thứ hai</translation>
+    </message>
+    <message>
+        <source>Tue</source>
+        <translation>Ba</translation>
+    </message>
+    <message>
+        <source>Wed</source>
+        <translation>Thứ Tư</translation>
+    </message>
+    <message>
+        <source>Thu</source>
+        <translation>NS</translation>
+    </message>
+    <message>
+        <source>Fri</source>
+        <translation>T6</translation>
+    </message>
+    <message>
+        <source>Sat</source>
+        <translation>Đã ngồi</translation>
+    </message>
+    <message>
+        <source>Sun</source>
+        <translation>mặt trời</translation>
+    </message>
+    <message>
+        <source>January</source>
+        <translation>Tháng một</translation>
+    </message>
+    <message>
+        <source>Febuary</source>
+        <translation>Tháng hai</translation>
+    </message>
+    <message>
+        <source>March</source>
+        <translation>tháng Ba</translation>
+    </message>
+    <message>
+        <source>April</source>
+        <translation>tháng tư</translation>
+    </message>
+    <message>
+        <source>May</source>
+        <translation>Có thể</translation>
+    </message>
+    <message>
+        <source>June</source>
+        <translation>tháng Sáu</translation>
+    </message>
+    <message>
+        <source>July</source>
+        <translation>tháng Bảy</translation>
+    </message>
+    <message>
+        <source>August</source>
+        <translation>đáng kính trọng</translation>
+    </message>
+    <message>
+        <source>September</source>
+        <translation>tháng 9</translation>
+    </message>
+    <message>
+        <source>October</source>
+        <translation>Tháng Mười</translation>
+    </message>
+    <message>
+        <source>November</source>
+        <translation>tháng Mười Một</translation>
+    </message>
+    <message>
+        <source>December</source>
+        <translation>tháng 12</translation>
+    </message>
+    <message>
+        <source>Jan</source>
+        <translation>tháng một</translation>
+    </message>
+    <message>
+        <source>Feb</source>
+        <translation>tháng Hai</translation>
+    </message>
+    <message>
+        <source>Mar</source>
+        <translation>Martha</translation>
+    </message>
+    <message>
+        <source>Apr</source>
+        <translation>Tháng tư</translation>
+    </message>
+    <message>
+        <source>Jun</source>
+        <translation>tháng Sáu</translation>
+    </message>
+    <message>
+        <source>Jul</source>
+        <translation>tháng Bảy</translation>
+    </message>
+    <message>
+        <source>Aug</source>
+        <translation>Tháng 8</translation>
+    </message>
+    <message>
+        <source>Sep</source>
+        <translation>sep</translation>
+    </message>
+    <message>
+        <source>Oct</source>
+        <translation>tháng tám</translation>
+    </message>
+    <message>
+        <source>Nov</source>
+        <translation>Nov</translation>
+    </message>
+    <message>
+        <source>Dec</source>
+        <translation>Tháng mười hai</translation>
+    </message>
+    <message>
+        <source>Today</source>
+        <translation>Hôm nay</translation>
+    </message>
+    <message>
+        <source>Tomorrow</source>
+        <translation>Ngày mai</translation>
+    </message>
+    <message>
+        <source>MayS</source>
+        <translation>Có thể</translation>
+    </message>
+    <message>
+        <source>%1. d, yyyy</source>
+        <translation>%1. d, yyyy</translation>
     </message>
 </context>
 <context>
@@ -988,6 +1123,22 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
 %3
 %4 %5</translation>
     </message>
+    <message>
+        <source>%1 changed task title to &quot;%2&quot;</source>
+        <translation>%1 đã thay đổi văn bản công việc thành &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed task deadline to %2</source>
+        <translation>%1 đã thay đổi thời hạn thành %2</translation>
+    </message>
+    <message>
+        <source>%1 changed task assignee to &quot;%2&quot;</source>
+        <translation>%1 đã thay đổi nghệ sĩ thành &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>Task status changed to &quot;%1&quot;</source>
+        <translation>Trạng thái công việc đã thay đổi thành &quot;%1&quot;</translation>
+    </message>
 </context>
 <context>
     <name>chat_page</name>
@@ -1054,6 +1205,22 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
     <message>
         <source>Message sent</source>
         <translation>Đã gửi tin nhắn</translation>
+    </message>
+    <message>
+        <source>Access limited</source>
+        <translation>Truy cập có giới hạn</translation>
+    </message>
+    <message>
+        <source>File is not available</source>
+        <translation>Tệp không sẵn có</translation>
+    </message>
+    <message>
+        <source>Filesharing Id copied to clipboard</source>
+        <translation>Đã sao chép Id chia sẻ tệp</translation>
+    </message>
+    <message>
+        <source>Filesharing link copied to clipboard</source>
+        <translation>Đã sao chép liên kết đến chia sẻ tệp</translation>
     </message>
 </context>
 <context>
@@ -1176,6 +1343,30 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
     <message>
         <source>PINNED</source>
         <translation>KIẾM</translation>
+    </message>
+    <message>
+        <source>Threads</source>
+        <translation>Chủ đềᵝ</translation>
+    </message>
+    <message>
+        <source>Reminders</source>
+        <translation>Nhắc nhở</translation>
+    </message>
+    <message>
+        <source>Scheduled</source>
+        <translation>Có kế hoạch</translation>
+    </message>
+    <message>
+        <source>Draft</source>
+        <translation>Bản nháp</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation>Một nhiệm vụ</translation>
+    </message>
+    <message>
+        <source>Tasks</source>
+        <translation>Nhiệm vụ</translation>
     </message>
 </context>
 <context>
@@ -1612,6 +1803,58 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
     <message>
         <source>Copy session info</source>
         <translation>Sao chép thông tin phiên</translation>
+    </message>
+    <message>
+        <source>Bold</source>
+        <translation>Béo</translation>
+    </message>
+    <message>
+        <source>Italic</source>
+        <translation>Chữ in nghiêng</translation>
+    </message>
+    <message>
+        <source>Underline</source>
+        <translation>Gạch chân</translation>
+    </message>
+    <message>
+        <source>Strike through</source>
+        <translation>Bị gạch bỏ</translation>
+    </message>
+    <message>
+        <source>Monospace</source>
+        <translation>Monospaced</translation>
+    </message>
+    <message>
+        <source>Create link</source>
+        <translation>Thêm liên kết</translation>
+    </message>
+    <message>
+        <source>Clear format</source>
+        <translation>Phong cách rõ ràng</translation>
+    </message>
+    <message>
+        <source>Format</source>
+        <translation>Định dạng</translation>
+    </message>
+    <message>
+        <source>Edit task</source>
+        <translation>Thay đổi nhiệm vụ</translation>
+    </message>
+    <message>
+        <source>List</source>
+        <translation>Danh sách</translation>
+    </message>
+    <message>
+        <source>Ordered list</source>
+        <translation>Danh sách được đánh số</translation>
+    </message>
+    <message>
+        <source>Quote</source>
+        <translation>Trích dẫn</translation>
+    </message>
+    <message>
+        <source>Code</source>
+        <translation>Mật mã</translation>
     </message>
 </context>
 <context>
@@ -2648,6 +2891,21 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
     </message>
 </context>
 <context>
+    <name>draft</name>
+    <message>
+        <source>Apply draft</source>
+        <translation>Áp dụng bản nháp</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Huỷ bỏ</translation>
+    </message>
+    <message>
+        <source>Apply another draft version?</source>
+        <translation>Bạn có muốn sử dụng một phiên bản khác của bản nháp không?</translation>
+    </message>
+</context>
+<context>
     <name>favorites</name>
     <message>
         <source>
@@ -2758,10 +3016,10 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
     </message>
 </context>
 <context>
-    <name>generic_block</name>
+    <name>groupchat</name>
     <message>
-        <source>Copied to clipboard</source>
-        <translation>Sao chép vào clipboard</translation>
+        <source>To replies</source>
+        <translation>Trong câu trả lời</translation>
     </message>
 </context>
 <context>
@@ -2854,6 +3112,20 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
         <source>You are not a subscriber of this channel</source>
         <translation>Bạn không phải là người đăng ký kênh này</translation>
     </message>
+    <message>
+        <source>File access restrictions</source>
+        <translation>Hạn chế truy cập tệp</translation>
+    </message>
+    <message>
+        <source>Restrict file access to trusted devices only
+Only for private groups
+
+This option cannot be disabled</source>
+        <translation>Chỉ cho phép truy cập vào các tệp cho các thiết bị đáng tin cậy
+Chỉ dành cho các nhóm không công khai
+
+Không thể tắt cài đặt này</translation>
+    </message>
 </context>
 <context>
     <name>head</name>
@@ -2883,6 +3155,30 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
     <message>
         <source>Please select a chat to start messaging</source>
         <translation>Hãy chọn một người để bắt đầu gửi tin nhắn</translation>
+    </message>
+    <message>
+        <source>Create a call</source>
+        <translation>Tạo cuộc gọi</translation>
+    </message>
+    <message>
+        <source>No time limit</source>
+        <translation>Không giới hạn thời gian</translation>
+    </message>
+    <message>
+        <source>Status is set automatically during call</source>
+        <translation>Autostatus cho biết ai đang trong cuộc gọi</translation>
+    </message>
+    <message>
+        <source>Advantages of calls in Myteam</source>
+        <translation>Lợi ích khi gọi Myteam</translation>
+    </message>
+    <message>
+        <source>Group calls up to %1 participants</source>
+        <translation>Cuộc gọi nhóm lên đến %1 người</translation>
+    </message>
+    <message>
+        <source>Return to call in chat in one click</source>
+        <translation>Quay lại cuộc gọi trong cuộc trò chuyện chỉ bằng một cú nhấp chuột</translation>
     </message>
 </context>
 <context>
@@ -3050,6 +3346,10 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
     <message>
         <source>Cancel request</source>
         <translation>Hủy yêu cầu</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation>Một nhiệm vụ</translation>
     </message>
 </context>
 <context>
@@ -3291,6 +3591,10 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
     <message>
         <source>Wrong password</source>
         <translation>Sai mật khẩu</translation>
+    </message>
+    <message>
+        <source>Sign in with Mail.ru</source>
+        <translation>Đăng nhập với Mail.ru</translation>
     </message>
 </context>
 <context>
@@ -3946,10 +4250,6 @@ tiếp xúc</translation>
         <translation>Bạn có chắc muốn rời trò chuyện?</translation>
     </message>
     <message>
-        <source>Contact name</source>
-        <translation>Tên liên hệ</translation>
-    </message>
-    <message>
         <source>Sign out</source>
         <translation>Thoát đăng nhập</translation>
     </message>
@@ -4590,8 +4890,16 @@ tiếp xúc</translation>
         <translation>Đã vượt quá giới hạn thành viên (tối đa %1)</translation>
     </message>
     <message>
-        <source>Are you sure you want to open external link %1?</source>
-        <translation>Bạn có chắc chắn muốn mở liên kết ngoài %1không?</translation>
+        <source>Are you sure you want to open an external link?</source>
+        <translation>Bạn có chắc chắn muốn mở một liên kết bên ngoài không?</translation>
+    </message>
+    <message>
+        <source>Add link</source>
+        <translation>Thêm liên kết</translation>
+    </message>
+    <message>
+        <source>The link will be displayed as &quot;%1&quot;</source>
+        <translation>Liên kết sẽ được hiển thị là &quot;%1&quot;</translation>
     </message>
     <message>
         <source>Enable net compression</source>
@@ -4640,6 +4948,38 @@ tiếp xúc</translation>
     <message>
         <source>User not a member</source>
         <translation>Người dùng không phải là thành viên của nhóm này</translation>
+    </message>
+    <message>
+        <source>Link</source>
+        <translation>Liên kết</translation>
+    </message>
+    <message>
+        <source>Invalid url</source>
+        <translation>Không phải là một liên kết</translation>
+    </message>
+    <message>
+        <source>Opening or downloading files will be possible from trusted device only
+
+%1 It will be impossible to disable this setting!</source>
+        <translation>Chỉ có thể mở hoặc tải tệp xuống từ một thiết bị đáng tin cậy
+
+%1 Không thể tắt cài đặt này!</translation>
+    </message>
+    <message>
+        <source>File access will be restricted</source>
+        <translation>Quyền truy cập vào các tệp sẽ bị hạn chế</translation>
+    </message>
+    <message>
+        <source>Only chat members can view replies</source>
+        <translation>Chỉ thành viên nhóm mới có thể xem câu trả lời</translation>
+    </message>
+    <message>
+        <source>Show seconds in time picker</source>
+        <translation>Hiển thị giây trong bộ chọn thời gian</translation>
+    </message>
+    <message>
+        <source>Only channel subscribers can view replies</source>
+        <translation>Chỉ những người đăng ký kênh mới có thể xem câu trả lời</translation>
     </message>
 </context>
 <context>
@@ -5422,6 +5762,10 @@ tiếp xúc</translation>
         <translation>Đừng hỏi khi chạy tập tin thực thi</translation>
     </message>
     <message>
+        <source>Do not ask when opening external links</source>
+        <translation>Đừng hỏi khi mở các liên kết bên ngoài</translation>
+    </message>
+    <message>
         <source>Use system spell checker</source>
         <translation>Kiểm tra chính tả hệ thống</translation>
     </message>
@@ -5468,6 +5812,14 @@ tiếp xúc</translation>
     <message>
         <source>Show notifications when app in focus</source>
         <translation>Hiển thị thông báo khi ứng dụng hoạt động</translation>
+    </message>
+    <message>
+        <source>Call window</source>
+        <translation>Cửa sổ cuộc gọi</translation>
+    </message>
+    <message>
+        <source>Warn about disabled microphone</source>
+        <translation>Cảnh báo về micrô bị tắt tiếng</translation>
     </message>
 </context>
 <context>
@@ -5666,6 +6018,10 @@ tiếp xúc</translation>
     <message>
         <source>Set status</source>
         <translation>Đặt trạng thái</translation>
+    </message>
+    <message>
+        <source>Switch microphone state</source>
+        <translation>Thay đổi trạng thái micrô</translation>
     </message>
 </context>
 <context>
@@ -6024,6 +6380,14 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <source>Close</source>
         <translation>Đóng</translation>
     </message>
+    <message>
+        <source>Cannot be disabled due to security reasons</source>
+        <translation>Vì lý do bảo mật, không thể tắt cài đặt này</translation>
+    </message>
+    <message>
+        <source>Replies</source>
+        <translation>Câu trả lời</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -6060,10 +6424,6 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
     <message>
         <source>File</source>
         <translation>Tập tin</translation>
-    </message>
-    <message>
-        <source>Copied to clipboard</source>
-        <translation>Sao chép vào clipboard</translation>
     </message>
     <message>
         <source>Location</source>
@@ -6213,22 +6573,6 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <source>Status duration</source>
         <translation>Thời hạn trạng thái</translation>
     </message>
-    <message>
-        <source>Date</source>
-        <translation>ngày</translation>
-    </message>
-    <message>
-        <source>dd.mm.yyyy</source>
-        <translation>đ.mm.yyyy</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>Thời gian</translation>
-    </message>
-    <message>
-        <source>hh:mm</source>
-        <translation>hh:mm</translation>
-    </message>
 </context>
 <context>
     <name>stickers</name>
@@ -6280,6 +6624,10 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <source>Cancel</source>
         <translation>Hủy bỏ</translation>
     </message>
+    <message>
+        <source>Stickerpack is not available</source>
+        <translation>Gói hình dán không có sẵn</translation>
+    </message>
 </context>
 <context>
     <name>tab</name>
@@ -6304,12 +6652,12 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <translation>Các cuộc gọi</translation>
     </message>
     <message>
-        <source>Structure</source>
-        <translation>Kết cấu</translation>
-    </message>
-    <message>
         <source>Tasks</source>
         <translation>Nhiệm vụ</translation>
+    </message>
+    <message>
+        <source>Calendar</source>
+        <translation>Lịch</translation>
     </message>
 </context>
 <context>
@@ -6337,6 +6685,101 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
     <message>
         <source>Group call</source>
         <translation>Cuộc gọi nhóm</translation>
+    </message>
+</context>
+<context>
+    <name>task</name>
+    <message>
+        <source>In progress</source>
+        <translation>Trong công việc</translation>
+    </message>
+    <message>
+        <source>Ready</source>
+        <translation>Làm xong</translation>
+    </message>
+    <message>
+        <source>Rejected</source>
+        <translation>Từ chối</translation>
+    </message>
+    <message>
+        <source>Closed</source>
+        <translation>Đã đóng cửa</translation>
+    </message>
+    <message>
+        <source>New</source>
+        <translation>Để làm cho</translation>
+    </message>
+    <message>
+        <source>No assignee</source>
+        <translation>Không có người biểu diễn</translation>
+    </message>
+</context>
+<context>
+    <name>task_block</name>
+    <message>
+        <source>Not assigned</source>
+        <translation>Không được phân công</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation>Một nhiệm vụ</translation>
+    </message>
+    <message>
+        <source>Task Id copied to clipboard</source>
+        <translation>Đã sao chép Id công việc</translation>
+    </message>
+    <message>
+        <source>Not set</source>
+        <translation>Không được phân công</translation>
+    </message>
+    <message>
+        <source>Task edit: an error occured</source>
+        <translation>Đang sửa đổi tác vụ: đã xảy ra lỗi</translation>
+    </message>
+</context>
+<context>
+    <name>task_popup</name>
+    <message>
+        <source>Edit task</source>
+        <translation>Thay đổi công việc</translation>
+    </message>
+    <message>
+        <source>Create task</source>
+        <translation>Tạo nhiệm vụ</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>Tên</translation>
+    </message>
+    <message>
+        <source>Maximum length - %1 symbols</source>
+        <translation>Độ dài tối đa - %1 ký tự</translation>
+    </message>
+    <message>
+        <source>Assignee</source>
+        <translation>Người thừa hành</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Huỷ bỏ</translation>
+    </message>
+    <message>
+        <source>Ok</source>
+        <translation>đồng ý</translation>
+    </message>
+    <message>
+        <source>Create</source>
+        <translation>Tạo một</translation>
+    </message>
+    <message>
+        <source>User with this name
+not found</source>
+        <translation>Người dùng với cái này
+không tìm thấy tên</translation>
+    </message>
+    <message>
+        <source>No deadline</source>
+        <translation>Không có thời hạn</translation>
     </message>
 </context>
 <context>
@@ -6368,6 +6811,21 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
     <message>
         <source>Welcome to ICQ New</source>
         <translation>Chào mừng đến với ICQ Mới</translation>
+    </message>
+</context>
+<context>
+    <name>threads_feed</name>
+    <message>
+        <source>There is no threads</source>
+        <translation>Không có chủ đề</translation>
+    </message>
+    <message>
+        <source>Threads you subscribed for will be here</source>
+        <translation>Chủ đề mà bạn đã đăng ký sẽ được hiển thị ở đây</translation>
+    </message>
+    <message>
+        <source>Replies</source>
+        <translation>Câu trả lời</translation>
     </message>
 </context>
 <context>
@@ -6419,6 +6877,42 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <source>You are not a member or banned to write in this group</source>
         <translation>Bạn không phải là thành viên trò chuyện hoặc bạn không được phép viết</translation>
     </message>
+    <message>
+        <source>Unable to open invalid url &quot;%1&quot;</source>
+        <translation>Không thể mở địa chỉ không hợp lệ %1</translation>
+    </message>
+    <message>
+        <source>Error occurred while opening the replies</source>
+        <translation>Đã xảy ra lỗi khi mở câu trả lời</translation>
+    </message>
+    <message>
+        <source>Administrator has set the restrictions on access to files</source>
+        <translation>Quản trị viên nhóm đã đặt các hạn chế về quyền truy cập vào tệp</translation>
+    </message>
+    <message>
+        <source>Awaiting antivirus check, patience</source>
+        <translation>Chúng tôi đang đợi kiểm tra chống vi-rút, hãy kiên nhẫn</translation>
+    </message>
+    <message>
+        <source>Antivirus check in progress, patience</source>
+        <translation>Đang tiến hành kiểm tra chống vi-rút, hãy kiên nhẫn</translation>
+    </message>
+    <message>
+        <source>File is blocked by the antivirus</source>
+        <translation>Tệp bị chặn bởi phần mềm chống vi-rút</translation>
+    </message>
+    <message>
+        <source>Checked</source>
+        <translation>Đã kiểm tra</translation>
+    </message>
+    <message>
+        <source>No access. You may not have enough rights</source>
+        <translation>Không truy cập. Bạn có thể không có đủ quyền</translation>
+    </message>
+    <message>
+        <source>File not checked (and never will be). Available to download</source>
+        <translation>Tệp chưa được xác minh (và sẽ không được xác minh). Có sẵn để tải xuống</translation>
+    </message>
 </context>
 <context>
     <name>tooltips</name>
@@ -6461,6 +6955,14 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
     <message>
         <source>Link to call</source>
         <translation>Liên kết cuộc gọi</translation>
+    </message>
+    <message>
+        <source>Chat gallery</source>
+        <translation>Thư viện trò chuyện</translation>
+    </message>
+    <message>
+        <source>Refresh</source>
+        <translation>Làm mới</translation>
     </message>
 </context>
 <context>
@@ -6596,6 +7098,18 @@ bằng cách nhấp chuột</translation>
         <translation>Bận</translation>
     </message>
     <message>
+        <source>Hold Space key for temporary unmute</source>
+        <translation>Giữ thanh Dấu cách để tạm thời bật tiếng micrô</translation>
+    </message>
+    <message>
+        <source>Microphone disabled</source>
+        <translation>Micrô tắt</translation>
+    </message>
+    <message>
+        <source>Microphone enabled</source>
+        <translation>Bật micrô</translation>
+    </message>
+    <message>
         <source>Call members</source>
         <translation>Gọi người tham gia</translation>
     </message>
@@ -6618,6 +7132,16 @@ bằng cách nhấp chuột</translation>
     <message>
         <source>CONTACTS</source>
         <translation>LIÊN LẠC</translation>
+    </message>
+    <message>
+        <source>You are muted now
+Press %1 to unmute your microphone
+
+Press and hold Space key for temporarily unmute</source>
+        <translation>Bây giờ micrô của bạn đã tắt
+Nhấn %1 để bật micrô
+
+Nhấn và giữ thanh Dấu cách để tạm thời bật tiếng micrô</translation>
     </message>
 </context>
 <context>

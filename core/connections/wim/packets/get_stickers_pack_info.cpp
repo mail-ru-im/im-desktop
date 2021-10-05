@@ -14,18 +14,16 @@ get_stickers_pack_info_packet::get_stickers_pack_info_packet(
     wim_packet_params _params,
     const int32_t _pack_id,
     const std::string& _store_id,
-    const std::string& _file_id)
+    const core::tools::filesharing_id& _filesharing_id)
     :   wim_packet(std::move(_params)),
         pack_id_(_pack_id),
         store_id_(_store_id),
-        file_id_(_file_id)
+    filesharing_id_(_filesharing_id)
 {
 }
 
 
-get_stickers_pack_info_packet::~get_stickers_pack_info_packet()
-{
-}
+get_stickers_pack_info_packet::~get_stickers_pack_info_packet() = default;
 
 int32_t get_stickers_pack_info_packet::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
@@ -36,7 +34,7 @@ int32_t get_stickers_pack_info_packet::init_request(const std::shared_ptr<core::
     std::stringstream ss_host;
     ss_host << urls::get_url(urls::url_type::stickers_store_host) << std::string_view("/openstore/filespackinfowithmeta");
 
-    params["a"] = escape_symbols(params_.a_token_);
+    params["aimsid"] = escape_symbols(params_.aimsid_);
     params["f"] = "json";
     params["k"] = params_.dev_id_;
     params["ts"] = std::to_string((int64_t) ts);
@@ -48,11 +46,19 @@ int32_t get_stickers_pack_info_packet::init_request(const std::shared_ptr<core::
     params["lang"] = params_.locale_;
 
     if (pack_id_ > 0)
+    {
         params["id"] = std::to_string(pack_id_);
+    }
     else if (!store_id_.empty())
+    {
         params["store_id"] = escape_symbols(store_id_);
-    else if (!file_id_.empty())
-        params["file_id"] = escape_symbols(file_id_);
+    }
+    else if (!filesharing_id_.file_id_.empty())
+    {
+        params["file_id"] = escape_symbols(filesharing_id_.file_id_);
+        if (filesharing_id_.source_id_ && !filesharing_id_.source_id_->empty())
+            params["source"] = escape_symbols(*filesharing_id_.source_id_);
+    }
 
     std::stringstream ss_url;
     ss_url << ss_host.str() << '?' << format_get_params(params);
@@ -66,6 +72,7 @@ int32_t get_stickers_pack_info_packet::init_request(const std::shared_ptr<core::
         log_replace_functor f;
         f.add_marker("a");
         f.add_marker("file_id");
+        f.add_marker("source");
         _request->set_replace_log_function(f);
     }
 

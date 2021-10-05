@@ -11,6 +11,7 @@ namespace VirtualDesktops
         , notificationService_(nullptr)
         , notification_(nullptr)
     {
+        ::CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
     }
 
     VirtualDesktopManager::~VirtualDesktopManager()
@@ -25,6 +26,8 @@ namespace VirtualDesktops
 
         if (serviceProvider_)
             serviceProvider_->Release();
+
+        ::CoUninitialize();
     }
 
     void VirtualDesktopManager::registerService()

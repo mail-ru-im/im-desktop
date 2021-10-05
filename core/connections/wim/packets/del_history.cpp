@@ -16,13 +16,13 @@ del_history::del_history(
     , up_to_id_(_up_to_id)
     , contact_aimid_(_contact_aimid)
 {
-    assert(up_to_id_ > 0);
-    assert(!contact_aimid_.empty());
+    im_assert(up_to_id_ > 0);
+    im_assert(!contact_aimid_.empty());
 }
 
 int32_t del_history::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
-    assert(_request);
+    im_assert(_request);
 
     rapidjson::Document doc(rapidjson::Type::kObjectType);
     auto& a = doc.GetAllocator();

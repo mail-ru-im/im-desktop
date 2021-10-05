@@ -8,7 +8,7 @@ namespace Logic
     {
         InputText() = default;
 
-        InputText(QString _text, int _pos)
+        InputText(Data::FString _text, int _pos)
             : text_(std::move(_text))
             , cursorPos_(_pos)
         {}
@@ -19,7 +19,7 @@ namespace Logic
             cursorPos_ = 0;
         }
 
-        QString text_;
+        Data::FString text_;
         int cursorPos_ = 0;
     };
 
@@ -30,10 +30,10 @@ namespace Logic
         ~InputTextContainer() = default;
 
         const InputText& getInputText(const QString& _contact) const;
-        void setInputText(const QString& _contact, QString _text, int _pos);
+        void setInputText(const QString& _contact, Data::FString _text, int _pos);
 
-        const QString& getText(const QString& _contact) const;
-        void setText(const QString& _contact, QString _text);
+        const Data::FString& getText(const QString& _contact) const;
+        void setText(const QString& _contact, Data::FString _text);
 
         int getCursorPos(const QString& _contact) const;
         void setCursorPos(const QString& _contact, int _pos);

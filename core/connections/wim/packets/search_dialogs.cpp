@@ -4,7 +4,7 @@
 #include "../../../archive/history_message.h"
 #include "../../../http_request.h"
 
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 
 namespace
 {
@@ -173,7 +173,7 @@ namespace core::wim
         const auto iter_hl = _entry_node.FindMember("highlight");
         if (iter_hl == _entry_node.MemberEnd() || !iter_hl->value.IsArray())
         {
-            assert("entry with no highlights");
+            im_assert("entry with no highlights");
             return true; // skip messages without highlights
         }
 

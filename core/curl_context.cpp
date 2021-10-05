@@ -163,7 +163,8 @@ core::curl_context::curl_context(std::shared_ptr<tools::stream> _output, http_re
     multi_(false),
     compression_method_(data_compression_method::none),
     use_curl_decompression_(false),
-    resolve_failed_(false)
+    resolve_failed_(false),
+    use_new_connection_(false)
 {
 }
 
@@ -177,7 +178,7 @@ core::curl_context::~curl_context()
 
 bool core::curl_context::init(std::chrono::milliseconds _connect_timeout, std::chrono::milliseconds _timeout, core::proxy_settings _proxy_settings, const std::string &_user_agent)
 {
-    assert(!_user_agent.empty());
+    im_assert(!_user_agent.empty());
 
     connect_timeout_ = _connect_timeout;
     timeout_ = _timeout;
@@ -201,8 +202,6 @@ bool core::curl_context::init_handler(CURL* _curl)
     if (!_curl)
         return false;
 
-    curl_easy_setopt(_curl, CURLOPT_SSL_VERIFYPEER, config::get().is_on(config::features::ssl_verify_peer) ? 1L : 0L);
-
     const bool is_http2_used = is_multi_task();
 
     curl_easy_setopt(_curl, CURLOPT_HTTP_VERSION, (is_http2_used ? CURL_HTTP_VERSION_2TLS : CURL_HTTP_VERSION_1_1));
@@ -211,8 +210,11 @@ bool core::curl_context::init_handler(CURL* _curl)
         curl_easy_setopt(_curl, CURLOPT_PIPEWAIT, 1L);
 
     curl_easy_setopt(_curl, CURLOPT_SSL_CTX_FUNCTION, ssl_ctx_callback);
-
-    curl_easy_setopt(_curl, CURLOPT_SSL_VERIFYHOST, 2L);
+    {
+        const auto need_verify_ssl = config::get().is_on(config::features::ssl_verify);
+        curl_easy_setopt(_curl, CURLOPT_SSL_VERIFYPEER, need_verify_ssl ? 1L : 0L);
+        curl_easy_setopt(_curl, CURLOPT_SSL_VERIFYHOST, need_verify_ssl ? 2L : 0L);
+    }
 
     curl_easy_setopt(_curl, CURLOPT_WRITEDATA, (void *)this);
     curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, write_memory_callback);
@@ -227,7 +229,7 @@ bool core::curl_context::init_handler(CURL* _curl)
     curl_easy_setopt(_curl, CURLOPT_TCP_KEEPINTVL, 5L);
     curl_easy_setopt(_curl, CURLOPT_NOSIGNAL, 1L);
 
-    if (!environment::is_develop() || core::configuration::get_app_config().is_net_compression_enabled())
+    if (core::configuration::get_app_config().is_net_compression_enabled())
     {
         if (use_curl_decompression_ || zstd_response_dict_.empty())
         {
@@ -360,6 +362,9 @@ bool core::curl_context::init_handler(CURL* _curl)
     err_buf_[0] = 0;
     curl_easy_setopt(_curl, CURLOPT_ERRORBUFFER, err_buf_);
 
+    if (use_new_connection_)
+        curl_easy_setopt(_curl, CURLOPT_FRESH_CONNECT, 1L);
+
     return true;
 }
 
@@ -442,9 +447,9 @@ void core::curl_context::write_log_string(std::string_view _log_string)
 
 void core::curl_context::set_range(int64_t _from, int64_t _to)
 {
-    assert(_from >= 0);
-    assert(_to > 0);
-    assert(_from < _to);
+    im_assert(_from >= 0);
+    im_assert(_to > 0);
+    im_assert(_from < _to);
 
     curl_range_from_ = _from;
     curl_range_to_ = _to;
@@ -534,7 +539,7 @@ void core::curl_context::decompress_output_if_needed()
                 const auto response_dict = http_header::get_attribute(get_header(), get_response_dict_header_attribut());
                 result = tools::decompress_zstd(*output_, response_dict.empty() ? zstd_response_dict_ : response_dict, data);
 #else
-                assert(false);
+                im_assert(false);
 #endif // !STRIP_ZSTD
             }
 
@@ -651,13 +656,44 @@ void core::curl_context::load_info(CURL* _curl, CURLcode _result)
 void core::curl_context::write_log(CURLcode res)
 {
     if (is_need_log())
+    {
+        if (resolve_failed_ || res == CURLE_COULDNT_RESOLVE_HOST)
+        {
+            write_log_string(su::concat("Original url: ", original_url_, '\n'));
+            if (post_data_)
+            {
+                write_log_string("Post data:\n");
+                if (is_compressed())
+                {
+                    core::tools::binary_stream data;
+                    auto result = false;
+                    if (is_gzip())
+                        result = core::tools::decompress_gzip(post_data_, post_data_size_, data);
+#ifndef STRIP_ZSTD
+                    else if (is_zstd())
+                        result = core::tools::decompress_zstd(post_data_, post_data_size_, zstd_request_dict(), data);
+#endif
+
+                    if (result)
+                        write_log_data(data.get_data(), data.available());
+                    else
+                        write_log_string("*** Unable to decompress post data");
+                }
+                else
+                {
+                    write_log_data(post_data_, post_data_size_);
+                }
+                write_log_string('\n');
+            }
+        }
         write_log_message(su::concat(std::to_string(res), " (", curl_easy_strerror(res), ')'), start_time_);
+    }
 }
 
 core::curl_easy::completion_code core::curl_context::execute_request()
 {
     auto handler = curl_handler::instance().perform(shared_from_this());
-    assert(handler.valid());
+    im_assert(handler.valid());
 
     handler.wait();
 
@@ -706,6 +742,11 @@ bool core::curl_context::is_use_curl_decompression() const
 void core::curl_context::set_use_curl_decompression(bool _enable)
 {
     use_curl_decompression_ = _enable;
+}
+
+void core::curl_context::set_use_new_connection(bool _use)
+{
+    use_new_connection_ = _use;
 }
 
 const std::string& core::curl_context::zstd_request_dict() const
@@ -915,8 +956,8 @@ static int32_t progress_callback(void* ptr, double TotalToDownload, double NowDo
 {
     auto cntx = (core::curl_context*) ptr;
 
-    assert(cntx->bytes_transferred_pct_ >= 0);
-    assert(cntx->bytes_transferred_pct_ <= 100);
+    im_assert(cntx->bytes_transferred_pct_ >= 0);
+    im_assert(cntx->bytes_transferred_pct_ <= 100);
 
     if (core::curl_handler::instance().is_stopped() || (cntx->stop_func_ && cntx->stop_func_()))
     {
@@ -931,8 +972,8 @@ static int32_t progress_callback(void* ptr, double TotalToDownload, double NowDo
     }
 
     const auto bytes_transferred_pct = (int32_t)((NowDownloaded * 100) / TotalToDownload);
-    assert(bytes_transferred_pct >= 0);
-    assert(bytes_transferred_pct <= 100);
+    im_assert(bytes_transferred_pct >= 0);
+    im_assert(bytes_transferred_pct <= 100);
 
     const auto percentage_updated = (bytes_transferred_pct != cntx->bytes_transferred_pct_);
     if (!percentage_updated)

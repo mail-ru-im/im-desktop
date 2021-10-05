@@ -39,7 +39,7 @@
 #include "../../libomicron/include/omicron/omicron.h"
 
 #include "../tools/system.h"
-#include "../tools/json_helper.h"
+#include "../../common.shared/json_helper.h"
 #include <iostream>
 #include "../../core/configuration/app_config.h"
 
@@ -49,7 +49,7 @@ using StaticImageId = voip::BuiltinVideoWindowRenderer::StaticImageId;
 //constexpr std::chrono::seconds OLDER_RTP_DUMP_TIME_DIFF = std::chrono::hours(7 * 24);
 //static const std::string RTP_DUMP_EXT = ".pcapng";
 
-#define VOIP_ASSERT(exp) assert(exp)
+#define VOIP_ASSERT(exp) im_assert(exp)
 
 #define VOIP_ASSERT_RETURN(exp) \
     if (!(exp)) \
@@ -612,6 +612,7 @@ namespace voip_manager
         void onMaskEngineStatusChanged(bool engine_loaded, const std::string &error_message) override;
         void onMaskStatusChanged(im::MaskerStatus status, const std::string &path) override;
 
+        void onVoiceDetectChanged(bool voice) override;
     public:
         VoipManagerImpl (core::core_dispatcher& dispatcher);
         ~VoipManagerImpl();
@@ -633,7 +634,7 @@ namespace voip_manager
             filePath += L"/voip_log.txt";
 #endif
             //const bool openResult = _voipLogger.logOpen(from_unicode_to_utf8(filePath));
-            //assert(openResult);
+            //im_assert(openResult);
         }
     }
 
@@ -1486,7 +1487,7 @@ namespace voip_manager
             render->SetStaticImage(voip::WindowTheme_Three, type, contact, hbmp);
             break;
         default:
-            assert(false);
+            im_assert(false);
         }
     }
 
@@ -1837,7 +1838,7 @@ namespace voip_manager
         _dispatcher.execute_core_context({ [user_uid, this]()
         {
             auto im = _dispatcher.find_im_by_id(0);
-            assert(!!im);
+            im_assert(!!im);
 
             im->get_contact_avatar(0, user_uid.normalized_id, kAvatarRequestSize, false);
         } });
@@ -1939,7 +1940,7 @@ namespace voip_manager
             SIGNAL_NOTIFICATION(kNotificationType_MediaLocVideoDeviceChanged, desc);
         } else if (_engine)
         {
-            assert(!deviceUid.empty());
+            im_assert(!deviceUid.empty());
             _engine->Action_SelectAudioDevice(deviceType == AudioPlayback ? im::AudioDevicePlayback : im::AudioDeviceRecording, deviceUid, force_reset);
         }
     }
@@ -2365,7 +2366,7 @@ namespace voip_manager
                     if (info->value.HasMember("call_type") && info->value["call_type"].IsString())
                     {
                         std::string call_type = info->value["call_type"].GetString();
-                        assert(desc->call_type == call_type);
+                        im_assert(desc->call_type == call_type);
                     }
                     if (info->value.HasMember("url") && info->value["url"].IsString() && voip::kCallType_PINNED_ROOM == desc->call_type)
                     {
@@ -2400,7 +2401,7 @@ namespace voip_manager
         {
             CallDescPtr desc;
             VOIP_ASSERT_RETURN(!!_call_get(call_id, desc));
-            assert(desc->outgoing);
+            im_assert(desc->outgoing);
             desc->call_state = kCallState_Accepted;
 
             ConnectionDescPtr connection = desc->connections.size() ? desc->connections.front() : 0;
@@ -2589,7 +2590,7 @@ namespace voip_manager
 
     void VoipManagerImpl::onCameraListUpdated(const im::CameraInfoList &camera_list)
     {
-        assert(std::this_thread::get_id() == _dispatcher.get_core_thread_id());
+        im_assert(std::this_thread::get_id() == _dispatcher.get_core_thread_id());
 
         // NOTE: Don't thoughtlessly put this code as core_thread task because of IMDESKTOP-15478
 
@@ -2626,7 +2627,7 @@ namespace voip_manager
 
     void VoipManagerImpl::onAudioDevicesListUpdated(im::AudioDeviceType type, const im::AudioDeviceInfoList &audio_list)
     {
-        assert(std::this_thread::get_id() == _dispatcher.get_core_thread_id());
+        im_assert(std::this_thread::get_id() == _dispatcher.get_core_thread_id());
 
         // NOTE: Don't thoughtlessly put this code as core_thread task because of IMDESKTOP-15478
 
@@ -2744,7 +2745,7 @@ namespace voip_manager
 	            im::VoipController::WriteToVoipLog(string_to_log);
 	        }
 
-            assert(is_vcs_call() ? call_state.call_type == voip::kCallType_VCS : is_pinned_room_call() ? call_state.call_type == voip::kCallType_PINNED_ROOM : call_state.call_type.empty());
+            im_assert(is_vcs_call() ? call_state.call_type == voip::kCallType_VCS : is_pinned_room_call() ? call_state.call_type == voip::kCallType_PINNED_ROOM : call_state.call_type.empty());
             if (is_vcs_call() && !call_state.aux_call_info_json.empty())
                 parseAuxCallName(currentCall, call_state);
             // Signal hangup terminate reasons
@@ -2819,6 +2820,11 @@ namespace voip_manager
 
     void VoipManagerImpl::onMaskStatusChanged(im::MaskerStatus status, const std::string &path)
     {
+    }
+
+    void VoipManagerImpl::onVoiceDetectChanged(bool voice)
+    {
+        SIGNAL_NOTIFICATION(kNotificationType_VoiceDetect, &voice);
     }
 
     VoipManager *createVoipManager(core::core_dispatcher& dispatcher)

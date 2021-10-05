@@ -15,7 +15,7 @@ namespace Ui
         void selected(const Data::SmartreplySuggest& _suggest, QPrivateSignal) const;
         void deleteMe() const;
         void mouseMoved(QPoint _point) const;
-        void showPreview(const QString& _data) const;
+        void showPreview(const Data::SmartreplySuggest::Data& _data) const;
         void hidePreview() const;
 
     public:
@@ -67,9 +67,9 @@ namespace Ui
     private:
         QColor getUnderlayColor();
         bool prepareImage();
-        const QString& getId() const;
+        const Utils::FileSharingId& getId() const;
 
-        void onStickerLoaded(int _error, const QString& _id);
+        void onStickerLoaded(int _error, const Utils::FileSharingId& _id);
 
     protected:
         void mousePressEvent(QMouseEvent* _e) override;

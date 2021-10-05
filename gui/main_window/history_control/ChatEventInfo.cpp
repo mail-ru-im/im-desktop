@@ -14,6 +14,7 @@
 #include "../containers/FriendlyContainer.h"
 #include "../containers/PrivacySettingsContainer.h"
 #include "statuses/LocalStatuses.h"
+#include "main_window/history_control/FileStatus.h"
 
 using namespace core;
 
@@ -53,6 +54,11 @@ namespace
     {
         return 0x2023;
     }
+
+    QString timePrintFormat()
+    {
+        return qsl("hh:mm");
+    }
 }
 
 namespace HistoryControl
@@ -90,6 +96,15 @@ namespace HistoryControl
             if (isStranger)
                 eventInfo->setSender(_aimid);
 
+            return eventInfo;
+        }
+
+        if (chat_event_type::task_changed == type)
+        {
+            Data::TaskChange taskChange;
+            const auto taskEventHelper = core::coll_helper{ _info.get_value_as_collection("task_event"), false };
+            taskChange.unserialize(taskEventHelper.get_value_as_collection("task"));
+            eventInfo->setTask(taskEventHelper.get<QString>("editor"), taskChange);
             return eventInfo;
         }
 
@@ -145,6 +160,12 @@ namespace HistoryControl
         if (isPublicModified)
         {
             eventInfo->setNewPublic(_info.get<bool>("chat/new_public"));
+            return eventInfo;
+        }
+
+        if (type == chat_event_type::chat_trust_requied_modified)
+        {
+            eventInfo->setNewTrustRequired(_info.get<bool>("chat/new_trust"));
             return eventInfo;
         }
 
@@ -268,6 +289,9 @@ namespace HistoryControl
             case chat_event_type::chat_public_modified:
                 return formatPublicModified();
 
+            case chat_event_type::chat_trust_requied_modified:
+                return formatTrustRequiredModified();
+
             case chat_event_type::warn_about_stranger:
                 return formatWarnAboutStranger();
 
@@ -277,6 +301,9 @@ namespace HistoryControl
             case chat_event_type::status_reply:
             case chat_event_type::custom_status_reply:
                 return formatStatusReply();
+
+            case chat_event_type::task_changed:
+                return formatTask();
 
             default:
                 break;
@@ -524,6 +551,12 @@ namespace HistoryControl
             return QT_TRANSLATE_NOOP("chat_event", "%1 made the group public, now it is possible to find it through a search").arg(senderOrAdmin());
         else
             return QT_TRANSLATE_NOOP("chat_event", "%1 made the group private, now it is impossible to find it through a search").arg(senderOrAdmin());
+    }
+
+    QString ChatEventInfo::formatTrustRequiredModified() const
+    {
+        im_assert(type_ == chat_event_type::chat_trust_requied_modified);
+        return Ui::getFileStatusText(Ui::FileStatus::Blocked);
     }
 
     QString ChatEventInfo::formatMchatInviteText() const
@@ -1008,6 +1041,30 @@ namespace HistoryControl
         return QT_TRANSLATE_NOOP("chat_event", "Replied to status: %1 %2").arg(statusReply_.senderStatus_, senderStatusDescription);
     }
 
+    QString ChatEventInfo::formatTask() const
+    {
+        const auto editor = Logic::GetFriendlyContainer()->getFriendly(task_.editor_);
+        if (const auto title = task_.change_.title_)
+            return QT_TRANSLATE_NOOP("chat_event", "%1 changed task title to \"%2\"").arg(editor, *title);
+        if (const auto assignee = task_.change_.assignee_)
+        {
+            const auto assigneeFriendly = assignee->isEmpty() ? QT_TRANSLATE_NOOP("task_block", "Not assigned") : Logic::GetFriendlyContainer()->getFriendly(*assignee);
+            return QT_TRANSLATE_NOOP("chat_event", "%1 changed task assignee to \"%2\"").arg(editor, assigneeFriendly);
+        }
+        if (const auto dateTime = task_.change_.date_)
+        {
+            const auto date = dateTime->date();
+            const auto time = dateTime->time();
+            const auto current = QDateTime::currentDateTime();
+            const QString formattedDate = Utils::GetTranslator()->formatDate(date, date.year() == current.date().year()) % u" " % time.toString(timePrintFormat());
+            return QT_TRANSLATE_NOOP("chat_event", "%1 changed task deadline to %2").arg(editor, formattedDate);
+        }
+        if (const auto status = task_.change_.status_)
+            return QT_TRANSLATE_NOOP("chat_event", "Task status changed to \"%1\"").arg(Data::TaskData::statusDescription(*status));
+        im_assert(!"Empty task");
+        return {};
+    }
+
     bool ChatEventInfo::isMyAimid(const QString& _aimId) const
     {
         im_assert(!myAimid_.isEmpty());
@@ -1068,6 +1125,11 @@ namespace HistoryControl
     void ChatEventInfo::setNewPublic(bool _newPublic)
     {
         chat_.newPublic_ = _newPublic;
+    }
+
+    void ChatEventInfo::setNewTrustRequired(bool _newTrustRequired)
+    {
+        chat_.newTrustRequired_ = _newTrustRequired;
     }
 
     void ChatEventInfo::setSender(QString _aimid)
@@ -1154,5 +1216,11 @@ namespace HistoryControl
     {
         statusReply_.ownerStatus_ = _status;
         statusReply_.ownerStatusDescription_ = _description;
+    }
+
+    void ChatEventInfo::setTask(const QString& _editor, const Data::TaskChange& _taskChange)
+    {
+        task_.editor_ = _editor;
+        task_.change_ = _taskChange;
     }
 }

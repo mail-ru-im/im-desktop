@@ -2,8 +2,6 @@
 
 #include "../controls/CustomButton.h"
 #include "../controls/ContextMenu.h"
-#include "../main_window/ContactDialog.h"
-#include "../main_window/MainPage.h"
 #include "../main_window/MainWindow.h"
 #include "../main_window/containers/FriendlyContainer.h"
 #include "../main_window/history_control/complex_message/FileSharingUtils.h"
@@ -69,6 +67,7 @@ GalleryWidget::GalleryWidget(QWidget* _parent)
     : QWidget(_parent)
     , controlWidgetHeight_(getControlsWidgetHeight())
     , isClosing_(false)
+    , fromThreadFeed_(false)
 {
     setMouseTracking(true);
 
@@ -194,9 +193,13 @@ GalleryWidget::~GalleryWidget()
 void GalleryWidget::openGallery(const Utils::GalleryData& _data)
 {
     aimId_ = _data.aimId_;
+    fromThreadFeed_ = _data.fromThreadFeed_;
     const auto hasPlayer = _data.attachedPlayer_ != nullptr;
     const auto hasPreview = !_data.preview_.isNull();
     contentLoader_.reset(createGalleryLoader(_data));
+
+    if (controlsWidget_)
+        controlsWidget_->setGotoEnabled(!fromThreadFeed_);
 
     init();
 
@@ -226,7 +229,7 @@ void GalleryWidget::closeGallery()
     if (contentLoader_)
         contentLoader_->cancelCurrentItemLoading();
 
-    Ui::MainPage::instance()->setFocusOnInput();
+    Q_EMIT Utils::InterConnector::instance().setFocusOnInput();
 
     imageViewer_->reset();
     showNormal();
@@ -259,7 +262,10 @@ void GalleryWidget::showFullScreen()
     MacSupport::showNSPopUpMenuWindowLevel(this);
 #else
     QWidget::showFullScreen();
-#endif
+#ifdef _WIN32
+    QWindowsWindowFunctions::setHasBorderInFullScreen(windowHandle(), true);//https://doc.qt.io/qt-5/windows-issues.html
+#endif //_WIN32
+#endif //__APPLE__
 
     imageViewer_->show();
 }
@@ -313,7 +319,7 @@ void GalleryWidget::trackMenu(const QPoint& _globalPos, const bool _isAsync)
 
     const auto actions = controlsWidget_->menuActions();
 
-    if (const auto type = GalleryFrame::Action::GoTo; actions & type)
+    if (const auto type = GalleryFrame::Action::GoTo; (actions & type) && !fromThreadFeed_)
         addAction(type, menu, this, [this]() { onGoToMessage(); closeGallery(); }, Qt::QueuedConnection);
 
     if (const auto type = GalleryFrame::Action::Copy; actions & type)
@@ -492,44 +498,43 @@ void GalleryWidget::updateControls()
     updateNavButtons();
     if (auto currentItem = contentLoader_->currentItem(); currentItem)
     {
-        GalleryFrame::Actions menuActions;
-        if (currentItem->msg())
+        GalleryFrame::Actions menuActions = { GalleryFrame::Copy, GalleryFrame::SaveAs };
+
+        const auto hasMsg = currentItem->msg() != 0;
+        if (hasMsg)
         {
             if (const auto sender = currentItem->sender(); !sender.isEmpty())
                 controlsWidget_->setAuthorText(Logic::GetFriendlyContainer()->getFriendly(sender));
 
             const auto t = QDateTime::fromSecsSinceEpoch(currentItem->time());
-            auto dateStr = t.date().toString(u"dd.MM.yyyy");
-            auto timeStr = t.toString(u"hh:mm");
+            const auto dateStr = t.date().toString(u"dd.MM.yyyy");
+            const auto timeStr = t.toString(u"hh:mm");
 
             controlsWidget_->setDateText(QT_TRANSLATE_NOOP("previewer", "%1 at %2").arg(dateStr, timeStr));
             controlsWidget_->setCaption(currentItem->caption());
 
-            menuActions = {GalleryFrame::Copy, GalleryFrame::SaveAs, GalleryFrame::Forward, GalleryFrame::GoTo};
+            menuActions |= GalleryFrame::GoTo;
 
-            if (!Favorites::isFavorites(aimId_))
-                menuActions |= GalleryFrame::SaveToFavorites;
+            if (!Logic::getContactListModel()->isThread(currentItem->aimId()))
+            {
+                menuActions |= GalleryFrame::Forward;
 
-            controlsWidget_->setAuthorAndDateVisible(true);
+                if (!Favorites::isFavorites(aimId_))
+                    menuActions |= GalleryFrame::SaveToFavorites;
+            }
         }
-        else
-        {
-            menuActions = {GalleryFrame::Copy, GalleryFrame::SaveAs};
-            controlsWidget_->setAuthorAndDateVisible(false);
-        }
-
-        const auto index = contentLoader_->currentIndex();
-        const auto total = contentLoader_->totalCount();
-        if (index > 0 && total > 0)
-        {
-            controlsWidget_->setCounterText(getInfoText(index, total));
-        }
-        else
-        {
-            controlsWidget_->setCounterText(QString());
-        }
-
         controlsWidget_->setMenuActions(menuActions);
+        controlsWidget_->setAuthorAndDateVisible(hasMsg);
+
+        const auto counterText = [this]() -> QString
+        {
+            const auto index = contentLoader_->currentIndex();
+            const auto total = contentLoader_->totalCount();
+            if (index > 0 && total > 0)
+                return getInfoText(index, total);
+            return {};
+        }();
+        controlsWidget_->setCounterText(counterText);
     }
 }
 
@@ -784,7 +789,7 @@ void GalleryWidget::onGoToMessage()
     const auto msgId = item->msg();
     if (msgId > 0)
     {
-        Logic::getContactListModel()->setCurrent(aimId_, msgId, true);
+        Utils::InterConnector::instance().openDialog(aimId_, msgId);
         escape();
     }
 

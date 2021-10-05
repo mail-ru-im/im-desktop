@@ -28,7 +28,7 @@ int32_t remove_stickers_pack_packet::init_request(const std::shared_ptr<core::ht
 
     const time_t ts = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) - params_.time_offset_;
 
-    params["a"] = escape_symbols(params_.a_token_);
+    params["aimsid"] = escape_symbols(params_.aimsid_);
     params["f"] = "json";
     params["k"] = params_.dev_id_;
     params["platform"] = utils::get_protocol_platform_string();

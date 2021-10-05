@@ -1,115 +1,59 @@
+
 message(STATUS "")
-
-# Collecting LIBs dependencies
-message(STATUS "[dependencies: libs] Collecting LIBs dependencies")
-list(APPEND externalLibDeps "boost")
-list(APPEND externalLibDeps "breakpad")
-list(APPEND externalLibDeps "curl")
-list(APPEND externalLibDeps "ffmpeg")
-list(APPEND externalLibDeps "icu")
-list(APPEND externalLibDeps "libdbus")
-list(APPEND externalLibDeps "libphonenumber")
-list(APPEND externalLibDeps "minizip")
-list(APPEND externalLibDeps "nghttp2")
-list(APPEND externalLibDeps "openal")
-list(APPEND externalLibDeps "openssl")
-list(APPEND externalLibDeps "protobuf")
-list(APPEND externalLibDeps "qt")
-list(APPEND externalLibDeps "re2")
-list(APPEND externalLibDeps "zlib")
-list(APPEND externalLibDeps "zstd")
-list(APPEND externalLibDeps "rlottie")
-message(STATUS "")
-
-# Collecting SRCs dependencies
-message(STATUS "[dependencies: srcs] Collecting SRCs dependencies")
-list(APPEND externalSrcDeps "breakpad")
-list(APPEND externalSrcDeps "rapidjson")
-message(STATUS "")
-
-# Collecting additionals LIBs dependencies
-message(STATUS "[dependencies: additionals] Collecting additionals LIBs dependencies")
-list(APPEND additionalsLibDeps "libXau.a")
-list(APPEND additionalsLibDeps "libxcb-util.a")
-list(APPEND additionalsLibDeps "libXdmcp.a")
-list(APPEND additionalsLibDeps "libXext.a")
-list(APPEND additionalsLibDeps "libXi.a")
-list(APPEND additionalsLibDeps "libxkbcommon-x11.a")
-list(APPEND additionalsLibDeps "libxkbcommon.a")
-message(STATUS "")
-
-# Collecting BINs dependencies
-message(STATUS "[dependencies: binaries] Collecting BINs dependencies")
-list(APPEND externalBinDeps "lconvert")
-list(APPEND externalBinDeps "lrelease")
-list(APPEND externalBinDeps "moc")
-list(APPEND externalBinDeps "rcc")
-list(APPEND externalBinDeps "uic")
-list(APPEND externalBinDeps "qmake")
-message(STATUS "")
+message(STATUS "[CMAKE]")
+message(STATUS "[CMAKE] including <requirements/linux.cmake>")
+message(STATUS "[CMAKE]")
 
 
-if(NOT UNIX OR APPLE)
-
-    message(STATUS "WINDOWS OR APPLE, CONTINUE")
-
+## Library packages
+# depName depVersion depLinking depArch depHeaders depCommit depEnvironment depUrl
+common_add_ext_package("boost" "1.68.0-2" "static" "${PACKAGE_ARCH}" OFF OFF "release" OFF)
+common_add_ext_package("breakpad" "master-on-centos" "static" "${PACKAGE_ARCH}" OFF "46f4b593" "release" OFF)
+common_add_ext_package("curl" "7.62.0-3" "static" "${PACKAGE_ARCH}" OFF OFF "release" OFF)
+common_add_ext_package("ffmpeg" "4.3.1-3" "static" "${PACKAGE_ARCH}" OFF OFF "release" OFF)
+common_add_ext_package("libdbus" "1.10.24-3" "static" "${PACKAGE_ARCH}" OFF OFF "release" OFF)
+common_add_ext_package("libphonenumber" "8.12.11-2" "static" "${PACKAGE_ARCH}" OFF OFF "release" OFF)
+common_add_ext_package("nghttp2" "1.41.0-3" "static" "${PACKAGE_ARCH}" OFF OFF "release" OFF)
+common_add_ext_package("openal" "1.20.1-3" "static" "${PACKAGE_ARCH}" OFF OFF "release" OFF)
+common_add_ext_package("openssl" "1.1.1-3" "static" "${PACKAGE_ARCH}" OFF OFF "release" OFF)
+common_add_ext_package("protobuf" "3.3.2-2" "static" "${PACKAGE_ARCH}" OFF OFF "release" OFF)
+common_add_ext_package("re2" "2020-10-01-2" "static" "${PACKAGE_ARCH}" OFF OFF "release" OFF)
+common_add_ext_package("zlib" "1.2.11-3" "static" "${PACKAGE_ARCH}" OFF OFF "release" OFF)
+common_add_ext_package("zstd" "1.4.5-3" "static" "${PACKAGE_ARCH}" OFF OFF "release" OFF)
+common_add_ext_package("rlottie" "master-on-centos" "static" "${PACKAGE_ARCH}" OFF "29b391b" "release" OFF)
+common_add_ext_package("libxau" "1.0.9-2" "static" "${PACKAGE_ARCH}" OFF OFF "release" OFF)
+common_add_ext_package("libxdmcp" "1.1.3" "static" "${PACKAGE_ARCH}" OFF OFF "release" OFF)
+common_add_ext_package("xcb" "1.14-2" "static" "${PACKAGE_ARCH}" OFF OFF "release" OFF)
+common_add_ext_package("xproto" "7.0.31-2" "static" "${PACKAGE_ARCH}" OFF OFF "release" OFF)
+common_add_ext_package("xcb-util" "0.4.0-2" "static" "${PACKAGE_ARCH}" OFF OFF "release" OFF)
+common_add_ext_package("xcb-util-wm" "0.4.1-2" "static" "${PACKAGE_ARCH}" OFF OFF "release" OFF)
+common_add_ext_package("xcb-util-image" "0.4.0-2" "static" "${PACKAGE_ARCH}" OFF OFF "release" OFF)
+common_add_ext_package("xcb-util-keysyms" "0.4.0-2" "static" "${PACKAGE_ARCH}" OFF OFF "release" OFF)
+common_add_ext_package("xcb-util-renderutil" "0.3.9-2" "static" "${PACKAGE_ARCH}" OFF OFF "release" OFF)
+common_add_ext_package("xkbcommon" "1.0.3-3" "static" "${PACKAGE_ARCH}" OFF OFF "release" OFF)
+common_add_ext_package("xkbcommon-x11" "1.0.3-3" "static" "${PACKAGE_ARCH}" OFF OFF "release" OFF)
+if(IM_QT_DYNAMIC)
+    common_add_ext_package("qt" "5.15-5" "dynamic" "${PACKAGE_ARCH}" "5.15.3" OFF "release" OFF)
 else()
-
-    message(STATUS "[linux]")
-
-    message(STATUS "–----")
-    foreach(pkgName ${externalLibDeps})
-        set(_pkg_arch "x86_64")
-        set(_pkg_version "${deps_lib_version_${pkgName}}")
-        set(_pkg_link "${DOWNLOADS_URL}/linux/${pkgName}/${_pkg_version}/${pkgName}_${_pkg_version}_build_${_pkg_arch}.tar.gz")
-        set(_pkg_destination "${DOWNLOADS_PATH}/${pkgName}_${_pkg_version}_build_${_pkg_arch}.tar.gz")
-        set(_pkg_md5 "${_pkg_destination}.md5")
-        set(_pkg_unpacked "${ICQ_EXTERNAL}/${pkgName}_${_pkg_version}")
-        message(STATUS "|-> ${pkgName} [${_pkg_version}] - ${_pkg_link}")
-        common_prepare_libs("all" "${_pkg_md5}" "${_pkg_link}" "${_pkg_destination}" "${_pkg_unpacked}")
-    endforeach()
-    message(STATUS "–----")
-
-    foreach(pkgName ${externalSrcDeps})
-        set(_pkg_arch "x86_64")
-        # Could be different
-        set(_pkg_version "${deps_lib_version_${pkgName}}")
-        set(_pkg_version_src "${deps_lib_version_${pkgName}_src}")
-        set(_pkg_link "${DOWNLOADS_URL}/linux/${pkgName}/src/${_pkg_version}/${pkgName}_${_pkg_version}_${_pkg_version_src}.tar.gz")
-        set(_pkg_destination "${DOWNLOADS_PATH}/${pkgName}_${_pkg_version}_${_pkg_version_src}.tar.gz")
-        set(_pkg_unpacked "${ICQ_EXTERNAL}/${pkgName}_${_pkg_version}_${_pkg_version_src}")
-        # if _pkg_version_src is not defined
-        if("${_pkg_version_src}" STREQUAL "")
-            set(_pkg_link "${DOWNLOADS_URL}/linux/${pkgName}/src/${_pkg_version}/${pkgName}_${_pkg_version}.tar.gz")
-            set(_pkg_destination "${DOWNLOADS_PATH}/${pkgName}_${_pkg_version}.tar.gz")
-            set(_pkg_unpacked "${ICQ_EXTERNAL}/${pkgName}_${_pkg_version}")
-        endif()
-        set(_pkg_md5 "${_pkg_destination}.md5")
-        message(STATUS "|-> ${pkgName} [${_pkg_version} / ${_pkg_version_src}] - ${_pkg_link}")
-        common_prepare_libs("all" "${_pkg_md5}" "${_pkg_link}" "${_pkg_destination}" "${_pkg_unpacked}")
-    endforeach()
-    message(STATUS "–----")
-
-    foreach(pkgName ${additionalsLibDeps})
-        set(_pkg_link "${DOWNLOADS_URL}/linux/platform_specific/bin/${pkgName}")
-        set(_pkg_destination "${ICQ_EXTERNAL}/additionals/${pkgName}")
-        set(_pkg_md5 "${_pkg_destination}.md5")
-        message(STATUS "|-> ${pkgName} - ${_pkg_link}")
-        common_prepare_libs("download" "${_pkg_md5}" "${_pkg_link}" "${_pkg_destination}" "SKIPPED")
-    endforeach()
-    message(STATUS "–----")
-
-    foreach(pkgName ${externalBinDeps})
-        set(_pkg_link "${DOWNLOADS_URL}/linux/qt/bin/${deps_ver_qt_utils}/${pkgName}")
-        set(_pkg_destination "${ICQ_EXTERNAL}/qt_utils/${pkgName}")
-        set(_pkg_md5 "${_pkg_destination}.md5")
-        message(STATUS "|-> ${pkgName} - ${_pkg_link}")
-        common_prepare_libs("download" "${_pkg_md5}" "${_pkg_link}" "${_pkg_destination}" "SKIPPED")
-    endforeach()
-    message(STATUS "–----")
-
-    message(STATUS "")
-    message(STATUS "[linux]")
-    message(STATUS "")
-
+    common_add_ext_package("qt" "5.14.2" "static" "${PACKAGE_ARCH}" "5.14.2" OFF "release" OFF)
 endif()
+
+
+## Source packages
+# depName depVersion depCommit depUrl depHash
+common_add_ext_srcpkg("breakpad" "master-on-centos" "46f4b593" OFF OFF)
+common_add_ext_srcpkg("rapidjson" "master" "0ccdbf36" OFF OFF)
+common_add_ext_srcpkg("minizip" "1.0.1e" OFF OFF OFF)
+
+
+## Binaries
+# depName depVersion depUrl depHash
+common_add_ext_binaries("libXext.a" "v13" OFF OFF)
+common_add_ext_binaries("libXi.a" "v13" OFF OFF)
+common_add_ext_binaries("lconvert" "v13" OFF OFF)
+common_add_ext_binaries("lrelease" "v13" OFF OFF)
+common_add_ext_binaries("moc" "v13" OFF OFF)
+common_add_ext_binaries("qmake" "v13" OFF OFF)
+common_add_ext_binaries("rcc" "v13" OFF OFF)
+common_add_ext_binaries("uic" "v13" OFF OFF)
+

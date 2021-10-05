@@ -3,7 +3,7 @@
 #include "file_sharing_meta.h"
 #include "../../../core.h"
 #include "../../../network_log.h"
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 
 core::wim::file_sharing_meta::file_sharing_meta(std::string && _url)
     : file_url_(std::move(_url))
@@ -65,35 +65,27 @@ core::wim::file_sharing_meta_uptr core::wim::file_sharing_meta::parse_json(InOut
     std::stringstream log;
     log << "file_sharing_meta: \n";
     log << "status: " << meta->status_code_ << '\n';
-
-    if (meta->status_code_ != 20000 && meta->status_code_ != 200)
+    const auto log_handler = std::make_shared<tools::auto_scope>([&log]()
     {
         g_core->write_string_to_network_log(log.str());
+    });
+
+    if (meta->status_code_ != 20000 && meta->status_code_ != 20002 && meta->status_code_ != 200)
         return meta;
-    }
 
     const auto iter_result = doc.FindMember("result");
     if (iter_result == doc.MemberEnd() || !iter_result->value.IsObject())
-    {
-        g_core->write_string_to_network_log(log.str());
         return meta;
-    }
 
     const auto iter_info = iter_result->value.FindMember("info");
     if (iter_info == iter_result->value.MemberEnd() || !iter_info->value.IsObject())
-    {
-        g_core->write_string_to_network_log(log.str());
         return meta;
-    }
 
     meta->info_.unserialize(iter_info->value);
 
     const auto iter_extra = iter_result->value.FindMember("extra");
     if (iter_extra == iter_result->value.MemberEnd() || !iter_extra->value.IsObject())
-    {
-        g_core->write_string_to_network_log(log.str());
         return meta;
-    }
 
     meta->extra_.unserialize(iter_extra->value);
 
@@ -102,7 +94,6 @@ core::wim::file_sharing_meta_uptr core::wim::file_sharing_meta::parse_json(InOut
         meta->local_ = fs_meta_local{};
         meta->local_->unserialize(iter_local->value);
     }
-
 
     if (const auto iter_previews = iter_result->value.FindMember("previews"); iter_previews != iter_result->value.MemberEnd() && iter_previews->value.IsObject())
     {
@@ -133,8 +124,6 @@ core::wim::file_sharing_meta_uptr core::wim::file_sharing_meta::parse_json(InOut
         log << "duration: " << meta->extra_.audio_->duration_ << '\n';
     }
 
-    g_core->write_string_to_network_log(log.str());
-
     return meta;
 }
 
@@ -146,6 +135,7 @@ void core::wim::fs_meta_info::serialize(rapidjson::Value& _node, rapidjson_alloc
     _node.AddMember("file_name", file_name_, _a);
     _node.AddMember("file_size", file_size_, _a);
     _node.AddMember("md5", md5_, _a);
+    _node.AddMember("trustRequired", trust_required_, _a);
 }
 
 void core::wim::fs_meta_info::unserialize(const rapidjson::Value& _node)
@@ -156,6 +146,7 @@ void core::wim::fs_meta_info::unserialize(const rapidjson::Value& _node)
     core::tools::unserialize_value(_node, "file_name", file_name_);
     core::tools::unserialize_value(_node, "file_size", file_size_);
     core::tools::unserialize_value(_node, "md5", md5_);
+    core::tools::unserialize_value(_node, "trustRequired", trust_required_);
 }
 
 void core::wim::fs_meta_ptt::serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const

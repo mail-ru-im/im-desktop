@@ -1,7 +1,7 @@
 #include "stdafx.h"
 
 #include "../../../http_request.h"
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 #include "archive/history_message.h"
 
 #include "add_reaction.h"
@@ -22,6 +22,11 @@ add_reaction::add_reaction(wim_packet_params _params, int64_t _msg_id, const std
 const archive::reactions_data& add_reaction::get_result() const
 {
     return reactions_;
+}
+
+bool add_reaction::is_reactions_for_message_disabled() const
+{
+    return get_status_code() == robusto_protocol_error::message_reactions_disabled;
 }
 
 std::string_view add_reaction::get_method() const

@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.17)
 
 
 project(corelib)
+message(STATUS "")
+message(STATUS "[CMAKE]")
+message(STATUS "[CMAKE] including <corelib/CMakeLists.txt>")
+message(STATUS "[CMAKE]")
 
 
 # ---------------------------  paths  ----------------------------
@@ -73,10 +77,8 @@ elseif(APPLE)
         ${MAC_CORE_AUDIO}
         ${MAC_AV_FOUNDATION}
         ${MAC_FOUNDATION})
-elseif(LINUX)
-    # set(SYSTEM_LIBRARIES "${ICQ_MINIZIP}/lib/libminizip.a")
-endif()
 
+endif()
 
 # --------------------------   corelib   -------------------------
 set(SUBPROJECT_ROOT "${ICQ_ROOT}/corelib")

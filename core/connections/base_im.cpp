@@ -11,6 +11,7 @@
 
 #include "../tools/md5.h"
 #include "../tools/system.h"
+#include "../tools/file_sharing.h"
 
 #include "../common.shared/config/config.h"
 #include "../common.shared/string_utils.h"
@@ -254,6 +255,11 @@ std::wstring core::base_im::get_inviters_blacklist_file_name() const
     return su::wconcat(get_im_data_path(), L"/privacy/blocked_inviters.cache");
 }
 
+std::wstring core::base_im::get_tasks_file_name() const
+{
+    return su::wconcat(get_im_data_path(), L"/tasks/", archive::cache_filename());
+}
+
 // voip
 /*void core::base_im::on_voip_call_set_proxy(const voip_manager::VoipProxySettings& proxySettings)
 {
@@ -266,7 +272,7 @@ std::wstring core::base_im::get_inviters_blacklist_file_name() const
 void core::base_im::on_voip_call_start(const std::vector<std::string> &contacts, const voip_manager::CallStartParams &params)
 {
     auto account = _get_protocol_uid();
-    assert(!account.empty());
+    im_assert(!account.empty());
     if (!voip_manager_ || account.empty() || contacts.empty())
         return;
     voip_manager_->call_create(contacts, account, params);
@@ -281,7 +287,7 @@ void core::base_im::on_voip_window_set_offsets(void* hwnd, unsigned l, unsigned 
 bool core::base_im::on_voip_avatar_actual_for_voip(const std::string& contact, unsigned avatar_size)
 {
     auto account = _get_protocol_uid();
-    assert(!account.empty());
+    im_assert(!account.empty());
     return
         !account.empty() &&
         !contact.empty() &&
@@ -348,7 +354,7 @@ void core::base_im::on_voip_device_changed(std::string_view dev_type, const std:
     }
     else
     {
-        assert(false);
+        im_assert(false);
     }
 }
 
@@ -436,7 +442,7 @@ void core::base_im::on_voip_proto_ack(const voip_manager::VoipProtoMsg& msg, boo
 void core::base_im::on_voip_proto_msg(bool allocate, const char* data, unsigned len, std::shared_ptr<auto_callback> _on_complete)
 {
     auto account = _get_protocol_uid();
-    assert(!account.empty());
+    im_assert(!account.empty());
     if (!account.empty())
     {
         const auto msg_type = allocate ? 0 : 1;

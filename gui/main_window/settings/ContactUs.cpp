@@ -924,7 +924,7 @@ void GetDebugInfoWidget::onResult(const QString& _fileName)
 
     Data::FileSharingDownloadResult result;
     result.filename_ = _fileName;
-    Utils::showDownloadToast(result);
+    Utils::showDownloadToast({}, result);
 }
 
 void GetDebugInfoWidget::startAnimation()

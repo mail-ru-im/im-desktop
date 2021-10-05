@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "search_contacts_response.h"
-#include "../../tools/json_helper.h"
+#include "../../../common.shared/json_helper.h"
 
 namespace core::wim
 {

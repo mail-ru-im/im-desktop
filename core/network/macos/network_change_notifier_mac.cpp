@@ -24,7 +24,7 @@ namespace core
         connection_type_initialized_(false),
         forwarder_(this)
     {
-        assert(g_core->is_core_thread());
+        im_assert(g_core->is_core_thread());
         config_watcher_ = std::make_shared<network_config_watcher_mac>(&forwarder_);
     }
 
@@ -63,7 +63,7 @@ namespace core
 
     network_change_notifier::connection_type network_change_notifier_mac::get_current_connection_type() const
     {
-        assert(g_core->is_core_thread());
+        im_assert(g_core->is_core_thread());
         std::unique_lock<std::mutex> lock(connection_type_mutex_);
         // Make sure the initial connection type is set before returning.
         if (!connection_type_initialized_)
@@ -105,7 +105,7 @@ namespace core
     void network_change_notifier_mac::set_initial_connection_type_mac()
     {
         // Called on notifier thread.
-        assert(!g_core->is_core_thread());
+        im_assert(!g_core->is_core_thread());
         struct sockaddr_in addr = { 0 };
         addr.sin_len = sizeof(addr);
         addr.sin_family = AF_INET;
@@ -146,7 +146,7 @@ namespace core
         run_loop_.reset(CFRunLoopGetCurrent());
         CFRetain(run_loop_.get());
 
-        assert(reachability_);
+        im_assert(reachability_);
         SCNetworkReachabilityContext reachability_context = {
             0,     // version
             this,  // user data
@@ -182,12 +182,12 @@ namespace core
         // Set the notification keys.  This starts us receiving notifications.
         bool ret = SCDynamicStoreSetNotificationKeys(_store, notification_keys.get(), NULL);
 
-        assert(ret);
+        im_assert(ret);
     }
 
     void network_change_notifier_mac::on_network_config_change(CFArrayRef _changed_keys)
     {
-        assert(run_loop_.get() == CFRunLoopGetCurrent());
+        im_assert(run_loop_.get() == CFRunLoopGetCurrent());
 
         for (CFIndex i = 0; i < CFArrayGetCount(_changed_keys); ++i)
         {
@@ -211,10 +211,10 @@ namespace core
     // static
     void network_change_notifier_mac::reachability_callback(SCNetworkReachabilityRef _target, SCNetworkConnectionFlags _flags, void* _notifier)
     {
-        assert(!g_core->is_core_thread());
+        im_assert(!g_core->is_core_thread());
         network_change_notifier_mac* notifier_mac = static_cast<network_change_notifier_mac*>(_notifier);
 
-        assert(notifier_mac->run_loop_.get() == CFRunLoopGetCurrent());
+        im_assert(notifier_mac->run_loop_.get() == CFRunLoopGetCurrent());
         connection_type new_type = calculate_connection_type(_flags);
         connection_type old_type;
         {

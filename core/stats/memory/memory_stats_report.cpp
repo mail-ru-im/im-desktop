@@ -115,19 +115,19 @@ bool memory_stats_report::unserialize(const core::coll_helper &_coll)
     type_ = static_cast<memory_stats::stat_type>(_coll.get_value_as_int("stat_type"));
 
     core::iarray* subcategories = _coll.get_value_as_array("subcategories");
-    assert(subcategories);
+    im_assert(subcategories);
     if (!subcategories)
         return false;
 
     for (core::iarray::size_type i = 0; i < subcategories->size(); ++i)
     {
         const core::ivalue* subcat_value = subcategories->get_at(i);
-        assert(subcat_value);
+        im_assert(subcat_value);
         if (!subcat_value)
             continue;
 
         core::icollection* subcat_coll = subcat_value->get_as_collection();
-        assert(subcat_coll);
+        im_assert(subcat_coll);
         if (!subcat_coll)
             continue;
 

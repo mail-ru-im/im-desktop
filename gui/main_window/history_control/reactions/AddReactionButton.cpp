@@ -17,7 +17,7 @@ constexpr std::chrono::milliseconds hoverDelay = std::chrono::milliseconds(50);
 
 QSize buttonSize()
 {
-    return Ui::MessageStyle::Reactions::addReactionButtonSize();
+    return Ui::MessageStyle::Plates::addReactionButtonSize();
 }
 
 QSize iconSize()
@@ -89,8 +89,14 @@ int bottomOffsetFromMessage(Ui::ReactionsPlateType _type)
         return 0;
 }
 
-bool reactionButtonAllowed(const QString& _aimId)
+bool reactionButtonAllowed(const QString& _aimId, const Data::MessageBuddy& _msg)
 {
+    if (Logic::getContactListModel()->isThread(_aimId))
+        return _msg.Prev_ != -1; // MVP 1: disable reactions for first message
+
+    if (_msg.threadData_.threadFeedMessage_)
+        return false;
+
     const auto role = Logic::getContactListModel()->getYourRole(_aimId);
     const auto notAllowed = (role.isEmpty() && Utils::isChat(_aimId)) || role == u"notamember" || (role == u"readonly" && !Logic::getContactListModel()->isChannel(_aimId));
 
@@ -149,8 +155,8 @@ public:
     void startShowAnimation()
     {
         const auto isPending = item_->buddy().IsPending();
-        const auto allowed = reactionButtonAllowed(item_->getContact());
-        if (Utils::InterConnector::instance().isMultiselect() || !allowed || isPending)
+        const auto allowed = reactionButtonAllowed(item_->getContact(), item_->buddy());
+        if (!allowed || isPending || Utils::InterConnector::instance().isMultiselect(item_->getContact()))
             return;
 
         q->move(calcPosition());
@@ -424,7 +430,7 @@ void AddReactionButton::showEvent(QShowEvent* _event)
 void AddReactionButton::updateCursorShape(const QPoint& _pos)
 {
     const auto mouseOverPressRect = d->pressRect().contains(_pos);
-    if (mouseOverPressRect && reactionButtonAllowed(d->item_->getContact()))
+    if (mouseOverPressRect && reactionButtonAllowed(d->item_->getContact(), d->item_->buddy()))
         d->item_->setCursor(Qt::PointingHandCursor);
     if (mouseOverPressRect != d->mouseOverPressArea_)
     {
@@ -449,7 +455,7 @@ void AddReactionButton::onAddReactionPlateCloseStarted()
 
     onMouseMove(d->item_->mapFromGlobal(QCursor::pos()));
 
-    repaint();
+    update();
 }
 
 void AddReactionButton::onAddReactionPlateCloseFinished()

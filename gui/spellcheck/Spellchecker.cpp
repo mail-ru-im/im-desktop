@@ -94,6 +94,7 @@ namespace spellcheck
 
     void Spellchecker::getSuggestsIfNeeded(const QString& word, std::function<void(std::optional<Suggests>, WordStatus)> f) const
     {
+        impl_->updateKeyboardLanguages();
         Q_EMIT runInWorkerThread([word, f = std::move(f), weakThis = QPointer(this), weakImpl = QPointer(impl_)]() mutable
         {
             if (!weakThis || !weakImpl)

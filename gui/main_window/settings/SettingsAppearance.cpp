@@ -19,6 +19,8 @@
 #include "gui_settings.h"
 #include "fonts.h"
 
+#include "../../../common.shared/config/config.h"
+
 using namespace Ui;
 
 namespace
@@ -124,10 +126,10 @@ void GeneralSettingsWidget::Creator::initAppearance(QWidget* _parent)
             scrollArea,
             gcItemsLayout,
             QT_TRANSLATE_NOOP("settings", "Chat list compact mode"),
-            !get_gui_settings()->get_value<bool>(settings_show_last_message, true),
+            !get_gui_settings()->get_value<bool>(settings_show_last_message, !config::get().is_on(config::features::compact_mode_by_default)),
             [](bool checked)
             {
-                if (get_gui_settings()->get_value<bool>(settings_show_last_message, true) != !checked) {
+                if (get_gui_settings()->get_value<bool>(settings_show_last_message, !config::get().is_on(config::features::compact_mode_by_default)) == checked) {
                     get_gui_settings()->set_value<bool>(settings_show_last_message, !checked);
                     Q_EMIT Utils::InterConnector::instance().compactModeChanged();
                 }

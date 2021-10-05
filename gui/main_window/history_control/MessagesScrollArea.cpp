@@ -1,7 +1,6 @@
 #include "stdafx.h"
 
-#include "../ContactDialog.h"
-
+#include "main_window/input_widget/InputWidgetUtils.h"
 #include "../smiles_menu/SmilesMenu.h"
 
 #include "../../utils/InterConnector.h"
@@ -12,7 +11,7 @@
 #include "statuses/StatusTooltip.h"
 
 #include "../../main_window/contact_list/ContactListModel.h"
-#include "main_window/MainPage.h"
+#include "main_window/history_control/complex_message/FileSharingUtils.h"
 
 #include "complex_message/ComplexMessageItem.h"
 
@@ -288,9 +287,9 @@ namespace Ui
         QCoreApplication::sendEvent(this, e);
     }
 
-    void MessagesScrollArea::updateSelected(qint64 _id, const QString& _internalId, bool _selected)
+    void MessagesScrollArea::updateSelected(const QString& _aimId, qint64 _id, const QString& _internalId, bool _selected)
     {
-        if (aimid_ == Logic::getContactListModel()->selectedContact())
+        if (aimid_ == _aimId)
         {
             const auto isMultiselect = Utils::InterConnector::instance().isMultiselect(aimid_);
             Logic::MessageKey key(_id, _internalId);
@@ -321,7 +320,7 @@ namespace Ui
                 if (auto complexItem = qobject_cast<Ui::ComplexMessage::ComplexMessageItem*>(item))
                 {
                     info.text_ = complexItem->getSelectedText(isMultiselect, Ui::ComplexMessage::ComplexMessageItem::TextFormat::Raw);
-                    info.quotes_ = complexItem->getQuotes(!(Utils::InterConnector::instance().isMultiselect() && aimid_ == Logic::getContactListModel()->selectedContact()), true);
+                    info.quotes_ = complexItem->getQuotes(!(Utils::InterConnector::instance().isMultiselect(aimid_) && aimid_ == Logic::getContactListModel()->selectedContact()), true);
                     info.filesPlaceholders_ = complexItem->getFilesPlaceholders();
                     info.mentions_ = complexItem->getMentions();
                 }
@@ -334,14 +333,14 @@ namespace Ui
             }
 
             if (selected_.empty())
-                Utils::InterConnector::instance().setMultiselect(false);
+                Utils::InterConnector::instance().setMultiselect(false, aimid_);
         }
     }
 
-    void MessagesScrollArea::updateSelectedCount()
+    void MessagesScrollArea::updateSelectedCount(const QString& _aimId)
     {
-        if (aimid_ == Logic::getContactListModel()->selectedContact())
-            Q_EMIT Utils::InterConnector::instance().selectedCount(getSelectedCount(), getSelectedUnsupportedCount());
+        if (aimid_ == _aimId)
+            Q_EMIT Utils::InterConnector::instance().selectedCount(aimid_, getSelectedCount(), getSelectedUnsupportedCount(), getSelectedPlainFilesCount());
     }
 
     void MessagesScrollArea::multiselectChanged()
@@ -350,9 +349,9 @@ namespace Ui
             clearSelection();
     }
 
-    void MessagesScrollArea::updatePttProgress(qint64 _id, const QString& _fsId, int _progress)
+    void MessagesScrollArea::updatePttProgress(qint64 _id, const Utils::FileSharingId& _fsId, int _progress)
     {
-        if (aimid_ == Logic::getContactListModel()->selectedContact())
+        if (Utils::InterConnector::instance().isHistoryPageVisible(aimid_))
         {
 
             auto iter = std::find_if(pttProgress_.begin(), pttProgress_.end(), [&_id, &_fsId](const auto& p)
@@ -408,14 +407,18 @@ namespace Ui
 
     int MessagesScrollArea::getSelectedUnsupportedCount() const
     {
-        auto count = 0;
-        for (const auto& selected : selected_)
-        {
-            if (selected.second.isUnsupported_)
-                ++count;
-        }
+        return std::count_if(selected_.begin(), selected_.end(), [](const auto& _p) { return _p.second.isUnsupported_; });
+    }
 
-        return count;
+    int MessagesScrollArea::getSelectedPlainFilesCount() const
+    {
+        return std::count_if(selected_.begin(), selected_.end(), [](const auto& _p)
+        {
+            return std::any_of(_p.second.filesPlaceholders_.begin(), _p.second.filesPlaceholders_.end(), [](const auto& _fp)
+            {
+                return ComplexMessage::getFileSharingContentType(_fp.first).is_plain_file();
+            });
+        });
     }
 
     void MessagesScrollArea::setSmartreplyWidget(SmartReplyWidget* _widget)
@@ -453,12 +456,17 @@ namespace Ui
         return Layout_->hasItems();
     }
 
+    QString MessagesScrollArea::getAimid() const
+    {
+        return aimid_;
+    }
+
     void MessagesScrollArea::clearPttProgress()
     {
         pttProgress_.clear();
     }
 
-    std::optional<Data::FileSharingMeta> MessagesScrollArea::getMeta(const QString& _id) const
+    std::optional<Data::FileSharingMeta> MessagesScrollArea::getMeta(const Utils::FileSharingId& _id) const
     {
         return Layout_->getMeta(_id);
     }
@@ -496,16 +504,16 @@ namespace Ui
         updateScrollbar();
 
         std::vector<Logic::MessageKey> toEmit;
-        for (const auto& iter : widgets)
+        for (const auto& [key, widget] : widgets)
         {
-            if (auto complexItem = qobject_cast<Ui::ComplexMessage::ComplexMessageItem*>(iter.second))
+            if (auto complexItem = qobject_cast<Ui::ComplexMessage::ComplexMessageItem*>(widget))
                 contacts_.insert(complexItem->getSenderAimid());
-            else if (auto voipItem = qobject_cast<Ui::VoipEventItem*>(iter.second))
+            else if (auto voipItem = qobject_cast<Ui::VoipEventItem*>(widget))
                 contacts_.insert(voipItem->getContact());
 
-            if (const auto selectedInfo = selected_.find(iter.first); selectedInfo != selected_.end())
+            if (const auto selectedInfo = selected_.find(key); selectedInfo != selected_.end())
             {
-                if (auto item = qobject_cast<Ui::HistoryControlPageItem*>(iter.second))
+                if (auto item = qobject_cast<Ui::HistoryControlPageItem*>(widget))
                 {
                     if (selectedInfo->second.from_.isNull())
                     {
@@ -517,23 +525,23 @@ namespace Ui
                         auto end = item->mapToGlobal(selectedInfo->second.to_);
                         item->selectByPos(begin, end, SelectionBeginAbsPos_, SelectionEndAbsPos_);
                     }
-                    toEmit.push_back(iter.first);
+                    toEmit.push_back(key);
                 }
             }
 
 
             for (const auto& p : pttProgress_)
             {
-                if (p.id_ == iter.first.getId())
+                if (p.id_ == key.getId())
                 {
-                    if (auto pttItem = qobject_cast<Ui::ComplexMessage::ComplexMessageItem*>(iter.second))
+                    if (auto pttItem = qobject_cast<Ui::ComplexMessage::ComplexMessageItem*>(widget))
                         pttItem->setProgress(p.fsId_, p.progress_);
                 }
             }
         }
 
         for (const auto& key : toEmit)
-            Q_EMIT Utils::InterConnector::instance().selectionStateChanged(key.getId(), key.getInternalId(), true);
+            Q_EMIT Utils::InterConnector::instance().selectionStateChanged(aimid_, key.getId(), key.getInternalId(), true);
     }
 
     bool MessagesScrollArea::isScrolling() const
@@ -608,7 +616,10 @@ namespace Ui
         for (const auto& key : keys)
         {
             if (auto w = getItemByKey(key); w)
+            {
                 widgets.push_back(w);
+                eraseContact(w);
+            }
         }
         Layout_->removeWidgets(widgets);
         std::for_each(widgets.begin(), widgets.end(), [](auto w)
@@ -635,12 +646,9 @@ namespace Ui
 
         auto existingWidget = getItemByKey(key);
         if (!existingWidget)
-        {
             return;
-        }
 
         removeWidget(existingWidget);
-
         insertWidget(key, std::move(widget));
     }
 
@@ -769,19 +777,19 @@ namespace Ui
         return Layout_->getItemsKeys();
     }
 
-    Data::FormattedString MessagesScrollArea::getSelectedText(TextFormat _format) const
+    Data::FString MessagesScrollArea::getSelectedText(TextFormat _format) const
     {
-        Data::FormattedString result;
+        Data::FString result;
         size_t i = 1;
         const auto mentions = _format == TextFormat::Raw ? Data::MentionMap() : getMentions();
         for (const auto& [_, info] : selected_)
         {
-            result += mentions.empty() ? info.text_ : Utils::convertMentions(info.text_, mentions);
+            auto text = info.text_;
+            if (!mentions.empty())
+                Utils::convertMentions(text, mentions);
+            result += std::move(text);
             if (i != selected_.size())
-            {
-                result += QChar::LineFeed;
-                result += QChar::LineFeed;
-            }
+                result += u"\n\n";
 
             ++i;
         }
@@ -955,10 +963,8 @@ namespace Ui
     {
         QWidget::mousePressEvent(e);
 
-        auto contactDialog = Utils::InterConnector::instance().getContactDialog();
-
-        const auto smilesMenu = contactDialog->getSmilesMenu();
-        const auto isSmilesHidden = !smilesMenu || smilesMenu->isHidden();
+        const auto page = Utils::InterConnector::instance().getHistoryPage(aimid_);
+        const auto isSmilesHidden = getWidgetIfNot<Smiles::SmilesMenu>(page, &Smiles::SmilesMenu::isHidden) == nullptr;
 
         const auto isLeftButton = ((e->buttons() & Qt::LeftButton) != 0);
         const auto isGenuine = (e->source() == Qt::MouseEventNotSynthesized);
@@ -978,7 +984,7 @@ namespace Ui
 
         if (!(e->modifiers() & Qt::ShiftModifier))
         {
-            if (isLeftButton && !Utils::InterConnector::instance().isMultiselect())
+            if (isLeftButton && !Utils::InterConnector::instance().isMultiselect(aimid_))
                 clearSelection();
 
             LastMouseGlobalPos_ = e->globalPos();
@@ -1040,7 +1046,7 @@ namespace Ui
             if (w && w != this && w->isVisible())
                 w->setFocus();
             else
-                MainPage::instance()->setFocusOnInput();
+                Q_EMIT Utils::InterConnector::instance().setFocusOnInput(aimid_);
         }
         else
         {
@@ -1375,7 +1381,7 @@ namespace Ui
         if (selectionBeginGlobal == selectionEndGlobal)
             return;
 
-        if (!Utils::InterConnector::instance().isMultiselect())
+        if (!Utils::InterConnector::instance().isMultiselect(aimid_))
         {
             enumerateWidgets([this, selectionBeginGlobal, selectionEndGlobal](QWidget *w, const bool)
                 {
@@ -1397,7 +1403,7 @@ namespace Ui
                                     if (item->isSelected())
                                     {
                                         SelectionBeginAbsPos_.setY(SelectionBeginAbsPos_.y() - (selectionBeginGlobal.y() - globalRect.y()) - 1);
-                                        Utils::InterConnector::instance().setMultiselect(true);
+                                        Utils::InterConnector::instance().setMultiselect(true, aimid_);
                                     }
                                     else
                                     {
@@ -1412,7 +1418,7 @@ namespace Ui
                                     if (item->isSelected())
                                     {
                                         SelectionBeginAbsPos_.setY(SelectionBeginAbsPos_.y() + (globalRect.y() + globalRect.height() - selectionBeginGlobal.y()) + 1);
-                                        Utils::InterConnector::instance().setMultiselect(true);
+                                        Utils::InterConnector::instance().setMultiselect(true, aimid_);
                                     }
                                     else
                                     {
@@ -1446,7 +1452,7 @@ namespace Ui
                     const auto itemRect = w->rect();
                     const auto globalRect = QRect(w->mapToGlobal(itemRect.topLeft()), itemRect.size());
                     if (selectionGlobalRect.intersects(globalRect) && isSomethingSelected)
-                        Utils::InterConnector::instance().setMultiselect(true);
+                        Utils::InterConnector::instance().setMultiselect(true, aimid_);
 
                     item->selectByPos(selectionBeginGlobal, selectionEndGlobal, SelectionBeginAbsPos_, SelectionEndAbsPos_);
                     if (isSomethingSelected && item->isSelected())
@@ -1726,10 +1732,11 @@ namespace Ui
         _forMe = 0;
         _forAll = 0;
 
-        const auto aimid = Logic::getContactListModel()->selectedContact();
+        const auto isAdmin = Logic::getContactListModel()->areYouAdmin(aimid_);
+        const auto isMe = aimid_ == MyInfo()->aimId();
         for (const auto& sel : selected_)
         {
-            if (aimid != MyInfo()->aimId() && (sel.second.isOutgoing_ || Logic::getContactListModel()->isYouAdmin(aimid)))
+            if (!isMe && (sel.second.isOutgoing_ || isAdmin))
                 ++_forAll;
 
             ++_forMe;
@@ -1738,9 +1745,11 @@ namespace Ui
 
     std::vector<DeleteMessageInfo> MessagesScrollArea::getSelectedMessagesForDelete() const
     {
+        const auto isAdmin = Logic::getContactListModel()->areYouAdmin(aimid_);
         std::vector<DeleteMessageInfo> result;
-        for (const auto& sel : selected_)
-            result.emplace_back(sel.first.getId(), sel.first.getInternalId(), (sel.second.isOutgoing_ || Logic::getContactListModel()->isYouAdmin(Logic::getContactListModel()->selectedContact())));
+        result.reserve(selected_.size());
+        for (const auto& [key, info] : selected_)
+            result.emplace_back(key.getId(), key.getInternalId(), (info.isOutgoing_ || isAdmin));
 
         return result;
     }

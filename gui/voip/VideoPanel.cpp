@@ -14,6 +14,7 @@
 #include "../previewer/toast.h"
 #include "../styles/ThemeParameters.h"
 #include "../gui_settings.h"
+#include "../../../common.shared/string_utils.h"
 
 #ifdef __APPLE__
 #include "../utils/macos/mac_support.h"
@@ -65,29 +66,9 @@ namespace
         return Utils::scale_value(10);
     }
 
-    auto getFrameBorderWidth() noexcept
-    {
-        return Utils::scale_value(2);
-    }
-
-    auto getFrameBorderColor()
-    {
-        return Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_RAINBOW_YELLOW);
-    }
-
-    auto getStopScreenSharingFont()
-    {
-        return Fonts::appFontScaled(12, Fonts::FontWeight::Normal);
-    }
-
     auto getStopScreenSharingHeight() noexcept
     {
         return Utils::scale_value(19);
-    }
-
-    auto getStopScreenSharingTextPadding() noexcept
-    {
-        return Utils::scale_value(4);
     }
 
     constexpr std::chrono::milliseconds getFullScreenSwitchingDelay() noexcept
@@ -127,218 +108,6 @@ namespace
 
 namespace Ui
 {
-    namespace VideoPanelParts
-    {
-        ScreenBorderLine::ScreenBorderLine(LinePosition _position, const Qt::WindowFlags& _wFlags, const QColor& _color)
-            : QWidget(nullptr, _wFlags)
-            , linePosition_(_position)
-            , lineWidth_(getFrameBorderWidth())
-            , bgColor_(_color)
-            , checkOverlappedTimer_(nullptr)
-        {
-            setAttribute(Qt::WA_DeleteOnClose);
-            setAttribute(Qt::WA_TranslucentBackground);
-            setAttribute(Qt::WA_X11DoNotAcceptFocus);
-            setAttribute(Qt::WA_TransparentForMouseEvents);
-
-            if constexpr (platform::is_windows())
-            {
-                checkOverlappedTimer_ = new QTimer(this);
-                checkOverlappedTimer_->setInterval(getCheckOverlappedInterval().count());
-
-                connect(checkOverlappedTimer_, &QTimer::timeout, this, [this]()
-                {
-                    // try without isOverlapped (too slowly)
-                    // if (isOverlapped())
-                    raise();
-                });
-
-                checkOverlappedTimer_->start();
-            }
-        }
-
-        ScreenBorderLine::~ScreenBorderLine()
-        {
-            if (checkOverlappedTimer_)
-                checkOverlappedTimer_->stop();
-        }
-
-        void ScreenBorderLine::updateForGeometry(const QRect& _rect)
-        {
-            if (!_rect.isValid())
-                return;
-
-            switch (linePosition_)
-            {
-            case LinePosition::Left:
-                setGeometry(_rect.x(), _rect.y() + lineWidth_, lineWidth_, _rect.height() - 2 * lineWidth_);
-                break;
-            case LinePosition::Top:
-                setGeometry(_rect.x(), _rect.y(), _rect.width(), lineWidth_);
-                break;
-            case LinePosition::Right:
-                setGeometry(_rect.x() + _rect.width() - lineWidth_, _rect.y() + lineWidth_, lineWidth_, _rect.height() - 2 * lineWidth_);
-                break;
-            case LinePosition::Bottom:
-                setGeometry(_rect.x(), _rect.y() + _rect.height() - lineWidth_, _rect.width(), lineWidth_);
-                break;
-            }
-
-            update();
-        }
-
-        void ScreenBorderLine::paintEvent(QPaintEvent* _event)
-        {
-            QPainter p(this);
-            p.setRenderHints(QPainter::Antialiasing);
-            p.setPen(Qt::NoPen);
-            p.setBrush(bgColor_);
-            p.drawRect(rect());
-        }
-
-        bool ScreenBorderLine::isOverlapped() const
-        {
-            if (!isVisible())
-                return false;
-
-#ifdef _WIN32
-            auto hwnd = reinterpret_cast<HWND>(winId());
-
-            RECT r;
-            GetWindowRect(hwnd, &r);
-
-            const int ptsNumX = r.right - r.left;
-            const int ptsNumY = r.bottom - r.top;
-
-            std::vector<POINT> pts;
-            pts.reserve(ptsNumY * ptsNumX);
-
-            for (int j = 0; j < ptsNumY; ++j)
-            {
-                int ptY = r.top + j;
-                for (int i = 0; i < ptsNumX; ++i)
-                    pts.emplace_back(POINT{ r.left + i, ptY });
-            }
-
-            for (const auto& point : pts)
-                if (WindowFromPoint(point) != hwnd)
-                    return true;
-#endif
-
-            return false;
-        }
-
-        ShareScreenFrame::ShareScreenFrame(std::string_view _uid, const QColor& _color, qreal _opacity)
-            : QObject()
-        {
-            Qt::WindowFlags wFlags = Qt::Tool | Qt::FramelessWindowHint /*| Qt::WindowTransparentForInput*/ | Qt::WindowDoesNotAcceptFocus;
-            if constexpr (platform::is_linux())
-                wFlags |= Qt::BypassWindowManagerHint;
-            else if constexpr (platform::is_windows())
-                wFlags |= Qt::WindowStaysOnTopHint;
-            else
-                wFlags |= Qt::WindowStaysOnTopHint | Qt::NoDropShadowWindowHint;
-
-            auto color = _color;
-            color.setAlphaF(_opacity);
-
-            borderLines_.reserve(4);
-            borderLines_.emplace_back(new ScreenBorderLine(ScreenBorderLine::LinePosition::Left, wFlags, color));
-            borderLines_.emplace_back(new ScreenBorderLine(ScreenBorderLine::LinePosition::Top, wFlags, color));
-            borderLines_.emplace_back(new ScreenBorderLine(ScreenBorderLine::LinePosition::Right, wFlags, color));
-            borderLines_.emplace_back(new ScreenBorderLine(ScreenBorderLine::LinePosition::Bottom, wFlags, color));
-
-//          wFlags &= ~Qt::WindowTransparentForInput;
-            buttonStopScreenSharing_ = new ClickableTextWidget(nullptr, getStopScreenSharingFont(), Styling::StyleVariable::BASE_GLOBALBLACK_PERMANENT);
-            buttonStopScreenSharing_->installEventFilter(this);
-            buttonStopScreenSharing_->overrideWindowFlags(wFlags);
-            buttonStopScreenSharing_->setAttribute(Qt::WA_NoSystemBackground);
-            buttonStopScreenSharing_->setCursor(Qt::PointingHandCursor);
-            buttonStopScreenSharing_->setBackgroundColor(_color);
-            buttonStopScreenSharing_->setWindowOpacity(_opacity);
-            buttonStopScreenSharing_->setFixedHeight(getStopScreenSharingHeight());
-            buttonStopScreenSharing_->setText(QT_TRANSLATE_NOOP("voip_video_panel", "Stop screen sharing"));
-            buttonStopScreenSharing_->setLeftPadding(getStopScreenSharingTextPadding());
-            buttonStopScreenSharing_->setFixedWidth(buttonStopScreenSharing_->sizeHint().width() + 2 * getStopScreenSharingTextPadding());
-            connect(buttonStopScreenSharing_, &ClickableWidget::clicked, this, [this]() { Q_EMIT stopScreenSharing(QPrivateSignal()); });
-
-            auto sharedScreen = QGuiApplication::primaryScreen();
-            auto frameGeometry = sharedScreen->geometry();
-            if constexpr (platform::is_linux())
-            {
-                frameGeometry = sharedScreen->virtualGeometry();
-            }
-            else
-            {
-                if (const auto voipScreens = GetDispatcher()->getVoipController().screenList(); voipScreens.size() > 1)
-                {
-                    auto voipScreen = std::find_if(voipScreens.begin(), voipScreens.end(), [_uid](const auto& _desc) { return _desc.uid == _uid; });
-                    if (voipScreen != voipScreens.end())
-                    {
-                        const auto screens = QGuiApplication::screens();
-                        if (int index = std::distance(voipScreens.begin(), voipScreen); index < screens.size())
-                            frameGeometry = screens[index]->geometry();
-                    }
-                }
-            }
-
-            connect(sharedScreen, &QScreen::geometryChanged, this, &ShareScreenFrame::screenGeometryChanged);
-            connect(sharedScreen, &QScreen::availableGeometryChanged, this, &ShareScreenFrame::screenGeometryChanged);
-            connect(sharedScreen, &QScreen::virtualGeometryChanged, this, &ShareScreenFrame::screenGeometryChanged);
-
-            screenGeometryChanged(frameGeometry);
-
-            auto toast = new Toast(QT_TRANSLATE_NOOP("voip_video_panel", "Screen sharing enabled"));
-            toast->setBackgroundColor(_color);
-            toast->enableMoveAnimation(false);
-            ToastManager::instance()->showToast(toast, frameGeometry.center());
-        }
-
-        ShareScreenFrame::~ShareScreenFrame()
-        {
-            ToastManager::instance()->hideToast();
-
-            for (auto& line : borderLines_)
-            {
-                if (line)
-                    line->close();
-            }
-
-            if (buttonStopScreenSharing_)
-                buttonStopScreenSharing_->deleteLater();
-        }
-
-        void ShareScreenFrame::screenGeometryChanged(const QRect& _rect)
-        {
-            for (auto& line : borderLines_)
-            {
-                line->updateForGeometry(_rect);
-#ifdef __APPLE__
-                MacSupport::showInAllWorkspaces(line);
-#else
-                line->show();
-#endif
-            }
-
-            if (buttonStopScreenSharing_)
-            {
-                uint posY = _rect.y() + getFrameBorderWidth();
-                if constexpr (platform::is_linux())
-                {
-                    if (uint y = QGuiApplication::primaryScreen()->availableVirtualGeometry().y(); y > posY)
-                        posY = y;
-                }
-                const auto pos = QPoint(_rect.center().x() - buttonStopScreenSharing_->width() / 2, posY);
-                buttonStopScreenSharing_->move(pos);
-
-#ifdef __APPLE__
-                MacSupport::showInAllWorkspaces(buttonStopScreenSharing_);
-#else
-                buttonStopScreenSharing_->show();
-#endif
-            }
-        }
-    }
 
     VideoPanel::VideoPanel(QWidget* _parent, QWidget* _container)
 #ifdef __APPLE__
@@ -350,20 +119,6 @@ namespace Ui
 #endif
         , container_(_container)
         , parent_(_parent)
-        , rootWidget_(nullptr)
-        , stopCallButton_(nullptr)
-        , videoButton_(nullptr)
-        , moreButton_(nullptr)
-        , addButton_(nullptr)
-        , isFadedVisible_(false)
-        , doPreventFadeIn_(false)
-        , localVideoEnabled_(false)
-        , isScreenSharingEnabled_(false)
-        , isCameraEnabled_(true)
-        , isConferenceAll_(true)
-        , isParentMinimizedFromHere_(false)
-        , isBigConference_(false)
-        , isMasksAllowed_(true)
     {
         if constexpr (!platform::is_linux())
         {
@@ -423,16 +178,18 @@ namespace Ui
             onDeviceSettingsClick(videoButton_, voip_proxy::EvoipDevTypes::kvoipDevTypeVideoCapture);
         });
 
-        shareScreenButton_ = addAndCreateButton(getScreensharingButtonText(PanelButton::ButtonStyle::Transparent), qsl(":/voip/sharescreen_icon"),
-                                                PanelButton::ButtonStyle::Transparent, false,
-                                                &VideoPanel::onShareScreen);
+        if (!isRunningUnderWayland())
+        {
+            shareScreenButton_ = addAndCreateButton(getScreensharingButtonText(PanelButton::ButtonStyle::Transparent), qsl(":/voip/sharescreen_icon"),
+                PanelButton::ButtonStyle::Transparent, false, &VideoPanel::onShareScreen);
+        }
 
         const auto callType = Ui::GetDispatcher()->getVoipController().isCallVCS() ?  CallType::Vcs : CallType::PeerToPeer;
         addButton_ = addAndCreateButton(addButtonLabel(callType), addButtonIcon(callType), PanelButton::ButtonStyle::Transparent, false, &VideoPanel::addButtonClicked);
 
         moreButton_ = addAndCreateButton(QT_TRANSLATE_NOOP("voip_video_panel", "More"), qsl(":/voip/morewide_icon"),
-							             PanelButton::ButtonStyle::Transparent, false,
-							             &VideoPanel::onMoreButtonClicked);
+                                         PanelButton::ButtonStyle::Transparent, false,
+                                         &VideoPanel::onMoreButtonClicked);
 
 
         stopCallButton_ = addAndCreateButton(QT_TRANSLATE_NOOP("voip_video_panel", "End\nMeeting"), qsl(":/voip/endcall_icon"),
@@ -446,20 +203,33 @@ namespace Ui
         connect(&GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipMediaLocalAudio, this, &VideoPanel::onVoipMediaLocalAudio);
 
         connect(&GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipVolumeChanged, this, &VideoPanel::onVoipVolumeChanged);
+
+        connect(&ScreenSharingManager::instance(), &ScreenSharingManager::needShowScreenPermissionsPopup, this, &VideoPanel::needShowScreenPermissionsPopup);
+        connect(&ScreenSharingManager::instance(), &ScreenSharingManager::sharingStateChanged, this, &VideoPanel::onShareScreenStateChanged);
     }
 
     VideoPanel::~VideoPanel()
     {
         closeMenu();
-        hideScreenBorder();
         hideToast();
+    }
+
+    bool VideoPanel::isRunningUnderWayland()
+    {
+        if constexpr (!platform::is_linux())
+            return false;
+        const char* xdg_session_type = std::getenv("XDG_SESSION_TYPE");
+        if (!xdg_session_type || !su::starts_with(std::string_view(xdg_session_type), std::string_view("wayland")))
+            return false;
+        return bool(std::getenv("WAYLAND_DISPLAY"));
     }
 
     void VideoPanel::keyReleaseEvent(QKeyEvent* _e)
     {
-        QWidget::keyReleaseEvent(_e);
         if (_e->key() == Qt::Key_Escape)
             Q_EMIT onkeyEscPressed();
+        _e->ignore();
+        BaseVideoPanel::keyReleaseEvent(_e);
     }
 
     void VideoPanel::paintEvent(QPaintEvent* _e)
@@ -554,15 +324,14 @@ namespace Ui
             resetMenu();
 
             for (size_t i = 0; i < static_cast<size_t>(screens.size()); i++)
-                addMenuAction(MenuAction::ShareScreen, ql1c(' ') % QString::number(i + 1), [this, i]() { switchShareScreen(i); });
+                addMenuAction(MenuAction::ShareScreen, ql1c(' ') % QString::number(i + 1), [i]() { ScreenSharingManager::instance().toggleSharing(i); });
 
             showMenuAtButton(shareScreenButton_);
-
             resetPanelButtons(false);
         }
         else
         {
-            switchShareScreen(0);
+            ScreenSharingManager::instance().toggleSharing(0);
         }
     }
 
@@ -645,6 +414,8 @@ namespace Ui
             isFadedVisible_ = true;
             if constexpr (!platform::is_linux())
                 BaseVideoPanel::fadeIn(_kAnimationDefDuration);
+
+            updateToastPosition();
         }
     }
 
@@ -694,20 +465,16 @@ namespace Ui
                         QTimer::singleShot(getFullScreenSwitchingDelay().count(), [this, uid = _desc.uid]()
                         {
                             parent_->showMinimized();
-                            showScreenBorder(std::move(uid));
                         });
                         return;
                     }
                 }
 
                 parent_->showMinimized();
-                showScreenBorder(_desc.uid);
             }
         }
         else
         {
-            hideScreenBorder();
-
             if (isParentMinimizedFromHere_)
             {
                 isParentMinimizedFromHere_ = false;
@@ -741,10 +508,13 @@ namespace Ui
         else
             videoButton_->updateStyle(PanelButton::ButtonStyle::Transparent, qsl(":/voip/videocall_off_icon"), getVideoButtonText(PanelButton::ButtonStyle::Transparent));
 
-        if (isScreenSharingEnabled_)
-            shareScreenButton_->updateStyle(PanelButton::ButtonStyle::Normal, qsl(":/voip/sharescreen_icon"), getScreensharingButtonText(PanelButton::ButtonStyle::Normal));
-        else
-            shareScreenButton_->updateStyle(PanelButton::ButtonStyle::Transparent, qsl(":/voip/sharescreen_icon"), getScreensharingButtonText(PanelButton::ButtonStyle::Transparent));
+        if (shareScreenButton_)
+        {
+            if (isScreenSharingEnabled_)
+                shareScreenButton_->updateStyle(PanelButton::ButtonStyle::Normal, qsl(":/voip/sharescreen_icon"), getScreensharingButtonText(PanelButton::ButtonStyle::Normal));
+            else
+                shareScreenButton_->updateStyle(PanelButton::ButtonStyle::Transparent, qsl(":/voip/sharescreen_icon"), getScreensharingButtonText(PanelButton::ButtonStyle::Transparent));
+        }
     }
 
     template<typename Slot>
@@ -878,41 +648,11 @@ namespace Ui
             menu_->close();
     }
 
-    void VideoPanel::switchShareScreen(unsigned int _index)
+    void VideoPanel::onShareScreenStateChanged(ScreenSharingManager::SharingState _state, int)
     {
-        const auto& screens = GetDispatcher()->getVoipController().screenList();
-
-        const auto switchSharingImpl = [this, &screens](unsigned int _index)
-        {
-            isScreenSharingEnabled_ = !isScreenSharingEnabled_;
-            Q_EMIT onShareScreenClick(isScreenSharingEnabled_);
-            GetDispatcher()->getVoipController().switchShareScreen(!screens.empty() && _index < static_cast<unsigned int>(screens.size()) ? &screens[_index] : nullptr);
-            updateVideoDeviceButtonsState();
-        };
-
-        if constexpr (platform::is_apple())
-        {
-            if (!isScreenSharingEnabled_)
-            {
-                if (media::permissions::checkPermission(media::permissions::DeviceType::Screen) == media::permissions::Permission::Allowed)
-                {
-                    switchSharingImpl(_index);
-                }
-                else
-                {
-                    media::permissions::requestPermission(media::permissions::DeviceType::Screen, [](bool) {});
-                    Q_EMIT needShowScreenPermissionsPopup(media::permissions::DeviceType::Screen);
-                }
-            }
-            else
-            {
-                switchSharingImpl(_index);
-            }
-        }
-        else
-        {
-            switchSharingImpl(_index);
-        }
+        isScreenSharingEnabled_ = (_state == ScreenSharingManager::SharingState::Shared);
+        Q_EMIT onShareScreenClick(isScreenSharingEnabled_);
+        updateVideoDeviceButtonsState();
     }
 
     void VideoPanel::resetPanelButtons(bool _enable)
@@ -927,23 +667,6 @@ namespace Ui
         addButton_->setEnabled(isAddButtonEnabled_ && _enable);
     }
 
-    void VideoPanel::showScreenBorder(std::string_view _uid)
-    {
-        if (GetDispatcher()->getVoipController().isWebinar())
-            return;
-
-        hideScreenBorder();
-
-        shareScreenFrame_ = new VideoPanelParts::ShareScreenFrame(_uid, getFrameBorderColor());
-        connect(shareScreenFrame_, &VideoPanelParts::ShareScreenFrame::stopScreenSharing, this, &VideoPanel::onShareScreen);
-    }
-
-    void VideoPanel::hideScreenBorder()
-    {
-        if (shareScreenFrame_)
-            shareScreenFrame_->deleteLater();
-    }
-
     void VideoPanel::showToast(const QString& _text, int _maxLineCount)
     {
         hideToast();
@@ -952,15 +675,36 @@ namespace Ui
         {
             toast_ = new Toast(_text, parent_, _maxLineCount);
             toast_->setAttribute(Qt::WA_ShowWithoutActivating);
-            if constexpr (platform::is_windows() || platform::is_apple())
-                toast_->setWindowFlags(windowFlags());
+            toast_->setFocusPolicy(Qt::NoFocus);
+            if constexpr (platform::is_windows())
+            {
+                toast_->setWindowFlags(windowFlags() | Qt::WindowDoesNotAcceptFocus);
+            }
+            else if constexpr (platform::is_apple())
+            {
+                const auto flags = parent_->isFullScreen()
+                    ? Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::WindowDoesNotAcceptFocus
+                    : windowFlags() | Qt::WindowDoesNotAcceptFocus;
+                toast_->setWindowFlags(flags);
+            }
             else if constexpr (platform::is_linux())
-                toast_->setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::BypassWindowManagerHint);
+            {
+                toast_->setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::BypassWindowManagerHint | Qt::WindowDoesNotAcceptFocus);
+            }
+
+            if constexpr (!platform::is_linux())
+            {
+                connect(toast_, &Toast::appeared, this, [isFadedVisiblePrev = isFadedVisible_, this]()
+                {
+                    if (isFadedVisiblePrev != isFadedVisible_)
+                        updateToastPosition();
+                });
+            }
 
             const auto videoWindowRect = parent_->geometry();
-            const auto yPos = platform::is_linux() ?
-            videoWindowRect.bottom() - height() :
-            (isFadedVisible_ ? geometry().y() : videoWindowRect.bottom() - toast_->height());
+            const auto yPos = platform::is_linux()
+                ? videoWindowRect.bottom() - height()
+                : (isFadedVisible_ ? geometry().y() : videoWindowRect.bottom() - toast_->height());
             ToastManager::instance()->showToast(toast_, QPoint(videoWindowRect.center().x(), yPos - getToastVerOffset()));
         }
     }
@@ -1103,7 +847,7 @@ namespace Ui
     {
         isBigConference_ = false;
         isMasksAllowed_ = true;
-        hideScreenBorder();
+        ScreenSharingManager::instance().stopSharing();
     }
 
     void VideoPanel::onSpeakerOnOffClicked()
@@ -1288,9 +1032,9 @@ namespace Ui
 
         QString settingsName;
         switch (_device.dev_type) {
-            case voip_proxy::kvoipDevTypeAudioPlayback: settingsName = ql1s(settings_speakers);    break;
+            case voip_proxy::kvoipDevTypeAudioPlayback: settingsName = ql1s(settings_speakers); break;
             case voip_proxy::kvoipDevTypeAudioCapture:  settingsName = ql1s(settings_microphone); break;
-            case voip_proxy::kvoipDevTypeVideoCapture:  settingsName = ql1s(settings_webcam);      break;
+            case voip_proxy::kvoipDevTypeVideoCapture:  settingsName = ql1s(settings_webcam); break;
             case voip_proxy::kvoipDevTypeUndefined:
             default:
                 im_assert(!"unexpected device type");

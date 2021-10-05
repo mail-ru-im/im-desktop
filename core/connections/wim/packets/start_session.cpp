@@ -8,7 +8,7 @@
 #include "../../../../common.shared/version_info.h"
 #include "../../../utils.h"
 #include "../../../tools/system.h"
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 #include "../../urls_cache.h"
 #include "subscriptions/subscr_types.h"
 
@@ -60,11 +60,15 @@ int32_t start_session::init_request_full_start_session(const std::shared_ptr<cor
     request->set_url(get_start_session_host());
     request->set_normalized_url(get_method());
     request->set_keep_alive();
+    request->set_use_new_connection(true);
 
     request->push_post_parameter("f", "json");
     request->push_post_parameter("k", escape_symbols(params_.dev_id_));
 
-    request->push_post_parameter("a", escape_symbols(params_.a_token_));
+    if (params_.o2auth_token_)
+        request->push_post_parameter("o2token", *params_.o2auth_token_);
+    else
+        request->push_post_parameter("a", escape_symbols(params_.a_token_));
     request->push_post_parameter("clientName", escape_symbols(utils::get_app_name()));
 
     request->push_post_parameter("imf", "plain");
@@ -149,6 +153,7 @@ int32_t start_session::init_request(const std::shared_ptr<core::http_request_sim
     {
         log_replace_functor f;
         f.add_marker("a");
+        f.add_marker("o2token");
         f.add_marker("aimsid", aimsid_range_evaluator());
         f.add_json_marker("aimsid", aimsid_range_evaluator());
         _request->set_replace_log_function(f);

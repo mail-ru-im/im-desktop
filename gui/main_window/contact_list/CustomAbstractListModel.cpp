@@ -13,14 +13,19 @@ namespace Logic
             connect(&Utils::InterConnector::instance(), &Utils::InterConnector::forceRefreshList, this, &CustomAbstractListModel::forceRefreshList);
     }
 
-    bool CustomAbstractListModel::isServiceItem(const QModelIndex & _index) const
+    bool CustomAbstractListModel::isServiceItem(const QModelIndex& _index) const
     {
         return false;
     }
 
-    bool CustomAbstractListModel::isClickableItem(const QModelIndex & _index) const
+    bool CustomAbstractListModel::isClickableItem(const QModelIndex& _index) const
     {
         return true;
+    }
+
+    bool CustomAbstractListModel::isDropableItem(const QModelIndex& _index) const
+    {
+        return !isServiceItem(_index);
     }
 
     bool CustomAbstractListModel::contains(const QString& _name) const

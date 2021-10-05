@@ -49,6 +49,7 @@ namespace
     constexpr auto stickerSize = core::sticker_size::small;
 
     constexpr auto fullSenderVar = Styling::StyleVariable::PRIMARY;
+    constexpr auto fullTextColor = Styling::StyleVariable::BASE_PRIMARY;
 
     constexpr auto emojiSize = 32;
 
@@ -220,14 +221,18 @@ namespace Ui
                       1);
 
         text_ = TextRendering::MakeTextUnit(QString(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
+        text_->init(Fonts::appFontScaled(14, Fonts::FontWeight::Normal),
+                    Styling::getParameters().getColor(fullTextColor),
+                    QColor(),
+                    QColor(),
+                    QColor(),
+                    TextRendering::HorAligment::LEFT,
+                    1);
     }
 
     bool FullPinnedMessage::setMessage(Data::MessageBuddySptr _msg)
     {
         if (!_msg || _msg->Id_ == -1 || _msg->IsServiceMessage() || _msg->IsChatEvent())
-            return false;
-
-        if (complexMessage_ && complexMessage_->getId() == _msg->Id_ && !(_msg->GetUpdatePatchVersion() > patchVersion_))
             return false;
 
         clear();
@@ -257,12 +262,12 @@ namespace Ui
             break;
         }
 
-        if (previewType_ == PinPlaceholderType::Sticker && !getStickerId().isEmpty())
+        if (previewType_ == PinPlaceholderType::Sticker && !getStickerId().fileId.isEmpty())
         {
             makeStickerPreview();
-            connections_.push_back(connect(&Stickers::getCache(), &Stickers::Cache::stickerUpdated, this, [this](int _error, const QString& _fsId)
+            connections_.push_back(connect(&Stickers::getCache(), &Stickers::Cache::stickerUpdated, this, [this](int _error, const Utils::FileSharingId& _fsId)
             {
-                if (_error == 0 && !_fsId.isEmpty() && _fsId == getStickerId())
+                if (_error == 0 && !_fsId.fileId.isEmpty() && _fsId == getStickerId())
                     makeStickerPreview();
             }));
         }
@@ -361,7 +366,8 @@ namespace Ui
                         return;
                     }
                 }
-                Logic::getContactListModel()->setCurrent(Logic::getContactListModel()->selectedContact(), complexMessage_->getId(), true);
+
+                Utils::InterConnector::instance().openDialog(complexMessage_->getChatAimid(), complexMessage_->getId());
             }
         }
     }
@@ -493,17 +499,7 @@ namespace Ui
         if (!complexMessage_)
             return;
 
-        const auto color = Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
-        text_ = TextRendering::MakeTextUnit(complexMessage_->formatRecentsText(), complexMessage_->getMentions(), TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-        text_->init(Fonts::appFontScaled(14, Fonts::FontWeight::Normal),
-                    color,
-                    QColor(),
-                    QColor(),
-                    QColor(),
-                    TextRendering::HorAligment::LEFT,
-                    1);
-        text_->markdown(Fonts::appFontScaled(14, Fonts::FontWeight::Normal), color, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-        text_->evaluateDesiredSize();
+        text_->setTextAndMentions(complexMessage_->formatRecentsText(), complexMessage_->getMentions());
 
         updateTextOffsets();
         update();
@@ -578,17 +574,17 @@ namespace Ui
         text_->setOffsets(offsetLeft, Utils::scale_value(offsetTopText));
 
         const auto maxWidth = getCollapseButtonRect(rect()).left() - offsetLeft;
-        sender_->elide(maxWidth);
-        text_->elide(maxWidth);
+        sender_->getHeight(maxWidth);
+        text_->getHeight(maxWidth);
     }
 
-    QString FullPinnedMessage::getStickerId() const
+    Utils::FileSharingId FullPinnedMessage::getStickerId() const
     {
         if (isSnippetSimple() || !complexMessage_)
             return {};
 
         const auto id = complexMessage_->getFirstStickerId();
-        if (!id.fsId_ || id.fsId_->isEmpty())
+        if (!id.fsId_ || id.fsId_->fileId.isEmpty())
             return {};
 
         return *id.fsId_;
@@ -597,7 +593,7 @@ namespace Ui
     void FullPinnedMessage::makeStickerPreview()
     {
         auto id = getStickerId();
-        if (id.isEmpty())
+        if (id.fileId.isEmpty())
             return;
 
         const auto& data = Stickers::getStickerData(id, stickerSize);
@@ -661,8 +657,8 @@ namespace Ui
         else if (isImage() || isPlayable())
         {
             const auto link = Utils::replaceFilesPlaceholders(complexMessage_->getFirstLink(), complexMessage_->getFilesPlaceholders());
-            Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::fullmediascr_view, { { "chat_type", Utils::chatTypeByAimId(Logic::getContactListModel()->selectedContact()) },{ "from", "chat" },{ "media_type", isImage() ? "photo" : "video" } });
-            auto data = Utils::GalleryData(Logic::getContactListModel()->selectedContact(), Utils::normalizeLink(link).toString(), complexMessage_->getId());
+            Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::fullmediascr_view, { { "chat_type", Utils::chatTypeByAimId(complexMessage_->getChatAimid()) },{ "from", "chat" },{ "media_type", isImage() ? "photo" : "video" } });
+            auto data = Utils::GalleryData(complexMessage_->getChatAimid(), Utils::normalizeLink(link).toString(), complexMessage_->getId());
             complexMessage_->fillGalleryData(data);
             Utils::InterConnector::instance().openGallery(data);
         }

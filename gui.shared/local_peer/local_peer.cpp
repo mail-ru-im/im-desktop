@@ -36,6 +36,7 @@ namespace Utils
         , bytesToSend_(0)
         , exitOnDisconnect_(false)
         , timer_(new QTimer(this))
+        , writePolicy_(_writePolicy)
     {
         assert(_socket);
 
@@ -50,7 +51,7 @@ namespace Utils
             onError();
         });
 
-        if (_writePolicy == ConnPolicy::DisconnectAfterWrite)
+        if (writePolicy_ == ConnPolicy::DisconnectAfterWrite)
             connect(socket_, &QLocalSocket::bytesWritten, this, &LocalConnection::onBytesWritten);
 
         timer_->setInterval(answerTimeout);
@@ -137,7 +138,7 @@ namespace Utils
     {
         qCDebug(localPeer) << this << "disconnected";
 
-        if (bytesWritten_ < bytesToSend_)
+        if (writePolicy_ == ConnPolicy::DisconnectAfterWrite && bytesWritten_ < bytesToSend_)
         {
             qCDebug(localPeer) << this << "error: disconnected before all needed" << bytesToSend_ << "bytes were written";
             Q_EMIT error();

@@ -15,13 +15,13 @@ namespace Ui
         void setActive(const bool _isActive);
         bool isActive() const noexcept { return isActive_; }
 
+        void onAttachVisibleChanged(bool _isVisible);
+
     protected:
         void paintEvent(QPaintEvent*) override;
         void updateStyleImpl(const InputStyleMode _mode) override;
 
     private:
-        void onAttachVisibleChanged(const bool _isVisible);
-
         enum class RotateDirection
         {
             Left,

@@ -27,7 +27,7 @@ std::string_view update_profile::get_method() const
 
 int32_t update_profile::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
-    assert(!fields_.empty());
+    im_assert(!fields_.empty());
     if (fields_.empty())
         return 0;
 

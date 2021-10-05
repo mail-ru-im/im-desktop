@@ -4,13 +4,18 @@
 #include "../../types/chat.h"
 #include "../../types/chatheads.h"
 #include "../../types/filesharing_meta.h"
+#include "../../types/thread.h"
 #include "types/reactions.h"
 #include "history/Message.h"
 #include "reactions/MessageReactions.h"
+#include "complex_message/FileSharingUtils.h"
 
 namespace Ui
 {
+    class ThreadPlate;
     class LastStatusAnimation;
+    class CornerMenu;
+    enum class MenuButtonType;
     enum class MediaType;
 
     using HistoryControlPageItemUptr = std::unique_ptr<class HistoryControlPageItem>;
@@ -37,9 +42,12 @@ namespace Ui
     Q_SIGNALS:
         void mention(const QString&, const QString&) const;
         void selectionChanged() const;
+        void edit(const Data::MessageBuddySptr& _msg, MediaType _mediaType);
+        void quote(const Data::QuotesVec&);
 
     public:
         explicit HistoryControlPageItem(QWidget *parent);
+        ~HistoryControlPageItem();
 
         virtual bool isOutgoing() const = 0;
         bool isOutgoingPosition() const;
@@ -77,6 +85,7 @@ namespace Ui
 
         virtual void setContact(const QString& _aimId);
         const QString& getContact() const { return aimId_; }
+        const QString& getPageId() const;
 
         virtual void setSender(const QString& _sender);
         virtual void updateFriendly(const QString& _aimId, const QString& _friendly);
@@ -87,7 +96,6 @@ namespace Ui
         virtual qint64 getPrevId() const;
         virtual const QString& getInternalId() const;
         virtual QString getSourceText() const;
-        QString idImpl() const { return QString::number(getId()); }
 
         void setDeleted(const bool _isDeleted);
         bool isDeleted() const;
@@ -108,6 +116,7 @@ namespace Ui
         virtual void removeHeads(const Data::HeadsVector& _heads);
         virtual bool areTheSameHeads(const QVector<Data::ChatHead>& _heads) const;
 
+        virtual void initSize();
         virtual void updateSize();
 
         virtual bool hasPictureContent() const { return false; };
@@ -140,6 +149,7 @@ namespace Ui
 
         virtual bool isEditable() const;
         virtual bool isUpdateable() const { return true; }
+        virtual bool isSingleMedia() const { return false; }
 
         virtual void callEditing() {}
 
@@ -155,6 +165,7 @@ namespace Ui
         virtual bool nextIsOutgoing() const;
 
         virtual QRect messageRect() const;
+        virtual QRect cornerMenuContentRect() const;
 
         void setReactions(const Data::Reactions& _reactions);
 
@@ -163,11 +174,24 @@ namespace Ui
         virtual ReactionsPlateType reactionsPlateType() const;
         bool hasReactions() const;
         QRect reactionsPlateRect() const;
+        QRect threadPlateRect() const;
 
         virtual void setSpellErrorsVisible(bool _visible) {}
         virtual QRect avatarRect() const { return QRect(); }
 
-        virtual std::optional<Data::FileSharingMeta> getMeta(const QString& _id) const { return std::nullopt; }
+        virtual std::optional<Data::FileSharingMeta> getMeta(const Utils::FileSharingId& _id) const { return std::nullopt; }
+
+        void applyThreadUpdate(const std::shared_ptr<Data::ThreadUpdate>& _update);
+
+        bool hasThread() const;
+        bool hasThreadWithReplies() const;
+
+        const QString& getThreadId() const;
+        void setThreadId(const QString& _threadId);
+
+        bool isHeadless() const;
+
+        bool isThreadFeedMessage() const;
 
     protected:
 
@@ -179,9 +203,16 @@ namespace Ui
         void enterEvent(QEvent*) override;
         void leaveEvent(QEvent*) override;
         void wheelEvent(QWheelEvent*) override;
+        void resizeEvent(QResizeEvent* _event) override;
+
+        void moveEvent(QMoveEvent* _event) override;
 
         void showMessageStatus();
         void hideMessageStatus();
+
+        void hideCornerMenuForce();
+        void setCornerMenuVisible(bool _visible);
+        void checkCornerMenuNeeded(const QPoint& _pos); // accepts global coord
 
         virtual void drawSelection(QPainter& _p, const QRect& _rect);
         virtual void drawHeads(QPainter& _p) const;
@@ -195,15 +226,21 @@ namespace Ui
 
         virtual void initialize();
 
-        virtual bool supportsReactions() const { return true; }
+        virtual bool canBeThreadParent() const { return true; }
+        virtual bool supportsOverlays() const { return true; }
 
+        int64_t getThreadMsgId() const;
 
-        QuoteColorAnimation QuoteAnimation_;
+        void copyPlates(const HistoryControlPageItem* _other);
+        std::shared_ptr<Data::ThreadUpdate> getthreadUpdate() const;
+
+        QPointer<QuoteColorAnimation> QuoteAnimation_;
         bool isChat_;
 
     private Q_SLOTS:
         void avatarChanged(const QString& _aimid);
-        void onReactionsEnabledChanged();
+        void onConfigChanged();
+        void openThread() const;
 
     private:
         void drawLastStatusIconImpl(QPainter& _p, int _rightPadding, int _bottomPadding);
@@ -211,6 +248,22 @@ namespace Ui
         void ensureAddAnimationInitialized();
         void ensureRemoveAnimationInitialized();
         void ensureHeightAnimationInitialized();
+
+        void updateThreadSubscription();
+        void onThreadUpdates(const Data::ThreadUpdates& _updates);
+
+        void initializeReactionsPlate();
+        void initializeCornerMenu();
+
+        bool hasReactionButton() const;
+        bool hasThreadButton() const;
+
+        QRect getCornerMenuRect() const;
+        bool isInCornerMenuHoverArea(const QPoint& _pos) const;
+        std::vector<MenuButtonType> getCornerMenuButtons() const;
+        void positionCornerMenu();
+
+        void onCornerMenuClicked(MenuButtonType _type);
 
         bool Selected_;
         bool HasTopMargin_;
@@ -236,6 +289,8 @@ namespace Ui
 
         Data::HeadsVector heads_;
         std::unique_ptr<MessageReactions> reactions_;
+        QPointer<CornerMenu> cornerMenu_;
+        QTimer* cornerMenuHoverTimer_ = nullptr;
 
         QVariantAnimation* addAnimation_;
         QVariantAnimation* removeAnimation_;
@@ -257,6 +312,9 @@ namespace Ui
         Data::MessageBuddy msg_;
         bool nextIsOutgoing_;
         bool initialized_;
+
+        std::shared_ptr<Data::ThreadUpdate> threadUpdateData_;
+        ThreadPlate* threadPlate_ = nullptr;
     };
 
     class AccessibleHistoryControlPageItem : public QAccessibleWidget

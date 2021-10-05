@@ -102,11 +102,6 @@ namespace Data
         return result;
     }
 
-    QString UnserializeActiveDialogHide(core::coll_helper* helper)
-    {
-        return QString::fromUtf8(helper->get_value_as_string("contact"));
-    }
-
     QStringList UnserializeFavorites(core::coll_helper* helper)
     {
         core::iarray* contacts = helper->get_value_as_array("favorites");

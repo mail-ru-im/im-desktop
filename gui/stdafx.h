@@ -124,6 +124,7 @@
 #include <QCompleter>
 #include <QStandardItemModel>
 #include <QPainter>
+#include <QStylePainter>
 #include <QLineEdit>
 #include <QKeyEvent>
 #include <QTextEdit>
@@ -188,12 +189,22 @@
 #include <QtPlatformHeaders/QWindowsWindowFunctions>
 #include <QCache>
 #include <QVariantAnimation>
+#include <QParallelAnimationGroup>
 #include <QScopeGuard>
 #include <QAccessible>
 #include <QAccessibleObject>
 #include <QAccessibleWidget>
+#include <QNetworkProxy>
 #if defined(IM_AUTO_TESTING)
     #include <QTest>
+#endif
+
+#if defined(HAS_WEB_ENGINE)
+#include <QtWebEngineWidgets/QWebEngineView>
+#include <QtWebEngineWidgets/QWebEnginePage>
+#include <QtWebEngineWidgets/QWebEngineProfile>
+#include <QtWebEngineCore/QWebEngineCookieStore>
+#include <QtWebChannel/QWebChannel>
 #endif
 
 #undef max
@@ -271,6 +282,7 @@
 #include <QtWidgets/qcompleter.h>
 #include <QtGui/qstandarditemmodel.h>
 #include <QtGui/qpainter.h>
+#include <QtWidgets/qstylepainter.h>
 #include <QtWidgets/qlineedit.h>
 #include <QtWidgets/qtextedit.h>
 #include <QtCore/qmetatype.h>
@@ -290,6 +302,7 @@
 #include <QtWidgets/qdesktopwidget.h>
 #include <QtCore/qeasingcurve.h>
 #include <QtCore/qpropertyanimation.h>
+#include <QtCore/qparallelanimationgroup.h>
 #include <QtGui/qtextobject.h>
 #include <QtCore/qmimedata.h>
 #include <QtCore/qmimetype.h>
@@ -336,6 +349,17 @@
 #include <QtGui/qaccessible.h>
 #include <QtGui/qaccessibleobject.h>
 #include <QtWidgets/qaccessiblewidget.h>
+#include <QtNetwork/qnetworkproxy.h>
+#include <QtCore/qoperatingsystemversion.h>
+
+#if defined(HAS_WEB_ENGINE)
+#include <QtWebEngineWidgets/qwebengineview.h>
+#include <QtWebEngineWidgets/qwebenginepage.h>
+#include <QtWebEngineWidgets/qwebengineprofile.h>
+#include <QtWebEngineCore/qwebenginecookiestore.h>
+#include <QtWebChannel/qwebchannel.h>
+#endif
+
 #else
 #include "macconfig.h"
 #import <QtCore/qresource.h>
@@ -404,6 +428,7 @@
 #import <QtWidgets/qcompleter.h>
 #import <QtGui/qstandarditemmodel.h>
 #import <QtGui/qpainter.h>
+#import <QtWidgets/qstylepainter.h>
 #import <QtWidgets/qlineedit.h>
 #import <QtWidgets/qtextedit.h>
 #import <QtCore/qmetatype.h>
@@ -423,6 +448,7 @@
 #import <QtWidgets/qdesktopwidget.h>
 #import <QtCore/qeasingcurve.h>
 #import <QtCore/qpropertyanimation.h>
+#import <QtCore/qparallelanimationgroup.h>
 #import <QtGui/qtextobject.h>
 #import <QtCore/qmimedata.h>
 #import <QtCore/qmimetype.h>
@@ -477,6 +503,17 @@
 #import <QtGui/qaccessible.h>
 #import <QtGui/qaccessibleobject.h>
 #import <QtWidgets/qaccessiblewidget.h>
+#import <QtNetwork/qnetworkproxy.h>
+#import <QtCore/qoperatingsystemversion.h>
+
+#if defined(HAS_WEB_ENGINE)
+#import <QtWebEngineWidgets/qwebengineview.h>
+#import <QtWebEngineWidgets/qwebenginepage.h>
+#import <QtWebEngineWidgets/qwebengineprofile.h>
+#import <QtWebEngineCore/qwebenginecookiestore.h>
+#import <QtWebChannel/qwebchannel.h>
+#endif
+
 #endif // _WIN32
 
 #include "../common.shared/typedefs.h"

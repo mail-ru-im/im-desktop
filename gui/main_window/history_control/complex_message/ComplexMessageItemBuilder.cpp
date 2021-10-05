@@ -21,6 +21,7 @@
 #include "TextChunk.h"
 #include "ProfileBlock.h"
 #include "PollBlock.h"
+#include "TaskBlock.h"
 #include "SnippetBlock.h"
 
 #include "ComplexMessageItemBuilder.h"
@@ -196,6 +197,7 @@ struct ParseResult
     Data::SharedContact sharedContact_;
     Data::Geo geo_;
     Data::Poll poll_;
+    Data::Task task_;
 
     void mergeChunks()
     {
@@ -218,11 +220,22 @@ struct ParseResult
     }
 };
 
+std::vector<QStringView> parseForLinksToSkip(const Data::FString& _text)
+{
+    using ftype = core::data::format_type;
+    std::vector<QStringView> result;
+    for (auto [type, range, _] : _text.formatting().formats())
+    {
+        if (type == ftype::monospace || type == ftype::pre)
+            result.push_back(Data::FStringView(_text, range.offset_, range.size_).string());
+    }
+    return result;
+}
 
 std::vector<QStringView> parseMarkdownForLinksToSkip(const QString& _text)
 {
-    const auto sl = Ui::TextRendering::singleBackTick();
-    const auto ml = Ui::TextRendering::tripleBackTick().toString();
+    constexpr auto sl = Data::singleBackTick();
+    const auto ml = Data::tripleBackTick().toString();
 
     auto result = std::vector<QStringView>();
     const auto mcount = _text.count(ml);
@@ -285,21 +298,20 @@ std::vector<QStringView> parseMarkdownForLinksToSkip(const QString& _text)
     return result;
 }
 
-template <typename T>
-ParseResult parseTextCommon(const T& _text, const bool _allowSnippet, const bool _forcePreview, const std::vector<QStringView>& _linksToSkip)
+ParseResult parseTextCommon(const Data::FString& _text, const bool _allowSnippet, const bool _forcePreview, const std::vector<QStringView>& _linksToSkip)
 {
     ParseResult result;
     ChunkIterator it(_text, getFixedUrls());
     while (it.hasNext())
     {
         auto chunk = it.current(_allowSnippet, _forcePreview);
-        if (!_linksToSkip.empty() && chunk.Type_ != TextChunk::Type::Text)
+        if (!_linksToSkip.empty() && chunk.Type_ != TextChunk::Type::Text && chunk.Type_ != TextChunk::Type::FormattedText)
         {
             for (const auto& m : std::as_const(_linksToSkip))
             {
                 if (m.contains(chunk.getPlainText()))
                 {
-                    chunk.Type_ = TextChunk::Type::Text;
+                    chunk.Type_ = chunk.formattedText_.hasFormatting() ? TextChunk::Type::FormattedText : TextChunk::Type::Text;
                     break;
                 }
             }
@@ -351,15 +363,19 @@ ParseResult parseTextCommon(const T& _text, const bool _allowSnippet, const bool
     return result;
 }
 
-ParseResult parseText(const Data::FormattedString& _text, const bool _allowSnippet, const bool _forcePreview)
+ParseResult parseText(const Data::FString& _text, const bool _allowSnippet, const bool _forcePreview)
 {
-    return parseTextCommon(_text, _allowSnippet, _forcePreview, {});
+    return parseTextCommon(_text, _allowSnippet, _forcePreview, parseForLinksToSkip(_text));
 }
 
 
-ParseResult parseText(const QString& _text, const bool _allowSnippet, const bool _forcePreview)
+//! Add plaintext TextChunk if format is empty or add formatted TextChunk otherwise (to keep old backticks parsing)
+void addDescriptionChunk(const Data::FString& _description, std::list<Ui::ComplexMessage::TextChunk>& _chunks)
 {
-    return parseTextCommon(_text, _allowSnippet, _forcePreview, parseMarkdownForLinksToSkip(_text));
+    if (_description.hasFormatting())
+        _chunks.emplace_back(_description);
+    else
+        _chunks.emplace_back(TextChunk::Type::Text, _description.string());
 }
 
 ParseResult parseQuote(const Data::Quote& _quote, const Data::MentionMap& _mentions, const bool _allowSnippet, const bool _forcePreview)
@@ -376,24 +392,21 @@ ParseResult parseQuote(const Data::Quote& _quote, const Data::MentionMap& _menti
     else if (!_quote.description_.isEmpty())
     {
         result = parseText(_quote.url_, _allowSnippet, _forcePreview);
-        result.chunks.push_back(TextChunk(_quote.description_));
+        addDescriptionChunk(_quote.description_, result.chunks);
     }
-    else if (text.hasFormatting())
+    else if (!text.hasFormatting() && text.startsWith(ql1c('>')))
     {
-        result = parseText(text, _allowSnippet, _forcePreview);
-    }
-    else if (text.startsWith(ql1c('>')))
-    {
-        result.chunks.emplace_back(TextChunk(TextChunk::Type::Text, text.string()));
+        result.chunks.emplace_back(TextChunk::Type::Text, text.string());
     }
     else
     {
-        result = parseText(text.string(), _allowSnippet, _forcePreview);
+        result = parseText(text, _allowSnippet, _forcePreview);
     }
 
     result.sharedContact_ = _quote.sharedContact_;
     result.geo_ = _quote.geo_;
     result.poll_ = _quote.poll_;
+    result.task_ = _quote.task_;
     result.sourceText_ = text.string();
 
     return result;
@@ -414,11 +427,17 @@ std::vector<GenericBlock*> createBlocks(const ParseResult& _parseRes, ComplexMes
     const auto isQuote = _quoteType == QuoteType::Quote;
     const auto isForward = _quoteType == QuoteType::Forward;
     const auto bigEmojiAllowed = !isQuote && !isForward && Ui::get_gui_settings()->get_value<bool>(settings_allow_big_emoji, settings_allow_big_emoji_default());
-	const auto emojiSizeType = bigEmojiAllowed ? TextRendering::EmojiSizeType::ALLOW_BIG : TextRendering::EmojiSizeType::REGULAR;
+    const auto emojiSizeType = bigEmojiAllowed ? TextRendering::EmojiSizeType::ALLOW_BIG : TextRendering::EmojiSizeType::REGULAR;
 
     if (_parseRes.poll_ && !isForward)
     {
         blocks.push_back(new PollBlock(_parent, *_parseRes.poll_, convertPollQuoteText(_parseRes.sourceText_)));
+        return blocks;
+    }
+
+    if (_parseRes.task_)
+    {
+        blocks.push_back(new TaskBlock(_parent, *_parseRes.task_, convertPollQuoteText(_parseRes.sourceText_)));
         return blocks;
     }
 
@@ -433,12 +452,12 @@ std::vector<GenericBlock*> createBlocks(const ParseResult& _parseRes, ComplexMes
                 break;
 
             case TextChunk::Type::FormattedText:
-                if (auto text = chunk.getText(); !text.trimmed().isEmpty())
+                if (auto text = chunk.getFView(); !text.trimmed().isEmpty())
                     blocks.emplace_back(new TextBlock(_parent, text, emojiSizeType));
                 break;
 
             case TextChunk::Type::ImageLink:
-                if (auto block = _parent->addSnippetBlock(chunk.getPlainText().toString(), _parseRes.linkInsideText, estimatedTypeFromExtension(chunk.ImageType_), _quotesCount + blocks.size(), isQuote || isForward))
+                if (auto block = _parent->addSnippetBlock(chunk.getFText(), _parseRes.linkInsideText, estimatedTypeFromExtension(chunk.ImageType_), _quotesCount + blocks.size(), isQuote || isForward))
                     blocks.push_back(block);
                 break;
 
@@ -480,7 +499,7 @@ std::vector<GenericBlock*> createBlocks(const ParseResult& _parseRes, ComplexMes
     if (_parseRes.snippetsCount == 1 && _parseRes.mediaCount == 0)
     {
         const auto estimatedType = _parseRes.geo_ ? SnippetBlock::EstimatedType::Geo : SnippetBlock::EstimatedType::Article;
-        auto block = _parent->addSnippetBlock(_parseRes.snippet.getPlainText().toString(), _parseRes.linkInsideText, estimatedType, _quotesCount + blocks.size(), isQuote || isForward);
+        auto block = _parent->addSnippetBlock(_parseRes.snippet.getFText(), _parseRes.linkInsideText, estimatedType, _quotesCount + blocks.size(), isQuote || isForward);
         if (block)
             blocks.push_back(block);
     }
@@ -491,6 +510,9 @@ std::vector<GenericBlock*> createBlocks(const ParseResult& _parseRes, ComplexMes
     if (_parseRes.poll_)
         blocks.push_back(new PollBlock(_parent, *_parseRes.poll_, convertPollQuoteText(_parseRes.sourceText_)));
 
+    if (_parseRes.task_)
+        blocks.push_back(new TaskBlock(_parent, *_parseRes.task_, convertPollQuoteText(_parseRes.sourceText_)));
+
     return blocks;
 }
 
@@ -500,13 +522,13 @@ namespace ComplexMessageItemBuilder
     {
         auto complexItem = std::make_unique<ComplexMessage::ComplexMessageItem>(_parent, _msg);
 
+        const auto text = _msg.GetText();
+        const auto& formattedText = _msg.getFormattedText();
+        const auto& description = _msg.GetDescription();
         const auto isNotAuth = Logic::getRecentsModel()->isSuspicious(_msg.AimId_);
         const auto isOutgoing = _msg.IsOutgoing();
         const auto id = _msg.Id_;
         const auto prev = _msg.Prev_;
-        const auto& text = _msg.GetText();
-        const auto& formattedText = _msg.getFormattedText();
-        const auto& description = _msg.GetDescription();
         const auto& mentions = _msg.Mentions_;
         const auto& quotes = _msg.Quotes_;
         const auto& filesharing = _msg.GetFileSharing();
@@ -527,8 +549,6 @@ namespace ComplexMessageItemBuilder
             quote.isLastQuote_ = (i == quotesCount - 1);
             quote.mentions_ = mentions;
             quote.isSelectable_ = (quotesCount == 1);
-            if (!Features::isFormattingInBubblesEnabled())
-                quote.text_.clearFormat();
 
             const auto& parsedQuote = parseQuote(quote, mentions, allowSnippet, _forcePreview == ForcePreview::Yes);
             const auto parsedBlocks = createBlocks(parsedQuote, complexItem.get(), id, prev, 0, quote.isForward_ ? QuoteType::Forward : QuoteType::Quote);
@@ -563,10 +583,14 @@ namespace ComplexMessageItemBuilder
         {
             messageBlocks.push_back(new SnippetBlock(complexItem.get(), text, false, SnippetBlock::EstimatedType::Geo));
         }
+        else if (_msg.task_)
+        {
+            messageBlocks.push_back(new TaskBlock(complexItem.get(), *_msg.task_));
+        }
         else if (filesharing && !filesharing->HasUri())
         {
             auto type = TextChunk::Type::FileSharingGeneral;
-            if (filesharing->getContentType().type_ == core::file_sharing_base_content_type::undefined && !filesharing->GetLocalPath().isEmpty())
+            if (filesharing->getContentType().is_undefined() && !filesharing->GetLocalPath().isEmpty())
             {
                 constexpr auto gifExt = u"gif";
                 const auto ext = QFileInfo(filesharing->GetLocalPath()).suffix();
@@ -608,34 +632,20 @@ namespace ComplexMessageItemBuilder
             res.chunks.emplace_back(std::move(chunk));
 
             if (!description.isEmpty())
-                res.chunks.emplace_back(description);
+                addDescriptionChunk(description, res.chunks);
 
             messageBlocks = createBlocks(res, complexItem.get(), id, prev, quoteBlocks.size());
         }
         else
         {
+            auto parsedMsg = description.isEmpty()
+                ? parseText(formattedText, allowSnippet, _forcePreview == ForcePreview::Yes)
+                : parseText(_msg.GetUrl(), allowSnippet, _forcePreview == ForcePreview::Yes);
             if (!description.isEmpty())
-            {
-                auto parsedMsg = parseText(_msg.GetUrl(), allowSnippet, _forcePreview == ForcePreview::Yes);
-                parsedMsg.chunks.emplace_back(description);
-                messageBlocks = createBlocks(parsedMsg, complexItem.get(), id, prev, quoteBlocks.size());
-                hasTrailingLink = parsedMsg.hasTrailingLink;
-                hasLinkInText = parsedMsg.linkInsideText;
-            }
-            else if (Features::isFormattingInBubblesEnabled() && formattedText.hasFormatting())
-            {
-                const auto parsedMsg = parseText(formattedText, allowSnippet, _forcePreview == ForcePreview::Yes);
-                messageBlocks = createBlocks(parsedMsg, complexItem.get(), id, prev, quoteBlocks.size());
-                hasTrailingLink = parsedMsg.hasTrailingLink;
-                hasLinkInText = parsedMsg.linkInsideText;
-            }
-            else
-            {
-                const auto parsedMsg = parseText(text, allowSnippet, _forcePreview == ForcePreview::Yes);
-                messageBlocks = createBlocks(parsedMsg, complexItem.get(), id, prev, quoteBlocks.size());
-                hasTrailingLink = parsedMsg.hasTrailingLink;
-                hasLinkInText = parsedMsg.linkInsideText;
-            }
+                addDescriptionChunk(description, parsedMsg.chunks);
+            messageBlocks = createBlocks(parsedMsg, complexItem.get(), id, prev, quoteBlocks.size());
+            hasTrailingLink = parsedMsg.hasTrailingLink;
+            hasLinkInText = parsedMsg.linkInsideText;
         }
 
         if (_msg.poll_)
@@ -661,7 +671,7 @@ namespace ComplexMessageItemBuilder
 
         if (!quoteBlocks.empty())
         {
-            Data::FormattedString sourceText;
+            Data::FString sourceText;
             for (auto item : items)
                 sourceText += item->getSourceText();
 

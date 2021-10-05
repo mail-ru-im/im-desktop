@@ -9,7 +9,7 @@ get_id_info::get_id_info(core::wim::wim_packet_params _params, const std::string
     : robusto_packet(std::move(_params))
     , id_(_id)
 {
-    assert(!_id.empty());
+    im_assert(!_id.empty());
 }
 
 const id_info_response& get_id_info::get_response() const

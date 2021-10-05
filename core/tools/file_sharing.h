@@ -35,9 +35,21 @@ struct filesharing_preview_size_info
     std::string_view url_path_;
 };
 
+struct filesharing_id
+{
+    std::string file_id_;
+    std::optional<std::string> source_id_;
+
+private:
+    friend bool operator==(const filesharing_id& _lhs, const filesharing_id& _rhs)
+    {
+        return _lhs.file_id_ == _rhs.file_id_ && _lhs.source_id_ == _rhs.source_id_;
+    }
+};
+
 const std::vector<filesharing_preview_size_info>& get_available_fs_preview_sizes();
 
-std::string format_file_sharing_preview_uri(const std::string_view _id, const filesharing_preview_size _size);
+std::string format_file_sharing_preview_uri(const filesharing_id& _id, const filesharing_preview_size _size);
 
 bool get_content_type_from_uri(std::string_view _uri, Out core::file_sharing_content_type& _type);
 
@@ -45,8 +57,10 @@ bool get_content_type_from_file_sharing_id(std::string_view _file_id, Out core::
 
 std::optional<core::file_sharing_content_type> get_content_type_from_file_sharing_id(std::string_view _file_id);
 
-std::optional<std::string_view> parse_new_file_sharing_uri(std::string_view _uri);
+std::optional<filesharing_id> parse_new_file_sharing_uri(std::string_view _uri);
 
 std::string_view get_file_id(std::string_view _uri);
+
+std::optional<std::string_view> get_source_id(std::string_view _uri);
 
 CORE_TOOLS_NS_END

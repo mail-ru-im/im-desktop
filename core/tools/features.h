@@ -10,6 +10,9 @@ namespace features
     std::string get_zstd_dict_response();
 #endif // !STRIP_ZSTD
 
+    bool smartreply_suggests_stickers_enabled();
+    bool smartreply_suggests_text_enabled();
+
     bool is_fetch_hotstart_enabled();
     bool is_statistics_mytracker_enabled();
     bool is_dns_workaround_enabled();
@@ -29,7 +32,21 @@ namespace features
 
     bool is_silent_delete_enabled();
 
+    bool is_url_ftp_protocols_allowed();
+
+    bool is_draft_enabled();
+    int draft_maximum_length();
+
     std::chrono::seconds get_link_metainfo_repeat_interval();
     std::chrono::milliseconds get_metainfo_repeat_interval();
     std::chrono::milliseconds get_preview_repeat_interval();
+    std::chrono::seconds get_oauth2_refresh_interval();
+    bool is_oauth2_login_allowed();
+
+    std::chrono::seconds task_cache_lifetime();
+    bool is_threads_enabled();
+
+    bool is_restricted_files_enabled();
+    bool trust_status_default();
+    bool is_antivirus_check_enabled();
 }

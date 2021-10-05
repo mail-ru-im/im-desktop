@@ -65,6 +65,7 @@ namespace Logic
 
         void filterLocal();
         bool isGlobalContactSearchAllowed() const;
+        bool isChatOrThread() const;
 
     private:
         ContactSearcher* localSearcher_;

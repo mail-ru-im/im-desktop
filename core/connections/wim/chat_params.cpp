@@ -64,6 +64,11 @@ void core::wim::chat_params::set_isChannel(bool _isChannel)
     isChannel_ = _isChannel;
 }
 
+void chat_params::set_trust_required(bool _trust_required)
+{
+    trust_required_ = _trust_required;
+}
+
 chat_params chat_params::create(const core::coll_helper& _params)
 {
     auto result = chat_params();
@@ -85,6 +90,8 @@ chat_params chat_params::create(const core::coll_helper& _params)
         result.set_stamp(_params.get_value_as_string("stamp"));
     if (_params.is_value_exist("is_channel"))
         result.set_isChannel(_params.get_value_as_bool("is_channel"));
+    if (_params.is_value_exist("trustRequired"))
+        result.set_trust_required(_params.get_value_as_bool("trustRequired"));
 
     return result;
 }

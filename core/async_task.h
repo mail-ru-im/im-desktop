@@ -37,12 +37,12 @@ namespace core
         auto_callback(std::function<void(int32_t)> _call_back)
             :   callback_(std::move(_call_back))
         {
-            assert(callback_);
+            im_assert(callback_);
         }
 
         ~auto_callback()
         {
-            assert(!callback_); // callback must be nullptr
+            im_assert(!callback_); // callback must be nullptr
             if (callback_)
                 callback_(-1);
         }

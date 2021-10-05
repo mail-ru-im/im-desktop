@@ -17,6 +17,9 @@ namespace Utils
 {
     void disableCloseButton(QWidget* _w);
     int getTitlebarHeight(QWidget* _w);
+
+    // window can be shown in the same space with the full-screen window
+    void setFullScreenAuxiliaryBehavior(QWidget* _w);
 }
 
 class MacTitlebar;
@@ -28,8 +31,8 @@ friend class MacMenuBlocker;
 
 private:
     QMenuBar *mainMenu_;
-    std::vector<QMenu *> extendedMenus_;
-    std::vector<QAction *> extendedActions_;
+    std::vector<QPointer<QMenu>> extendedMenus_;
+    std::vector<QPointer<QAction>> extendedActions_;
     std::unique_ptr<MacTitlebar> title_;
 
     QPointer<QMenu> editMenu_;
@@ -97,6 +100,8 @@ public:
 
     static void getPossibleStrings(const QString& text, std::vector<std::vector<QString>> & result, unsigned& _count);
 
+    static std::vector<QString> getKeyboardLanguages();
+
     static bool nativeEventFilter(const QByteArray &data, void *message, long *result);
 
     void createMenuBar(bool simple);
@@ -118,13 +123,20 @@ public:
 
     static void showNSFloatingWindowLevel(QWidget *w);
 
-    static void showOverAll(QWidget *w);
+    enum class WindowOrder
+    {
+        None,
+        FrontRegardless
+    };
+    static void showOverAll(QWidget* _w, WindowOrder _order = WindowOrder::None);
 
     static void showInAllWorkspaces(QWidget *w);
 
     static bool isMetalSupported();
 
     static int getWidgetHeaderHeight(const QWidget& widget);
+
+    static QRectF screenGeometryByPoint(const QPoint& _point);
 
 private:
     void setupDockClickHandler();
@@ -142,7 +154,7 @@ public:
     void block();
     void unblock();
 
-    using MenuStateContainer = std::vector<std::pair<QAction*, bool /* old state */>>;
+    using MenuStateContainer = std::vector<std::pair<QPointer<QAction>, bool /* old state */>>;
 
 private:
     MenuStateContainer macMenuState_;

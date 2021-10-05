@@ -78,6 +78,29 @@ static void initPrivacy(QVBoxLayout* _layout, QWidget* _parent)
     _layout->addWidget(privacyWidget);
 }
 
+static void initLinkSwitcher(QVBoxLayout* _layout, QWidget* _parent)
+{
+    auto externalLinkSwitcher = GeneralCreator::addSwitcher(
+        _parent,
+        _layout,
+        QT_TRANSLATE_NOOP("settings", "Do not ask when opening external links"),
+        Ui::get_gui_settings()->get_value<bool>(settings_open_external_link_without_warning, settings_open_external_link_without_warning_default()),
+        [](bool checked) -> QString
+        {
+            Ui::get_gui_settings()->set_value<bool>(settings_open_external_link_without_warning, checked);
+            return {};
+        });
+    Testing::setAccessibleName(externalLinkSwitcher, qsl("AS PrivacyPage askOpenExternalLinkSetting"));
+
+    QObject::connect(Ui::get_gui_settings(), &Ui::qt_gui_settings::changed, externalLinkSwitcher, [externalLinkSwitcher](const auto& key)
+        {
+            if (key == ql1s(settings_open_external_link_without_warning))
+            {
+                QSignalBlocker sb(externalLinkSwitcher);
+                externalLinkSwitcher->setChecked(get_gui_settings()->get_value<bool>(settings_open_external_link_without_warning, settings_open_external_link_without_warning_default()));
+            }
+        });
+}
 static void initPasscode(QVBoxLayout* _layout, QWidget* _parent)
 {
     auto autoLockWidget = new QWidget(_parent);
@@ -100,8 +123,9 @@ static void initPasscode(QVBoxLayout* _layout, QWidget* _parent)
         pinSwitcher->setChecked(LocalPIN::instance()->enabled());
 
         auto codeWidget = new LocalPINWidget(_checked ? LocalPINWidget::Mode::SetPIN : LocalPINWidget::Mode::RemovePIN, nullptr);
-
-        GeneralDialog d(codeWidget, Utils::InterConnector::instance().getMainWindow(), true);
+        GeneralDialog::Options opt;
+        opt.ignoreKeyPressEvents_ = true;
+        GeneralDialog d(codeWidget, Utils::InterConnector::instance().getMainWindow(), opt);
         d.showInCenter();
 
         pinSwitcher->setChecked(LocalPIN::instance()->enabled());
@@ -117,8 +141,9 @@ static void initPasscode(QVBoxLayout* _layout, QWidget* _parent)
     changePINLink->setText(QT_TRANSLATE_NOOP("settings", "Change passcode"));
     QObject::connect(changePINLink, &TextEmojiWidget::clicked, []()
     {
-        auto codeWidget = new LocalPINWidget(LocalPINWidget::Mode::ChangePIN, nullptr);
-        GeneralDialog d(codeWidget, Utils::InterConnector::instance().getMainWindow(), true);
+        GeneralDialog::Options opt;
+        opt.ignoreKeyPressEvents_ = true;
+        GeneralDialog d(new LocalPINWidget(LocalPINWidget::Mode::ChangePIN, nullptr), Utils::InterConnector::instance().getMainWindow(), opt);
         d.showInCenter();
     });
 
@@ -261,7 +286,7 @@ void GeneralSettingsWidget::Creator::initSecurity(QWidget* _parent)
     secondLayout->setAlignment(Qt::AlignTop);
     mainLayout->addLayout(secondLayout);
 
-    if constexpr (platform::is_windows())
+    if constexpr (!platform::is_apple())
     {
         auto exeFileSwitcher = GeneralCreator::addSwitcher(
             scrollArea,
@@ -285,6 +310,7 @@ void GeneralSettingsWidget::Creator::initSecurity(QWidget* _parent)
         });
     }
 
+    initLinkSwitcher(secondLayout, scrollArea);
     initPasscode(secondLayout, scrollArea);
     initIgnored(secondLayout, scrollArea);
     initAccountSecurity(secondLayout, scrollArea);

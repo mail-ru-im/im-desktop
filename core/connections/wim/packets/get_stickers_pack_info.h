@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../wim_packet.h"
+#include "../../../tools/file_sharing.h"
 
 namespace core
 {
@@ -28,7 +29,7 @@ namespace core
 
             const std::string store_id_;
 
-            const std::string file_id_;
+            const core::tools::filesharing_id filesharing_id_;
 
             std::shared_ptr<core::tools::binary_stream> response_;
 
@@ -38,7 +39,7 @@ namespace core
 
         public:
 
-            get_stickers_pack_info_packet(wim_packet_params _params, const int32_t _pack_id, const std::string& _store_id, const std::string& _file_id);
+            get_stickers_pack_info_packet(wim_packet_params _params, const int32_t _pack_id, const std::string& _store_id, const core::tools::filesharing_id& _filesharing_id);
             virtual ~get_stickers_pack_info_packet();
 
             const std::shared_ptr<core::tools::binary_stream>& get_response() const;

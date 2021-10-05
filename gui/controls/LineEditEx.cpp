@@ -17,8 +17,7 @@ namespace Ui
         connect(this, &QLineEdit::textChanged, this, [=]()
         {
             changeTextColor(Styling::getParameters().getColor(text().length() > 0 ? Styling::StyleVariable::TEXT_SOLID : Styling::StyleVariable::BASE_PRIMARY));
-        }
-        );
+        });
     }
 
     void LineEditEx::setCustomPlaceholder(const QString& _text)
@@ -66,7 +65,7 @@ namespace Ui
 
     void LineEditEx::mousePressEvent(QMouseEvent* _event)
     {
-        Q_EMIT clicked();
+        Q_EMIT clicked(_event->button());
         QLineEdit::mousePressEvent(_event);
     }
 
@@ -102,9 +101,7 @@ namespace Ui
         }
 
         if (_event->matches(QKeySequence::DeleteStartOfWord) && hasSelectedText())
-        {
             _event->setModifiers(Qt::NoModifier);
-        }
 
         QLineEdit::keyPressEvent(_event);
     }
@@ -127,7 +124,7 @@ namespace Ui
             QStyleOptionFrame panel;
             initStyleOption(&panel);
             QRect r = style()->subElementRect(QStyle::SE_LineEditContents, &panel, this);
-            auto m = contentsMargins();
+            const auto m = RenderMargins::ContentMargin == margins_ ? contentsMargins() : textMargins();
             r.setX(r.x() + m.left());
             r.setY(r.y() + m.top());
             r.setRight(r.right() - m.right());
@@ -177,5 +174,38 @@ namespace Ui
         }
 
         return false;
+    }
+
+    void LineEditEx::wheelEvent(QWheelEvent* _event)
+    {
+        int step = 0;
+
+        if constexpr (platform::is_apple())
+        {
+            auto numPixels = _event->pixelDelta();
+            auto numDegrees = _event->angleDelta() / 8;
+            if (!numPixels.isNull())
+                step = numPixels.y();
+            else if (!numDegrees.isNull())
+                step = numDegrees.y() / 15;
+        }
+        else
+        {
+            const auto numDegrees = _event->delta() / 8;
+            step = numDegrees / 15;
+        }
+
+        step /= Utils::scale_bitmap(1);
+        Q_EMIT scrolled(step, QPrivateSignal());
+        QWidget::wheelEvent(_event);
+    }
+
+    void LineEditEx::setRenderMargins(RenderMargins _margins)
+    {
+        if (margins_ != _margins)
+        {
+            margins_ = _margins;
+            update();
+        }
     }
 }

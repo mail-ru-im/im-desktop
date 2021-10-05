@@ -52,7 +52,7 @@ StickerBlock::StickerBlock(ComplexMessageItem* _parent,  const HistoryControl::S
     Layout_ = new StickerBlockLayout();
     setLayout(Layout_);
 
-    QuoteAnimation_.setSemiTransparent();
+    QuoteAnimation_->setSemiTransparent();
     setMouseTracking(true);
 
     connections_.reserve(4);
@@ -65,19 +65,14 @@ IItemBlockLayout* StickerBlock::getBlockLayout() const
     return Layout_;
 }
 
-Data::FormattedString StickerBlock::getSelectedText(const bool, const TextDestination) const
+Data::FString StickerBlock::getSelectedText(const bool, const TextDestination) const
 {
     return isSelected() ? QT_TRANSLATE_NOOP("contact_list", "Sticker") : QString();
 }
 
-Data::FormattedString StickerBlock::getSourceText() const
+Data::FString StickerBlock::getSourceText() const
 {
     return QT_TRANSLATE_NOOP("contact_list", "Sticker");
-}
-
-bool StickerBlock::updateFriendly(const QString&/* _aimId*/, const QString&/* _friendly*/)
-{
-    return false;
 }
 
 QString StickerBlock::formatRecentsText() const
@@ -107,7 +102,7 @@ void StickerBlock::requestPinPreview()
 {
     auto conn = std::make_shared<QMetaObject::Connection>();
     *conn = connect(&Stickers::getCache(), &Stickers::Cache::stickerUpdated, this,
-        [conn, this](qint32 _error, const QString&, qint32 _setId, qint32 _stickerId)
+        [conn, this](qint32 _error, const Utils::FileSharingId&, qint32 _setId, qint32 _stickerId)
     {
         if (int(Info_->SetId_) == _setId && int(Info_->StickerId_) == _stickerId)
         {
@@ -237,7 +232,7 @@ void StickerBlock::updateFonts()
 {
 }
 
-void StickerBlock::onSticker(const qint32 _error, const QString&, const qint32 _setId, const qint32 _stickerId)
+void StickerBlock::onSticker(const qint32 _error, const Utils::FileSharingId&, const qint32 _setId, const qint32 _stickerId)
 {
     if (_stickerId <= 0)
         return;

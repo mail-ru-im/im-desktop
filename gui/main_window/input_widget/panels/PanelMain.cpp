@@ -16,6 +16,8 @@
 #include "controls/CustomButton.h"
 #include "styles/ThemeParameters.h"
 #include "main_window/MainWindow.h"
+#include "cache/stickers/stickers.h"
+#include "DraftVersionWidget.h"
 
 namespace
 {
@@ -80,6 +82,9 @@ namespace
 
     void animateButton(QWidget* _button, const Ui::InputSide::SideState _state)
     {
+        if (!_button)
+            return;
+
         const auto startOpacity = _state == Ui::InputSide::SideState::Normal ? 0.0 : 1.0;
         const auto endOpacity = _state == Ui::InputSide::SideState::Normal ? 1.0 : 0.0;
 
@@ -159,19 +164,11 @@ namespace Ui
 
 
 
-    InputSide::InputSide(QWidget* _parent)
+    InputSide::InputSide(QWidget* _parent, SideState _initialState)
         : QWidget(_parent)
-        , anim_(new QVariantAnimation(this))
-        , state_(SideState::Normal)
+        , state_(_initialState)
     {
         setFixedWidth(getStateWidth(state_));
-
-        anim_->setDuration(sideAnimDuration().count());
-        anim_->setEasingCurve(QEasingCurve::InOutSine);
-        connect(anim_, &QVariantAnimation::valueChanged, this, [this](const QVariant& value)
-        {
-            setFixedWidth(value.toInt());
-        });
     }
 
     InputSide::SideState InputSide::getState() const noexcept
@@ -185,6 +182,7 @@ namespace Ui
         {
             state_ = _state;
 
+            initAnimation();
             anim_->stop();
             anim_->setStartValue(width());
             anim_->setEndValue(getStateWidth(_state));
@@ -197,20 +195,33 @@ namespace Ui
         return _state == SideState::Normal ? getHorMargin() : getEditHorMarginLeft();
     }
 
+    void InputSide::initAnimation()
+    {
+        if (anim_)
+            return;
+
+        anim_ = new QVariantAnimation(this);
+        anim_->setDuration(sideAnimDuration().count());
+        anim_->setEasingCurve(QEasingCurve::InOutSine);
+        connect(anim_, &QVariantAnimation::valueChanged, this, [this](const QVariant& value)
+        {
+            setFixedWidth(value.toInt());
+        });
+    }
 
 
-    InputPanelMain::InputPanelMain(QWidget* _parent, SubmitButton* _submit)
+    InputPanelMain::InputPanelMain(QWidget* _parent, SubmitButton* _submit, InputFeatures _features)
         : QWidget(_parent)
+        , IEscapeCancellable(this)
         , topHost_(new QWidget(this))
         , emptyTop_(new QWidget(this))
-        , edit_(nullptr)
+        , draftVersionWidget_(nullptr)
         , buttonSubmit_(_submit)
-        , animResize_(new QVariantAnimation(this))
         , curEditHeight_(viewportMinHeight())
-        , forceSendButton_(false)
+        , features_(_features)
     {
         //for sticker suggests
-        GetDispatcher()->getStickersMeta();
+        Stickers::getCache().requestStickersMeta();
 
         setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
 
@@ -229,27 +240,29 @@ namespace Ui
 
         currentTopWidget_ = emptyTop_;
 
-        const QSize buttonSize(32, 32);
-
         bottomHost_ = new QWidget(this);
         bottomHost_->setFixedHeight(getInputMinHeight());
         auto inputRowLayout = Utils::emptyHLayout(bottomHost_);
         inputRowLayout->addSpacerItem(new QSpacerItem(0, 0, QSizePolicy::Fixed, QSizePolicy::Expanding));
+
         {
-            leftSide_ = new InputSide(this);
-            auto leftLayout = Utils::emptyVLayout(leftSide_);
-            leftLayout->setAlignment(Qt::AlignBottom | Qt::AlignLeft);
-            leftLayout->setContentsMargins(getHorSpacer(), 0, 0, 0);
-
-            buttonAttach_ = new AttachFileButton(leftSide_);
-            connect(buttonAttach_, &AttachFileButton::clickedWithButton, this, &InputPanelMain::onAttachClicked);
-
-            Testing::setAccessibleName(buttonAttach_, qsl("AS ChatInput plusButton"));
-            leftLayout->addWidget(buttonAttach_);
-            leftLayout->addSpacing((getDefaultInputHeight() - buttonAttach_->height()) / 2);
-
+            leftSide_ = new InputSide(this, isAttachEnabled() ? InputSide::SideState::Normal : InputSide::SideState::Minimized);
             Testing::setAccessibleName(leftSide_, qsl("AS ChatInput leftHost"));
             inputRowLayout->addWidget(leftSide_);
+
+            if (isAttachEnabled())
+            {
+                auto leftLayout = Utils::emptyVLayout(leftSide_);
+                leftLayout->setAlignment(Qt::AlignBottom | Qt::AlignLeft);
+                leftLayout->setContentsMargins(getHorSpacer(), 0, 0, 0);
+
+                buttonAttach_ = new AttachFileButton(leftSide_);
+                connect(buttonAttach_, &AttachFileButton::clickedWithButton, this, &InputPanelMain::onAttachClicked);
+
+                Testing::setAccessibleName(buttonAttach_, qsl("AS ChatInput plusButton"));
+                leftLayout->addWidget(buttonAttach_);
+                leftLayout->addSpacing((getDefaultInputHeight() - buttonAttach_->height()) / 2);
+            }
         }
 
         {
@@ -320,6 +333,7 @@ namespace Ui
                 });
             }
 
+            const QSize buttonSize(32, 32);
             buttonEmoji_ = new CustomButton(centerHost, qsl(":/smile"), buttonSize);
             buttonEmoji_->setFixedSize(Utils::scale_value(buttonSize));
             buttonEmoji_->setCustomToolTip(QT_TRANSLATE_NOOP("tooltips", "Smileys and stickers"));
@@ -362,25 +376,16 @@ namespace Ui
         connect(textEdit_->document()->documentLayout(), &QAbstractTextDocumentLayout::documentSizeChanged, this, &InputPanelMain::onDocumentSizeChanged);
         connect(textEdit_->document(), &QTextDocument::contentsChanged, this, &InputPanelMain::onDocumentContentsChanged);
 
-        animResize_->setDuration(heightAnimDuration().count());
-        animResize_->setEasingCurve(QEasingCurve::InOutSine);
-        connect(animResize_, &QVariantAnimation::valueChanged, this, [this](const QVariant& value)
-        {
-            setEditHeight(value.toInt());
-        });
-        connect(animResize_, &QVariantAnimation::finished, this, [this]()
-        {
-            const auto newPolicy = curEditHeight_ >= viewportMaxHeight() ? Qt::ScrollBarAsNeeded : Qt::ScrollBarAlwaysOff;
-            if (newPolicy != textEdit_->verticalScrollBarPolicy())
-                textEdit_->setVerticalScrollBarPolicy(newPolicy);
-        });
-
         setButtonsTabOrder();
     }
 
     InputPanelMain::~InputPanelMain()
     {
-        animResize_->stop();
+        if (animResize_)
+            animResize_->stop();
+
+        if (attachPopup_)
+            attachPopup_->deleteLater();
     }
 
     void InputPanelMain::setSubmitButton(SubmitButton* _button)
@@ -399,17 +404,44 @@ namespace Ui
         setRightSideState(InputSide::SideState::Normal);
 
         edit_->setMediaType(_type);
-        edit_->setMessage(_message);
+        edit_->setMessage(std::move(_message));
 
         setCurrentTopWidget(edit_);
     }
 
+    void InputPanelMain::showDraftVersion(const Data::Draft& _draft)
+    {
+        if (!draftVersionWidget_)
+        {
+            draftVersionWidget_ = new DraftVersionWidget(this);
+            topHost_->layout()->addWidget(draftVersionWidget_);
+            connect(draftVersionWidget_, &DraftVersionWidget::cancel, this, [this]()
+            {
+                hidePopups();
+                Q_EMIT draftVersionCancelled(QPrivateSignal());
+            });
+            connect(draftVersionWidget_, &DraftVersionWidget::accept, this, [this]()
+            {
+                hidePopups();
+                Q_EMIT draftVersionAccepted(QPrivateSignal());
+            });
+        }
+
+        draftVersionWidget_->setDraft(_draft);
+        setCurrentTopWidget(draftVersionWidget_);
+    }
+
+    void InputPanelMain::cancelEdit()
+    {
+        Q_EMIT editCancelClicked(QPrivateSignal());
+    }
+
     void InputPanelMain::hidePopups()
     {
-        setLeftSideState(InputSide::SideState::Normal);
+        setLeftSideState(isAttachEnabled() ? InputSide::SideState::Normal : InputSide::SideState::Minimized);
         setRightSideState(InputSide::SideState::Normal);
 
-        AttachFilePopup::hidePopup();
+        hideAttachPopup();
 
         setCurrentTopWidget(emptyTop_);
     }
@@ -424,11 +456,7 @@ namespace Ui
             Testing::setAccessibleName(edit_, qsl("AS ChatInput edit"));
             topHost_->layout()->addWidget(edit_);
 
-            connect(edit_, &EditMessageWidget::cancelClicked, this, [this]()
-            {
-                Q_EMIT editCancelClicked(QPrivateSignal());
-            });
-
+            connect(edit_, &EditMessageWidget::cancelClicked, this, &InputPanelMain::cancelEdit);
             connect(edit_, &EditMessageWidget::messageClicked, this, [this]()
             {
                 Q_EMIT editedMessageClicked(QPrivateSignal());
@@ -442,14 +470,18 @@ namespace Ui
     {
         if (buttonAttach_->isActive())
         {
-            AttachFilePopup::hidePopup();
+            hideAttachPopup();
         }
         else
         {
+            initAttachPopup();
+
             const auto fromKB = _type == ClickType::ByKeyboard;
-            AttachFilePopup::showPopup(fromKB ? AttachFilePopup::ShowMode::Persistent : AttachFilePopup::ShowMode::Normal);
+            attachPopup_->setPersistent(fromKB);
+            attachPopup_->showAnimated(getAttachFileButtonRect());
+
             if (fromKB)
-                AttachFilePopup::instance().selectFirstItem();
+                attachPopup_->selectFirstItem();
             setFocusOnInput();
         }
     }
@@ -468,6 +500,7 @@ namespace Ui
         const auto th = std::clamp(_height, viewportMinHeight(), viewportMaxHeight());
         textEdit_->setFixedHeight(th);
 
+        initResizeAnimation();
         animResize_->stop();
         animResize_->setStartValue(curEditHeight_);
         animResize_->setEndValue(_height);
@@ -502,6 +535,9 @@ namespace Ui
             scrollbar->setValue(scrollbar->minimum());
         else
             scrollToBottomIfNeeded();
+
+        if (!isPttEnabled())
+            checkHideSubmit();
     }
 
     void InputPanelMain::updateTextEditViewportMargins()
@@ -520,6 +556,20 @@ namespace Ui
                 wdg->setVisible(wdg == _widget);
 
             topHost_->setFixedHeight(_widget->height());
+
+            if (_widget == edit_)
+            {
+                escCancel_->addChild(edit_, [this]() { cancelEdit(); });
+            }
+            else if (_widget == draftVersionWidget_)
+            {
+                escCancel_->addChild(draftVersionWidget_, [this]() { Q_EMIT draftVersionCancelled(QPrivateSignal()); });
+            }
+            else
+            {
+                escCancel_->removeChild(edit_);
+                escCancel_->removeChild(draftVersionWidget_);
+            }
         }
         else
         {
@@ -554,7 +604,7 @@ namespace Ui
 
     void InputPanelMain::setLeftSideState(const InputSide::SideState _state)
     {
-        if (_state != leftSide_->getState())
+        if (leftSide_ && _state != leftSide_->getState())
         {
             animateButton(buttonAttach_, _state);
             leftSide_->resizeAnimated(_state);
@@ -570,14 +620,20 @@ namespace Ui
         }
     }
 
+    void InputPanelMain::checkHideSubmit()
+    {
+        if (!forceSendButton_)
+        {
+            const auto isEmptyOrOnlyWhitespaces = QStringView(textEdit_->toPlainText()).trimmed().isEmpty();
+            const auto newState = isEmptyOrOnlyWhitespaces ? InputSide::SideState::Minimized : InputSide::SideState::Normal;
+            setRightSideState(newState);
+        }
+    }
+
     void InputPanelMain::editContentChanged()
     {
         if (edit_ && currentTopWidget_ == edit_)
-        {
-            const auto newState = (!forceSendButton_ && textEdit_->document()->isEmpty()) ? InputSide::SideState::Minimized : InputSide::SideState::Normal;
-            if (!forceSendButton_)
-                setRightSideState(newState);
-        }
+            checkHideSubmit();
     }
 
     void InputPanelMain::scrollToBottomIfNeeded()
@@ -590,12 +646,85 @@ namespace Ui
     void InputPanelMain::setButtonsTabOrder()
     {
         QWidget* widgets[] = { buttonAttach_, textEdit_, buttonEmoji_, buttonSubmit_ };
-        for (size_t i = 0; i < std::size(widgets) - 1; ++i)
+        auto it = std::stable_partition(std::begin(widgets), std::end(widgets), [](auto w) { return !w; });
+        if (it != std::end(widgets))
         {
-            im_assert(widgets[i]);
-            im_assert(widgets[i + 1]);
-            setTabOrder(widgets[i], widgets[i + 1]);
+            for (; it != std::prev(std::end(widgets)); ++it)
+                setTabOrder(*it, *std::next(it));
         }
+    }
+
+    void InputPanelMain::initResizeAnimation()
+    {
+        if (animResize_)
+            return;
+
+        animResize_ = new QVariantAnimation(this);
+        animResize_->setDuration(heightAnimDuration().count());
+        animResize_->setEasingCurve(QEasingCurve::InOutSine);
+        connect(animResize_, &QVariantAnimation::valueChanged, this, [this](const QVariant& value)
+        {
+            setEditHeight(value.toInt());
+        });
+        connect(animResize_, &QVariantAnimation::finished, this, [this]()
+        {
+            const auto newPolicy = curEditHeight_ >= viewportMaxHeight() ? Qt::ScrollBarAsNeeded : Qt::ScrollBarAlwaysOff;
+            if (newPolicy != textEdit_->verticalScrollBarPolicy())
+                textEdit_->setVerticalScrollBarPolicy(newPolicy);
+        });
+    }
+
+    void InputPanelMain::initAttachPopup()
+    {
+        if (attachPopup_)
+            return;
+
+        attachPopup_ = new AttachFilePopup(parentForPopup_ ? parentForPopup_ : window());
+        attachPopup_->setPttEnabled(isPttEnabled());
+
+        connect(attachPopup_, &AttachFilePopup::itemClicked, this, [this](AttachMediaType _mediaType)
+        {
+            Q_EMIT attachMedia(_mediaType, QPrivateSignal());
+        });
+
+        connect(attachPopup_, &AttachFilePopup::visiblityChanged, this, [this](bool _visible)
+        {
+            if (buttonAttach_)
+                buttonAttach_->onAttachVisibleChanged(_visible);
+
+            if (_visible)
+                escCancel_->addChild(attachPopup_, [this]() { hideAttachPopup(); });
+            else
+                escCancel_->removeChild(attachPopup_);
+
+            if (isVisibleTo(parentWidget()))
+            {
+                const auto mp = Utils::InterConnector::instance().getMessengerPage();
+                if (mp && !mp->isSemiWindowVisible())
+                {
+                    if (attachPopup_->isPersistent())
+                        setFocusOnAttach();
+                    else
+                        setFocusOnInput();
+                }
+            }
+        });
+
+        connect(textEdit_, &HistoryTextEdit::textChanged, this, [this]()
+        {
+            attachPopup_->setPersistent(false);
+            hideAttachPopup();
+        });
+    }
+
+    bool InputPanelMain::isAttachEnabled() const
+    {
+        return features_ & InputFeature::AttachFile;
+    }
+
+    bool InputPanelMain::isPttEnabled() const
+    {
+        return features_ & InputFeature::Ptt;
     }
 
     void InputPanelMain::recalcHeight()
@@ -609,18 +738,30 @@ namespace Ui
 
     void InputPanelMain::updateStyleImpl(const InputStyleMode _mode)
     {
-        buttonAttach_->updateStyle(_mode);
+        if (buttonAttach_)
+            buttonAttach_->updateStyle(_mode);
+
         updateButtonColors(buttonEmoji_, _mode);
 
         if (edit_)
             edit_->updateStyle(_mode);
     }
 
+    void InputPanelMain::hideEvent(QHideEvent* _e)
+    {
+        hideAttachPopup();
+    }
+
     QRect InputPanelMain::getAttachFileButtonRect() const
     {
-        auto rect = buttonAttach_->geometry();
-        rect.moveTopLeft(leftSide_->mapToGlobal(rect.topLeft()));
-        return rect;
+        if (buttonAttach_)
+        {
+            auto rect = buttonAttach_->geometry();
+            rect.moveTopLeft(leftSide_->mapToGlobal(rect.topLeft()));
+            return rect;
+        }
+
+        return {};
     }
 
     void InputPanelMain::setUnderQuote(const bool _underQuote)
@@ -636,6 +777,24 @@ namespace Ui
         forceSendButton_ = _force;
     }
 
+    void InputPanelMain::hideAttachPopup()
+    {
+        if (attachPopup_)
+            attachPopup_->hideAnimated();
+
+        escCancel_->removeChild(attachPopup_);
+    }
+    
+    bool InputPanelMain::isDraftVersionVisible() const
+    {
+        return draftVersionWidget_ && draftVersionWidget_->isVisible();
+    }
+
+    void InputPanelMain::setParentForPopup(QWidget* _parent)
+    {
+        parentForPopup_ = _parent;
+    }
+
     void InputPanelMain::setFocusOnInput()
     {
         textEdit_->setFocus();
@@ -648,7 +807,8 @@ namespace Ui
 
     void InputPanelMain::setFocusOnAttach()
     {
-        buttonAttach_->setFocus(Qt::TabFocusReason);
+        if (buttonAttach_)
+            buttonAttach_->setFocus(Qt::TabFocusReason);
     }
 
     void InputPanelMain::setEmojiButtonChecked(const bool _checked)

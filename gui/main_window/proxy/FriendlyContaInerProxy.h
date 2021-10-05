@@ -11,6 +11,7 @@ namespace Logic
         enum Flags
         {
             ReplaceFavorites = 1 << 0,
+            ReplaceService = 1 << 1,
         };
 
         FriendlyContainerProxy(int32_t _flags) : flags_(_flags) {}

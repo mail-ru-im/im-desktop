@@ -44,6 +44,9 @@ namespace Ui
         void paintEvent(QPaintEvent* _event) override;
 
     private:
+        void initSetText(const QString& _text);
+
+    private:
         QString iconName_;
         QPixmap icon_;
         QColor circleNormal_;
@@ -64,18 +67,13 @@ namespace Ui
 
     public:
         TransparentPanelButton(QWidget* _parent, const QString& _iconName, const QString& _tooltipText = QString(), Qt::Alignment _align = Qt::AlignCenter, bool _isAnimated = false);
-        void setTooltipText(const QString& _text) override;
-        const QString& getTooltipText() const override;
-        void hideTooltip();
         void setTooltipBoundingRect(const QRect& _r);
 
         void changeState();
 
     protected:
         void paintEvent(QPaintEvent* _event) override;
-        void enterEvent(QEvent* _e) override;
-        void leaveEvent(QEvent* _e) override;
-        void onTooltipTimer() override;
+        void mouseMoveEvent(QMouseEvent* _e) override;
         void showToolTip() override;
 
     private Q_SLOTS:
@@ -95,10 +93,7 @@ namespace Ui
 
         void rotate(const RotateDirection _dir);
         QPoint getIconOffset() const;
-
-    protected:
-        QTimer* tooltipTimer_;
-        QString tooltipText_;
+        QRect getTooltipArea() const;
 
     private:
         QPixmap iconNormal_;

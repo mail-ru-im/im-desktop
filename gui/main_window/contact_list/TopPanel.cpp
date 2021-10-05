@@ -76,15 +76,13 @@ namespace Ui
 
     void OverlayTopWidget::paintEvent(QPaintEvent* _event)
     {
-        if (parent_)
+        if (parent_ && !parent_->buttons_.empty())
         {
             QPainter p(this);
-            p.setRenderHint(QPainter::Antialiasing);
-            p.setRenderHint(QPainter::TextAntialiasing);
-            p.setRenderHint(QPainter::SmoothPixmapTransform);
+            p.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing | QPainter::SmoothPixmapTransform);
             for (const auto& b : parent_->buttons_)
             {
-                if (b && b->isVisible() && !(b->getBadgeText().isEmpty()))
+                if (b && b->isVisible() && !b->getBadgeText().isEmpty())
                     b->drawBadge(p);
             }
         }
@@ -615,13 +613,13 @@ namespace Ui
         titleTextUnit_->init(Fonts::appFontScaled(16, Fonts::FontWeight::SemiBold),
                              Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
 
-        setMouseTracking(true);
+        for (auto w : { leftWidget_, centerWidget_, rightWidget_, (QWidget*)this })
+            w->setMouseTracking(true);
+
         refresh();
     }
 
-    HeaderTitleBar::~HeaderTitleBar()
-    {
-    }
+    HeaderTitleBar::~HeaderTitleBar() = default;
 
     void HeaderTitleBar::setTitle(const QString& _title)
     {
@@ -629,7 +627,7 @@ namespace Ui
         {
             title_ = _title;
             titleVisible_ = true;
-            titleTextUnit_->setText(title_, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+            titleTextUnit_->setText(title_);
             update();
         }
         refresh();
@@ -736,6 +734,7 @@ namespace Ui
     void HeaderTitleBar::setArrowVisible(bool _visible)
     {
         arrowVisible_ = _visible;
+        updateCursor();
         update();
     }
 
@@ -772,14 +771,13 @@ namespace Ui
         */
 
         QPainter p(this);
-        p.setRenderHint(QPainter::Antialiasing);
-        p.setRenderHint(QPainter::SmoothPixmapTransform);
+        p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
 
         if (!isCompactMode_)
         {
             const auto r = rect();
 
-            if (!titleTextUnit_->getText().isEmpty() && titleVisible_)
+            if (titleVisible_ && !titleTextUnit_->isEmpty())
             {
                 titleTextUnit_->setOffsets(r.width() / 2 - titleTextUnit_->cachedSize().width() / 2, r.height() / 2);
                 titleTextUnit_->draw(p, TextRendering::VerPosition::MIDDLE);
@@ -796,20 +794,12 @@ namespace Ui
     void HeaderTitleBar::resizeEvent(QResizeEvent* _event)
     {
         QWidget::resizeEvent(_event);
-        overlayWidget_->resize(_event->size());
+        overlayWidget_->resize(size());
     }
 
     void HeaderTitleBar::mouseMoveEvent(QMouseEvent* _event)
     {
-        if (arrowVisible_)
-        {
-            auto r = QRect(titleTextUnit_->offsets().x(), titleTextUnit_->offsets().y() - titleTextUnit_->cachedSize().height() / 2,
-                titleTextUnit_->cachedSize().width() + Utils::scale_value(arrow_size + arrow_left_margin * 2),
-                titleTextUnit_->cachedSize().height() + Utils::scale_value(arrow_top_margin * 2));
-
-            setCursor(r.contains(_event->pos()) ? Qt::PointingHandCursor : Qt::ArrowCursor);
-        }
-
+        updateCursor();
         QWidget::mouseMoveEvent(_event);
     }
 
@@ -834,6 +824,18 @@ namespace Ui
         QWidget::mouseReleaseEvent(_event);
     }
 
+    void HeaderTitleBar::leaveEvent(QEvent* _event)
+    {
+        updateCursor();
+        QWidget::leaveEvent(_event);
+    }
+
+    void HeaderTitleBar::enterEvent(QEvent* _event)
+    {
+        updateCursor();
+        QWidget::enterEvent(_event);
+    }
+
     void HeaderTitleBar::updateSpacers()
     {
         const auto dX = (leftWidget_->width() - rightWidget_->width()) / 2;
@@ -842,6 +844,25 @@ namespace Ui
         leftSpacer_->changeSize(spacerW, 0, QSizePolicy::Fixed, QSizePolicy::Expanding);
         rightSpacer_->changeSize(spacerW - dX, 0, QSizePolicy::Preferred, QSizePolicy::Expanding);
         layout()->invalidate();
+    }
+
+    void HeaderTitleBar::updateCursor()
+    {
+        if (arrowVisible_)
+        {
+            const auto r = QRect(
+                titleTextUnit_->offsets().x(),
+                titleTextUnit_->offsets().y() - titleTextUnit_->cachedSize().height() / 2,
+                titleTextUnit_->cachedSize().width() + Utils::scale_value(arrow_size + arrow_left_margin * 2),
+                titleTextUnit_->cachedSize().height() + Utils::scale_value(arrow_top_margin * 2));
+
+            if (r.contains(mapFromGlobal(QCursor::pos())))
+            {
+                setCursor(Qt::PointingHandCursor);
+                return;
+            }
+        }
+        setCursor(Qt::ArrowCursor);
     }
 
     EmailTitlebarButton::EmailTitlebarButton(QWidget* _parent)

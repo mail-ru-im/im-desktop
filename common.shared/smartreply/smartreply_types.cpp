@@ -21,7 +21,7 @@ std::string_view smartreply::type_2_string(const smartreply::type _type) noexcep
         break;
     }
 
-    assert(!"invalid smartreply type or unimplemented");
+    im_assert(!"invalid smartreply type or unimplemented");
     return std::string_view();
 }
 
@@ -34,7 +34,7 @@ smartreply::type smartreply::string_2_type(const std::string_view _str) noexcept
     else if (_str == smartreply::type_2_string(smartreply::type::text))
         return smartreply::type::text;
 
-    assert(!"invalid smartreply type string or unimplemented");
+    im_assert(!"invalid smartreply type string or unimplemented");
     return smartreply::type::invalid;
 }
 
@@ -53,6 +53,6 @@ std::string_view core::smartreply::array_node_name_for(const smartreply::type _t
         break;
     }
 
-    assert(!"invalid smartreply type or unimplemented");
+    im_assert(!"invalid smartreply type or unimplemented");
     return std::string_view();
 }

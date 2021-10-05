@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "ScreenFrame.h"
 #include "DetachedVideoWnd.h"
 #include "PanelButtons.h"
 #include "../core_dispatcher.h"
@@ -178,66 +179,32 @@ void Ui::MiniWindowVideoPanel::onShareScreen()
         return;
 
     const QList<voip_proxy::device_desc>& screens = Ui::GetDispatcher()->getVoipController().screenList();
-
-    const auto switchSharingImpl = [this, &screens](const int _index)
-    {
-        isScreenSharingEnabled_ = !isScreenSharingEnabled_;
-        Q_EMIT onShareScreenClick(isScreenSharingEnabled_);
-        Ui::GetDispatcher()->getVoipController().switchShareScreen(!screens.empty() ? &screens[_index] : nullptr);
-        updateVideoDeviceButtonsState();
-    };
-
-    const auto switchSharing = [this, &switchSharingImpl](const int _index)
-    {
-        if constexpr (platform::is_apple())
-        {
-            if (!isScreenSharingEnabled_)
-            {
-                const auto p = media::permissions::checkPermission(media::permissions::DeviceType::Screen);
-                if (p == media::permissions::Permission::Allowed)
-                {
-                    switchSharingImpl(_index);
-                }
-                else
-                {
-                    media::permissions::requestPermission(media::permissions::DeviceType::Screen, [](bool){});
-                    Q_EMIT needShowScreenPermissionsPopup(media::permissions::DeviceType::Screen);
-                }
-            }
-            else
-            {
-                switchSharingImpl(_index);
-            }
-        }
-        else
-        {
-            switchSharingImpl(_index);
-        }
-    };
-
     if (!isScreenSharingEnabled_ && screens.size() > 1)
     {
         Ui::ContextMenu menu(this);
         Ui::ContextMenu::applyStyle(&menu, false, Utils::scale_value(15), Utils::scale_value(36));
         for (int i = 0; i < screens.size(); i++)
-        {
-            menu.addAction(QT_TRANSLATE_NOOP("voip_pages", "Screen") % ql1c(' ') % QString::number(i + 1), [i, switchSharing]()
-            {
-                switchSharing(i);
-            });
-        }
+            menu.addAction(QT_TRANSLATE_NOOP("voip_pages", "Screen") % ql1c(' ') % QString::number(i + 1), [i]() { ScreenSharingManager::instance().toggleSharing(i); });
+
         menu.exec(QCursor::pos());
-    } else
-    {
-        switchSharing(0);
     }
+    else
+    {
+        ScreenSharingManager::instance().toggleSharing(0);
+    }
+}
+
+void Ui::MiniWindowVideoPanel::onShareScreenStateChanged(ScreenSharingManager::SharingState _state, int)
+{
+    isScreenSharingEnabled_ = (_state == ScreenSharingManager::SharingState::Shared);
+    Q_EMIT onShareScreenClick(isScreenSharingEnabled_);
+    updateVideoDeviceButtonsState();
 }
 
 void Ui::MiniWindowVideoPanel::onVoipVideoDeviceSelected(const voip_proxy::device_desc& _desc)
 {
     isScreenSharingEnabled_ = (_desc.dev_type == voip_proxy::kvoipDevTypeVideoCapture && _desc.video_dev_type == voip_proxy::kvoipDeviceDesktop);
     isCameraEnabled_ = (_desc.dev_type == voip_proxy::kvoipDevTypeVideoCapture && _desc.video_dev_type == voip_proxy::kvoipDeviceCamera);
-
     updateVideoDeviceButtonsState();
 }
 
@@ -311,6 +278,8 @@ Ui::MiniWindowVideoPanel::MiniWindowVideoPanel(QWidget* _parent)
     //QObject::connect(&Ui::GetDispatcher()->getVoipController(), SIGNAL(onVoipMinimalBandwidthChanged(bool)), this, SLOT(onVoipMinimalBandwidthChanged(bool)), Qt::DirectConnection);
     connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipVideoDeviceSelected, this, &MiniWindowVideoPanel::onVoipVideoDeviceSelected);
 
+    connect(&ScreenSharingManager::instance(), &ScreenSharingManager::needShowScreenPermissionsPopup, this, &MiniWindowVideoPanel::needShowScreenPermissionsPopup);
+    connect(&ScreenSharingManager::instance(), &ScreenSharingManager::sharingStateChanged, this, &MiniWindowVideoPanel::onShareScreenStateChanged);
 }
 
 
@@ -592,12 +561,6 @@ Ui::DetachedVideoWindow::DetachedVideoWindow(QWidget* _parent)
         if (QAbstractAnimation::Backward == opacityAnimation_->direction())
             hide();
     });
-
-    // Round rect.
-    //QPainterPath path(QPointF(0, 0));
-    //path.addRoundRect(rect(), Utils::scale_value(8));
-    //QRegion region(path.toFillPolygon().toPolygon());
-    //setMask(region);
 }
 
 void Ui::DetachedVideoWindow::onVoipCallDestroyed(const voip_manager::ContactEx& _contactEx)
@@ -607,6 +570,7 @@ void Ui::DetachedVideoWindow::onVoipCallDestroyed(const voip_manager::ContactEx&
         // in this moment destroyed call is active, e.a. call_count + 1
         closedManualy_ = false;
     }
+    ScreenSharingManager::instance().stopSharing();
 }
 
 void Ui::DetachedVideoWindow::onPanelClickedClose()
@@ -896,7 +860,11 @@ void Ui::DetachedVideoWindow::activateMainVideoWindow()
 
 bool Ui::DetachedVideoWindow::isMinimized() const
 {
-    return QWidget::isMinimized() && (videoPanel_ && !videoPanel_->isVisible());
+    const auto isMin = QWidget::isMinimized();
+    if constexpr (platform::is_linux())
+        return isMin;
+
+    return isMin && (videoPanel_ && !videoPanel_->isVisible());
 }
 
 void Ui::DetachedVideoWindow::setWindowTitle(const QString& _title)

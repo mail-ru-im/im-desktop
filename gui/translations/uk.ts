@@ -384,9 +384,144 @@ You can leave your feedback or report an error here:</source>
         <source>You are not a member of this chat or you was banned to write</source>
         <translation>Ви не учасник чату або вам заборонено писати</translation>
     </message>
+</context>
+<context>
+    <name>calendar</name>
     <message>
-        <source>Are you sure you want to open an external link %1?</source>
-        <translation>Ви впевнені, що хочете відкрити зовнішнє посилання %1 ?</translation>
+        <source>Mon</source>
+        <translation>Пн</translation>
+    </message>
+    <message>
+        <source>Tue</source>
+        <translation>Вт</translation>
+    </message>
+    <message>
+        <source>Wed</source>
+        <translation>Ср</translation>
+    </message>
+    <message>
+        <source>Thu</source>
+        <translation>чт</translation>
+    </message>
+    <message>
+        <source>Fri</source>
+        <translation>Пт</translation>
+    </message>
+    <message>
+        <source>Sat</source>
+        <translation>Сб</translation>
+    </message>
+    <message>
+        <source>Sun</source>
+        <translation>Нд</translation>
+    </message>
+    <message>
+        <source>January</source>
+        <translation>січень</translation>
+    </message>
+    <message>
+        <source>Febuary</source>
+        <translation>Лютий</translation>
+    </message>
+    <message>
+        <source>March</source>
+        <translation>Березень</translation>
+    </message>
+    <message>
+        <source>April</source>
+        <translation>Квітень</translation>
+    </message>
+    <message>
+        <source>May</source>
+        <translation>Травень</translation>
+    </message>
+    <message>
+        <source>June</source>
+        <translation>червень</translation>
+    </message>
+    <message>
+        <source>July</source>
+        <translation>Липень</translation>
+    </message>
+    <message>
+        <source>August</source>
+        <translation>Серпень</translation>
+    </message>
+    <message>
+        <source>September</source>
+        <translation>Вересень</translation>
+    </message>
+    <message>
+        <source>October</source>
+        <translation>Жовтень</translation>
+    </message>
+    <message>
+        <source>November</source>
+        <translation>Листопад</translation>
+    </message>
+    <message>
+        <source>December</source>
+        <translation>грудень</translation>
+    </message>
+    <message>
+        <source>Jan</source>
+        <translation>січень</translation>
+    </message>
+    <message>
+        <source>Feb</source>
+        <translation>февр</translation>
+    </message>
+    <message>
+        <source>Mar</source>
+        <translation>березня</translation>
+    </message>
+    <message>
+        <source>Apr</source>
+        <translation>квітня</translation>
+    </message>
+    <message>
+        <source>Jun</source>
+        <translation>червень</translation>
+    </message>
+    <message>
+        <source>Jul</source>
+        <translation>Липень</translation>
+    </message>
+    <message>
+        <source>Aug</source>
+        <translation>серпня</translation>
+    </message>
+    <message>
+        <source>Sep</source>
+        <translation>сент</translation>
+    </message>
+    <message>
+        <source>Oct</source>
+        <translation>жовтень</translation>
+    </message>
+    <message>
+        <source>Nov</source>
+        <translation>нояб</translation>
+    </message>
+    <message>
+        <source>Dec</source>
+        <translation>грудня</translation>
+    </message>
+    <message>
+        <source>Today</source>
+        <translation>сьогодні</translation>
+    </message>
+    <message>
+        <source>Tomorrow</source>
+        <translation>завтра</translation>
+    </message>
+    <message>
+        <source>MayS</source>
+        <translation>травня</translation>
+    </message>
+    <message>
+        <source>%1. d, yyyy</source>
+        <translation>d %1, yyyy</translation>
     </message>
 </context>
 <context>
@@ -987,6 +1122,22 @@ You can leave your feedback or report an error here:</source>
 %3
 %4 %5</translation>
     </message>
+    <message>
+        <source>%1 changed task title to &quot;%2&quot;</source>
+        <translation>%1 змінив (-ла) текст завдання на &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed task deadline to %2</source>
+        <translation>%1 змінив (-ла) дедлайн на %2</translation>
+    </message>
+    <message>
+        <source>%1 changed task assignee to &quot;%2&quot;</source>
+        <translation>%1 змінив (-ла) виконавця на &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>Task status changed to &quot;%1&quot;</source>
+        <translation>Статус завдання змінений на &quot;%1&quot;</translation>
+    </message>
 </context>
 <context>
     <name>chat_page</name>
@@ -1053,6 +1204,22 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Message sent</source>
         <translation>Повідомлення відправлено</translation>
+    </message>
+    <message>
+        <source>Access limited</source>
+        <translation>доступ обмежено</translation>
+    </message>
+    <message>
+        <source>File is not available</source>
+        <translation>Файл не доступний</translation>
+    </message>
+    <message>
+        <source>Filesharing Id copied to clipboard</source>
+        <translation>Filesharing Id скопійований</translation>
+    </message>
+    <message>
+        <source>Filesharing link copied to clipboard</source>
+        <translation>Посилання на файлшарінг скопійована</translation>
     </message>
 </context>
 <context>
@@ -1175,6 +1342,30 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>PINNED</source>
         <translation>ЗАКРІПЛЕНІ</translation>
+    </message>
+    <message>
+        <source>Threads</source>
+        <translation>Тредиᵝ</translation>
+    </message>
+    <message>
+        <source>Reminders</source>
+        <translation>нагадування</translation>
+    </message>
+    <message>
+        <source>Scheduled</source>
+        <translation>заплановані</translation>
+    </message>
+    <message>
+        <source>Draft</source>
+        <translation>чернетка</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation>завдання</translation>
+    </message>
+    <message>
+        <source>Tasks</source>
+        <translation>завдання</translation>
     </message>
 </context>
 <context>
@@ -1611,6 +1802,58 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Copy session info</source>
         <translation>Скопіювати інформацію про сесії</translation>
+    </message>
+    <message>
+        <source>Bold</source>
+        <translation>Жирний</translation>
+    </message>
+    <message>
+        <source>Italic</source>
+        <translation>курсив</translation>
+    </message>
+    <message>
+        <source>Underline</source>
+        <translation>Підкреслений</translation>
+    </message>
+    <message>
+        <source>Strike through</source>
+        <translation>закреслений</translation>
+    </message>
+    <message>
+        <source>Monospace</source>
+        <translation>моноширинний</translation>
+    </message>
+    <message>
+        <source>Create link</source>
+        <translation>Додати посилання</translation>
+    </message>
+    <message>
+        <source>Clear format</source>
+        <translation>Очистити стилі</translation>
+    </message>
+    <message>
+        <source>Format</source>
+        <translation>форматування</translation>
+    </message>
+    <message>
+        <source>Edit task</source>
+        <translation>змінити завдання</translation>
+    </message>
+    <message>
+        <source>List</source>
+        <translation>перелік</translation>
+    </message>
+    <message>
+        <source>Ordered list</source>
+        <translation>нумерований список</translation>
+    </message>
+    <message>
+        <source>Quote</source>
+        <translation>Цитата</translation>
+    </message>
+    <message>
+        <source>Code</source>
+        <translation>Код</translation>
     </message>
 </context>
 <context>
@@ -2647,6 +2890,21 @@ You can leave your feedback or report an error here:</source>
     </message>
 </context>
 <context>
+    <name>draft</name>
+    <message>
+        <source>Apply draft</source>
+        <translation>застосувати чернетку</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Скасування</translation>
+    </message>
+    <message>
+        <source>Apply another draft version?</source>
+        <translation>Застосувати іншу версію чернетки?</translation>
+    </message>
+</context>
+<context>
     <name>favorites</name>
     <message>
         <source>
@@ -2757,10 +3015,10 @@ You can leave your feedback or report an error here:</source>
     </message>
 </context>
 <context>
-    <name>generic_block</name>
+    <name>groupchat</name>
     <message>
-        <source>Copied to clipboard</source>
-        <translation>Скопійовано в буфер</translation>
+        <source>To replies</source>
+        <translation>У відповіді</translation>
     </message>
 </context>
 <context>
@@ -2853,6 +3111,20 @@ You can leave your feedback or report an error here:</source>
         <source>You are not a subscriber of this channel</source>
         <translation>Ви не передплатник цього каналу</translation>
     </message>
+    <message>
+        <source>File access restrictions</source>
+        <translation>Обмеження на доступ до файлів</translation>
+    </message>
+    <message>
+        <source>Restrict file access to trusted devices only
+Only for private groups
+
+This option cannot be disabled</source>
+        <translation>Дозволяти доступ до файлів тільки довіреною пристроїв
+Тільки для непублічних груп
+
+Відключити установку неможливо</translation>
+    </message>
 </context>
 <context>
     <name>head</name>
@@ -2882,6 +3154,30 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Please select a chat to start messaging</source>
         <translation>Оберіть чат та почніть спілкування</translation>
+    </message>
+    <message>
+        <source>Create a call</source>
+        <translation>Створити дзвінок</translation>
+    </message>
+    <message>
+        <source>No time limit</source>
+        <translation>Немає обмеження за часом</translation>
+    </message>
+    <message>
+        <source>Status is set automatically during call</source>
+        <translation>Автостатус показує, хто в дзвінку</translation>
+    </message>
+    <message>
+        <source>Advantages of calls in Myteam</source>
+        <translation>Переваги дзвінків в Myteam</translation>
+    </message>
+    <message>
+        <source>Group calls up to %1 participants</source>
+        <translation>Групові дзвінки до %1 людина</translation>
+    </message>
+    <message>
+        <source>Return to call in chat in one click</source>
+        <translation>Повернення до дзвінка в чаті в один клік</translation>
     </message>
 </context>
 <context>
@@ -3049,6 +3345,10 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Cancel request</source>
         <translation>Скасувати запит</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation>завдання</translation>
     </message>
 </context>
 <context>
@@ -3290,6 +3590,10 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Wrong password</source>
         <translation>Невірний пароль</translation>
+    </message>
+    <message>
+        <source>Sign in with Mail.ru</source>
+        <translation>Ввійти через Mail.ru</translation>
     </message>
 </context>
 <context>
@@ -3945,10 +4249,6 @@ to contact status</source>
         <translation>Дійсно вийти з чату?</translation>
     </message>
     <message>
-        <source>Contact name</source>
-        <translation>Iм&apos;я контакту</translation>
-    </message>
-    <message>
         <source>Sign out</source>
         <translation>Вийти</translation>
     </message>
@@ -4589,8 +4889,16 @@ to contact status</source>
         <translation>Перевищено ліміт учасників (максимум %1)</translation>
     </message>
     <message>
-        <source>Are you sure you want to open external link %1?</source>
-        <translation>Ви впевнені, що хочете відкрити зовнішнє посилання %1?</translation>
+        <source>Are you sure you want to open an external link?</source>
+        <translation>Ви впевнені, що хочете відкрити зовнішнє посилання?</translation>
+    </message>
+    <message>
+        <source>Add link</source>
+        <translation>Додати посилання</translation>
+    </message>
+    <message>
+        <source>The link will be displayed as &quot;%1&quot;</source>
+        <translation>Посилання буде відображатися як «%1»</translation>
     </message>
     <message>
         <source>Enable net compression</source>
@@ -4639,6 +4947,38 @@ to contact status</source>
     <message>
         <source>User not a member</source>
         <translation>Користувач не є учасником цієї групи</translation>
+    </message>
+    <message>
+        <source>Link</source>
+        <translation>Посилання</translation>
+    </message>
+    <message>
+        <source>Invalid url</source>
+        <translation>Чи не є посиланням</translation>
+    </message>
+    <message>
+        <source>Opening or downloading files will be possible from trusted device only
+
+%1 It will be impossible to disable this setting!</source>
+        <translation>Відкрити або завантажити файли буде можливо тільки з довіреної пристрої
+
+%1 Відключити налаштування буде неможливо!</translation>
+    </message>
+    <message>
+        <source>File access will be restricted</source>
+        <translation>Доступ до файлів буде обмежений</translation>
+    </message>
+    <message>
+        <source>Only chat members can view replies</source>
+        <translation>Переглядати відповіді можуть тільки учасники групи</translation>
+    </message>
+    <message>
+        <source>Show seconds in time picker</source>
+        <translation>Відображати секунди у вікні вибору часу</translation>
+    </message>
+    <message>
+        <source>Only channel subscribers can view replies</source>
+        <translation>Переглядати відповіді можуть тільки передплатники каналу</translation>
     </message>
 </context>
 <context>
@@ -5421,6 +5761,10 @@ to contact status</source>
         <translation>Чи не питати при запуску виконуваних файлів</translation>
     </message>
     <message>
+        <source>Do not ask when opening external links</source>
+        <translation>Чи не питати при відкритті зовнішніх посилань</translation>
+    </message>
+    <message>
         <source>Use system spell checker</source>
         <translation>Системна перевірка орфографії</translation>
     </message>
@@ -5467,6 +5811,14 @@ to contact status</source>
     <message>
         <source>Show notifications when app in focus</source>
         <translation>Показувати сповіщення, коли програма активна</translation>
+    </message>
+    <message>
+        <source>Call window</source>
+        <translation>Вікно дзвінка</translation>
+    </message>
+    <message>
+        <source>Warn about disabled microphone</source>
+        <translation>Попереджати про відключений мікрофон</translation>
     </message>
 </context>
 <context>
@@ -5665,6 +6017,10 @@ to contact status</source>
     <message>
         <source>Set status</source>
         <translation>встановити статус</translation>
+    </message>
+    <message>
+        <source>Switch microphone state</source>
+        <translation>Змінити стан мікрофона</translation>
     </message>
 </context>
 <context>
@@ -6023,6 +6379,14 @@ Please edit phone number and try again.</source>
         <source>Close</source>
         <translation>Закрити</translation>
     </message>
+    <message>
+        <source>Cannot be disabled due to security reasons</source>
+        <translation>З метою безпеки відключити установку неможливо</translation>
+    </message>
+    <message>
+        <source>Replies</source>
+        <translation>Відповіді</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -6059,10 +6423,6 @@ Please edit phone number and try again.</source>
     <message>
         <source>File</source>
         <translation>файл</translation>
-    </message>
-    <message>
-        <source>Copied to clipboard</source>
-        <translation>Скопійовано в буфер</translation>
     </message>
     <message>
         <source>Location</source>
@@ -6212,22 +6572,6 @@ Please edit phone number and try again.</source>
         <source>Status duration</source>
         <translation>Термін дії статусу</translation>
     </message>
-    <message>
-        <source>Date</source>
-        <translation>Дата</translation>
-    </message>
-    <message>
-        <source>dd.mm.yyyy</source>
-        <translation>дд.мм.рррр</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>час</translation>
-    </message>
-    <message>
-        <source>hh:mm</source>
-        <translation>чч:мм</translation>
-    </message>
 </context>
 <context>
     <name>stickers</name>
@@ -6279,6 +6623,10 @@ Please edit phone number and try again.</source>
         <source>Cancel</source>
         <translation>Відміна</translation>
     </message>
+    <message>
+        <source>Stickerpack is not available</source>
+        <translation>Стікерпак недоступний</translation>
+    </message>
 </context>
 <context>
     <name>tab</name>
@@ -6303,12 +6651,12 @@ Please edit phone number and try again.</source>
         <translation>дзвінки</translation>
     </message>
     <message>
-        <source>Structure</source>
-        <translation>структура</translation>
-    </message>
-    <message>
         <source>Tasks</source>
         <translation>завдання</translation>
+    </message>
+    <message>
+        <source>Calendar</source>
+        <translation>Календар</translation>
     </message>
 </context>
 <context>
@@ -6336,6 +6684,101 @@ Please edit phone number and try again.</source>
     <message>
         <source>Group call</source>
         <translation>груповий дзвінок</translation>
+    </message>
+</context>
+<context>
+    <name>task</name>
+    <message>
+        <source>In progress</source>
+        <translation>В роботі</translation>
+    </message>
+    <message>
+        <source>Ready</source>
+        <translation>Готово</translation>
+    </message>
+    <message>
+        <source>Rejected</source>
+        <translation>відхилено</translation>
+    </message>
+    <message>
+        <source>Closed</source>
+        <translation>закрито</translation>
+    </message>
+    <message>
+        <source>New</source>
+        <translation>зробити</translation>
+    </message>
+    <message>
+        <source>No assignee</source>
+        <translation>без виконавця</translation>
+    </message>
+</context>
+<context>
+    <name>task_block</name>
+    <message>
+        <source>Not assigned</source>
+        <translation>Чи не призначений</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation>Завдання</translation>
+    </message>
+    <message>
+        <source>Task Id copied to clipboard</source>
+        <translation>Task Id скопійований</translation>
+    </message>
+    <message>
+        <source>Not set</source>
+        <translation>Чи не призначено</translation>
+    </message>
+    <message>
+        <source>Task edit: an error occured</source>
+        <translation>Зміна завдання: сталася помилка</translation>
+    </message>
+</context>
+<context>
+    <name>task_popup</name>
+    <message>
+        <source>Edit task</source>
+        <translation>Зміна завдання</translation>
+    </message>
+    <message>
+        <source>Create task</source>
+        <translation>створити завдання</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>Назва</translation>
+    </message>
+    <message>
+        <source>Maximum length - %1 symbols</source>
+        <translation>Максимальна довжина - %1 символів</translation>
+    </message>
+    <message>
+        <source>Assignee</source>
+        <translation>виконавець</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Скасування</translation>
+    </message>
+    <message>
+        <source>Ok</source>
+        <translation>Ок</translation>
+    </message>
+    <message>
+        <source>Create</source>
+        <translation>Створити</translation>
+    </message>
+    <message>
+        <source>User with this name
+not found</source>
+        <translation>Користувач з таким
+ім&apos;ям не знайдений</translation>
+    </message>
+    <message>
+        <source>No deadline</source>
+        <translation>без дедлайну</translation>
     </message>
 </context>
 <context>
@@ -6367,6 +6810,21 @@ Please edit phone number and try again.</source>
     <message>
         <source>Welcome to ICQ New</source>
         <translation>Ласкаво просимо в ICQ New</translation>
+    </message>
+</context>
+<context>
+    <name>threads_feed</name>
+    <message>
+        <source>There is no threads</source>
+        <translation>Треди відсутні</translation>
+    </message>
+    <message>
+        <source>Threads you subscribed for will be here</source>
+        <translation>Тут будуть відображатися треди, на які ви підписані</translation>
+    </message>
+    <message>
+        <source>Replies</source>
+        <translation>Відповіді</translation>
     </message>
 </context>
 <context>
@@ -6418,6 +6876,42 @@ Please edit phone number and try again.</source>
         <source>You are not a member or banned to write in this group</source>
         <translation>Ви не учасник чату або вам заборонено писати</translation>
     </message>
+    <message>
+        <source>Unable to open invalid url &quot;%1&quot;</source>
+        <translation>Неможливо відкрити некоректний адресу %1</translation>
+    </message>
+    <message>
+        <source>Error occurred while opening the replies</source>
+        <translation>Під час відкриття відповідей сталася помилка</translation>
+    </message>
+    <message>
+        <source>Administrator has set the restrictions on access to files</source>
+        <translation>Адміністратор групи встановив(-а) обмеження на доступ до файлів</translation>
+    </message>
+    <message>
+        <source>Awaiting antivirus check, patience</source>
+        <translation>Чекаємо перевірки антивірусом, терпіння</translation>
+    </message>
+    <message>
+        <source>Antivirus check in progress, patience</source>
+        <translation>Йде перевірка антивірусом, терпіння</translation>
+    </message>
+    <message>
+        <source>File is blocked by the antivirus</source>
+        <translation>Файл заблокований антивірусом</translation>
+    </message>
+    <message>
+        <source>Checked</source>
+        <translation>перевірено</translation>
+    </message>
+    <message>
+        <source>No access. You may not have enough rights</source>
+        <translation>Немає доступу. Можливо, у вас недостатньо прав</translation>
+    </message>
+    <message>
+        <source>File not checked (and never will be). Available to download</source>
+        <translation>Файл не підтверджена (і не буде перевірений). Доступний для скачування</translation>
+    </message>
 </context>
 <context>
     <name>tooltips</name>
@@ -6460,6 +6954,14 @@ Please edit phone number and try again.</source>
     <message>
         <source>Link to call</source>
         <translation>Посилання на дзвінок</translation>
+    </message>
+    <message>
+        <source>Chat gallery</source>
+        <translation>Галерея чату</translation>
+    </message>
+    <message>
+        <source>Refresh</source>
+        <translation>оновити</translation>
     </message>
 </context>
 <context>
@@ -6595,6 +7097,18 @@ with click</source>
         <translation>зайнято</translation>
     </message>
     <message>
+        <source>Hold Space key for temporary unmute</source>
+        <translation>Утримуйте клавішу Пропуск для тимчасового включення мікрофона</translation>
+    </message>
+    <message>
+        <source>Microphone disabled</source>
+        <translation>мікрофон вимкнений</translation>
+    </message>
+    <message>
+        <source>Microphone enabled</source>
+        <translation>мікрофон включений</translation>
+    </message>
+    <message>
         <source>Call members</source>
         <translation>Учасники дзвінка</translation>
     </message>
@@ -6617,6 +7131,16 @@ with click</source>
     <message>
         <source>CONTACTS</source>
         <translation>КОНТАКТИ</translation>
+    </message>
+    <message>
+        <source>You are muted now
+Press %1 to unmute your microphone
+
+Press and hold Space key for temporarily unmute</source>
+        <translation>Зараз ваш мікрофон вимкнений
+Натисніть %1 , щоб увімкнути мікрофон
+
+Натисніть і утримуйте клавішу Пропуск для тимчасового включення мікрофона</translation>
     </message>
 </context>
 <context>

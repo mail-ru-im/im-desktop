@@ -66,9 +66,9 @@ bool archive_index::serialize_from(int64_t _from, int64_t _count_early, int64_t 
         return true;
     using size_type = decltype(headers_index_)::size_type;
 
-    assert(_count_early == -1 || size_type(_count_early) < std::numeric_limits<size_type>::max());
-    assert(_count_later == -1 || size_type(_count_later) < std::numeric_limits<size_type>::max());
-    assert(size_type(std::max(_count_later, int64_t(0)) + std::max(_count_early, int64_t(0))) < std::numeric_limits<size_type>::max());
+    im_assert(_count_early == -1 || size_type(_count_early) < std::numeric_limits<size_type>::max());
+    im_assert(_count_later == -1 || size_type(_count_later) < std::numeric_limits<size_type>::max());
+    im_assert(size_type(std::max(_count_later, int64_t(0)) + std::max(_count_early, int64_t(0))) < std::numeric_limits<size_type>::max());
 
     const auto headers_end = headers_index_.end();
     const auto headers_begin = headers_index_.begin();
@@ -79,7 +79,7 @@ bool archive_index::serialize_from(int64_t _from, int64_t _count_early, int64_t 
         iter_from = headers_index_.lower_bound(_from);
         if (iter_from == headers_end)
         {
-            assert(!"invalid index number");
+            im_assert(!"invalid index number");
             return false;
         }
     }
@@ -148,7 +148,7 @@ void archive_index::insert_block(archive::headers_list& _inserted_headers)
 void archive_index::insert_header(archive::message_header& header, const std::chrono::seconds _current_time)
 {
     const auto msg_id = header.get_id();
-    assert(msg_id > 0);
+    im_assert(msg_id > 0);
 
     auto existing_iter = headers_index_.find(msg_id);
 
@@ -224,7 +224,9 @@ archive::storage::result_type archive_index::update(const archive::history_block
             hm->get_update_patch_version(),
             hm->has_shared_contact_with_sn(),
             hm->has_poll_with_id(),
-            hm->has_reactions()
+            hm->has_task_with_id(),
+            hm->has_reactions(),
+            hm->has_thread()
         );
     }
 
@@ -407,7 +409,7 @@ void archive_index::drop_header(int64_t _msgid)
 
 void archive_index::delete_up_to(const int64_t _to)
 {
-    assert(_to > -1);
+    im_assert(_to > -1);
 
     auto iter = headers_index_.lower_bound(_to);
 
@@ -502,6 +504,76 @@ void archive_index::drop_outdated_headers(const std::chrono::seconds _current_ti
     }
 }
 
+bool archive_index::has_hole_in_range(int64_t _msgid, int32_t _count_before, int32_t _count_after) const
+{
+    im_assert(_msgid != -1);
+    auto iter_cursor = skip_patches_and_deleted_forward(headers_index_.crbegin(), headers_index_.crend());
+
+    const auto only_patches_in_index = (iter_cursor == headers_index_.crend());
+    if (only_patches_in_index)
+        return true;
+
+    auto msg_found = false;
+    auto after = _count_after, before = 0;
+    while (iter_cursor != headers_index_.crend())
+    {
+        const auto& current_header = iter_cursor->second;
+        im_assert(!current_header.is_patch() || current_header.is_updated_message());
+        if (current_header.get_id() == _msgid)
+        {
+            if (after < _count_after)
+                return true;
+
+            msg_found = true;
+        }
+
+        if (msg_found)
+        {
+            if (++before >= _count_before)
+                return false;
+        }
+        else
+        {
+            if (after != _count_after)
+                ++after;
+        }
+
+        const auto iter_next = skip_patches_and_deleted_forward(std::next(iter_cursor), headers_index_.crend());
+
+        const auto reached_last_header = (iter_next == headers_index_.crend());
+        if (reached_last_header)
+        {
+            if (current_header.get_prev_msgid() != -1)
+            {
+                if (!msg_found || before < _count_before)
+                    return true;
+            }
+
+            return false;
+        }
+
+        const auto& prev_header = iter_next->second;
+        im_assert(!prev_header.is_patch() || prev_header.is_updated_message());
+
+        if (current_header.get_prev_msgid() != prev_header.get_id())
+        {
+            if (msg_found)
+            {
+                if (before < _count_before)
+                    return true;
+            }
+            else
+            {
+                after = 0;
+            }
+        }
+
+        iter_cursor = iter_next;
+    }
+
+    return false;
+}
+
 archive::archive_hole_error archive_index::get_next_hole(int64_t _from, archive_hole& _hole, int64_t _depth) const
 {
     if (headers_index_.empty())
@@ -523,7 +595,7 @@ archive::archive_hole_error archive_index::get_next_hole(int64_t _from, archive_
         {
             // if "from" from dlg_state (still not in index obviously)
 
-            assert(iter_cursor->second.get_id() == last_header_key);
+            im_assert(iter_cursor->second.get_id() == last_header_key);
 
             _hole.set_from(-1);
             _hole.set_to(last_header_key);
@@ -534,7 +606,7 @@ archive::archive_hole_error archive_index::get_next_hole(int64_t _from, archive_
         auto from_iter = headers_index_.find(_from);
         if (from_iter == headers_index_.cend())
         {
-            assert(!"index not found");
+            im_assert(!"index not found");
             return archive_hole_error::index_not_found;
         }
 
@@ -554,7 +626,7 @@ archive::archive_hole_error archive_index::get_next_hole(int64_t _from, archive_
         ++current_depth;
 
         const auto &current_header = iter_cursor->second;
-        assert(!current_header.is_patch() || current_header.is_updated_message());
+        im_assert(!current_header.is_patch() || current_header.is_updated_message());
 
         const auto iter_next = skip_patches_and_deleted_forward(std::next(iter_cursor), headers_index_.crend());
 
@@ -571,7 +643,7 @@ archive::archive_hole_error archive_index::get_next_hole(int64_t _from, archive_
         }
 
         const auto &prev_header = iter_next->second;
-        assert(!prev_header.is_patch() || prev_header.is_updated_message());
+        im_assert(!prev_header.is_patch() || prev_header.is_updated_message());
 
         if (current_header.get_prev_msgid() != prev_header.get_id())
         {
@@ -585,8 +657,7 @@ archive::archive_hole_error archive_index::get_next_hole(int64_t _from, archive_
         if (_depth != -1 && current_depth >= _depth)
             return archive_hole_error::depth_reached;
 
-        ++iter_cursor;
-        iter_cursor = skip_patches_and_deleted_forward(iter_cursor, headers_index_.crend());
+        iter_cursor = iter_next;
     }
 
     return archive_hole_error::no_hole;
@@ -666,7 +737,7 @@ void archive_index::optimize()
 
         headers_index_.erase(headers_index_.begin(), std::next(headers_index_.begin(), to_remove));
 
-        assert(!headers_index_.empty());
+        im_assert(!headers_index_.empty());
         if (!headers_index_.empty())
             headers_index_.begin()->second.set_prev_msgid(-1);
     }
@@ -712,7 +783,7 @@ void archive_index::invalidate_message_data(int64_t _from, int64_t _before_count
     const auto iter_from = headers_index_.lower_bound(_from);
     if (iter_from == headers_end)
     {
-        assert(!"invalid index number");
+        im_assert(!"invalid index number");
         return;
     }
 

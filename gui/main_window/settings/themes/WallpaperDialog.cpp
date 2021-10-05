@@ -18,6 +18,7 @@
 #include "styles/ThemesContainer.h"
 #include "main_window/MainWindow.h"
 #include "main_window/containers/FriendlyContainer.h"
+#include "main_window/contact_list/ContactListModel.h"
 #include "../../../core_dispatcher.h"
 
 namespace
@@ -524,7 +525,10 @@ namespace Ui
     {
         auto ws = new WallpaperSelectWidget(nullptr, _aimId);
 
-        GeneralDialog dialog(ws, Utils::InterConnector::instance().getMainWindow(), false, true, true, true, QSize(getDialogWidth(), 0));
+        GeneralDialog::Options opt;
+        opt.preferredWidth_ = getDialogWidth();
+        opt.threadBadge_ = Logic::getContactListModel()->isThread(_aimId);
+        GeneralDialog dialog(ws, Utils::InterConnector::instance().getMainWindow(), opt);
         dialog.addLabel(_aimId.isEmpty() ? QT_TRANSLATE_NOOP("wallpaper_select", "Chats wallpaper") : QT_TRANSLATE_NOOP("wallpaper_select", "Chat wallpaper"));
 
         if (auto vLayout = qobject_cast<QVBoxLayout*>(ws->layout()))

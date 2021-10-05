@@ -1,7 +1,5 @@
 #include "stdafx.h"
 
-#include "../../../../corelib/enumerations.h"
-
 #include "FileSharingUtils.h"
 
 #include "../../../utils/utils.h"
@@ -100,16 +98,12 @@ QSize extractSizeFromFileSharingId(QStringView id)
     return QSize(width, height);
 }
 
-QString extractIdFromFileSharingUri(QStringView uri)
+Utils::FileSharingId extractIdFromFileSharingUri(QStringView uri)
 {
-    im_assert(!uri.isEmpty());
     if (uri.isEmpty())
-    {
-        return QString();
-    }
+        return {};
 
     const auto normalizedUri = Utils::normalizeLink(uri);
-
     Utils::UrlParser parser;
     parser.process(normalizedUri);
     return parser.getFilesharingId();

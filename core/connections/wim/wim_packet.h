@@ -119,6 +119,8 @@ namespace core
             wpie_error_user_captched = 48,
             wpie_error_group_max_members = 49,
 
+            wpie_generic_client_error = 50,
+
             wpie_client_http_error = 400,
             wpie_robusto_timeout = 500,
 
@@ -175,8 +177,9 @@ namespace core
         struct wim_packet_params
         {
             std::function<bool()> stop_handler_;
+            std::optional<std::string> o2auth_token_;
+            std::optional<std::string> o2refresh_token_;
             std::string a_token_;
-            std::string session_key_;
             std::string dev_id_;
             std::string aimsid_;
             time_t time_offset_;
@@ -190,8 +193,9 @@ namespace core
 
             wim_packet_params(
                 std::function<bool()> _stop_handler,
+                const std::optional<std::string>& _o2_token,
+                const std::optional<std::string>& _o2_refresh,
                 const std::string& _a_token,
-                const std::string& _session_key,
                 const std::string& _dev_id,
                 const std::string& _aimsid,
                 const std::string& _uniq_device_id,
@@ -203,8 +207,9 @@ namespace core
                 const std::string& _locale)
                 :
                 stop_handler_(std::move(_stop_handler)),
+                o2auth_token_(_o2_token),
+                o2refresh_token_(_o2_refresh),
                 a_token_(_a_token),
-                session_key_(_session_key),
                 dev_id_(_dev_id),
                 aimsid_(_aimsid),
                 time_offset_(_time_offset),
@@ -227,7 +232,7 @@ namespace core
 
             bool is_auth_valid() const
             {
-                return (!a_token_.empty() && !session_key_.empty() && !dev_id_.empty() && !aimsid_.empty());
+                return (!a_token_.empty() && !dev_id_.empty() && !aimsid_.empty());
             }
 
         };
@@ -241,11 +246,7 @@ namespace core
 
             bool hosts_scheme_changed_;
 
-            static bool is_network_error_or_canceled(const int32_t _error) noexcept;
-            static bool is_timeout_error(const int32_t _error) noexcept;
             bool has_valid_token() const;
-
-            static std::string get_url_sign_impl(std::string_view host, std::string_view _query_string, const wim_packet_params& _wim_params, bool post_method, bool make_escape_symbols = true);
 
         public:
             using handler_t = std::function<void (int32_t _result)>;
@@ -282,6 +283,9 @@ namespace core
             std::string extract_etag() const;
 
         public:
+            static bool is_network_error(const int32_t _error) noexcept;
+            static bool is_network_error_or_canceled(const int32_t _error) noexcept;
+            static bool is_timeout_error(const int32_t _error) noexcept;
 
             virtual bool is_valid() const { return has_valid_token(); };
             virtual bool support_async_execution() const;
@@ -316,14 +320,6 @@ namespace core
 
                 return result;
             }
-
-            template<typename R>
-            static inline std::string get_url_sign(std::string_view host, R&& params, const wim_packet_params& _wim_params, bool post_method, bool make_escape_symbols = true)
-            {
-                return get_url_sign_impl(host, format_get_params(std::forward<R>(params)), _wim_params, post_method, make_escape_symbols);
-            }
-
-            static std::string detect_digest(std::string_view hashed_data, std::string_view session_key);
 
             virtual std::shared_ptr<core::tools::binary_stream> getRawData() const { return {}; }
             uint32_t get_status_code() const { return status_code_; }

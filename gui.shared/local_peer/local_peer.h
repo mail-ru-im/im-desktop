@@ -54,6 +54,7 @@ namespace Utils
 
         bool exitOnDisconnect_;
         QTimer* timer_;
+        ConnPolicy writePolicy_;
     };
 
     class LocalPeer : public QObject

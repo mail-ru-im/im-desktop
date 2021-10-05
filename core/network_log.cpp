@@ -66,7 +66,7 @@ namespace core
 
                 const auto &index_str = match["index"].str();
                 const auto index = std::stoll(index_str);
-                assert(index >= 0);
+                im_assert(index >= 0);
                 max_index = std::max((int32_t)max_index, (int32_t)index);
             }
         }
@@ -152,7 +152,7 @@ namespace core
     {
         if (!_data.available())
         {
-            assert(false);
+            im_assert(false);
             return;
         }
 
@@ -202,7 +202,7 @@ namespace core
             tools::time::localtime(&now_c, &now_tm);
 
             const auto fraction = (current_time.time_since_epoch().count() % 1000);
-            ss_header << '[' << std::put_time<char>(&now_tm, "%c") << '.' << fraction << "].[" << current_thread_id << "] \n";
+            ss_header << '[' << std::put_time<char>(&now_tm, "%c") << '.' << fraction << "].[" << current_thread_id << "]\n";
 
             uint32_t data_size = bs_data->available();
 

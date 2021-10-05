@@ -17,6 +17,8 @@
 #include "ReactionsList.h"
 #include "DefaultReactions.h"
 
+#include "../common.shared/config/config.h"
+
 namespace
 {
 
@@ -44,23 +46,6 @@ class MessageReactions_p
 public:
     MessageReactions_p(MessageReactions* _q) : q(_q) {}
 
-    AddReactionPlate* createAddReactionPlate()
-    {
-        auto plate = new AddReactionPlate(reactions_);
-
-        plate->setOutgoingPosition(item_->isOutgoingPosition());
-        plate->setMsgId(item_->getId());
-        plate->setChatId(item_->getContact());
-
-        QObject::connect(plate, &AddReactionPlate::plateShown, button_, &AddReactionButton::onAddReactionPlateShown);
-        QObject::connect(plate, &AddReactionPlate::plateCloseStarted, button_, &AddReactionButton::onAddReactionPlateCloseStarted);
-        QObject::connect(plate, &AddReactionPlate::plateCloseFinished, button_, &AddReactionButton::onAddReactionPlateCloseFinished);
-        QObject::connect(plate, &AddReactionPlate::addReactionClicked, q, &MessageReactions::onAddReactionClicked);
-        QObject::connect(plate, &AddReactionPlate::removeReactionClicked, q, &MessageReactions::onRemoveReactionClicked);
-
-        return plate;
-    }
-
     QRegion buttonHoverRegion()
     {
         QRegion region;
@@ -81,7 +66,7 @@ public:
     Data::Reactions reactions_;
     HistoryControlPageItem* item_;
     ReactionsPlate* plate_;
-    AddReactionButton* button_;
+    AddReactionButton* button_ = nullptr;
     bool reactionsLoaded_ = false;
     int64_t seq_ = 0;
 
@@ -97,22 +82,15 @@ MessageReactions::MessageReactions(HistoryControlPageItem* _item)
 {
     d->item_ = _item;
     d->plate_ = new ReactionsPlate(_item);
-    d->button_ = new AddReactionButton(_item);
-
     d->plate_->setOutgoingPosition(_item->isOutgoingPosition());
-    d->button_->setOutgoingPosition(_item->isOutgoingPosition());
 
-    connect(d->button_, &AddReactionButton::clicked, this, &MessageReactions::onReactionButtonClicked);
     connect(d->plate_, &ReactionsPlate::reactionClicked, this, &MessageReactions::onReactionClicked);
+    connect(d->plate_, &ReactionsPlate::platePositionChanged, this, &MessageReactions::platePositionChanged);
     connect(GetDispatcher(), &core_dispatcher::reactionAddResult, this, &MessageReactions::onReactionAddResult);
     connect(GetDispatcher(), &core_dispatcher::reactionRemoveResult, this, &MessageReactions::onReactionRemoveResult);
-    connect(d->plate_, &ReactionsPlate::platePositionChanged, d->button_, &AddReactionButton::onPlatePositionChanged);
 }
 
-MessageReactions::~MessageReactions()
-{
-
-}
+MessageReactions::~MessageReactions() = default;
 
 void MessageReactions::setReactions(const Data::Reactions& _reactions)
 {
@@ -127,10 +105,16 @@ void MessageReactions::setReactions(const Data::Reactions& _reactions)
         d->item_->updateSize();
 }
 
+const Data::Reactions& MessageReactions::getReactions() const
+{
+    return d->reactions_;
+}
+
 void MessageReactions::setOutgoing(bool _outgoing)
 {
     d->plate_->setOutgoingPosition(_outgoing);
-    d->button_->setOutgoingPosition(_outgoing);
+    if (d->button_)
+        d->button_->setOutgoingPosition(_outgoing);
 }
 
 void MessageReactions::subscribe()
@@ -160,34 +144,52 @@ QRect MessageReactions::plateRect() const
 
 void MessageReactions::onMouseLeave()
 {
-    d->button_->onMouseLeave();
+    if (d->button_)
+        d->button_->onMouseLeave();
 }
 
 void MessageReactions::onMouseMove(const QPoint& _pos)
 {
-    d->button_->onMouseMove(_pos, d->buttonHoverRegion());
+    if (d->button_)
+        d->button_->onMouseMove(_pos, d->buttonHoverRegion());
 }
 
 void MessageReactions::onMousePress(const QPoint& _pos)
 {
-    d->button_->onMousePress(_pos);
+    if (d->button_)
+        d->button_->onMousePress(_pos);
 }
 
 void MessageReactions::onMouseRelease(const QPoint& _pos)
 {
-    d->button_->onMouseRelease(_pos);
+    if (d->button_)
+        d->button_->onMouseRelease(_pos);
 }
 
 void MessageReactions::onMessageSizeChanged()
 {
     d->plate_->onMessageSizeChanged();
-    d->button_->onMessageSizeChanged();
+    if (d->button_)
+        d->button_->onMessageSizeChanged();
 }
 
 void MessageReactions::deleteControls()
 {
     d->plate_->deleteLater();
-    d->button_->deleteLater();
+    if (d->button_)
+        d->button_->deleteLater();
+}
+
+void MessageReactions::initAddReactionButton()
+{
+    if (d->button_)
+        return;
+
+    d->button_ = new AddReactionButton(d->item_);
+    d->button_->setOutgoingPosition(d->item_->isOutgoingPosition());
+
+    connect(d->button_, &AddReactionButton::clicked, this, &MessageReactions::onReactionButtonClicked);
+    connect(d->plate_, &ReactionsPlate::platePositionChanged, d->button_, &AddReactionButton::onPlatePositionChanged);
 }
 
 bool MessageReactions::enabled()
@@ -195,18 +197,47 @@ bool MessageReactions::enabled()
     return Features::reactionsEnabled() && get_gui_settings()->get_value<bool>(settings_show_reactions, settings_show_reactions_default());
 }
 
+AddReactionPlate* MessageReactions::createAddReactionPlate(const HistoryControlPageItem* const _item, const MessageReactions* const _reactions)
+{
+    im_assert(_item);
+    im_assert(_reactions);
+    if (!_item || !_reactions)
+        return nullptr;
+
+    auto plate = new AddReactionPlate(_reactions->getReactions()); // will delete itself
+
+    plate->setOutgoingPosition(_item->isOutgoingPosition());
+    plate->setMsgId(_item->getId());
+    plate->setChatId(_item->getContact());
+
+    connect(plate, &AddReactionPlate::addReactionClicked, _reactions, &MessageReactions::onAddReactionClicked);
+    connect(plate, &AddReactionPlate::removeReactionClicked, _reactions, &MessageReactions::onRemoveReactionClicked);
+
+    return plate;
+}
+
 void MessageReactions::onReactionButtonClicked()
 {
-    auto plate = d->createAddReactionPlate(); // will delete itself
+    im_assert(d->button_);
+    if (!d->button_)
+        return;
+
+    auto plate = createAddReactionPlate(d->item_, this);
+    connect(plate, &AddReactionPlate::plateShown, d->button_, &AddReactionButton::onAddReactionPlateShown);
+    connect(plate, &AddReactionPlate::plateCloseStarted, d->button_, &AddReactionButton::onAddReactionPlateCloseStarted);
+    connect(plate, &AddReactionPlate::plateCloseFinished, d->button_, &AddReactionButton::onAddReactionPlateCloseFinished);
+
     const auto& buttonRect = d->button_->geometry();
-    const auto buttonBottomCenterGlobal = d->item_->mapToGlobal(buttonRect.center() - QPoint(0, buttonRect.height() / 2));
-    plate->showOverButton(buttonBottomCenterGlobal);
+    const auto buttonTopCenterGlobal = d->item_->mapToGlobal(buttonRect.center() - QPoint(0, buttonRect.height() / 2));
+    plate->showOverButton(buttonTopCenterGlobal);
 }
 
 void MessageReactions::onReactionClicked(const QString& _reaction)
 {
     auto w = new ReactionsList(d->item_->getId(), d->item_->getContact(), _reaction, d->reactions_);
-    GeneralDialog dialog(w, Utils::InterConnector::instance().getMainWindow(), false, false);
+    GeneralDialog::Options opt;
+    opt.fixedSize_ = false;
+    GeneralDialog dialog(w, Utils::InterConnector::instance().getMainWindow(), opt);
     dialog.addCancelButton(QT_TRANSLATE_NOOP("reactions", "Close"), true);
     dialog.showInCenter();
 }
@@ -214,11 +245,13 @@ void MessageReactions::onReactionClicked(const QString& _reaction)
 void MessageReactions::onAddReactionClicked(const QString& _reaction)
 {
     d->seq_ = GetDispatcher()->addReaction(d->item_->getId(), d->item_->getContact(), _reaction);
+    Utils::InterConnector::instance().setFocusOnInput(d->item_->getContact());
 }
 
 void MessageReactions::onRemoveReactionClicked()
 {
     d->seq_ = GetDispatcher()->removeReaction(d->item_->getId(), d->item_->getContact());
+    Utils::InterConnector::instance().setFocusOnInput(d->item_->getContact());
 }
 
 void MessageReactions::onReactionAddResult(int64_t _seq, const Data::Reactions& _reactions, bool _success)
@@ -226,7 +259,9 @@ void MessageReactions::onReactionAddResult(int64_t _seq, const Data::Reactions& 
     if (d->seq_ != _seq)
         return;
 
-    if (!_success)
+    if (_success)
+        setReactions(_reactions);
+    else
         Utils::showTextToastOverContactDialog(QT_TRANSLATE_NOOP("reactions", "Add reaction: an error occurred"));
 }
 

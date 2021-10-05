@@ -140,11 +140,15 @@ namespace Ui
             return getEmojiSize(_font, _emojiCount);
         }
 
+        bool isEmoji(QStringView _text, qsizetype& _pos)
+        {
+            return (Emoji::getEmoji(_text, _pos) != Emoji::EmojiCode() && Emoji::getEmoji(_text, _pos) == Emoji::EmojiCode());
+        }
+
         bool isEmoji(QStringView _text)
         {
             qsizetype pos = 0;
-
-            return (Emoji::getEmoji(_text, pos) != Emoji::EmojiCode() && Emoji::getEmoji(_text, pos) == Emoji::EmojiCode());
+            return isEmoji(_text, pos);
         }
 
         QString elideText(const QFont& _font, const QString& _text, int _width)
@@ -170,7 +174,7 @@ namespace Ui
             return result;
         }
 
-        Data::FormattedStringView elideText(const QFont& _font, Data::FormattedStringView _text, int _width)
+        Data::FStringView elideText(const QFont& _font, Data::FStringView _text, int _width)
         {
             const auto elidedPlainText = elideText(_font, _text.string().toString(), _width);
             auto result = _text.mid(0, 0);

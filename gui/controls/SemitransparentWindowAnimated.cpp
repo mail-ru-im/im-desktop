@@ -116,8 +116,8 @@ namespace Ui
             isMainWindow_ = (qobject_cast<MainWindow*>(parentWidget()) != nullptr);
 
             const auto titleHeight = isMainWindow_ ? Utils::InterConnector::instance().getMainWindow()->getTitleHeight() : 0;
-            setFixedSize(width, height - titleHeight);
             move(0, titleHeight);
+            setFixedSize(width, height - titleHeight);
         }
     }
 
@@ -143,12 +143,7 @@ namespace Ui
             auto variantCount = window()->property(semiWindowsCountProperty);
             if (variantCount.isValid())
             {
-                int count = variantCount.toInt() - 1;
-                if (count < 0)
-                {
-                    count = 0;
-                }
-
+                const int count = std::max(variantCount.toInt() - 1, 0);
                 if (count <= 1)
                     setSemiwindowsTouchSwallowed(false);
 

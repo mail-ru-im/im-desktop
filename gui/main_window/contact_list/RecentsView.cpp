@@ -9,9 +9,7 @@ RecentsView::RecentsView(QWidget* _parent)
 }
 
 
-RecentsView::~RecentsView()
-{
-}
+RecentsView::~RecentsView() = default;
 
 void RecentsView::init()
 {

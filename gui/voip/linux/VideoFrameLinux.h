@@ -30,14 +30,15 @@ public:
     void setOpacity(double _opacity) override;
 
 private:
-    static QWidget *parent_;
+    static std::unordered_map<GLFWwindow*, QPointer<QWidget>> parents_;
 
     static void keyCallback(GLFWwindow* _window, int _key, int _scancode, int _actions, int _mods);
 
     bool isOpacityAvailable() const;
 
 private:
-    GLFWwindow *videoWindow_ = nullptr;
+    GLFWwindow* videoWindow_ = nullptr;
+    QWidget* parent_ = nullptr;
 };
 
 }

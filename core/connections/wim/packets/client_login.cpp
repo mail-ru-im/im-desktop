@@ -3,7 +3,7 @@
 
 #include "../../../http_request.h"
 #include "../../../tools/hmac_sha_base64.h"
-#include "../../../tools/json_helper.h"
+#include "../../../../common.shared/json_helper.h"
 #include "../../../../common.shared/version_info.h"
 #include "../../../utils.h"
 #include "../../../tools/system.h"
@@ -43,11 +43,7 @@ client_login::client_login(wim_packet_params params, const std::string& login, c
 {
 }
 
-
-client_login::~client_login()
-{
-}
-
+client_login::~client_login() = default;
 
 void client_login::set_product_guid_8x(const std::string& _guid)
 {
@@ -66,18 +62,6 @@ int32_t client_login::parse_response_data(const rapidjson::Value& _data)
 
     try
     {
-        auto iter_session_secret = _data.FindMember("sessionSecret");
-        if (iter_session_secret == _data.MemberEnd() || !iter_session_secret->value.IsString())
-            return wpie_http_parse_response;
-
-        session_secret_ = rapidjson_get_string(iter_session_secret->value);
-
-        std::vector<uint8_t> data(session_secret_.size());
-        std::vector<uint8_t> password(password_.size());
-        memcpy(&data[0], session_secret_.c_str(), session_secret_.size());
-        memcpy(&password[0], password_.c_str(), password_.size());
-        session_key_ = core::tools::base64::hmac_base64(data, password);
-
         auto iter_host_time = _data.FindMember("hostTime");
         if (iter_host_time == _data.MemberEnd() || !iter_host_time->value.IsUint())
             return wpie_http_parse_response;

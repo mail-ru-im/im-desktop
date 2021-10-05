@@ -47,6 +47,7 @@ namespace core
 
         void on_login_get_sms_code(int64_t _seq, coll_helper& _params);
         void on_login_by_phone(int64_t _seq, coll_helper& _params);
+        void on_login_by_oauth2(int64_t _seq, coll_helper& _params);
         void on_logout(int64_t _seq, coll_helper& _params);
         void on_phoneinfo(int64_t _seq, coll_helper& _params);
         void on_connect_after_migration(int64_t _seq, coll_helper& _params);
@@ -264,6 +265,11 @@ namespace core
         void on_revoke_vote(const int64_t _seq, coll_helper& _params);
         void on_stop_poll(const int64_t _seq, coll_helper& _params);
 
+        void on_create_task(const int64_t _seq, coll_helper& _params);
+        void on_edit_task(const int64_t _seq, coll_helper& _params);
+        void on_request_initial_tasks(const int64_t _seq, coll_helper& _params);
+        void on_task_update_last_used(const int64_t _seq, coll_helper& _params);
+
         void on_group_subscribe(const int64_t _seq, coll_helper& _params);
         void on_group_cancel_subscription(const int64_t _seq, coll_helper& _params);
         void on_group_inviteblacklist_add(const int64_t _seq, coll_helper& _params);
@@ -295,9 +301,22 @@ namespace core
         void on_subscribe_call_room_info(const int64_t _seq, coll_helper& _params);
         void on_unsubscribe_call_room_info(const int64_t _seq, coll_helper& _params);
 
+        void on_subscribe_thread(const int64_t _seq, coll_helper& _params);
+        void on_unsubscribe_thread(const int64_t _seq, coll_helper& _params);
+
+        void on_subscribe_task(const int64_t _seq, coll_helper& _params);
+        void on_unsubscribe_task(const int64_t _seq, coll_helper& _params);
+
         void on_get_emoji(const int64_t _seq, coll_helper& _params);
 
         void on_send_notify_sms(const int64_t _seq, coll_helper& _params);
+
+        void on_add_thread(const int64_t _seq, coll_helper& _params);
+        void on_threads_feed_get(const int64_t _seq, coll_helper& _params);
+        void on_draft_set(const int64_t _seq, coll_helper& _params);
+        void on_draft_get(const int64_t _seq, coll_helper& _params);
+
+        void on_miniapp_start_session(const int64_t _seq, coll_helper& _params);
 
     public:
 

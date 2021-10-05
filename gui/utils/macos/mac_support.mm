@@ -45,9 +45,21 @@
 
 namespace
 {
+#ifdef UPDATES
     std::chrono::seconds checkUpdateInterval()
     {
         return std::chrono::seconds(Ui::GetAppConfig().AppUpdateIntervalSecs());
+    }
+#endif // UPDATES
+
+    QPointF qtMacFlip(const QPointF& _point, const QRectF& _relativeToRect)
+    {
+        return { _point.x(), _relativeToRect.height() - _point.y() };
+    }
+
+    QRectF qtMacFlip(const QRectF& _rect, const QRectF & _relativeToRect)
+    {
+        return { qtMacFlip(_rect.bottomLeft(), _relativeToRect), _rect.size() };
     }
 }
 
@@ -60,8 +72,18 @@ enum
     edit_paste,
     edit_pasteAsQuote,
     edit_pasteEmoji,
+    edit_formatBold,
+    edit_formatItalic,
+    edit_formatUnderline,
+    edit_formatMonospace,
+    edit_formatLink,
+    edit_formatUnorderedList,
+    edit_formatOrderedList,
+    edit_formatQuote,
+    edit_formatPre,
+    edit_formatStrikethrough,
+    edit_formatClear,
     contact_addBuddy,
-    contact_profile,
     contact_close,
     view_fullScreen,
     view_unreadMessage,
@@ -80,7 +102,7 @@ enum
 };
 
 
-static std::map<int, QAction *> menuItems_;
+static std::map<int, QPointer<QAction>> menuItems_;
 static Ui::MainWindow * mainWindow_ = nil;
 static auto closeAct_ = Ui::ShortcutsCloseAction::Default;
 
@@ -98,8 +120,11 @@ void setEditMenuEnabled(bool _enabled)
 {
     for (auto &[key, action] : menuItems_)
     {
-        if (key >= edit_undo && key <= edit_pasteEmoji)
-            action->setEnabled(_enabled);
+        if (action)
+        {
+            if (key >= edit_undo && key <= edit_pasteEmoji)
+                action->setEnabled(_enabled);
+        }
     }
 }
 
@@ -872,17 +897,45 @@ void MacSupport::createMenuBar(bool simple)
     if (!mainMenu_)
     {
         mainMenu_ = new QMenuBar();
-
         auto menu = mainMenu_->addMenu(Utils::Translations::Get(qsl("&Edit")));
+
         menuItems_.insert({edit_undo, createAction(menu, Utils::Translations::Get(qsl("Undo")), qsl("Ctrl+Z"), mainWindow_, &Ui::MainWindow::undo)});
         menuItems_.insert({edit_redo, createAction(menu, Utils::Translations::Get(qsl("Redo")), qsl("Shift+Ctrl+Z"), mainWindow_, &Ui::MainWindow::redo)});
+
         menu->addSeparator();
         menuItems_.insert({edit_cut, createAction(menu, Utils::Translations::Get(qsl("Cut")), qsl("Ctrl+X"), mainWindow_, &Ui::MainWindow::cut)});
         menuItems_.insert({edit_copy, createAction(menu, Utils::Translations::Get(qsl("Copy")), qsl("Ctrl+C"), mainWindow_, &Ui::MainWindow::copy)});
         menuItems_.insert({edit_paste, createAction(menu, Utils::Translations::Get(qsl("Paste")), qsl("Ctrl+V"), mainWindow_, &Ui::MainWindow::paste)});
         //menuItems_.insert({edit_pasteAsQuote, createAction(menu, Utils::Translations::Get("Paste as Quote"), qsl("Alt+Ctrl+V"), mainWindow_, &Ui::MainWindow::quote)});
+
         menu->addSeparator();
         menuItems_.insert({edit_pasteEmoji, createAction(menu, Utils::Translations::Get(qsl("Emoji && Symbols")), qsl("Meta+Ctrl+Space"), mainWindow_, &Ui::MainWindow::pasteEmoji)});
+
+        menu->addSeparator();
+        {
+            static const auto actionsData = std::array{
+                std::make_tuple(core::data::format_type::bold, edit_formatBold),
+                std::make_tuple(core::data::format_type::italic, edit_formatItalic),
+                std::make_tuple(core::data::format_type::underline, edit_formatUnderline),
+                std::make_tuple(core::data::format_type::strikethrough, edit_formatStrikethrough),
+                std::make_tuple(core::data::format_type::monospace, edit_formatMonospace),
+                std::make_tuple(core::data::format_type::link, edit_formatLink),
+                std::make_tuple(core::data::format_type::unordered_list, edit_formatUnorderedList),
+                std::make_tuple(core::data::format_type::ordered_list, edit_formatOrderedList),
+                std::make_tuple(core::data::format_type::quote, edit_formatQuote),
+                std::make_tuple(core::data::format_type::pre, edit_formatPre),
+                std::make_tuple(core::data::format_type::none, edit_formatClear),
+            };
+            for (auto [type, enumValue] : actionsData)
+            {
+                if (auto action = mainWindow_->getFormatAction(type))
+                {
+                    menu->addAction(action);
+                    menuItems_.insert({enumValue, action});
+                }
+            }
+        }
+
         extendedMenus_.push_back(menu);
         editMenu_ = menu;
         QObject::connect(menu, &QMenu::aboutToShow, menu, []() { Q_EMIT Utils::InterConnector::instance().closeAnyPopupMenu(); });
@@ -896,8 +949,6 @@ void MacSupport::createMenuBar(bool simple)
                     mainWindow_->onShowAddContactDialog({ Utils::AddContactDialogs::Initiator::From::HotKey });
             })});
         }
-
-        menuItems_.insert({contact_profile, createAction(menu, Utils::Translations::Get(qsl("Profile")), qsl("Ctrl+I"), mainWindow_, &Ui::MainWindow::activateProfile)});
 
         auto code = Ui::get_gui_settings()->get_value<int>(settings_shortcuts_close_action, static_cast<int>(Ui::ShortcutsCloseAction::Default));
         closeAct_ = static_cast<Ui::ShortcutsCloseAction>(code);
@@ -963,12 +1014,18 @@ void MacSupport::createMenuBar(bool simple)
     }
 
     for (auto menu : extendedMenus_)
-        menu->setEnabled(!simple);
+    {
+        if (menu)
+            menu->setEnabled(!simple);
+    }
 
     windowMenu_->setEnabled(true);
 
     for (auto action: extendedActions_)
-        action->setEnabled(!simple);
+    {
+        if (action)
+            action->setEnabled(!simple);
+    }
 
     if (mainWindow_)
     {
@@ -1028,16 +1085,16 @@ void MacSupport::updateMainMenu()
     if (Utils::supportUpdates())
         menuItems_[global_update]->setVisible(!Features::isUpdateFromBackendEnabled() || (Features::isUpdateFromBackendEnabled() && !Ui::getUrlConfig().getUrlAppUpdate().isEmpty()));
 
-    QAction *nextChat = menuItems_[window_nextChat];
-    QAction *prevChat = menuItems_[window_prevChat];
-    QAction *fullScreen = menuItems_[view_fullScreen];
-    QAction *contactClose = menuItems_[contact_close];
-    QAction *windowMaximize = menuItems_[window_maximizeWindow];
-    QAction *windowMinimize = menuItems_[window_minimizeWindow];
-    QAction *windowVoip = menuItems_[window_switchVoipWindow];
-    QAction *windowICQ = menuItems_[window_switchMainWindow];
-    QAction *bringToFront = menuItems_[window_bringToFront];
-    QAction *viewNextUnread = menuItems_[view_unreadMessage];
+    auto nextChat = menuItems_[window_nextChat];
+    auto prevChat = menuItems_[window_prevChat];
+    auto fullScreen = menuItems_[view_fullScreen];
+    auto contactClose = menuItems_[contact_close];
+    auto windowMaximize = menuItems_[window_maximizeWindow];
+    auto windowMinimize = menuItems_[window_minimizeWindow];
+    auto windowVoip = menuItems_[window_switchVoipWindow];
+    auto windowICQ = menuItems_[window_switchMainWindow];
+    auto bringToFront = menuItems_[window_bringToFront];
+    auto viewNextUnread = menuItems_[view_unreadMessage];
 
     menuItems_[window_mainWindow]->setEnabled(true);
 
@@ -1151,7 +1208,7 @@ void MacSupport::updateMainMenu()
 
         auto menuWindow = std::find_if(extendedMenus_.begin(), extendedMenus_.end(), [](const auto& _item)
         {
-            return (_item->title() == Utils::Translations::Get(qsl("Window")));
+            return _item && (_item->title() == Utils::Translations::Get(qsl("Window")));
         });
 
         if (menuWindow != extendedMenus_.end())
@@ -1341,6 +1398,26 @@ void MacSupport::getPossibleStrings(const QString& text, std::vector<std::vector
     }
 }
 
+std::vector<QString> MacSupport::getKeyboardLanguages()
+{
+    std::vector<QString> result;
+
+    NSDictionary* filter = @{(NSString*)kTISPropertyInputSourceCategory: (NSString*)kTISCategoryKeyboardInputSource};
+    CFArrayRef inputSourcesListRef = TISCreateInputSourceList((CFDictionaryRef)filter, false);
+    NSArray* sources = (NSArray*)inputSourcesListRef;
+
+    NSInteger availableSourcesNumber = [sources count];
+    for (int i = 0; i < availableSourcesNumber; ++i)
+    {
+        auto languages = (CFArrayRef)TISGetInputSourceProperty((TISInputSourceRef)sources[i], kTISPropertyInputSourceLanguages);
+        if (auto count = [languages count]; count > 0)
+            result.push_back(QString::fromCFString((CFStringRef)CFArrayGetValueAtIndex(languages, (CFIndex)0)));
+    }
+
+    CFRelease(inputSourcesListRef);
+    return result;
+}
+
 bool dockClickHandler(id self,SEL _cmd,...)
 {
     Q_UNUSED(self)
@@ -1527,8 +1604,38 @@ void MacSupport::saveFileName(const QString &caption, const QString &qdir, const
 
 bool MacSupport::isDoNotDisturbOn()
 {
-    NSUserDefaults* defaults = [[NSUserDefaults alloc] initWithSuiteName:@"com.apple.notificationcenterui"];
-    return [defaults boolForKey:@"doNotDisturb"];
+    bool isDnd = false;
+    
+#ifdef BUILD_FOR_STORE    
+    const auto checkNcPrefs = false;
+#else
+    const auto checkNcPrefs = isBigSurOrGreater();
+#endif //BUILD_FOR_STORE
+
+    const auto suiteName = checkNcPrefs ? @"com.apple.ncprefs" : @"com.apple.notificationcenterui";
+    if (auto defaults = [[NSUserDefaults alloc] initWithSuiteName:suiteName])
+    {
+        if (checkNcPrefs)
+        {
+            NSError *error;
+            NSPropertyListFormat format;
+            id prefs = [NSPropertyListSerialization propertyListWithData:[defaults dataForKey:@"dnd_prefs"]
+                                                                 options:NSPropertyListImmutable
+                                                                  format:&format
+                                                                   error:&error];
+            if (prefs && [prefs isKindOfClass:[NSDictionary class]])
+            {
+                if (id userPref = prefs[@"userPref"]; userPref && [userPref isKindOfClass:[NSDictionary class]])
+                    isDnd = [userPref[@"enabled"] boolValue];
+            }
+        }
+        else
+        {
+            isDnd = [defaults boolForKey:@"doNotDisturb"];
+        }
+        [defaults release];
+    }
+    return isDnd;
 }
 
 void MacSupport::showNSPopUpMenuWindowLevel(QWidget* w)
@@ -1553,12 +1660,14 @@ void MacSupport::showNSFloatingWindowLevel(QWidget* w)
     [wnd setLevel:NSFloatingWindowLevel];
 }
 
-void MacSupport::showOverAll(QWidget* w)
+void MacSupport::showOverAll(QWidget* _w, WindowOrder _order)
 {
-    w->show();
-    NSWindow *wnd = [reinterpret_cast<NSView *>(w->winId()) window];
+    _w->show();
+    NSWindow *wnd = [reinterpret_cast<NSView *>(_w->winId()) window];
     [wnd setLevel:NSScreenSaverWindowLevel];
     [wnd setHidesOnDeactivate:NO];
+    if (_order == WindowOrder::FrontRegardless)
+        [wnd orderFrontRegardless];
 }
 
 void MacSupport::showInAllWorkspaces(QWidget *w)
@@ -1628,6 +1737,21 @@ int MacSupport::getWidgetHeaderHeight(const QWidget& widget)
     return static_cast<int>(window.frame.size.height - contentHeight);
 }
 
+QRectF MacSupport::screenGeometryByPoint(const QPoint& _point)
+{
+    const auto primaryScreenGeometry = QRectF::fromCGRect(CGDisplayBounds(CGMainDisplayID()));
+
+    NSArray<NSScreen*>* screens = NSScreen.screens;
+    for (NSScreen* screen in screens)
+    {
+        const auto cgRect = QRectF::fromCGRect(screen.frame);
+        const auto qtRect = qtMacFlip(cgRect, primaryScreenGeometry).toRect();
+        if (qtRect.contains(_point))
+            return qtRect;
+    }
+    return {};
+}
+
 void MacSupport::zoomWindow(WId wid)
 {
     void *pntr = (void *)wid;
@@ -1678,8 +1802,11 @@ void MacMenuBlocker::unblock()
 {
     for (auto [action, enabled]: macMenuState_)
     {
-        QSignalBlocker blocker(action);
-        action->setEnabled(enabled);
+        if (action)
+        {
+            QSignalBlocker blocker(action);
+            action->setEnabled(enabled);
+        }
     }
     isBlocked_ = false;
 }
@@ -1689,4 +1816,13 @@ void Utils::disableCloseButton(QWidget *_w)
     NSWindow *wnd = [reinterpret_cast<NSView *>(_w->winId()) window];
     NSButton *closeButton = [wnd standardWindowButton:NSWindowCloseButton];
     [closeButton setEnabled:NO];
+}
+
+void Utils::setFullScreenAuxiliaryBehavior(QWidget* _w)
+{
+    if (_w)
+    {
+        auto wnd = [reinterpret_cast<NSView*>(_w->winId()) window];
+        [wnd setCollectionBehavior:NSWindowCollectionBehaviorFullScreenAuxiliary];
+    }
 }

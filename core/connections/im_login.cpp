@@ -65,7 +65,7 @@ namespace core
 
         auto on_fail = [this]()
         {
-            assert(false);
+            im_assert(false);
             logins_.clear();
         };
 
@@ -182,7 +182,7 @@ namespace core
 
     void im_login_list::replace_uin(im_login_id& _old_login, im_login_id& _new_login)
     {
-        assert(logins_.begin()->get_login() == _old_login.get_login());
+        im_assert(logins_.begin()->get_login() == _old_login.get_login());
 
         if (logins_.begin()->get_login() == _old_login.get_login())
         {

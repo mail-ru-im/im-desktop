@@ -9,6 +9,8 @@
 #include "../../utils/InterConnector.h"
 
 #include "styles/ThemeParameters.h"
+#include "reactions/MessageReactions.h"
+#include "main_window/history_control/FileStatus.h"
 
 namespace
 {
@@ -30,7 +32,7 @@ namespace Ui::MessageStyle
         return font;
     }
 
-    int getTextLineSpacing()
+    int getTextLineSpacing() noexcept
     {
         if constexpr (platform::is_apple())
             return Utils::scale_value(3);
@@ -40,12 +42,7 @@ namespace Ui::MessageStyle
 
     QFont getTextMonospaceFont()
     {
-        auto family = Fonts::FontFamily::MIN;
-        if constexpr (platform::is_apple())
-            family = Fonts::FontFamily::SF_MONO;
-        else
-            family = Fonts::FontFamily::ROBOTO_MONO;
-        return Fonts::adjustedAppFont(textFontSize() - 1, family);
+        return Fonts::adjustedAppFont(textFontSize() - 1, Fonts::monospaceAppFontFamily());
     }
 
     QFont getImagePreviewLinkFont()
@@ -116,7 +113,7 @@ namespace Ui::MessageStyle
         return Styling::getParameters().getColor(Styling::StyleVariable::GHOST_SECONDARY);
 
     }
-    int getBorderWidth()
+    int getBorderWidth() noexcept
     {
         return Utils::scale_value(1);
     }
@@ -124,40 +121,68 @@ namespace Ui::MessageStyle
     QBrush getBodyBrush(const bool _isOutgoing, const QString& _aimId)
     {
         auto color = Styling::getParameters(_aimId).getColor(_isOutgoing ? Styling::StyleVariable::CHAT_SECONDARY : Styling::StyleVariable::CHAT_PRIMARY);
-        if (Utils::InterConnector::instance().isMultiselect())
+        if (Utils::InterConnector::instance().isMultiselect(_aimId))
             color.setAlpha(255 * 0.95);
 
         return color;
     }
 
-    int32_t getMinBubbleHeight()
+    int32_t getMinBubbleHeight() noexcept
     {
         return Utils::scale_value(36);
     }
 
-    int32_t getBorderRadius()
+    int32_t getBorderRadius() noexcept
     {
         return Utils::scale_value(12);
     }
 
-    int32_t getBorderRadiusSmall()
+    int32_t getBorderRadiusSmall() noexcept
     {
         return Utils::scale_value(4);
     }
 
-    int32_t getTopMargin(const bool hasTopMargin)
+    int32_t getTopMargin(const bool hasTopMargin) noexcept
     {
         return Utils::scale_value(hasTopMargin ? 8 : 2);
     }
 
-    int32_t getRightBubbleMargin()
+    int32_t getRightBubbleMargin(const QString& _aimId)
     {
-        return Utils::scale_value(32) + (Utils::InterConnector::instance().multiselectAnimationCurrent() * Utils::scale_value(8) / 100.0);
+        const auto added = Utils::InterConnector::instance().isMultiselect(_aimId)
+            ? (Utils::InterConnector::instance().multiselectAnimationCurrent() * Utils::scale_value(8) / 100.0)
+            : 0;
+        return Utils::scale_value(32) + added;
     }
 
-    int32_t getLeftBubbleMargin()
+    int32_t getLeftBubbleMargin() noexcept
     {
-        return Utils::scale_value(56);
+        return Utils::scale_value(54);
+    }
+
+    int getHeadsWidth(int _numHeads) noexcept
+    {
+        return Utils::scale_value(getHeadsWidthUnscaled(_numHeads));
+    }
+
+    struct WidthBreakpoint
+    {
+        int numHeads_;
+        int width_;
+        int margin_;
+        qreal factor_;
+    };
+
+    //! Return -1 if not within breakpoints interval
+    template <typename T, typename Func>
+    int32_t calcMarginFromBreakpoints(const T& _breakpoints, int _width, Func _minMarginFunc)
+    {
+        for (const auto& [_, minWidth, margin, factor] : _breakpoints)
+        {
+            if (const auto diff = _width - Utils::scale_value(minWidth); diff >= 0)
+                return Utils::scale_value(margin) + qRound(factor * diff);
+        }
+        return _minMarginFunc();
     }
 
     int32_t getLeftMargin(const bool _isOutgoing, const int _width)
@@ -165,33 +190,27 @@ namespace Ui::MessageStyle
         if (!_isOutgoing)
             return getLeftBubbleMargin();
 
-        if (_width >= fiveHeadsWidth())
-            return Utils::scale_value(136);
-
-        if (_width >= fourHeadsWidth())
-            return Utils::scale_value(116);
-
-        if (_width >= threeHeadsWidth())
-            return Utils::scale_value(96);
-
-        return getLeftBubbleMargin();
+        constexpr auto breakpoints = std::array{
+            WidthBreakpoint{5, getHeadsWidthUnscaled(5), 136                                   , 0.},
+            WidthBreakpoint{4, getHeadsWidthUnscaled(4), 136 -     getSingleHeadWidthUnscaled(), 1.},
+            WidthBreakpoint{3, getHeadsWidthUnscaled(3), 136 - 2 * getSingleHeadWidthUnscaled(), 1.},
+            WidthBreakpoint{0, 440,  56, 2.},
+        };
+        return calcMarginFromBreakpoints(breakpoints, _width, getLeftBubbleMargin);
     }
 
-    int32_t getRightMargin(const bool _isOutgoing, const int _width)
+    int32_t getRightMargin(const bool _isOutgoing, const int _width, const QString& _aimId)
     {
         if (_isOutgoing)
-            return getRightBubbleMargin();
+            return getRightBubbleMargin(_aimId);
 
-        if (_width >= fiveHeadsWidth())
-            return Utils::scale_value(136);
-
-        if (_width >= fourHeadsWidth())
-            return Utils::scale_value(116);
-
-        if (_width >= threeHeadsWidth())
-            return Utils::scale_value(96);
-
-        return getRightBubbleMargin();
+        constexpr auto breakpoints = std::array{
+            WidthBreakpoint{5, getHeadsWidthUnscaled(5), 136                                   , 0.},
+            WidthBreakpoint{4, getHeadsWidthUnscaled(4), 136 -     getSingleHeadWidthUnscaled(), 1.},
+            WidthBreakpoint{3, getHeadsWidthUnscaled(3), 136 - 2 * getSingleHeadWidthUnscaled(), 1.},
+            WidthBreakpoint{0, 396,  32, 1.},
+        };
+        return calcMarginFromBreakpoints(breakpoints, _width, [&_aimId]() { return getRightBubbleMargin(_aimId); });
     }
 
     int32_t getSenderTopPadding()
@@ -433,21 +452,6 @@ namespace Ui::MessageStyle
         return Utils::scale_value(2);
     }
 
-    int fiveHeadsWidth()
-    {
-        return Utils::scale_value(500);
-    }
-
-    int fourHeadsWidth()
-    {
-        return Utils::scale_value(480);
-    }
-
-    int threeHeadsWidth()
-    {
-        return Utils::scale_value(460);
-    }
-
     int32_t getBlocksSeparatorVertMargins()
     {
         return Utils::scale_value(16);
@@ -490,6 +494,44 @@ namespace Ui::MessageStyle
     int getMessageMaxWidth()
     {
         return Utils::scale_value(600);
+    }
+
+    QColor getBlockedFileIconBackground(bool _isOutgoing)
+    {
+        const auto var = _isOutgoing
+            ? Styling::StyleVariable::PRIMARY_BRIGHT
+            : Styling::StyleVariable::GHOST_ULTRALIGHT_INVERSE;
+
+        return Styling::getParameters().getColor(var);
+    }
+
+    QColor getBlockedFileIconColor(bool _isOutgoing)
+    {
+        const auto var = _isOutgoing
+            ? Styling::StyleVariable::PRIMARY_PASTEL
+            : Styling::StyleVariable::BASE_SECONDARY;
+
+        return Styling::getParameters().getColor(var);
+    }
+
+    QColor getFileStatusIconBackground(FileStatus _status, bool _isOutgoing)
+    {
+        if (_status == FileStatus::AntivirusOk)
+            return Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_RAINBOW_MINT, _isOutgoing ? 0.15 : 0.12);
+        else if (_status == FileStatus::AntivirusInfected)
+            return Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION, _isOutgoing ? 0.15 : 0.12);
+
+        return Styling::getParameters().getColor(_isOutgoing ? Styling::StyleVariable::PRIMARY_BRIGHT : Styling::StyleVariable::BASE_BRIGHT);
+    }
+
+    Styling::StyleVariable getFileStatusIconColor(FileStatus _status, bool _isOutgoing) noexcept
+    {
+        if (_status == FileStatus::AntivirusOk)
+            return Styling::StyleVariable::SECONDARY_RAINBOW_MINT;
+        else if (_status == FileStatus::AntivirusInfected)
+            return Styling::StyleVariable::SECONDARY_ATTENTION;
+
+        return _isOutgoing ? Styling::StyleVariable::PRIMARY_PASTEL : Styling::StyleVariable::BASE_PRIMARY;
     }
 
     namespace Preview
@@ -921,7 +963,7 @@ namespace Ui::MessageStyle
         }
     }
 
-    namespace Reactions
+    namespace Plates
     {
         int32_t plateHeight()
         {
@@ -948,6 +990,31 @@ namespace Ui::MessageStyle
             return Utils::scale_value(QSize(28, 28));
         }
 
+        int32_t plateHeightWithShadow(Ui::ReactionsPlateType _type)
+        {
+            auto height = plateHeight();
+            if (_type == Ui::ReactionsPlateType::Regular)
+                height += Ui::MessageStyle::Plates::shadowHeight();
+
+            return height;
+        }
+
+        int32_t plateOffsetY(Ui::ReactionsPlateType _type)
+        {
+            return _type == Ui::ReactionsPlateType::Regular
+                ? Ui::MessageStyle::Plates::plateYOffset()
+                : Ui::MessageStyle::Plates::mediaPlateYOffset();
+        }
+
+        int32_t plateOffsetX()
+        {
+            return Utils::scale_value(4);
+        }
+
+        int32_t borderRadius()
+        {
+            return Utils::scale_value(12);
+        }
     }
 
 }

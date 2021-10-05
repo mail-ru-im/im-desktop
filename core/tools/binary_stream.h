@@ -59,25 +59,25 @@ namespace core
 
             int64_t available() const noexcept override
             {
-                assert(false);
+                im_assert(false);
                 return 0;
             }
 
             char* get_data() const noexcept override
             {
-                assert(false);
+                im_assert(false);
                 return nullptr;
             }
 
             const char* get_data_for_log() const noexcept override
             {
-                assert(false);
+                im_assert(false);
                 return nullptr;
             }
 
             void swap(stream* _stream) noexcept override
             {
-                assert(false);
+                im_assert(false);
             }
 
         private:
@@ -227,13 +227,13 @@ namespace core
             {
                 if (_size == 0)
                 {
-                    assert(!"read from stream size = 0");
+                    im_assert(!"read from stream size = 0");
                     return nullptr;
                 }
 
                 if (available() < _size)
                 {
-                    assert(!"read from invalid size");
+                    im_assert(!"read from invalid size");
                     return nullptr;
                 }
 
@@ -250,7 +250,7 @@ namespace core
 
                 if (available_size == 0)
                 {
-                    assert(false);
+                    im_assert(false);
                     return nullptr;
                 }
 

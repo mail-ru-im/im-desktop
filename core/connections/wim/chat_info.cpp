@@ -25,6 +25,8 @@ int32_t chat_info::unserialize(const rapidjson::Value& _node)
     tools::unserialize_value(_node, "friendsCount", friend_count_);
     tools::unserialize_value(_node, "joinModeration", joinModeration_);
     tools::unserialize_value(_node, "trustRequired", trust_required_);
+    tools::unserialize_value(_node, "threadsEnabled", threads_enabled_);
+    tools::unserialize_value(_node, "threadsAutoSubscribe", threads_auto_subscribe_);
 
     if (const auto iter_yours = _node.FindMember("you"); iter_yours != _node.MemberEnd())
     {
@@ -114,6 +116,8 @@ void chat_info::serialize(core::coll_helper _coll) const
     _coll.set_value_as_bool("controlled", controlled_);
     _coll.set_value_as_bool("joinModeration", joinModeration_);
     _coll.set_value_as_bool("trustRequired", trust_required_);
+    _coll.set_value_as_bool("threadsEnabled", threads_enabled_);
+    _coll.set_value_as_bool("threadsAutoSubscribe", threads_auto_subscribe_);
     _coll.set_value_as_string("creator", creator_);
     _coll.set_value_as_string("default_role", default_role_);
     _coll.set_value_as_string("inviter", inviter_);

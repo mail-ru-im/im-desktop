@@ -4,6 +4,7 @@
 #include "../../../http_request.h"
 #include "../../../../common.shared/json_helper.h"
 #include "../lastseen.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -73,4 +74,9 @@ const std::map<std::string, lastseen>& get_user_last_seen::get_result() const
 std::string_view get_user_last_seen::get_method() const
 {
     return "getUserLastseen";
+}
+
+int core::wim::get_user_last_seen::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }

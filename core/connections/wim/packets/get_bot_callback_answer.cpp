@@ -3,6 +3,7 @@
 
 #include "../../../http_request.h"
 #include "../../../../common.shared/json_helper.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -65,4 +66,9 @@ const bot_payload& get_bot_callback_answer::get_payload() const noexcept
 std::string_view get_bot_callback_answer::get_method() const
 {
     return "getBotCallbackAnswer";
+}
+
+int core::wim::get_bot_callback_answer::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }

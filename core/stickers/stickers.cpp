@@ -41,7 +41,7 @@ namespace
     {
         constexpr std::wstring_view icon = L"_icon";
 
-        if (is_lottie_id(_fs_id.file_id_))
+        if (is_lottie_id(_fs_id.file_id()))
             return su::wconcat(icon, lottie_ext());
 
         std::wstring_view suffix = L"64";
@@ -129,16 +129,17 @@ namespace core
             : file_sharing_id_(_id)
         {
         }
+
         sticker::sticker(std::string_view _file_id)
-            : file_sharing_id_({ std::string(_file_id) , std::nullopt })
+            : file_sharing_id_(_file_id)
         {
         }
 
         bool sticker::unserialize(const rapidjson::Value& _node, const emoji_map& _emojis)
         {
-            file_sharing_id_ = { rapidjson_get_string(_node) , std::nullopt };
+            file_sharing_id_ = core::tools::filesharing_id(rapidjson_get_string(_node));
 
-            if (const auto it = _emojis.find(file_sharing_id_.file_id_); it != _emojis.end())
+            if (const auto it = _emojis.find(std::string(file_sharing_id_.file_id())); it != _emojis.end())
                 emojis_ = it->second;
 
             return true;
@@ -149,7 +150,7 @@ namespace core
             std::string_view file_id;
             if (!tools::unserialize_value(_node, "fileId", file_id))
                 return false;
-            file_sharing_id_ = { std::string(file_id) , std::nullopt };
+            file_sharing_id_ = core::tools::filesharing_id(file_id);
             if (const auto it = _node.FindMember("emoji"); it != _node.MemberEnd() && it->value.IsArray())
             {
                 emojis_.clear();
@@ -166,7 +167,7 @@ namespace core
         void sticker::update_fideration_id(const std::string& _federation_id)
         {
             if (!_federation_id.empty())
-                file_sharing_id_.source_id_ = _federation_id;
+                file_sharing_id_.set_source_id(_federation_id);
         }
 
         int32_t sticker::get_id() const
@@ -391,13 +392,13 @@ namespace core
 
         std::string set::get_main_sticker_url(std::string_view _size) const
         {
-            const auto& id = main_sticker_.fs_id();
-            if (is_lottie_id(id.file_id_))
-                return su::concat(urls::get_url(urls::url_type::sticker), '/', id.file_id_);
+            const auto& id = main_sticker_.fs_id().file_id();
+            if (is_lottie_id(id))
+                return su::concat(urls::get_url(urls::url_type::sticker), '/', id);
 
             if (_size == big_size())
                 _size = "large";
-            return su::concat(urls::get_url(urls::url_type::files_preview), "/max/sticker_", _size, '/', id.file_id_);
+            return su::concat(urls::get_url(urls::url_type::files_preview), "/max/sticker_", _size, '/', id);
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -407,10 +408,10 @@ namespace core
             std::string _source_url,
             std::string _endpoint,
             std::wstring _dest_file,
-            int32_t _set_id = -1,
-            int32_t _sticker_id = -1,
-            core::tools::filesharing_id _fs_id = {},
-            sticker_size _size = sticker_size::min)
+            int32_t _set_id,
+            int32_t _sticker_id,
+            core::tools::filesharing_id _fs_id,
+            sticker_size _size)
             : source_url_(std::move(_source_url))
             , endpoint_(std::move(_endpoint))
             , dest_file_(std::move(_dest_file))
@@ -550,19 +551,19 @@ namespace core
 
             auto write_filesharing_id = [&ss_out, &_fs_id]()
             {
-                ss_out << tools::from_utf8(_fs_id.file_id_);
-                if (_fs_id.source_id_)
-                    ss_out << L'_' << tools::from_utf8(*_fs_id.source_id_);
+                ss_out << tools::from_utf8(_fs_id.file_id());
+                if (const auto source = _fs_id.source_id())
+                    ss_out << L'_' << tools::from_utf8(*source);
             };
 
-            if (is_lottie_id(_fs_id.file_id_))
+            if (is_lottie_id(_fs_id.file_id()))
             {
                 write_filesharing_id();
                 ss_out << L'/' << "sticker" << lottie_ext();
             }
             else
             {
-                if (_fs_id.file_id_.empty())
+                if (_fs_id.file_id().empty())
                     ss_out << _set_id << L'/' << _sticker_id;
                 else
                     write_filesharing_id();
@@ -589,10 +590,10 @@ namespace core
 
         std::string cache::make_sticker_url(const int32_t _set_id, const int32_t _sticker_id, const core::tools::filesharing_id& _fs_id, const std::string& _size) const
         {
-            const auto& file_id = _fs_id.file_id_;
+            const auto& file_id = _fs_id.file_id();
             if (!file_id.empty())
             {
-                const auto& source_id = _fs_id.source_id_;
+                const auto source_id = _fs_id.source_id();
                 if (is_lottie_id(file_id))
                     return su::concat(urls::get_url(urls::url_type::sticker), '/', file_id, source_id ? su::concat("?source=", *source_id) : std::string());
 
@@ -660,7 +661,7 @@ namespace core
                 if (!path.empty() && !core::tools::system::is_exist(path))
                 {
                     auto dl_task = download_task(set->get_main_sticker_url(_size), "stikersMeta", std::move(path), set->get_id());
-                    dl_task.set_need_decompress(is_lottie_id(set->get_main_sticker().fs_id().file_id_));
+                    dl_task.set_need_decompress(is_lottie_id(set->get_main_sticker().fs_id().file_id()));
                     dl_task.set_type(download_task::type::icon);
                     pending_tasks_.emplace_back(std::move(dl_task));
                 }
@@ -700,9 +701,9 @@ namespace core
 
                 coll_sticker.set_value_as_int("id", sticker->get_id());
                 const auto& filesharing_id = sticker->fs_id();
-                coll_sticker.set_value_as_string("file_id", filesharing_id.file_id_);
-                if (filesharing_id.source_id_)
-                    coll_sticker.set_value_as_string("source_id", *filesharing_id.source_id_);
+                coll_sticker.set_value_as_string("file_id", filesharing_id.file_id());
+                if (const auto source = filesharing_id.source_id())
+                    coll_sticker.set_value_as_string("source_id", *source);
                 coll_sticker.set_value_as_int("set_id", _set.get_id());
 
                 ifptr<iarray> emoji_array(coll_sticker->create_array());
@@ -802,7 +803,7 @@ namespace core
                 {
                     const auto same_size = _task.get_size() == _size;
                     const auto same_set_and_id = _set_id > 0 && _task.get_set_id() == _set_id && _task.get_sticker_id() == _sticker_id;
-                    const auto same_fs_id = !_fs_id.file_id_.empty() && _task.get_fs_id() == _fs_id;
+                    const auto same_fs_id = !_fs_id.is_empty() && _task.get_fs_id() == _fs_id;
 
                     return same_size && same_set_and_id && same_fs_id;
                 });
@@ -824,8 +825,8 @@ namespace core
             {
                 auto sticker_url = make_sticker_url(_set_id, _sticker_id, _fs_id, _size);
 
-                auto dl_task = download_task(std::move(sticker_url), "stikersGetSticker", _path, _set_id, _sticker_id, std::move(_fs_id), _size);
-                dl_task.set_need_decompress(is_lottie_id(dl_task.get_fs_id().file_id_));
+                auto dl_task = download_task(std::move(sticker_url), "stikersGetSticker", _path, _set_id, _sticker_id, _fs_id, _size);
+                dl_task.set_need_decompress(is_lottie_id(dl_task.get_fs_id().file_id()));
                 pending_tasks_.emplace_back(std::move(dl_task));
             }
         }
@@ -836,7 +837,7 @@ namespace core
             {
                 return std::find_if(_list.begin(), _list.end(), [_set_id](const auto& _task)
                 {
-                    return _task.get_set_id() == _set_id && _task.get_sticker_id() == -1 && _task.get_fs_id().file_id_.empty();
+                    return _task.get_set_id() == _set_id && _task.get_sticker_id() == -1 && _task.get_fs_id().is_empty();
                 });
             };
 
@@ -857,7 +858,7 @@ namespace core
                 if (!tools::system::is_exist(_path))
                 {
                     auto dl_task = download_task(set->get_main_sticker_url(big_size()), "stikersBigIcon", _path, _set_id, -1);
-                    dl_task.set_need_decompress(is_lottie_id(set->get_main_sticker().fs_id().file_id_));
+                    dl_task.set_need_decompress(is_lottie_id(set->get_main_sticker().fs_id().file_id()));
                     pending_tasks_.emplace_back(std::move(dl_task));
                 }
             }
@@ -1261,9 +1262,9 @@ namespace core
             if (_set_id >= 0)
                 coll.set_value_as_int("set_id", _set_id);
             coll.set_value_as_int("sticker_id", _sticker_id);
-            coll.set_value_as_string("file_id", _fs_id.file_id_);
-            if (_fs_id.source_id_)
-                coll.set_value_as_string("source_id", *_fs_id.source_id_);
+            coll.set_value_as_string("file_id", _fs_id.file_id());
+            if (const auto source = _fs_id.source_id())
+                coll.set_value_as_string("source_id", *source);
             coll.set_value_as_int("error", _error);
 
             im_assert(!to_string(_size).empty());

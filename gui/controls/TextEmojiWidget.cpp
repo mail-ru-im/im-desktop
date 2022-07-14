@@ -4,6 +4,22 @@
 #include "../cache/emoji/Emoji.h"
 #include "../main_window/history_control/MessageStyle.h"
 
+namespace
+{
+    int correctFontHeight(const QFont& _font)
+    {
+        auto fontHeight = QFontMetrics(_font).height();
+        // todo: after emoji correction TextUnit height is different from font height
+        if constexpr (platform::is_apple())
+            fontHeight -= Utils::scale_value(1);
+        else
+            fontHeight += Utils::scale_value(1);
+        /////////
+
+        return fontHeight;
+    }
+}
+
 namespace Ui
 {
     class TewLex
@@ -141,18 +157,17 @@ namespace Ui
         }
 
     public:
-
         TewLexEmoji(int _mainCode, int _extCode)
-            : mainCode_(_mainCode),
-            extCode_(_extCode)
-        {
-        }
+            : mainCode_(_mainCode)
+            , extCode_(_extCode)
+        {}
     };
 
     CompiledText::CompiledText()
-        : width_(-1), height_(-1), kerning_(0)
-    {
-    }
+        : width_(-1)
+        , height_(-1)
+        , kerning_(0)
+    {}
 
     int CompiledText::width(const QFontMetrics& _painter)
     {
@@ -238,7 +253,7 @@ namespace Ui
             im_assert(_offset >= 0);
             im_assert(inputStream.string());
 
-            const auto &text = *inputStream.string();
+            const auto& text = *inputStream.string();
             return ((inputStream.pos() + _offset) >= text.length());
         };
 
@@ -325,21 +340,21 @@ namespace Ui
         return e;
     }
 
-    TextEmojiWidget::TextEmojiWidget(QWidget* _parent, const QFont& _font, const QColor& _color, int _sizeToBaseline)
-        : QWidget(_parent),
-        font_(_font),
-        color_(_color),
-        colorHover_(_color),
-        colorActive_(_color),
-        align_(TextEmojiAlign::allign_left),
-        sizeToBaseline_(_sizeToBaseline),
-        fading_(false),
-        ellipsis_(false),
-        multiline_(false),
-        selectable_(false),
-        hovered_(false),
-        active_(false),
-        disableFixedPreferred_(false)
+    TextEmojiWidget::TextEmojiWidget(QWidget* _parent, const QFont& _font, const Styling::ColorContainer& _color, int _sizeToBaseline)
+        : QWidget(_parent)
+        , font_(_font)
+        , color_(_color)
+        , colorHover_(_color.key())
+        , colorActive_(_color.key())
+        , align_(TextEmojiAlign::allign_left)
+        , sizeToBaseline_(_sizeToBaseline)
+        , fading_(false)
+        , ellipsis_(false)
+        , multiline_(false)
+        , selectable_(false)
+        , hovered_(false)
+        , active_(false)
+        , disableFixedPreferred_(false)
     {
         setFont(font_);
 
@@ -406,7 +421,7 @@ namespace Ui
         updateGeometry();
     }
 
-    void TextEmojiWidget::setText(const QString& _text, const QColor& _color, TextEmojiAlign _align)
+    void TextEmojiWidget::setText(const QString& _text, const Styling::ThemeColorKey& _color, TextEmojiAlign _align)
     {
         color_ = _color;
         colorHover_ = _color;
@@ -414,18 +429,18 @@ namespace Ui
         setText(_text, _align);
     }
 
-    void TextEmojiWidget::setColor(const QColor &_color)
+    void TextEmojiWidget::setColor(const Styling::ThemeColorKey& _color)
     {
         color_ = _color;
         setText(text_);
     }
 
-    void TextEmojiWidget::setHoverColor(const QColor &_color)
+    void TextEmojiWidget::setHoverColor(const Styling::ThemeColorKey& _color)
     {
         colorHover_ = _color;
     }
 
-    void TextEmojiWidget::setActiveColor(const QColor &_color)
+    void TextEmojiWidget::setActiveColor(const Styling::ThemeColorKey& _color)
     {
         colorActive_ = _color;
     }
@@ -526,7 +541,9 @@ namespace Ui
     {
         QPainter painter(this);
         painter.setFont(font_);
-        painter.setPen(hovered_ ? colorHover_ : ( active_ ? colorActive_ : color_));
+        painter.setPen(hovered_ ? Styling::getColor(colorHover_) : (active_ ? Styling::getColor(colorActive_) : color_.actualColor()));
+        if (!isEnabled())
+            painter.setPen(Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
         if (selection_.y() > 0)
             painter.setBrush(MessageStyle::getSelectionColor());
 
@@ -569,7 +586,7 @@ namespace Ui
                 {
                     const auto contRect = contentsRect();
                     QLinearGradient gradient(contRect.topLeft(), contRect.topRight());
-                    gradient.setColorAt(0.7, color_);
+                    gradient.setColorAt(0.7, color_.actualColor());
                     gradient.setColorAt(1.0, palette().color(QPalette::Window));
                     QPen pen;
                     pen.setBrush(QBrush(gradient));
@@ -600,26 +617,26 @@ namespace Ui
         }
     }
 
-    void TextEmojiWidget::resizeEvent(QResizeEvent *_e)
+    void TextEmojiWidget::resizeEvent(QResizeEvent* _e)
     {
         QWidget::resizeEvent(_e);
         if (_e->oldSize().width() != -1 && _e->oldSize().height() != -1)
             Q_EMIT setSize(_e->size().width() - _e->oldSize().width(), _e->size().height() - _e->oldSize().height());
     }
 
-    void TextEmojiWidget::enterEvent(QEvent *_e)
+    void TextEmojiWidget::enterEvent(QEvent* _e)
     {
         hovered_ = true;
         update();
     }
 
-    void TextEmojiWidget::leaveEvent(QEvent *_e)
+    void TextEmojiWidget::leaveEvent(QEvent* _e)
     {
         hovered_ = false;
         update();
     }
 
-    void TextEmojiWidget::mousePressEvent(QMouseEvent *_e)
+    void TextEmojiWidget::mousePressEvent(QMouseEvent* _e)
     {
         if (_e->button() == Qt::RightButton)
         {
@@ -639,13 +656,13 @@ namespace Ui
         return QWidget::mousePressEvent(_e);
     }
 
-    void TextEmojiWidget::mouseReleaseEvent(QMouseEvent *_e)
+    void TextEmojiWidget::mouseReleaseEvent(QMouseEvent* _e)
     {
         active_ = false;
         return QWidget::mouseReleaseEvent(_e);
     }
 
-    void TextEmojiWidget::mouseDoubleClickEvent(QMouseEvent *_e)
+    void TextEmojiWidget::mouseDoubleClickEvent(QMouseEvent* _e)
     {
         if (selectable_)
         {
@@ -657,7 +674,7 @@ namespace Ui
         return QWidget::mouseDoubleClickEvent(_e);
     }
 
-    void TextEmojiWidget::keyPressEvent(QKeyEvent *_e)
+    void TextEmojiWidget::keyPressEvent(QKeyEvent* _e)
     {
         if (selectable_)
         {
@@ -673,7 +690,7 @@ namespace Ui
         return QWidget::keyPressEvent(_e);
     }
 
-    void TextEmojiWidget::focusOutEvent(QFocusEvent *_e)
+    void TextEmojiWidget::focusOutEvent(QFocusEvent* _e)
     {
         if (selectable_)
         {
@@ -745,7 +762,7 @@ namespace Ui
 #endif
     }
 
-    void TextUnitLabel::setText(const QString &_text, const QColor& _color)
+    void TextUnitLabel::setText(const QString& _text, const Styling::ThemeColorKey& _color)
     {
         textUnit_->setText(_text, _color);
         QLabel::setText(_text);
@@ -771,18 +788,4 @@ namespace Ui
         if (fitWidth_)
             setFixedWidth(qMin(maxAvalibleWidth_, textUnit_->desiredWidth()));
     }
-
-    int TextUnitLabel::correctFontHeight(const QFont& _font) const
-    {
-        auto fontHeight = QFontMetrics(_font).height();
-        // todo: after emoji correction TextUnit height is different from font height
-        if constexpr (platform::is_apple())
-            fontHeight -= Utils::scale_value(1);
-        else
-            fontHeight += Utils::scale_value(1);
-        /////////
-
-        return fontHeight;
-    }
-}
-
+} // namespace Ui

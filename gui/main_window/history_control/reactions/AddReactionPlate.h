@@ -25,6 +25,7 @@ namespace Ui
         void setOutgoingPosition(bool _outgoingPosition);
         void setMsgId(int64_t _msgId);
         void setChatId(const QString& _chatId);
+        void setThreadFeedFlag(bool _isThreadFeed);
         void showOverButton(const QPoint& _buttonTopCenterGlobal);
 
     protected:

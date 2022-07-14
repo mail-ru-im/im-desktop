@@ -61,7 +61,7 @@ namespace Ui
             , selected_{ _selected }
         {
             description_ = TextRendering::MakeTextUnit(Data::TaskData::statusDescription(status_));
-            description_->init(Fonts::appFontScaled(15, _selected ? Fonts::FontWeight::Bold : Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+            description_->init({ Fonts::appFontScaled(15, _selected ? Fonts::FontWeight::Bold : Fonts::FontWeight::Normal), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } });
             description_->setOffsets(textOffset(), itemHeight() / 2);
             description_->evaluateDesiredSize();
 

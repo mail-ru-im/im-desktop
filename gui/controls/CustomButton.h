@@ -2,6 +2,7 @@
 
 #include "TextUnit.h"
 #include "ClickWidget.h"
+#include "utils/SvgUtils.h"
 
 namespace Ui
 {
@@ -22,7 +23,7 @@ namespace Ui
         void changedPress(bool _press);
 
     public:
-        explicit CustomButton(QWidget* _parent, const QString& _svgName = QString(), const QSize& _iconSize = QSize(), const QColor& _defaultColor = QColor());
+        explicit CustomButton(QWidget* _parent, const QString& _svgName = QString(), const QSize& _iconSize = QSize(), const Styling::ColorParameter& _defaultColor = Styling::ColorParameter());
 
         void setActive(const bool _isActive);
         bool isActive() const;
@@ -36,30 +37,30 @@ namespace Ui
         void setIconAlignment(const Qt::Alignment _flags);
         void setIconOffsets(const int _horOffset, const int _verOffset);
 
-        void setBackgroundNormal(const QBrush& _color);
-        void setBackgroundDisabled(const QBrush& _color);
-        void setBackgroundHovered(const QBrush& _color);
-        void setBackgroundPressed(const QBrush& _color);
+        void setBackgroundNormal(const Styling::ColorParameter& _color);
+        void setBackgroundDisabled(const Styling::ColorParameter& _color);
+        void setBackgroundHovered(const Styling::ColorParameter& _color);
+        void setBackgroundPressed(const Styling::ColorParameter& _color);
 
-        void setTextColor(const QColor& _color);
-        void setNormalTextColor(const QColor& _color);
-        void setHoveredTextColor(const QColor& _color);
-        void setPressedTextColor(const QColor& _color);
+        void setTextColor(const Styling::ColorParameter& _color);
+        void setNormalTextColor(const Styling::ColorParameter& _color);
+        void setHoveredTextColor(const Styling::ColorParameter& _color);
+        void setPressedTextColor(const Styling::ColorParameter& _color);
 
-        void setDefaultColor(const QColor& _color);
-        void setHoverColor(const QColor& _color);
-        void setActiveColor(const QColor& _color);
-        void setDisabledColor(const QColor& _color);
-        void setPressedColor(const QColor& _color);
+        void setDefaultColor(const Styling::ColorParameter& _color);
+        void setHoverColor(const Styling::ColorParameter& _color);
+        void setActiveColor(const Styling::ColorParameter& _color);
+        void setDisabledColor(const Styling::ColorParameter& _color);
+        void setPressedColor(const Styling::ColorParameter& _color);
 
         void addOverlayPixmap(const QPixmap& _pixmap, QPoint _pos);
 
-        void setDefaultImage(const QString& _svgPath,  const QColor& _color = QColor(), const QSize& _size = QSize());
-        void setHoverImage(const QString& _svgPath,    const QColor& _color = QColor(), const QSize& _size = QSize());
-        void setActiveImage(const QString& _svgPath,   const QColor& _color = QColor(), const QSize& _size = QSize());
-        void setDisabledImage(const QString& _svgPath, const QColor& _color = QColor(), const QSize& _size = QSize());
-        void setPressedImage(const QString& _svgPath,  const QColor& _color = QColor(), const QSize& _size = QSize());
-        void setSpinnerImage(const QString& _svgPath,  const QColor& _color = QColor(), const QSize& _size = QSize());
+        void setDefaultImage(const QString& _svgPath,  const Styling::ColorParameter& _color = Styling::ColorParameter{}, const QSize& _size = QSize());
+        void setHoverImage(const QString& _svgPath,    const Styling::ColorParameter& _color = Styling::ColorParameter{}, const QSize& _size = QSize());
+        void setActiveImage(const QString& _svgPath,   const Styling::ColorParameter& _color = Styling::ColorParameter{}, const QSize& _size = QSize());
+        void setDisabledImage(const QString& _svgPath, const Styling::ColorParameter& _color = Styling::ColorParameter{}, const QSize& _size = QSize());
+        void setPressedImage(const QString& _svgPath,  const Styling::ColorParameter& _color = Styling::ColorParameter{}, const QSize& _size = QSize());
+        void setSpinnerImage(const QString& _svgPath,  const Styling::ColorParameter& _color = Styling::ColorParameter{}, const QSize& _size = QSize());
         void clearIcon();
 
         void setCustomToolTip(const QString& _toopTip);
@@ -73,7 +74,7 @@ namespace Ui
         void setTextLeftOffset(const int _offset);
 
         void forceHover(bool _force);
-        void setFocusColor(const QColor& _color);
+        void setFocusColor(const Styling::ColorParameter& _color);
 
     protected:
         void paintEvent(QPaintEvent* _event) override;
@@ -87,7 +88,7 @@ namespace Ui
         void focusOutEvent(QFocusEvent* _event) override;
 
     private:
-        QPixmap getPixmap(const QString& _path, const QColor& _color, const QSize& _size = QSize()) const;
+        Utils::StyledPixmap getPixmap(const QString& _path, const Styling::ColorParameter& _color, const QSize& _size = QSize()) const;
         void setBackgroundRound();
 
         void onTooltipTimer();
@@ -99,23 +100,23 @@ namespace Ui
 
     private:
         QPixmap pixmapToDraw_;
-        QPixmap pixmapDefault_;
-        QPixmap pixmapHover_;
-        QPixmap pixmapActive_;
-        QPixmap pixmapDisabled_;
-        QPixmap pixmapPressed_;
+        Utils::StyledPixmap pixmapDefault_;
+        Utils::StyledPixmap pixmapHover_;
+        Utils::StyledPixmap pixmapActive_;
+        Utils::StyledPixmap pixmapDisabled_;
+        Utils::StyledPixmap pixmapPressed_;
+        Utils::StyledPixmap pixmapSpinner_;
         QPixmap pixmapOverlay_;
-        QPixmap pixmapSpinner_;
 
-        QBrush backgroundBrushNormal_;
-        QBrush backgroundBrushDisabled_;
-        QBrush backgroundBrushHovered_;
-        QBrush backgroundBrushPressed_;
+        Styling::ColorContainer backgroundBrushNormal_ = Styling::ColorContainer{ Qt::transparent };
+        Styling::ColorContainer backgroundBrushDisabled_ = Styling::ColorContainer{ Qt::transparent };
+        Styling::ColorContainer backgroundBrushHovered_ = Styling::ColorContainer{ Qt::transparent };
+        Styling::ColorContainer backgroundBrushPressed_ = Styling::ColorContainer{ Qt::transparent };
 
-        QColor textColor_;
-        QColor textColorNormal_;
-        QColor textColorHovered_;
-        QColor textColorPressed_;
+        Styling::ColorContainer textColor_;
+        Styling::ColorParameter textColorNormal_;
+        Styling::ColorParameter textColorHovered_;
+        Styling::ColorParameter textColorPressed_;
         Qt::Alignment textAlign_;
         int textOffsetLeft_;
         int spinAngle_;
@@ -141,7 +142,7 @@ namespace Ui
         QRect bgRect_;
         ButtonShape shape_;
 
-        QColor focusColor_;
+        Styling::ColorContainer focusColor_;
         QVariantAnimation* animFocus_;
         QTimer* spinTimer_;
     };
@@ -151,16 +152,16 @@ namespace Ui
     public:
         RoundButton(QWidget* _parent, int _radius = 0);
 
-        void setColors(const QColor& _bgNormal, const QColor& _bgHover = QColor(), const QColor& _bgActive = QColor());
+        void setColors(const Styling::ThemeColorKey& _bgNormal, const Styling::ThemeColorKey& _bgHover = {}, const Styling::ThemeColorKey& _bgActive = {});
 
-        void setTextColor(const QColor& _color);
+        void setTextColor(const Styling::ThemeColorKey& _color);
         void setText(const QString& _text, int _size = 12);
         void setIcon(const QString& _iconPath, int _size = 0);
         void setIcon(QStringView _iconPath, int _size = 0)
         {
             setIcon(_iconPath.toString(), _size);
         }
-        void setIcon(const QPixmap& _icon);
+        void setIcon(const Utils::StyledPixmap& _icon);
 
         void forceHover(bool _force);
 
@@ -169,22 +170,24 @@ namespace Ui
     protected:
         void paintEvent(QPaintEvent*) override;
         void resizeEvent(QResizeEvent* _event) override;
+        QSize getTextSize() const;
+        int getRadius() const;
 
     private:
         QColor getBgColor() const;
 
     private:
-        QPixmap icon_;
+        Utils::StyledPixmap icon_;
         TextRendering::TextUnitPtr text_;
         QPainterPath bubblePath_;
 
-        QColor bgNormal_;
-        QColor bgHover_;
-        QColor bgActive_;
-        QColor textColor_;
+        mutable Styling::ColorContainer bgNormal_;
+        mutable Styling::ColorContainer bgHover_;
+        mutable Styling::ColorContainer bgActive_;
+        Styling::ThemeColorKey textColor_;
 
-        bool forceHover_;
         int radius_;
+        bool forceHover_ = false;
     };
 }
 

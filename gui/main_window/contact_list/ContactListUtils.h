@@ -32,7 +32,8 @@ namespace Logic
         YOUR_INVITES_LIST,
         DISALLOWED_INVITERS,
         DISALLOWED_INVITERS_ADD,
-        TASK_ASSIGNEE
+        TASK_ASSIGNEE,
+        THREAD_SUBSCRIBERS
     };
 
     bool is_members_regim(int _regim);
@@ -49,12 +50,14 @@ namespace Logic
 
     QMap<QString, QVariant> makeData(const QString& _command, const QString& _aimid = QString());
     QMap<QString, QVariant> makeData(const QString& _command, Data::CallInfoPtr _call);
+    void addItemToContextMenu(QMenu* _popupMenu, const QString& _aimId, const Data::DlgState& _dlg);
     void showContactListPopup(QAction* _action);
 }
 
 namespace Ui
 {
     class ServiceContact;
+    class TextWidget;
 
     class EmptyListLabel : public LinkAccessibleWidget
     {
@@ -99,8 +102,9 @@ namespace Ui
         void paintEvent(QPaintEvent* _e) override;
 
     private:
-        QColor getTextColor() const;
+        Styling::ThemeColorKey getTextColor() const;
 
+    private:
         TextRendering::TextUnitPtr label_;
         bool selected_;
     };
@@ -123,7 +127,9 @@ namespace Ui
     enum class SearchCategory
     {
         ContactsAndGroups,
-        Messages
+        Messages,
+        Threads,
+        SingleThread
     };
 
     class GlobalSearchViewHeader : public QWidget
@@ -131,7 +137,7 @@ namespace Ui
         Q_OBJECT
 
     Q_SIGNALS:
-        void categorySelected(SearchCategory _category);
+        void categorySelected(SearchCategory _category, bool _animated = true);
 
     private Q_SLOTS:
         void onCategoryClicked();
@@ -184,7 +190,6 @@ namespace Ui
         ~SearchFilterButton();
 
         void setLabel(const QString& _label);
-
         QSize sizeHint() const override;
 
     protected:
@@ -194,7 +199,8 @@ namespace Ui
     private:
         void elideLabel();
 
-        TextRendering::TextUnitPtr label_;
+    private:
+        TextWidget* labelWidget_ = nullptr;
     };
 
     class DialogSearchViewHeader : public QWidget

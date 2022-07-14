@@ -5,6 +5,7 @@
 #include "utils/InterConnector.h"
 #include "utils/features.h"
 #include "main_window/contact_list/ServiceContacts.h"
+#include "main_window/contact_list/Common.h"
 #include "my_info.h"
 
 namespace
@@ -175,13 +176,13 @@ namespace Logic
         updateSubscription(_aimid);
     }
 
-    static std::unique_ptr<StatusContainer> g_StatusContainer;
+    static QObjectUniquePtr<StatusContainer> g_StatusContainer;
 
     StatusContainer* GetStatusContainer()
     {
         Utils::ensureMainThread();
         if (!g_StatusContainer)
-            g_StatusContainer = std::make_unique<StatusContainer>(nullptr);
+            g_StatusContainer = makeUniqueQObjectPtr<StatusContainer>();
 
         return g_StatusContainer.get();
     }

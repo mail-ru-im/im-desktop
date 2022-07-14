@@ -10,6 +10,7 @@ namespace Ui
     {
         Banned,
         Pending,
+        Deleted,
         Empty,
     };
 

@@ -20,6 +20,7 @@
 #include "utils/stat_utils.h"
 #include "../../styles/ThemeParameters.h"
 #include "../input_widget/InputWidgetUtils.h"
+#include "utils/features.h"
 #ifndef STRIP_AV_MEDIA
 #include "../../media/ptt/AudioUtils.h"
 #include "../sounds/SoundsManager.h"
@@ -68,13 +69,13 @@ namespace
 
     auto getButtonColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_GLOBALWHITE };
     }
 
     auto getPlayButtonIcon(bool _isPlaying = false)
     {
-        static const auto iconPlay = Utils::renderSvgScaled(qsl(":/videoplayer/video_play"), QSize(SUB_BUTTON_SIZE, SUB_BUTTON_SIZE), getButtonColor());
-        static const auto iconPause = Utils::renderSvgScaled(qsl(":/videoplayer/video_pause"), QSize(SUB_BUTTON_SIZE, SUB_BUTTON_SIZE), getButtonColor());
+        static auto iconPlay = Utils::StyledPixmap::scaled(qsl(":/videoplayer/video_play"), QSize(SUB_BUTTON_SIZE, SUB_BUTTON_SIZE), getButtonColor());
+        static auto iconPause = Utils::StyledPixmap::scaled(qsl(":/videoplayer/video_pause"), QSize(SUB_BUTTON_SIZE, SUB_BUTTON_SIZE), getButtonColor());
         return _isPlaying ? iconPause : iconPlay;
     }
 
@@ -95,7 +96,7 @@ namespace Ui
         auto date = QLocale().standaloneMonthName(dt.date().month());
 
         date_ = Ui::TextRendering::MakeTextUnit(date.toUpper());
-        date_->init(Fonts::appFontScaled(11, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+        date_->init({ Fonts::appFontScaled(11, Fonts::FontWeight::SemiBold), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY } });
         date_->evaluateDesiredSize();
     }
 
@@ -148,7 +149,7 @@ namespace Ui
         height_ += QFontMetrics(Fonts::appFontScaled(12)).height();
 
         date_ = Ui::TextRendering::MakeTextUnit(_date, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        date_->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
+        date_->init({ Fonts::appFontScaled(13), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY } });
         date_->evaluateDesiredSize();
 
         height_ += date_->cachedSize().height();
@@ -156,17 +157,17 @@ namespace Ui
         height_ += Utils::scale_value(VER_OFFSET);
 
         playIcon_ = getPlayButtonIcon();
-        textIcon_ = Utils::renderSvgScaled(qsl(":/ptt/text_icon"), QSize(BUTTON_SIZE, BUTTON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
+        textIcon_ = Utils::StyledPixmap::scaled(qsl(":/ptt/text_icon"), QSize(BUTTON_SIZE, BUTTON_SIZE), Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY });
 
         name_ = TextRendering::MakeTextUnit(Logic::GetFriendlyContainer()->getFriendly(_sender), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        name_->init(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        name_->init({ Fonts::appFontScaled(16), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } });
         name_->evaluateDesiredSize();
 
         const auto id = Ui::ComplexMessage::extractIdFromFileSharingUri(_link);
-        durationSec_ = Ui::ComplexMessage::extractDurationFromFileSharingId(id.fileId);
+        durationSec_ = Ui::ComplexMessage::extractDurationFromFileSharingId(id.fileId_);
 
         time_ = TextRendering::MakeTextUnit(formatDuration(durationSec_, progress_));
-        time_->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
+        time_->init({ Fonts::appFontScaled(13), Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY } });
         time_->evaluateDesiredSize();
 
         setMoreButtonState(ButtonState::HIDDEN);
@@ -197,9 +198,9 @@ namespace Ui
             _p.drawPixmap(width_ - Utils::scale_value(RIGHT_OFFSET) / 2 - Utils::scale_value(MORE_BUTTON_SIZE) / 2, Utils::scale_value(ICON_VER_OFFSET + BUTTON_SIZE / 2) - Utils::scale_value(MORE_BUTTON_SIZE) / 2 + _rect.y(), more_);
 
         _p.drawEllipse(QPoint(Utils::scale_value(HOR_OFFSET + BUTTON_SIZE / 2), Utils::scale_value(ICON_VER_OFFSET + BUTTON_SIZE / 2) + _rect.y()), Utils::scale_value(BUTTON_SIZE / 2), Utils::scale_value(BUTTON_SIZE / 2));
-        _p.drawPixmap(Utils::scale_value(HOR_OFFSET + BUTTON_SIZE / 2 - SUB_BUTTON_SIZE / 2), Utils::scale_value(ICON_VER_OFFSET + BUTTON_SIZE / 2 - SUB_BUTTON_SIZE / 2) + _rect.y(), playIcon_);
+        _p.drawPixmap(Utils::scale_value(HOR_OFFSET + BUTTON_SIZE / 2 - SUB_BUTTON_SIZE / 2), Utils::scale_value(ICON_VER_OFFSET + BUTTON_SIZE / 2 - SUB_BUTTON_SIZE / 2) + _rect.y(), playIcon_.actualPixmap());
 
-        const auto showPttRecognized = config::get().is_on(config::features::ptt_recognition);
+        const auto showPttRecognized = Features::isPttRecognitionEnabled();
         if (showPttRecognized)
         {
             switch (textState_)
@@ -221,7 +222,7 @@ namespace Ui
             _p.drawEllipse(QPoint(width_ - Utils::scale_value(HOR_OFFSET + BUTTON_SIZE / 2 + RIGHT_OFFSET - PREVIEW_RIGHT_OFFSET), Utils::scale_value(ICON_VER_OFFSET + BUTTON_SIZE / 2) + _rect.y()), Utils::scale_value(BUTTON_SIZE / 2), Utils::scale_value(BUTTON_SIZE / 2));
 
             QRect textIconRect(width_ - Utils::scale_value(HOR_OFFSET + BUTTON_SIZE / 2 + TEXT_BUTTON_SIZE / 2 + RIGHT_OFFSET - PREVIEW_RIGHT_OFFSET), Utils::scale_value(TEXT_BUTTON_SIZE / 2) + _rect.y(), Utils::scale_value(TEXT_BUTTON_SIZE), Utils::scale_value(TEXT_BUTTON_SIZE));
-            _p.drawPixmap(textIconRect, textIcon_);
+            _p.drawPixmap(textIconRect, textIcon_.actualPixmap());
         }
 
         const auto mult = showPttRecognized ? 2 : 1;
@@ -397,7 +398,7 @@ namespace Ui
     {
         text_ = _text;
         textControl_ = TextRendering::MakeTextUnit(text_);
-        textControl_->init(Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        textControl_->init({ Fonts::appFontScaled(15), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } });
         textControl_->getHeight(width_ - Utils::scale_value(HOR_OFFSET + TEXT_HOR_OFFSET + RIGHT_OFFSET));
     }
 
@@ -419,7 +420,7 @@ namespace Ui
 
     bool PttItem::isOverTextButton(const QPoint& _pos) const
     {
-        if (!isDrew() || !config::get().is_on(config::features::ptt_recognition))
+        if (!isDrew() || !Features::isPttRecognitionEnabled())
             return false;
 
         QRegion r(width_ - Utils::scale_value(HOR_OFFSET + BUTTON_SIZE + RIGHT_OFFSET - PREVIEW_RIGHT_OFFSET), Utils::scale_value(ICON_VER_OFFSET), Utils::scale_value(BUTTON_SIZE), Utils::scale_value(BUTTON_SIZE), QRegion::RegionType::Ellipse);
@@ -482,7 +483,7 @@ namespace Ui
 
     QRect PttItem::getPlaybackRect() const
     {
-        const auto mult = config::get().is_on(config::features::ptt_recognition) ? 2 : 1;
+        const auto mult = Features::isPttRecognitionEnabled() ? 2 : 1;
         const auto progressWidth = width_ - Utils::scale_value(HOR_OFFSET + RIGHT_OFFSET) - Utils::scale_value(PREVIEW_RIGHT_OFFSET) * mult - Utils::scale_value(BUTTON_SIZE) * mult;
 
         auto offset = 0;
@@ -536,11 +537,11 @@ namespace Ui
     void PttItem::setDateState(bool _hover, bool _active)
     {
         if (_hover)
-            date_->setColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER));
+            date_->setColor(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY_HOVER });
         else if (_active)
-            date_->setColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_ACTIVE));
+            date_->setColor(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY_ACTIVE });
         else
-            date_->setColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
+            date_->setColor(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY });
 
         datePressed_ = _active;
     }
@@ -571,7 +572,7 @@ namespace Ui
             color = Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY);
             break;
         case ButtonState::HOVERED:
-            color =Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER);
+            color = Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER);
             break;
         case ButtonState::PRESSED:
             color = Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_ACTIVE);
@@ -580,7 +581,7 @@ namespace Ui
             break;
         }
 
-        more_ = Utils::renderSvgScaled(qsl(":/controls/more_vertical"), QSize(MORE_BUTTON_SIZE, MORE_BUTTON_SIZE), color);
+        more_ = Utils::renderSvgScaled(qsl(":/controls/more_vertical"), QSize(MORE_BUTTON_SIZE, MORE_BUTTON_SIZE), color); // todo
     }
 
     bool PttItem::isOverMoreButton(const QPoint& _pos, int _h) const
@@ -598,7 +599,9 @@ namespace Ui
 
     PttList::PttList(QWidget* _parent)
         : MediaContentWidget(MediaContentType::Files, _parent)
-        , playingId_(-1)
+#ifndef STRIP_AV_MEDIA
+        , playingId_(SoundType::Unknown)
+#endif // !STRIP_AV_MEDIA
         , playingIndex_(std::make_pair(-1, -1))
         , lastProgress_(0)
         , animation_(new QVariantAnimation(this))
@@ -608,24 +611,8 @@ namespace Ui
 #ifndef STRIP_AV_MEDIA
         connect(GetSoundsManager(), &SoundsManager::pttPaused, this, &PttList::onPttPaused);
         connect(GetSoundsManager(), &SoundsManager::pttFinished, this, &PttList::onPttFinished);
+        connect(animation_, &QVariantAnimation::valueChanged, this, &PttList::onValueChanged);
 #endif // !STRIP_AV_MEDIA
-        connect(animation_, &QVariantAnimation::valueChanged, this, [this](const QVariant& value)
-        {
-            const auto cur = value.toInt();
-            for (auto& i : Items_)
-            {
-                if (!i->isDateItem() && isItemPlaying(i))
-                {
-                    i->setProgress(cur);
-                    if (cur == 100)
-                        QTimer::singleShot(200, this, [this]() { finishPtt(playingId_, PttFinish::KeepProgress); update(); });
-
-                    update();
-                    break;
-                }
-            }
-        });
-
         setMouseTracking(true);
     }
 
@@ -670,7 +657,7 @@ namespace Ui
             Utils::UrlParser parser;
             parser.process(e.url_);
 
-            const auto isFilesharing = parser.hasUrl() && parser.getUrl().is_filesharing();
+            const auto isFilesharing = parser.hasUrl() && parser.isFileSharing();
             if (!isFilesharing || e.type_ != u"ptt")
                 continue;
 
@@ -705,13 +692,13 @@ namespace Ui
 
     void PttList::markClosed()
     {
-        if (playingId_ != -1)
-        {
 #ifndef STRIP_AV_MEDIA
+        if (playingId_ != SoundType::Unknown)
+        {
             GetSoundsManager()->pausePtt(playingId_);
-#endif // !STRIP_AV_MEDIA
-            playingId_ = -1;
+            playingId_ = SoundType::Unknown;
         }
+#endif // !STRIP_AV_MEDIA
     }
 
     void PttList::paintEvent(QPaintEvent*)
@@ -1112,9 +1099,10 @@ namespace Ui
         invalidateHeight();
     }
 
-    void PttList::finishPtt(int id, const PttFinish _state)
+    void PttList::finishPtt(SoundType id, const PttFinish _state)
     {
-        if (id != -1 && id == playingId_)
+#ifndef STRIP_AV_MEDIA
+        if (id != SoundType::Unknown && id == playingId_)
         {
             for (auto& i : Items_)
             {
@@ -1124,12 +1112,13 @@ namespace Ui
                     i->setPlaying(false);
                     if (_state == PttFinish::DropProgress)
                         i->setProgress(0);
-                    playingId_ = -1;
+                    playingId_ = SoundType::Unknown;
                     playingIndex_ = std::make_pair(-1, -1);
                     break;
                 }
             }
         }
+#endif // !STRIP_AV_MEDIA
     }
 
     void PttList::play(const std::unique_ptr<BasePttItem>& _item)
@@ -1226,15 +1215,16 @@ namespace Ui
         setFixedHeight(h);
     }
 
-    void PttList::onPttFinished(int _id, bool /*_byPlay*/)
+#ifndef STRIP_AV_MEDIA
+    void PttList::onPttFinished(SoundType _id, bool /*_byPlay*/)
     {
-        if (_id != -1 && playingId_ == _id)
+        if (_id != SoundType::Unknown && playingId_ == _id)
             finishPtt(playingId_);
     }
 
-    void PttList::onPttPaused(int _id)
+    void PttList::onPttPaused(SoundType _id)
     {
-        if (_id != -1 && _id == playingId_)
+        if (_id != SoundType::Unknown && _id == playingId_)
         {
             for (auto& i : Items_)
             {
@@ -1251,6 +1241,24 @@ namespace Ui
             }
         }
     }
+
+    void PttList::onValueChanged(const QVariant& _value)
+    {
+        const auto cur = _value.toInt();
+        for (auto& i : Items_)
+        {
+            if (!i->isDateItem() && isItemPlaying(i))
+            {
+                i->setProgress(cur);
+                if (cur == 100)
+                    QTimer::singleShot(200, this, [this]() { finishPtt(playingId_, PttFinish::KeepProgress); update(); });
+
+                update();
+                break;
+            }
+        }
+    }
+#endif // !STRIP_AV_MEDIA
 
     void Ui::PttList::updateTooltipState(const std::unique_ptr<BasePttItem>& _item, const QPoint& _p, int _dH)
     {

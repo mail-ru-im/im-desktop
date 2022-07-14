@@ -3,6 +3,7 @@
 
 #include "../../../http_request.h"
 #include "../../../tools/system.h"
+#include "../log_replace_functor.h"
 
 #include "../common.shared/json_unserialize_helpers.h"
 
@@ -24,6 +25,11 @@ int32_t group_subscribe::get_resubscribe_in() const
 std::string_view group_subscribe::get_method() const
 {
     return "group/subscribe";
+}
+
+int core::wim::group_subscribe::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t group_subscribe::init_request(const std::shared_ptr<core::http_request_simple>& _request)

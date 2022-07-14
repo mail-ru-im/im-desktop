@@ -71,6 +71,8 @@ namespace core
             bool working_;
             bool network_error_;
 
+            std::wstring avatars_data_path_;
+
             std::shared_ptr<wim_packet_params> wim_params_;
 
             std::shared_ptr<async_executer> local_thread_;

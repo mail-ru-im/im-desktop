@@ -20,7 +20,7 @@
 #include "utils/InterConnector.h"
 #include "cache/emoji/Emoji.h"
 #include "controls/TextUnit.h"
-#include "controls/TooltipWidget.h"
+#include "controls/TextWidget.h"
 #include "controls/CustomButton.h"
 #include "controls/GeneralDialog.h"
 #include "styles/ThemeParameters.h"
@@ -84,14 +84,14 @@ namespace
         return Utils::scale_value(10);
     }
 
-    QColor descriptionFontColor()
+    auto descriptionFontColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID };
     }
 
-    QColor durationFontColor(bool active = false)
+    auto durationFontColor(bool active = false)
     {
-        return Styling::getParameters().getColor(active ? Styling::StyleVariable::PRIMARY : Styling::StyleVariable::BASE_PRIMARY);
+        return Styling::ThemeColorKey{ active ? Styling::StyleVariable::PRIMARY : Styling::StyleVariable::BASE_PRIMARY };
     }
 
     QFont itemDescriptionFont()
@@ -109,9 +109,9 @@ namespace
         return Fonts::appFontScaled(13, Fonts::FontWeight::SemiBold);
     }
 
-    QColor selectStatusFontColor()
+    auto selectStatusFontColorKey()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY };
     }
 
     QFont searchLabelFont()
@@ -119,19 +119,19 @@ namespace
         return Fonts::appFontScaled(15);
     }
 
-    QColor searchLabelFontColor()
+    auto searchLabelFontColorKey()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY };
     }
 
-    QColor searchLabelFontColorHovered()
+    auto searchLabelHoveredFontColorKey()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_HOVER);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY_HOVER };
     }
 
-    QColor searchLabelFontColorPressed()
+    auto searchLabelPressedFontColorKey()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_ACTIVE);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY_ACTIVE };
     }
 
     int twoLineTextTopMargin()
@@ -150,10 +150,9 @@ namespace
         return Utils::scale_value(4);
     }
 
-    const QColor& itemHoveredBackground()
+    QColor itemHoveredBackground()
     {
-        static const auto color = Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE);
-        return color;
+        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE);
     }
 
     QSize buttonSize() noexcept
@@ -163,21 +162,23 @@ namespace
 
     const QPixmap& buttonIcon(const bool _hovered, const bool _pressed)
     {
+        static QPixmap iconPressed;
+        static QPixmap iconHovered;
+        static QPixmap icon;
+
+        static Styling::ThemeChecker checker;
+        if (checker.checkAndUpdateHash() || icon.isNull())
+        {
+            iconPressed = Utils::renderSvg(qsl(":/controls/more_vertical"), buttonSize(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_ACTIVE));
+            iconHovered = Utils::renderSvg(qsl(":/controls/more_vertical"), buttonSize(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER));
+            icon = Utils::renderSvg(qsl(":/controls/more_vertical"), buttonSize(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
+        }
+
         if (_pressed)
-        {
-            static auto icon  = Utils::renderSvgScaled(qsl(":/controls/more_vertical"), buttonSize(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_ACTIVE));
-            return icon;
-        }
+            return iconPressed;
         else if (_hovered)
-        {
-            static auto icon  = Utils::renderSvgScaled(qsl(":/controls/more_vertical"), buttonSize(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER));
-            return icon;
-        }
-        else
-        {
-            static auto icon  = Utils::renderSvgScaled(qsl(":/controls/more_vertical"), buttonSize(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
-            return icon;
-        }
+            return iconHovered;
+        return icon;
     }
 
     QSize buttonPressRectSize() noexcept
@@ -402,7 +403,9 @@ SelectStatusWidget::SelectStatusWidget(QWidget* _parent)
     auto statusSelectionContentVLayout = Utils::emptyVLayout(d->statusSelectionContent_);
 
     auto label = new TextWidget(this, QT_TRANSLATE_NOOP("status_popup", "My status"));
-    label->init(headerLabelFont(), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
+    TextRendering::TextUnit::InitializeParameters params{ headerLabelFont(), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } };
+    params.align_ = TextRendering::HorAligment::CENTER;
+    label->init(params);
     label->setMaxWidthAndResize(listWidth());
 
     d->status_ = Logic::GetStatusContainer()->getStatus(MyInfo()->aimId());
@@ -433,7 +436,7 @@ SelectStatusWidget::SelectStatusWidget(QWidget* _parent)
     d->searchContent_->setGraphicsEffect(d->searchContentOpacity_);
 
     auto searchLabel = new TextWidget(this, QT_TRANSLATE_NOOP("status_popup", "Status search"));
-    searchLabel->init(headerLabelFont(), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
+    searchLabel->init(params);
     searchLabel->setMaxWidthAndResize(listWidth());
 
     searchContentWidgetVLayout->addSpacing(Utils::scale_value(16));
@@ -443,9 +446,9 @@ SelectStatusWidget::SelectStatusWidget(QWidget* _parent)
 
     d->cancelSearchLabel_ = new CustomButton(d->searchContent_);
     d->cancelSearchLabel_->setFont(searchLabelFont());
-    d->cancelSearchLabel_->setNormalTextColor(searchLabelFontColor());
-    d->cancelSearchLabel_->setHoveredTextColor(searchLabelFontColorHovered());
-    d->cancelSearchLabel_->setPressedTextColor(searchLabelFontColorPressed());
+    d->cancelSearchLabel_->setNormalTextColor(searchLabelFontColorKey());
+    d->cancelSearchLabel_->setHoveredTextColor(searchLabelHoveredFontColorKey());
+    d->cancelSearchLabel_->setPressedTextColor(searchLabelPressedFontColorKey());
     d->cancelSearchLabel_->setText(QT_TRANSLATE_NOOP("status_popup", "Cancel"));
     d->searchWidget_ = new SearchWidget(this, Utils::scale_value(4));
     d->searchWidget_->setPlaceholderText(QString());
@@ -481,16 +484,16 @@ SelectStatusWidget::SelectStatusWidget(QWidget* _parent)
 
     d->selectStatusLabel_ = new CustomButton(d->labelsWidget_);
     d->selectStatusLabel_->setFont(selectStatusFont());
-    d->selectStatusLabel_->setNormalTextColor(selectStatusFontColor());
+    d->selectStatusLabel_->setNormalTextColor(selectStatusFontColorKey());
     d->selectStatusLabel_->setText(QT_TRANSLATE_NOOP("status_popup", "SELECT STATUS"));
     d->selectStatusLabel_->setFixedWidth(QFontMetrics(selectStatusFont()).horizontalAdvance(d->selectStatusLabel_->text()));
     d->selectStatusLabel_->setEnabled(false);
 
     d->searchLabel_ = new CustomButton(d->labelsWidget_);
     d->searchLabel_->setFont(searchLabelFont());
-    d->searchLabel_->setNormalTextColor(searchLabelFontColor());
-    d->searchLabel_->setHoveredTextColor(searchLabelFontColorHovered());
-    d->searchLabel_->setPressedTextColor(searchLabelFontColorPressed());
+    d->searchLabel_->setNormalTextColor(searchLabelFontColorKey());
+    d->searchLabel_->setHoveredTextColor(searchLabelHoveredFontColorKey());
+    d->searchLabel_->setPressedTextColor(searchLabelPressedFontColorKey());
     d->searchLabel_->setText(QT_TRANSLATE_NOOP("status_popup", "Search"));
     d->searchLabel_->setFixedWidth(QFontMetrics(searchLabelFont()).horizontalAdvance(d->searchLabel_->text()));
     Testing::setAccessibleName(d->searchLabel_, qsl("AS SelectStatusWidget searchButton"));
@@ -534,7 +537,9 @@ SelectStatusWidget::SelectStatusWidget(QWidget* _parent)
     auto noResultsIcon = new QLabel(d->placeholder_);
     noResultsIcon->setPixmap(Utils::renderSvg(qsl(":/placeholders/empty_search"), placeholderSize(), placeholderColor()));
     auto noResultsText = new TextWidget(this, QT_TRANSLATE_NOOP("placeholders", "Nothing found"));
-    noResultsText->init(Fonts::appFontScaled(14, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
+    params.setFonts(Fonts::appFontScaled(14, Fonts::FontWeight::SemiBold));
+    params.color_ = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY };
+    noResultsText->init(params);
     noResultsText->setMaxWidthAndResize(listWidth());
     placeholderLayout->addStretch();
     placeholderLayout->addWidget(noResultsIcon, 0, Qt::AlignCenter);
@@ -640,6 +645,7 @@ void SelectStatusWidget::onAvatarClicked()
     {
         Q_EMIT Utils::InterConnector::instance().closeAnyPopupMenu();
         Q_EMIT Utils::InterConnector::instance().closeAnyPopupWindow({});
+        close();
         mainPage->settingsTabActivate(Utils::CommonSettingsType::CommonSettingsType_Profile);
     }
 }
@@ -787,11 +793,16 @@ public:
 
         item->description_ = _description;
         item->descriptionUnit_ = Ui::TextRendering::MakeTextUnit(item->description_, Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        item->descriptionUnit_->init(itemDescriptionFont(), descriptionFontColor(), QColor(), QColor(), QColor(), Ui::TextRendering::HorAligment::LEFT, 1);
+
+        TextRendering::TextUnit::InitializeParameters params{ itemDescriptionFont(), descriptionFontColor() };
+        params.maxLinesCount_ = 1;
+        item->descriptionUnit_->init(params);
 
         auto duration = getTimeString(_duration);
         item->durationUnit_ = Ui::TextRendering::MakeTextUnit(duration, Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        item->durationUnit_->init(durationFont(), durationFontColor(), QColor(), QColor(), QColor(), Ui::TextRendering::HorAligment::LEFT, 1);
+        params.setFonts(durationFont());
+        params.color_ = durationFontColor();
+        item->durationUnit_->init(params);
 
         return item;
     }

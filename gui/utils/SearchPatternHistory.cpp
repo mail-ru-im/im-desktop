@@ -6,6 +6,7 @@
 #include "gui_coll_helper.h"
 
 #include "../gui_settings.h"
+#include "../main_window/contact_list/Common.h"
 
 namespace Logic
 {
@@ -64,11 +65,11 @@ namespace Logic
             hist.push_back(p);
     }
 
-    std::unique_ptr<SearchPatternHistory> g_search_patterns;
+    QObjectUniquePtr<SearchPatternHistory> g_search_patterns;
     SearchPatternHistory* getLastSearchPatterns()
     {
         if (!g_search_patterns)
-            g_search_patterns = std::make_unique<SearchPatternHistory>(nullptr);
+            g_search_patterns = makeUniqueQObjectPtr<SearchPatternHistory>();
 
         return g_search_patterns.get();
     }

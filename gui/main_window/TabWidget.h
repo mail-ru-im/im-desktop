@@ -25,6 +25,8 @@ namespace Ui
         void setBadgeText(int _index, const QString& _text);
         void setBadgeIcon(int _index, const QString& _icon);
 
+        void updateItemInfo(int _index, const QString& _badgeText, const QString& _badgeIcon);
+
         void insertAdditionalWidget(QWidget* _w);
 
     Q_SIGNALS:
@@ -35,7 +37,7 @@ namespace Ui
         void onTabClicked(int _index);
 
     private:
-        QStackedWidget* pages_;
-        TabBar* tabbar_;
+        QStackedWidget* pages_ = nullptr;
+        TabBar* tabbar_ = nullptr;
     };
 }

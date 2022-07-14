@@ -5,6 +5,7 @@
 #include "../../../http_request.h"
 #include "../../../tools/system.h"
 #include "../../../../common.shared/json_helper.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -34,6 +35,11 @@ std::string_view mod_chat::get_method() const
     return "modChat";
 }
 
+int core::wim::mod_chat::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
+}
+
 int32_t mod_chat::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     rapidjson::Document doc(rapidjson::Type::kObjectType);
@@ -55,6 +61,8 @@ int32_t mod_chat::init_request(const std::shared_ptr<core::http_request_simple>&
         node_params.AddMember("stamp", *chat_params_.get_stamp(), a);
     if (chat_params_.get_trust_required())
         node_params.AddMember("trustRequired", *chat_params_.get_trust_required(), a);
+    if (chat_params_.get_threads_enabled())
+        node_params.AddMember("threadsEnabled", *chat_params_.get_threads_enabled(), a);
 
     doc.AddMember("params", std::move(node_params), a);
 

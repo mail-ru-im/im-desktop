@@ -36,15 +36,15 @@ namespace Ui
 
     void SettingsHeader::setText(const QString& _text)
     {
-        constexpr auto textColor = Styling::StyleVariable::TEXT_SOLID;
+        const auto textColor = Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID };
 
         if (!textUnit_)
         {
             textUnit_ = TextRendering::MakeTextUnit(_text);
-            textUnit_->init(
-                        Fonts::appFontScaled(16, Fonts::FontWeight::SemiBold),
-                        Styling::getParameters().getColor(textColor),
-                        QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER, 1);//FONT
+            TextRendering::TextUnit::InitializeParameters params{ Fonts::appFontScaled(16, Fonts::FontWeight::SemiBold), textColor };
+            params.align_ = TextRendering::HorAligment::CENTER;
+            params.maxLinesCount_ = 1;
+            textUnit_->init(params);
         }
         else
         {

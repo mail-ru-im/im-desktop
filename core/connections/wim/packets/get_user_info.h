@@ -14,12 +14,13 @@ public:
     get_user_info(wim_packet_params _params, const std::string& _contact_aimid);
     user_info get_info() const;
     const std::shared_ptr<core::archive::persons_map>& get_persons() const override;
-    virtual priority_t get_priority() const override { return top_priority(); }
-    virtual std::string_view get_method() const override;
+    priority_t get_priority() const override { return top_priority(); }
+    std::string_view get_method() const override;
+    int minimal_supported_api_version() const override;
 
 private:
-    virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
-    virtual int32_t parse_results(const rapidjson::Value& _data) override;
+    int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+    int32_t parse_results(const rapidjson::Value& _data) override;
 
 private:
     const std::string contact_aimid_;

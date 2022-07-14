@@ -5,11 +5,6 @@
 #include "../gui/cache/countries.h"
 #include "CountryListModel.h"
 
-namespace Fonts
-{
-    enum class FontWeight;
-}
-
 namespace Ui
 {
     namespace TextRendering

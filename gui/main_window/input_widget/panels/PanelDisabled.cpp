@@ -42,6 +42,11 @@ namespace Ui
             label_->show();
             break;
 
+        case DisabledPanelState::Deleted:
+            label_->setText(QT_TRANSLATE_NOOP("input_widget", "The user is blocked"));
+            label_->show();
+            break;
+
         case DisabledPanelState::Empty:
             label_->hide();
             break;
@@ -62,6 +67,6 @@ namespace Ui
         const auto var = styleMode_ == InputStyleMode::Default
             ? Styling::StyleVariable::BASE_PRIMARY
             : Styling::StyleVariable::GHOST_PRIMARY_INVERSE;
-        label_->setColor(Styling::getParameters().getColor(var));
+        label_->setColor(Styling::ThemeColorKey{ var });
     }
 }

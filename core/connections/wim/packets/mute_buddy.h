@@ -28,11 +28,12 @@ namespace core
             mute_buddy(
                 wim_packet_params _params,
                 const std::string& _aimid,
-                bool mute);
+                bool _mute);
 
             virtual ~mute_buddy();
 
-            virtual std::string_view get_method() const override;
+            std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
         };
 
     }

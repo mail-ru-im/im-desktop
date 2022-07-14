@@ -27,6 +27,8 @@ namespace Ui
     class SelectDialogWidget;
     class StartCallDialogWidget;
 
+    enum class PageOpenedAs;
+
     class EmptyConnectionInfoPage : public BackgroundWidget
     {
     public:
@@ -43,6 +45,9 @@ namespace Ui
         void onGlobalWallpaperChanged();
         void connectionStateChanged(const Ui::ConnectionState& _state);
         void updateCentralWidget();
+
+    private:
+        void onGlobalThemeChanged();
 
     private:
         QWidget* dialogWidget_;
@@ -89,6 +94,8 @@ namespace Ui
         void setFrameCountMode(FrameCountMode _mode);
         FrameCountMode getFrameCountMode() const noexcept { return frameCountMode_; }
 
+        void setPageOpenedAs(PageOpenedAs _openedAs);
+
     private Q_SLOTS:
         void updatePages();
         void closeDialog(const QString& _aimId);
@@ -99,6 +106,7 @@ namespace Ui
 
         void updateUnreads();
         void onGlobalWallpaperChanged();
+        void onGlobalThemeChanged();
         void onContactWallpaperChanged(const QString& _aimId);
         void onWallpaperAvailable(const Styling::WallpaperId& _id);
         void onActiveDialogHide(const QString& _aimId, Ui::ClosePage _closePage);
@@ -138,5 +146,7 @@ namespace Ui
                 messageId_ = -1;
             }
         } lastInitedParams_;
+
+        PageOpenedAs openedAs_;
     };
 }

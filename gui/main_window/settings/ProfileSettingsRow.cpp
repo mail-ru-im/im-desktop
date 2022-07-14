@@ -13,6 +13,7 @@
 
 #include "../../previewer/toast.h"
 #include "../../styles/ThemeParameters.h"
+#include "../../styles/ThemesContainer.h"
 #include "../../main_window/MainWindow.h"
 #include "../../main_window/sidebar/EditNicknameWidget.h"
 
@@ -86,44 +87,44 @@ namespace
         return Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE);
     }
 
-    QColor normalFriendlyTextColor()
+    auto normalFriendlyTextColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID };
     }
 
-    QColor activeFriendlyTextColor()
+    auto activeFriendlyTextColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID_PERMANENT };
     }
 
-    QColor normalNickTextColor()
+    auto normalNickTextColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY };
     }
 
-    QColor normalHoverNickTextColor()
+    auto normalHoverNickTextColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_HOVER);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_HOVER };
     }
 
-    QColor normalPressedNickTextColor()
+    auto normalPressedNickTextColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_ACTIVE);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY_ACTIVE };
     }
 
-    QColor activeNickTextColor()
+    auto activeNickTextColor()
     {
         return activeFriendlyTextColor();
     }
 
-    QColor activeHoverNickTextColor()
+    auto activeHoverNickTextColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT_HOVER);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID_PERMANENT_HOVER };
     }
 
-    QColor activePressedNickTextColor()
+    auto activePressedNickTextColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT_ACTIVE);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID_PERMANENT_ACTIVE };
     }
 
     QFont friendlyTextFont()
@@ -169,16 +170,21 @@ namespace Ui
         avatar_->setStatusTooltipEnabled(true);
 
         friendlyTextUnit_ = TextRendering::MakeTextUnit(MyInfo()->friendly(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-        friendlyTextUnit_->init(friendlyTextFont(), normalFriendlyTextColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+        TextRendering::TextUnit::InitializeParameters params{ friendlyTextFont(), normalFriendlyTextColor() };
+        params.maxLinesCount_ = 1;
+        friendlyTextUnit_->init(params);
 
         nickTextUnit_ = TextRendering::MakeTextUnit(QString(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-        nickTextUnit_->init(statusTextFont(), normalNickTextColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+        params.setFonts(statusTextFont());
+        params.color_ = normalNickTextColor();
+        nickTextUnit_->init(params);
 
         if (isEmailProfile())
             nickname_ = MyInfo()->aimId();
 
         connect(MyInfo(), &my_info::received, this, &ProfileSettingsRow::onMyInfo);
         connect(GetDispatcher(), &core_dispatcher::userInfo, this, &ProfileSettingsRow::onUserInfo);
+        connect(&Styling::getThemesContainer(), &Styling::ThemesContainer::globalThemeChanged, this, &ProfileSettingsRow::updateArrowIcon);
 
         updateArrowIcon();
 
@@ -441,7 +447,7 @@ namespace Ui
 
     void ProfileSettingsRow::updateNicknameColor()
     {
-        QColor color;
+        Styling::ThemeColorKey color;
         if (nickPressed_)
             color = isSelected() ? activePressedNickTextColor() : normalPressedNickTextColor();
         else if (nickHovered_)

@@ -180,6 +180,8 @@ public:
 
     void cancelLoading();
 
+    bool isVirusInfected() const;
+
 Q_SIGNALS:
     void needUpdate(const QRect& _rect);
 

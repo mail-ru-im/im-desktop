@@ -8,13 +8,13 @@ namespace core
     {
         class updater
         {
-            uint32_t			timer_id_;
+            uint32_t timer_id_;
 
-            std::atomic<bool>	stop_;
+            std::atomic<bool> stop_;
 
             std::chrono::steady_clock::time_point last_check_time_;
 
-            std::unique_ptr<core::async_executer>	thread_;
+            std::unique_ptr<core::async_executer> thread_;
 
         public:
 

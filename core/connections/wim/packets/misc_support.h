@@ -22,7 +22,8 @@ namespace core
 
         public:
             misc_support(wim_packet_params _params, std::string_view _aimid, std::string_view _message, std::string_view _attachment_file_id, std::vector<std::string> _screenshot_file_id_list);
-            virtual std::string_view get_method() const override;
+            std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
         };
     }
 }

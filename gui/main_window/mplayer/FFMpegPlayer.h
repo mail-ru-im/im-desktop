@@ -93,9 +93,9 @@ namespace Ui
 
     public:
 
-        bool getMessage(ThreadMessage& _message, std::function<bool()> _isQuit, int32_t _wait_timeout);
-        bool getAllMessages(ThreadMessageList& _messages, std::function<bool()> _isQuit, int32_t _wait_timeout);
-        void pushMessage(const ThreadMessage& _message, bool _forward, bool _clear_others);
+        bool getMessage(ThreadMessage& _message, std::function<bool()> _isQuit, int32_t _waitTimeout);
+        bool getAllMessages(ThreadMessageList& _messages, std::function<bool()> _isQuit, int32_t _waitTimeout);
+        void pushMessage(const ThreadMessage& _message, bool _forward, bool _clearOthers);
         void clear();
     };
 
@@ -407,14 +407,14 @@ namespace Ui
 
         void updateScaledVideoSize(uint32_t _videoId, const QSize& _sz);
 
-        void postVideoThreadMessage(const ThreadMessage& _message, bool _forward, bool _clear_others = false);
+        void postVideoThreadMessage(const ThreadMessage& _message, bool _forward, bool _clearOthers = false);
         bool getVideoThreadMessage(ThreadMessage& _message, int32_t _waitTimeout);
         bool getAllVideoThreadMessages(ThreadMessageList& _messages, int32_t _waitTimeout);
 
-        void postDemuxThreadMessage(const ThreadMessage& _message, bool _forward, bool _clear_others = false);
+        void postDemuxThreadMessage(const ThreadMessage& _message, bool _forward, bool _clearOthers = false);
         bool getDemuxThreadMessage(ThreadMessage& _message, int32_t _waitTimeout);
 
-        void postAudioThreadMessage(const ThreadMessage& _message, bool _forward, bool _clear_others = false);
+        void postAudioThreadMessage(const ThreadMessage& _message, bool _forward, bool _clearOthers = false);
         bool getAudioThreadMessage(ThreadMessage& _message, int32_t _waitTimeout);
 
         void clearMessageQueue();
@@ -534,9 +534,9 @@ namespace Ui
         int32_t getRotation(MediaData& _media) const;
         int64_t getDuration(MediaData& _media) const;
 
-        void postVideoThreadMessage(const ThreadMessage& _message, bool _forward, bool _clear_others = false);
-        void postDemuxThreadMessage(const ThreadMessage& _message, bool _forward, bool _clear_others = false);
-        void postAudioThreadMessage(const ThreadMessage& _message, bool _forward, bool _clear_others = false);
+        void postVideoThreadMessage(const ThreadMessage& _message, bool _forward, bool _clearOthers = false);
+        void postDemuxThreadMessage(const ThreadMessage& _message, bool _forward, bool _clearOthers = false);
+        void postAudioThreadMessage(const ThreadMessage& _message, bool _forward, bool _clearOthers = false);
 
         void clearMessageQueue();
 

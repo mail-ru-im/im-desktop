@@ -2,7 +2,6 @@
 
 namespace Ui
 {
-    class TextBrowserEx;
     class LineEditEx;
     class DialogButton;
 
@@ -19,6 +18,7 @@ namespace Ui
         struct FormData
         {
             QString firstName_;
+            QString middleName_;
             QString lastName_;
         };
 
@@ -50,11 +50,12 @@ namespace Ui
         void connectToLineEdit(LineEditEx *_lineEdit, LineEditEx *_onUp, LineEditEx *_onDown) const;
 
     private:
-        QVBoxLayout* globalLayout_;
+        QVBoxLayout* globalLayout_ = nullptr;
         std::unique_ptr<TextRendering::TextUnit> headerUnit_;
-        LineEditEx* firstName_;
-        LineEditEx* lastName_;
-        DialogButton* okButton_;
-        DialogButton* cancelButton_;
+        LineEditEx* firstName_ = nullptr;
+        LineEditEx* middleName_ = nullptr;
+        LineEditEx* lastName_ = nullptr;
+        DialogButton* okButton_ = nullptr;
+        DialogButton* cancelButton_ = nullptr;
     };
 }

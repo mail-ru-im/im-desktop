@@ -13,9 +13,11 @@
 #include "../../../utils/utils.h"
 #include "../../../utils/features.h"
 #include "../../../styles/ThemeParameters.h"
+#include "../../../styles/ThemesContainer.h"
 #include "../../../cache/ColoredCache.h"
 
 #include "../../input_widget/InputWidgetUtils.h"
+#include "../../../core/tools/features.h"
 
 #ifndef STRIP_AV_MEDIA
 #include "../../../media/ptt/AudioUtils.h"
@@ -73,6 +75,11 @@ namespace
 #endif
     }
 
+    auto getDecodedTextColor(const QString& _aimId)
+    {
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID, _aimId };
+    }
+
     constexpr std::chrono::milliseconds animDuration = std::chrono::seconds(2);
     constexpr std::chrono::milliseconds animDownloadDelay = std::chrono::milliseconds(300);
     constexpr auto QT_ANGLE_MULT = 16;
@@ -102,11 +109,11 @@ namespace PttDetails
 
     PlayButton::PlayButton(QWidget* _parent, const QString& _aimId)
         : ClickableWidget(_parent)
+        , normal_ { Styling::ThemeColorKey { Styling::StyleVariable::PRIMARY, _aimId } }
+        , hovered_ { Styling::ThemeColorKey { Styling::StyleVariable::PRIMARY_HOVER, _aimId } }
+        , pressed_ { Styling::ThemeColorKey { Styling::StyleVariable::PRIMARY_ACTIVE, _aimId } }
         , aimId_(_aimId)
-        , isPressed_(false)
-        , state_(ButtonState::play)
     {
-        updateStyle();
         setFixedSize(getButtonSize());
         connect(this, &PlayButton::hoverChanged, this, qOverload<>(&PlayButton::update));
         connect(this, &PlayButton::pressed, this, [this]() { setPressed(true); });
@@ -133,34 +140,17 @@ namespace PttDetails
         }
     }
 
-    void PlayButton::updateStyle()
-    {
-        im_assert(!aimId_.isEmpty());
-
-        const auto params = Styling::getParameters(aimId_);
-        normal_  = params.getColor(Styling::StyleVariable::PRIMARY);
-        hovered_ = params.getColor(Styling::StyleVariable::PRIMARY_HOVER);
-        pressed_ = params.getColor(Styling::StyleVariable::PRIMARY_ACTIVE);
-
-        update();
-    }
-
     void PlayButton::paintEvent(QPaintEvent* _e)
     {
         static Utils::ColoredCache<PlayButtonIcons> iconsNormal(Styling::StyleVariable::BASE_GLOBALWHITE);
 
-        QColor bgColor;
+        static Styling::ThemeChecker checker;
+        if (checker.checkAndUpdateHash())
+            iconsNormal.clear();
+
+        QColor bgColor = normal_.actualColor();
         if (isHovered())
-        {
-            if (isPressed_)
-                bgColor = pressed_;
-            else
-                bgColor = hovered_;
-        }
-        else
-        {
-            bgColor = normal_;
-        }
+            bgColor = (isPressed_ ? pressed_ : hovered_).actualColor();
 
         QPainter p(this);
         p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
@@ -181,14 +171,9 @@ namespace PttDetails
         , aimId_(_aimId)
         , isOutgoing_(_isOutgoing)
     {
-        updateStyle();
+        setDefaultColor(Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY });
+        setActiveColor(Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID_PERMANENT });
         setFixedSize(getButtonSize());
-    }
-
-    void ButtonWithBackground::updateStyle()
-    {
-        setDefaultColor(Styling::getParameters(aimId_).getColor(Styling::StyleVariable::PRIMARY));
-        setActiveColor(Styling::getParameters(aimId_).getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
     }
 
     void ButtonWithBackground::paintEvent(QPaintEvent * _e)
@@ -250,10 +235,6 @@ namespace PttDetails
         update();
     }
 
-    void ProgressWidget::updateStyle()
-    {
-    }
-
     void ProgressWidget::paintEvent(QPaintEvent* _e)
     {
         QColor bgColor;
@@ -312,7 +293,9 @@ PttBlock::PttBlock(
     , playbackState_(PlaybackState::Stopped)
     , playbackProgressMsec_(0)
     , playbackProgressAnimation_(nullptr)
-    , playingId_(-1)
+#ifndef STRIP_AV_MEDIA
+    , playingId_(Ui::SoundType::Unknown)
+#endif // !STRIP_AV_MEDIA
     , pttLayout_(nullptr)
     , textRequestId_(-1)
     , id_(_id)
@@ -354,7 +337,9 @@ PttBlock::PttBlock(ComplexMessageItem *_parent,
     , playbackState_(PlaybackState::Stopped)
     , playbackProgressMsec_(0)
     , playbackProgressAnimation_(nullptr)
-    , playingId_(-1)
+#ifndef STRIP_AV_MEDIA
+    , playingId_(Ui::SoundType::Unknown)
+#endif // !STRIP_AV_MEDIA
     , pttLayout_(nullptr)
     , textRequestId_(-1)
     , id_(_id)
@@ -1042,7 +1027,7 @@ void PttBlock::pausePlayback()
 
     playbackState_ = PlaybackState::Paused;
 
-    im_assert(playingId_ > 0);
+    im_assert(playingId_ != Ui::SoundType::Unknown);
     GetSoundsManager()->pausePtt(playingId_);
 
     if (playbackProgressAnimation_)
@@ -1127,28 +1112,6 @@ void PttBlock::updateBulletHoveredState()
     }
 }
 
-void PttBlock::updateStyle()
-{
-    if (buttonPlay_)
-        buttonPlay_->updateStyle();
-
-    if (buttonText_)
-        buttonText_->updateStyle();
-
-    if (buttonCollapse_)
-        buttonCollapse_->updateStyle();
-
-    if (progressText_)
-        progressText_->updateStyle();
-
-    if (progressPlay_)
-        progressPlay_->updateStyle();
-
-    updateDecodedTextStyle();
-
-    update();
-}
-
 void PttBlock::updateFonts()
 {
     updateDecodedTextStyle();
@@ -1158,14 +1121,13 @@ void PttBlock::updateDecodedTextStyle()
 {
     if (decodedTextCtrl_)
     {
-        decodedTextCtrl_->init(MessageStyle::getTextFont(), getDecodedTextColor(), MessageStyle::getLinkColor(), MessageStyle::getTextSelectionColor(getChatAimid()), MessageStyle::getHighlightColor());
+        TextRendering::TextUnit::InitializeParameters params{ MessageStyle::getTextFont(), getDecodedTextColor(getChatAimid()) };
+        params.linkColor_ = MessageStyle::getLinkColorKey();
+        params.selectionColor_ = MessageStyle::getTextSelectionColorKey(getChatAimid());
+        params.highlightColor_ = MessageStyle::getHighlightColorKey();
+        decodedTextCtrl_->init(params);
         notifyBlockContentsChanged();
     }
-}
-
-QColor PttBlock::getDecodedTextColor() const
-{
-    return Styling::getParameters(getChatAimid()).getColor(Styling::StyleVariable::TEXT_SOLID);
 }
 
 QColor PttBlock::getProgressColor() const
@@ -1185,7 +1147,7 @@ bool PttBlock::isOutgoing() const
 
 bool PttBlock::canShowButtonText() const
 {
-    return Meta_.recognize_ && config::get().is_on(config::features::ptt_recognition);
+    return Meta_.recognize_ && Features::isPttRecognitionEnabled();
 }
 
 bool PttBlock::checkButtonsHovered() const
@@ -1294,12 +1256,13 @@ void PttBlock::onTextButtonClicked()
     Q_EMIT Utils::InterConnector::instance().setFocusOnInput(getChatAimid());
 }
 
-void PttBlock::onPttFinished(int _id, bool _byPlay)
+void PttBlock::onPttFinished(SoundType _id, bool _byPlay)
 {
-    if (_id < 0 || _id != playingId_)
+#ifndef STRIP_AV_MEDIA
+    if (_id == Ui::SoundType::Unknown || _id != playingId_)
         return;
 
-    playingId_ = -1;
+    playingId_ = Ui::SoundType::Unknown;
 
     if (playbackProgressAnimation_)
         playbackProgressAnimation_->stop();
@@ -1315,15 +1278,18 @@ void PttBlock::onPttFinished(int _id, bool _byPlay)
         pttPlayed(id_);
 
     update();
+#endif // !STRIP_AV_MEDIA
 }
 
-void PttBlock::onPttPaused(int _id)
+void PttBlock::onPttPaused(SoundType _id)
 {
-    if (_id < 0)
+#ifndef STRIP_AV_MEDIA
+    if (_id == Ui::SoundType::Unknown)
         return;
 
     if (_id == playingId_ && isPlaying())
         pausePlayback();
+#endif // !STRIP_AV_MEDIA
 }
 
 void PttBlock::onPttText(qint64 _seq, int _error, QString _text, int _comeback)

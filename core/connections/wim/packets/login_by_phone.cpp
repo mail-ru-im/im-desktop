@@ -6,6 +6,7 @@
 #include "../../../tools/system.h"
 #include "../../urls_cache.h"
 #include "../../../../common.shared/json_helper.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -25,6 +26,11 @@ phone_login::~phone_login() = default;
 std::string_view phone_login::get_method() const
 {
     return "loginWithPhoneNumber";
+}
+
+int core::wim::phone_login::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t phone_login::init_request(const std::shared_ptr<core::http_request_simple>& _request)

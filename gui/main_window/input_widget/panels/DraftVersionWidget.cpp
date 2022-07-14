@@ -41,11 +41,14 @@ public:
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
         setFixedHeight(textWidgetHeight());
         label_ = Ui::TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("draft", "Apply another draft version?"));
-        label_->init(headerLabelFont(), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_INVERSE), QColor(), QColor(), QColor(), Ui::TextRendering::HorAligment::LEFT, 1);
+        Ui::TextRendering::TextUnit::InitializeParameters params{ headerLabelFont(), Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_INVERSE } };
+        params.maxLinesCount_ = 1;
+        label_->init(params);
         label_->setOffsets(0, Utils::scale_value(15));
         message_ = Ui::TextRendering::MakeTextUnit(QString(), Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        auto messageColor = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
-        message_->init(messageTextFont(), messageColor, messageColor, QColor(), QColor(), Ui::TextRendering::HorAligment::LEFT, 1);
+        params.setFonts(messageTextFont());
+        params.color_ = params.linkColor_ = Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID };
+        message_->init(params);
         message_->setOffsets(0, Utils::scale_value(32));
     }
 
@@ -95,7 +98,7 @@ private:
             return;
 
         const auto r = rect();
-        Tooltip::show(message_->getText(), QRect(mapToGlobal(r.topLeft()), r.size()), {0, 0}, Tooltip::ArrowDirection::Down, Tooltip::ArrowPointPos::Top, {}, Tooltip::TooltipMode::Multiline);
+        Tooltip::show(message_->getText(), QRect(mapToGlobal(r.topLeft()), r.size()), {0, 0}, Tooltip::ArrowDirection::Down, Tooltip::ArrowPointPos::Top, Ui::TextRendering::HorAligment::LEFT, {}, Tooltip::TooltipMode::Multiline);
     }
 
     void initTooltipTimer()
@@ -150,7 +153,7 @@ DraftVersionWidget::DraftVersionWidget(QWidget* _parent)
 
     d->textWidget_ = new DraftTextWidget(this);
 
-    auto acceptButton = new CustomButton(this, qsl(":/apply_edit"), QSize(20, 20), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
+    auto acceptButton = new CustomButton(this, qsl(":/apply_edit"), QSize(20, 20), Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY });
     acceptButton->setCustomToolTip(QT_TRANSLATE_NOOP("draft", "Apply draft"));
     Testing::setAccessibleName(acceptButton, qsl("AS ChatInput applyDraft"));
     auto cancelButton = new CustomButton(this, qsl(":/controls/close_icon"), getCancelBtnIconSize());

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../../common.shared/antivirus/antivirus_types.h"
+
 namespace Data
 {
 
@@ -18,6 +20,7 @@ struct FileSharingMeta
     bool gotAudio_ = false;
     bool trustRequired_ = false;
     QPixmap preview_;
+    core::antivirus::check antivirusCheck_;
 
     void mergeWith(const FileSharingMeta& _other)
     {
@@ -45,6 +48,7 @@ struct FileSharingMeta
         updateIfNeeded(&FileSharingMeta::recognize_);
         updateIfNeeded(&FileSharingMeta::gotAudio_);
         updateIfNeeded(&FileSharingMeta::trustRequired_);
+        updateIfNeeded(&FileSharingMeta::antivirusCheck_);
 
         // magic doesnt work with pixmaps =(
         if (preview_.isNull())

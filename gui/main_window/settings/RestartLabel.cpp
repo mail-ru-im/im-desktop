@@ -30,7 +30,7 @@ namespace Ui
         : QWidget(_parent)
     {
         textUnit_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("settings", "Application restart required"));
-        textUnit_->init(getTextFont(), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT);
+        textUnit_->init({ getTextFont(), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } });
         setFixedHeight(Utils::scale_value(38));
     }
 

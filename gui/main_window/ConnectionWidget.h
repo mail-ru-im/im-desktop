@@ -1,20 +1,23 @@
 #pragma once
 
+#include "../styles/ThemeColor.h"
+
 namespace Ui
 {
     enum class ConnectionState;
+    class TextWidget;
 
     class ProgressAnimation : public QWidget
     {
         Q_OBJECT
 
     private:
-
         QVariantAnimation* animation_;
-        bool started_;
-        int rate_;
-        qreal progressWidth_;
+        Styling::ColorContainer color_;
         QPen pen_;
+        qreal progressWidth_;
+        int rate_ = 0;
+        bool started_ = false;
 
         void startAnimation();
         void stopAnimation();
@@ -31,7 +34,8 @@ namespace Ui
 
         void setProgressWidth(qreal _width);
         void setProgressPenWidth(qreal _width);
-        void setProgressPenColor(QColor _color);
+        void setProgressPenColorKey(const Styling::ThemeColorKey& _color);
+        void adjust();
 
         ProgressAnimation(QWidget* _parent);
         virtual ~ProgressAnimation();
@@ -89,9 +93,9 @@ namespace Ui
 
     class ConnectionWidget : public QWidget
     {
-        Q_OBJECT;
+        Q_OBJECT
 
-        QLabel* stateTextLabel_;
+        TextWidget* stateTextLabel_;
 
         ConnectionState state_;
 
@@ -106,10 +110,8 @@ namespace Ui
         void connectionStateChanged(const ConnectionState& _state);
 
     public:
-        ConnectionWidget(QWidget* _parent, const QColor& _textColor = QColor());
-        virtual ~ConnectionWidget();
-
-        void setTextColor(const QColor& _color);
+        ConnectionWidget(QWidget* _parent, const Styling::ThemeColorKey& _textColor = {});
+        ~ConnectionWidget();
 
         void suspend();
         void resume();

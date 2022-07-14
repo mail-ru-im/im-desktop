@@ -6,42 +6,38 @@
 
 namespace Statuses
 {
-
-
-const QColor& editIconColor()
+auto editIconColorKey()
 {
-    static auto color = Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
-    return color;
+    return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_GLOBALWHITE };
 }
 
-const QColor& editIconCircleColor()
+QColor editIconColor()
 {
-    static auto color = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
-    return color;
+    return Styling::getColor(editIconColorKey());
 }
 
-QSize editIconSize()
+QColor editIconCircleColor()
+{
+    return Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
+}
+
+QSize editIconSize() noexcept
 {
     return Utils::scale_value(QSize(16, 16));
 }
 
-const QPixmap& editIcon()
+QPixmap editIcon()
 {
-    static auto pixmap = Utils::renderSvg(qsl(":/edit_icon_filled"), editIconSize(), editIconColor());
-    return pixmap;
+    static auto pixmap = Utils::StyledPixmap(qsl(":/edit_icon_filled"), editIconSize(), editIconColorKey());
+    return pixmap.actualPixmap();
 }
 
-QSize editIconRectSize()
+QSize editIconRectSize() noexcept
 {
     return Utils::scale_value(QSize(20, 20));
 }
 
-double editIconBorder()
-{
-    return Utils::fscale_value(2);
-}
-
-int iconCircleRadius()
+int iconCircleRadius() noexcept
 {
     return Utils::scale_value(8);
 }

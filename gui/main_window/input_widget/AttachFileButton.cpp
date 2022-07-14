@@ -16,35 +16,35 @@ namespace
 
     QPixmap getIcon(const Ui::InputStyleMode _mode, const bool _isHovered)
     {
-        const auto make_icon = [](const QColor& _color)
+        const auto make_icon = [](const Styling::ThemeColorKey& _key)
         {
-            return Utils::renderSvg(qsl(":/input/expand_attach"), buttonSize(), _color);
+            return Utils::StyledPixmap(qsl(":/input/expand_attach"), buttonSize(), _key);
         };
 
         if (_isHovered)
         {
             if (_mode == Ui::InputStyleMode::Default)
             {
-                static const auto pm = make_icon(Styling::InputButtons::Default::hoverColor());
-                return pm;
+                static auto pm = make_icon(Styling::InputButtons::Default::hoverColorKey());
+                return pm.actualPixmap();
             }
             else
             {
-                static const auto pm = make_icon(Styling::InputButtons::Alternate::hoverColor());
-                return pm;
+                static auto pm = make_icon(Styling::InputButtons::Alternate::hoverColorKey());
+                return pm.actualPixmap();
             }
         }
         else
         {
             if (_mode == Ui::InputStyleMode::Default)
             {
-                static const auto pm = make_icon(Styling::InputButtons::Default::defaultColor());
-                return pm;
+                static auto pm = make_icon(Styling::InputButtons::Default::defaultColorKey());
+                return pm.actualPixmap();
             }
             else
             {
-                static const auto pm = make_icon(Styling::InputButtons::Alternate::defaultColor());
-                return pm;
+                static auto pm = make_icon(Styling::InputButtons::Alternate::defaultColorKey());
+                return pm.actualPixmap();
             }
         }
     }

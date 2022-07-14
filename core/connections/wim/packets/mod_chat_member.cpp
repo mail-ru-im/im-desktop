@@ -3,6 +3,7 @@
 
 #include "../../../http_request.h"
 #include "../../../tools/system.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -26,6 +27,11 @@ mod_chat_member::~mod_chat_member()
 std::string_view mod_chat_member::get_method() const
 {
     return "modChatMember";
+}
+
+int core::wim::mod_chat_member::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t mod_chat_member::init_request(const std::shared_ptr<core::http_request_simple>& _request)

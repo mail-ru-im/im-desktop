@@ -4,6 +4,7 @@
 #include "../../../http_request.h"
 #include "../common.shared/json_helper.h"
 #include "../corelib/enumerations.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -83,4 +84,9 @@ bool add_members::is_status_code_ok() const
 std::string_view add_members::get_method() const
 {
     return "group/members/add";
+}
+
+int core::wim::add_members::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }

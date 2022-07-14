@@ -54,6 +54,7 @@ namespace Logic
         int getMembersCount() const;
 
         void loadAllMembers();
+        void loadThreadSubscribers();
         void loadBlocked();
         void loadPending();
         void loadAdmins();
@@ -68,7 +69,8 @@ namespace Logic
 
         bool contains(const QString& _aimId) const override;
         QString getChatAimId() const;
-        void updateInfo(const std::shared_ptr<Data::ChatInfo> &_info);
+        void updateInfo(const std::shared_ptr<Data::ChatInfo>& _info);
+        void updateInfo(const Data::ThreadInfo* _info, bool _invalidateCanRemoveTill = true);
 
         unsigned getVisibleRowsCount() const;
 
@@ -91,6 +93,7 @@ namespace Logic
             Pending,
             Blocked,
             YourInvites,
+            ThreadSubscribers,
         };
 
         enum class CheckMode

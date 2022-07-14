@@ -32,14 +32,14 @@ int textLeftOffset()
     return Utils::scale_value(20);
 }
 
-QColor callTextColor()
+Styling::ThemeColorKey callTextColor()
 {
-    return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY);
+    return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY };
 }
 
-QColor participantsCountTextColor()
+Styling::ThemeColorKey participantsCountTextColor()
 {
-    return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
+    return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY };
 }
 
 }
@@ -77,12 +77,16 @@ namespace Ui
         connect(d->button_, &DialogButton::clicked, this, &ActiveCallPlate::onJoinClicked);
 
         d->callText_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("active_call_plate", "Active call"));
-        d->callText_->init(Fonts::appFontScaled(14, Fonts::FontWeight::SemiBold), callTextColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+        Ui::TextRendering::TextUnit::InitializeParameters params(Fonts::appFontScaled(14, Fonts::FontWeight::SemiBold), callTextColor());
+        params.maxLinesCount_ = 1;
+        d->callText_->init(params);
         d->callText_->setOffsets(textLeftOffset(), callTextTopOffset());
         d->callText_->getHeight(d->callText_->desiredWidth());
 
         d->participantsCountText_ = TextRendering::MakeTextUnit(QString());
-        d->participantsCountText_->init(Fonts::appFontScaled(14, Fonts::FontWeight::Normal), participantsCountTextColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+        params.setFonts(Fonts::appFontScaled(14, Fonts::FontWeight::Normal));
+        params.color_ = participantsCountTextColor();
+        d->participantsCountText_->init(params);
         d->participantsCountText_->setOffsets(textLeftOffset(), participantsCountTextTopOffset());
     }
 
@@ -113,8 +117,8 @@ namespace Ui
     {
         QPainter p(this);
 
-        static const auto bg = Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
-        static const auto border = Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT);
+        const auto bg = Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
+        const auto border = Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT);
 
         Utils::drawBackgroundWithBorders(p, rect(), bg, border, Qt::AlignBottom);
 

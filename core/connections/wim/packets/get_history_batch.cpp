@@ -13,6 +13,7 @@
 #include "../../../utils.h"
 #include "../../../tools/system.h"
 #include "../../../../common.shared/json_helper.h"
+#include "../log_replace_functor.h"
 
 #include "openssl/sha.h"
 
@@ -22,7 +23,7 @@
 using namespace core;
 using namespace wim;
 
-get_history_batch_params::get_history_batch_params(const std::string_view _aimid, std::vector<int64_t>&& _ids, const std::string_view _patch_version)
+get_history_batch_params::get_history_batch_params(std::string_view _aimid, std::vector<int64_t>&& _ids, std::string_view _patch_version)
     : aimid_(_aimid)
     , ids_(std::move(_ids))
     , patch_version_(_patch_version)
@@ -36,7 +37,7 @@ get_history_batch_params::get_history_batch_params(const std::string_view _aimid
     im_assert(!ids_.empty());
 }
 
-get_history_batch_params::get_history_batch_params(const std::string_view _aimid, const std::string_view _patch_version, const int64_t _id, const int32_t _count_early, const int32_t _count_after, int64_t _seq)
+get_history_batch_params::get_history_batch_params(std::string_view _aimid, std::string_view _patch_version, const int64_t _id, const int32_t _count_early, const int32_t _count_after, int64_t _seq)
     : aimid_(_aimid)
     , ids_({ _id })
     , patch_version_(_patch_version)
@@ -247,4 +248,9 @@ priority_t get_history_batch::get_priority() const
 std::string_view get_history_batch::get_method() const
 {
     return "getHistoryBatch";
+}
+
+int core::wim::get_history_batch::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }

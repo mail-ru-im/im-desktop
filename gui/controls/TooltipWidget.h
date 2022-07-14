@@ -1,11 +1,16 @@
 #pragma once
 #include "TextUnit.h"
+#include "ContactAvatarWidget.h"
+#include "types/idinfo.h"
 
 namespace Ui
 {
+    class MentionTooltip;
     class TextTooltip;
     class CustomButton;
     class GradientWidget;
+    class TextWidget;
+    class UserMiniProfile;
 }
 
 namespace Utils
@@ -46,39 +51,57 @@ namespace Tooltip
     void drawTooltip(QPainter& _p, const QRect& _tooltipRect, const int _arrowOffset, const ArrowDirection _direction);
     void drawBigTooltip(QPainter& _p, const QRect& _tooltipRect, const int _arrowOffset, const ArrowDirection _direction);
 
+    Ui::MentionTooltip* getMentionTooltip(QWidget* _parent = nullptr);
+    void resetMentionTooltip();
+
     Ui::TextTooltip* getDefaultTooltip(QWidget* _parent = nullptr);
     void resetDefaultTooltip();
 
     Ui::TextTooltip* getDefaultMultilineTooltip(QWidget* _parent = nullptr);
     void resetDefaultMultilineTooltip();
 
-    void show(const QString& _text, const QRect& _objectRect, const QSize& _maxSize = QSize(0, 0), ArrowDirection _direction = ArrowDirection::Auto, Tooltip::ArrowPointPos _arrowPos = Tooltip::ArrowPointPos::Top, const QRect& _boundingRect = QRect(), Tooltip::TooltipMode _mode = Tooltip::TooltipMode::Default, QWidget* _parent = nullptr);
+    void show(const Data::FString& _text, const QRect& _objectRect, const QSize& _maxSize = {}, ArrowDirection _direction = ArrowDirection::Auto, Tooltip::ArrowPointPos _arrowPos = Tooltip::ArrowPointPos::Top, Ui::TextRendering::HorAligment _align = Ui::TextRendering::HorAligment::LEFT, const QRect& _boundingRect = {}, Tooltip::TooltipMode _mode = Tooltip::TooltipMode::Default, QWidget* _parent = nullptr);
+    void showMention(const QString& _aimId, const QRect& _objectRect, const QSize& _maxSize = {}, ArrowDirection _direction = ArrowDirection::Auto, Tooltip::ArrowPointPos _arrowPos = Tooltip::ArrowPointPos::Top, const QRect& _boundingRect = {}, Tooltip::TooltipMode _mode = Tooltip::TooltipMode::Default, QWidget* _parent = nullptr);
     void forceShow(bool _force);
     void hide();
 
-    QString text();
+    Data::FString text();
     bool isVisible();
     bool canWheel();
     void wheel(QWheelEvent* _e);
 
+    using namespace std::chrono_literals;
     constexpr inline std::chrono::milliseconds getDefaultShowDelay() noexcept
     {
-        return std::chrono::milliseconds(400);
+        return 400ms;
     }
 }
 
 namespace Ui
 {
+    enum class TooltipCompopent
+    {
+        None = 0,
+        CloseButton = 1 << 1,
+        BigArrow = 1 << 2,
+        HorizontalScroll = 1 << 3,
+
+        All = CloseButton | BigArrow | HorizontalScroll
+    };
+    Q_DECLARE_FLAGS(TooltipCompopents, TooltipCompopent)
+    Q_DECLARE_OPERATORS_FOR_FLAGS(Ui::TooltipCompopents)
+
     class TooltipWidget : public QWidget
     {
         Q_OBJECT
 
     public:
-        TooltipWidget(QWidget* _parent, QWidget* _content, int _pointWidth, const QMargins& _margins, bool _canClose = true, bool _bigArrow = true, bool _horizontalScroll = false);
+        TooltipWidget(QWidget* _parent, QWidget* _content, int _pointWidth, const QMargins& _margins, TooltipCompopents _components = TooltipCompopent::None);
 
-        void showAnimated(const QPoint _pos, const QSize& _maxSize, const QRect& _rect = QRect(), Tooltip::ArrowDirection _direction = Tooltip::ArrowDirection::Auto);
-        void showUsual(const QPoint _pos, const QSize& _maxSize, const QRect& _rect = QRect(), Tooltip::ArrowDirection _direction = Tooltip::ArrowDirection::Auto);
+        void showAnimated(const QPoint _pos, const QSize& _maxSize, const QRect& _rect = {}, Tooltip::ArrowDirection _direction = Tooltip::ArrowDirection::Auto);
+        void showUsual(const QPoint _pos, const QSize& _maxSize, const QRect& _rect = {}, Tooltip::ArrowDirection _direction = Tooltip::ArrowDirection::Auto);
         void hideAnimated();
+        void cancelAnimation();
         void setPointWidth(int _width);
         bool needToShow() const { return isScrollVisible() && isCursorOver_; }
         bool isScrollVisible() const;
@@ -86,7 +109,8 @@ namespace Ui
         void scrollToTop();
         void ensureVisible(const int _x, const int _y, const int _xmargin, const int _ymargin);
         void setArrowVisible(const bool _visible);
-        QRect updateTooltip(const QPoint _pos, const QSize& _maxSize, const QRect& _rect = QRect(), Tooltip::ArrowDirection _direction = Tooltip::ArrowDirection::Auto);
+        int getHeight() const;
+        QRect updateTooltip(const QPoint _pos, const QSize& _maxSize, const QRect& _rect = {}, Tooltip::ArrowDirection _direction = Tooltip::ArrowDirection::Auto);
 
     protected:
         void paintEvent(QPaintEvent* _e) override;
@@ -122,74 +146,28 @@ namespace Ui
         GradientWidget* gradientLeft_;
         Utils::OpacityEffect* opacityEffect_;
         QVariantAnimation* opacityAnimation_;
-        bool canClose_;
-        bool bigArrow_;
+        TooltipCompopents components_;
         bool isCursorOver_;
-        bool horizontalScroll_;
         bool arrowInverted_;
         QMargins margins_;
         bool isArrowVisible_;
     };
 
-    class TextWidget : public QWidget
+    class MentionWidget : public QWidget
     {
         Q_OBJECT
 
-    Q_SIGNALS:
-        void linkActivated(const QString& _link, QPrivateSignal) const;
-
     public:
+        MentionWidget(QWidget* _parent);
 
-        template <typename... Args>
-        TextWidget(QWidget* _parent, Args&&... args)
-            : QWidget(_parent)
-        {
-            setMouseTracking(true);
-            text_ = TextRendering::MakeTextUnit(std::forward<Args>(args)...);
-        }
+        void setTooltipData(const QString& _aimid, const QString& _name, const QString& _underName, const QString& _description);
 
-        template <typename... Args>
-        void init(Args&&... args)
-        {
-            text_->init(std::forward<Args>(args)...);
-            desiredWidth_ = text_->desiredWidth();
-            text_->getHeight(maxWidth_ ? maxWidth_ : desiredWidth_);
-            setFixedSize(text_->cachedSize());
-            update();
-        }
-
-        void applyLinks(const std::map<QString, QString>& _links)
-        {
-            text_->applyLinks(_links);
-        }
-
-        void setLineSpacing(int _v)
-        {
-            text_->setLineSpacing(_v);
-        }
-
-        int getDesiredWidth() const noexcept { return desiredWidth_; }
-
-        void setMaxWidth(int _width);
         void setMaxWidthAndResize(int _width);
 
-        void setText(const QString& _text, const QColor& _color = QColor());
-        void setOpacity(qreal _opacity);
-        void setColor(const QColor& _color);
-        void setAlignment(const TextRendering::HorAligment _align);
-
-        QString getText() const;
-
-    protected:
-        void paintEvent(QPaintEvent* _e) override;
-        void mouseMoveEvent(QMouseEvent* _e) override;
-        void mouseReleaseEvent(QMouseEvent* _e) override;
+        int getDesiredWidth() const noexcept;
 
     private:
-        TextRendering::TextUnitPtr text_;
-        int maxWidth_ = 0;
-        int desiredWidth_ = 0;
-        qreal opacity_ = 1.0;
+        UserMiniProfile* userMiniProfile_;
     };
 
     class TextTooltip : public QWidget
@@ -202,16 +180,17 @@ namespace Ui
         void setPointWidth(int _width);
 
         void showTooltip(
-            const QString& _text,
+            const Data::FString& _text,
             const QRect& _objectRect,
             const QSize& _maxSize,
-            const QRect& _rect = QRect(),
+            const QRect& _rect = {},
             Tooltip::ArrowDirection _direction = Tooltip::ArrowDirection::Auto,
             Tooltip::ArrowPointPos _arrowPos = Tooltip::ArrowPointPos::Top,
-            Tooltip::TooltipMode _mode = Tooltip::TooltipMode::Default);
+            Tooltip::TooltipMode _mode = Tooltip::TooltipMode::Default,
+            Ui::TextRendering::HorAligment align = Ui::TextRendering::HorAligment::CENTER);
         void hideTooltip(bool _force = false);
 
-        QString getText() const;
+        Data::FString getText() const;
         bool isTooltipVisible() const;
 
         bool canWheel();
@@ -223,11 +202,49 @@ namespace Ui
         void check();
 
     private:
-        TextWidget* text_;
         TooltipWidget* tooltip_;
-        QTimer timer_;
-        QString current_;
+        Data::FString current_;
         QRect objectRect_;
+        QTimer* timer_;
+        TextWidget* text_;
         bool forceShow_;
+    };
+
+    class MentionTooltip : public QWidget
+    {
+        Q_OBJECT
+
+    public:
+        MentionTooltip(QWidget* _parent);
+
+        void setPointWidth(int _width);
+
+        void showTooltip(
+            const QString& _aimId,
+            const QRect& _objectRect,
+            const QSize& _maxSize,
+            const QRect& _rect = {},
+            Tooltip::ArrowDirection _direction = Tooltip::ArrowDirection::Auto,
+            Tooltip::ArrowPointPos _arrowPos = Tooltip::ArrowPointPos::Top);
+
+        void hideTooltip(bool _force = false);
+        bool isTooltipVisible() const;
+
+    private Q_SLOTS:
+        void check();
+        void onUserInfo(const qint64 _seq, const Data::IdInfo& _idInfo);
+
+    private:
+        MentionWidget* mentionWidget_;
+        TooltipWidget* tooltip_;
+        QTimer* timer_;
+        QRect objectRect_;
+
+        QRect boundingRect_;
+        QSize maxSize_;
+        Tooltip::ArrowDirection direction_;
+        Tooltip::ArrowPointPos arrowPos_;
+
+        int64_t seq_;
     };
 }

@@ -3,6 +3,7 @@
 
 #include "../../gui_settings.h"
 #include "../contact_list/ContactListModel.h"
+#include "../contact_list/Common.h"
 #include "../../utils/InterConnector.h"
 #include "../../core_dispatcher.h"
 
@@ -29,23 +30,23 @@ namespace
     constexpr int PttCheckInterval = 100;
     constexpr int DeviceCheckInterval = 60 * 1000;
 
-    QString getFilePath(Ui::SoundsManager::Sound _s)
+    QString getFilePath(Ui::SoundType _s)
     {
         switch (_s)
         {
-        case Ui::SoundsManager::Sound::IncomingMail:
+        case Ui::SoundType::IncomingMail:
             return qsl(":/sounds/mail");
-        case Ui::SoundsManager::Sound::IncomingMessage:
+        case Ui::SoundType::IncomingMessage:
             return qsl(":/sounds/incoming");
-        case Ui::SoundsManager::Sound::OutgoingMessage:
+        case Ui::SoundType::OutgoingMessage:
             return qsl(":/sounds/outgoing");
-        case Ui::SoundsManager::Sound::StartPtt:
+        case Ui::SoundType::StartPtt:
             return qsl(":/sounds/ptt_start");
-        case Ui::SoundsManager::Sound::PttLimit:
+        case Ui::SoundType::PttLimit:
             return qsl(":/sounds/ptt_limit");
-        case Ui::SoundsManager::Sound::RemovePtt:
+        case Ui::SoundType::RemovePtt:
             return qsl(":/sounds/ptt_remove");
-        case Ui::SoundsManager::Sound::Size:
+        case Ui::SoundType::Size:
         default:
             Q_UNREACHABLE();
             return QString();
@@ -55,15 +56,23 @@ namespace
 
 namespace Ui
 {
-    void PlayingData::init()
+    void PlayingData::init(const SoundType _sound)
     {
         openal::alGenSources(1, &Source_);
         openal::alSourcef(Source_, AL_PITCH, 1.f);
-        openal::alSourcef(Source_, AL_GAIN, 1.f);
+        setVolume(_sound);
         openal::alSource3f(Source_, AL_POSITION, 0, 0, 0);
         openal::alSource3f(Source_, AL_VELOCITY, 0, 0, 0);
         openal::alSourcei(Source_, AL_LOOPING, 0);
         openal::alGenBuffers(1, &Buffer_);
+    }
+
+    void PlayingData::setVolume(const SoundType _sound)
+    {
+        float volume = 1.;
+        if (_sound == SoundType::IncomingMail || _sound == SoundType::IncomingMessage || _sound == SoundType::OutgoingMessage)
+            volume = static_cast<float>(get_gui_settings()->get_value<double>(settings_notification_volume, settings_notification_volume_default()));
+        openal::alSourcef(Source_, AL_GAIN, volume);
     }
 
     void PlayingData::setBuffer(const char* data, size_t size, qint64 freq, qint64 fmt)
@@ -78,6 +87,7 @@ namespace Ui
             return std::chrono::milliseconds::zero();
 
         auto duration = calcDuration();
+        setVolume(Id_);
         GetSoundsManager()->sourcePlay(Source_);
         return duration;
     }
@@ -107,7 +117,7 @@ namespace Ui
     {
         Buffer_ = 0;
         Source_ = 0;
-        Id_ = -1;
+        Id_ = SoundType::Unknown;
     }
 
     void PlayingData::free()
@@ -131,7 +141,7 @@ namespace Ui
 
     bool PlayingData::isEmpty() const
     {
-        return Id_ == -1;
+        return Id_ == SoundType::Unknown;
     }
 
     std::chrono::milliseconds PlayingData::calcDuration()
@@ -201,7 +211,7 @@ namespace Ui
         , PttTimer_(new QTimer(this))
         , DeviceTimer_(new QTimer(this))
     {
-        sounds_.resize(static_cast<size_t>(Sound::Size));
+        sounds_.resize(static_cast<size_t>(SoundType::Size));
 
         Timer_->setInterval(IncomingMessageInterval);
         Timer_->setSingleShot(true);
@@ -249,7 +259,7 @@ namespace Ui
         }
     }
 
-    std::chrono::milliseconds SoundsManager::playSound(Sound _type)
+    std::chrono::milliseconds SoundsManager::playSound(SoundType _type)
     {
         if (!canPlaySound(_type))
             return std::chrono::milliseconds::zero();
@@ -258,24 +268,26 @@ namespace Ui
 
         switch (_type)
         {
-        case Ui::SoundsManager::Sound::IncomingMail:
-        case Ui::SoundsManager::Sound::IncomingMessage:
+        case Ui::SoundType::IncomingMail:
+        case Ui::SoundType::IncomingMessage:
             CanPlayIncoming_ = false;
             break;
-        case Ui::SoundsManager::Sound::OutgoingMessage:
+        case Ui::SoundType::OutgoingMessage:
             break;
-        case Ui::SoundsManager::Sound::StartPtt:
+        case Ui::SoundType::StartPtt:
             break;
-        case Ui::SoundsManager::Sound::PttLimit:
+        case Ui::SoundType::PttLimit:
             break;
-        case Ui::SoundsManager::Sound::RemovePtt:
+        case Ui::SoundType::RemovePtt:
             break;
-        case Ui::SoundsManager::Sound::Size:
+        case Ui::SoundType::Unknown:
+        case Ui::SoundType::Size:
         default:
             Q_UNREACHABLE();
             return std::chrono::milliseconds::zero();
         }
 
+        sounds_[static_cast<size_t>(_type)].Id_ = _type;
         auto duration = sounds_[static_cast<size_t>(_type)].play();
         Timer_->start();
         return duration;
@@ -304,7 +316,7 @@ namespace Ui
         Q_EMIT deviceListChanged(QPrivateSignal());
     }
 
-    std::optional<int> SoundsManager::checkPlayPtt(int id, int &duration, const std::optional<size_t>& _sampleOffsett)
+    std::optional<SoundType> SoundsManager::checkPlayPtt(SoundType id, int &duration, const std::optional<size_t>& _sampleOffsett)
     {
         checkAudioDevice();
 
@@ -371,7 +383,7 @@ namespace Ui
             CurPlay_.free();
         }
 
-        CurPlay_.init();
+        CurPlay_.init(CurPlay_.Id_);
         return std::nullopt;
     }
 
@@ -392,25 +404,25 @@ namespace Ui
         return PttBuffer{ std::move(result), frequency, format };
     }
 
-    int SoundsManager::playPttImpl(const char* data, size_t size, qint64 freq, qint64 fmt, int& duration, size_t sampleOffset)
+    SoundType SoundsManager::playPttImpl(const char* data, size_t size, qint64 freq, qint64 fmt, int& duration, size_t sampleOffset)
     {
         CurPlay_.setBuffer(data, size, freq, fmt);
 
-        CurPlay_.Id_ = ++AlId;
+        CurPlay_.Id_ = static_cast<SoundType>(++AlId);
         setSampleOffset(CurPlay_.Id_, sampleOffset);
         duration = CurPlay_.play().count();
         PttTimer_->start();
         return CurPlay_.Id_;
     }
 
-    void SoundsManager::initPlayingData(PlayingData& _data, const QString& _file)
+    void SoundsManager::initPlayingData(PlayingData& _data, const QString& _file, const SoundType& _sound)
     {
         im_assert(AlInited_);
 
         if (!_data.isEmpty())
             return;
 
-        _data.init();
+        _data.init(_sound);
 
         const auto buffer = getBuffer(_file);
         if (!buffer)
@@ -419,13 +431,17 @@ namespace Ui
         _data.setBuffer((*buffer).data, (*buffer).frequency, (*buffer).format);
 
         if (int err = openal::alGetError(); err == AL_NO_ERROR)
-            _data.Id_ = ++AlId;
+            _data.Id_ = static_cast<SoundType>(++AlId);
     }
 
     void SoundsManager::initSounds()
     {
+        AlId = -1;
         for (size_t i = 0; i < sounds_.size(); ++i)
-            initPlayingData(sounds_[i], getFilePath(static_cast<Sound>(i)));
+        {
+            const auto soundType = static_cast<SoundType>(i);
+            initPlayingData(sounds_[i], getFilePath(soundType), soundType);
+        }
     }
 
     void SoundsManager::deInitSounds()
@@ -438,7 +454,7 @@ namespace Ui
         }
     }
 
-    bool SoundsManager::canPlaySound(Sound _type)
+    bool SoundsManager::canPlaySound(SoundType _type)
     {
         if (CallInProgress_ || CurPlay_.state() == AL_PLAYING)
             return false;
@@ -449,16 +465,16 @@ namespace Ui
 #endif
         switch (_type)
         {
-        case Ui::SoundsManager::Sound::IncomingMail:
-        case Ui::SoundsManager::Sound::IncomingMessage:
+        case Ui::SoundType::IncomingMail:
+        case Ui::SoundType::IncomingMessage:
             return CanPlayIncoming_ && get_gui_settings()->get_value<bool>(settings_sounds_enabled, true);
-        case Ui::SoundsManager::Sound::OutgoingMessage:
+        case Ui::SoundType::OutgoingMessage:
             return get_gui_settings()->get_value(settings_outgoing_message_sound_enabled, false);
-        case Ui::SoundsManager::Sound::StartPtt:
-        case Ui::SoundsManager::Sound::PttLimit:
-        case Ui::SoundsManager::Sound::RemovePtt:
+        case Ui::SoundType::StartPtt:
+        case Ui::SoundType::PttLimit:
+        case Ui::SoundType::RemovePtt:
             return get_gui_settings()->get_value<bool>(settings_sounds_enabled, true);
-        case Ui::SoundsManager::Sound::Size:
+        case Ui::SoundType::Size:
         default:
             Q_UNREACHABLE();
             return true;
@@ -518,7 +534,7 @@ namespace Ui
 #endif
     }
 
-    int SoundsManager::playPtt(const QString& file, int id, int& duration, double _progress)
+    SoundType SoundsManager::playPtt(const QString& file, SoundType id, int& duration, double _progress)
     {
         const auto sampleOffset = _progress * CurPlay_.totalLengthInSamples();
         if (auto res = checkPlayPtt(id, duration, sampleOffset); res)
@@ -529,10 +545,10 @@ namespace Ui
             const auto& data = (*res).data;
             return playPttImpl(data.constData(), data.size(), (*res).frequency, (*res).format, duration, sampleOffset);
         }
-        return -1;
+        return SoundType::Unknown;
     }
 
-    int SoundsManager::playPtt(const char* data, size_t size, qint64 freq, qint64 fmt, int id, int& duration, size_t sampleOffset)
+    SoundType SoundsManager::playPtt(const char* data, size_t size, qint64 freq, qint64 fmt, SoundType id, int& duration, size_t sampleOffset)
     {
         if (auto res = checkPlayPtt(id, duration, sampleOffset); res)
             return *res;
@@ -540,33 +556,33 @@ namespace Ui
         return playPttImpl(data, size, freq, fmt, duration, sampleOffset);
     }
 
-    void SoundsManager::stopPtt(int id)
+    void SoundsManager::stopPtt(SoundType id)
     {
         if (CurPlay_.Id_ == id)
             CurPlay_.stop();
     }
 
-    void SoundsManager::pausePtt(int id)
+    void SoundsManager::pausePtt(SoundType id)
     {
         if (CurPlay_.Id_ == id)
             CurPlay_.pause();
     }
 
-    bool SoundsManager::isPaused(int id) const
+    bool SoundsManager::isPaused(SoundType id) const
     {
         if (CurPlay_.Id_ == id)
             return CurPlay_.state() == AL_PAUSED;
         return false;
     }
 
-    size_t SoundsManager::sampleOffset(int id) const
+    size_t SoundsManager::sampleOffset(SoundType id) const
     {
         if (CurPlay_.Id_ == id)
             return CurPlay_.currentSampleOffset();
         return 0;
     }
 
-    bool SoundsManager::setSampleOffset(int id, size_t _offset)
+    bool SoundsManager::setSampleOffset(SoundType id, size_t _offset)
     {
         if (CurPlay_.Id_ == id)
         {
@@ -576,7 +592,7 @@ namespace Ui
         return false;
     }
 
-    void SoundsManager::setProgressOffset(int id, double percent)
+    void SoundsManager::setProgressOffset(SoundType id, double percent)
     {
         if (CurPlay_.Id_ == id)
             CurPlay_.setCurrentSampleOffset(size_t(CurPlay_.totalLengthInSamples() * percent));
@@ -705,12 +721,12 @@ namespace Ui
         AlInited_ = false;
     }
 
-    std::unique_ptr<SoundsManager> g_sounds_manager;
+    QObjectUniquePtr<SoundsManager> g_sounds_manager;
 
     SoundsManager* GetSoundsManager()
     {
         if (!g_sounds_manager)
-            g_sounds_manager = std::make_unique<SoundsManager>();
+            g_sounds_manager = makeUniqueQObjectPtr<SoundsManager>();
 
         return g_sounds_manager.get();
     }

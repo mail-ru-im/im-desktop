@@ -9,7 +9,6 @@
 namespace Ui
 {
     enum class MediaType;
-    enum class FileStatus;
     using highlightsV = std::vector<QString>;
 }
 
@@ -61,6 +60,7 @@ public:
         Poll = 1 << 7,
         Profile = 1 << 8,
         Task = 1 << 9,
+        Code = 1 << 10,
         Any = 0xffff,
         ExcludeDebug_Mask = (uint32_t(Any) & ~uint32_t(DebugText)),
     };
@@ -160,6 +160,10 @@ public:
 
     virtual bool isHasLinkInMessage() const = 0;
 
+    virtual bool isOverLink(const QPoint& _mousePosGlobal) const { return false; }
+
+    virtual QStringList messageLinks() const = 0;
+
     virtual int getMaxWidth() const { return -1; }
 
     virtual QPoint getShareButtonPos(const bool _isBubbleRequired, const QRect& _bubbleRect) const = 0;
@@ -208,7 +212,6 @@ public:
 
     virtual void startSpellChecking() {}
 
-    virtual void updateStyle() = 0;
     virtual void updateFonts() = 0;
 
     virtual void highlight(const highlightsV& _hl) {}
@@ -248,9 +251,12 @@ public:
 
     virtual std::optional<Data::FileSharingMeta> getMeta(const Utils::FileSharingId& _id) const { return std::nullopt; }
 
-    virtual void updateFileStatus(FileStatus _status) {}
+    virtual void markTrustRequired() {}
     virtual bool isBlockedFileSharing() const { return false; }
     virtual bool isFileSharingWithStatus() const { return false; }
+    virtual bool isAllowedByAntivirus() const { return true; }
+
+    virtual bool needToExpand() const { return false; }
 
     virtual void anyMouseButtonReleased() {}
 

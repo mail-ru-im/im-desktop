@@ -7,7 +7,7 @@
 #include "controls/TransparentScrollBar.h"
 #include "controls/ContextMenu.h"
 
-#include "controls/TooltipWidget.h"
+#include "controls/TextWidget.h"
 
 #include "utils/utils.h"
 #include "utils/gui_coll_helper.h"
@@ -68,12 +68,16 @@ namespace Ui
         if (!caption_ || !text_)
         {
             caption_ = new TextWidget(this, getName(), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
-            caption_->init(Fonts::appFontScaled(15, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, -1, TextRendering::LineBreakType::PREFER_SPACES);
+            TextRendering::TextUnit::InitializeParameters params{ Fonts::appFontScaled(15, Fonts::FontWeight::SemiBold), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } };
+            params.lineBreak_ = TextRendering::LineBreakType::PREFER_SPACES;
+            caption_->init(params);
             caption_->setAttribute(Qt::WA_TransparentForMouseEvents);
             caption_->move(leftMargin(), Utils::scale_value(12));
 
             text_ = new TextWidget(this, getText(), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
-            text_->init(Fonts::appFontScaled(15, Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, -1, TextRendering::LineBreakType::PREFER_SPACES);
+            params.setFonts(Fonts::appFontScaled(15, Fonts::FontWeight::Normal));
+            params.color_ = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY };
+            text_->init(params);
             text_->setAttribute(Qt::WA_TransparentForMouseEvents);
             text_->move(leftMargin(), Utils::scale_value(44));
 
@@ -117,8 +121,8 @@ namespace Ui
 
             const auto x = width() - buttonHorMargin() - closeIconSize().width();
             const auto y = (height() - closeIconSize().height()) / 2;
-            static const QPixmap pm = Utils::renderSvg(qsl(":/history_icon"), closeIconSize(), Styling::Buttons::hoverColor());
-            p.drawPixmap(x, y, pm);
+            static Utils::StyledPixmap pm = Utils::StyledPixmap(qsl(":/history_icon"), closeIconSize(), Styling::Buttons::hoverColorKey());
+            p.drawPixmap(x, y, pm.actualPixmap());
         }
     }
 
@@ -143,7 +147,7 @@ namespace Ui
         , activeSessionsWidget_(new QWidget(this))
     {
         auto scrollArea = CreateScrollAreaAndSetTrScrollBarV(this);
-        scrollArea->setStyleSheet(ql1s("QWidget{border: none; background-color: %1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
+        scrollArea->setStyleSheet(ql1s("QWidget{border: none; background-color: transparent;}"));
         scrollArea->setWidgetResizable(true);
         Utils::grabTouchWidget(scrollArea->viewport(), true);
 
@@ -178,9 +182,9 @@ namespace Ui
         {
             auto resetAllLink = new LabelEx(this);
             resetAllLink->setFont(Fonts::appFontScaled(15));
-            resetAllLink->setColors(Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION),
-                Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION_HOVER),
-                Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION_ACTIVE));
+            resetAllLink->setColors(Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_ATTENTION },
+                Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_ATTENTION_HOVER },
+                Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_ATTENTION_ACTIVE });
             resetAllLink->setText(QT_TRANSLATE_NOOP("settings", "Close all other sessions"));
             resetAllLink->setCursor(Qt::PointingHandCursor);
             Testing::setAccessibleName(resetAllLink, qsl("AS SessionsList closeAll"));

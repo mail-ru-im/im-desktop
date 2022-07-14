@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Common.h"
+
 namespace Logic
 {
     class CustomAbstractListModel;
@@ -145,6 +147,7 @@ namespace Ui
         void enterPressed();
         void nameChanged();
         void containsPreCheckedMembers(const std::vector<QString>& _names);
+        void copyCallLink();
 
     public Q_SLOTS:
         void UpdateMembers();
@@ -155,7 +158,7 @@ namespace Ui
         void updateSize();
 
     public:
-        SelectContactsWidget(const QString& _labelText, QWidget* _parent);
+        SelectContactsWidget(const QString& _labelText, QWidget* _parent, Logic::DrawIcons _needDrawIcons = Logic::NoNeedDrawIcons);
 
         SelectContactsWidget(
             Logic::CustomAbstractListModel* _chatMembersModel,
@@ -163,7 +166,8 @@ namespace Ui
             const QString& _labelText,
             const QString& _buttonText,
             QWidget* _parent,
-            SelectContactsWidgetOptions _options = SelectContactsWidgetOptions());
+            SelectContactsWidgetOptions _options = SelectContactsWidgetOptions(),
+            Logic::DrawIcons _needDrawIcons = Logic::NoNeedDrawIcons);
 
         ~SelectContactsWidget();
 
@@ -237,5 +241,6 @@ namespace Ui
         QPixmap lastCroppedImage_;
 
         std::map<QWidget*, FocusPosition> focusWidget_;
+        Logic::DrawIcons needDrawIcons_;
     };
 }

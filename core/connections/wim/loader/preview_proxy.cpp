@@ -12,8 +12,6 @@ CORE_WIM_PREVIEW_PROXY_NS_BEGIN
 
 namespace
 {
-    std::string extract_host(const std::string &_uri);
-
     int32_t favicon_size_2_px(const favicon_size _size);
 
     std::string parse_annotation(const rapidjson::Value &_doc_node);
@@ -39,7 +37,6 @@ link_meta::link_meta(const std::string &_title,
     const std::string &_preview_uri,
     const std::string &_download_uri,
     const std::string &_favicon_uri,
-    const std::string &_site_name,
     const std::string &_content_type,
     const preview_size &_preview_size,
     const int64_t _file_size,
@@ -51,7 +48,6 @@ link_meta::link_meta(const std::string &_title,
     , title_(_title)
     , annotation_(_annotation)
     , favicon_uri_(_favicon_uri)
-    , site_name_(_site_name)
     , content_type_(_content_type)
     , preview_size_(_preview_size)
     , file_size_(_file_size)
@@ -60,7 +56,6 @@ link_meta::link_meta(const std::string &_title,
     , fileformat_(_fileformat)
     , status_code_(0)
 {
-    im_assert(!site_name_.empty());
     im_assert(!content_type_.empty());
     im_assert(std::get<0>(preview_size_) >= 0);
     im_assert(std::get<1>(preview_size_) >= 0);
@@ -146,13 +141,6 @@ origin_size link_meta::get_origin_size() const
     return origin_size_;
 }
 
-const std::string& link_meta::get_site_name() const
-{
-    im_assert(!site_name_.empty());
-
-    return site_name_;
-}
-
 const std::string& link_meta::get_title() const
 {
     return title_;
@@ -232,10 +220,9 @@ str_2_str_map format_get_url_content_params(std::string_view _uri)
     return str_2_str_map{ {"url", wim_packet::escape_symbols(_uri)} };
 }
 
-link_meta_uptr parse_json(InOut char *_json, const std::string &_uri)
+link_meta_uptr parse_json(InOut char *_json)
 {
     im_assert(_json);
-    im_assert(!_uri.empty());
 
     rapidjson::Document doc;
     if (doc.ParseInsitu(_json).HasParseError())
@@ -273,8 +260,6 @@ link_meta_uptr parse_json(InOut char *_json, const std::string &_uri)
 
     const auto favicon_uri = parse_favicon(root_node);
 
-    const auto site_name = extract_host(_uri);
-
     const auto content_type = parse_content_type(root_node);
 
     if (content_type.empty())
@@ -290,7 +275,6 @@ link_meta_uptr parse_json(InOut char *_json, const std::string &_uri)
         preview_uri,
         download_uri,
         favicon_uri,
-        site_name,
         content_type,
         size,
         file_size,
@@ -314,25 +298,6 @@ namespace uri
 
 namespace
 {
-
-    std::string extract_host(const std::string &_uri)
-    {
-        im_assert(!_uri.empty());
-
-        using namespace boost::xpressive;
-
-        static const auto re = sregex::compile("^((http[s]?|ftp)://)?(www\\.)?(?P<host>[^/]+)(.*)$");
-
-        smatch match;
-        if (!regex_match(_uri, match, re))
-        {
-            return std::string();
-        }
-
-        auto host = match["host"].str();
-        return host;
-    }
-
     int32_t favicon_size_2_px(const favicon_size _size)
     {
         im_assert(_size > favicon_size::min);

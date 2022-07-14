@@ -1,11 +1,12 @@
 #pragma once
 #include "VoipProxy.h"
 #include "media/permissions/MediaCapturePermissions.h"
+#include "ShapedWidget.h"
 
 namespace Ui
 {
 
-class ScreenFrame : public QFrame
+class ScreenFrame : public ShapedWidget
 {
     Q_OBJECT
 public:
@@ -44,10 +45,6 @@ protected:
     void paintEvent(QPaintEvent*) override;
     void showEvent(QShowEvent* _event) override;
     void closeEvent(QCloseEvent* _event) override;
-    void resizeEvent(QResizeEvent* _event) override;
-    void moveEvent(QMoveEvent* _event) override;
-
-    virtual void updateMask();
 
 private:
     friend class ScreenFramePrivate;

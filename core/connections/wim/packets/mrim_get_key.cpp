@@ -5,6 +5,7 @@
 #include "../../../tools/system.h"
 #include "../../../../common.shared/json_helper.h"
 #include "../../urls_cache.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -24,6 +25,11 @@ mrim_get_key::~mrim_get_key()
 std::string_view mrim_get_key::get_method() const
 {
     return "mrimGetKey";
+}
+
+int core::wim::mrim_get_key::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t mrim_get_key::init_request(const std::shared_ptr<core::http_request_simple>& _request)

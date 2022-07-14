@@ -24,6 +24,11 @@ std::string_view phoneinfo::get_method() const
     return "phoneNumberValidate";
 }
 
+int core::wim::phoneinfo::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
+}
+
 int32_t phoneinfo::init_request(const std::shared_ptr<core::http_request_simple>& request)
 {
     std::stringstream get_request;

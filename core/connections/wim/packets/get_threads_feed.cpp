@@ -6,6 +6,7 @@
 #include "../../../../corelib/collection_helper.h"
 #include "../wim_history.h"
 #include "../../../../common.shared/json_helper.h"
+#include "../log_replace_functor.h"
 
 namespace core::wim
 {
@@ -63,6 +64,11 @@ get_threads_feed::get_threads_feed(wim_packet_params _params, const std::string&
 std::string_view get_threads_feed::get_method() const
 {
     return "thread/feed/get";
+}
+
+int get_threads_feed::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 const std::vector<thread_feed_data>& get_threads_feed::get_data() const
@@ -131,6 +137,7 @@ int32_t get_threads_feed::parse_results(const rapidjson::Value& _node_results)
 
             archive::thread_update update;
             update.unserialize(thread_item);
+            update.subscriber_ = true;
             updates_.push_back(std::move(update));
         }
     }

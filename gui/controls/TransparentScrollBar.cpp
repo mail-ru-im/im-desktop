@@ -22,8 +22,6 @@ namespace
 
     constexpr std::chrono::milliseconds scrollAnimationDuration() noexcept { return std::chrono::milliseconds(250); }
 
-    constexpr int defaultMouseWheelDelta() noexcept { return 120; }
-
     constexpr auto minOpacity = 0.0;
     constexpr auto maxOpacity = 1.0;
 
@@ -44,7 +42,7 @@ namespace Ui
     //////////////////////////////////////////////////////////////////////////
     // TransparentAnimation
     //////////////////////////////////////////////////////////////////////////
-    TransparentAnimation::TransparentAnimation(float _minOpacity, float _maxOpacity, QWidget* _host, bool _autoFadeout)
+    TransparentAnimation::TransparentAnimation(float _minOpacity, float _maxOpacity, QWidget* _host, FadeOutPolicy _fadeOutPolicy)
         : QObject(_host)
         , minOpacity_(_minOpacity)
         , maxOpacity_(_maxOpacity)
@@ -57,7 +55,7 @@ namespace Ui
 
         fadeAnimation_ = new QPropertyAnimation(opacityEffect_, QByteArrayLiteral("opacity"), this);
 
-        if (_autoFadeout)
+        if (FadeOutPolicy::Auto == _fadeOutPolicy)
         {
             timer_ = new QTimer(this);
             timer_->setSingleShot(true);
@@ -118,9 +116,9 @@ namespace Ui
     //////////////////////////////////////////////////////////////////////////
     // TransparentScrollButton
     //////////////////////////////////////////////////////////////////////////
-    TransparentScrollButton::TransparentScrollButton(QWidget *parent)
-        : QWidget(parent)
-        , transparentAnimation_(new TransparentAnimation(minOpacity, maxOpacity, this))
+    TransparentScrollButton::TransparentScrollButton(QWidget* _parent, FadeOutPolicy _fadeOutPolicy)
+        : QWidget(_parent)
+        , transparentAnimation_(new TransparentAnimation(minOpacity, maxOpacity, this, _fadeOutPolicy))
         , isHovered_(false)
     {
         maxSizeAnimation_ = new QPropertyAnimation(this, QByteArrayLiteral("maximumWidth"), this);
@@ -133,8 +131,9 @@ namespace Ui
     {
     }
 
-    void TransparentScrollButton::mousePressEvent(QMouseEvent* /* event */)
+    void TransparentScrollButton::mousePressEvent(QMouseEvent* _event)
     {
+        dragPoint_ = _event->pos();
     }
 
     void TransparentScrollButton::mouseMoveEvent(QMouseEvent *event)
@@ -176,8 +175,8 @@ namespace Ui
     //////////////////////////////////////////////////////////////////////////
     // TransparentScrollButtonV
     //////////////////////////////////////////////////////////////////////////
-    TransparentScrollButtonV::TransparentScrollButtonV(QWidget *parent)
-        : TransparentScrollButton(parent)
+    TransparentScrollButtonV::TransparentScrollButtonV(QWidget* _parent, FadeOutPolicy _fadeOutPolicy)
+        : TransparentScrollButton(_parent, _fadeOutPolicy)
         , minScrollButtonWidth_(Utils::scale_value(minScrollButtonWidth))
         , maxScrollButtonWidth_(Utils::scale_value(maxScrollButtonWidth))
         , minScrollButtonHeight_(Utils::scale_value(minScrollButtonHeight))
@@ -191,17 +190,17 @@ namespace Ui
         setMinimumWidth(minScrollButtonWidth_);
     }
 
-    int TransparentScrollButtonV::getMinHeight()
+    int TransparentScrollButtonV::getMinHeight() const
     {
         return minScrollButtonHeight_;
     }
 
-    int TransparentScrollButtonV::getMinWidth()
+    int TransparentScrollButtonV::getMinWidth() const
     {
         return minScrollButtonWidth_;
     }
 
-    int TransparentScrollButtonV::getMaxWidth()
+    int TransparentScrollButtonV::getMaxWidth() const
     {
         return maxScrollButtonWidth_;
     }
@@ -247,8 +246,8 @@ namespace Ui
     //////////////////////////////////////////////////////////////////////////
     // TransparentScrollButtonH
     //////////////////////////////////////////////////////////////////////////
-    TransparentScrollButtonH::TransparentScrollButtonH(QWidget *parent)
-        : TransparentScrollButton(parent)
+    TransparentScrollButtonH::TransparentScrollButtonH(QWidget* _parent, FadeOutPolicy _fadeOutPolicy)
+        : TransparentScrollButton(_parent, _fadeOutPolicy)
         , minScrollButtonHeight_(Utils::scale_value(minScrollButtonWidth))
         , maxScrollButtonHeight_(Utils::scale_value(maxScrollButtonWidth))
         , minScrollButtonWidth_(Utils::scale_value(minScrollButtonHeight))
@@ -262,17 +261,17 @@ namespace Ui
         setMinimumHeight(minScrollButtonHeight_);
     }
 
-    int TransparentScrollButtonH::getMinWidth()
+    int TransparentScrollButtonH::getMinWidth() const
     {
         return minScrollButtonWidth_;
     }
 
-    int TransparentScrollButtonH::getMinHeight()
+    int TransparentScrollButtonH::getMinHeight() const
     {
         return minScrollButtonHeight_;
     }
 
-    int TransparentScrollButtonH::getMaxHeight()
+    int TransparentScrollButtonH::getMaxHeight() const
     {
         return maxScrollButtonHeight_;
     }
@@ -316,11 +315,12 @@ namespace Ui
     //////////////////////////////////////////////////////////////////////////
     // TransparentScrollBar
     //////////////////////////////////////////////////////////////////////////
-    TransparentScrollBar::TransparentScrollBar()
+    TransparentScrollBar::TransparentScrollBar(ScrollBarPolicy _scrollBarPolicy)
         : QWidget(nullptr, Qt::FramelessWindowHint)
         , view_(nullptr)
         , scrollBar_(nullptr)
         , transparentAnimation_(new TransparentAnimation(minOpacity, maxOpacity, this))
+        , scrollBarPolicy_(_scrollBarPolicy)
     {
         setAttribute(Qt::WA_TranslucentBackground);
         //    setAttribute(Qt::WA_TransparentForMouseEvents);
@@ -360,7 +360,7 @@ namespace Ui
 
     void TransparentScrollBar::init()
     {
-        scrollButton_ = createScrollButton(view_);
+        scrollButton_ = createScrollButton(view_, ScrollBarPolicy::AutoHide == scrollBarPolicy_ ? FadeOutPolicy::Auto : FadeOutPolicy::Manual);
         resize(Utils::scale_value(backgroundWidth), 0);
 
         scrollButton_->installEventFilter(this);
@@ -434,18 +434,10 @@ namespace Ui
             break;
 
         case QEvent::Leave:
-            if (obj == view_)
-            {
+            if (obj == view_ && ScrollBarPolicy::AlwaysVisible != scrollBarPolicy_)
                 scrollButton_->fadeOut();
-            }
-            else if (obj == this)
-            {
+            else if (obj == this || obj == scrollButton_)
                 scrollButton_->hoverOff();
-            }
-            else if (obj == scrollButton_)
-            {
-                scrollButton_->hoverOff();
-            }
             break;
 
         case QEvent::Resize:
@@ -494,11 +486,6 @@ namespace Ui
     //////////////////////////////////////////////////////////////////////////
     // TransparentScrollBarV
     //////////////////////////////////////////////////////////////////////////
-    void TransparentScrollBarV::init()
-    {
-        TransparentScrollBar::init();
-    }
-
     double TransparentScrollBarV::calcScrollBarRatio()
     {
         const auto contentSize = getContentSize_();
@@ -581,9 +568,9 @@ namespace Ui
         scrollBar_ = _view->verticalScrollBar();
     }
 
-    QPointer<TransparentScrollButton> TransparentScrollBarV::createScrollButton(QWidget* _parent)
+    QPointer<TransparentScrollButton> TransparentScrollBarV::createScrollButton(QWidget* _parent, FadeOutPolicy _fadeOutPolicy)
     {
-        return QPointer<TransparentScrollButton>(new TransparentScrollButtonV(_parent));
+        return QPointer<TransparentScrollButton>(new TransparentScrollButtonV(_parent, _fadeOutPolicy));
     }
 
     void TransparentScrollBarV::onResize(QResizeEvent* _e)
@@ -602,15 +589,15 @@ namespace Ui
     void TransparentScrollBarV::moveToGlobalPos(QPoint _moveTo)
     {
         auto scrollBar = getDefaultScrollBar();
-        float max = scrollBar->maximum();
-        QPoint viewGlobalPos = view_->parentWidget()->mapToGlobal(view_->pos());
+        const double max = scrollBar->maximum();
+        const QPoint viewGlobalPos = view_->parentWidget()->mapToGlobal(view_->pos());
 
-        float minPx = viewGlobalPos.y();
-        float maxPx = viewGlobalPos.y() + view_->height();
+        const double minPy = viewGlobalPos.y();
+        const double maxPy = viewGlobalPos.y() + view_->height();
 
-        // TODO (*) : use init relation position on scrollBar
-        float ratio = (_moveTo.y() - minPx) / (maxPx - minPx - getScrollButton()->height());
-        float value = ratio * max;
+        auto scrollButton = getScrollButton();
+        const double ratio = (_moveTo.y() - minPy - scrollButton->dragPoint().y()) / (maxPy - minPy - scrollButton->height());
+        const double value = ratio * max;
 
         scrollBar->setValue(value);
     }
@@ -619,11 +606,6 @@ namespace Ui
     //////////////////////////////////////////////////////////////////////////
     // TransparentScrollBarH
     //////////////////////////////////////////////////////////////////////////
-    void TransparentScrollBarH::init()
-    {
-        TransparentScrollBar::init();
-    }
-
     double TransparentScrollBarH::calcScrollBarRatio()
     {
         const auto contentSize = getContentSize_();
@@ -699,9 +681,9 @@ namespace Ui
         scrollButton->move(x, y);
     }
 
-    QPointer<TransparentScrollButton> TransparentScrollBarH::createScrollButton(QWidget* _parent)
+    QPointer<TransparentScrollButton> TransparentScrollBarH::createScrollButton(QWidget* _parent, FadeOutPolicy _fadeOutPolicy)
     {
-        return QPointer<TransparentScrollButton>(new TransparentScrollButtonH(_parent));
+        return QPointer<TransparentScrollButton>(new TransparentScrollButtonH(_parent, _fadeOutPolicy));
     }
 
     void TransparentScrollBarH::setDefaultScrollBar(QAbstractScrollArea* _view)
@@ -725,15 +707,15 @@ namespace Ui
     void TransparentScrollBarH::moveToGlobalPos(QPoint _moveTo)
     {
         auto scrollBar = getDefaultScrollBar();
-        float max = scrollBar->maximum();
-        QPoint viewGlobalPos = view_->parentWidget()->mapToGlobal(view_->pos());
+        const double max = scrollBar->maximum();
+        const QPoint viewGlobalPos = view_->parentWidget()->mapToGlobal(view_->pos());
 
-        float minPx = viewGlobalPos.x();
-        float maxPx = viewGlobalPos.x() + view_->width();
+        const double minPx = viewGlobalPos.x();
+        const double maxPx = viewGlobalPos.x() + view_->width();
 
-        // TODO (*) : use init relation position on scrollBar
-        float ratio = (_moveTo.x() - minPx) / (maxPx - minPx - getScrollButton()->width());
-        float value = ratio * max;
+        auto scrollButton = getScrollButton();
+        const double ratio = (_moveTo.x() - minPx - scrollButton->dragPoint().x()) / (maxPx - minPx - getScrollButton()->width());
+        const double value = ratio * max;
 
         scrollBar->setValue(value);
     }
@@ -886,11 +868,6 @@ namespace Ui
         QScrollArea::mouseMoveEvent(event);
     }
 
-    void ScrollAreaWithTrScrollBar::fadeIn()
-    {
-        AbstractWidgetWithScrollBar::fadeIn();
-    }
-
     void ScrollAreaWithTrScrollBar::wheelEvent(QWheelEvent *event)
     {
         AbstractWidgetWithScrollBar::wheelEvent(event);
@@ -1016,22 +993,35 @@ namespace Ui
 
     // HELPERS
 
-    ScrollAreaWithTrScrollBar* CreateScrollAreaAndSetTrScrollBarV(QWidget* parent)
+    void smoothScroll(QScrollBar* _scrollBar, QVariantAnimation* _animation, int _delta)
     {
-        auto result = new ScrollAreaWithTrScrollBar(parent);
+        const auto start = _scrollBar->value();
+        const auto animationRunning = _animation->state() == QAbstractAnimation::Running;
+        const auto equalDirections = (_animation->endValue().toInt() > start) == (_delta < 0);
+        auto end = (animationRunning && equalDirections) ? _animation->endValue().toInt() : start;
+        end -= _delta;
+        _animation->stop();
+        _animation->setStartValue(start);
+        _animation->setEndValue(end);
+        _animation->start();
+    }
+
+    ScrollAreaWithTrScrollBar* CreateScrollAreaAndSetTrScrollBarV(QWidget* _parent, ScrollBarPolicy _scrollBarPolicy)
+    {
+        auto result = new ScrollAreaWithTrScrollBar(_parent);
         result->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-        auto scrollBar = new TransparentScrollBarV();
+        auto scrollBar = new TransparentScrollBarV(_scrollBarPolicy);
         result->setScrollBarV(scrollBar);
         scrollBar->setGetContentSizeFunc([result](){ return result->contentSize(); });
 
         return result;
     }
 
-    ScrollAreaWithTrScrollBar* CreateScrollAreaAndSetTrScrollBarH(QWidget* parent)
+    ScrollAreaWithTrScrollBar* CreateScrollAreaAndSetTrScrollBarH(QWidget* _parent, ScrollBarPolicy _scrollBarPolicy)
     {
-        auto result = new ScrollAreaWithTrScrollBar(parent);
+        auto result = new ScrollAreaWithTrScrollBar(_parent);
         result->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-        auto scrollBar = new TransparentScrollBarH();
+        auto scrollBar = new TransparentScrollBarH(_scrollBarPolicy);
         result->setScrollBarH(scrollBar);
         scrollBar->setGetContentSizeFunc([result]() { return result->contentSize(); });
 
@@ -1161,7 +1151,7 @@ namespace Ui
     void FocusableListView::wheelEvent(QWheelEvent * _e)
     {
         const auto scrollDelta = _e->angleDelta().y();
-        if ((scrollDelta % defaultMouseWheelDelta() != 0) || !smoothAnimationEnabled_)
+        if ((scrollDelta % Utils::defaultMouseWheelDelta() != 0) || !smoothAnimationEnabled_)
         {
             // flick by touchpad or smooth scrolling disabled
             scrollAnimation_->stop();
@@ -1170,15 +1160,7 @@ namespace Ui
         else
         {
             // scroll by mouse wheel
-            const auto start = verticalScrollBar()->value();
-            const auto animationRunning = scrollAnimation_->state() == QAbstractAnimation::Running;
-            const auto equalDirections = (scrollAnimation_->endValue().toInt() > start) == (scrollDelta < 0);
-            auto end = (animationRunning && equalDirections) ? scrollAnimation_->endValue().toInt() : start;
-            end -= scrollDelta;
-            scrollAnimation_->stop();
-            scrollAnimation_->setStartValue(start);
-            scrollAnimation_->setEndValue(end);
-            scrollAnimation_->start();
+            smoothScroll(verticalScrollBar(), scrollAnimation_, scrollDelta);
         }
 
         updateSelectionUnderCursor(_e->pos());

@@ -10,6 +10,11 @@
 #include "reactions/MessageReactions.h"
 #include "complex_message/FileSharingUtils.h"
 
+namespace Utils
+{
+    class PersonTooltip;
+}
+
 namespace Ui
 {
     class ThreadPlate;
@@ -32,7 +37,8 @@ namespace Ui
     enum class MediaRequestMode
     {
         Chat,
-        Recents
+        Recents,
+        Select
     };
 
     class HistoryControlPageItem : public QWidget
@@ -44,6 +50,9 @@ namespace Ui
         void selectionChanged() const;
         void edit(const Data::MessageBuddySptr& _msg, MediaType _mediaType);
         void quote(const Data::QuotesVec&);
+        void sizeUpdated();
+
+        void createTask(const Data::FString& _text, const Data::MentionMap& _mentions, const QString& _assignee, const bool isThreadFeedMessage);
 
     public:
         explicit HistoryControlPageItem(QWidget *parent);
@@ -54,9 +63,10 @@ namespace Ui
         virtual QString formatRecentsText() const = 0;
         virtual MediaType getMediaType(MediaRequestMode _mode  = MediaRequestMode::Chat) const = 0;
         virtual void setQuoteSelection() = 0;
-        virtual void updateStyle() = 0;
         virtual void updateFonts() = 0;
         virtual int32_t getTime() const = 0;
+
+        virtual void selectByPos(const QPoint& from, const QPoint& to, const QPoint& areaFrom, const QPoint& areaTo) {};
 
         bool hasAvatar() const;
         bool hasSenderName() const;
@@ -65,7 +75,6 @@ namespace Ui
         virtual bool needsAvatar() const { return false; }
 
         virtual void clearSelection(bool _keepSingleSelection);
-        virtual void selectByPos(const QPoint& from, const QPoint& to, const QPoint& areaFrom, const QPoint& areaTo);
         virtual void setSelected(const bool _isSelected);
         virtual bool isSelected() const;
 
@@ -85,6 +94,7 @@ namespace Ui
 
         virtual void setContact(const QString& _aimId);
         const QString& getContact() const { return aimId_; }
+        QString getParentAimId() const;
         const QString& getPageId() const;
 
         virtual void setSender(const QString& _sender);
@@ -179,8 +189,6 @@ namespace Ui
         virtual void setSpellErrorsVisible(bool _visible) {}
         virtual QRect avatarRect() const { return QRect(); }
 
-        virtual std::optional<Data::FileSharingMeta> getMeta(const Utils::FileSharingId& _id) const { return std::nullopt; }
-
         void applyThreadUpdate(const std::shared_ptr<Data::ThreadUpdate>& _update);
 
         bool hasThread() const;
@@ -193,6 +201,11 @@ namespace Ui
 
         bool isThreadFeedMessage() const;
 
+        virtual QStringList messageLinks() const;
+
+        void setTopicStarter(bool _isTopicStarter);
+        bool isTopicStarter() const;
+
     protected:
 
         virtual void drawLastStatusIcon(QPainter& _p, LastStatus _lastStatus, const QString& _aimid, const QString& _friendly, int _rightPadding);
@@ -204,6 +217,7 @@ namespace Ui
         void leaveEvent(QEvent*) override;
         void wheelEvent(QWheelEvent*) override;
         void resizeEvent(QResizeEvent* _event) override;
+        void showEvent(QShowEvent* _e) override;
 
         void moveEvent(QMoveEvent* _event) override;
 
@@ -212,7 +226,7 @@ namespace Ui
 
         void hideCornerMenuForce();
         void setCornerMenuVisible(bool _visible);
-        void checkCornerMenuNeeded(const QPoint& _pos); // accepts global coord
+        void checkCornerMenuNeeded(const QPoint& _globalPos); // accepts global coord
 
         virtual void drawSelection(QPainter& _p, const QRect& _rect);
         virtual void drawHeads(QPainter& _p) const;
@@ -232,8 +246,11 @@ namespace Ui
         int64_t getThreadMsgId() const;
 
         void copyPlates(const HistoryControlPageItem* _other);
-        std::shared_ptr<Data::ThreadUpdate> getthreadUpdate() const;
+        std::shared_ptr<Data::ThreadUpdate> getThreadUpdate() const;
 
+        bool isMultiselected() const;
+
+    protected:
         QPointer<QuoteColorAnimation> QuoteAnimation_;
         bool isChat_;
 
@@ -264,6 +281,7 @@ namespace Ui
         void positionCornerMenu();
 
         void onCornerMenuClicked(MenuButtonType _type);
+        void setSelection(bool _isSelected, bool _needChangeState = false);
 
         bool Selected_;
         bool HasTopMargin_;
@@ -314,7 +332,10 @@ namespace Ui
         bool initialized_;
 
         std::shared_ptr<Data::ThreadUpdate> threadUpdateData_;
+        bool isTopicStarter_{false};
         ThreadPlate* threadPlate_ = nullptr;
+
+        Utils::PersonTooltip* personTooltip_ = nullptr;
     };
 
     class AccessibleHistoryControlPageItem : public QAccessibleWidget

@@ -3,6 +3,7 @@
 
 #include "../../../http_request.h"
 #include "../../../tools/system.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -17,6 +18,11 @@ check_nick::check_nick(wim_packet_params _params, const std::string& _nick, bool
 std::string_view check_nick::get_method() const
 {
     return set_nick_ ? "setNick" : "checkNick";
+}
+
+int core::wim::check_nick::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t check_nick::init_request(const std::shared_ptr<core::http_request_simple>& _request)

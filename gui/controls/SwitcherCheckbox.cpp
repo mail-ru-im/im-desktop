@@ -11,16 +11,16 @@ namespace
         return Utils::scale_value(QSize(36, 20));
     }
 
-    const QPixmap& getOnIcon()
+    QPixmap getOnIcon()
     {
-        static const auto pm = Utils::renderSvg(qsl(":/controls/switch_on_icon"), getSize(), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
-        return pm;
+        static auto pm = Utils::StyledPixmap(qsl(":/controls/switch_on_icon"), getSize(), Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY });
+        return pm.actualPixmap();
     }
 
-    const QPixmap& getOffIcon()
+    QPixmap getOffIcon()
     {
-        static const auto pm = Utils::renderSvg(qsl(":/controls/switch_off_icon"), getSize(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_TERTIARY));
-        return pm;
+        static auto pm = Utils::StyledPixmap(qsl(":/controls/switch_off_icon"), getSize(), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_TERTIARY });
+        return pm.actualPixmap();
     }
 
     constexpr double disabledAlpha() noexcept
@@ -42,7 +42,7 @@ namespace Ui
 
     void SwitcherCheckbox::paintEvent(QPaintEvent*)
     {
-        const auto& pm = isChecked() ? getOnIcon() : getOffIcon();
+        const auto pm = isChecked() ? getOnIcon() : getOffIcon();
         const auto x = (width() - pm.width() / Utils::scale_bitmap_ratio()) / 2;
         const auto y = (height() - pm.height() / Utils::scale_bitmap_ratio()) / 2;
 

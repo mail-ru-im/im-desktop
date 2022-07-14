@@ -32,11 +32,11 @@ namespace core
             std::string product_guid_8x_;
             bool need_fill_profile_;
 
-            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
-            virtual int32_t parse_response_data(const rapidjson::Value& _data) override;
-            virtual int32_t on_response_error_code() override;
-            virtual int32_t execute_request(const std::shared_ptr<core::http_request_simple>& _request) override;
-            virtual int32_t on_empty_data() override;
+            int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            int32_t parse_response_data(const rapidjson::Value& _data) override;
+            int32_t on_response_error_code() override;
+            int32_t execute_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            int32_t on_empty_data() override;
 
         public:
             const std::string& get_a_token() const { return a_token_; }
@@ -49,12 +49,10 @@ namespace core
             const bool get_need_fill_profile() const { return need_fill_profile_; }
             bool is_valid() const override { return true; }
 
-            virtual priority_t get_priority() const override { return priority_protocol(); }
-            virtual bool is_post() const override { return true; }
+            priority_t get_priority() const override { return priority_protocol(); }
+            bool is_post() const override { return true; }
 
-            virtual std::string_view get_method() const override;
-
-        public:
+            std::string_view get_method() const override;
 
             client_login(
                 wim_packet_params params,
@@ -63,6 +61,8 @@ namespace core
                 const token_type token_type = token_type::basic);
 
             virtual ~client_login();
+
+            int minimal_supported_api_version() const override;
         };
     }
 }

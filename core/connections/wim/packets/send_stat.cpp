@@ -3,6 +3,7 @@
 #include "../../../http_request.h"
 #include "../../../common.shared/version_info.h"
 #include "../../../common.shared/config/config.h"
+#include "../../urls_cache.h"
 
 #include "send_stat.h"
 
@@ -43,6 +44,11 @@ send_stat::~send_stat()
 std::string_view send_stat::get_method() const
 {
     return "dauStatistics";
+}
+
+int send_stat::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t send_stat::init_request(const std::shared_ptr<core::http_request_simple>& _request)

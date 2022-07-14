@@ -64,6 +64,116 @@
     </message>
 </context>
 <context>
+    <name>RenderViewContextMenuQt</name>
+    <message>
+        <source>Back</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Forward</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Reload</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cut</source>
+        <translation type="unfinished">Cortar</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation type="unfinished">Pegar</translation>
+    </message>
+    <message>
+        <source>Undo</source>
+        <translation type="unfinished">Deshacer</translation>
+    </message>
+    <message>
+        <source>Redo</source>
+        <translation type="unfinished">Rehacer</translation>
+    </message>
+    <message>
+        <source>Paste and match style</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select all</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open link in new window</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open link in new tab</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy link address</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save link</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy image</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy image address</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save image</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy media address</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show controls</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Loop</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save media</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Inspect</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Exit full screen</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save page</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>View page source</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>Ui::WebPage</name>
+    <message>
+        <source>Select folder to upload</source>
+        <translation type="unfinished">Elija una carpeta de descarga</translation>
+    </message>
+</context>
+<context>
     <name>UpdaterButton</name>
     <message>
         <source>Update %1</source>
@@ -118,6 +228,18 @@ Puede dejar sus comentarios o informar un error aquí:</translation>
         <source>Server error</source>
         <translation>Error del servidor</translation>
     </message>
+    <message>
+        <source>https://reestr.digital.gov.ru/reestr/307994/</source>
+        <translation>https://reestr.digital.gov.ru/reestr/307994/</translation>
+    </message>
+    <message>
+        <source>registry_copyright</source>
+        <translation>© ООО &quot;Мэйл.Ру Цифровые Технологии&quot;</translation>
+    </message>
+    <message>
+        <source>The product is registered in the Unified Register of Russian Software and Databases</source>
+        <translation>El producto VK Teams está registrado en el Registro Unificado de programas rusos para computadoras y bases de datos electrónicas con el nombre Myteam (Майтим)</translation>
+    </message>
 </context>
 <context>
     <name>active_call_plate</name>
@@ -128,6 +250,26 @@ Puede dejar sus comentarios o informar un error aquí:</translation>
     <message>
         <source>Active call</source>
         <translation>Llamada activa</translation>
+    </message>
+    <message>
+        <source>participant</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -285,6 +427,14 @@ Puede dejar sus comentarios o informar un error aquí:</translation>
     <message>
         <source>Turquoise</source>
         <translation>Turquesa</translation>
+    </message>
+    <message>
+        <source>Sibur</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Dark Sibur</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -527,10 +677,6 @@ Puede dejar sus comentarios o informar un error aquí:</translation>
 </context>
 <context>
     <name>call_link</name>
-    <message>
-        <source>Link on call</source>
-        <translation>Enlace de llamada</translation>
-    </message>
     <message>
         <source>Link on webinar</source>
         <translation>Enlace al seminario web</translation>
@@ -1068,8 +1214,20 @@ Puede dejar sus comentarios o informar un error aquí:</translation>
         <translation>%1 Haga clic en Aceptar o responda y %2 puede</translation>
     </message>
     <message>
+        <source> %3 call you</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source> %3 add you to groups</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>%1 From now on %2 is able to</source>
         <translation>%1 Ahora %2 puede</translation>
+    </message>
+    <message>
+        <source> see if you read his messages</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>%1 You have canceled your join request</source>
@@ -1132,12 +1290,44 @@ Puede dejar sus comentarios o informar un error aquí:</translation>
         <translation>%1 cambió la fecha límite a %2</translation>
     </message>
     <message>
-        <source>%1 changed task assignee to &quot;%2&quot;</source>
-        <translation>%1 cambió de artista a &quot;%2&quot;</translation>
+        <source>%1 changed task assignee to %2</source>
+        <translation>%1 cambió el artista a %2</translation>
     </message>
     <message>
         <source>Task status changed to &quot;%1&quot;</source>
         <translation>El estado de la tarea cambió a &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>You</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The administrator</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>have allowed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>have forbidden</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>has allowed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>has forbidden</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 %2 threads creation in this channel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 %2 threads creation in this group</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -1418,6 +1608,26 @@ Puede dejar sus comentarios o informar un error aquí:</translation>
         <comment>21</comment>
         <translation>%1 mensaje seleccionado</translation>
     </message>
+    <message>
+        <source>%1 subscriber</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 subscribers</source>
+        <comment>2</comment>
+        <translation>%1 suscriptores</translation>
+    </message>
+    <message>
+        <source>%1 subscribers</source>
+        <comment>5</comment>
+        <translation>%1 suscriptores</translation>
+    </message>
+    <message>
+        <source>%1 subscribers</source>
+        <comment>21</comment>
+        <translation>%1 suscriptor</translation>
+    </message>
 </context>
 <context>
     <name>contactus_page</name>
@@ -1617,10 +1827,6 @@ Puede dejar sus comentarios o informar un error aquí:</translation>
 <context>
     <name>context_menu</name>
     <message>
-        <source>Call</source>
-        <translation>Llamar</translation>
-    </message>
-    <message>
         <source>Profile</source>
         <translation>Perfil</translation>
     </message>
@@ -1671,6 +1877,10 @@ Puede dejar sus comentarios o informar un error aquí:</translation>
     <message>
         <source>Reply</source>
         <translation>Responder</translation>
+    </message>
+    <message>
+        <source>Create task</source>
+        <translation>Crear tarea</translation>
     </message>
     <message>
         <source>Copy to clipboard</source>
@@ -1855,6 +2065,22 @@ Puede dejar sus comentarios o informar un error aquí:</translation>
     <message>
         <source>Code</source>
         <translation>Código</translation>
+    </message>
+    <message>
+        <source>Unsubscribe from thread</source>
+        <translation>Darse de baja de un hilo</translation>
+    </message>
+    <message>
+        <source>Subscribe to thread</source>
+        <translation>Suscribirse al hilo</translation>
+    </message>
+    <message>
+        <source>Unblock</source>
+        <translation>Desatascar</translation>
+    </message>
+    <message>
+        <source>Compose email</source>
+        <translation>Escribir una carta</translation>
     </message>
 </context>
 <context>
@@ -3121,10 +3347,18 @@ Puede dejar sus comentarios o informar un error aquí:</translation>
 Only for private groups
 
 This option cannot be disabled</source>
-        <translation>Permitir el acceso a archivos solo a dispositivos confiables
+        <translation>Permitir el acceso a los archivos solo a dispositivos de confianza
 Solo para grupos no públicos
 
-Es imposible deshabilitar la configuración</translation>
+Es imposible deshabilitar la configuración.</translation>
+    </message>
+    <message>
+        <source>Enable thread feeds</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Allow chat members to create threads</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -3169,8 +3403,8 @@ Es imposible deshabilitar la configuración</translation>
         <translation>El estado automático muestra quién está en la llamada</translation>
     </message>
     <message>
-        <source>Advantages of calls in Myteam</source>
-        <translation>Beneficios de llamar a Myteam</translation>
+        <source>Advantages of calls in %1</source>
+        <translation>Beneficios de llamar a %1</translation>
     </message>
     <message>
         <source>Group calls up to %1 participants</source>
@@ -3258,6 +3492,10 @@ Es imposible deshabilitar la configuración</translation>
     <message>
         <source>The join request has been sent to administrator</source>
         <translation>La solicitud de incorporación se ha enviado al administrador</translation>
+    </message>
+    <message>
+        <source>The user is blocked</source>
+        <translation>El usuario está bloqueado</translation>
     </message>
     <message>
         <source>Play record</source>
@@ -3509,6 +3747,10 @@ Es imposible deshabilitar la configuración</translation>
         <translation>Nombre de usuario o contraseña inválidos</translation>
     </message>
     <message>
+        <source>Wrong Email</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Wrong Email or password</source>
         <translation>Correo electrónico o contraseña no válidos</translation>
     </message>
@@ -3595,6 +3837,10 @@ Es imposible deshabilitar la configuración</translation>
     <message>
         <source>Sign in with Mail.ru</source>
         <translation>Iniciar sesión con Mail.ru</translation>
+    </message>
+    <message>
+        <source>Enter your corporate email</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -3754,6 +4000,10 @@ Es imposible deshabilitar la configuración</translation>
         <source>Report a problem</source>
         <translation>Reportar un problema</translation>
     </message>
+    <message>
+        <source>Delete Account</source>
+        <translation>Eliminación de cuenta</translation>
+    </message>
 </context>
 <context>
     <name>mentions</name>
@@ -3841,10 +4091,6 @@ Es imposible deshabilitar la configuración</translation>
     <message>
         <source>You have been mentioned</source>
         <translation>Se te ha mencionado</translation>
-    </message>
-    <message>
-        <source>You have been mentioned in %1</source>
-        <translation>Te han mencionado en %1</translation>
     </message>
 </context>
 <context>
@@ -4030,8 +4276,8 @@ contacto</translation>
         <translation>Encuentra un colega por correo electrónico y escríbele</translation>
     </message>
     <message>
-        <source>Install Myteam on mobile</source>
-        <translation>Instala Myteam en el móvil</translation>
+        <source>Install VK Teams on mobile</source>
+        <translation>Instalar VK Teams en dispositivos móviles</translation>
     </message>
     <message>
         <source>First name*</source>
@@ -4157,10 +4403,6 @@ contacto</translation>
         <source>%1 poll - %2 votes</source>
         <comment>5</comment>
         <translation>%1 encuesta - %2 votos</translation>
-    </message>
-    <message>
-        <source>Poll</source>
-        <translation>Encuesta</translation>
     </message>
     <message>
         <source>Poll: %1</source>
@@ -4404,10 +4646,6 @@ contacto</translation>
     <message>
         <source>Report</source>
         <translation>Denunciar</translation>
-    </message>
-    <message>
-        <source>To change the appearance you must restart the application. Continue?</source>
-        <translation>Para cambiar el diseño es necesario reiniciar la aplicación. ¿Continuar?</translation>
     </message>
     <message>
         <source>Update url, empty for default</source>
@@ -4674,6 +4912,26 @@ contacto</translation>
         <translation>Escribir</translation>
     </message>
     <message>
+        <source>contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Cancel request?</source>
         <translation>¿Cancelar petición?</translation>
     </message>
@@ -4778,6 +5036,26 @@ contacto</translation>
         <translation>El creador del bot ha prohibido agregar a grupos</translation>
     </message>
     <message>
+        <source>Cannot add %1 contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot add %1 contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot add %1 contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot add %1 contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Are you sure you want to delete user from list?</source>
         <translation>¿Está seguro de que desea eliminar al usuario de la lista?</translation>
     </message>
@@ -4792,6 +5070,26 @@ contacto</translation>
     <message>
         <source>You can not join the call. It already has</source>
         <translation>No puedes conectarte a la llamada. En eso ya</translation>
+    </message>
+    <message>
+        <source>participant</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>No</source>
@@ -4934,6 +5232,66 @@ contacto</translation>
         <translation>Acceso denegado</translation>
     </message>
     <message>
+        <source>Cannot remove %1 contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot remove %1 contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot remove %1 contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot remove %1 contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Error removing federation user</source>
         <translation>Error al eliminar el usuario de la federación</translation>
     </message>
@@ -4981,13 +5339,21 @@ contacto</translation>
         <source>Only channel subscribers can view replies</source>
         <translation>Solo los suscriptores del canal pueden ver las respuestas</translation>
     </message>
+    <message>
+        <source>Delete Account</source>
+        <translation>Eliminación de cuenta</translation>
+    </message>
+    <message>
+        <source>To delete an account, you must attach a phone number</source>
+        <translation>Para eliminar una cuenta, debe vincular un número de teléfono</translation>
+    </message>
+    <message>
+        <source>Attach</source>
+        <translation>Unir</translation>
+    </message>
 </context>
 <context>
     <name>previewer</name>
-    <message>
-        <source>Unable to download the image</source>
-        <translation>No se puede descargar la imagen</translation>
-    </message>
     <message>
         <source>%1 of %2</source>
         <translation>%1 de %2</translation>
@@ -5047,6 +5413,10 @@ contacto</translation>
     <message>
         <source>Add to favorites</source>
         <translation>Agregar a los Favoritos</translation>
+    </message>
+    <message>
+        <source>File %1 is being downloaded</source>
+        <translation>%1 cargando el archivo% 1</translation>
     </message>
 </context>
 <context>
@@ -5121,6 +5491,10 @@ contacto</translation>
     <message>
         <source>A short text about you</source>
         <translation>Breve texto sobre ti</translation>
+    </message>
+    <message>
+        <source>Middle Name</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -5253,6 +5627,13 @@ contacto</translation>
         <source>OK</source>
         <translation>OK</translation>
     </message>
+    <message>
+        <source> ﻿ ﻿— Reactions
+  — Statuses
+  — New themes
+  — Unreads counter in window title — turn it on in settings :) </source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>report_widget</name>
@@ -5300,12 +5681,20 @@ contacto</translation>
 <context>
     <name>search</name>
     <message>
-        <source>CONTACTS AND GROUPS</source>
-        <translation>CONTACTO Y GRUPOS</translation>
+        <source>Contacts and groups</source>
+        <translation>Contactos y grupos</translation>
     </message>
     <message>
-        <source>MESSAGES</source>
-        <translation>MENSAJES</translation>
+        <source>Messages</source>
+        <translation>Publicaciones</translation>
+    </message>
+    <message>
+        <source>Threads</source>
+        <translation type="unfinished">Hilos</translation>
+    </message>
+    <message>
+        <source>Thread</source>
+        <translation type="unfinished">hilo</translation>
     </message>
 </context>
 <context>
@@ -5440,6 +5829,10 @@ contacto</translation>
     <message>
         <source>Play sounds</source>
         <translation>Reproducir sonidos</translation>
+    </message>
+    <message>
+        <source>Notification volume:</source>
+        <translation>Volumen de notificaciones:</translation>
     </message>
     <message>
         <source>Outgoing messages sound</source>
@@ -5774,10 +6167,6 @@ contacto</translation>
         <translation>Llamadas</translation>
     </message>
     <message>
-        <source>Show calls tab</source>
-        <translation>Pestaña Mostrar llamadas</translation>
-    </message>
-    <message>
         <source>Show reactions to messages</source>
         <translation>Mostrar reacciones a los mensajes</translation>
     </message>
@@ -5820,6 +6209,30 @@ contacto</translation>
     <message>
         <source>Warn about disabled microphone</source>
         <translation>Advertir sobre micrófono silenciado</translation>
+    </message>
+    <message>
+        <source>Hide sender name in notifications</source>
+        <translation>Ocultar el remitente del mensaje en las notificaciones</translation>
+    </message>
+    <message>
+        <source>This setting can&apos;t be changed due to security reasons</source>
+        <translation>Por razones de seguridad, la configuración no se puede desactivar.</translation>
+    </message>
+    <message>
+        <source>Delete Account</source>
+        <translation>Borrar cuenta</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Cerca</translation>
+    </message>
+    <message>
+        <source>Your corporate account was created by a domain administrator. To remove, contact with your domain administrator</source>
+        <translation>Su cuenta corporativa fue creada por un administrador de dominio. Para eliminar, póngase en contacto con el administrador del dominio</translation>
+    </message>
+    <message>
+        <source>All information associated with your profile will be deleted. It will be impossible to restore your account</source>
+        <translation>Toda la información asociada con su perfil será eliminada. La recuperación de la cuenta será imposible</translation>
     </message>
 </context>
 <context>
@@ -6020,8 +6433,28 @@ contacto</translation>
         <translation>Establecer estado</translation>
     </message>
     <message>
-        <source>Switch microphone state</source>
-        <translation>Cambiar el estado del micrófono</translation>
+        <source>Paste text without formatting</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Switch %1 state</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>microphone</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>video</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>presentation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>sound</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -6145,6 +6578,10 @@ Edita tu número de teléfono e inténtalo de nuevo.</translation>
         <translation>Compartir grupo</translation>
     </message>
     <message>
+        <source>Subscribe to all threads</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>All members</source>
         <translation>Todos los miembros</translation>
     </message>
@@ -6223,6 +6660,10 @@ Edita tu número de teléfono e inténtalo de nuevo.</translation>
     <message>
         <source>Common groups</source>
         <translation>Grupos comunes</translation>
+    </message>
+    <message>
+        <source>My groups and channels</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Who can see my data</source>
@@ -6369,6 +6810,46 @@ Edita tu número de teléfono e inténtalo de nuevo.</translation>
         <translation>Seguidores</translation>
     </message>
     <message>
+        <source>%1 SUBSCRIBER</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 SUBSCRIBERS</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 SUBSCRIBERS</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 SUBSCRIBERS</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 MEMBER</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 MEMBERS</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 MEMBERS</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 MEMBERS</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>All subscribers</source>
         <translation>Todos los suscriptores</translation>
     </message>
@@ -6388,6 +6869,14 @@ Edita tu número de teléfono e inténtalo de nuevo.</translation>
         <source>Replies</source>
         <translation>Respuestas</translation>
     </message>
+    <message>
+        <source>Subscription to replies</source>
+        <translation>Suscribirse a las respuestas</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation type="unfinished">Tarea</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -6406,6 +6895,10 @@ Edita tu número de teléfono e inténtalo de nuevo.</translation>
     <message>
         <source>About the group</source>
         <translation>Sobre el grupo</translation>
+    </message>
+    <message>
+        <source>Send link to call or invite participants from the contact list</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -6474,6 +6967,86 @@ Edita tu número de teléfono e inténtalo de nuevo.</translation>
     <message>
         <source>Custom status</source>
         <translation>Estatus de usuario</translation>
+    </message>
+    <message>
+        <source>second</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>seconds</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>seconds</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>seconds</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>minute</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>minutes</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>minutes</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>minutes</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>hour</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>hours</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>hours</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>hours</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>day</source>
+        <comment>1</comment>
+        <translation type="unfinished">day</translation>
+    </message>
+    <message>
+        <source>days</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>days</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>days</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Show always</source>
@@ -6659,6 +7232,22 @@ Edita tu número de teléfono e inténtalo de nuevo.</translation>
         <source>Calendar</source>
         <translation>Calendario</translation>
     </message>
+    <message>
+        <source>Mail</source>
+        <translation>Correo</translation>
+    </message>
+    <message>
+        <source>Cloud</source>
+        <translation>Nube</translation>
+    </message>
+    <message>
+        <source>News</source>
+        <translation type="unfinished">Noticias</translation>
+    </message>
+    <message>
+        <source>Polls</source>
+        <translation type="unfinished">Centro</translation>
+    </message>
 </context>
 <context>
     <name>tab header</name>
@@ -6710,16 +7299,12 @@ Edita tu número de teléfono e inténtalo de nuevo.</translation>
         <translation>Para hacer</translation>
     </message>
     <message>
-        <source>No assignee</source>
-        <translation>Sin un intérprete</translation>
+        <source>Unassigned</source>
+        <translation type="unfinished">Sin cesionario</translation>
     </message>
 </context>
 <context>
     <name>task_block</name>
-    <message>
-        <source>Not assigned</source>
-        <translation>No asignado</translation>
-    </message>
     <message>
         <source>Task</source>
         <translation>Una tarea</translation>
@@ -6736,12 +7321,16 @@ Edita tu número de teléfono e inténtalo de nuevo.</translation>
         <source>Task edit: an error occured</source>
         <translation>Modificando tarea: ocurrió un error</translation>
     </message>
+    <message>
+        <source>Unassigned</source>
+        <translation type="unfinished">Sin cesionario</translation>
+    </message>
 </context>
 <context>
     <name>task_popup</name>
     <message>
         <source>Edit task</source>
-        <translation>Cambiar una tarea</translation>
+        <translation>Cambiar tarea</translation>
     </message>
     <message>
         <source>Create task</source>
@@ -6778,8 +7367,8 @@ not found</source>
 nombre no encontrado</translation>
     </message>
     <message>
-        <source>No deadline</source>
-        <translation>Sin fecha límite</translation>
+        <source>Deadline for the task</source>
+        <translation>Fecha límite para la tarea</translation>
     </message>
 </context>
 <context>
@@ -6797,20 +7386,20 @@ nombre no encontrado</translation>
         <translation>Bienvenido a Mail.ru Agent</translation>
     </message>
     <message>
-        <source>Welcome to Myteam</source>
-        <translation>Bienvenido a myteam</translation>
+        <source>Welcome to VK Teams</source>
+        <translation>Bienvenido a VK Teams</translation>
     </message>
     <message>
         <source>Welcome to Messenger</source>
         <translation>Bienvenido a messenger</translation>
     </message>
     <message>
-        <source>ICQ New - the evolution of communication</source>
-        <translation>ICQ New: la evolución de la comunicación</translation>
+        <source>ICQ - the evolution of communication</source>
+        <translation>ICQ: la evolución de la comunicación</translation>
     </message>
     <message>
-        <source>Welcome to ICQ New</source>
-        <translation>Bienvenido a ICQ New</translation>
+        <source>Welcome to ICQ</source>
+        <translation>Bienvenido a ICQ</translation>
     </message>
 </context>
 <context>
@@ -6822,6 +7411,46 @@ nombre no encontrado</translation>
     <message>
         <source>Threads you subscribed for will be here</source>
         <translation>Los hilos a los que está suscrito se mostrarán aquí</translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Replies</source>
@@ -6839,8 +7468,8 @@ nombre no encontrado</translation>
         <translation>Messenger</translation>
     </message>
     <message>
-        <source>Myteam</source>
-        <translation>Myteam</translation>
+        <source>VK Teams</source>
+        <translation>VK Teams</translation>
     </message>
     <message>
         <source>ICQ</source>
@@ -6866,10 +7495,6 @@ nombre no encontrado</translation>
         <translation>No hay ningún perfil o grupo con ese nombre de usuario</translation>
     </message>
     <message>
-        <source>Copied to clipboard</source>
-        <translation>Copiado al portapapeles</translation>
-    </message>
-    <message>
         <source>There are no profiles with this email</source>
         <translation>No hay perfil con este correo electrónico</translation>
     </message>
@@ -6890,28 +7515,28 @@ nombre no encontrado</translation>
         <translation>El administrador del grupo ha establecido restricciones sobre el acceso a los archivos.</translation>
     </message>
     <message>
-        <source>Awaiting antivirus check, patience</source>
-        <translation>Estamos esperando el chequeo del antivirus, paciencia</translation>
-    </message>
-    <message>
-        <source>Antivirus check in progress, patience</source>
-        <translation>Comprobación antivirus en curso, paciencia</translation>
-    </message>
-    <message>
         <source>File is blocked by the antivirus</source>
         <translation>Archivo bloqueado por antivirus</translation>
     </message>
     <message>
-        <source>Checked</source>
-        <translation>Controlado</translation>
-    </message>
-    <message>
-        <source>No access. You may not have enough rights</source>
-        <translation>Sin acceso. Puede que no tengas suficientes derechos</translation>
-    </message>
-    <message>
         <source>File not checked (and never will be). Available to download</source>
         <translation>El archivo no ha sido verificado (y no será verificado). Disponible para descarga</translation>
+    </message>
+    <message>
+        <source>No access. Antivirus check in progress</source>
+        <translation>Sin acceso. Comprobación antivirus en curso</translation>
+    </message>
+    <message>
+        <source>No access. File is blocked by the antivirus</source>
+        <translation>Sin acceso. Archivo bloqueado por antivirus</translation>
+    </message>
+    <message>
+        <source>The file is available. No viruses found</source>
+        <translation>El archivo está disponible. No se encontraron virus</translation>
+    </message>
+    <message>
+        <source>App not found</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -6953,10 +7578,6 @@ nombre no encontrado</translation>
         <translation>Llamada de audio</translation>
     </message>
     <message>
-        <source>Link to call</source>
-        <translation>Enlace de llamada</translation>
-    </message>
-    <message>
         <source>Chat gallery</source>
         <translation>Galería de chat</translation>
     </message>
@@ -6968,8 +7589,8 @@ nombre no encontrado</translation>
 <context>
     <name>tray_menu</name>
     <message>
-        <source>Quit</source>
-        <translation>Salir</translation>
+        <source>Close</source>
+        <translation>Сerca</translation>
     </message>
     <message>
         <source>Open</source>
@@ -6998,6 +7619,36 @@ nombre no encontrado</translation>
         <source> new emails</source>
         <comment>21</comment>
         <translation> correos nuevos</translation>
+    </message>
+</context>
+<context>
+    <name>user_agreement_widget</name>
+    <message>
+        <source>Accept</source>
+        <translation>Continuar</translation>
+    </message>
+    <message>
+        <source>Agree with %1</source>
+        <translation>Agree with %1</translation>
+    </message>
+    <message>
+        <source>processing confidential data</source>
+        <translation>restricciones al procesamiento de información confidencial</translation>
+    </message>
+    <message>
+        <source>using personal data</source>
+        <translation>tratamiento de datos personales</translation>
+    </message>
+</context>
+<context>
+    <name>video_pages</name>
+    <message>
+        <source>Link</source>
+        <translation type="unfinished">Enlace</translation>
+    </message>
+    <message>
+        <source>View</source>
+        <translation type="unfinished">Ver</translation>
     </message>
 </context>
 <context>
@@ -7082,32 +7733,8 @@ o abre la llamada
 por clic</translation>
     </message>
     <message>
-        <source>VOICE</source>
-        <translation>VOZ</translation>
-    </message>
-    <message>
-        <source>Connecting...</source>
-        <translation>Conexión...</translation>
-    </message>
-    <message>
-        <source>Calling</source>
-        <translation>Llamada</translation>
-    </message>
-    <message>
-        <source>Busy</source>
-        <translation>Ocupado</translation>
-    </message>
-    <message>
         <source>Hold Space key for temporary unmute</source>
         <translation>Mantenga presionada la barra espaciadora para activar temporalmente el sonido del micrófono</translation>
-    </message>
-    <message>
-        <source>Microphone disabled</source>
-        <translation>Micrófono apagado</translation>
-    </message>
-    <message>
-        <source>Microphone enabled</source>
-        <translation>Micrófono encendido</translation>
     </message>
     <message>
         <source>Call members</source>
@@ -7143,6 +7770,26 @@ Presione %1 para encender el micrófono
 
 Mantén presionada la barra espaciadora para reactivar temporalmente el micrófono</translation>
     </message>
+    <message>
+        <source>Press Esc to exit from fullscreen mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Grid</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Speaker</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Microphone disabled</source>
+        <translation type="unfinished">Micrófono apagado</translation>
+    </message>
+    <message>
+        <source>Microphone enabled</source>
+        <translation type="unfinished">Micrófono encendido</translation>
+    </message>
 </context>
 <context>
     <name>voip_video_panel</name>
@@ -7151,16 +7798,8 @@ Mantén presionada la barra espaciadora para reactivar temporalmente el micrófo
         <translation>Pantalla</translation>
     </message>
     <message>
-        <source>More</source>
-        <translation>Todavía</translation>
-    </message>
-    <message>
         <source>Go to chat</source>
         <translation>Ir al chat</translation>
-    </message>
-    <message>
-        <source>Open masks</source>
-        <translation>Habilitar máscaras</translation>
     </message>
     <message>
         <source>Add user</source>
@@ -7183,16 +7822,8 @@ Mantén presionada la barra espaciadora para reactivar temporalmente el micrófo
         <translation>Solicite apagar el video de otro participante. En llamadas con más de %1 personas, solo se puede mostrar un video</translation>
     </message>
     <message>
-        <source>Masks aren&apos;t available in calls with more than %1 members</source>
-        <translation>En llamadas con más de %1 participantes, las máscaras no están disponibles</translation>
-    </message>
-    <message>
         <source>Only the creator of the webinar can show the video</source>
         <translation>Solo el creador del seminario web puede mostrar el video</translation>
-    </message>
-    <message>
-        <source>Only the creator of the webinar can use masks</source>
-        <translation>Solo el creador del seminario web puede usar máscaras</translation>
     </message>
     <message>
         <source>Only the creator of the webinar can use a microphone</source>
@@ -7278,10 +7909,6 @@ Meeting</source>
         <translation>Completar</translation>
     </message>
     <message>
-        <source>SHOW ALL</source>
-        <translation>MOSTRAR TODO</translation>
-    </message>
-    <message>
         <source>Show
 participants</source>
         <translation>Mirar
@@ -7295,44 +7922,48 @@ Participantes</translation>
         <source>Show one</source>
         <translation>Muestra uno</translation>
     </message>
+    <message>
+        <source>Cancel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation type="unfinished">Si</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to end the meeting?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>End meeting</source>
+        <translation type="unfinished">Completar</translation>
+    </message>
+    <message>
+        <source>Go to the chat</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open the profile</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>End call</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Share call link</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Call participants management</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>voip_video_panel_mini</name>
     <message>
         <source>End meeting</source>
         <translation>Completar</translation>
-    </message>
-    <message>
-        <source>Mute</source>
-        <translation>Silenciar micrófono</translation>
-    </message>
-    <message>
-        <source>Unmute</source>
-        <translation>Enciende el micrófono</translation>
-    </message>
-    <message>
-        <source>Stop video</source>
-        <translation>Apagar video</translation>
-    </message>
-    <message>
-        <source>Start video</source>
-        <translation>Reproduce el video</translation>
-    </message>
-    <message>
-        <source>Disable sound</source>
-        <translation>Apaga el sonido</translation>
-    </message>
-    <message>
-        <source>Enable sound</source>
-        <translation>Enciende el sonido</translation>
-    </message>
-    <message>
-        <source>Stop share</source>
-        <translation>Dejar de mostrar</translation>
-    </message>
-    <message>
-        <source>Start share</source>
-        <translation>Compartir pantalla</translation>
     </message>
 </context>
 <context>
@@ -7380,6 +8011,29 @@ Participantes</translation>
     <message>
         <source>I miss you too :)</source>
         <translation>Yo también te echo de menos :)</translation>
+    </message>
+</context>
+<context>
+    <name>web_app</name>
+    <message>
+        <source>Page is loading...</source>
+        <translation>Cargando página ...</translation>
+    </message>
+    <message>
+        <source>Unable to load</source>
+        <translation>No puede cargar</translation>
+    </message>
+    <message>
+        <source>Retry</source>
+        <translation>Para reintentar</translation>
+    </message>
+    <message>
+        <source>Print</source>
+        <translation>Sello</translation>
+    </message>
+    <message>
+        <source>The service is not available for your account. Contact technical support</source>
+        <translation>Este servicio aún no está disponible para su Oficina</translation>
     </message>
 </context>
 </TS>

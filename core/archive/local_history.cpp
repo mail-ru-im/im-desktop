@@ -1,6 +1,5 @@
 #include "stdafx.h"
 
-#include "../../common.shared/url_parser/url_parser.h"
 #include "../../common.shared/string_utils.h"
 
 #include "../../corelib/collection_helper.h"
@@ -59,7 +58,7 @@ local_history::local_history(const std::wstring& _archive_path)
 
 local_history::~local_history() = default;
 
-std::shared_ptr<contact_archive> local_history::get_contact_archive(const std::string& _contact)
+std::shared_ptr<contact_archive> local_history::get_contact_archive(const std::string& _contact) const
 {
     // load contact archive, insert to map
 
@@ -538,6 +537,11 @@ void local_history::free_dialog(const std::string& _contact)
     get_contact_archive(_contact)->free();
 }
 
+int64_t local_history::get_last_msgid(const std::string& _contact) const
+{
+    return get_contact_archive(_contact)->get_last_msgid();
+}
+
 void local_history::add_mention(const std::string& _contact, const std::shared_ptr<archive::history_message>& _message)
 {
     get_contact_archive(_contact)->add_mention(_message);
@@ -617,6 +621,11 @@ void local_history::make_holes(const std::string& _aimId)
 void local_history::is_gallery_hole_requested(const std::string& _aimId, bool& _is_hole_requsted)
 {
     _is_hole_requsted = get_contact_archive(_aimId)->is_gallery_hole_requested();
+}
+
+void core::archive::local_history::invalidate_history(const std::string& _aimid)
+{
+    get_contact_archive(_aimid)->invaliadte_history();
 }
 
 void local_history::invalidate_message_data(const std::string& _aimId, const std::vector<int64_t>& _ids)
@@ -1872,6 +1881,27 @@ std::shared_ptr<request_gallery_is_hole_requested> face::is_gallery_hole_request
     return handler;
 }
 
+std::shared_ptr<async_task_handlers> face::invalidate_history(const std::string& _aimid)
+{
+    auto handler = std::make_shared<async_task_handlers>();
+
+    static constexpr char task_name[] = "face::invalidate_history";
+
+    thread_->run_async_function([history_cache = history_cache_, _aimid]()->int32_t
+    {
+        history_cache->invalidate_history(_aimid);
+
+        return 0;
+
+    }, task_name)->on_result_ = [handler](int32_t _error)
+    {
+        if (handler->on_result_)
+            handler->on_result_(_error);
+    };
+
+    return handler;
+}
+
 std::shared_ptr<async_task_handlers> face::invalidate_message_data(const std::string& _aimid, std::vector<int64_t> _ids)
 {
     auto handler = std::make_shared<async_task_handlers>();
@@ -1925,6 +1955,11 @@ void face::free_dialog(const std::string& _contact)
         return 0;
 
     }, task_name);
+}
+
+int64_t face::get_last_msgid(const std::string& _contact) const
+{
+    return history_cache_->get_last_msgid(_contact);
 }
 
 std::shared_ptr<memory_usage> face::get_memory_usage()

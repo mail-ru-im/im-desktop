@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../controls/GeneralCreator.h"
+#include "controls/SimpleListWidget.h"
 #ifndef STRIP_VOIP
 #include "../../voip/VoipProxy.h"
 #endif
@@ -20,6 +21,7 @@ namespace Ui
     class TextEmojiWidget;
     class SessionsPage;
     class ConnectionSettingsWidget;
+    class AppearanceWidget;
 
     class GeneralSettings : public QWidget
     {
@@ -114,28 +116,27 @@ namespace Ui
 
         GeneralSettings* general_ = nullptr;
         NotificationSettings* notifications_ = nullptr;
-        QWidget* appearance_ = nullptr;
+        AppearanceWidget* appearance_ = nullptr;
         QWidget* about_ = nullptr;
         QWidget* contactus_ = nullptr;
         QWidget* attachPhone_ = nullptr;
         QWidget* language_ = nullptr;
         ShortcutsSettings* shortcuts_ = nullptr;
-        QWidget* security_ = nullptr;
+        QStackedWidget* security_ = nullptr;
         Stickers::Store* stickersStore_ = nullptr;
         QWidget* debugSettings_ = nullptr;
-        SessionsPage* sessions_ = nullptr;
 
         struct Creator
         {
             static void initAbout(QWidget* _parent);
             static void initGeneral(GeneralSettings* _parent);
             static void initVoiceVideo(QWidget* _parent, VoiceAndVideoOptions& _voiceAndVideo);
-            static void initAppearance(QWidget* _parent);
+            static void initAppearance(AppearanceWidget* _parent);
             static void initNotifications(NotificationSettings* _parent);
             static void initContactUs(QWidget* _parent);
             static void initLanguage(QWidget* _parent);
             static void initShortcuts(ShortcutsSettings* _parent);
-            static void initSecurity(QWidget* _parent);
+            static void initSecurity(QStackedWidget* _parent);
         };
 
     public:
@@ -147,9 +148,9 @@ namespace Ui
         void setActiveDevice(const voip_proxy::device_desc& _description);
 #endif
         bool isSessionsShown() const;
+        bool isWebViewShown() const;
 
-    private:
-        void initSessionsPage();
+        void navigateBack();
 
 #ifndef STRIP_VOIP
         void initVoiceAndVideo();
@@ -157,5 +158,19 @@ namespace Ui
         void applyDefaultDeviceLogic(const voip_proxy::device_desc& _description);
         void onVoipDeviceListUpdated(voip_proxy::EvoipDevTypes deviceType, const voip_proxy::device_desc_vector& _devices);
 #endif
+    };
+
+    class AppearanceWidget : public QWidget
+    {
+        Q_OBJECT
+
+    public:
+        AppearanceWidget(QWidget* parent);
+
+        void resetThemesList();
+        SimpleListWidget* getList() const;
+
+    private:
+        SimpleListWidget* list_;
     };
 }

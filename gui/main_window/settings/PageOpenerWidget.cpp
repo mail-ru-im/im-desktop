@@ -58,7 +58,7 @@ namespace Ui
     void PageOpenerWidget::setCaption(const QString& _text)
     {
         caption_ = TextRendering::MakeTextUnit(_text);
-        caption_->init(Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        caption_->init({ Fonts::appFontScaled(15), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } });
         caption_->evaluateDesiredSize();
         update();
     }
@@ -66,7 +66,7 @@ namespace Ui
     void PageOpenerWidget::setText(const QString& _text)
     {
         text_ = TextRendering::MakeTextUnit(_text);
-        text_->init(Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+        text_->init({ Fonts::appFontScaled(15), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY } });
         text_->evaluateDesiredSize();
         update();
     }
@@ -84,16 +84,24 @@ namespace Ui
             const auto color = isPressed()
                 ? Styling::StyleVariable::BASE_PRIMARY_ACTIVE
                 : isHovered() ? Styling::StyleVariable::BASE_PRIMARY_HOVER : Styling::StyleVariable::BASE_PRIMARY;
-            text_->setColor(color);
+            text_->setColor(Styling::ThemeColorKey{ color });
 
             text_->setOffsets(width() - text_->cachedSize().width() - textRightOffset(), height() / 2);
             text_->draw(p, TextRendering::VerPosition::MIDDLE);
         }
         else
         {
-            static const auto icon = makeIcon(Styling::Buttons::defaultColor());
-            static const auto iconHover = makeIcon(Styling::Buttons::hoverColor());
-            static const auto iconPressed = makeIcon(Styling::Buttons::pressedColor());
+            static QPixmap icon;
+            static QPixmap iconHover;
+            static QPixmap iconPressed;
+
+            static Styling::ThemeChecker checker;
+            if (checker.checkAndUpdateHash() || icon.isNull())
+            {
+                icon = makeIcon(Styling::Buttons::defaultColor());
+                iconHover = makeIcon(Styling::Buttons::hoverColor());
+                iconPressed = makeIcon(Styling::Buttons::pressedColor());
+            }
 
             const auto x = width() - iconRightMargin() - getIconSize().width();
             const auto y = (height() - getIconSize().height()) / 2;

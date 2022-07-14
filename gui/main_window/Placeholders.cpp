@@ -6,7 +6,7 @@
 #include "../utils/features.h"
 #include "../controls/TextEmojiWidget.h"
 #include "../controls/DialogButton.h"
-#include "../controls/TooltipWidget.h"
+#include "../controls/TextWidget.h"
 #include "../previewer/toast.h"
 
 #include "../gui_settings.h"
@@ -43,7 +43,9 @@ PlaceholderButton::PlaceholderButton(QWidget* _parent)
     setFixedHeight(Utils::scale_value(40));
 
     text_ = MakeTextUnit(QString(), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
-    text_->init(Fonts::appFontScaled(16, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
+    TextRendering::TextUnit::InitializeParameters params{ Fonts::appFontScaled(16, Fonts::FontWeight::SemiBold), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID_PERMANENT} };
+    params.align_ = TextRendering::HorAligment::CENTER;
+    text_->init(params);
 }
 
 PlaceholderButton::~PlaceholderButton() = default;
@@ -111,7 +113,9 @@ Placeholder::Placeholder(QWidget* _parent, Type _type)
         : (type_ == Type::Recents ? QT_TRANSLATE_NOOP("placeholders", "Chat list is empty") : QT_TRANSLATE_NOOP("placeholders", "Contact list is empty"));
 
     noRecentsTextWidget_ = new TextWidget(this, text, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
-    noRecentsTextWidget_->init(Fonts::appFontScaled(20, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
+    TextRendering::TextUnit::InitializeParameters params{ Fonts::appFontScaled(20, Fonts::FontWeight::SemiBold), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID} };
+    params.align_ = TextRendering::HorAligment::CENTER;
+    noRecentsTextWidget_->init(params);
     noRecentsTextWidget_->setContextMenuPolicy(Qt::ContextMenuPolicy::NoContextMenu);
     Testing::setAccessibleName(noRecentsTextWidget_, type_ == Type::Recents ? qsl("AS RecentsTab noRecentsLabel") : qsl("AS ContactsTab noContacstLabel"));
     noRecentsLayout->addWidget(noRecentsTextWidget_, 0, Qt::AlignCenter);
@@ -121,7 +125,9 @@ Placeholder::Placeholder(QWidget* _parent, Type _type)
         noRecentsLayout->addSpacing(Utils::scale_value(24));
 
         noRecentsPromt_ = new TextWidget(this, QString(), Data::MentionMap(), TextRendering::LinksVisible::SHOW_LINKS);
-        noRecentsPromt_->init(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_ACTIVE), QColor(), QColor(), TextRendering::HorAligment::CENTER);
+        params.setFonts(Fonts::appFontScaled(16));
+        params.linkColor_ = Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY_ACTIVE };
+        noRecentsPromt_->init(params);
         noRecentsPromt_->setLineSpacing(Utils::scale_value(4));
         noRecentsPromt_->setContextMenuPolicy(Qt::ContextMenuPolicy::NoContextMenu);
         noRecentsLayout->addWidget(noRecentsPromt_, 0, Qt::AlignCenter);

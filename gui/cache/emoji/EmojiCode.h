@@ -34,7 +34,7 @@ namespace Emoji
     public:
         using codePointType = uint32_t;
     private:
-        static constexpr size_t maxCodepoints = 8;
+        static constexpr size_t maxCodepoints = 10;
         using baseType = std::array<codePointType, maxCodepoints>;
 
     public:

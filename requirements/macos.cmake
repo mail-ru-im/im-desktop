@@ -23,7 +23,7 @@ common_add_ext_package("zstd" "1.4.5-5" "static" "${PACKAGE_ARCH}" OFF OFF "rele
 common_add_ext_package("rlottie" "master-macos-static-5" "static" "${PACKAGE_ARCH}" OFF "29b391b" "release" OFF)
 common_add_ext_package("sparkle" "1.26.0-5" "static" "${PACKAGE_ARCH}" OFF OFF "release" OFF)
 if(IM_QT_DYNAMIC)
-    common_add_ext_package("qt" "5.15-10" "dynamic" "${PACKAGE_ARCH}" "5.15.3" OFF "release" OFF)
+    common_add_ext_package("qt" "5.15-11" "dynamic" "${PACKAGE_ARCH}" "5.15.3" OFF "release" OFF)
 else()
     common_add_ext_package("qt" "5.15-5" "static" "${PACKAGE_ARCH}" "5.15.3" OFF "release" OFF)
 endif()

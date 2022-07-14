@@ -23,7 +23,7 @@ void GeneralSettingsWidget::Creator::initGeneral(GeneralSettings* _parent)
 {
     auto scrollArea = CreateScrollAreaAndSetTrScrollBarV(_parent);
     scrollArea->setWidgetResizable(true);
-    scrollArea->setStyleSheet(ql1s("QWidget{ background: %1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
+    scrollArea->setStyleSheet(ql1s("QWidget{ background: transparent;}"));
     Utils::grabTouchWidget(scrollArea->viewport(), true);
 
     auto mainWidget = new QWidget(scrollArea);
@@ -209,8 +209,6 @@ void GeneralSettingsWidget::Creator::initGeneral(GeneralSettings* _parent)
     {
         GeneralCreator::addHeader(scrollArea, mainLayout, QT_TRANSLATE_NOOP("settings", "Calls"), 20);
         mainLayout->addSpacing(Utils::scale_value(12));
-
-        addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Show calls tab"), settings_show_calls_tab, true, qsl("AS GeneralPage showCallsTabSetting"));
 
         addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Warn about disabled microphone"), settings_warn_about_disabled_microphone, true, qsl("AS GeneralPage WarnAboutDisabledMicrophoneSetting"));
 

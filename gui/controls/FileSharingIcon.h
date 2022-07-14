@@ -51,6 +51,9 @@ namespace Ui
         QPixmap overrideIcon_;
         QPixmap fileType_;
         QColor iconColor_;
+        QString fileName_;
+        BlockReason blockReason_;
+        Styling::ThemeChecker themeChecker_;
 
         int64_t bytesTotal_ = 0;
         int64_t bytesCurrent_ = 0;

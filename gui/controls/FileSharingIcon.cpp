@@ -14,9 +14,9 @@ namespace
     constexpr auto QT_ANGLE_MULT = 16;
     constexpr auto animDuration = std::chrono::milliseconds(700);
 
-    QSize getButtonSize()
+    constexpr QSize getButtonSize() noexcept
     {
-        return QSize(20, 20);
+        return { 20, 20 };
     }
 
     const QPixmap& getDownloadIcon()
@@ -31,17 +31,98 @@ namespace
         return cancel_icon;
     }
 
+    QPixmap renderCircledIcon(const QString& _iconPath, QColor _iconColor, QColor _backgroundColor)
+    {
+        QPixmap pm(Utils::scale_bitmap(Ui::FileSharingIcon::getIconSize()));
+        pm.fill(Qt::transparent);
+        {
+            QPainter p(&pm);
+            p.setRenderHint(QPainter::Antialiasing);
+
+            p.setBrush(_backgroundColor);
+            p.setPen(Qt::transparent);
+            p.drawEllipse(pm.rect());
+
+            auto icon = Utils::renderSvg(_iconPath, Ui::FileSharingIcon::getIconSize(), _iconColor);
+            icon.setDevicePixelRatio(1);
+
+            p.drawPixmap(0, 0, icon);
+        }
+        Utils::check_pixel_ratio(pm);
+        return pm;
+    }
+
+    QPixmap renderInfectedIcon(const QString& _iconPath, bool _isOutgoing)
+    {
+        return renderCircledIcon(_iconPath, Ui::MessageStyle::getInfectedFileIconColor(_isOutgoing), Ui::MessageStyle::getInfectedFileIconBackground(_isOutgoing));
+    }
+
+    QPixmap renderExtensionIcon(const QString& _extension, const QFont& _font, QColor _textColor, QColor _backgroundColor)
+    {
+        QPixmap pm(Utils::scale_bitmap(Ui::FileSharingIcon::getIconSize()));
+        pm.fill(Qt::transparent);
+        {
+            QPainter p(&pm);
+            p.setRenderHint(QPainter::Antialiasing);
+
+            p.setBrush(_backgroundColor);
+            p.setPen(Qt::transparent);
+            p.drawEllipse(pm.rect());
+
+            p.setPen(_textColor);
+            p.setFont(_font);
+
+            p.drawText(pm.rect(), Qt::AlignVCenter | Qt::AlignHCenter, _extension);
+        }
+        Utils::check_pixel_ratio(pm);
+        return pm;
+    }
+
+    enum class PreviewIconType
+    {
+        SafeFile,
+        InfectedOutgoing,
+        InfectedIncoming
+    };
+
     struct FileTypeInfo
     {
         QPixmap icon_;
+        QPixmap disabledOutgoingIcon_;
+        QPixmap disabledIncomingIcon_;
         QColor color_;
 
         FileTypeInfo() = default;
 
         FileTypeInfo(const QString& _iconPath, const QColor& _color)
-            : icon_(Utils::renderSvg(_iconPath, Ui::FileSharingIcon::getIconSize()))
+            : icon_(renderCircledIcon(_iconPath, Qt::white, _color))
+            , disabledOutgoingIcon_(renderInfectedIcon(_iconPath, true))
+            , disabledIncomingIcon_(renderInfectedIcon(_iconPath, false))
             , color_(_color)
         {
+        }
+
+        FileTypeInfo(const QString& _extension, const QFont& _font, const QColor& _color)
+            : icon_(renderExtensionIcon(_extension, _font, Qt::white, _color))
+            , disabledOutgoingIcon_(renderExtensionIcon(_extension, _font, Ui::MessageStyle::getInfectedFileIconColor(true), Ui::MessageStyle::getInfectedFileIconBackground(true)))
+            , disabledIncomingIcon_(renderExtensionIcon(_extension, _font, Ui::MessageStyle::getInfectedFileIconColor(false), Ui::MessageStyle::getInfectedFileIconBackground(false)))
+            , color_(_color)
+        {}
+
+        QPixmap operator[](PreviewIconType _type)
+        {
+            switch (_type)
+            {
+            case PreviewIconType::SafeFile:
+                return icon_;
+            case PreviewIconType::InfectedOutgoing:
+                return disabledOutgoingIcon_;
+            case PreviewIconType::InfectedIncoming:
+                return disabledIncomingIcon_;
+            default:
+                im_assert(!"Wrong preview type");
+                return icon_;
+            }
         }
     };
 
@@ -78,7 +159,7 @@ namespace
         return types[static_cast<size_t>(_type)].second;
     }
 
-    QPixmap getUnknownPreviewIcon(const QString& _filename)
+    QPixmap getUnknownPreviewIcon(const QString& _filename, PreviewIconType _type)
     {
         const auto ext = QFileInfo(_filename).suffix();
         const auto& otherIcon = getTypeInfo(FileType::unknown);
@@ -86,10 +167,10 @@ namespace
         if (ext.isEmpty() || ext.length() > 7)
             return otherIcon.icon_;
 
-        static std::map<QString, std::optional<QPixmap>, Utils::StringComparator> extensions;
-        auto& pixmap = extensions[ext];
-        if (pixmap)
-            return *pixmap;
+        static std::map<QString, std::optional<FileTypeInfo>, Utils::StringComparator> extensions;
+        auto& fileTypeInfo = extensions[ext];
+        if (fileTypeInfo)
+            return (*fileTypeInfo)[_type];
 
         static const std::map<int, QFont> fontSizes = []()
         {
@@ -111,34 +192,28 @@ namespace
         if (it == fontSizes.end())
             return otherIcon.icon_;
 
-        QPixmap pm(Utils::scale_bitmap(Ui::FileSharingIcon::getIconSize()));
-        pm.fill(Qt::transparent);
-        {
-            QPainter p(&pm);
-            p.setRenderHint(QPainter::Antialiasing);
+        fileTypeInfo = FileTypeInfo(ext.toUpper(), it->second, otherIcon.color_);
 
-            p.setBrush(otherIcon.color_);
-            p.setPen(Qt::transparent);
-            p.drawEllipse(pm.rect());
-
-            p.setPen(Qt::white);
-            p.setFont(it->second);
-
-            p.drawText(pm.rect(), Qt::AlignVCenter | Qt::AlignHCenter, ext.toUpper());
-        }
-        Utils::check_pixel_ratio(pm);
-
-        pixmap  = std::move(pm);
-        return *pixmap;
+        return (*fileTypeInfo)[_type];
     }
 
     QPixmap getPreviewIcon(const QString& _filename)
     {
         const auto t = getFSType(_filename);
         if (t == FileType::unknown || t == FileType::apk)
-            return getUnknownPreviewIcon(_filename);
+            return getUnknownPreviewIcon(_filename, PreviewIconType::SafeFile);
 
         return getTypeInfo(t).icon_;
+    }
+
+    QPixmap getInfectedIcon(const QString& _filename, bool _isOutgoing)
+    {
+        const auto t = getFSType(_filename);
+
+        if (t == FileType::unknown || t == FileType::apk)
+            return getUnknownPreviewIcon(_filename, _isOutgoing ? PreviewIconType::InfectedOutgoing : PreviewIconType::InfectedIncoming);
+
+        return _isOutgoing ? getTypeInfo(t).disabledOutgoingIcon_ : getTypeInfo(t).disabledIncomingIcon_;
     }
 
     QColor getProgressColor(const QString& _filename)
@@ -228,6 +303,7 @@ namespace Ui
     {
         iconColor_ = getProgressColor(_fileName);
         fileType_ = getPreviewIcon(_fileName);
+        fileName_ = _fileName;
         update();
     }
 
@@ -284,23 +360,23 @@ namespace Ui
 
     void FileSharingIcon::setBlocked(BlockReason _reason)
     {
+        blockReason_ = _reason;
         switch (_reason)
         {
         case BlockReason::NoBlock:
             overrideIcon_ = {};
-            update();
             break;
         case BlockReason::Antivirus:
-            im_assert(!"to be implemented");
+            overrideIcon_ = getInfectedIcon(fileName_, isOutgoing_);
             break;
         case BlockReason::TrustCheck:
             overrideIcon_ = getBlockedIcon(isOutgoing_);
-            update();
             break;
         default:
-            im_assert(!"invalid reaason");
+            im_assert(!"invalid reason");
             break;
         }
+        update();
     }
 
     void FileSharingIcon::paintEvent(QPaintEvent*)
@@ -319,6 +395,8 @@ namespace Ui
 
         if (!overrideIcon_.isNull())
         {
+            if (BlockReason::TrustCheck == blockReason_ && themeChecker_.checkAndUpdateHash())
+                overrideIcon_ = getBlockedIcon(isOutgoing_);
             drawIcon(overrideIcon_);
         }
         else if (!isFileDownloaded())

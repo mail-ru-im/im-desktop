@@ -4,6 +4,7 @@
 #include "../../cache/emoji/EmojiDb.h"
 #include "../../styles/ThemeParameters.h"
 #include "../../types/search_result.h"
+#include "../../fonts.h"
 
 using namespace Ui;
 using namespace Logic;
@@ -39,17 +40,18 @@ namespace
 CountryItem::CountryItem(const Data::Country & _country)
 {
     name_ = TextRendering::MakeTextUnit(_country.name_);
-    name_->init(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID),
-        QColor(), QColor(), QColor(),
-        Ui::TextRendering::HorAligment::LEFT, 1);
+    TextRendering::TextUnit::InitializeParameters params(Fonts::appFontScaled(16), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
+    params.align_ = TextRendering::HorAligment::LEFT;
+    params.maxLinesCount_ = 1;
+    name_->init(params);
     const auto width = getItemWidth() - getIconSize() - getCodeWidth();
     name_->setLastLineWidth(width);
     name_->getHeight(width);
 
     code_ = TextRendering::MakeTextUnit(_country.phone_code_);
-    code_->init(Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY),
-        QColor(), QColor(), QColor(),
-        Ui::TextRendering::HorAligment::LEFT, 1);
+    params.setFonts(Fonts::appFontScaled(15));
+    params.color_ = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY };
+    code_->init(params);
     code_->getHeight(getCodeWidth());
 
     auto emojicode = Emoji::GetEmojiInfoByCountryName(Utils::getCountryCodeByName(_country.name_));

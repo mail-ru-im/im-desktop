@@ -23,6 +23,8 @@ namespace core
 
         void resolve_host(std::string_view, std::function<void(std::string _result, int _error)> _callback);
 
+        void set_max_parallel_packets_count(size_t _count);
+
     private:
         void add_task();
         void add_task_to_queue(std::shared_ptr<core::curl_task> _task);
@@ -37,5 +39,6 @@ namespace core
     private:
         std::thread service_thread_;
         std::unique_ptr<async_executer> resolve_hosts_thread_;
+        std::atomic_size_t max_parallel_tasks_count_;
     };
 }

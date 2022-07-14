@@ -5,6 +5,7 @@
 namespace core::archive
 {
    using history_message_sptr = std::shared_ptr<class history_message>;
+   using thread_parent_topic_sptr = std::shared_ptr<struct thread_parent_topic>;
 }
 
 namespace core::search
@@ -12,6 +13,8 @@ namespace core::search
     struct searched_message
     {
         archive::history_message_sptr message_;
+        archive::thread_parent_topic_sptr parent_topic_;
+
         std::vector<std::string> highlights_;
 
         std::string contact_;

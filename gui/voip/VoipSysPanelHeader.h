@@ -1,6 +1,5 @@
 #pragma once
 #include "CommonUI.h"
-#include "AvatarContainerWidget.h"
 #include "NameAndStatusWidget.h"
 
 namespace Ui
@@ -26,7 +25,6 @@ namespace Ui
     private:
         QWidget* parent_;
         QWidget* rootWidget_;
-        void changeEvent(QEvent*) override;
     };
 
     class VoipSysPanelHeader : public MoveablePanel

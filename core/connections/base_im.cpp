@@ -21,8 +21,6 @@
 
 #include "im_login.h"
 
-#include "../masks/masks.h"
-
 // stickers
 #include "../stickers/stickers.h"
 
@@ -66,8 +64,7 @@ base_im::base_im(const im_login_id& _login,
 
 base_im::~base_im()
 {
-    if (voip_manager_)
-        voip_manager_->unload_mask_engine();
+
 }
 
 void base_im::set_id(int32_t _id)
@@ -186,19 +183,6 @@ std::wstring base_im::get_file_name_by_url(const std::string& _url) const
     return su::wconcat(get_content_cache_path(), L'/', core::tools::from_utf8(core::tools::md5(_url.data(), _url.size())));
 }
 
-#ifndef STRIP_VOIP
-void base_im::create_masks(std::weak_ptr<wim::im> _im)
-{
-    const auto version = voip_manager_ ? voip_manager_->version() : 0;
-    masks_ = std::make_shared<masks>(_im, get_masks_path(), version);
-}
-#endif
-
-std::wstring base_im::get_masks_path() const
-{
-    return su::wconcat(get_im_data_path(), L"/masks");
-}
-
 std::wstring base_im::get_stickers_path() const
 {
     return su::wconcat(get_im_data_path(), L"/stickers");
@@ -279,37 +263,12 @@ void core::base_im::on_voip_call_start(const std::vector<std::string> &contacts,
     voip_manager_->set_device_mute(AudioPlayback, false);
 }
 
-void core::base_im::on_voip_window_set_offsets(void* hwnd, unsigned l, unsigned t, unsigned r, unsigned b)
-{
-    voip_manager_->window_set_offsets(hwnd, l, t, r, b);
-}
-
-bool core::base_im::on_voip_avatar_actual_for_voip(const std::string& contact, unsigned avatar_size)
-{
-    auto account = _get_protocol_uid();
-    im_assert(!account.empty());
-    return
-        !account.empty() &&
-        !contact.empty() &&
-        voip_manager_->call_have_call(voip_manager::Contact(account, contact));
-}
-
 void core::base_im::on_voip_user_update_avatar_no_video(const std::string& contact, const unsigned char* data, unsigned size, unsigned h, unsigned w, voip_manager::AvatarThemeType theme)
 {
 #if 0
     __on_voip_user_bitmap(voip_manager_, contact, /*voip2::AvatarType_UserNoVideo*/0, data, size, h, w, theme);
 #endif
 }
-
-//void core::base_im::on_voip_user_update_avatar_camera_off(const std::string& contact, const unsigned char* data, unsigned size, unsigned h, unsigned w, voip_manager::AvatarThemeType theme)
-//{
-//    __on_voip_user_bitmap(voip_manager_, contact, voip2::AvatarType_Camera, data, size, h, w, theme);
-//}
-//
-//void core::base_im::on_voip_user_update_avatar_no_camera(const std::string& contact, const unsigned char* data, unsigned size, unsigned h, unsigned w, voip_manager::AvatarThemeType theme)
-//{
-//    __on_voip_user_bitmap(voip_manager_, contact, voip2::AvatarType_CameraCrossed, data, size, h, w, theme);
-//}
 
 void core::base_im::on_voip_user_update_avatar_text(const std::string& contact, const unsigned char* data, unsigned size, unsigned h, unsigned w, voip_manager::AvatarThemeType theme)
 {
@@ -361,18 +320,6 @@ void core::base_im::on_voip_device_changed(std::string_view dev_type, const std:
 void core::base_im::on_voip_devices_changed(DeviceClass deviceClass)
 {
     voip_manager_->notify_devices_changed(deviceClass);
-}
-
-void core::base_im::on_voip_window_update_background(void* hwnd, const unsigned char* data, unsigned size, unsigned w, unsigned h)
-{
-    voip_manager::WindowBitmap bmp;
-    bmp.hwnd = hwnd;
-    bmp.bitmap.data = (void*)data;
-    bmp.bitmap.size = size;
-    bmp.bitmap.w = w;
-    bmp.bitmap.h = h;
-
-    voip_manager_->window_set_bitmap(bmp);
 }
 
 void core::base_im::on_voip_call_accept(const std::string &call_id, bool video)
@@ -456,16 +403,6 @@ void core::base_im::on_voip_update()
     voip_manager_->update();
 }
 
-void core::base_im::on_voip_load_mask(const std::string& path)
-{
-    voip_manager_->load_mask(path);
-}
-
-void core::base_im::voip_set_model_path(const std::string& _local_path, bool _force_reload)
-{
-    voip_manager_->set_model_path(_local_path, _force_reload);
-}
-
 bool core::base_im::has_created_call()
 {
     return voip_manager_->has_created_call();
@@ -477,28 +414,8 @@ void base_im::send_voip_calls_quality_report(int _score, const std::string &_sur
     voip_manager_->call_report_user_rating(voip_manager::UserRatingReport(_score, _survey_id, _reasons, _aimid));
 }
 
-void core::base_im::on_voip_window_set_primary(void* hwnd, const std::string& contact)
+void core::base_im::on_voip_peer_resolution_changed(const std::string& _contact, int _width, int _height)
 {
-    voip_manager_->window_set_primary(hwnd, contact);
-}
-
-void core::base_im::on_voip_window_set_hover(void* hwnd, bool hover)
-{
-    voip_manager_->window_set_hover(hwnd, hover);
-}
-
-void core::base_im::on_voip_window_set_large(void* hwnd, bool large)
-{
-    voip_manager_->window_set_large(hwnd, large);
-}
-
-void core::base_im::on_voip_init_mask_engine()
-{
-    voip_manager_->init_mask_engine();
-}
-
-void core::base_im::on_voip_window_set_conference_layout(void* hwnd, int layout)
-{
-    voip_manager_->window_set_conference_layout(hwnd, (voip_manager::VideoLayout)layout);
+    voip_manager_->peer_resolution_changed(_contact, _width, _height);
 }
 #endif

@@ -5,6 +5,7 @@
 #include "avatar_loader.h"
 #include "../../async_task.h"
 #include "../../tools/system.h"
+#include "tools/features.h"
 #include "../../configuration/host_config.h"
 
 #include "packets/request_avatar.h"
@@ -182,6 +183,7 @@ void avatar_loader::run_tasks_loop()
     auto task = get_next_task();
     if (!task)
     {
+        features::cleanup_cache(avatars_data_path_);
         working_ =  false;
         return;
     }
@@ -262,6 +264,7 @@ std::shared_ptr<avatar_load_handlers> avatar_loader::get_contact_avatar_async(co
         if (_error == 0)
             handlers->completed_(_context);
 
+        ptr_this->avatars_data_path_ = _context->avatars_data_path_;
         ptr_this->load_avatar_from_server(_context, handlers);
     };
 

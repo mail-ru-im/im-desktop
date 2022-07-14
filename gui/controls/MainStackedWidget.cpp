@@ -7,9 +7,7 @@ using namespace Ui;
 
 MainStackedWidget::MainStackedWidget(QWidget* _parent)
     : QStackedWidget(_parent)
-{
-    Utils::setDefaultBackground(this);
-}
+{}
 
 void MainStackedWidget::setCurrentIndex(int _index, ForceLocked _forceLocked)
 {

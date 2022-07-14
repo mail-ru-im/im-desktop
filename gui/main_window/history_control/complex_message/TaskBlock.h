@@ -9,7 +9,7 @@ namespace TextRendering
 {
     class TextUnit;
     using TextUnitPtr = std::unique_ptr<TextUnit>;
-}
+} // namespace TextRendering
 
 UI_NS_END
 
@@ -43,6 +43,7 @@ public:
     bool isDraggable() const override;
     bool isSharingEnabled() const override;
     QString formatRecentsText() const override;
+    Data::Quote getQuote() const override;
 
     bool onMenuItemTriggered(const QVariantMap& _params) override;
     MenuFlags getMenuFlags(QPoint _p) const override;
@@ -74,7 +75,6 @@ protected:
     void leaveEvent(QEvent* _event) override;
 
 private:
-    void updateStyle() override;
     void updateFonts() override;
     void initTextUnits();
     void reinitTextUnits();

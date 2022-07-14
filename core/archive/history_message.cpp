@@ -102,6 +102,7 @@ namespace
     constexpr std::string_view c_format_quote = "quote";
     constexpr std::string_view c_format_offset = "offset";
     constexpr std::string_view c_format_length = "length";
+    constexpr std::string_view c_format_start_index = "start_index";
     constexpr std::string_view c_format_data = "data";
     constexpr std::string_view c_format_lang = "lang";
 
@@ -665,7 +666,9 @@ enum message_fields : uint32_t
     mf_task_end_time = 120,
     mf_thread_id = 121,
     mf_task_status = 122,
-    mf_chat_event_task_editor = 123
+    mf_chat_event_task_editor = 123,
+    mf_format_start_index = 124,
+    mf_chat_event_threads_enabled = 125
 };
 
 void shared_contact_data::serialize(icollection *_collection) const
@@ -1618,6 +1621,12 @@ chat_event_data_sptr chat_event_data::make_modified_event(const rapidjson::Value
         result->chat_.new_trust_required_ = value;
     }
 
+    if (bool value; tools::unserialize_value(modified_event, "threadsEnabled", value))
+    {
+        result.reset(new chat_event_data(chat_event_type::chat_threads_enabled_modified));
+        result->chat_.new_threads_enabled_ = value;
+    }
+
     if (result)
     {
         im_assert(result->sender_aimid_.empty());
@@ -1956,6 +1965,14 @@ void chat_event_data::deserialize_chat_modifications(const tools::tlvpack &_pack
 
         chat_.new_stamp_ = item->get_value<std::string>();
     }
+
+    if (type_ == chat_event_type::chat_threads_enabled_modified)
+    {
+        const auto item = _pack.get_item(mf_chat_event_threads_enabled);
+        im_assert(item);
+
+        chat_.new_threads_enabled_ = item->get_value<bool>();
+    }
 }
 
 void chat_event_data::deserialize_mchat_members(const tools::tlvpack &_pack)
@@ -2065,6 +2082,7 @@ bool chat_event_data::has_chat_modifications() const
         chat_event_type::chat_join_moderation_modified,
         chat_event_type::chat_public_modified,
         chat_event_type::chat_trust_requied_modified,
+        chat_event_type::chat_threads_enabled_modified
     };
 
     return std::any_of(types_with_chat_modifications.begin(), types_with_chat_modifications.end(), [this](const auto type) { return type == get_type(); });
@@ -2115,6 +2133,9 @@ void chat_event_data::serialize_chat_modifications(Out coll_helper &_coll) const
     case chat_event_type::chat_trust_requied_modified:
         _coll.set<bool>("chat/new_trust", chat_.new_trust_required_);
         break;
+    case chat_event_type::chat_threads_enabled_modified:
+        _coll.set<bool>("chat/new_threads_enabled", chat_.new_threads_enabled_);
+        break;
     default:
         break;
     }
@@ -2138,6 +2159,9 @@ void chat_event_data::serialize_chat_modifications(Out tools::tlvpack &_pack) co
 
     if (type_ == chat_event_type::chat_stamp_modified)
         _pack.push_child(tools::tlv(mf_chat_event_new_chat_stamp, chat_.new_stamp_));
+
+    if (type_ == chat_event_type::chat_threads_enabled_modified)
+        _pack.push_child(tools::tlv(mf_chat_event_threads_enabled, chat_.new_threads_enabled_));
 }
 
 void chat_event_data::serialize_mchat_members(Out coll_helper &_coll) const
@@ -4183,7 +4207,7 @@ bool quote::unserialize(const rapidjson::Value& _node, bool _is_forward, const m
 
             auto iter_format = field.value.FindMember(tools::make_string_ref(c_format));
             if (iter_format != field.value.MemberEnd() && iter_format->value.IsObject())
-                format_.emplace(iter_format->value);
+                description_format_.emplace(iter_format->value);
         }
         else if (c_sticker_id == name)
         {
@@ -4456,17 +4480,17 @@ namespace
         if (!id_opt)
             return;
 
-        const auto id = *id_opt;
+        const auto file_id = id_opt->file_id();
 
-        im_assert(!id.file_id_.empty());
+        im_assert(!file_id.empty());
 
         core::file_sharing_content_type content_type;
 
         if (!tools::get_content_type_from_uri(uri, content_type))
             return;
 
-        const auto width = calculate_size(id.file_id_[1], id.file_id_[2]);
-        const auto height = calculate_size(id.file_id_[3], id.file_id_[4]);
+        const auto width = calculate_size(file_id[1], file_id[2]);
+        const auto height = calculate_size(file_id[3], file_id[4]);
 
         im_assert(width >= 0);
         im_assert(height >= 0);
@@ -4607,7 +4631,7 @@ namespace
 
         if (const auto it = chat_node.FindMember("modifiedInfo"); it != chat_node.MemberEnd() && it->value.IsObject())
         {
-            static constexpr auto events = { "name", "rules", "avatarLastModified", "about", "stamp", "joinModeration", "public", "trustRequired" };
+            static constexpr auto events = { "name", "rules", "avatarLastModified", "about", "stamp", "joinModeration", "public", "trustRequired", "threadsEnabled"};
             if (std::any_of(events.begin(), events.end(), [&info = it->value](auto e) { return info.HasMember(e); }))
                 return chat_event_type_class::chat_modified;
         }
@@ -4805,6 +4829,7 @@ void core::archive::format_data::serialize(icollection* _collection, std::string
         coll_range.set_value_as_uint(c_format_type, static_cast<uint32_t>(info.type_));
         coll_range.set_value_as_int(c_format_offset, info.range_.offset_);
         coll_range.set_value_as_int(c_format_length, info.range_.size_);
+        coll_range.set_value_as_int(c_format_start_index, info.range_.start_index_);
         if (info.data_.has_value())
             coll_range.set_value_as_string(c_format_data, *(info.data_));
         core::ifptr<core::ivalue> value(coll->create_value());
@@ -4854,6 +4879,7 @@ void core::archive::format_data::serialize(tools::tlvpack& _pack) const
         core::tools::tlvpack pack;
         pack.push_child(core::tools::tlv(message_fields::mf_format_offset, static_cast<int32_t>(params.range_.offset_)));
         pack.push_child(core::tools::tlv(message_fields::mf_format_length, static_cast<int32_t>(params.range_.size_)));
+        pack.push_child(core::tools::tlv(message_fields::mf_format_start_index, static_cast<int32_t>(params.range_.start_index_)));
         if (params.data_.has_value())
             pack.push_child(core::tools::tlv(message_fields::mf_format_data, *(params.data_)));
         _pack.push_child(core::tools::tlv(to_mf_type(params.type_), pack));
@@ -4908,6 +4934,9 @@ bool core::archive::format_data::unserialize(core::tools::tlvpack& _pack)
             case message_fields::mf_format_length:
                 result.range_.size_ = field->get_value<int32_t>();
                 break;
+            case message_fields::mf_format_start_index:
+                result.range_.start_index_ = field->get_value<int32_t>();
+                break;
             case message_fields::mf_format_data:
                 result.data_ = field->get_value<std::string>();
                 break;
@@ -4955,6 +4984,12 @@ void core::archive::format_data::unserialize(const coll_helper& _coll, std::stri
             if (v = coll->get_value(c_format_length); v)
                 format.range_.size_ = v->get_as_int();
 
+            if (coll->is_value_exist(c_format_start_index))
+            {
+                if (v = coll->get_value(c_format_start_index); v)
+                    format.range_.start_index_ = v->get_as_int();
+            }
+
             if (v = coll->get_value(c_format_type); v)
                 format.type_ = static_cast<core::data::format_type>(v->get_as_uint());
 
@@ -4991,6 +5026,8 @@ void core::archive::serialize_message_quotes(const quotes_vec& _quotes, rapidjso
         else if (quote.get_shared_contact())
         {
             quote_params.AddMember("text", "", _a);
+            if (const auto& format = quote.get_format(); format && !format->empty())
+                quote_params.AddMember("format", format->serialize(_a), _a);
             rapidjson::Value contact_params(rapidjson::Type::kObjectType);
             contact_params.AddMember("name", quote.get_shared_contact()->name_, _a);
             contact_params.AddMember("phone", quote.get_shared_contact()->phone_, _a);
@@ -5010,6 +5047,8 @@ void core::archive::serialize_message_quotes(const quotes_vec& _quotes, rapidjso
         else if (quote.get_poll())
         {
             quote_params.AddMember("text", quote.get_text(), _a);
+            if (const auto& format = quote.get_format(); format && !format->empty())
+                quote_params.AddMember("format", format->serialize(_a), _a);
             rapidjson::Value poll_params(rapidjson::Type::kObjectType);
             poll_params.AddMember("id", quote.get_poll()->id_, _a);
             quote_params.AddMember("poll", std::move(poll_params), _a);

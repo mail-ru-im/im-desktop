@@ -40,12 +40,12 @@ namespace Ui
         explicit SplitterHandle(Qt::Orientation, QSplitter* _parent);
         ~SplitterHandle();
 
-        void setColor(QColor _color);
-
     protected:
         void mouseMoveEvent(QMouseEvent *) override;
         void mousePressEvent(QMouseEvent *) override;
-        void paintEvent(QPaintEvent *) override;
+
+    private Q_SLOTS:
+        void updateColor();
 
     private:
         int mouseOffset_ = 0;

@@ -2,6 +2,7 @@
 
 #include "core_dispatcher.h"
 #include "../main_window/history_control/complex_message/FileSharingUtils.h"
+#include "../main_window/containers/FileSharingMetaContainer.h"
 #include "utils/UrlParser.h"
 #include "utils/async/AsyncTask.h"
 #include "medialoader.h"
@@ -10,15 +11,15 @@ using namespace Utils;
 
 //////////////////////////////////////////////////////////////////////////
 
-FileSharingLoader::FileSharingLoader(const QString &_link, LoadMeta _loadMeta)
+FileSharingLoader::FileSharingLoader(const QString& _link, LoadMeta _loadMeta)
     : MediaLoader(_link, _loadMeta)
+    , fileSharingId_{ Ui::ComplexMessage::extractIdFromFileSharingUri(_link) }
 {
-    const auto id = Ui::ComplexMessage::extractIdFromFileSharingUri(_link);
-    auto content_type = Ui::ComplexMessage::extractContentTypeFromFileSharingId(id.fileId);
+    auto content_type = Ui::ComplexMessage::extractContentTypeFromFileSharingId(fileSharingId_.fileId_);
 
     isVideo_ = content_type.is_video();
     isGif_ = content_type.is_gif();
-    originSize_ = Ui::ComplexMessage::extractSizeFromFileSharingId(id.fileId);
+    originSize_ = Ui::ComplexMessage::extractSizeFromFileSharingId(fileSharingId_.fileId_);
 }
 
 void FileSharingLoader::load(const QString& _downloadPath)
@@ -28,9 +29,9 @@ void FileSharingLoader::load(const QString& _downloadPath)
     downloadPath_ = _downloadPath;
 
     if (loadMeta_ == LoadMeta::BeforeMedia)
-        seq_ = Ui::GetDispatcher()->downloadFileSharingMetainfo(link_);
+        Logic::GetFileSharingMetaContainer()->requestFileSharingMetaInfo(fileSharingId_, this);
     else
-        seq_ = Ui::GetDispatcher()->downloadSharedFile(QString(), link_, false, _downloadPath, true);
+        seq_ = Ui::GetDispatcher()->downloadSharedFile({} , link_, false, _downloadPath, true);
 }
 
 void FileSharingLoader::loadPreview()
@@ -40,7 +41,7 @@ void FileSharingLoader::loadPreview()
     auto loadMeta = (loadMeta_ == LoadMeta::BeforePreview) || (loadMeta_ == LoadMeta::OnlyForVideo && isVideo_);
 
     if (loadMeta)
-        seq_ = Ui::GetDispatcher()->downloadFileSharingMetainfo(link_);
+        Logic::GetFileSharingMetaContainer()->requestFileSharingMetaInfo(fileSharingId_, this);
     else
         seq_ = Ui::GetDispatcher()->getFileSharingPreviewSize(link_);
 }
@@ -61,22 +62,16 @@ void FileSharingLoader::cancelPreview()
     disconnectSignals();
 }
 
-void FileSharingLoader::onPreviewMetainfo(qint64 _seq, const QString &_miniPreviewUri, const QString &_fullPreviewUri) {
-    if (seq_ != _seq)
-        return;
-
-    previewLink_ = (_fullPreviewUri.isEmpty() ? _miniPreviewUri : _fullPreviewUri);
-    seq_ = Ui::GetDispatcher()->downloadImage(previewLink_, QString(), false, 0, 0, false);
-}
-
-void FileSharingLoader::onFileMetainfo(qint64 _seq, const Data::FileSharingMeta& _meta)
+void FileSharingLoader::processMetaInfo(const Utils::FileSharingId& _fsId, const Data::FileSharingMeta& _meta)
 {
-    if (seq_ != _seq)
+    im_assert(_fsId == fileSharingId_);
+    if (_fsId != fileSharingId_)
         return;
 
     duration_ = _meta.duration_;
     gotAudio_ = _meta.gotAudio_;
     fileName_ = _meta.filenameShort_;
+    mediaVirusInfected_ = core::antivirus::check::result::unsafe == _meta.antivirusCheck_.result_;
 
     switch (loadMeta_)
     {
@@ -85,11 +80,24 @@ void FileSharingLoader::onFileMetainfo(qint64 _seq, const Data::FileSharingMeta&
             seq_ = Ui::GetDispatcher()->getFileSharingPreviewSize(link_);
             break;
         case LoadMeta::BeforeMedia:
-            seq_ = Ui::GetDispatcher()->downloadSharedFile(QString(), link_, false, downloadPath_, true);
+            seq_ = Ui::GetDispatcher()->downloadSharedFile({}, link_, false, downloadPath_, true);
             break;
         default:
             break;
     }
+}
+
+void Utils::FileSharingLoader::processMetaInfoError(const Utils::FileSharingId& _fsId, qint32 /*_errorCode*/)
+{
+    Q_EMIT error();
+}
+
+void FileSharingLoader::onPreviewMetainfo(qint64 _seq, const QString& _miniPreviewUri, const QString& _fullPreviewUri) {
+    if (seq_ != _seq)
+        return;
+
+    previewLink_ = (_fullPreviewUri.isEmpty() ? _miniPreviewUri : _fullPreviewUri);
+    seq_ = Ui::GetDispatcher()->downloadImage(previewLink_, QString(), false, 0, 0, false);
 }
 
 void FileSharingLoader::onPreviewDownloaded(qint64 _seq, QString _url, QPixmap _image, QString _local)
@@ -97,10 +105,11 @@ void FileSharingLoader::onPreviewDownloaded(qint64 _seq, QString _url, QPixmap _
     if (seq_ != _seq)
         return;
 
+    disconnectSignals();
+
     seq_ = 0;
     Q_EMIT previewLoaded(_image, originSize_);
 
-    disconnectSignals();
 }
 
 void FileSharingLoader::onFileDownloaded(int64_t _seq, const Data::FileSharingDownloadResult& _result)
@@ -122,29 +131,15 @@ void FileSharingLoader::onFileError(qint64 _seq)
 
 void FileSharingLoader::connectSignals()
 {
-    fileDownloadedConnection_ = connect(Ui::GetDispatcher(), &Ui::core_dispatcher::fileSharingFileDownloaded,
-                                         this, &FileSharingLoader::onFileDownloaded);
-
-    previewMetaDownloadedConnection_ = connect(Ui::GetDispatcher(), &Ui::core_dispatcher::fileSharingPreviewMetainfoDownloaded,
-                                                this, &FileSharingLoader::onPreviewMetainfo);
-
-    fileMetaDownloadedConnection_ = connect(Ui::GetDispatcher(), &Ui::core_dispatcher::fileSharingFileMetainfoDownloaded,
-                                             this, &FileSharingLoader::onFileMetainfo);
-
-    imageDownloadedConnection_ = connect(Ui::GetDispatcher(), &Ui::core_dispatcher::imageDownloaded,
-                                          this, &FileSharingLoader::onPreviewDownloaded);
-
-    fileErrorConnection_ = connect(Ui::GetDispatcher(), &Ui::core_dispatcher::fileSharingError,
-                                   this, &FileSharingLoader::onFileError);
+    connect(Ui::GetDispatcher(), &Ui::core_dispatcher::fileSharingFileDownloaded, this, &FileSharingLoader::onFileDownloaded, Qt::UniqueConnection);
+    connect(Ui::GetDispatcher(), &Ui::core_dispatcher::fileSharingPreviewMetainfoDownloaded, this, &FileSharingLoader::onPreviewMetainfo, Qt::UniqueConnection);
+    connect(Ui::GetDispatcher(), &Ui::core_dispatcher::imageDownloaded, this, &FileSharingLoader::onPreviewDownloaded, Qt::UniqueConnection);
+    connect(Ui::GetDispatcher(), &Ui::core_dispatcher::fileSharingError, this, &FileSharingLoader::onFileError, Qt::UniqueConnection);
 }
 
 void FileSharingLoader::disconnectSignals()
 {
-    disconnect(fileDownloadedConnection_);
-    disconnect(previewMetaDownloadedConnection_);
-    disconnect(fileMetaDownloadedConnection_);
-    disconnect(imageDownloadedConnection_);
-    disconnect(fileErrorConnection_);
+    Ui::GetDispatcher()->disconnect(this);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -191,12 +186,13 @@ void CommonMediaLoader::onImageDownloaded(qint64 _seq, const QString& _url, cons
 
     seq_ = 0;
 
+    disconnectSignals();
+
     if (_is_preview)
         Q_EMIT previewLoaded(_image, originSize_);
     else
         Q_EMIT fileLoaded(_path);
 
-    disconnectSignals();
 }
 
 void CommonMediaLoader::onImageMetaDownloaded(qint64 _seq, const Data::LinkMetadata &_meta)
@@ -230,25 +226,15 @@ void CommonMediaLoader::onProgress(qint64 _seq, int64_t _bytesTotal, int64_t _by
 
 void CommonMediaLoader::connectSignals()
 {
-    imageDownloadedConneection_ = connect(Ui::GetDispatcher(), &Ui::core_dispatcher::imageDownloaded,
-                                          this, &CommonMediaLoader::onImageDownloaded);
-
-    metaDownloadedConneection_ = connect(Ui::GetDispatcher(), &Ui::core_dispatcher::imageMetaDownloaded,
-                                         this, &CommonMediaLoader::onImageMetaDownloaded);
-
-    imageErrorConneection_ = connect(Ui::GetDispatcher(), &Ui::core_dispatcher::imageDownloadError,
-                                     this, &CommonMediaLoader::onImageError);
-
-    progressConneection_ = connect(Ui::GetDispatcher(), &Ui::core_dispatcher::imageDownloadingProgress,
-                                   this, &CommonMediaLoader::onProgress);
+    connect(Ui::GetDispatcher(), &Ui::core_dispatcher::imageDownloaded, this, &CommonMediaLoader::onImageDownloaded, Qt::UniqueConnection);
+    connect(Ui::GetDispatcher(), &Ui::core_dispatcher::imageMetaDownloaded, this, &CommonMediaLoader::onImageMetaDownloaded, Qt::UniqueConnection);
+    connect(Ui::GetDispatcher(), &Ui::core_dispatcher::imageDownloadError, this, &CommonMediaLoader::onImageError, Qt::UniqueConnection);
+    connect(Ui::GetDispatcher(), &Ui::core_dispatcher::imageDownloadingProgress, this, &CommonMediaLoader::onProgress, Qt::UniqueConnection);
 }
 
 void CommonMediaLoader::disconnectSignals()
 {
-    disconnect(imageDownloadedConneection_);
-    disconnect(metaDownloadedConneection_);
-    disconnect(imageErrorConneection_);
-    disconnect(progressConneection_);
+    Ui::GetDispatcher()->disconnect(this);
 }
 
 void FileSaver::save(FileSaver::Callback _callback, const QString& _link, const QString& _path, bool _exportAsPng)
@@ -257,9 +243,9 @@ void FileSaver::save(FileSaver::Callback _callback, const QString& _link, const 
     exportAsPng_ = _exportAsPng;
 
     Utils::UrlParser parser;
-    parser.process(QStringRef(&_link));
+    parser.process(_link);
 
-    if (parser.hasUrl() && parser.getUrl().is_filesharing())
+    if (parser.hasUrl() && parser.isFileSharing())
         loader_ = std::make_unique<Utils::FileSharingLoader>(_link);
     else
         loader_= std::make_unique<Utils::CommonMediaLoader>(_link);

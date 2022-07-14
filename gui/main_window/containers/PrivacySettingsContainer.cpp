@@ -1,8 +1,7 @@
 #include "stdafx.h"
-
 #include "PrivacySettingsContainer.h"
-
 #include "core_dispatcher.h"
+#include "../contact_list/Common.h"
 
 namespace
 {
@@ -114,12 +113,12 @@ namespace Logic
         }
     }
 
-    static std::unique_ptr<PrivacySettingsContainer> g_container; // global. TODO/FIXME encapsulate with other global objects like recentsModel, contactModel
+    static QObjectUniquePtr<PrivacySettingsContainer> g_container; // global. TODO/FIXME encapsulate with other global objects like recentsModel, contactModel
 
     PrivacySettingsContainer* GetPrivacySettingsContainer()
     {
         if (!g_container)
-            g_container = std::make_unique<PrivacySettingsContainer>(nullptr);
+            g_container = makeUniqueQObjectPtr<PrivacySettingsContainer>();
 
         return g_container.get();
     }

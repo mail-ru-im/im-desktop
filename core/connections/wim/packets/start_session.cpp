@@ -11,6 +11,7 @@
 #include "../../../../common.shared/json_helper.h"
 #include "../../urls_cache.h"
 #include "subscriptions/subscr_types.h"
+#include "../log_replace_functor.h"
 
 
 std::string get_start_session_host()
@@ -267,4 +268,9 @@ priority_t start_session::get_priority() const
 std::string_view start_session::get_method() const
 {
     return is_ping_ ? "pingSession" : "startSession";
+}
+
+int core::wim::start_session::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }

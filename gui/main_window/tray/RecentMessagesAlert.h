@@ -9,6 +9,7 @@ namespace Ui
 {
     class RecentItemDelegate;
     class CustomButton;
+    class MessageAlertWidget;
 
     enum class AlertType
     {
@@ -72,6 +73,11 @@ namespace Ui
         bool isMailAlert() const;
         bool isMessageAlert() const;
         bool isMentionAlert() const;
+        void processViewAllWidgetVisible(bool _viewAllWidgetVisible);
+        void removeOldestAlert();
+        void removeAlert(Ui::MessageAlertWidget* _alert);
+        void createAlert(const Data::DlgState& _state, int _pos = 0);
+        bool isAlertsOverflow() const;
 
     private Q_SLOTS:
         void closeAlert();
@@ -97,6 +103,10 @@ namespace Ui
 
         AlertType alertType_;
     };
+
+    QString formatNotificationTitle(const Data::DlgState& _state, AlertType _alertType, bool _senderVisible);
+    QString formatNotificationSubtitle(const Data::DlgState& _state, AlertType _alertType, bool _senderVisible);
+    QString formatNotificationText(const Data::DlgState& _state, AlertType _alertType, bool _senderVisible, bool _messageVisible, bool _isDraft = false);
 }
 
 Q_DECLARE_METATYPE(Ui::AlertType);

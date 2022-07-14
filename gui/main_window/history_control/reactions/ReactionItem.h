@@ -20,7 +20,6 @@ public:
     int64_t count_ = 0;
     int64_t msgId_ = 0;
     double opacity_ = 1;
-    TextRendering::TextUnitPtr countUnit_;
 };
 
 class AccessibleReactionItem : public QAccessibleObject

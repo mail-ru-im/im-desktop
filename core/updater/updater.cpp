@@ -5,12 +5,12 @@
 #include "../async_task.h"
 #include "../http_request.h"
 #include "../utils.h"
+#include "../tools/md5.h"
 #include "../../common.shared/version_info.h"
 #include "../../common.shared/config/config.h"
 #include "../../common.shared/string_utils.h"
 #include "../../common.shared/omicron_keys.h"
 #include "../../common.shared/json_helper.h"
-#include "openssl/md5.h"
 #include "../configuration/app_config.h"
 #include "../configuration/host_config.h"
 #include "../tools/features.h"
@@ -26,6 +26,48 @@ namespace
     {
         return std::chrono::seconds(core::configuration::get_app_config().app_update_interval_secs());
     }
+
+#ifdef _WIN32
+    std::wstring installer_temp_filename()
+    {
+        wchar_t path[1024];
+        if (!::GetTempPath(1024, path))
+            return {};
+
+        wchar_t filename[1024];
+        auto installer_win = config::get().string(config::values::installer_exe_win);
+        installer_win = installer_win.substr(0, installer_win.size() - std::string_view(".exe").size());
+        if (!::GetTempFileName(path, core::tools::from_utf8(installer_win).c_str(), 0, filename))
+            return {};
+
+        return filename;
+    }
+#elif defined __linux__
+    std::string installer_temp_filename()
+    {
+        std::string path;
+        char buff[PATH_MAX];
+        ssize_t len = ::readlink("/proc/self/exe", buff, sizeof(buff) - 1);
+        if (len != -1)
+        {
+            buff[len] = '\0';
+            path = buff;
+        }
+        else
+        {
+            return {};
+        }
+
+        auto pos = path.rfind("/");
+        if (pos == std::string::npos)
+            return {};
+
+        boost::replace_all(path, " ", "\\ ");
+        return su::concat(std::string_view(path).substr(0, pos + 1), "updater");
+    }
+#else
+    std::string installer_temp_filename() { return std::string{}; }
+#endif
 }
 
 namespace core
@@ -69,13 +111,16 @@ namespace core
             }
             else
             {
-                return su::concat(config::hosts::get_host_url(config::hosts::host_url_type::app_update), '/');
+                // resolve https://jira.vk.team/browse/IMDESKTOP-18085
+                // note: it's safe to simply append "https://" since internal
+                // cache inside config::hosts already hold schemeless URLs
+                return su::concat("https://", config::hosts::get_host_url(config::hosts::host_url_type::app_update), '/');
             }
         }
 
         std::string get_update_version_url(const update_params& _params)
         {
-            return su::concat(get_update_server(_params), "version.json?login=",  _params.login_);
+            return su::concat(get_update_server(_params), "version.json?login=", _params.login_);
         }
 
         updater::updater()
@@ -148,26 +193,26 @@ namespace core
             if (!update_from_backend || (update_from_backend && !app_update_url.empty()))
             {
                 thread_->run_async_function([params = make_params(std::move(_custom_url)), proxy = g_core->get_proxy_settings(), _seq = std::move(_seq)]
-                {
-                    const auto ret = run(params, proxy);
-                    if (ret == error::update_ready)
                     {
-                        g_core->post_message_to_gui("update_ready", 0, nullptr);
-                    }
-                    else
-                    {
-                        if (_seq)
+                        const auto ret = run(params, proxy);
+                        if (ret == error::update_ready)
                         {
-#if defined _WIN32 || defined __linux__  // xcode 10 fix
-                            coll_helper coll(g_core->create_collection(), true);
-                            coll.set_value_as_bool("is_network_error", ret == error::network_error);
-                            g_core->post_message_to_gui("up_to_date", *_seq, coll.get());
-#endif
+                            g_core->post_message_to_gui("update_ready", 0, nullptr);
                         }
-                    }
+                        else
+                        {
+                            if (_seq)
+                            {
+    #if defined _WIN32 || defined __linux__  // xcode 10 fix
+                                coll_helper coll(g_core->create_collection(), true);
+                                coll.set_value_as_bool("is_network_error", ret == error::network_error);
+                                g_core->post_message_to_gui("up_to_date", *_seq, coll.get());
+    #endif
+                            }
+                        }
 
-                    return int(ret);
-                });
+                        return int(ret);
+                    });
             }
 
             last_check_time_ = std::chrono::steady_clock::now();
@@ -194,7 +239,7 @@ namespace core
             if (!response->available())
                 return error::network_error;
 
-            response->write((char) 0);
+            response->write((char)0);
 
             //{"info":{"version":{"major":10, "minor":0, "buildnumber":10008},"file":"icqsetup.exe","md5":"afda633be58e18a0aaeb3e88481058e9"}}
 
@@ -234,164 +279,80 @@ namespace core
             return error::up_to_date;
         }
 
-        error run_installer(const tools::binary_stream& _data);
 
-        error do_update(std::string_view _file, std::string_view _md5, const update_params& _params, const proxy_settings& _proxy)
-        {
-            http_request_simple request(_proxy, utils::get_user_agent(_params.login_), default_priority(), _params.must_stop_);
-            request.set_url(get_update_server(_params) + std::string(_file));
-            request.set_normalized_url("https___mra_mail_ru_update");
-            request.set_timeout(std::chrono::minutes(15));
-            request.set_need_log(false);
-            if (request.get() != curl_easy::completion_code::success)
-                return error::network_error;
-
-            int32_t http_code = (uint32_t)request.get_response_code();
-            if (http_code != 200)
-                return error::network_error;
-
-            auto response = dynamic_cast<tools::binary_stream*>(request.get_response().get());
-            im_assert(response);
-
-            if (!response->available())
-                return error::network_error;
-
-            int32_t size = response->available();
-
-            MD5_CTX md5handler;
-            unsigned char md5digest[MD5_DIGEST_LENGTH];
-
-            MD5_Init(&md5handler);
-            MD5_Update(&md5handler, response->read(size), size);
-            MD5_Final(md5digest,&md5handler);
-
-            char buffer[100];
-            std::string md5;
-
-            for (size_t i = 0; i < MD5_DIGEST_LENGTH; ++i)
-            {
-                sprintf(buffer, "%02x", md5digest[i]);
-                md5 += buffer;
-            }
-
-            if (md5 != _md5)
-                return error::up_to_date;
-
-            response->reset_out();
-
-            return run_installer(*response);
-        }
-
-        error run_installer(const tools::binary_stream& _data)
-        {
 #ifdef _WIN32
-            wchar_t temp_path[1024];
-            if (!::GetTempPath(1024, temp_path))
-                return error::up_to_date;
+        error run_installer(const std::wstring& _filename)
+        {
+            auto error = error::up_to_date;
 
-            wchar_t temp_file_name[1024];
-            auto installer_win = config::get().string(config::values::installer_exe_win);
-            installer_win = installer_win.substr(0, installer_win.size() - std::string_view(".exe").size());
-            if (!::GetTempFileName(temp_path, tools::from_utf8(installer_win).c_str(), 0, temp_file_name))
-                return error::up_to_date;
-
-            _data.save_2_file(temp_file_name);
-
-            PROCESS_INFORMATION pi = {0};
-            STARTUPINFO si = {0};
+            PROCESS_INFORMATION pi = { 0 };
+            STARTUPINFO si = { 0 };
             si.cb = sizeof(si);
 
-            std::wstring command = su::wconcat(L'"', temp_file_name, L'"', L" -update -waitchild");
+            std::wstring command = su::wconcat(L'"', _filename, L'"', L" -update -waitchild");
 
             if (!::CreateProcess(0, command.data(), 0, 0, 0, 0, 0, 0, &si, &pi))
-                return error::up_to_date;
+                return error;
 
             const auto res = ::WaitForSingleObject(pi.hProcess, std::chrono::milliseconds(std::chrono::hours(1)).count()); // it's enough to execute installer
             ::CloseHandle(pi.hProcess);
             ::CloseHandle(pi.hThread);
 
-            if (res != WAIT_OBJECT_0)
-                return error::up_to_date;
+            if (res == WAIT_OBJECT_0)
+                error = error::update_ready;
 
+            return error;
+
+        }
 #elif defined __linux__
-            std::string path;
-            char buff[PATH_MAX];
-            ssize_t len = ::readlink("/proc/self/exe", buff, sizeof(buff)-1);
-            if (len != -1)
-            {
-                buff[len] = '\0';
-                path = buff;
-            }
-            else
-            {
-                return error::up_to_date;
-            }
+        error run_installer(const std::string& _filename)
+        {
+            auto error = error::update_ready;
 
-            auto pos = path.rfind("/");
-            if (pos == std::string::npos)
-                return error::up_to_date;
+            std::string sys_path = _filename;
 
-            path = su::concat(std::string_view(path).substr(0, pos + 1), "updater");
-            std::string sys_path = path;
-            boost::replace_all(sys_path, " ", "\\ ");
-            std::string rm = su::concat("rm -f ", sys_path);
-            system(rm.c_str());
-            _data.save_2_file(core::tools::from_utf8(path));
             std::string chmod = su::concat("chmod 755 ", sys_path);
             system(chmod.c_str());
             system(sys_path.c_str());
-#endif //_WIN32
-            return error::update_ready;
+
+            return error;
         }
+#else
+        error run_installer(const std::string&) { return error::update_ready; }
+#endif
 
-        void clean_prev_instalations()
+
+        error do_update(std::string_view _file, std::string_view _md5, const update_params& _params, const proxy_settings& _proxy)
         {
-#ifdef _WIN32
-            wchar_t exe_name[1025];
-            if (::GetModuleFileName(0, exe_name, 1024))
-            {
-                boost::filesystem::wpath file_path(exe_name);
-                boost::filesystem::wpath current_path = file_path.parent_path();
-                boost::filesystem::wpath parent_path = file_path.parent_path().parent_path();
+            auto tmp_file_flags = std::ios::binary | std::ios::out;
+            auto tmp_file_name = installer_temp_filename();
+            std::ofstream tmp_file(tmp_file_name, tmp_file_flags);
+            if (!tmp_file.good())
+                return error::up_to_date;
 
-                std::wstring current_leaf = current_path.leaf().wstring();
+            http_request_simple request(_proxy, utils::get_user_agent(_params.login_), default_priority(), _params.must_stop_);
+            request.set_url(get_update_server(_params) + std::string(_file));
+            request.set_normalized_url("https___mra_mail_ru_update");
+            request.set_timeout(std::chrono::minutes(15));
+            request.set_need_log(false);
+            request.set_use_curl_decompresion(true);
+            request.set_output_stream(std::make_shared<tools::file_output_stream>(std::move(tmp_file)));
+            if (request.get() != curl_easy::completion_code::success)
+                return error::network_error;
 
-                if (!tools::is_number(tools::from_utf16(current_leaf)))
-                    return;
+            request.get_response()->close();
+            const int32_t http_code = (uint32_t)request.get_response_code();
+            if (http_code != 200)
+                return error::network_error;
 
-                try
-                {
-                    boost::system::error_code error;
-                    boost::filesystem::directory_iterator end_iter;
-                    for (boost::filesystem::directory_iterator dir_iter(parent_path, error); dir_iter != end_iter && !error; dir_iter.increment(error))
-                    {
-                        if (!boost::filesystem::is_directory(dir_iter->status()))
-                            continue;
+            auto ifile = std::ifstream(tmp_file_name, std::ios::binary|std::ios::in);
+            if (!ifile)
+                return error::network_error;
 
-                        if (current_path == dir_iter->path())
-                            continue;
+            if (core::tools::md5(ifile) != _md5)
+                return error::up_to_date;
 
-                        std::wstring leaf = dir_iter->path().leaf().wstring();
-
-                        if (!tools::is_number(tools::from_utf16(leaf)))
-                            continue;
-
-                        int32_t current_num = std::stoi(current_leaf);
-                        int32_t num = std::stoi(leaf);
-
-                        if (current_num < num)
-                            continue;
-
-                        boost::filesystem::remove_all(dir_iter->path(), error);
-                    }
-                }
-                catch (const std::exception&)
-                {
-
-                }
-            }
-
-#endif //_WIN32
+            return run_installer(tmp_file_name);
         }
     }
 }

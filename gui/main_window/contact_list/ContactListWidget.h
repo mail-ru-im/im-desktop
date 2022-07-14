@@ -1,5 +1,7 @@
 #pragma once
 #include "RecentsTab.h"
+#include "../../utils/InterConnector.h"
+#include "../gui/utils/PersonTooltip.h"
 
 namespace Logic
 {
@@ -10,12 +12,6 @@ namespace Logic
     class CommonChatsModel;
     class CallsModel;
     class StatusProxyModel;
-}
-
-namespace Tooltip
-{
-    enum class ArrowDirection;
-    enum class ArrowPointPos;
 }
 
 namespace Ui
@@ -33,7 +29,7 @@ namespace Ui
 
     Q_SIGNALS:
         void searchEnd();
-        void itemSelected(const QString& _aimid, qint64 _msgid, const highlightsV& _highlights, bool _ignoreScroll = false);
+        void itemSelected(const QString& _aimid, qint64 _msgid, qint64 _threadMsgid, const highlightsV& _highlights, bool _ignoreScroll = false);
         void itemClicked(const QString& _aimid);
         void groupClicked(int);
         void changeSelected(const QString&);
@@ -49,7 +45,12 @@ namespace Ui
         void approve(const QString, bool);
 
     public:
-        ContactListWidget(QWidget* _parent, const Logic::MembersWidgetRegim& _regim, Logic::CustomAbstractListModel* _chatMembersModel, Logic::AbstractSearchModel* _searchModel = nullptr, Logic::CommonChatsModel* _commonChatsModel = nullptr);
+        ContactListWidget(QWidget* _parent,
+            const Logic::MembersWidgetRegim& _regim,
+            Logic::CustomAbstractListModel* _chatMembersModel,
+            Logic::AbstractSearchModel* _searchModel   = nullptr,
+            Logic::CommonChatsModel* _commonChatsModel = nullptr,
+            Logic::DrawIcons needDrawIcons_            = Logic::NoNeedDrawIcons);
         ~ContactListWidget();
 
         void connectSearchWidget(SearchWidget* _widget);
@@ -87,15 +88,20 @@ namespace Ui
 
         QRect getAvatarRect(const QModelIndex& _index) const;
 
+        void setPageOpenedAs(PageOpenedAs _openedAs);
+
+        void setCloseOnThreadResult(bool _val);
+
     public Q_SLOTS:
         void searchResult();
         void searchUpPressed();
         void searchDownPressed();
         void selectionChanged(const QModelIndex &);
         void select(const QString& _aimId);
-        void select(const QString& _aimId, const qint64 _messageId, const highlightsV& _highlights, Logic::UpdateChatSelection _mode, bool _ignoreScroll = false);
+        void select(const QString& _aimId, const qint64 _messageId, const highlightsV& _highlights, Logic::UpdateChatSelection _mode, bool _ignoreScroll = false, PageOpenedAs _openedAs = PageOpenedAs::MainPage);
         void showContactsPopupMenu(const QString& aimId, bool _is_chat);
         void showCallsPopupMenu(Data::CallInfoPtr _call);
+        void showContactsNotFromCLPopupMenu(const QString& _aimId);
 
     private Q_SLOTS:
         void onItemClicked(const QModelIndex&);
@@ -117,8 +123,8 @@ namespace Ui
         void onDisableSearchInDialog();
         void touchScrollStateChanged(QScroller::State _state);
 
-        void scrollToCategory(const SearchCategory _category);
-        void scrollToItem(const QString& _aimId);
+        void scrollToCategory(const SearchCategory _category, bool _animated = true);
+        void scrollToItem(const QString& _aimId, bool _animated = true);
 
         void removeSuggestPattern(const QString& _contact, const QString& _pattern);
 
@@ -130,6 +136,8 @@ namespace Ui
         void hideSearchSpinner();
 
         void scrolled(const int _value);
+
+        void onThemeChanged();
 
     protected:
         void leaveEvent(QEvent* _event) override;
@@ -149,7 +157,6 @@ namespace Ui
         using SearchHeaders = std::vector<std::pair<SearchCategory, QModelIndex>>;
         SearchHeaders getCurrentCategories() const;
 
-        void showTooltip(QString _text, QRect _rect, Tooltip::ArrowDirection _arrowDir, Tooltip::ArrowPointPos _arrowPos);
         void hideTooltip();
 
     private:
@@ -157,21 +164,22 @@ namespace Ui
         QVBoxLayout* viewLayout_;
         FocusableListView* view_;
 
-        EmptyListLabel* EmptyListLabel_;
-        DialogSearchViewHeader* dialogSearchViewHeader_;
-        GlobalSearchViewHeader* globalSearchViewHeader_;
-        QVariantAnimation* scrollToItemAnim_;
+        EmptyListLabel* EmptyListLabel_ = nullptr;
+        DialogSearchViewHeader* dialogSearchViewHeader_ = nullptr;
+        GlobalSearchViewHeader* globalSearchViewHeader_ = nullptr;
+        QVariantAnimation* scrollToItemAnim_ = nullptr;
 
         std::string scrollStatWhere_;
         QTimer* scrollStatsTimer_;
 
-        Logic::AbstractItemDelegateWithRegim* clDelegate_;
-        Logic::AbstractItemDelegateWithRegim* searchDelegate_;
+        Logic::AbstractItemDelegateWithRegim* clDelegate_ = nullptr;
+        Logic::AbstractItemDelegateWithRegim* searchDelegate_ = nullptr;
 
-        Placeholder* contactsPlaceholder_;
-        QWidget* noSearchResults_;
-        QWidget* searchSpinner_;
+        Placeholder* contactsPlaceholder_ = nullptr;
+        QWidget* noSearchResults_ = nullptr;
+        QWidget* searchSpinner_ = nullptr;
         QWidget* viewContainer_;
+        QLabel* noResultsPlaceholder_ = nullptr;
 
         Logic::MembersWidgetRegim regim_;
         Logic::CustomAbstractListModel* chatMembersModel_;
@@ -180,15 +188,19 @@ namespace Ui
         Logic::CommonChatsModel* commonChatsModel_;
         Logic::CallsModel* callsModel_;
 
-        ContextMenu* popupMenu_;
+        ContextMenu* popupMenu_ = nullptr;
 
-        QTimer* tooltipTimer_;
+        Utils::PersonTooltip* personTooltip_ = nullptr;
         QModelIndex tooltipIndex_;
 
+        PageOpenedAs openedAs_ = PageOpenedAs::MainPage;
+
         QString searchDialogContact_;
-        bool noSearchResultsShown_;
-        bool searchResultsRcvdFirst_;
-        bool searchResultsStatsSent_;
-        bool initial_;
+        Logic::DrawIcons needDrawIcons_;
+        bool noSearchResultsShown_ = false;
+        bool searchResultsRcvdFirst_ = false;
+        bool searchResultsStatsSent_ = false;
+        bool initial_ = false;
+        bool closeOnThreadResult_ = false;
     };
 }

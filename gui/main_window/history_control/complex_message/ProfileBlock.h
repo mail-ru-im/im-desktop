@@ -7,11 +7,9 @@
 
 UI_NS_BEGIN
 class ActionButtonWidget;
-namespace TextRendering
-{
-    class TextUnit;
-}
+class UserMiniProfile;
 UI_NS_END
+
 
 UI_COMPLEX_MESSAGE_NS_BEGIN
 
@@ -29,14 +27,13 @@ public:
 
     bool isAllSelected() const override { return isSelected(); }
 
-    void updateStyle() override {}
     void updateFonts() override;
 
     int desiredWidth(int _width = 0) const override;
 
     int getMaxWidth() const override;
 
-    int getHeightForWidth(int _width) const;
+    int updateSizeForWidth(int _width);
 
     QString formatRecentsText() const override;
 
@@ -54,52 +51,33 @@ public:
     ContentType getContentType() const override { return ContentType::Profile; }
 
 protected Q_SLOTS:
-    void onAvatarChanged(const QString& aimId);
+    void onNameTooltipShow(const QString& _text, const QRect& _nameRect);
+    void onNameTooltipHide();
     virtual void onButtonPressed() {}
     virtual void onClickAreaPressed() {}
 
 protected:
-    void drawBlock(QPainter &p, const QRect& _rect, const QColor& _quoteColor) override;
-
-    void drawSelectedFrame(QPainter& _p, const QRect &_rect);
+    void drawBlock(QPainter& _p, const QRect& _rect, const QColor& _quoteColor) override;
 
     void initialize() override;
 
     void mouseMoveEvent(QMouseEvent* _event) override;
-    void mouseReleaseEvent(QMouseEvent* _event) override;
-    void leaveEvent(QEvent* _event) override;
 
     virtual QString getButtonText() const;
 
-
     void init(const QString& _name, const QString& _underName, const QString& _description);
-
-    void initTextUnits();
-
-    void loadAvatar(const QString &_sn, const QString &_name);
 
     virtual QString sn() const { return QString(); }
 
-    QPoint calcUndernamePos() const;
-
-    ProfileBlockLayout *Layout_;
-    std::unique_ptr<TextRendering::TextUnit> nameUnit_;
-    std::unique_ptr<TextRendering::TextUnit> underNameUnit_;
-    std::unique_ptr<TextRendering::TextUnit> descriptionUnit_;
-
-    std::unique_ptr<BLabel> button_;
-
-    bool clickAreaHovered_ = false;
-    bool clickAreaPressed_ = false;
-
-    bool loaded_ = false;
+protected:
+    UserMiniProfile* userProfile_;
+    ProfileBlockLayout* Layout_;
+    QString name_;
 
     int64_t seq_ = 0;
     int64_t chatInfoSeq_ = 0;
 
-    QPixmap avatar_;
-    QString name_;
-    QString underNameText_;
+    int cachedWidth_ = 0;
 };
 
 class ProfileBlock : public ProfileBlockBase
@@ -111,7 +89,12 @@ public:
     ~ProfileBlock() override;
 
     static QString extractProfileId(const QString& _link);
+    bool isSelected() const override;
+    void selectByPos(const QPoint& _from, const QPoint& _to, bool _topToBottom) override;
     Data::FString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
+    void clearSelection() override;
+    void releaseSelection() override;
+    void doubleClicked(const QPoint& _p, std::function<void(bool)> _callback = std::function<void(bool)>()) override;
 
 protected:
     QString getButtonText() const override;

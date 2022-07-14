@@ -31,6 +31,8 @@ namespace core
 
             bool is_post() const override { return true; }
             std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
+
         private:
             agreement_state state_;
         };

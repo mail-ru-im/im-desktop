@@ -4,6 +4,7 @@
 #include "../../../http_request.h"
 #include "../../../tools/system.h"
 #include "../../urls_cache.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -28,6 +29,11 @@ set_permit_deny::~set_permit_deny()
 std::string_view set_permit_deny::get_method() const
 {
     return "setPreferencePermitDeny";
+}
+
+int core::wim::set_permit_deny::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 const char* operation_2_str(const set_permit_deny::operation _op)

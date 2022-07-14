@@ -12,6 +12,8 @@ namespace core::wim
         std::string_view get_method() const override;
         bool auto_resend_on_fail() const override { return true; }
 
+        int minimal_supported_api_version() const override;
+
     private:
         int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
 
@@ -19,4 +21,3 @@ namespace core::wim
         core::tasks::task_change task_;
     };
 }
-

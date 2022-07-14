@@ -12,6 +12,7 @@
 #include "MessageStyle.h"
 #include "ServiceMessageItem.h"
 #include "VoipEventItem.h"
+#include "ThreadRepliesItem.h"
 
 #include "HistoryControlPage.h"
 
@@ -527,9 +528,16 @@ namespace Ui
 
         removeDatesImpl();
 
+        if (_params.isThread_ && _params.widgets.empty())
+            removeItemAtEnd(Logic::ControlType::ThreadReplies);
+
         addedAfterLastReadHeight += insertWidgetsImpl(_params);
 
         _params.widgets = makeDates(getKeysForDates());
+
+        if (const auto key = getKeyForReplies(); _params.isThread_ && key)
+            _params.widgets.push_back(makeReplies(*key));
+
         addedAfterLastReadHeight += insertWidgetsImpl(_params);
 
         const auto lastReadMessageBottom = lastReadMessageGeometry.bottomLeft().y();
@@ -545,9 +553,7 @@ namespace Ui
             w->update();
 
         if (needScrollToBottom && canScrollToBottom)
-        {
             moveViewportToBottom();
-        }
 
         if (_params.scrollToMesssageId.has_value())
         {
@@ -625,7 +631,7 @@ namespace Ui
         {
             return std::any_of(_params.widgets.begin(), _params.widgets.end(), [&x](const auto& keyAndWidget)
             {
-                return x->Key_.hasId() == keyAndWidget.first.hasId() && x->Key_ == keyAndWidget.first;
+                return x->Key_.getControlType() == Logic::ControlType::NewMessages || (x->Key_.hasId() == keyAndWidget.first.hasId() && x->Key_ == keyAndWidget.first);
             });
         };
 
@@ -641,7 +647,7 @@ namespace Ui
         std::for_each(toRemove.begin(), toRemove.end(), [](auto x) { x->deleteLater(); });
     }
 
-    void MessagesScrollAreaLayout::removeItemsByType(Logic::control_type _type)
+    void MessagesScrollAreaLayout::removeItemsByType(Logic::ControlType _type)
     {
         std::vector<QWidget*> toRemove;
 
@@ -655,14 +661,14 @@ namespace Ui
         std::for_each(toRemove.begin(), toRemove.end(), [](auto x) { x->deleteLater(); });
     }
 
-    bool MessagesScrollAreaLayout::hasItemsOfType(Logic::control_type _type) const
+    bool MessagesScrollAreaLayout::hasItemsOfType(Logic::ControlType _type) const
     {
         return std::any_of(LayoutItems_.begin(), LayoutItems_.end(), [_type](const auto& x) { return x->Key_.getControlType() == _type; });
     }
 
-    bool MessagesScrollAreaLayout::removeItemAtEnd(Logic::control_type _type)
+    bool MessagesScrollAreaLayout::removeItemAtEnd(Logic::ControlType _type)
     {
-        const auto it = std::find_if(LayoutItems_.begin(), LayoutItems_.end(), [](const auto& x) { return x->Key_.getControlType() != Logic::control_type::ct_date; }); // find first non-date item
+        const auto it = std::find_if(LayoutItems_.begin(), LayoutItems_.end(), [](const auto& x) { return x->Key_.getControlType() != Logic::ControlType::Date; }); // find first non-date item
         if (it != LayoutItems_.end() && (*it)->Key_.getControlType() == _type)
         {
             auto w = (*it)->Widget_;
@@ -811,10 +817,11 @@ namespace Ui
 
         int newViewport = 0;
 
-        if (ShiftingParams_.type == hist::scroll_mode_type::unread || ShiftingParams_.type == hist::scroll_mode_type::background)
+        auto page = Utils::InterConnector::instance().getHistoryPage(ScrollArea_->getAimid());
+        if (ShiftingParams_.type == hist::scroll_mode_type::unread || (ShiftingParams_.type == hist::scroll_mode_type::background && page && !page->isPageOpen()))
         {
             int delta = getShiftingDelta(); // 50 px by design
-            auto it = std::find_if(begin, end, [](const auto& x) { return x->Key_.getControlType() == Logic::control_type::ct_new_messages; });
+            auto it = std::find_if(begin, end, [](const auto& x) { return x->Key_.getControlType() == Logic::ControlType::NewMessages; });
             if (it == end)
             {
                 it = std::find_if(begin, end, [mess_id = ShiftingParams_.messageId](const auto& x) {
@@ -836,7 +843,7 @@ namespace Ui
         }
         else
         {
-            auto it = std::find_if(begin, end, [mess_id = ShiftingParams_.messageId](const auto& x) { return x->Key_.getId() == mess_id; });
+            auto it = std::find_if(begin, end, [mess_id = ShiftingParams_.messageId](const auto& x) { return x->Key_.getId() == mess_id && x->Key_.getControlType() == Logic::ControlType::Message; });
 
             im_assert(it != end);
 
@@ -999,7 +1006,7 @@ namespace Ui
 
     Logic::MessageKey MessagesScrollAreaLayout::firstAvailableToSelect() const
     {
-        for (auto &item : LayoutItems_)
+        for (auto& item : LayoutItems_)
             if (item->isVisibleEnoughForRead_ && !item->Key_.isDate() && !item->Key_.isChatEvent())
                 return item->Key_;
 
@@ -1286,7 +1293,7 @@ namespace Ui
         auto prev = LayoutItems_.rbegin();
         while (prev != LayoutItems_.rend())
         {
-            if ((*prev)->Key_.getControlType() == Logic::control_type::ct_message)
+            if ((*prev)->Key_.getControlType() == Logic::ControlType::Message)
                 break;
             ++prev;
         }
@@ -1295,7 +1302,7 @@ namespace Ui
             result.push_back((*prev)->Key_);
             for (auto it = std::next(prev), end = LayoutItems_.rend(); it != end; ++it)
             {
-                if ((*it)->Key_.getControlType() == Logic::control_type::ct_message)
+                if ((*it)->Key_.getControlType() == Logic::ControlType::Message)
                 {
                     if (dateInserter_->needDate((*prev)->Key_, (*it)->Key_))
                         result.push_back((*it)->Key_);
@@ -1317,6 +1324,43 @@ namespace Ui
             result.push_back({ dateKey, std::move(w) });
         }
         return result;
+    }
+
+    std::optional<Logic::MessageKey> MessagesScrollAreaLayout::getKeyForReplies() const
+    {
+        if (!hasItems())
+            return {};
+
+        auto threadStarterIter = LayoutItems_.rbegin();
+        const auto end = LayoutItems_.rend();
+        for (; threadStarterIter != end; ++threadStarterIter)
+        {
+            if (const auto& key = (*threadStarterIter)->Key_; key.getControlType() == Logic::ControlType::Message && key.getPrev() == -1)
+                break;
+        }
+        if (threadStarterIter != end)
+        {
+            for (auto replyIter = std::next(threadStarterIter); replyIter != end; ++replyIter)
+            {
+                const auto type = (*replyIter)->Key_.getControlType();
+                if (type == Logic::ControlType::ThreadReplies)
+                    return {};
+                if (type == Logic::ControlType::Message)
+                    return (*threadStarterIter)->Key_;
+            }
+        }
+        return {};
+    }
+
+    InsertHistMessagesParams::PositionWidget MessagesScrollAreaLayout::makeReplies(const Logic::MessageKey& _key) const
+    {
+        auto key = _key;
+        key.setType(core::message_type::undefined);
+        key.setControlType(Logic::ControlType::ThreadReplies);
+        auto item = std::make_unique<Ui::ThreadRepliesItem>(ScrollArea_, ScrollArea_->getAimid());
+        item->setMessageKey(key);
+
+        return { key, std::move(item) };
     }
 
     int MessagesScrollAreaLayout::insertWidgetsImpl(InsertHistMessagesParams& _params)
@@ -1573,22 +1617,6 @@ namespace Ui
     void MessagesScrollAreaLayout::notifyQuotesResize()
     {
         quoteHeightChangeWaited_ = isSmartreplyVisible();
-    }
-
-    std::optional<Data::FileSharingMeta> MessagesScrollAreaLayout::getMeta(const Utils::FileSharingId& _id) const
-    {
-        for (const auto& item : LayoutItems_)
-        {
-            auto histWidget = qobject_cast<HistoryControlPageItem*>(item->Widget_);
-            if (!histWidget)
-                continue;
-
-            auto meta = histWidget->getMeta(_id);
-            if (meta)
-                return meta;
-        }
-
-        return std::nullopt;
     }
 
     int32_t MessagesScrollAreaLayout::getRelY(const int32_t y) const
@@ -2321,9 +2349,9 @@ namespace Ui
             auto prevItem = qobject_cast<HistoryControlPageItem*>((*messagesIter)->Widget_);
             auto &prevMessage = prevItem->buddy();
 
-            auto hasHeads = [this](auto id, auto item)
+            auto hasHeads = [this](qint64 _messageId, HistoryControlPageItem* _item)
             {
-                return heads_ && heads_->hasHeads(id) && item->headsAtBottom() && !Utils::InterConnector::instance().isMultiselect();
+                return heads_ && heads_->hasHeads(_messageId) && _item->headsAtBottom() && !Utils::InterConnector::instance().isMultiselect();
             };
 
             const auto newMessageIndent = !hasHeads(prevMessage.Id_, item) && message.GetIndentWith(prevMessage, isMultichat);

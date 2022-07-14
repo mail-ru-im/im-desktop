@@ -22,7 +22,8 @@ namespace core
 
         public:
             pin_message(wim_packet_params _params, const std::string& _aimId, const int64_t _message, const bool _is_unpin);
-            virtual std::string_view get_method() const override;
+            std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
         };
     }
 }

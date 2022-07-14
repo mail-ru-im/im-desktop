@@ -23,7 +23,7 @@ namespace Ui
             return _m2.year() > _m1.year() || (_m2.year() == _m1.year() && _m2.month() > _m1.month());
         }
     };
-    
+
 
     class MonthYearHeader : public QWidget
     {
@@ -135,7 +135,7 @@ namespace Ui
         Month getCurrentMonth();
         void paintEvent(QPaintEvent* _event) override;
         void hideEvent(QHideEvent* _event) override;
-    
+
     private:
         const bool allowPastChoice_ = false;
 

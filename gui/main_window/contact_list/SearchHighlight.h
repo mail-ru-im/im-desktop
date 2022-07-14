@@ -17,8 +17,8 @@ namespace Ui
         wordStart
     };
 
-    QColor getHighlightColor();
-    QColor getTextHighlightedColor();
+    Styling::ThemeColorKey getHighlightColor();
+    Styling::ThemeColorKey getTextHighlightedColor();
 
     using highlightsV = std::vector<QString>;
 
@@ -31,8 +31,8 @@ namespace Ui
     TextRendering::TextUnitPtr createHightlightedText(
         const QString& _text,
         const QFont& _font,
-        const QColor& _baseColor,
-        const QColor& _hlColor,
+        const Styling::ThemeColorKey& _baseColor,
+        const Styling::ThemeColorKey& _hlColor,
         const int _maxLines,
         const highlightsV& _highlights = {},
         const Data::MentionMap& _mentions = {},

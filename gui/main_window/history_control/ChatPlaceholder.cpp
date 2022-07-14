@@ -15,6 +15,10 @@
 
 #include "../common.shared/config/config.h"
 
+#include "utils/stat_utils.h"
+#include "../MainWindow.h"
+#include "utils/InterConnector.h"
+
 namespace
 {
     QSize avatarSize()
@@ -68,6 +72,8 @@ namespace Ui
     {
         setFixedSize(avatarSize());
 
+        setMouseTracking(true);
+
         connect(Logic::GetAvatarStorage(), &Logic::AvatarStorage::avatarChanged, this, [this](const QString& _aimId)
         {
             if (_aimId == getContact())
@@ -78,14 +84,15 @@ namespace Ui
     void ChatPlaceholderAvatar::paintEvent(QPaintEvent* _event)
     {
         QPainter p(this);
+
         p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
         p.setPen(Qt::NoPen);
-
         p.setBrush(Styling::getParameters(contact_).getColor(Styling::StyleVariable::CHATEVENT_BACKGROUND));
         p.drawEllipse(rect());
 
         const auto x = (width() - Utils::unscale_bitmap(pixmap_.width())) / 2;
         const auto y = (height() - Utils::unscale_bitmap(pixmap_.height())) / 2;
+
         p.drawPixmap(x, y, pixmap_);
     }
 
@@ -95,6 +102,28 @@ namespace Ui
             updatePixmap();
     }
 
+    void ChatPlaceholderAvatar::mousePressEvent(QMouseEvent* _event)
+    {
+        if (containsCursor(_event->pos()))
+            clicked_ = _event->pos();
+    }
+
+    void ChatPlaceholderAvatar::mouseReleaseEvent(QMouseEvent* _event)
+    {
+        if (Utils::clicked(clicked_, _event->pos()) && !defaultAvatar_ && containsCursor(_event->pos()))
+            Q_EMIT avatarClicked(QPrivateSignal());
+    }
+
+    void ChatPlaceholderAvatar::mouseMoveEvent(QMouseEvent* _event)
+    {
+        setCursor(containsCursor(_event->pos()) && !defaultAvatar_ ? Qt::PointingHandCursor : Qt::ArrowCursor);
+    }
+
+    void ChatPlaceholderAvatar::resizeEvent(QResizeEvent* _event)
+    {
+        region_ = QRegion(rect(), QRegion::Ellipse);
+    }
+
     void ChatPlaceholderAvatar::updatePixmap()
     {
         if (state_ == PlaceholderState::hidden)
@@ -102,13 +131,11 @@ namespace Ui
 
         if (state_ == PlaceholderState::avatar)
         {
-            auto isDefault = false;
-
             pixmap_ = Logic::GetAvatarStorage()->GetRounded(
                 contact_,
                 Logic::GetFriendlyContainer()->getFriendly(contact_),
                 Utils::scale_bitmap(avatarSize().width()),
-                Out isDefault,
+                defaultAvatar_,
                 false,
                 false);
 
@@ -116,18 +143,21 @@ namespace Ui
         }
         else if (state_ == PlaceholderState::privateChat)
         {
+            defaultAvatar_ = true;
             constexpr auto doorEmoji = Emoji::EmojiCode(0x1f6aa);
             pixmap_ = QPixmap::fromImage(Emoji::GetEmoji(doorEmoji, emojiSize()));
             Testing::setAccessibleName(this, qsl("AS ChatPlaceholder door"));
         }
         else
         {
+            defaultAvatar_ = true;
             constexpr auto lockEmoji = Emoji::EmojiCode(0x1f512);
             pixmap_ = QPixmap::fromImage(Emoji::GetEmoji(lockEmoji, emojiSize()));
             Testing::setAccessibleName(this, qsl("AS ChatPlaceholder lock"));
         }
 
         Utils::check_pixel_ratio(pixmap_);
+
         update();
     }
 
@@ -141,14 +171,17 @@ namespace Ui
         }
     }
 
+    bool ChatPlaceholderAvatar::containsCursor(const QPoint& _pos) const
+    {
+        return region_.contains(_pos);
+    }
+
     ChatPlaceholder::ChatPlaceholder(QWidget* _parent, const QString& _contact)
         : QWidget(_parent)
         , avatar_(new ChatPlaceholderAvatar(this, _contact))
     {
         auto layout = Utils::emptyVLayout(this);
         layout->addWidget(avatar_, 0, Qt::AlignCenter);
-
-        setAttribute(Qt::WA_TransparentForMouseEvents);
 
         setFixedWidth(widgetMaxWidth());
 
@@ -188,6 +221,7 @@ namespace Ui
             infoPending_ = true;
             Ui::GetDispatcher()->getUserInfo(_contact);
         }
+        connect(avatar_, &ChatPlaceholderAvatar::avatarClicked, this, &ChatPlaceholder::avatarClicked);
     }
 
     void ChatPlaceholder::updateCaptions()
@@ -220,12 +254,15 @@ namespace Ui
         {
             auto text = TextRendering::MakeTextUnit(Data::FString(c.caption_), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS,
                 TextRendering::ProcessLineFeeds::KEEP_LINE_FEEDS, TextRendering::EmojiSizeType::REGULAR, ParseBackticksPolicy::ParseSingles);
-            text->init(ChatEventItem::getTextFont(), color, ChatEventItem::getTextFontBold(), color, QColor(), QColor(), TextRendering::HorAligment::CENTER);
+            TextRendering::TextUnit::InitializeParameters params{ ChatEventItem::getTextFont(), color };
+            params.monospaceFont_ = ChatEventItem::getTextFontBold();
+            params.linkColor_ = color;
+            params.align_ = TextRendering::HorAligment::CENTER;
+            text->init(params);
 
             auto item = new ChatEventItem(this, std::move(text));
             item->setContact(contact);
             item->setFixedWidth(widgetMaxWidth());
-            item->updateStyle();
             item->updateSize();
             h += item->sizeHint().height();
 
@@ -329,6 +366,12 @@ namespace Ui
         }
 
         setCaptions({ { std::move(about), qsl("about") } });
+    }
+
+    void ChatPlaceholder::avatarClicked()
+    {
+        GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profilescr_avatar_click, { { "chat_type", Utils::chatTypeByAimId(avatar_->getContact()) }});
+        Utils::InterConnector::instance().getMainWindow()->openAvatar(avatar_->getContact());
     }
 
     void ChatPlaceholder::updateStyle()

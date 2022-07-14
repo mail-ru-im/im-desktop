@@ -3,6 +3,7 @@
 #include "../../../http_request.h"
 #include "../../../../common.shared/json_helper.h"
 #include "archive/history_message.h"
+#include "../log_replace_functor.h"
 
 #include "vote_in_poll.h"
 
@@ -25,6 +26,11 @@ const archive::poll_data& vote_in_poll::get_result() const
 std::string_view vote_in_poll::get_method() const
 {
     return "poll/vote";
+}
+
+int vote_in_poll::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t vote_in_poll::init_request(const std::shared_ptr<core::http_request_simple>& _request)

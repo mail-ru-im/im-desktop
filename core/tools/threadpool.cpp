@@ -202,7 +202,7 @@ bool threadpool::push_back(stacked_task _task, int64_t _id, std::string_view _na
         if (stop_)
             return false;
 
-        tasks_.emplace_back(std::move(_task), _id, std::move(_name), std::chrono::steady_clock::now(), std::move(_cancel));
+        tasks_.emplace_back(std::move(_task), _id, _name, std::chrono::steady_clock::now(), std::move(_cancel));
     }
 
     condition_.notify_one();

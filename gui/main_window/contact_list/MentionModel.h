@@ -33,7 +33,7 @@ namespace Logic
         void search();
 
     public:
-        MentionModel(QObject* _parent);
+        MentionModel(QObject* _parent = nullptr);
 
         int rowCount(const QModelIndex& _parent = QModelIndex()) const override;
         QVariant data(const QModelIndex& _index, int _role) const override;

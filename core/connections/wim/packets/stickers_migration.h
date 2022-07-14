@@ -36,8 +36,9 @@ namespace core
 
             const std::shared_ptr<core::tools::binary_stream>& get_response() const;
 
-            virtual priority_t get_priority() const override;
-            virtual std::string_view get_method() const override;
+            priority_t get_priority() const override;
+            std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
         };
     }
 }

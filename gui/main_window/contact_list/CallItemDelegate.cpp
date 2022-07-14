@@ -23,12 +23,23 @@ namespace
     constexpr auto BUTTON_ICON_SIZE = 24;
     constexpr auto ICONS_VER_OFFSET = 2;
 
+    constexpr QSize iconSize() noexcept
+    {
+        return { TYPE_ICON_SIZE, TYPE_ICON_SIZE };
+    }
+
     QPixmap getCallIcon(const bool _isAudio, const bool _isMissed)
     {
-        static QPixmap pixPhone = Utils::renderSvgScaled(qsl(":/message_type_phone_icon"), QSize(TYPE_ICON_SIZE, TYPE_ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
-        static QPixmap pixPhoneMissed = Utils::renderSvgScaled(qsl(":/message_type_phone_icon"), QSize(TYPE_ICON_SIZE, TYPE_ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION));
-        static QPixmap pixVideo = Utils::renderSvgScaled(qsl(":/message_type_video_icon"), QSize(TYPE_ICON_SIZE, TYPE_ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
-        static QPixmap pixVideoMissed = Utils::renderSvgScaled(qsl(":/message_type_video_icon"), QSize(TYPE_ICON_SIZE, TYPE_ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION));
+        static QPixmap pixPhone, pixPhoneMissed, pixVideo, pixVideoMissed;
+
+        static Styling::ThemeChecker checker;
+        if (checker.checkAndUpdateHash() || pixPhone.isNull())
+        {
+            pixPhone = Utils::renderSvgScaled(qsl(":/message_type_phone_icon"), iconSize(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
+            pixPhoneMissed = Utils::renderSvgScaled(qsl(":/message_type_phone_icon"), iconSize(), Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION));
+            pixVideo = Utils::renderSvgScaled(qsl(":/message_type_video_icon"), iconSize(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
+            pixVideoMissed = Utils::renderSvgScaled(qsl(":/message_type_video_icon"), iconSize(), Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION));
+        }
 
         if (_isAudio)
             return _isMissed ? pixPhoneMissed : pixPhone;
@@ -38,8 +49,7 @@ namespace
 
     QPixmap getCallTypeIcon(const bool _isOutgoing, const bool _isMissed)
     {
-        static QPixmap pixIncoming = Utils::renderSvgScaled(qsl(":/call_type"), QSize(TYPE_ICON_SIZE, TYPE_ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
-        static QPixmap pixIncomingMissed = Utils::renderSvgScaled(qsl(":/call_type"), QSize(TYPE_ICON_SIZE, TYPE_ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION));
+        static QPixmap pixIncoming, pixIncomingMissed, pixOutgoing, pixOutgoingMissed;
 
         auto rotate = [](const auto& pix)
         {
@@ -51,8 +61,14 @@ namespace
             return result;
         };
 
-        static QPixmap pixOutgoing = rotate(pixIncoming);
-        static QPixmap pixOutgoingMissed = rotate(pixIncomingMissed);
+        static Styling::ThemeChecker checker;
+        if (checker.checkAndUpdateHash() || pixIncoming.isNull())
+        {
+            pixIncoming = Utils::renderSvgScaled(qsl(":/call_type"), iconSize(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
+            pixIncomingMissed = Utils::renderSvgScaled(qsl(":/call_type"), iconSize(), Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION));
+            pixOutgoing = rotate(pixIncoming);
+            pixOutgoingMissed = rotate(pixIncomingMissed);
+        }
 
         if (_isMissed)
             return _isOutgoing ? pixOutgoingMissed : pixIncomingMissed;
@@ -62,15 +78,20 @@ namespace
 
     QPixmap getGroupCallIcon()
     {
-        static QPixmap pixIncoming = Utils::renderSvgScaled(qsl(":/groupcall"), QSize(TYPE_ICON_SIZE, TYPE_ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
-        return pixIncoming;
+        static auto pixIncoming = Utils::StyledPixmap::scaled(qsl(":/groupcall"), iconSize(), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY });
+        return pixIncoming.actualPixmap();
     }
 
     QPixmap getButtonIcon(QStringView _aimid)
     {
-        static QPixmap pixCall = Utils::renderSvgScaled(qsl(":/header/call"), QSize(BUTTON_ICON_SIZE, BUTTON_ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
-        static QPixmap pixCallByLink = Utils::renderSvgScaled(qsl(":/link_icon"), QSize(BUTTON_ICON_SIZE, BUTTON_ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
-        static QPixmap pixWebinar = Utils::renderSvgScaled(qsl(":/webinar"), QSize(BUTTON_ICON_SIZE, BUTTON_ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
+        static QPixmap pixCall, pixCallByLink, pixWebinar;
+        static Styling::ThemeChecker checker;
+        if (checker.checkAndUpdateHash() || pixCall.isNull())
+        {
+            pixCall = Utils::renderSvgScaled(qsl(":/header/call"), QSize(BUTTON_ICON_SIZE, BUTTON_ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
+            pixCallByLink = Utils::renderSvgScaled(qsl(":/link_icon"), QSize(BUTTON_ICON_SIZE, BUTTON_ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
+            pixWebinar = Utils::renderSvgScaled(qsl(":/webinar"), QSize(BUTTON_ICON_SIZE, BUTTON_ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
+        }
 
         if (_aimid == u"~group_call~")
             return pixCall;
@@ -104,16 +125,16 @@ namespace Logic
         , pictureOnly_(false)
     {
         name_ = MakeTextUnit(QString(), {}, LinksVisible::DONT_SHOW_LINKS, ProcessLineFeeds::REMOVE_LINE_FEEDS);
-        name_->init(getNameFont(false), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        name_->init({ getNameFont(false), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID} });
 
         serviceName_ = MakeTextUnit(QString(), {}, LinksVisible::DONT_SHOW_LINKS, ProcessLineFeeds::REMOVE_LINE_FEEDS);
-        serviceName_->init(getNameFont(true), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        serviceName_->init({ getNameFont(true), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } });
 
         date_ = MakeTextUnit(QString(), {}, LinksVisible::DONT_SHOW_LINKS, ProcessLineFeeds::REMOVE_LINE_FEEDS);
-        date_->init(Fonts::appFontScaled(14), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+        date_->init({ Fonts::appFontScaled(14), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY } });
 
         count_ = MakeTextUnit(QString(), {}, LinksVisible::DONT_SHOW_LINKS, ProcessLineFeeds::REMOVE_LINE_FEEDS);
-        count_->init(getNameFont(false), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        count_->init({ getNameFont(false), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID} });
     }
 
     void CallItemDelegate::paint(QPainter* _painter, const QStyleOptionViewItem& _option, const QModelIndex& _index) const
@@ -136,7 +157,7 @@ namespace Logic
 
             if (!pictureOnly_)
             {
-                serviceName_->setText(item->getButtonsText(), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+                serviceName_->setText(item->getButtonsText(), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
                 serviceName_->setOffsets(Utils::scale_value(HOR_OFFSET * 2) + Utils::scale_value(AVATAR_SIZE), _option.rect.height() / 2);
                 serviceName_->draw(*_painter, VerPosition::MIDDLE);
             }
@@ -185,7 +206,7 @@ namespace Logic
             auto name = Ui::createHightlightedText(
                     item->getFriendly(),
                     getNameFont(false),
-                    Styling::getParameters().getColor(isMissed ? Styling::StyleVariable::SECONDARY_ATTENTION : Styling::StyleVariable::TEXT_SOLID),
+                    Styling::ThemeColorKey{ isMissed ? Styling::StyleVariable::SECONDARY_ATTENTION : Styling::StyleVariable::TEXT_SOLID },
                     Ui::getTextHighlightedColor(),
                     1,
                     item->getHightlights());
@@ -205,7 +226,7 @@ namespace Logic
         }
         else
         {
-            name_->setText(item->getFriendly(), Styling::getParameters().getColor(isMissed ? Styling::StyleVariable::SECONDARY_ATTENTION : Styling::StyleVariable::TEXT_SOLID));
+            name_->setText(item->getFriendly(), Styling::ThemeColorKey{ isMissed ? Styling::StyleVariable::SECONDARY_ATTENTION : Styling::StyleVariable::TEXT_SOLID });
             name_->elide(elidedWidth);
             name_->evaluateDesiredSize();
             name_->setOffsets(nameHorizontalOffset, 0);
@@ -231,7 +252,7 @@ namespace Logic
         if (!status.isEmpty())
             status[0] = status.at(0).toUpper();
 
-        date_->setText(status, Styling::getParameters().getColor(isMissed ? Styling::StyleVariable::SECONDARY_ATTENTION : Styling::StyleVariable::BASE_PRIMARY));
+        date_->setText(status, Styling::ThemeColorKey{ isMissed ? Styling::StyleVariable::SECONDARY_ATTENTION : Styling::StyleVariable::BASE_PRIMARY });
         date_->setOffsets(Utils::scale_value(HOR_OFFSET * 2 + AVATAR_SIZE + TYPE_ICON_SIZE + SMALL_HOR_OFFSET), y2);
         date_->draw(*_painter);
 

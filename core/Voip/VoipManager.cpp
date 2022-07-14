@@ -7,16 +7,10 @@
     #include <assert.h>
     #include <unordered_map>
 #endif
-#if __APPLE__
-    #include <CoreFoundation/CoreFoundation.h>
-    #include <ImageIO/ImageIO.h>
-#endif
 
 #include "VoipManager.h"
 #include "VoipController.h"
 #include "VoipSerialization.h"
-#include "render/BuiltinVideoWindowRenderer.h"
-#include "window_settings.h"
 #include "../src/CallStateInternal.h"
 #include "../connections/base_im.h"
 
@@ -39,12 +33,13 @@
 #include "../../libomicron/include/omicron/omicron.h"
 
 #include "../tools/system.h"
+#include "../tools/features.h"
 #include "../../common.shared/json_helper.h"
 #include <iostream>
 #include "../../core/configuration/app_config.h"
+#include "../../core/configuration/external_config.h"
 
 using namespace rapidjson;
-using StaticImageId = voip::BuiltinVideoWindowRenderer::StaticImageId;
 // In seconds: 1 week.
 //constexpr std::chrono::seconds OLDER_RTP_DUMP_TIME_DIFF = std::chrono::hours(7 * 24);
 //static const std::string RTP_DUMP_EXT = ".pcapng";
@@ -279,79 +274,14 @@ namespace voip_manager
         struct ConnectionDesc
         {
             UserID  user_id = UserID("");
-            voip::CallParticipantInfo::State peer_state = voip::CallParticipantInfo::State::UNKNOWN;
             bool    remote_cam_en = false;
             bool    remote_mic_en = false;
             bool    remote_sending_desktop = false;
+            bool    connected_state = false;
             bool    delete_mark = false;
         };
         typedef std::shared_ptr<ConnectionDesc> ConnectionDescPtr;
         typedef std::list<ConnectionDescPtr> ConnectionDescList;
-
-        /**
-         * Call statistic data.
-         *
-         */
-        struct CallStatistic
-        {
-            bool incoming = false; // Incoming or outgoing.
-            voip::TerminateReason endReason = voip::TR_INTERNAL_ERROR;
-            bool isVideo = false; // Has video or not.
-            uint32_t membersNumber = 0; // Number of members without myself.
-
-            std::string_view getEndReason() const
-            {
-                static constexpr std::string_view endNames[17] = {"HANGED_UP", "REJECTED", "BUSY", "HANDLED_BY_ANOTHER_INSTANCE",
-                    "UNAUTHORIZED", "ALLOCATE_FAILED", "ANSWER_TIMEOUT", "CONNECT_TIMEOUT", "INVALID_DOMAIN",
-                    "CALLER_IS_SYSPICIOUS", "FORBIDDEN_BY_CALLEE_PRIVACY", "CALLER_MUST_BE_AUTHORIZED_BY_CAPCHA",
-                    "BAD_URI", "NOT_AVAILABLE_NOW", "PARTICIPANTS_LIMIT_EXCEEDED", "DURATION_LIMIT_EXCEEDED",
-                    "INTERNAL_ERROR" };
-                return endNames[endReason];
-            }
-
-            void setEndReason(voip::TerminateReason reason)
-            {
-                endReason = reason;
-            }
-
-            void updateVideoFlag(bool videoState)
-            {
-                isVideo = isVideo || videoState;
-            }
-
-            // Duration will be rounded in seconds:
-            // To 10 sec if t < 3 min,
-            // To 1 min  if t < 30 min
-            // To 5 min  if t < 60 min
-            // To 10 min if t >= 60 min
-            static uint32_t getDuration(uint32_t duration)
-            {
-                uint32_t res = duration;
-                uint32_t borderTime[] = { 0, 3 * 60, 30 * 60, 60 * 60,  std::numeric_limits<uint32_t>::max()};
-                uint32_t roundValue[] = { 10, 1 * 60, 5 * 60, 10 * 60};
-                for (uint32_t i = 0; i < sizeof(roundValue) / sizeof(roundValue[0]); i++)
-                {
-                    if (res >= borderTime[i] && res < borderTime[i + 1])
-                    {
-                        return uint32_t(res / (float)roundValue[i]) * roundValue[i];
-                    }
-                }
-                return res;
-            }
-
-            // speaker or headset
-            static std::string getAudioDevice(const std::string& audioDevice)
-            {
-                // TODO: improve this. Use voip to get audio type or add more patterns.
-                std::string headsetPattern = "Headset";
-                auto it = std::search(
-                    audioDevice.begin(), audioDevice.end(),
-                    headsetPattern.begin(), headsetPattern.end(),
-                    [](char ch1, char ch2) { return std::toupper(ch1) == std::toupper(ch2); }
-                );
-                return (it != audioDevice.end()) ? "Headset" : "Speaker";
-            }
-        };
 
         /**
          * CallDesc is description for one talk.
@@ -368,8 +298,6 @@ namespace voip_manager
             bool       outgoing = false;
             uint32_t   started = 0; // GetTickCount()
             unsigned   quality = 0; // 0 - 100%
-
-            CallStatistic statistic;
 
             // Is this call current
             bool current()
@@ -388,7 +316,7 @@ namespace voip_manager
 
         struct WindowDesc
         {
-            std::shared_ptr<voip::BuiltinVideoWindowRenderer> _renderer;
+            im::FramesCallback* _renderer;
             void *handle;
             std::string layout_type;
             float aspectRatio;
@@ -436,31 +364,19 @@ namespace voip_manager
         bool _to_start_video = false;
         bool _zero_participants = false;
 
-        typedef struct { void* bitmaps[AVATAR_THEME_TYPE_MAX][Img_Max]; } bitmaps_cache;
-        std::map<std::string, bitmaps_cache> _bitmapCache;
+        void* _avatarCache = nullptr;
 
         core::core_dispatcher& _dispatcher;
-
-        std::shared_ptr<core::async_executer> _async_tasks;
-
-        std::string _maskModelPath;
 
         bool sendViaIm_ = false;
         bool _defaultVideoDevStored = false, _defaultAudioPlayDevStored = false, _defaultAudioCapDevStored = false;
         bool _voipDestroyed = false;
-        bool _masksEngineInited = false;
-        bool _needToRunMask = false; // Does user try to use mask early?
         bool _videoTxRequested = false;
         bool _captureDeviceSet = false;
         std::string _lastAccount;
         im::CameraInfo _captureDeviceInfo;
 
-        // Save devices/UIDS for statistic
-        std::map<std::string, std::string> _audioPlayDeviceMap; // Mpa uid to names
-
     private:
-        void clear_avatars_cache();
-        void try_clear_avatars_cache();
         std::shared_ptr<im::VoipController> _get_engine(bool skipCreation = false);
         //std::string _get_rtp_dump_path() const;
         std::string _get_log_path() const;
@@ -469,10 +385,9 @@ namespace voip_manager
         bool _init_sounds_sc(std::shared_ptr<im::VoipController> engine);
 
         bool is_vcs_call() const { return voip::kCallType_VCS == _currentCallType; }
+        bool is_vcs_v2_call() const { return voip::kCallType_LINK == _currentCallType; }
         bool is_webinar() const { return _currentCallVCSWebinar; }
         bool is_pinned_room_call() const { return !_chatId.empty(); }
-        void _update_theme(CallDescPtr callDesc);
-        void _update_window_theme(const WindowDesc& window_desc, bool active_video_conf, bool outgoing, bool incoming, int peersCount);
         void _update_video_window_state(CallDescPtr call);
 
         bool _call_create (const VoipKey& call_id, const UserID& user_id, CallDescPtr& desc);
@@ -491,19 +406,12 @@ namespace voip_manager
         WindowDesc *_find_window(void *handle);
         WindowDesc *_find_primary_window(const VoipKey &call_id);
 
-        void _load_avatars       (const UserID& user_uid, bool request_if_not_exists = true);
-        void _set_image_to_render(AvatarThemeType theme, StaticImageId type, const std::string &contact, voip::BuiltinVideoWindowRenderer *render, void *hbmp);
         void _update_device_list (DeviceType dev_type);
         void _notify_remote_video_state_changed(const std::string &call_id, ConnectionDescPtr connection);
         void _notify_hide_controls(bool hide);
 
         void _protocolSendAlloc  (const char* data, unsigned size); //executes in VOIP SIGNALING THREAD context
         void _protocolSendMessage(const VoipProtoMsg& data); //executes in VOIP SIGNALING THREAD context
-
-        void setupAvatarForeground(); // Setup fade for video.
-
-        void initMaskEngine(const std::string& modelDir); // Init mask engine.
-        void unloadMaskEngine();
 
         void walkThroughCurrentCall(std::function<bool(ConnectionDescPtr)> func);    // Enum all connection of current call.
         void walkThroughCalls(std::function<bool(CallDescPtr)> func);                // Enum all call.
@@ -514,9 +422,6 @@ namespace voip_manager
         // @return list of window related with this call.
         std::vector<void*> _get_call_windows(const VoipKey &call_id);
 
-        void _sendCallStatistic(CallDescPtr call);
-
-        void _updateAudioPlayDevice(const std::vector<voip_manager::device_description>& devices);
         //void _cleanOldRTPDumps();
 
         bool _is_invite_packet(const char *data, unsigned len);
@@ -531,38 +436,24 @@ namespace voip_manager
         void call_accept                  (const std::string &call_id, const std::string &account, bool video) override;
         void call_decline                 (const Contact& contact, bool busy, bool conference) override;
         unsigned call_get_count           () override;
-        bool call_have_call               (const Contact& contact) override;
         void call_stop_smart              (const std::function<void()>&) override;
 
         void mute_incoming_call_sounds    (bool mute) override;
         bool has_created_call() override;
 
         void call_report_user_rating(const UserRatingReport& _ratingReport) override;
+        void peer_resolution_changed(const std::string &contact, int width, int height) override;
 
         //=========================== IWindowManager API ===========================
         void window_add           (voip_manager::WindowParams& windowParams) override;
         void window_remove        (void* hwnd) override;
-        void window_set_bitmap    (const WindowBitmap& bmp) override;
         void window_set_bitmap    (const UserBitmap& bmp) override;
-        void window_set_conference_layout(void* hwnd, voip_manager::VideoLayout layout) override;
-        void window_switch_aspect (const std::string& contact, void* hwnd) override;
-        void window_set_offsets   (void* hwnd, unsigned l, unsigned t, unsigned r, unsigned b) override;
-        void window_set_primary   (void* hwnd, const std::string& contact) override;
-        void window_set_hover     (void* hwnd, bool hover) override;
-        void window_set_large     (void* hwnd, bool large) override;
 
         //=========================== IMediaManager API ===========================
         void media_video_en       (bool enable) override;
         void media_audio_en       (bool enable) override;
         bool local_video_enabled  () override;
         bool local_audio_enabled  () override;
-
-        //=========================== IMaskManager API ===========================
-        void load_mask(const std::string& path) override;
-        unsigned int version() override;
-        void set_model_path(const std::string& path, bool force_reload) override;
-        void init_mask_engine() override;
-        void unload_mask_engine() override;
 
         //=========================== IVoipManager API ===========================
         void reset() override;
@@ -588,6 +479,9 @@ namespace voip_manager
         //=========================== Memory Consumption =============================
         int64_t get_voip_initialization_memory() const override;
 
+        //=========================== Statistics Send ================================
+        void voip_statistics_enable() override;
+
         //=========================== VoipControllerObserver =========================
         void onPreOutgoingCall            (const voip::CallId &call_id, const std::vector<std::string> &participants)  override;
         void onStartedOutgoingCall        (const voip::CallId &call_id, const std::vector<std::string> &participants)  override;
@@ -604,23 +498,18 @@ namespace voip_manager
 
         void onStateUpdated(const voip::CallStateInternal &call_state) override;
 
-        //=========================== voip::BuiltinVideoWindowRenderer::Notifications ===
-        void OnMouseTap(const voip::PeerId &name, voip::BuiltinVideoWindowRenderer::MouseTap mouseTap, voip::BuiltinVideoWindowRenderer::ViewArea viewArea, float x, float y);
-        //void OnFrameSizeChanged(float aspect);
-
         //=========================== camera::Masker::Observer ==========================
-        void onMaskEngineStatusChanged(bool engine_loaded, const std::string &error_message) override;
-        void onMaskStatusChanged(im::MaskerStatus status, const std::string &path) override;
-
+        void onMaskEngineStatusChanged(bool engine_loaded, const std::string &error_message) override {};
+        void onMaskStatusChanged(im::MaskerStatus status, const std::string &path) override {};
         void onVoiceDetectChanged(bool voice) override;
+        void onRemoteVoices(const std::vector<im::VADInfo> &_participants) override;
     public:
         VoipManagerImpl (core::core_dispatcher& dispatcher);
-        ~VoipManagerImpl();
+        virtual ~VoipManagerImpl();
     };
 
     VoipManagerImpl::VoipManagerImpl(core::core_dispatcher& dispatcher)
         : _dispatcher(dispatcher)
-        , _async_tasks(std::make_shared<core::async_executer>("voipMgrImpl"))
     {
         srand(time(nullptr));
         const VoipSettings voipSettings = _getVoipSettings();
@@ -642,29 +531,8 @@ namespace voip_manager
     {
         _engine.reset();
         VOIP_ASSERT(_calls.empty());
-        clear_avatars_cache();
-    }
-
-    void VoipManagerImpl::try_clear_avatars_cache()
-    {
-        if (_calls.empty() && _windows.empty()) // no windows and calls left - cleanup avatars cache
-            clear_avatars_cache();
-    }
-
-    void VoipManagerImpl::clear_avatars_cache()
-    {
-        for (auto &it: _bitmapCache)
-        {
-            bitmaps_cache &bmps = it.second;
-            for (int theme = 0; theme < AVATAR_THEME_TYPE_MAX; theme++)
-                for (int type = 0; type < Img_Max; type++)
-                {
-                    if (!bmps.bitmaps[theme][type])
-                        continue;
-                    bitmapReleaseHandle(bmps.bitmaps[theme][type]);
-                }
-        }
-        _bitmapCache.clear();
+        if (_avatarCache)
+            bitmapReleaseHandle(_avatarCache);
     }
 
     const VoipManagerImpl::VoipSettings VoipManagerImpl::_getVoipSettings() const
@@ -720,101 +588,6 @@ namespace voip_manager
         return settings;
     }
 
-    /**
-     * Theme list:
-     * MiniWindow:
-     * theme4 - avatar + user name text / w/o hover
-     * theme5 - avatar only / hover
-     * Main Window:
-     * theme1 - one is big   call/outgoing/conference
-     * theme2 - all the same call/outgoing/conference
-     * theme6 - all the same call/outgoing/conference for 5 peers.
-     * theme7 - all the same call/outgoing/conference for large window.
-     * Incomming
-     * theme3 - the same for all states.
-     *
-     */
-    void VoipManagerImpl::_update_theme(CallDescPtr callDesc)
-    {
-        auto engine = _get_engine(true);
-        VOIP_ASSERT_RETURN(!!engine);
-
-        const bool active_video_conf = is_pinned_room_call() || (callDesc->call_state == kCallState_Connected && callDesc->connections.size() > 1);
-        const bool outgoing          = callDesc->outgoing;
-
-        if (callDesc->is_remote_sending_desktop())
-        {
-            auto pw = _find_primary_window(callDesc->call_id);
-            if (pw->layout == AllTheSame)
-            {
-                pw->_renderer->SetDisableLocalPreview(false);
-                _notify_hide_controls(false);
-            }
-            else
-            {
-                pw->_renderer->SetDisableLocalPreview(true);
-                for (auto con : callDesc->connections)
-                {
-                    if (con->remote_sending_desktop)
-                    {
-                        pw->_renderer->SetPrimary(con->user_id, true);
-                        _notify_hide_controls(true);
-                        break;
-                    }
-                }
-            }
-        }
-
-        std::for_each(_windows.begin(), _windows.end(), [active_video_conf, this, callDesc, engine, outgoing](WindowDesc *window_desc)
-            {
-                if (window_desc->call_id == callDesc->call_id)
-                {
-                    _update_window_theme(*window_desc, active_video_conf, outgoing && !window_desc->incoming, window_desc->incoming, callDesc->connections.size());
-                }
-            });
-    }
-
-    void VoipManagerImpl::_update_window_theme(const WindowDesc& window_desc, bool active_video_conf, bool outgoing, bool incoming, int peersCount)
-    {
-        auto engine = _get_engine(true);
-        VOIP_ASSERT_RETURN(!!engine);
-
-        MainVideoLayout mainLayout;
-        mainLayout.hwnd   = window_desc.handle;
-        mainLayout.layout = window_desc.layout;
-
-        auto allTheSameCurrenTheme = (peersCount < 4 ? (window_desc.large ? voip::WindowTheme_Seven : voip::WindowTheme_Two) : voip::WindowTheme_Six);
-
-        if (window_desc.miniWindow)
-        {
-            mainLayout.layout = AllTheSame;
-            window_desc._renderer->SetWindowTheme(window_desc.hover ? voip::WindowTheme_Five : voip::WindowTheme_Four, false);
-            mainLayout.type = active_video_conf ? MVL_CONFERENCE : MVL_SIGNLE_CALL;
-            SIGNAL_NOTIFICATION(kNotificationType_MainVideoLayoutChanged, &mainLayout);
-        } else if (incoming)
-        {
-            window_desc._renderer->SetWindowTheme(voip::WindowTheme_Three, true);
-            mainLayout.type = MVL_INCOMING;
-            SIGNAL_NOTIFICATION(kNotificationType_MainVideoLayoutChanged, &mainLayout);
-        } else if (active_video_conf)
-        {
-            window_desc._renderer->SetWindowTheme((is_pinned_room_call() && 0 == peersCount) ? voip::WindowTheme_One /* lock theme if room empty */ :
-                (window_desc.layout == AllTheSame ? allTheSameCurrenTheme : voip::WindowTheme_One), true);
-            mainLayout.type = MVL_CONFERENCE;
-            SIGNAL_NOTIFICATION(kNotificationType_MainVideoLayoutChanged, &mainLayout);
-        } else if (outgoing)
-        {
-            window_desc._renderer->SetWindowTheme((window_desc.layout == AllTheSame ? allTheSameCurrenTheme : voip::WindowTheme_One), true);
-            mainLayout.type = MVL_OUTGOING;
-            SIGNAL_NOTIFICATION(kNotificationType_MainVideoLayoutChanged, &mainLayout);
-        } else
-        {
-            window_desc._renderer->SetWindowTheme((window_desc.layout == AllTheSame ? allTheSameCurrenTheme : voip::WindowTheme_One), true);
-            mainLayout.type = MVL_SIGNLE_CALL;
-            SIGNAL_NOTIFICATION(kNotificationType_MainVideoLayoutChanged, &mainLayout);
-        }
-    }
-
     bool VoipManagerImpl::_init_sounds_sc(std::shared_ptr<im::VoipController> engine)
     {
         VOIP_ASSERT_RETURN_VAL(!!engine, false);
@@ -836,6 +609,8 @@ namespace voip_manager
         engine->RegisterSoundEvent(voip::Hold, true, v_call_hold_data, vibroPatternMs, 0);
         engine->RegisterSoundEvent(voip::IncomingInvite, true, v_call_incoming_data, vibroPatternMs, 0);
         engine->RegisterSoundEvent(voip::WaitingForAccept, true, v_call_start_data, vibroPatternMs, 0);
+        engine->RegisterSoundEvent(voip::Reconnecting, true, v_call_start_data, vibroPatternMs, 0);
+        engine->RegisterSoundEvent(voip::Connecting, true, v_call_start_data, vibroPatternMs, 0);
         engine->RegisterSoundEvent(voip::HangupRejectRemote, false, v_call_end_data, vibroPatternMs, 0);
         return true;
     }
@@ -942,20 +717,12 @@ namespace voip_manager
     bool VoipManagerImpl::_call_destroy(const CallDescPtr& call, voip::TerminateReason endReason)
     {
         call->connections.clear();
-        call->statistic.setEndReason(endReason);
-        _sendCallStatistic(call);
         _calls.erase(std::remove_if(_calls.begin(), _calls.end(), [call](const CallDescPtr& c)
                 {
                     return c == call;
                 }
             ), _calls.end());
 
-        // Reset flag if last call was removed.
-        if (_calls.empty())
-        {
-            _needToRunMask = false;
-            load_mask({}); // reset mask
-        }
         return true;
     }
 
@@ -964,13 +731,13 @@ namespace voip_manager
         _videoTxRequested = enable;
         // We enable video device is selected correct video capture type.
         auto engine = _get_engine();
+        VOIP_ASSERT_RETURN(!!engine);
         auto currentCall = get_current_call();
         if (currentCall)
         {
             if (enable && _captureDeviceSet)
                 engine->Action_SelectCamera(_captureDeviceInfo);
             engine->Action_EnableCamera(currentCall->call_id, enable && _captureDeviceSet);
-            currentCall->statistic.updateVideoFlag(enable);
         }
     }
 
@@ -1028,16 +795,28 @@ namespace voip_manager
         {
             _videoTxRequested = params.video;
             set_device(VideoCapturing, _voip_desc.vCaptureDevice, false); // set last selected camera (sharing can be enabled during last call)
-            _currentCallType = params.is_vcs ? voip::kCallType_VCS : params.is_pinned_room ? voip::kCallType_PINNED_ROOM : voip::kCallType_NORMAL;
+            _currentCallType = (params.is_pinned_room || params.is_vcs) ? voip::kCallType_PINNED_ROOM : voip::kCallType_NORMAL;
             std::string app_data;
-            if (params.is_vcs)
+            if (params.is_pinned_room || params.is_vcs)
             {
-                VOIP_ASSERT_RETURN(contacts.size() == 1);
-                app_data = su::concat("{ \"call_type\" : \"VCS\", \"url\" : \"", contacts[0], "\" }");
-            } else if (params.is_pinned_room)
-            {
-                _chatId = contacts[0].c_str();
-                app_data = su::concat("{ \"call_type\" : \"pinned_room\", \"url\" : \"", _chatId, "\" }");
+                _chatId = contacts[0];
+                bool oldVCS = !features::is_vcs_call_by_link_v2_enabled();
+                if (params.is_vcs && oldVCS)
+                {
+                    _currentCallType = voip::kCallType_VCS;
+                    app_data = su::concat("{ \"call_type\" : \"VCS\", \"url\" : \"", _chatId, "\" }");
+                }
+                else if (params.is_vcs)
+                {
+                    _currentCallType = voip::kCallType_LINK;
+                    _currentCallVCSUrl = _chatId;
+                    app_data = su::concat("{ \"call_type\" : \"link\", \"url\" : \"", _chatId.substr(_chatId.find_last_of("/") + 1), "\" }");
+                }
+                else
+                {
+                    _currentCallType = voip::kCallType_PINNED_ROOM;
+                    app_data = su::concat("{ \"call_type\" : \"pinned_room\", \"url\" : \"", _chatId, "\" }");
+                }
                 std::vector<std::string> local_contacts = contacts;
                 local_contacts.erase(local_contacts.begin());
                 engine->Action_StartOutgoingCall(local_contacts, _videoTxRequested && _captureDeviceSet, app_data);
@@ -1114,8 +893,6 @@ namespace voip_manager
         SIGNAL_NOTIFICATION(kNotificationType_CallInAccepted, &contact_ex);
         _update_video_window_state(desc);
 
-        //_load_avatars(contact.contact);
-
         _videoTxRequested = video;
         set_device(VideoCapturing, _voip_desc.vCaptureDevice, false); // set last selected camera (sharing can be enabled during last call)
         media_audio_en(true);
@@ -1165,7 +942,12 @@ namespace voip_manager
 
             walkThroughCallConnections(call, [&call, &contacts](ConnectionDescPtr connection) -> bool
             {
-                contacts.contacts.push_back(Contact(call->call_id, connection->user_id));
+                Contact contact(call->call_id, connection->user_id);
+                contact.connected_state    = connection->connected_state;
+                contact.remote_cam_enabled = connection->remote_cam_en;
+                contact.remote_mic_enabled = connection->remote_mic_en;
+                contact.remote_sending_desktop = connection->remote_sending_desktop;
+                contacts.contacts.push_back(contact);
                 return false;
             });
 
@@ -1176,22 +958,6 @@ namespace voip_manager
             contacts.isActive = call->current() || call->outgoing;
         }
         SIGNAL_NOTIFICATION(kNotificationType_CallPeerListChanged, &contacts);
-    }
-
-    bool VoipManagerImpl::call_have_call(const Contact& contact)
-    {
-        for (auto it = _calls.begin(); it != _calls.end(); ++it)
-        {
-            auto call = *it;
-            for (auto it_conn = (*it)->connections.begin(); it_conn != (*it)->connections.end(); ++it_conn)
-            {
-                auto conn = *it_conn;
-                VOIP_ASSERT_ACTION(!!conn, continue);
-                if (call->call_id == contact.call_id && conn->user_id == contact.contact)
-                    return true;
-            }
-        }
-        return false;
     }
 
     bool VoipManagerImpl::_call_have_established_connection()
@@ -1243,122 +1009,9 @@ namespace voip_manager
         auto engine = _get_engine();
         VOIP_ASSERT_RETURN(!!engine);
 
-        std::string settings_json;
-        if (windowParams.isPrimary)
-        {
-            settings_json = priWindowSettings;
-        } else if (windowParams.isIncoming)
-        {
-            settings_json = incomingWindowSettings;
-        } else
-        {
-            settings_json = secWindowSettings;
-        }
-
-        Document json_document;
-        json_document.Parse(settings_json);
-        float scale = windowParams.scale;
-        Value &ws = json_document["WindowSettings"];
-        Value &ad = ws["AvatarDesc"];
-        Value &lp = ws["LayoutParams"];
-        if (windowParams.isPrimary)
-        {
-            ad["WindowTheme_One"]["width"]      = (int)(voip_manager::kAvatarDefaultSize * scale);
-            ad["WindowTheme_One"]["height"]     = (int)(voip_manager::kAvatarDefaultSize * scale);
-            ad["WindowTheme_One"]["textWidth"]  = (int)(voip_manager::kNickTextW * scale);
-            ad["WindowTheme_One"]["textHeight"] = (int)(voip_manager::kNickTextH * scale);
-            ad["WindowTheme_Two"]["textWidth"]  = (int)(voip_manager::kNickTextAllSameW * scale);
-            ad["WindowTheme_Two"]["textHeight"] = (int)(voip_manager::kNickTextAllSameH * scale);
-            ad["WindowTheme_Six"]["textWidth"]  = (int)(voip_manager::kNickTextAllSameW5peers * scale);
-            ad["WindowTheme_Six"]["textHeight"] = (int)(voip_manager::kNickTextAllSameH * scale);
-            ad["WindowTheme_Seven"]["textWidth"]  = (int)(voip_manager::kNickTextAllSameWLarge * scale);
-            ad["WindowTheme_Seven"]["textHeight"] = (int)(voip_manager::kNickTextAllSameH * scale);
-            ad["WindowTheme_One"]["offsetLeft"]   = (int)(12 * scale);
-            ad["WindowTheme_One"]["offsetRight"]  = (int)(12 * scale);
-            ad["WindowTheme_One"]["offsetTop"]    = (int)(12 * scale);
-            ad["WindowTheme_One"]["offsetBottom"] = (int)(12 * scale);
-
-            lp["WindowTheme_One"]["traySize"]   = (int)(20 * scale);
-            lp["WindowTheme_Two"]["traySize"]   = (int)(20 * scale);
-            lp["WindowTheme_Six"]["traySize"]   = (int)(20 * scale);
-            lp["WindowTheme_Seven"]["traySize"] = (int)(20 * scale);
-            lp["WindowTheme_One"]["channelsGapWidth"]   = (int)(20 * scale);
-            lp["WindowTheme_Two"]["channelsGapWidth"]   = (int)(20 * scale);
-            lp["WindowTheme_Six"]["channelsGapWidth"]   = (int)(20 * scale);
-            lp["WindowTheme_Seven"]["channelsGapWidth"] = (int)(20 * scale);
-            lp["WindowTheme_One"]["channelsGapHeight"]   = (int)(20 * scale);
-            lp["WindowTheme_Two"]["channelsGapHeight"]   = (int)(20 * scale);
-            lp["WindowTheme_Six"]["channelsGapHeight"]   = (int)(20 * scale);
-            lp["WindowTheme_Seven"]["channelsGapHeight"] = (int)(20 * scale);
-
-            ws["header_height_pix"] = (int)(32 * scale);
-            ws["detachedStreamsRoundedRadius"] = (int)(4 * scale);
-            ws["detachedStreamMaxArea"] = (int)((60 * scale) * (60 * scale) * 10000);
-            ws["detachedStreamMinArea"] = (int)((55 * scale) * (55 * scale));
-
-            ws["disable_mouse_events_handler"] = is_vcs_call();
-            if (is_pinned_room_call())
-                ws["previewEnabledAlways"] = true;
-        } else if (!windowParams.isIncoming)
-        {
-            ad["WindowTheme_Four"]["textWidth"]  = (int)(voip_manager::kNickTextMiniWW * scale);
-            ad["WindowTheme_Four"]["textHeight"] = (int)(voip_manager::kNickTextMiniWH * scale);
-            ad["WindowTheme_Five"]["textWidth"]  = (int)(voip_manager::kNickTextMiniWW * scale);
-            ad["WindowTheme_Five"]["textHeight"] = (int)(voip_manager::kNickTextMiniWH * scale);
-#ifdef __linux__
-            ws["disable_mouse_events_handler"] = false;
-#endif
-        }
-
-        StringBuffer buffer;
-        Writer<StringBuffer> writer(buffer);
-        json_document.Accept(writer);
-        settings_json = buffer.GetString();
-
-        voip::ChannelStatusContexts ctx;
-        auto deleter = [](void* ptr)
-        {
-            if (ptr)
-                ::bitmapReleaseHandle(ptr);
-        };
-        using SafeHBMP = std::unique_ptr<void, std::function<void(void*)>>;
-
-        //SafeHBMP cameraStatusHBMP = SafeHBMP(bitmapHandleFromRGBData(windowParams.cameraStatus.bitmap.w, windowParams.cameraStatus.bitmap.h, windowParams.cameraStatus.bitmap.data), deleter);
-        SafeHBMP callingHBMP      = SafeHBMP(bitmapHandleFromRGBData(windowParams.calling.bitmap.w,      windowParams.calling.bitmap.h,      windowParams.calling.bitmap.data), deleter);
-        SafeHBMP connectingHBMP   = SafeHBMP(bitmapHandleFromRGBData(windowParams.connecting.bitmap.w,   windowParams.connecting.bitmap.h,   windowParams.connecting.bitmap.data), deleter);
-        SafeHBMP closedByBusyHBMP = SafeHBMP(bitmapHandleFromRGBData(windowParams.closedByBusy.bitmap.w, windowParams.closedByBusy.bitmap.h, windowParams.closedByBusy.bitmap.data), deleter);
-
-        voip::WindowThemeType themes[] = { voip::WindowTheme_One, voip::WindowTheme_Two, voip::WindowTheme_Three,
-            voip::WindowTheme_Four, voip::WindowTheme_Five, voip::WindowTheme_Six, voip::WindowTheme_Seven };
-        for (auto theme: themes)
-        {
-            //ctx[theme].videoPaused  = cameraStatusHBMP.get();
-            ctx[theme].connecting   = connectingHBMP.get();
-            ctx[theme].calling      = connectingHBMP.get();
-            ctx[theme].closedByBusy = closedByBusyHBMP.get();
-            ctx[theme].ringing      = callingHBMP.get();
-            ctx[theme].allocating   = connectingHBMP.get();
-        }
-
-        class NotificationsEx: public voip::BuiltinVideoWindowRenderer::Notifications
-        {
-            VoipManagerImpl *impl;
-        public:
-            NotificationsEx(VoipManagerImpl *impl_): impl(impl_) {}
-            virtual ~NotificationsEx() {};
-            void OnMouseTap(const voip::PeerId &name, voip::BuiltinVideoWindowRenderer::MouseTap mouseTap, voip::BuiltinVideoWindowRenderer::ViewArea viewArea, float x, float y) override
-            {
-                impl->OnMouseTap(name, mouseTap, viewArea, x, y);
-            }
-            void OnFrameSizeChanged(float aspect) override
-            {
-                //impl->OnFrameSizeChanged(aspect);
-            }
-        };
-
-        std::shared_ptr<voip::BuiltinVideoWindowRenderer::Notifications> notifications(new NotificationsEx(this));
+        im::FramesCallback* render = (im::FramesCallback*)windowParams.hwnd;
         WindowDesc *window_description = new WindowDesc;
-        window_description->_renderer = voip::BuiltinVideoWindowRenderer::Create(windowParams.hwnd, settings_json, ctx, notifications);
+        window_description->_renderer = render;
         window_description->handle = windowParams.hwnd;
         window_description->aspectRatio = 0.0f;
         window_description->scaleCoeffitient = windowParams.scale >= 0.01 ? windowParams.scale : 1.0f;
@@ -1367,39 +1020,23 @@ namespace voip_manager
         window_description->incoming = windowParams.isIncoming;
         window_description->miniWindow = !windowParams.isPrimary && !windowParams.isIncoming;
         window_description->call_id = !windowParams.call_id.empty() ? windowParams.call_id : _currentCall;
-        window_description->_renderer->SetDisableLocalPreview(is_webinar() || (is_vcs_call() && !windowParams.isIncoming));
 
-        {
-            if (windowParams.isPrimary)
-                _currentCallHwnd = window_description->handle;
-            _windows.push_back(window_description);
-        }
+        if (windowParams.isPrimary)
+            _currentCallHwnd = window_description->handle;
+        _windows.push_back(window_description);
 
-        for (auto &it: _bitmapCache)
-        {
-            bitmaps_cache &bmps = it.second;
-            for (int theme = 0; theme < AVATAR_THEME_TYPE_MAX; theme++)
-                for (int type = 0; type < Img_Max; type++)
-                {
-                    if (!bmps.bitmaps[theme][type])
-                        continue;
-                    _set_image_to_render((AvatarThemeType)theme, (StaticImageId)type, it.first, window_description->_renderer.get(), bmps.bitmaps[theme][type]);
-                }
-        }
+        if (_avatarCache)
+            engine->Call_SetDisabledVideoFrame(_currentCall, _avatarCache);
 
         // Send contects for new window.
         CallDescPtr desc;
         VOIP_ASSERT_RETURN(!!_call_get(window_description->call_id, desc));
         _call_request_connections(desc);
 
-        setupAvatarForeground();
-
-        engine->VideoWindowAdd(desc->call_id, window_description->_renderer);
+        engine->Action_AttachRender(desc->call_id, *render);
 
         const intptr_t winId = (intptr_t)windowParams.hwnd;
         SIGNAL_NOTIFICATION(kNotificationType_VoipWindowAddComplete, &winId);
-
-        _update_theme(desc);
     }
 
     void VoipManagerImpl::window_remove(void *hwnd)
@@ -1426,162 +1063,23 @@ namespace voip_manager
                 }
             }
             if (desc->_renderer)
-                engine->VideoWindowRemove(desc->call_id, desc->_renderer);
+                engine->Action_DetachRender(desc->call_id);
             delete desc;
-            try_clear_avatars_cache();
         }
         const intptr_t winId = (intptr_t)hwnd;
         SIGNAL_NOTIFICATION(kNotificationType_VoipWindowRemoveComplete, &winId)
     }
 
-    void VoipManagerImpl::window_set_bitmap(const WindowBitmap& bmp)
-    {
-        VOIP_ASSERT_RETURN(bmp.hwnd);
-        VOIP_ASSERT_RETURN(bmp.bitmap.w);
-        VOIP_ASSERT_RETURN(bmp.bitmap.h);
-        VOIP_ASSERT_RETURN(bmp.bitmap.size);
-        VOIP_ASSERT_RETURN(bmp.bitmap.data);
-
-        WindowDesc *desc = _find_window(bmp.hwnd);
-        VOIP_ASSERT_RETURN(desc);
-        void *hbmp = bitmapHandleFromRGBData(bmp.bitmap.w, bmp.bitmap.h, bmp.bitmap.data);
-        VOIP_ASSERT_RETURN(hbmp);
-        desc->_renderer->SetStaticImage(voip::WindowTheme_Two, StaticImageId::Img_Background, "", hbmp);
-        desc->_renderer->SetStaticImage(voip::WindowTheme_One, StaticImageId::Img_Background, "", hbmp);
-        desc->_renderer->SetStaticImage(voip::WindowTheme_Three, StaticImageId::Img_Background, "", hbmp);
-        desc->_renderer->SetStaticImage(voip::WindowTheme_Four, StaticImageId::Img_Background, "", hbmp);
-        desc->_renderer->SetStaticImage(voip::WindowTheme_Five, StaticImageId::Img_Background, "", hbmp);
-        desc->_renderer->SetStaticImage(voip::WindowTheme_Six, StaticImageId::Img_Background, "", hbmp);
-
-        bitmapReleaseHandle(hbmp);
-    }
-
-    void VoipManagerImpl::_set_image_to_render(AvatarThemeType theme, StaticImageId type, const std::string &contact, voip::BuiltinVideoWindowRenderer *render, void *hbmp)
-    {
-        if (PREVIEW_RENDER_NAME == contact && StaticImageId::Img_Avatar == type && !_currentCall.empty() && is_vcs_call())
-        {
-            auto engine = _get_engine();
-            if (engine)
-                engine->Call_SetDisabledVideoFrame(_currentCall, hbmp);
-        }
-        switch (theme)
-        {
-        case MAIN_ALL_THE_SAME:
-            render->SetStaticImage(voip::WindowTheme_Two, type, contact, hbmp);
-            break;
-        case MAIN_ALL_THE_SAME_5_PEERS:
-            render->SetStaticImage(voip::WindowTheme_Six, type, contact, hbmp);
-            break;
-        case MAIN_ALL_THE_SAME_LARGE:
-            render->SetStaticImage(voip::WindowTheme_Seven, type, contact, hbmp);
-            break;
-        case MAIN_ONE_BIG:
-            render->SetStaticImage(voip::WindowTheme_One, type, contact, hbmp);
-            break;
-        case MINI_WINDOW:
-            render->SetStaticImage(voip::WindowTheme_Four, type, contact, hbmp);
-            if (StaticImageId::Img_Username != type)
-                render->SetStaticImage(voip::WindowTheme_Five, type, contact, hbmp);
-            break;
-        case INCOME_WINDOW:
-            render->SetStaticImage(voip::WindowTheme_Three, type, contact, hbmp);
-            break;
-        default:
-            im_assert(false);
-        }
-    }
-
     void VoipManagerImpl::window_set_bitmap(const UserBitmap& bmp)
     {
-        VOIP_ASSERT_RETURN(bmp.bitmap.w);
-        VOIP_ASSERT_RETURN(bmp.bitmap.h);
-        VOIP_ASSERT_RETURN(bmp.bitmap.size);
-        VOIP_ASSERT_RETURN(bmp.bitmap.data);
-        VOIP_ASSERT_RETURN(!bmp.contact.empty());
-
-        bool create = _bitmapCache.find(bmp.contact) == _bitmapCache.end();
-        bitmaps_cache &bmps = _bitmapCache[bmp.contact];
-        if (create)
-            memset(&bmps, 0, sizeof(bmps));
-        void *hbmp = bitmapHandleFromRGBData(bmp.bitmap.w, bmp.bitmap.h, bmp.bitmap.data);
-        if (bmps.bitmaps[bmp.theme][bmp.type])
-            bitmapReleaseHandle(bmps.bitmaps[bmp.theme][bmp.type]);
-        bmps.bitmaps[bmp.theme][bmp.type] = hbmp;
-        for (auto &it: _windows)
+        if (PREVIEW_RENDER_NAME == bmp.contact && Img_Avatar == (StaticImageIdEnum)bmp.type && !_currentCall.empty() && is_vcs_call())
         {
-            WindowDesc *desc = it;
-            _set_image_to_render(bmp.theme, (StaticImageId)bmp.type, bmp.contact, desc->_renderer.get(), hbmp);
-        }
-    }
-
-    void VoipManagerImpl::window_set_conference_layout(void* hwnd, voip_manager::VideoLayout layout)
-    {
-        auto window_description = _find_window(hwnd);
-        VOIP_ASSERT_RETURN(window_description);
-
-        window_description->layout = layout;
-
-        CallDescPtr desc;
-        _call_get(window_description->call_id, desc);
-        VOIP_ASSERT_RETURN(desc);
-
-        _update_theme(desc);
-    }
-
-    void VoipManagerImpl::window_switch_aspect(const std::string& contact, void *hwnd)
-    {
-        VOIP_ASSERT_RETURN(!contact.empty());
-        VoipManagerImpl::WindowDesc *winDesc = _find_window(hwnd);
-        if (!winDesc)
-            return;
-        winDesc->_renderer->SwitchAspectMode(contact.c_str(), true);
-    }
-
-    void VoipManagerImpl::window_set_offsets(void *hwnd, unsigned l, unsigned t, unsigned r, unsigned b)
-    {
-        VoipManagerImpl::WindowDesc *winDesc = _find_window(hwnd);
-        if (!winDesc)
-            return;
-        bool bOverlaped = true;
-        winDesc->_renderer->SetControlsStatus(winDesc->hover, l, t, r, b, true, bOverlaped);
-    }
-
-    void VoipManagerImpl::window_set_primary(void *hwnd, const std::string& contact)
-    {
-        VoipManagerImpl::WindowDesc *winDesc = _find_window(hwnd);
-        if (!winDesc)
-            return;
-        winDesc->_renderer->SetPrimary(contact.c_str(), true);
-    }
-
-    void VoipManagerImpl::window_set_hover(void *hwnd, bool hover)
-    {
-        VoipManagerImpl::WindowDesc *winDesc = _find_window(hwnd);
-        if (!winDesc)
-            return;
-        winDesc->hover = hover;
-        // TODO: pass this for all windows.
-        if (winDesc->miniWindow)
-        {
-            _update_window_theme(*winDesc, false, false, false, 2);
-        }
-    }
-
-    void VoipManagerImpl::window_set_large(void* hwnd, bool large)
-    {
-        VoipManagerImpl::WindowDesc *winDesc = _find_window(hwnd);
-        if (!winDesc)
-            return;
-        bool oldLarger = winDesc->large;
-        winDesc->large = large;
-        if (oldLarger != large)
-        {
-            CallDescPtr desc;
-            _call_get(winDesc->call_id, desc);
-            if (desc)
-            {
-                _update_window_theme(*winDesc, false, desc->outgoing, false, desc->connections.size());
-            }
+            auto engine = _get_engine();
+            if (_avatarCache)
+                bitmapReleaseHandle(_avatarCache);
+            _avatarCache = bitmapHandleFromRGBData(bmp.bitmap.w, bmp.bitmap.h, bmp.bitmap.data);
+            if (engine)
+                engine->Call_SetDisabledVideoFrame(_currentCall, _avatarCache);
         }
     }
 
@@ -1617,10 +1115,6 @@ namespace voip_manager
         dev_list.type = dev_type;
         VOIP_ASSERT_RETURN(get_device_list(dev_type, dev_list.devices));
 
-        if (dev_type == AudioPlayback)
-        {
-            _updateAudioPlayDevice(dev_list.devices);
-        }
         SIGNAL_NOTIFICATION(kNotificationType_DeviceListChanged, &dev_list);
     }
 
@@ -1651,6 +1145,17 @@ namespace voip_manager
                 survey_data << " " << r;
             engine->UserRateLastCall(_ratingReport.aimid_.c_str(), _ratingReport.score_, survey_data.str().c_str());
         }
+    }
+
+    void VoipManagerImpl::peer_resolution_changed(const std::string &contact, int width, int height)
+    {
+        auto engine = _get_engine(true);
+        if (!engine)
+            return;
+        auto currentCall = get_current_call();
+        if (!currentCall)
+            return;
+        engine->Action_UpdateRenderDimension(currentCall->call_id, contact, width, height);
     }
 
     void VoipManagerImpl::_protocolSendAlloc(const char *data, unsigned size)
@@ -1834,16 +1339,6 @@ namespace voip_manager
         }
     }
 
-    void VoipManagerImpl::_load_avatars(const UserID& user_uid, bool request_if_not_exists/* = true*/) {
-        _dispatcher.execute_core_context({ [user_uid, this]()
-        {
-            auto im = _dispatcher.find_im_by_id(0);
-            im_assert(!!im);
-
-            im->get_contact_avatar(0, user_uid.normalized_id, kAvatarRequestSize, false);
-        } });
-    }
-
     unsigned VoipManagerImpl::get_devices_number(DeviceType device_type)
     {
         unsigned dev_num = 0;
@@ -1924,7 +1419,6 @@ namespace voip_manager
                 _captureDeviceInfo.type = im::CameraInfo::Type::VirtualCamera; break;
             case VC_DeviceDesktop:
                 _captureDeviceInfo.type = im::CameraInfo::Type::ScreenCapture; break;
-                load_mask({});
                 break;
             case VC_DeviceCamera:
             default:
@@ -1995,6 +1489,12 @@ namespace voip_manager
         return _voip_initialization;
     }
 
+    void VoipManagerImpl::voip_statistics_enable()
+    {
+        if (auto engine = _get_engine(true))
+            engine->VoipStat_Enable(config::get().is_on(config::features::statistics), _lastAccount, _get_log_path());
+    }
+
     void VoipManagerImpl::reset()
     {
         call_stop_smart([=]()
@@ -2002,111 +1502,6 @@ namespace voip_manager
             _voipDestroyed = true;
             SIGNAL_NOTIFICATION(kNotificationType_VoipResetComplete, &_voipDestroyed);
         });
-    }
-
-    void VoipManagerImpl::load_mask(const std::string& path)
-    {
-        if (!_masksEngineInited)
-            return;
-        bool changed = _voip_desc.vCurrentMask != path;
-        _voip_desc.vCurrentMask = path;
-        if (changed)
-        {
-            auto engine = _get_engine();
-            VOIP_ASSERT_RETURN(!!engine);
-            engine->LoadMask(path.c_str());
-        }
-    }
-
-    unsigned int VoipManagerImpl::version()
-    {
-        unsigned int res = 0;
-#ifndef STRIP_VOIP
-        res = im::VoipController::GetMaskEngineVersion();
-#endif
-        return res;
-    }
-
-    void VoipManagerImpl::set_model_path(const std::string& path, bool force_reload)
-    {
-        // In case, when we already have model, but we need to reload old and load new.
-        if (_masksEngineInited)
-        {
-            if (_maskModelPath == path && !force_reload)
-                return;
-
-            unloadMaskEngine();
-        }
-
-        _masksEngineInited = false;
-        _maskModelPath = path;
-        if (_needToRunMask)
-        {
-            initMaskEngine(_maskModelPath);
-        }
-    }
-
-    void VoipManagerImpl::setupAvatarForeground()
-    {
-        unsigned char foreground[] = { 0, 0, 0, 255 / 2 };
-        voip_manager::UserBitmap bmp;
-        bmp.bitmap.data = (void*)foreground;
-        bmp.bitmap.size = 4;
-        bmp.bitmap.w = 1;
-        bmp.bitmap.h = 1;
-        bmp.contact = PREVIEW_RENDER_NAME;
-        bmp.type  = voip::BuiltinVideoWindowRenderer::Img_UserForeground;
-        bmp.theme = voip_manager::INCOME_WINDOW;
-
-        window_set_bitmap(bmp);
-    }
-
-    void VoipManagerImpl::initMaskEngine(const std::string& modelDir)
-    {
-        auto engine = _get_engine();
-        VOIP_ASSERT_RETURN(!!engine);
-
-        if (!_masksEngineInited || modelDir.empty())
-        {
-            _async_tasks->run_async_function([engine, modelDir] {
-                engine->InitMaskEngine(modelDir.c_str());
-                return 0;
-            }
-            )->on_result_ = [](int32_t error) {};
-        }
-    }
-
-    void VoipManagerImpl::unloadMaskEngine()
-    {
-        if (auto engine = _get_engine())
-        {
-            _async_tasks->run_async_function([engine = std::move(engine)] {
-                engine->UnloadMaskEngine();
-                return 0;
-                }
-            )->on_result_ = [wr_this = weak_from_this()](int32_t error)
-            {
-                auto ptr_this = wr_this.lock();
-                if (!ptr_this)
-                    return;
-
-                ptr_this->_masksEngineInited = false;
-            };
-        }
-    }
-
-    void VoipManagerImpl::init_mask_engine()
-    {
-        _needToRunMask = true;
-        if (!_maskModelPath.empty())
-        {
-            initMaskEngine(_maskModelPath);
-        }
-    }
-
-    void VoipManagerImpl::unload_mask_engine()
-    {
-        unloadMaskEngine();
     }
 
     void VoipManagerImpl::walkThroughCurrentCall(std::function<bool(VoipManagerImpl::ConnectionDescPtr)> func)
@@ -2200,48 +1595,6 @@ namespace voip_manager
         return true;
     }
 
-    void VoipManagerImpl::_sendCallStatistic(CallDescPtr call)
-    {
-        core::stats::event_props_type props;
-        const auto& stat = call->statistic;
-
-        props.emplace_back("Init", stat.incoming ? "Callee" : "Caller");
-        props.emplace_back("EndReason", stat.getEndReason());
-        if (call->started > 0)
-            props.emplace_back("Duration", std::to_string(stat.getDuration((clock() - call->started) / 1000)));
-        else
-            props.emplace_back("Duration", std::to_string(0));
-
-        std::string audioDevideUID = _voip_desc.aPlaybackDevice;
-        std::string audioDevideName;
-
-        if (!audioDevideUID.empty())
-        {
-            if (_audioPlayDeviceMap.find(audioDevideUID) != _audioPlayDeviceMap.end())
-            {
-                audioDevideName = _audioPlayDeviceMap[audioDevideUID];
-            }
-        }
-
-        auto audioDevideStatistic = stat.getAudioDevice(audioDevideName);
-        if (!audioDevideStatistic.empty())
-            props.emplace_back("AudioPath", audioDevideStatistic);
-
-        props.emplace_back("CallType", stat.isVideo ? "Video" : "Audio");
-        props.emplace_back("Members", std::to_string(stat.membersNumber));
-
-        _dispatcher.insert_event(core::stats::stats_event_names::voip_calls_users_tech, std::move(props));
-    }
-
-    void VoipManagerImpl::_updateAudioPlayDevice(const std::vector<voip_manager::device_description>& devices)
-    {
-        _audioPlayDeviceMap.clear();
-        for (auto device_desc: devices)
-        {
-            _audioPlayDeviceMap[device_desc.uid] = device_desc.name;
-        }
-    }
-
     void VoipManagerImpl::_updateAccount(const std::string &account)
     {
         if (_lastAccount != account)
@@ -2249,8 +1602,8 @@ namespace voip_manager
             auto engine = _get_engine();
             VOIP_ASSERT_RETURN(engine);
 
-            if (config::get().is_on(config::features::statistics))
-                engine->VoipStat_Enable(true, account, _get_log_path());
+            if (config::hosts::external_url_config::instance().is_external_config_loaded())
+                engine->VoipStat_Enable(config::get().is_on(config::features::statistics), account, _get_log_path());
 
             _lastAccount = account;
         }
@@ -2324,12 +1677,7 @@ namespace voip_manager
             SIGNAL_NOTIFICATION(kNotificationType_CallCreated, &contact_ex);
 
             _call_request_connections(desc);
-            _update_theme(desc);
 
-            desc->statistic.incoming = false; // Fill statistics.
-            desc->statistic.updateVideoFlag(true);
-
-            _update_theme(desc);
             _update_video_window_state(desc);
 
             media_audio_en(true);
@@ -2382,12 +1730,6 @@ namespace voip_manager
                 parseAuxCallName(desc, call_state);
             else
                 _call_request_connections(desc);
-
-            // Fill statistics.
-            desc->statistic.incoming = true;
-            desc->statistic.updateVideoFlag(is_video);
-
-            _update_theme(desc);
         } });
     }
 
@@ -2403,21 +1745,6 @@ namespace voip_manager
             VOIP_ASSERT_RETURN(!!_call_get(call_id, desc));
             im_assert(desc->outgoing);
             desc->call_state = kCallState_Accepted;
-
-            ConnectionDescPtr connection = desc->connections.size() ? desc->connections.front() : 0;
-            VOIP_ASSERT_RETURN(connection);
-
-            ContactEx contact_ex;
-            contact_ex.contact.call_id = call_id;
-            contact_ex.contact.contact = normalizeUid(connection->user_id);
-            contact_ex.call_type = desc->call_type;
-            contact_ex.incoming = !desc->outgoing;
-            contact_ex.windows = _get_call_windows(call_id);
-
-            SIGNAL_NOTIFICATION(kNotificationType_CallOutAccepted, &contact_ex);
-
-            _load_avatars(connection->user_id);
-            _update_theme(desc);
         } });
     };
 
@@ -2436,12 +1763,11 @@ namespace voip_manager
             if (!desc->started)
                 desc->started = (unsigned)clock();
 
-            ConnectionDescPtr connection = desc->connections.size() ? desc->connections.front() : 0;
-            VOIP_ASSERT_RETURN(connection);
+            ConnectionDescPtr connection = desc->connections.size() ? desc->connections.front() : nullptr;
 
             ContactEx contact_ex;
             contact_ex.contact.call_id = call_id;
-            contact_ex.contact.contact = normalizeUid(connection->user_id);
+            contact_ex.contact.contact = connection ? normalizeUid(connection->user_id) : "";
             contact_ex.call_type = desc->call_type;
             contact_ex.incoming = !desc->outgoing;
             contact_ex.windows = _get_call_windows(call_id);
@@ -2491,7 +1817,6 @@ namespace voip_manager
             _currentCallVCSUrl.clear();
             _currentCallVCSWebinar = false;
             _zero_participants = false;
-            try_clear_avatars_cache();
 
             if (_calls.empty() && sendViaIm_)
             {
@@ -2532,7 +1857,6 @@ namespace voip_manager
 
             auto prev_remote_sending_desktop = desc->is_remote_sending_desktop();
 
-            desc->statistic.membersNumber = participants.size();
             for (auto& it : participants)
             {
                 const voip::CallParticipantInfo& info = it;
@@ -2548,16 +1872,23 @@ namespace voip_manager
                     continue;
                 num_participants++;
                 connection->delete_mark = false;
-                connection->peer_state = info.state;
-                bool remote_cam_en = info.media_sender.sending_video || info.media_sender.sending_desktop;
-                bool remote_cam_en_changed = remote_cam_en != connection->remote_cam_en;
-                connection->remote_cam_en = remote_cam_en;
-                connection->remote_mic_en = info.media_sender.sending_audio;
-                connection->remote_sending_desktop = info.media_sender.sending_desktop || info.media_sender.sending_desktop_as_video;
-
-                if (remote_cam_en_changed)
+                bool connected_state = voip::CallParticipantInfo::State::ACTIVE == info.state;
+                bool remote_desktop_enabled = info.media_sender.sending_desktop || info.media_sender.sending_desktop_as_video;
+                bool remote_cam_enabled = info.media_sender.sending_video || remote_desktop_enabled;
+                bool remote_cam_changed = remote_cam_enabled != connection->remote_cam_en;
+                bool connected_state_changed = connected_state != connection->connected_state;
+                if (remote_cam_changed || connected_state_changed || info.media_sender.sending_audio != connection->remote_mic_en ||
+                    remote_desktop_enabled != connection->remote_sending_desktop)
                 {
-                    desc->statistic.updateVideoFlag(connection->remote_cam_en);
+                    list_updated = true;
+                }
+                connection->connected_state = connected_state;
+                connection->remote_cam_en = remote_cam_enabled;
+                connection->remote_mic_en = info.media_sender.sending_audio;
+                connection->remote_sending_desktop = remote_desktop_enabled;
+
+                if (remote_cam_changed)
+                {
                     _notify_remote_video_state_changed(call_id, connection);
                 }
             }
@@ -2567,7 +1898,6 @@ namespace voip_manager
                 if (auto pw = _find_primary_window(desc->call_id))
                 {
                     const auto hideControls = remote_sending_desktop && pw->layout == OneIsBig;
-                    pw->_renderer->SetDisableLocalPreview(hideControls);
                     _notify_hide_controls(hideControls);
                 }
             }
@@ -2745,7 +2075,7 @@ namespace voip_manager
 	            im::VoipController::WriteToVoipLog(string_to_log);
 	        }
 
-            im_assert(is_vcs_call() ? call_state.call_type == voip::kCallType_VCS : is_pinned_room_call() ? call_state.call_type == voip::kCallType_PINNED_ROOM : call_state.call_type.empty());
+            im_assert(is_vcs_call() ? call_state.call_type == voip::kCallType_VCS : is_vcs_v2_call() ? call_state.call_type == voip::kCallType_LINK : is_pinned_room_call() ? call_state.call_type == voip::kCallType_PINNED_ROOM : call_state.call_type.empty());
             if (is_vcs_call() && !call_state.aux_call_info_json.empty())
                 parseAuxCallName(currentCall, call_state);
             // Signal hangup terminate reasons
@@ -2763,68 +2093,18 @@ namespace voip_manager
                 }
             }
             SIGNAL_NOTIFICATION(kNotificationType_ConfPeerDisconnected, &peers);
-            if (call_state.peers().empty() && !_zero_participants)
-            {   // room becomes empty - lock theme
-                _update_theme(currentCall);
-            }
             _zero_participants = call_state.peers().empty();
         } });
-    }
-
-    void VoipManagerImpl::OnMouseTap(const voip::PeerId &name, voip::BuiltinVideoWindowRenderer::MouseTap mouseTap, voip::BuiltinVideoWindowRenderer::ViewArea viewArea, float x, float y)
-    {
-        _dispatcher.execute_core_context({ [this, name, mouseTap, viewArea]
-        {
-            MouseTap mt;
-            if (!_currentCallHwnd)
-                return;
-            mt.area    = (ViewArea)viewArea;
-            //mt.call_id = call->call_id;
-            mt.contact = normalizeUid(name);
-            mt.hwnd    = _currentCallHwnd;
-            mt.tap     = (MouseTapEnum)mouseTap;
-            SIGNAL_NOTIFICATION(kNotificationType_MouseTap, &mt);
-        } });
-    }
-
-    /*void VoipManagerImpl::OnFrameSizeChanged(float aspect)
-    {
-        VoipManagerImpl::CallDescPtr call = get_current_call();
-        if (!call)
-            return;
-        WindowDesc *window_description = nullptr;
-        for (size_t ix = 0; ix < _windows.size(); ++ix)
-        {
-            window_description = _windows[ix];
-            if (window_description->call_id == call->call_id)
-                break;
-        }
-        VOIP_ASSERT_RETURN(window_description)
-
-        FrameSize fs;
-        fs.hwnd = (intptr_t)window_description->handle;
-        fs.aspect_ratio = aspect;
-        SIGNAL_NOTIFICATION(kNotificationType_FrameSizeChanged, &fs);
-    }*/
-
-    void VoipManagerImpl::onMaskEngineStatusChanged(bool engine_loaded, const std::string &error_message)
-    {
-        _dispatcher.execute_core_context({ [this, engine_loaded]
-        {
-            _masksEngineInited = engine_loaded;
-            EnableParams maskEnable;
-            maskEnable.enable = _masksEngineInited;
-            SIGNAL_NOTIFICATION(kNotificationType_MaskEngineEnable, &maskEnable);
-        } });
-    }
-
-    void VoipManagerImpl::onMaskStatusChanged(im::MaskerStatus status, const std::string &path)
-    {
     }
 
     void VoipManagerImpl::onVoiceDetectChanged(bool voice)
     {
         SIGNAL_NOTIFICATION(kNotificationType_VoiceDetect, &voice);
+    }
+
+    void VoipManagerImpl::onRemoteVoices(const std::vector<im::VADInfo> &_participants)
+    {
+        SIGNAL_NOTIFICATION(kNotificationType_VoiceVadInfo, &_participants);
     }
 
     VoipManager *createVoipManager(core::core_dispatcher& dispatcher)

@@ -42,7 +42,6 @@ namespace Ui
 
         void setQuoteSelection() override {}
 
-        void updateStyle() override;
         void updateFonts() override;
 
         void updateSize() override;
@@ -52,8 +51,8 @@ namespace Ui
 
         int bottomOffset() const override;
 
-        static QColor getTextColor(const QString& _contact);
-        static QColor getLinkColor(const QString& _contact);
+        static Styling::ThemeColorKey getTextColor(const QString& _contact);
+        static Styling::ThemeColorKey getLinkColor(const QString& _contact);
         static QFont getTextFont(int _size = -1);
         static QFont getTextFontBold(int _size = -1);
 
@@ -79,7 +78,7 @@ namespace Ui
     private:
         QRect BubbleRect_;
 
-        std::unique_ptr<TextRendering::TextUnit> TextWidget_;
+        TextRendering::TextUnitPtr TextWidget_;
 
         const ::HistoryControl::ChatEventInfoSptr EventInfo_;
 
@@ -122,7 +121,7 @@ namespace Ui
 
         int lineSpacing() const;
 
-        TextRendering::HorAligment textAligment() const;
+        TextRendering::HorAligment textAlignment() const;
 
         bool membersLinksEnabled() const;
     };

@@ -8,7 +8,7 @@ namespace
 {
     constexpr std::chrono::milliseconds focusInAnimDuration() noexcept { return std::chrono::milliseconds(50); }
     constexpr std::chrono::milliseconds tooltipShowDelay() noexcept { return std::chrono::milliseconds(400); }
-}
+} // namespace
 
 namespace Ui
 {
@@ -70,7 +70,7 @@ namespace Ui
         }
     }
 
-    void ClickableWidget::setFocusColor(const QColor & _color)
+    void ClickableWidget::setFocusColor(const QColor& _color)
     {
         focusColor_ = _color;
         if (hasFocus())
@@ -245,9 +245,14 @@ namespace Ui
         return QWidget::focusNextPrevChild(_next);
     }
 
+    bool ClickableWidget::needShowTooltip() const
+    {
+        return (isHovered() || hasFocus()) && rect().contains(mapFromGlobal(QCursor::pos()));
+    }
+
     void ClickableWidget::onTooltipTimer()
     {
-        if ((isHovered() || hasFocus()) && rect().contains(mapFromGlobal(QCursor::pos())))
+        if (needShowTooltip())
             showToolTip();
     }
 
@@ -261,7 +266,7 @@ namespace Ui
         if (canShowTooltip())
         {
             const auto r = rect();
-            Tooltip::show(getTooltipText(), QRect(mapToGlobal(r.topLeft()), r.size()), {0, 0}, Tooltip::ArrowDirection::Down, Tooltip::ArrowPointPos::Top, {}, Tooltip::TooltipMode::Multiline, tooltipHasParent_ ? parentWidget() : nullptr);
+            Tooltip::show(getTooltipText(), QRect(mapToGlobal(r.topLeft()), r.size()), {0, 0}, Tooltip::ArrowDirection::Down, Tooltip::ArrowPointPos::Top, Ui::TextRendering::HorAligment::LEFT, {}, Tooltip::TooltipMode::Multiline, tooltipHasParent_ ? parentWidget() : nullptr);
         }
     }
 
@@ -291,18 +296,20 @@ namespace Ui
         animFocus_->start();
     }
 
-    ClickableTextWidget::ClickableTextWidget(QWidget* _parent, const QFont& _font, const QColor& _color, const TextRendering::HorAligment _textAlign)
+    ClickableTextWidget::ClickableTextWidget(QWidget* _parent, const QFont& _font, const Styling::ThemeColorKey& _color, const TextRendering::HorAligment _textAlign)
         : ClickableWidget(_parent)
     {
-        text_ = TextRendering::MakeTextUnit(QString(), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-        text_->init(_font, _color, QColor(), QColor(), QColor(), _textAlign, 1);
+        text_ = TextRendering::MakeTextUnit(
+            QString(),
+            Data::MentionMap(),
+            TextRendering::LinksVisible::DONT_SHOW_LINKS,
+            TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
+        TextRendering::TextUnit::InitializeParameters params { _font, _color };
+        params.align_ = _textAlign;
+        params.maxLinesCount_ = 1;
+        text_->init(params);
 
         setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
-    }
-
-    ClickableTextWidget::ClickableTextWidget(QWidget* _parent, const QFont& _font, const Styling::StyleVariable _color, const TextRendering::HorAligment _textAlign)
-        : ClickableTextWidget(_parent, _font, Styling::getParameters().getColor(_color), _textAlign)
-    {
     }
 
     void ClickableTextWidget::setText(const Data::FString& _text)
@@ -317,23 +324,21 @@ namespace Ui
 
     QSize ClickableTextWidget::sizeHint() const
     {
-        return QSize(fullWidth_  + leftPadding_, height());
+        return QSize(fullWidth_ + leftPadding_, height());
     }
 
-    void ClickableTextWidget::setColor(const QColor& _color)
+    void ClickableTextWidget::setColor(const Styling::ThemeColorKey& _color)
     {
         text_->setColor(_color);
         update();
     }
 
-    void ClickableTextWidget::setColor(const Styling::StyleVariable _color)
-    {
-        setColor(Styling::getParameters().getColor(_color));
-    }
-
     void ClickableTextWidget::setFont(const QFont& _font)
     {
-        text_->init(_font, text_->getColor(), QColor(), QColor(), QColor(), text_->getAlign(), 1);
+        TextRendering::TextUnit::InitializeParameters params{ _font, text_->getColorKey() };
+        params.align_ = text_->getAlign();
+        params.maxLinesCount_ = 1;
+        text_->init(params);
 
         elideText();
     }
@@ -358,6 +363,7 @@ namespace Ui
     void ClickableTextWidget::resizeEvent(QResizeEvent* _e)
     {
         elideText();
+        text_->setOffsets(leftPadding_, height() / 2);
         ClickableWidget::resizeEvent(_e);
     }
 
@@ -368,4 +374,4 @@ namespace Ui
         text_->getHeight(width());
         update();
     }
-}
+} // namespace Ui

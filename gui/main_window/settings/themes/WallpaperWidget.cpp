@@ -117,19 +117,19 @@ namespace Ui
 
         if (isSelected_)
         {
-            static const auto mark = Utils::renderSvgLayered(
+            static auto mark = Utils::LayeredPixmap(
                 qsl(":/background_apply_icon"),
                 {
-                    {qsl("bg"),   Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY) },
-                    {qsl("tick"), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT) },
+                    {qsl("bg"),   Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY } },
+                    {qsl("tick"), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID_PERMANENT } },
                 }, Utils::scale_value(QSize(20, 20)));
 
             const auto padding = Utils::scale_value(8);
             const auto ratio = Utils::scale_bitmap_ratio();
-            const auto x = width() - padding - mark.width() / ratio;
+            const auto x = width() - padding - mark.actualPixmap().width() / ratio;
             const auto y = padding;
 
-            p.drawPixmap(QPoint(x, y), mark);
+            p.drawPixmap(QPoint(x, y), mark.cachedPixmap());
         }
 
         if (!caption_.isEmpty() && captionColor_.isValid())
@@ -143,7 +143,7 @@ namespace Ui
         if constexpr (build::is_debug())
         {
             const QString text =
-                getId().id_ % QChar::LineFeed %
+                getId().id() % QChar::LineFeed %
                 (wallpaper_->hasWallpaper() ? wallpaper_->getPreviewUrl() : wallpaper_->getBgColor().name()) % QChar::LineFeed %
                 (wallpaper_->getTint().isValid() ? wallpaper_->getTint().name(QColor::HexArgb) : qsl("no tint"));
 

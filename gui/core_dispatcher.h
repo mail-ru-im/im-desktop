@@ -24,7 +24,6 @@
 #include "types/filesharing_download_result.h"
 #include "types/idinfo.h"
 #include "types/friendly.h"
-#include "types/masks.h"
 #include "types/smartreply_suggest.h"
 #include "types/session_info.h"
 #include "types/reactions.h"
@@ -158,6 +157,7 @@ Q_SIGNALS:
 
 Q_SIGNALS:
         void needLogin(const bool _is_auth_error);
+        void needExternalUserAgreement(const QString& terms_of_use_url, const QString& privacy_policy_url);
         void contactList(const std::shared_ptr<Data::ContactList>&, const QString&);
         void im_created();
         void loginComplete();
@@ -166,6 +166,7 @@ Q_SIGNALS:
         void messageContextError(const QString&, qint64 _seq, qint64 _id, Ui::MessagesNetworkError) const;
         void messageLoadAfterSearchError(const QString&, qint64 _seq, qint64 _from, qint64 _countLater, qint64 _countEarly, Ui::MessagesNetworkError) const;
         void messageIdsUpdated(const QVector<qint64>&, const QString&, qint64);
+        void oauthRequired();
         void getSmsResult(int64_t, int _errCode, int _codeLength, const QString& _ivrUrl, const QString& _checks);
         void loginResult(int64_t, int code, bool fill);
         void loginResultAttachPhone(int64_t, int _code);
@@ -181,9 +182,13 @@ Q_SIGNALS:
         void searchedMessagesLocalEmptyResult(const qint64 _seq);
         void searchedMessagesServer(const Data::SearchResultsV& _results, const QString& _cursorNext, const int _total, const qint64 _seq);
 
+        void searchedThreadsLocal(const Data::SearchResultsV& _msg, const qint64 _seq);
+        void searchedThreadsLocalEmptyResult(const qint64 _seq);
+        void searchedThreadsServer(const Data::SearchResultsV& _results, const QString& _cursorNext, const int _total, const qint64 _seq);
+
         void searchedContactsLocal(const Data::SearchResultsV& _results, const qint64 _seq);
         void searchedContactsServer(const Data::SearchResultsV& _results, const qint64 _seq);
-        void syncronizedAddressBook(const bool _result);
+        void syncronizedAddressBook();
 
         void activeDialogHide(const QString& _contact, Ui::ClosePage _closeHistoryPage);
         void guiSettings();
@@ -250,8 +255,11 @@ Q_SIGNALS:
         void fileSharingFileDownloaded(qint64 _seq, const Data::FileSharingDownloadResult& _result);
         void fileSharingFileDownloading(qint64 _seq, const QString& _rawUri, qint64 _bytesTransferred, qint64 _bytesTotal);
 
-        void fileSharingFileMetainfoDownloaded(qint64 _seq, const Data::FileSharingMeta& _meta);
+        void fileSharingFileMetainfoDownloaded(qint64 _seq, const Utils::FileSharingId _fsId, const Data::FileSharingMeta& _meta);
+        void fileSharingFileMetainfoDownloadError(qint64 _seq, const Utils::FileSharingId _fsId, qint32 _errorCode);
         void fileSharingPreviewMetainfoDownloaded(qint64 _seq, const QString& _miniPreviewUri, const QString& _fullPreviewUri);
+
+        void antivirusCheckResult(const Utils::FileSharingId& _fileHash, core::antivirus::check::result _result);
 
         void fileSharingLocalCopyCheckCompleted(qint64 _seq, bool _success, const QString& _localPath);
 
@@ -278,15 +286,6 @@ Q_SIGNALS:
         void pendingListResult(int);
 
         void phoneInfoResult(qint64, const Data::PhoneInfo&);
-
-        // masks
-        void maskListLoaded(qint64 _seq, const QVector<QString>& maskList);
-        void maskPreviewLoaded(int64_t _seq, const QString& _localPath);
-        void maskModelLoaded();
-        void maskLoaded(int64_t _seq, const QString& _localPath);
-        void maskLoadingProgress(int64_t _seq, unsigned _percent);
-        void maskRetryUpdate();
-        void existentMasksLoaded(const std::vector<Data::Mask>& _masks);
 
         void appConfig();
         void appConfigChanged();
@@ -399,7 +398,10 @@ Q_SIGNALS:
         void unreadThreadCount(int _unreadThreads, int _unreadMentionsInThreads, QPrivateSignal) const;
         void threadUpdates(const Data::ThreadUpdates& _updates, QPrivateSignal) const;
         void messageThreadAdded(int64_t _seq, const Data::MessageParentTopic& _parentTopic, const QString& _threadId, int _error, QPrivateSignal) const;
+        void threadInfoLoaded(int64_t _seq, const Data::ThreadInfo& _threadInfo, QPrivateSignal) const;
         void threadsFeedGetResult(const std::vector<Data::ThreadFeedItemData>& _items, const QString& _cursor, bool _resetPage) const;
+        void subscriptionChanged(bool _subscription) const;
+        void threadAutosubscribe(int _error) const;
 
         void authParamsChanged(const Data::AuthParams&);
 
@@ -408,6 +410,7 @@ Q_SIGNALS:
         void taskCreated(qint64 _seq, int _error);
         void updateTask(const Data::TaskData& _task);
         void tasksLoaded(const QVector<Data::TaskData>& _tasks);
+        void appUnavailable(const QString&);
 
     public Q_SLOTS:
         void received(const QString&, const qint64, core::icollection*);
@@ -429,7 +432,7 @@ Q_SIGNALS:
 #endif
 
         qint64 getFileSharingPreviewSize(const QString& _url, const int32_t _originalSize = -1);
-        qint64 downloadFileSharingMetainfo(const QString& _url);
+        qint64 downloadFileSharingMetainfo(const Utils::FileSharingId& _fsId);
         qint64 downloadSharedFile(const QString& _contactAimid, const QString& _url, bool _forceRequestMetainfo, const QString& _fileName = QString(), bool _raise_priority = false);
 
         qint64 abortSharedFileDownloading(const QString& _url, std::optional<qint64> _seq);
@@ -447,9 +450,9 @@ Q_SIGNALS:
             return -1;
         }
 
-        qint64 uploadSharedFile(const QString& _contact, const QString& _localPath, const Data::QuotesVec& _quotes = {}, const QString& _description = QString(), const Data::MentionMap& _mentions = {}, bool _keepExif = false);
+        qint64 uploadSharedFile(const QString& _contact, const QString& _localPath, const Data::QuotesVec& _quotes = {}, const Data::FString& _description = QString(), const Data::MentionMap& _mentions = {}, bool _keepExif = false);
         qint64 uploadSharedFile(const QString& _contact, const QByteArray& _array, QStringView _ext, const Data::QuotesVec& _quotes = {});
-        qint64 uploadSharedFile(const QString& _contact, const QByteArray& _array, QStringView _ext, const Data::QuotesVec& _quotes, const QString& _description, const Data::MentionMap& _mentions);
+        qint64 uploadSharedFile(const QString& _contact, const QByteArray& _array, QStringView _ext, const Data::QuotesVec& _quotes, const Data::FString& _description, const Data::MentionMap& _mentions);
         qint64 uploadSharedFile(const QString& _contact, const QString& _localPath, const Data::QuotesVec& _quotes, std::optional<std::chrono::seconds> _duration);
         qint64 abortSharedFileUploading(const QString& _contact, const QString& _localPath, const QString& _uploadingProcessId);
 
@@ -557,6 +560,15 @@ Q_SIGNALS:
         qint64 subscribeTask(const QString& _taskId);
         qint64 unsubscribeTask(const QString& _taskId);
 
+        qint64 subscribeFileSharingAntivirus(const Utils::FileSharingId& _fsId);
+        qint64 unsubscribeFileSharingAntivirus(const Utils::FileSharingId& _fsId);
+
+        qint64 subscribeTasksCounter();
+        qint64 unsubscribeTasksCounter();
+
+        qint64 subscribeMailsCounter();
+        qint64 unsubscribeMailsCounter();
+
         qint64 localPINEntered(const QString& _password);
 
         void disableLocalPIN();
@@ -618,6 +630,7 @@ Q_SIGNALS:
 
         int64_t addThread(const Data::MessageParentTopic& _topic);
         int64_t getThreadsFeed(const QString& _cursor);
+        int64_t updateThreadSubscription(const QString& _threadId, bool _subscribe);
 
         int64_t setDraft(const Data::MessageBuddy& _msg, int64_t _timestamp, bool _synch = false);
         int64_t getDraft(const QString& _contact);
@@ -647,9 +660,14 @@ Q_SIGNALS:
 
         void setLastRead(const QString& _contact, int64_t _lastMsgId, ReadAll _readAll = ReadAll::No);
 
+        void addChatsThread(const QString& _contact, int64_t _msgId, const QString& _threadId);
+        void removeChatsThread(const QString& _contact, int64_t _msgId, const QString& _threadId);
+
         // messages
         void onNeedLogin(const int64_t _seq, core::coll_helper _params);
+        void onNeedExternalUserAgreement(const int64_t _seq, core::coll_helper _params);
         void onImCreated(const int64_t _seq, core::coll_helper _params);
+        void onOAuthRequired(const int64_t _seq, core::coll_helper _params);
         void onLoginComplete(const int64_t _seq, core::coll_helper _params);
         void onContactList(const int64_t _seq, core::coll_helper _params);
         void onLoginGetSmsCodeResult(const int64_t _seq, core::coll_helper _params);
@@ -684,6 +702,11 @@ Q_SIGNALS:
         void onDialogsSearchLocalEmptyResult(const int64_t _seq, core::coll_helper _params);
         void onDialogsSearchServerResults(const int64_t _seq, core::coll_helper _params);
         void onDialogsSearchResult(const int64_t _seq, core::coll_helper _params, const bool _fromLocalSearch);
+
+        void onThreadsSearchLocalResults(const int64_t _seq, core::coll_helper _params);
+        void onThreadsSearchLocalEmptyResult(const int64_t _seq, core::coll_helper _params);
+        void onThreadsSearchServerResults(const int64_t _seq, core::coll_helper _params);
+        void onThreadsSearchResult(const int64_t _seq, core::coll_helper _params, const bool _fromLocalSearch);
 
         void onDialogsSearchPatternHistory(const int64_t _seq, core::coll_helper _params);
 
@@ -730,6 +753,7 @@ Q_SIGNALS:
         void fileSharingDownloadProgress(const int64_t _seq, core::coll_helper _params);
         void fileSharingGetPreviewSizeResult(const int64_t _seq, core::coll_helper _params);
         void fileSharingMetainfoResult(const int64_t _seq, core::coll_helper _params);
+        void fileSharingMetainfoError(const int64_t _seq, core::coll_helper _params);
         void fileSharingCheckExistsResult(const int64_t _seq, core::coll_helper _params);
         void fileSharingDownloadResult(const int64_t _seq, core::coll_helper _params);
 
@@ -756,7 +780,7 @@ Q_SIGNALS:
         void onUpdateProfileResult(const int64_t _seq, core::coll_helper _params);
         void onChatsHomeGetResult(const int64_t _seq, core::coll_helper _params);
         void onChatsHomeGetFailed(const int64_t _seq, core::coll_helper _params);
-        void onUserProxyResult(const int64_t _seq, core::coll_helper _params);
+        void onProxyChange(const int64_t _seq, core::coll_helper _params);
         void onOpenCreatedChat(const int64_t _seq, core::coll_helper _params);
         void onLoginNewUser(const int64_t _seq, core::coll_helper _params);
         void onSetAvatarResult(const int64_t _seq, core::coll_helper _params);
@@ -767,13 +791,6 @@ Q_SIGNALS:
         void onPhoneinfoResult(const int64_t _seq, core::coll_helper _params);
         void onContactRemovedFromIgnore(const int64_t _seq, core::coll_helper _params);
         void onFriendlyUpdate(const int64_t _seq, core::coll_helper _params);
-        void onMasksGetIdListResult(const int64_t _seq, core::coll_helper _params);
-        void onMasksPreviewResult(const int64_t _seq, core::coll_helper _params);
-        void onMasksModelResult(const int64_t _seq, core::coll_helper _params);
-        void onMasksGetResult(const int64_t _seq, core::coll_helper _params);
-        void onMasksProgress(const int64_t _seq, core::coll_helper _params);
-        void onMasksRetryUpdate(const int64_t _seq, core::coll_helper _params);
-        void onExistentMasks(const int64_t _seq, core::coll_helper _params);
         void onMailStatus(const int64_t _seq, core::coll_helper _params);
         void onMailNew(const int64_t _seq, core::coll_helper _params);
         void getMrimKeyResult(const int64_t _seq, core::coll_helper _params);
@@ -819,6 +836,8 @@ Q_SIGNALS:
         void onPollUpdate(const int64_t _seq, core::coll_helper _params);
         void onSessionStarted(const int64_t _seq, core::coll_helper _params);
         void onSessionFinished(const int64_t _seq, core::coll_helper _params);
+
+        void onAntivirusCheckResult(const int64_t _seq, core::coll_helper _params);
 
         void onModChatParamsResult(const int64_t _seq, core::coll_helper _params);
         void onModChatAboutResult(const int64_t _seq, core::coll_helper _params);
@@ -870,13 +889,24 @@ Q_SIGNALS:
         void onThreadsUpdate(const int64_t _seq, core::coll_helper _params);
         void onUnreadThreadsCount(const int64_t _seq, core::coll_helper _params);
         void onAddThreadResult(const int64_t _seq, core::coll_helper _params);
+        void onSubscripionChanged(const int64_t _seq, core::coll_helper _params);
+        void onGetThreadResult(const int64_t _seq, core::coll_helper _params);
         void onThreadsFeedGetResult(const int64_t _seq, core::coll_helper _params);
+        void onThreadsSubscribersGetResult(const int64_t _seq, core::coll_helper _params);
+        void onThreadsSubscribersSearchResult(const int64_t _seq, core::coll_helper _params);
+        void onThreadAutosubscribeResult(const int64_t _seq, core::coll_helper _params);
+
         void onDraft(const int64_t _seq, core::coll_helper _params);
 
         void onTaskCreateResult(const int64_t _seq, core::coll_helper _params);
         void onTaskUpdate(const int64_t _seq, core::coll_helper _params);
         void onTaskEditResult(const int64_t _seq, core::coll_helper _params);
         void onTasksLoaded(const int64_t _seq, core::coll_helper _params);
+        void onUnreadTasksCounter(const int64_t _seq, core::coll_helper _params);
+
+        void onUnreadMailsCounter(const int64_t _seq, core::coll_helper _params);
+
+        void onMiniappUnavailable(const int64_t _seq, core::coll_helper _params);
 
 #ifdef IM_AUTO_TESTING
         std::unique_ptr<WebServer> server;

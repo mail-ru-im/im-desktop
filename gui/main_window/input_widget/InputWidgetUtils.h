@@ -1,16 +1,14 @@
 #pragma once
 
+#include "../../styles/StyleVariable.h"
+#include "../../styles/ThemeParameters.h"
+
 namespace core
 {
     namespace stats
     {
         enum class stats_event_names;
     }
-}
-
-namespace Styling
-{
-    enum class StyleVariable;
 }
 
 namespace Ui
@@ -104,8 +102,9 @@ namespace Ui
     QColor getPopupHoveredColor();
     QColor getPopupPressedColor();
 
+    Styling::ThemeColorKey focusColorPrimaryKey();
     QColor focusColorPrimary();
-    QColor focusColorAttention();
+    Styling::ThemeColorKey focusColorAttentionKey();
 
     void sendStat(const QString& _contact, core::stats::stats_event_names _event, const std::string_view _from);
     void sendShareStat(const QString& _contact, bool _sent);
@@ -195,26 +194,30 @@ namespace Ui
 
 namespace Styling
 {
-    enum class StyleVariable;
-
     namespace InputButtons
     {
         namespace Default
         {
             void setColors(Ui::CustomButton* _button);
+            Styling::ThemeColorKey defaultColorKey();
             QColor defaultColor();
+            Styling::ThemeColorKey hoverColorKey();
             QColor hoverColor();
+            Styling::ThemeColorKey pressedColorKey();
             QColor pressedColor();
-            QColor activeColor();
+            Styling::ThemeColorKey activeColorKey();
         }
 
         namespace Alternate
         {
             void setColors(Ui::CustomButton* _button);
+            Styling::ThemeColorKey defaultColorKey();
+            Styling::ThemeColorKey hoverColorKey();
             QColor defaultColor();
             QColor hoverColor();
+            Styling::ThemeColorKey pressedColorKey();
             QColor pressedColor();
-            QColor activeColor();
+            Styling::ThemeColorKey activeColorKey();
         }
     }
 }

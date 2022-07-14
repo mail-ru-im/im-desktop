@@ -19,6 +19,9 @@ namespace Ui
     {
         Q_OBJECT
 
+    Q_SIGNALS:
+        void avatarClicked(QPrivateSignal);
+
     public:
         ChatPlaceholderAvatar(QWidget* _parent, const QString& _contact);
 
@@ -31,11 +34,21 @@ namespace Ui
     protected:
         void paintEvent(QPaintEvent* _event) override;
         void showEvent(QShowEvent* _event) override;
+        void mousePressEvent(QMouseEvent* _event) override;
+        void mouseReleaseEvent(QMouseEvent* _event) override;
+        void mouseMoveEvent(QMouseEvent* _event) override;
+        void resizeEvent(QResizeEvent* _event) override;
+
+    private:
+        bool containsCursor(const QPoint& _pos) const;
 
     private:
         QPixmap pixmap_;
+        QPoint clicked_;
         QString contact_;
+        QRegion region_;
         PlaceholderState state_ = PlaceholderState::hidden;
+        bool defaultAvatar_ = false;
     };
 
     class ChatPlaceholder : public QWidget
@@ -65,6 +78,7 @@ namespace Ui
 
         void updateCaptionsChat();
         void updateCaptionsContact();
+        void avatarClicked();
 
     protected:
         void resizeEvent(QResizeEvent*) override;

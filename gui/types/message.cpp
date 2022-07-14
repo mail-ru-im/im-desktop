@@ -9,6 +9,7 @@
 #include "../utils/log/log.h"
 #include "../utils/UrlParser.h"
 #include "../utils/utils.h"
+#include "../utils/MimeDataUtils.h"
 #include "../utils/features.h"
 
 #include "../main_window/history_control/FileSharingInfo.h"
@@ -51,6 +52,7 @@ namespace
     constexpr std::string_view c_format_quote = "quote";
     constexpr std::string_view c_format_offset = "offset";
     constexpr std::string_view c_format_length = "length";
+    constexpr std::string_view c_format_start_index = "start_index";
     constexpr std::string_view c_format_data = "data";
     constexpr std::string_view c_format_lang = "lang";
 
@@ -76,6 +78,12 @@ namespace
                 if (v = coll->get_value(c_format_length); v)
                     format.range_.size_ = v->get_as_int();
 
+                if (coll->is_value_exist(c_format_start_index))
+                {
+                    if (v = coll->get_value(c_format_start_index); v)
+                        format.range_.start_index_ = v->get_as_int();
+                }
+
                 if (v = coll->get_value(c_format_type); v)
                     format.type_ = static_cast<core::data::format_type>(v->get_as_uint());
 
@@ -95,8 +103,6 @@ namespace
 
 namespace Data
 {
-    const FString FStringView::emptyString;
-
     void serializeFormat(const core::data::format& _format, core::coll_helper& _coll, std::string_view _name)
     {
         auto coll_format = core::coll_helper(_coll->create_collection(), true);
@@ -110,6 +116,7 @@ namespace Data
             coll_range.set_value_as_uint(c_format_type, static_cast<uint32_t>(info.type_));
             coll_range.set_value_as_int(c_format_offset, info.range_.offset_);
             coll_range.set_value_as_int(c_format_length, info.range_.size_);
+            coll_range.set_value_as_int(c_format_start_index, info.range_.start_index_);
             if (info.data_.has_value())
                 coll_range.set_value_as_string(c_format_data, *(info.data_));
             core::ifptr<core::ivalue> value(coll_format->create_value());
@@ -745,7 +752,7 @@ namespace Data
 
     Logic::MessageKey MessageBuddy::ToKey() const
     {
-        return Logic::MessageKey(Id_, Prev_, InternalId_, PendingId_, Time_, Type_, IsOutgoing(), Logic::control_type::ct_message, Date_);
+        return Logic::MessageKey(Id_, Prev_, InternalId_, PendingId_, Time_, Type_, IsOutgoing(), Logic::ControlType::Message, Date_);
     }
 
     bool MessageBuddy::IsEdited() const
@@ -959,140 +966,6 @@ namespace Data
     bool DlgState::hasParentTopic() const
     {
         return parentTopic_.has_value();
-    }
-
-    bool FString::containsFormat(core::data::format_type _type) const
-    {
-        return std::any_of(formatting().formats().cbegin(), formatting().formats().cend(),
-            [_type](auto _ft) { return _ft.type_ == _type; });
-    }
-
-    bool FString::containsAnyFormatExceptFor(FormatTypes _types) const
-    {
-        return std::any_of(formatting().formats().cbegin(), formatting().formats().cend(),
-            [_types](auto _ft) { return !_types.testFlag(_ft.type_); });
-    }
-
-    bool FString::operator!=(const FString& _other)
-    {
-        return !operator==(_other);
-    }
-
-    void FString::chop(int _n)
-    {
-        _n = qBound(0, _n, string_.size());
-        format_.cut_at(string_.size() - _n);
-        string_.chop(_n);
-        im_assert(isFormatValid());
-    }
-
-    FString& FString::operator+=(QStringView _other)
-    {
-#if defined(__linux__)
-        string_ += _other.toString();  // Our Qt version on linux doesn't support it yet
-#else
-        string_ += _other;
-#endif
-        return *this;
-    }
-
-    FString& FString::operator+=(const FString& _other)
-    {
-        auto newFormats = format_.formats();
-        const auto& fsOther = _other.formatting().formats();
-
-        for (auto newOne : fsOther)
-        {
-            newOne.range_.offset_ += string_.size();
-            auto didExtendExistingRange = false;
-            for (auto& oldOne : newFormats)
-            {
-                if (oldOne.type_ == newOne.type_)
-                {
-                    auto& r = oldOne.range_;
-                    if (r.offset_ + r.size_ == newOne.range_.offset_)
-                    {
-                        r.size_ += newOne.range_.size_;
-                        didExtendExistingRange = true;
-                        break;
-                    }
-                }
-            }
-            if (!didExtendExistingRange)
-                newFormats.emplace_back(std::move(newOne));
-        }
-
-        format_ = core::data::format(std::move(newFormats));
-        string_.append(_other.string());
-
-        return *this;
-    }
-
-    FString& FString::operator+=(FStringView _other)
-    {
-        *this += _other.toFString();
-        return *this;
-    }
-
-    void FString::setFormatting(const core::data::format& _formatting)
-    {
-        format_ = _formatting;
-        format_.cut_at(string_.size());
-    }
-
-    void FString::addFormat(core::data::format_type _type)
-    {
-        auto builder = formatting().get_builder();
-        builder %= {_type, core::data::range{ 0, size() }};
-        setFormatting(builder.finalize());
-    }
-
-    bool FString::operator==(const FString& _other) const
-    {
-        if (string() != _other.string() || formatting() != _other.formatting())
-            return false;
-        return true;
-    }
-
-    bool FString::operator!=(const FString& _other) const
-    {
-        return !operator==(_other);
-    }
-
-    FString::FString(const QString& _string, const core::data::format& _format, bool _doDebugValidityCheck)
-        : string_(_string), format_(_format)
-    {
-        im_assert(!_doDebugValidityCheck || isFormatValid()); 
-    }
-
-    bool FString::isFormatValid() const
-    {
-        using ftype = core::data::format_type;
-        for (const auto& [type, range, data] : format_.formats())
-        {
-            const auto [offset, size] = range;
-            if (type == ftype::link && (!data || Utils::isMentionLink(QString::fromStdString(*data))))
-            {
-                im_assert(false);
-                return false;
-            }
-            if (type == ftype::mention && !Utils::isMentionLink(QStringView(string_).mid(offset, size)))
-            {
-                im_assert(false);
-                return false;
-            }
-        }
-        return true;
-    }
-
-    void FString::removeAllBlockFormats()
-    {
-        formatting().remove_formats(core::data::is_block_format);
-    }
-
-    void FString::removeMentionFormats()
-    {
-        formatting().remove_formats([](core::data::format_type _type) { return _type == core::data::format_type::mention; });
     }
 
     void serializeMentions(core::coll_helper& _collection, const Data::MentionMap& _mentions)
@@ -1767,7 +1640,7 @@ namespace Data
         const QString& _myAimid,
         const qint64 _theirs_last_delivered,
         const qint64 _theirs_last_read,
-        Out Data::MessageBuddies &messages)
+        Out Data::MessageBuddies& messages)
     {
         im_assert(!_aimId.isEmpty());
         im_assert(!_myAimid.isEmpty());
@@ -1990,246 +1863,6 @@ namespace Data
         }
 
         return result;
-    }
-
-    FString Data::FString::Builder::finalize(bool _mergeMentions)
-    {
-        using ftype = core::data::format_type;
-        auto prevUrl = std::string();
-
-        auto isMention = [](const FString& _s) -> std::string_view
-        {
-            for (const auto& [type, range, data] : _s.formatting().formats())
-            {
-                if (type == ftype::mention && range.size_ == _s.size() && data)
-                    return *data;
-            }
-            return {};
-        };
-
-        auto result = FString();
-        for (const auto& part : parts_)
-        {
-            // These cumbersome ifs are due to std::visit and std::get are not available in XCode 12.2, see https://stackoverflow.com/q/52310835
-            if (std::holds_alternative<QStringView>(part))
-            {
-                result += *std::get_if<QStringView>(&part);
-            }
-            else if (std::holds_alternative<QString>(part))
-            {
-                result += *std::get_if<QString>(&part);
-            }
-            else if (std::holds_alternative<FString>(part))
-            {
-                auto fs = *std::get_if<FString>(&part);
-                if (_mergeMentions)
-                {
-                    const auto url = isMention(fs);
-
-                    if (url.empty() || prevUrl != url)
-                        result += std::move(fs);
-                    prevUrl = url;
-                }
-                else
-                {
-                    result += std::move(fs);
-                }
-            }
-            else if (std::holds_alternative<FStringView>(part))
-            {
-                im_assert(!_mergeMentions);
-                result += *std::get_if<FStringView>(&part);
-            }
-        }
-        return result;
-    }
-
-    FStringView::FStringView(const FString& _string, int _offset, int _size)
-        : string_(&_string)
-        , offset_(_offset)
-        , size_(_size == -1 ?_string.size() - _offset : _size)
-    {
-        im_assert(offset_ >= 0);
-        im_assert(size_ >= 0);
-        im_assert(offset_ + size_ <= _string.size());
-
-        if (offset_ < 0 || size_ < 0 || offset_ + size_ > _string.size())
-        {
-            offset_ = 0;
-            size_ = 0;
-        }
-    }
-
-    QStringView FStringView::string() const
-    {
-        const auto fullView = QStringView(string_->string());
-        if (offset_ + size_ <= fullView.size())
-            return fullView.mid(offset_, size_);
-        return {};
-    }
-
-    bool FStringView::hasFormatting() const
-    {
-        if (!string_->hasFormatting())
-            return false;
-
-        for (const auto& ft : string_->formatting().formats())
-        {
-            if (cutRangeToFitView(ft.range_).size_ > 0)
-                return true;
-        }
-        return false;
-    }
-
-    FStringView FStringView::trimmed() const
-    {
-        const auto str = string();
-
-        auto start = 0;
-        for (; start < str.size(); ++start)
-        {
-            if (!str.at(start).isSpace())
-                break;
-        }
-
-        auto last = size() - 1;
-        for (; last > start; --last)
-        {
-            if (!str.at(last).isSpace())
-                break;
-        }
-
-        const auto result = mid(start, last - start + 1);
-        im_assert(!result.string().startsWith(u' '));
-        im_assert(!result.string().endsWith(u' '));
-        return result;
-    }
-
-    std::vector<core::data::range_format> Data::FStringView::getStyles() const
-    {
-        auto result = std::vector<core::data::range_format>();
-        for (const auto& [type, range, data] : string_->formatting().formats())
-        {
-            if (const auto r = cutRangeToFitView(range); r.size_ > 0)
-                result.emplace_back(type, r, data);
-        }
-        return result;
-    }
-
-    bool FStringView::tryToAppend(FStringView _other)
-    {
-        if (isEmpty())
-        {
-            *this = _other;
-            return true;
-        }
-
-        if (_other.isEmpty())
-            return true;
-
-        im_assert(_other.string_ == string_);
-        if (_other.string_ != string_)
-            return false;
-
-        if (const auto thisEnd = offset_ + size_; thisEnd == _other.offset_)
-        {
-            size_ += _other.size_;
-            return true;
-        }
-
-        return false;
-    }
-
-    bool FStringView::tryToAppend(QChar _ch)
-    {
-        if (!string_
-            || (string_->size() < offset_ + size_ + 1)
-            || (string_->string().at(offset_ + size_) != _ch))
-        {
-            return false;
-        }
-
-        size_ += 1;
-        return true;
-    }
-
-    bool FStringView::tryToAppend(QStringView _text)
-    {
-        if (!string_
-            || (string_->size() < offset_ + size_ + _text.size())
-            || (string_->string().midRef(offset_ + size_, _text.size()) != _text))
-        {
-            return false;
-        }
-
-        size_ += _text.size();
-        return true;
-    }
-
-    std::vector<FStringView> FStringView::splitByTypes(FormatTypes _types) const
-    {
-        if (isEmpty() || _types == FormatTypes())
-            return {};
-
-        auto result = std::vector<FStringView>();
-        return result;
-    }
-
-    FString FStringView::toFString() const
-    {
-        return { string().toString(), getFormat() };
-    }
-
-    bool FStringView::isAnyOf(FormatTypes _types) const
-    {
-        for (const auto& [type, range, _] : string_->formatting().formats())
-        {
-            if (_types.testFlag(type) && cutRangeToFitView(range).size_ == size())
-                return true;
-        }
-        return false;
-    }
-
-    FString FStringView::replaceByString(QStringView _newString, bool _keepMentionFormat) const
-    {
-        const auto oldSize = string().size();
-        auto newFormats = std::vector<core::data::range_format>();
-        const auto format = getFormat();
-        for (auto [type, range, data] : format.formats())
-        {
-            if ((!_keepMentionFormat && type == core::data::format_type::mention))
-                continue;
-            if (range.offset_ != 0 || range.size_ != oldSize)
-                continue;
-
-            range.size_ = _newString.size();
-            if (type == core::data::format_type::mention)
-                data = string().toString().toStdString();
-            newFormats.emplace_back(type, range, std::move(data));
-        }
-        return { _newString.toString(), { std::move(newFormats) } , false};
-    }
-
-    core::data::range FStringView::cutRangeToFitView(core::data::range _range) const
-    {
-        im_assert(_range.offset_ >= 0);
-        im_assert(_range.size_ >= 0);
-        const auto left = std::max(offset_, _range.offset_);
-        const auto right = std::min(offset_ + size_, _range.offset_ + _range.size_);
-        _range.offset_ = left - offset_;
-        _range.size_ = std::max(0, right - left);
-        return _range;
-    }
-
-    core::data::format FStringView::getFormat() const
-    {
-        auto builder = core::data::format::builder();
-        for (const auto& [type, range, data] : string_->formatting().formats())
-        {
-            if (const auto r = cutRangeToFitView(range); r.size_ > 0)
-                builder %= { type, r, data };
-        }
-        return builder.finalize();
     }
 }
 

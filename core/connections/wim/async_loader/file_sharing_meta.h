@@ -1,17 +1,20 @@
 #pragma once
 
+#include "../../../../common.shared/antivirus/antivirus_types.h"
+
 namespace core
 {
     namespace wim
     {
         struct fs_meta_info
         {
-            bool is_previewable_ = false;
             int64_t file_size_ = 0;
             std::string file_name_;
             std::string dlink_;
             std::string mime_;
             std::string md5_;
+            antivirus::check antivirus_check_;
+            bool is_previewable_ = false;
             bool trust_required_ = false;
 
             void serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const;
@@ -53,6 +56,7 @@ namespace core
             std::optional<fs_meta_audio> audio_;
             void serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const;
             void unserialize(const rapidjson::Value& _node);
+            uint64_t get_duration() const;
         };
 
         struct fs_meta_previews
@@ -77,10 +81,9 @@ namespace core
 
         struct file_sharing_meta
         {
-            explicit file_sharing_meta(std::string&& _url);
+            explicit file_sharing_meta();
 
             int status_code_ = 0;
-            std::string file_url_;
 
             fs_meta_info info_;
             fs_extra_meta extra_;
@@ -91,7 +94,7 @@ namespace core
 
             void serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const;
 
-            static file_sharing_meta_uptr parse_json(InOut char* _json, std::string_view _uri);
+            static file_sharing_meta_uptr parse_json(InOut char* _json);
 
             int get_status_code() const { return status_code_; }
         };

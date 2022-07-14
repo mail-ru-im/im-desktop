@@ -3,6 +3,7 @@
 #include "../../urls_cache.h"
 #include "../../../http_request.h"
 #include "../../../../common.shared/json_helper.h"
+#include "../log_replace_functor.h"
 
 #include "edit_task.h"
 
@@ -17,6 +18,11 @@ namespace core::wim
     std::string_view edit_task::get_method() const
     {
         return "edit";
+    }
+
+    int edit_task::minimal_supported_api_version() const
+    {
+        return core::urls::api_version::instance().minimal_supported();
     }
 
     int32_t edit_task::init_request(const std::shared_ptr<core::http_request_simple>& _request)

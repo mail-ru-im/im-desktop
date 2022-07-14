@@ -22,11 +22,11 @@ namespace core
             int32_t init_request_full_start_session(const std::shared_ptr<core::http_request_simple>& _request);
             int32_t init_request_short_start_session(const std::shared_ptr<core::http_request_simple>& _request);
 
-            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
-            virtual int32_t parse_response_data(const rapidjson::Value& _data) override;
-            virtual void parse_response_data_on_error(const rapidjson::Value& _data) override;
-            virtual int32_t execute_request(const std::shared_ptr<core::http_request_simple>& _request) override;
-            virtual int32_t on_response_error_code() override;
+            int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            int32_t parse_response_data(const rapidjson::Value& _data) override;
+            void parse_response_data_on_error(const rapidjson::Value& _data) override;
+            int32_t execute_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            int32_t on_response_error_code() override;
 
             std::string uniq_device_id_;
             std::string locale_;
@@ -64,11 +64,12 @@ namespace core
 
             virtual ~start_session();
 
-            virtual priority_t get_priority() const override;
-            virtual bool is_post() const override { return true; }
+            priority_t get_priority() const override;
+            bool is_post() const override { return true; }
 
-            virtual std::string_view get_method() const override;
-            virtual bool support_self_resending() const override { return true; }
+            std::string_view get_method() const override;
+            bool support_self_resending() const override { return true; }
+            int minimal_supported_api_version() const override;
         };
     }
 }

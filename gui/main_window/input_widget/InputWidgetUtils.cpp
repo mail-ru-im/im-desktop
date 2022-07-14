@@ -127,14 +127,19 @@ namespace Ui
         return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID, 0.08);
     }
 
+    Styling::ThemeColorKey focusColorPrimaryKey()
+    {
+        return Styling::getParameters().getPrimaryTabFocusColorKey();
+    }
+
     QColor focusColorPrimary()
     {
         return Styling::getParameters().getPrimaryTabFocusColor();
     }
 
-    QColor focusColorAttention()
+    Styling::ThemeColorKey focusColorAttentionKey()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION, 0.22);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_ATTENTION, 0.22 };
     }
 
     void sendStat(const QString& _contact, core::stats::stats_event_names _event, const std::string_view _from)
@@ -294,31 +299,46 @@ namespace Styling::InputButtons::Default
         im_assert(_button);
         if (_button)
         {
-            _button->setDefaultColor(defaultColor());
-            _button->setHoverColor(hoverColor());
-            _button->setPressedColor(pressedColor());
-            _button->setActiveColor(activeColor());
+            _button->setDefaultColor(defaultColorKey());
+            _button->setHoverColor(hoverColorKey());
+            _button->setPressedColor(pressedColorKey());
+            _button->setActiveColor(activeColorKey());
         }
+    }
+
+    Styling::ThemeColorKey defaultColorKey()
+    {
+        return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY };
+    }
+
+    Styling::ThemeColorKey hoverColorKey()
+    {
+        return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY_HOVER };
     }
 
     QColor defaultColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
+        return Styling::getColor(defaultColorKey());
     }
 
     QColor hoverColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY_HOVER);
+        return Styling::getColor(hoverColorKey());
+    }
+
+    Styling::ThemeColorKey pressedColorKey()
+    {
+        return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY_ACTIVE };
     }
 
     QColor pressedColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY_ACTIVE);
+        return Styling::getColor(pressedColorKey());
     }
 
-    QColor activeColor()
+    Styling::ThemeColorKey activeColorKey()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY };
     }
 }
 
@@ -329,30 +349,45 @@ namespace Styling::InputButtons::Alternate
         im_assert(_button);
         if (_button)
         {
-            _button->setDefaultColor(defaultColor());
-            _button->setHoverColor(hoverColor());
-            _button->setPressedColor(pressedColor());
-            _button->setActiveColor(activeColor());
+            _button->setDefaultColor(defaultColorKey());
+            _button->setHoverColor(hoverColorKey());
+            _button->setPressedColor(pressedColorKey());
+            _button->setActiveColor(activeColorKey());
         }
+    }
+
+    Styling::ThemeColorKey defaultColorKey()
+    {
+        return Styling::ThemeColorKey{ Styling::StyleVariable::GHOST_PRIMARY_INVERSE };
     }
 
     QColor defaultColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::GHOST_PRIMARY_INVERSE);
+        return Styling::getColor(defaultColorKey());
+    }
+
+    Styling::ThemeColorKey hoverColorKey()
+    {
+        return Styling::ThemeColorKey{ Styling::StyleVariable::GHOST_PRIMARY_INVERSE_HOVER };
     }
 
     QColor hoverColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::GHOST_PRIMARY_INVERSE_HOVER);
+        return Styling::getColor(hoverColorKey());
+    }
+
+    Styling::ThemeColorKey pressedColorKey()
+    {
+        return Styling::ThemeColorKey{ Styling::StyleVariable::GHOST_PRIMARY_INVERSE_ACTIVE };
     }
 
     QColor pressedColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::GHOST_PRIMARY_INVERSE_ACTIVE);
+        return Styling::getColor(pressedColorKey());
     }
 
-    QColor activeColor()
+    Styling::ThemeColorKey activeColorKey()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::GHOST_PRIMARY_INVERSE_ACTIVE);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::GHOST_PRIMARY_INVERSE_ACTIVE };
     }
 }

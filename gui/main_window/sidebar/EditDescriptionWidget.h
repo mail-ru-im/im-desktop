@@ -3,7 +3,6 @@
 namespace Ui
 {
     class TextEditEx;
-    class TextBrowserEx;
     class DialogButton;
 
     namespace TextRendering

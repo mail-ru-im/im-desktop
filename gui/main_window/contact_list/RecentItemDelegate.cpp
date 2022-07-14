@@ -23,12 +23,15 @@
 
 #include "../../gui_settings.h"
 #include "../../styles/ThemeParameters.h"
+#include "../../styles/StyleVariable.h"
 
 #include <boost/range/adaptor/reversed.hpp>
 #include "main_window/LocalPIN.h"
 #include "main_window/contact_list/FavoritesUtils.h"
 
 #include "../../../common.shared/config/config.h"
+#include "IconsDelegate.h"
+#include "IconsManager.h"
 
 namespace Ui
 {
@@ -56,25 +59,25 @@ namespace Ui
         return Utils::scale_value(QSize(12, 12));
     }
 
-    QPixmap getPin(const bool _selected, const QSize& _sz)
+    Utils::StyledPixmap getPin(const bool _selected, const QSize& _sz)
     {
-        return Utils::renderSvg(qsl(":/pin_icon"), _sz, Styling::getParameters().getColor(_selected ? Styling::StyleVariable::TEXT_SOLID_PERMANENT : Styling::StyleVariable::BASE_TERTIARY));
+        return Utils::StyledPixmap(qsl(":/pin_icon"), _sz, Styling::ThemeColorKey{ _selected ? Styling::StyleVariable::TEXT_SOLID_PERMANENT : Styling::StyleVariable::BASE_TERTIARY });
     }
 
     QPixmap getRemove(const bool _isSelected)
     {
-        static const QPixmap rem(Utils::renderSvgScaled(qsl(":/ignore_icon"), QSize(20, 20), Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION)));
-        static const QPixmap remSelected(Utils::renderSvgScaled(qsl(":/ignore_icon"), QSize(20, 20), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT)));
+        static auto rem = Utils::StyledPixmap::scaled(qsl(":/ignore_icon"), QSize(20, 20), Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_ATTENTION });
+        static auto remSelected = Utils::StyledPixmap::scaled(qsl(":/ignore_icon"), QSize(20, 20), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID_PERMANENT });
 
-        return _isSelected ? remSelected : rem;
+        return (_isSelected ? remSelected : rem).actualPixmap();
     }
 
     QPixmap getAdd(const bool _isSelected)
     {
-        static const QPixmap add(Utils::renderSvgScaled(qsl(":/controls/add_icon"), QSize(20, 20), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY)));
-        static const QPixmap addSelected(Utils::renderSvgScaled(qsl(":/controls/add_icon"), QSize(20, 20), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_ACTIVE)));
+        static auto add = Utils::StyledPixmap::scaled(qsl(":/controls/add_icon"), QSize(20, 20), Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY });
+        static auto addSelected = Utils::StyledPixmap::scaled(qsl(":/controls/add_icon"), QSize(20, 20), Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_ACTIVE });
 
-        return _isSelected ? addSelected : add;
+        return (_isSelected ? addSelected : add).actualPixmap();
     }
 
     int getPinPadding() noexcept
@@ -97,87 +100,9 @@ namespace Ui
         return Utils::renderSvgScaled(qsl(":/contacts_icon"), getContactsIconSize());
     }
 
-    QSize getAttentionSize() noexcept
-    {
-        return Utils::scale_value(QSize(20, 20));
-    }
-
-    QPixmap getAttentionIcon(const bool _selected)
-    {
-        const auto bg = _selected ? Styling::StyleVariable::TEXT_SOLID_PERMANENT : Styling::StyleVariable::PRIMARY;
-        const auto star = _selected ? Styling::StyleVariable::PRIMARY : Styling::StyleVariable::BASE_GLOBALWHITE;
-
-        return Utils::renderSvgLayered(qsl(":/unread_mark_icon"),
-            {
-                { qsl("bg"), Styling::getParameters().getColor(bg) },
-                { qsl("star"), Styling::getParameters().getColor(star) },
-            });
-    }
-
-    QSize getMentionSize() noexcept
-    {
-        return Utils::scale_value(QSize(20, 20));
-    }
-
-    QPixmap getMentionIcon(const bool _selected, const QSize _size = QSize())
-    {
-        const auto bg = _selected ? Styling::StyleVariable::TEXT_SOLID_PERMANENT : Styling::StyleVariable::PRIMARY;
-        const auto dog = _selected ? Styling::StyleVariable::PRIMARY : Styling::StyleVariable::BASE_GLOBALWHITE;
-        if (_size.isValid())
-        {
-            return Utils::renderSvgLayered(qsl(":/recent_mention_icon"),
-                {
-                    { qsl("bg"), Styling::getParameters().getColor(bg) },
-                    { qsl("dog"), Styling::getParameters().getColor(dog) },
-                }
-            , _size);
-        }
-
-        return Utils::renderSvgLayered(qsl(":/recent_mention_icon"),
-            {
-                { qsl("bg"), Styling::getParameters().getColor(bg) },
-                { qsl("dog"), Styling::getParameters().getColor(dog) },
-            });
-    }
-
     QPixmap getMailIcon(const int _size, const bool _isSelected)
     {
         return Utils::renderSvg(qsl(":/mail_icon"), QSize(_size, _size));
-    }
-
-    int getUnreadLeftPadding() noexcept
-    {
-        return Utils::scale_value(4);
-    }
-
-    int getUnreadLeftPaddingPictOnly() noexcept
-    {
-        return Utils::scale_value(2);
-    }
-
-    int getRigthLineCenter(const bool _compactMode) noexcept
-    {
-        return Utils::scale_value(22);
-    }
-
-    int getUnreadBubbleWidthMin() noexcept
-    {
-        return Utils::scale_value(20);
-    }
-
-    int getUnreadBubbleHeight() noexcept
-    {
-        return Utils::scale_value(20);
-    }
-
-    int getUnreadBubbleRightMargin(const bool _compactMode)
-    {
-        return getRigthLineCenter(_compactMode) - (getUnreadBubbleWidthMin() / 2);
-    }
-
-    int getUnreadBubbleRightMarginPictOnly() noexcept
-    {
-        return Utils::scale_value(4);
     }
 
     int getUnreadBubbleMarginPictOnly() noexcept
@@ -222,20 +147,20 @@ namespace Ui
             return Utils::scale_value(0/*-2*/);
     }
 
-    QColor senderColor()
+    auto senderColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID };
     }
 
-    QColor draftColor()
+    auto draftColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY };
     }
 
-    QColor getNameColor(bool _isSelected, bool _isDraft)
+    auto getNameColor(bool _isSelected, bool _isDraft)
     {
         if (_isSelected)
-            return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
+            return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID_PERMANENT };
         return _isDraft ? draftColor() : senderColor();
     }
 
@@ -244,14 +169,14 @@ namespace Ui
         return _isDraft ? Fonts::FontWeight::Medium : Fonts::FontWeight::Normal;
     }
 
-    QColor getContactNameColor(const bool _isSelected, const bool _isFavorites = false)
+    auto getContactNameColor(const bool _isSelected, const bool _isFavorites = false)
     {
         if (_isSelected)
-            return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
+            return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID_PERMANENT };
         else if (_isFavorites)
             return Favorites::nameColor();
 
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID };
     }
 
     int getAlertAvatarSize() noexcept
@@ -304,19 +229,14 @@ namespace Ui
         return Utils::scale_value(20);
     }
 
-    int getDndOverlaySize() noexcept
-    {
-        return Utils::scale_value(60);
-    }
-
     QColor getAlertUnderlineColor()
     {
         return Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
     }
 
-    QColor getMessageColor(const bool _selected)
+    auto getMessageColor(bool _selected)
     {
-        return Styling::getParameters().getColor(_selected ? Styling::StyleVariable::TEXT_SOLID_PERMANENT : Styling::StyleVariable::BASE_PRIMARY);
+        return Styling::ThemeColorKey{ _selected ? Styling::StyleVariable::TEXT_SOLID_PERMANENT : Styling::StyleVariable::BASE_PRIMARY };
     }
 
     QColor getDateColor()
@@ -324,19 +244,14 @@ namespace Ui
         return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
     }
 
-    QColor getServiceItemColor()
+    auto getServiceItemColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY };
     }
 
     int getServiceItemHorPadding() noexcept
     {
         return Utils::scale_value(12);
-    }
-
-    QColor getMediaIconColor()
-    {
-        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_TERTIARY);
     }
 
     int getMediaTypeIconTopMargin(const bool _multichat) noexcept
@@ -352,11 +267,6 @@ namespace Ui
         return (_multichat ? Utils::scale_value(60) : Utils::scale_value(42));
     }
 
-    constexpr QSize getMediaIconSize() noexcept
-    {
-        return QSize(16, 16);
-    }
-
     int get2LineMessageOffset() noexcept
     {
         return Utils::scale_value(18);
@@ -367,9 +277,9 @@ namespace Ui
         return 16;
     }
 
-    QColor getUnknownTextColor()
+    auto getUnknownTextColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY };
     }
 
     int getUnknownHorPadding() noexcept
@@ -380,11 +290,6 @@ namespace Ui
     int getMessageRightMargin() noexcept
     {
         return Utils::scale_value(4);
-    }
-
-    int getUnknownRightOffset() noexcept
-    {
-        return Utils::scale_value(40);
     }
 
     int getTimeYOffsetFromName() noexcept
@@ -406,150 +311,51 @@ namespace Ui
             return Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
     }
 
-    const QPixmap& getMediaTypePix(const MediaType _mediaType, const bool _isSelected)
-    {
-        switch (_mediaType)
-        {
-            case MediaType::mediaTypeSticker:
-            {
-                static QPixmap pix = Utils::renderSvgScaled(qsl(":/message_type_sticker_icon"), getMediaIconSize(), getMediaIconColor());
-                static QPixmap pixSelected = Utils::renderSvgScaled(qsl(":/message_type_sticker_icon"), getMediaIconSize(), Qt::white);
-
-                return (_isSelected ? pixSelected : pix);
-            }
-            case MediaType::mediaTypeVideo:
-            case MediaType::mediaTypeFsVideo:
-            {
-                static QPixmap pix = Utils::renderSvgScaled(qsl(":/message_type_video_icon"), getMediaIconSize(), getMediaIconColor());
-                static QPixmap pixSelected = Utils::renderSvgScaled(qsl(":/message_type_video_icon"), getMediaIconSize(), Qt::white);
-
-                return (_isSelected ? pixSelected : pix);
-            }
-            case MediaType::mediaTypePhoto:
-            case MediaType::mediaTypeFsPhoto:
-            {
-                static QPixmap pix = Utils::renderSvgScaled(qsl(":/message_type_photo_icon"), getMediaIconSize(), getMediaIconColor());
-                static QPixmap pixSelected = Utils::renderSvgScaled(qsl(":/message_type_photo_icon"), getMediaIconSize(), Qt::white);
-
-                return (_isSelected ? pixSelected : pix);
-            }
-            case MediaType::mediaTypeGif:
-            case MediaType::mediaTypeFsGif:
-            {
-                static QPixmap pix = Utils::renderSvgScaled(qsl(":/message_type_video_icon"), getMediaIconSize(), getMediaIconColor());
-                static QPixmap pixSelected = Utils::renderSvgScaled(qsl(":/message_type_video_icon"), getMediaIconSize(), Qt::white);
-
-                return (_isSelected ? pixSelected : pix);
-            }
-            case MediaType::mediaTypePtt:
-            {
-                static QPixmap pix = Utils::renderSvgScaled(qsl(":/message_type_audio_icon"), getMediaIconSize(), getMediaIconColor());
-                static QPixmap pixSelected = Utils::renderSvgScaled(qsl(":/message_type_audio_icon"), getMediaIconSize(), Qt::white);
-
-                return (_isSelected ? pixSelected : pix);
-            }
-            case MediaType::mediaTypeVoip:
-            {
-                static QPixmap pix = Utils::renderSvgScaled(qsl(":/message_type_phone_icon"), getMediaIconSize(), getMediaIconColor());
-                static QPixmap pixSelected = Utils::renderSvgScaled(qsl(":/message_type_phone_icon"), getMediaIconSize(), Qt::white);
-
-                return (_isSelected ? pixSelected : pix);
-            }
-            case MediaType::mediaTypeFileSharing:
-            {
-                static QPixmap pix = Utils::renderSvgScaled(qsl(":/message_type_file_icon"), getMediaIconSize(), getMediaIconColor());
-                static QPixmap pixSelected = Utils::renderSvgScaled(qsl(":/message_type_file_icon"), getMediaIconSize(), Qt::white);
-
-                return (_isSelected ? pixSelected : pix);
-            }
-            case MediaType::mediaTypeContact:
-            {
-                static QPixmap pix = Utils::renderSvgScaled(qsl(":/message_type_contact_icon"), getMediaIconSize(), getMediaIconColor());
-                static QPixmap pixSelected = Utils::renderSvgScaled(qsl(":/message_type_contact_icon"), getMediaIconSize(), Qt::white);
-
-                return (_isSelected ? pixSelected : pix);
-            }
-
-            case MediaType::mediaTypeGeo:
-            {
-                static QPixmap pix = Utils::renderSvgScaled(qsl(":/message_type_geo_icon"), getMediaIconSize(), getMediaIconColor());
-                static QPixmap pixSelected = Utils::renderSvgScaled(qsl(":/message_type_geo_icon"), getMediaIconSize(), Qt::white);
-
-                return (_isSelected ? pixSelected : pix);
-            }
-
-            case MediaType::mediaTypePoll:
-            {
-                static QPixmap pix = Utils::renderSvgScaled(qsl(":/message_type_poll_icon"), getMediaIconSize(), getMediaIconColor());
-                static QPixmap pixSelected = Utils::renderSvgScaled(qsl(":/message_type_poll_icon"), getMediaIconSize(), Qt::white);
-
-                return (_isSelected ? pixSelected : pix);
-            }
-
-            case MediaType::mediaTypeTask:
-            {
-                static QPixmap pix = Utils::renderSvgScaled(qsl(":/message_type_task_icon"), getMediaIconSize(), getMediaIconColor());
-                static QPixmap pixSelected = Utils::renderSvgScaled(qsl(":/message_type_task_icon"), getMediaIconSize(), Qt::white);
-
-                return (_isSelected ? pixSelected : pix);
-            }
-
-            default:
-            {
-                im_assert(false);
-
-                static QPixmap pix;
-                return pix;
-            }
-        }
-    }
-
     const QPixmap& getArrowIcon(const bool _rotated)
     {
-        static QPixmap p_normal = Utils::renderSvgScaled(qsl(":/controls/down_icon"), QSize(12, 12), getServiceItemColor());
-        static QPixmap p_mirrored = Utils::mirrorPixmapVer(p_normal);
+        static QPixmap normal, mirrored;
 
-        return (_rotated ? p_mirrored : p_normal);
+        static Styling::ThemeChecker checker;
+        if (checker.checkAndUpdateHash() || normal.isNull())
+        {
+            normal = Utils::renderSvgScaled(qsl(":/controls/down_icon"), QSize(12, 12), Styling::getColor(getServiceItemColor()));
+            mirrored = Utils::mirrorPixmapVer(normal);
+        }
+
+        return _rotated ? mirrored : normal;
     }
 
-    void renderRecentsDragOverlay(QPainter& _painter, const QRect& _rect, const ViewParams& _viewParams)
+    auto getUnreadsCountersBackgroundColorForServiceItemKey(bool _isSelected)
     {
-        const auto& contactListParams = Ui::GetRecentsParams();
+        return Styling::ThemeColorKey{ _isSelected ? Styling::StyleVariable::TEXT_SOLID_PERMANENT : Styling::StyleVariable::PRIMARY_BRIGHT };
+    }
 
-        Utils::PainterSaver ps(_painter);
+    QColor getUnreadsCountersBackgroundColorForServiceItem(bool _isSelected)
+    {
+        return Styling::getColor(getUnreadsCountersBackgroundColorForServiceItemKey(_isSelected));
+    }
 
-        _painter.setPen(Qt::NoPen);
-        _painter.setRenderHint(QPainter::Antialiasing);
+    auto getUnreadsCounterForegroundColorServiceItemKey(bool _isSelected)
+    {
+        return Styling::ThemeColorKey{ _isSelected ? Styling::StyleVariable::PRIMARY_SELECTED : Styling::StyleVariable::TEXT_PRIMARY };
+    }
 
-        auto width = CorrectItemWidth(ItemWidth(_viewParams), _viewParams.fixedWidth_);
+    QColor getUnreadsCounterForegroundColorServiceItem(bool _isSelected)
+    {
+        return Styling::getColor(getUnreadsCounterForegroundColorServiceItemKey(_isSelected));
+    }
 
-        QColor overlayColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE, 0.98));
-        _painter.fillRect(_rect.left(), _rect.top(), width, _rect.height(), QBrush(overlayColor));
-        _painter.setBrush(QBrush(Styling::getParameters().getColor(Styling::StyleVariable::GHOST_ACCENT)));
+    Utils::LayeredPixmap getMentionIconServiceItem(bool _isSelected, const QSize _size = QSize())
+    {
+        const auto backgroundColor = getUnreadsCountersBackgroundColorForServiceItemKey(_isSelected);
+        const auto foregroundColor = getUnreadsCounterForegroundColorServiceItemKey(_isSelected);
 
-        QPen pen(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY), ContactListParams::dragOverlayBorderWidth(), Qt::SolidLine, Qt::RoundCap);
-        _painter.setPen(pen);
+        const auto svgLayers = Utils::ColorParameterLayers {
+            { qsl("bg"), backgroundColor },
+            { qsl("dog"), foregroundColor },
+        };
 
-        _painter.drawRoundedRect(
-            _rect.left() + ContactListParams::dragOverlayPadding(),
-            _rect.top() + ContactListParams::dragOverlayVerPadding(),
-            width - contactListParams.itemHorPadding(),
-            _rect.height() - ContactListParams::dragOverlayVerPadding(),
-            ContactListParams::dragOverlayBorderRadius(),
-            ContactListParams::dragOverlayBorderRadius()
-        );
-
-
-        if (_viewParams.pictOnly_)
-        {
-            static QPixmap fast_send_green = Utils::renderSvg(qsl(":/fast_send"), QSize(getDndOverlaySize(), getDndOverlaySize()), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
-            _painter.drawPixmap(_rect.left() + _rect.width() / 2 - getDndOverlaySize() / 2, _rect.top() + _rect.height() / 2 - getDndOverlaySize() / 2, fast_send_green);
-        }
-        else
-        {
-            _painter.setFont(Fonts::appFontScaled(15));
-            Utils::drawText(_painter, QPoint(_rect.width() / 2, _rect.y() + _rect.height() / 2), Qt::AlignCenter, QT_TRANSLATE_NOOP("files_widget", "Quick send"));
-        }
+        return Utils::LayeredPixmap(qsl(":/recent_mention_icon"), svgLayers, _size.isValid() ? _size : QSize());
     }
 
     bool isPinnedServiceItem(const Data::DlgState& _state)
@@ -557,55 +363,25 @@ namespace Ui
         return _state.pinnedServiceItemType() != Data::DlgState::PinnedServiceItemType::NonPinnedItem;
     }
 
-    auto pinnedServiceItemIconCircleColor(bool _hovered)
+    auto pinnedServiceItemIconCircleColor(bool _selected)
     {
-        return _hovered ? Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_HOVER) : Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT);
+        return _selected ? Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_BRIGHT) : Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT);
     }
 
-    auto pinnedServiceItemIconColor()
+    bool isMessageAlertTextHidden()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY);
+        if (Features::hideMessageInfoEnabled() || Features::hideMessageTextEnabled() || LocalPIN::instance()->locked())
+            return true;
+
+        return get_gui_settings()->get_value<bool>(settings_hide_message_notification, false);
     }
 
-    auto pinnedServiceItemIconSize() noexcept
+    bool isMessageAlertSenderHidden()
     {
-        return Utils::scale_value(20);
+        if (Features::hideMessageInfoEnabled())
+            return true;
+        return get_gui_settings()->get_value<bool>(settings_hide_sender_notification, false);
     }
-
-    const QPixmap& pinnedServiceItemPixmap(Data::DlgState::PinnedServiceItemType _type)
-    {
-        const auto iconSize = pinnedServiceItemIconSize();
-        switch (_type)
-        {
-        case Data::DlgState::PinnedServiceItemType::Threads:
-        {
-            static const auto icon = Utils::renderSvg(qsl(":/thread_icon_filled"), { iconSize, iconSize }, pinnedServiceItemIconColor());
-            return icon;
-        }
-        case Data::DlgState::PinnedServiceItemType::ScheduledMessages:
-        {
-            static const auto icon = Utils::renderSvg(qsl(":/contact_list/scheduled"), { iconSize, iconSize }, pinnedServiceItemIconColor());
-            return icon;
-        }
-        case Data::DlgState::PinnedServiceItemType::Reminders:
-        {
-            static const auto icon = Utils::renderSvg(qsl(":/contact_list/reminders"), { iconSize, iconSize }, pinnedServiceItemIconColor());
-            return icon;
-        }
-        case Data::DlgState::PinnedServiceItemType::Favorites:
-        {
-            static const auto icon = Utils::renderSvg(qsl(":/favorites_icon"), { iconSize, iconSize }, pinnedServiceItemIconColor());
-            return icon;
-        }
-        default:
-        {
-            im_assert(!"Cant get pinned service item icon");
-            static const auto empty = QPixmap();
-            return empty;
-        }
-        }
-    }
-
 
     RecentItemBase::RecentItemBase(const Data::DlgState& _state)
         : aimid_(_state.AimId_)
@@ -614,11 +390,11 @@ namespace Ui
 
     RecentItemBase::~RecentItemBase() = default;
 
-    void RecentItemBase::draw(QPainter& _p, const QRect& _rect, const Ui::ViewParams& _viewParams, const bool _isSelected, const bool _isHovered, const bool _isDrag, const bool _isKeyboardFocused)
+    void RecentItemBase::draw(QPainter& _p, const QRect& _rect, const Ui::ViewParams& _viewParams, const bool _isSelected, const bool _isHovered, const bool _isDrag, const bool _isKeyboardFocused) const
     {
     }
 
-    void RecentItemBase::drawMouseState(QPainter& _p, const QRect& _rect, const bool _isHovered, const bool _isSelected, const bool _isKeyboardFocused)
+    void RecentItemBase::drawMouseState(QPainter& _p, const QRect& _rect, const bool _isHovered, const bool _isSelected, const bool _isKeyboardFocused) const
     {
         if (!_isHovered && !_isSelected)
             return;
@@ -656,19 +432,90 @@ namespace Ui
             type_ = Data::DlgState::PinnedServiceItemType::Favorites;
         text_ = TextRendering::MakeTextUnit(Data::DlgState::PinnedServiceItemType::Favorites == _state.pinnedServiceItemType() ? QT_TRANSLATE_NOOP("favorites", "Favorites") : _state.GetText());
         const auto& contactListParams = Ui::GetContactListParams();
-        text_->init(Fonts::appFont(contactListParams.contactNameFontSize(), contactListParams.contactNameFontWeight()),
-            Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID),
-            QColor(), QColor(), QColor(),
-            TextRendering::HorAligment::LEFT,
-            1
-        );
+        TextRendering::TextUnit::InitializeParameters params{ Fonts::appFont(contactListParams.contactNameFontSize(), contactListParams.contactNameFontWeight()), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } };
+        params.maxLinesCount_ = 1;
+        text_->init(params);
         text_->evaluateDesiredSize();
         text_->setOffsets(contactListParams.getContactNameX(), contactListParams.itemHeight() / 2);
+
+        connect(Logic::getRecentsModel(), &Logic::RecentsModel::dlgStateChanged, this,[](const Data::DlgState& _dlgState)
+        {
+            Q_UNUSED(_dlgState);
+            const auto model = Logic::getRecentsModel();
+            const auto index = model->index(0);
+            Q_EMIT model->dataChanged(index, index);
+        });
     }
 
     PinnedServiceItem::~PinnedServiceItem() = default;
 
-    void PinnedServiceItem::draw(QPainter& _p, const QRect& _rect, const Ui::ViewParams& _viewParams, const bool _isSelected, const bool _isHovered, const bool _isDrag, const bool _isKeyboardFocused)
+    bool PinnedServiceItem::needDrawDraft(const Ui::ViewParams& _viewParams, const Data::DlgState& _state) const
+    {
+        bool hasDraft = false;
+        if (type_ == Data::DlgState::PinnedServiceItemType::Favorites)
+            hasDraft = _state.hasDraft();
+        return hasDraft && !_viewParams.pictOnly_;
+    }
+
+    bool PinnedServiceItem::needDrawUnreads(const Data::DlgState& _state) const
+    {
+        return unreadCount_;
+    }
+
+    bool PinnedServiceItem::needDrawMentions(const Ui::ViewParams& _viewParams, const Data::DlgState& _state) const
+    {
+        return unreadMentionsCount_;
+    }
+
+    void PinnedServiceItem::drawDraft(QPainter* _painter, const Data::DlgState& _state, bool _isSelected, const QRect& _rect, const Ui::ViewParams& _viewParams, int& _unreadsX) const
+    {
+        if (!needDrawDraft(_viewParams, _state) || !_painter)
+            return;
+
+        const auto draftSize = Logic::IconsManager::getDraftSize();
+        const QPixmap badge = Logic::IconsManager::getDraftIcon(_isSelected).actualPixmap();
+        const auto& contactListParams = Ui::GetContactListParams();
+        auto unreadsY = (contactListParams.itemHeight() - getUnreadsSize()) / 2;
+
+        if (needDrawUnreads(_state))
+            _unreadsX -= Logic::IconsManager::getUnreadBalloonWidth(unreadCount_);
+        if (needDrawMentions(_viewParams, _state))
+            _unreadsX -= Logic::IconsManager::getUnreadLeftPadding();
+        _unreadsX -= draftSize.width();
+
+        _painter->drawPixmap(_rect.left() + _unreadsX, (contactListParams.itemHeight() - draftSize.height()) / 2, badge);
+
+        draftIconRect_ = QRect(_rect.left() + _unreadsX, unreadsY, badge.width(), badge.height());
+    }
+
+    void PinnedServiceItem::drawUnreads(QPainter* _painter, const Data::DlgState& _state, bool _isSelected, const QRect& _rect, const Ui::ViewParams& _viewParams, int& _unreadsX, int& _unreadsY) const
+    {
+        if (!needDrawUnreads(_state) || !_painter)
+            return;
+
+        _unreadsX -= Logic::IconsManager::getUnreadBalloonWidth(unreadCount_);
+        const auto& contactListParams = Ui::GetContactListParams();
+
+        Utils::drawUnreads((*_painter), contactListParams.unreadsFont(),
+                           getUnreadsCountersBackgroundColorForServiceItem(_isSelected),
+                           getUnreadsCounterForegroundColorServiceItem(_isSelected), unreadCount_, Logic::IconsManager::getUnreadBubbleHeight(),
+                           _rect.left() + _unreadsX, _unreadsY);
+
+    }
+
+    void PinnedServiceItem::drawMentions(QPainter* _painter, const Data::DlgState& _state, bool _isSelected, const QRect& _rect, const Ui::ViewParams& _viewParams, int& _unreadsX, int& _unreadsY) const
+    {
+        if (!needDrawMentions(_viewParams, _state) || !_painter)
+            return;
+
+        if (needDrawUnreads(_state))
+            _unreadsX -= Logic::IconsManager::getUnreadLeftPadding();
+        _unreadsX -= Logic::IconsManager::getMentionSize().width();
+
+        _painter->drawPixmap(_rect.left() + _unreadsX, _unreadsY, getMentionIconServiceItem(_isSelected).actualPixmap());
+    }
+
+    void PinnedServiceItem::draw(QPainter& _p, const QRect& _rect, const Ui::ViewParams& _viewParams, const bool _isSelected, const bool _isHovered, const bool _isDrag, const bool _isKeyboardFocused) const
     {
         Utils::PainterSaver ps(_p);
         _p.setClipRect(_rect);
@@ -684,48 +531,40 @@ namespace Ui
         const auto& contactListParams = Ui::GetContactListParams();
 
         const auto circleSize = contactListParams.getAvatarSize();
-        _p.setBrush(pinnedServiceItemIconCircleColor(_isHovered));
+        _p.setBrush(pinnedServiceItemIconCircleColor(_isSelected));
         auto iconLeftOffset = contactListParams.itemHorPadding();
         auto iconTopOffset = contactListParams.getAvatarY();
-        auto iconPadding = (contactListParams.getAvatarSize() - pinnedServiceItemIconSize()) / 2;
+        auto iconPadding = (contactListParams.getAvatarSize() - Logic::IconsManager::pinnedServiceItemIconSize().width()) / 2;
 
         _p.drawEllipse(iconLeftOffset, iconTopOffset, circleSize, circleSize);
-        _p.drawPixmap(iconLeftOffset + iconPadding, iconTopOffset + iconPadding, pinnedServiceItemPixmap(type_));
+        _p.drawPixmap(iconLeftOffset + iconPadding, iconTopOffset + iconPadding, Logic::IconsManager::pinnedServiceItemPixmap(type_, _isSelected).cachedPixmap());
 
         text_->setColor(getContactNameColor(_isSelected));
         text_->draw(_p, Ui::TextRendering::VerPosition::MIDDLE);
 
-        const auto unreadBalloonWidth = unreadCount_ > 0 ? Utils::getUnreadsBadgeSize(unreadCount_, getUnreadBubbleHeight()).width() : 0;
+        const auto unreadBalloonWidth = unreadCount_ > 0 ? Utils::getUnreadsBadgeSize(unreadCount_,
+                                                                                      Logic::IconsManager::getUnreadBubbleHeight()).width()
+                                                         : 0;
         auto unreadsX = _rect.width();
-        unreadsX -= getUnreadBubbleRightMargin(true);
+        unreadsX -= Logic::IconsManager::getUnreadBubbleRightMargin(true);
 
         auto unreadsY = (contactListParams.itemHeight() - getUnreadsSize()) / 2;
+        const auto &state = Logic::getRecentsModel()->getDlgState(aimid_);
 
-        if (unreadCount_)
-        {
-            unreadsX -= unreadBalloonWidth;
-            const auto isThreads = Data::DlgState::PinnedServiceItemType::Threads == type_;
-            const auto unreadsBackgroundColor = Styling::getParameters().getColor(_isSelected ? Styling::StyleVariable::TEXT_SOLID_PERMANENT : isThreads ? Styling::StyleVariable::BASE_TERTIARY : Styling::StyleVariable::PRIMARY);
-            const auto unreadsTextColor = Styling::getParameters().getColor(_isSelected ? Styling::StyleVariable::PRIMARY_SELECTED : Styling::StyleVariable::BASE_GLOBALWHITE);
-
-            Utils::drawUnreads(_p, contactListParams.unreadsFont(), unreadsBackgroundColor, unreadsTextColor, unreadCount_, getUnreadBubbleHeight(), _rect.left() + unreadsX, unreadsY);
-        }
-        if (unreadMentionsCount_)
-        {
-            if (unreadCount_)
-                unreadsX -= getUnreadLeftPadding();
-
-            unreadsX -= getMentionSize().width();
-
-            static QPixmap pixNormal = getMentionIcon(false);
-            static QPixmap pixSelected = getMentionIcon(true);
-            QPixmap& pix = _isSelected ? pixSelected : pixNormal;
-
-            _p.drawPixmap(_rect.left() + unreadsX, unreadsY, pix);
-        }
+        drawUnreads(&_p, state, _isSelected, _rect, _viewParams, unreadsX, unreadsY);
+        drawMentions(&_p, state, _isSelected, _rect, _viewParams, unreadsX, unreadsY);
+        drawDraft(&_p, state, _isSelected, _rect, _viewParams, unreadsX);
 
         if (_isDrag)
-            renderRecentsDragOverlay(_p, _rect, _viewParams);
+            renderDragOverlay(_p, _rect, _viewParams);
+    }
+
+    bool PinnedServiceItem::needsTooltip(QPoint _posCursor) const
+    {
+        Ui::ViewParams viewParams;
+        viewParams.pictOnly_ = false;
+        const auto& state = Logic::getRecentsModel()->getDlgState(aimid_);
+        return needDrawDraft(viewParams, state) && isInDraftIconRect(_posCursor);
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -736,7 +575,7 @@ namespace Ui
     {
         text_ = TextRendering::MakeTextUnit(_state.GetText());
         // FONT
-        text_->init(Fonts::appFontScaled(11, Fonts::FontWeight::SemiBold), getServiceItemColor());
+        text_->init({ Fonts::appFontScaled(11, Fonts::FontWeight::SemiBold), getServiceItemColor() });
         text_->evaluateDesiredSize();
 
         if (_state.AimId_ == u"~recents~")
@@ -749,8 +588,9 @@ namespace Ui
             type_ = ServiceItemType::unknowns;
 
         badgeTextUnit_ = TextRendering::MakeTextUnit(QString());
-        badgeTextUnit_->init(Fonts::appFontScaled(11, platform::is_apple() ? Fonts::FontWeight::Medium : Fonts::FontWeight::Normal),
-            Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
+        TextRendering::TextUnit::InitializeParameters params{ Fonts::appFontScaled(11, platform::is_apple() ? Fonts::FontWeight::Medium : Fonts::FontWeight::Normal), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_GLOBALWHITE } };
+        params.align_ = TextRendering::HorAligment::CENTER;
+        badgeTextUnit_->init(params);
         badgeTextUnit_->evaluateDesiredSize();
     }
 
@@ -759,13 +599,13 @@ namespace Ui
     {
         text_ = TextRendering::MakeTextUnit(_text);
         // FONT
-        text_->init(Fonts::appFontScaled(11, Fonts::FontWeight::SemiBold), getServiceItemColor());
+        text_->init({ Fonts::appFontScaled(11, Fonts::FontWeight::SemiBold), getServiceItemColor() });
         text_->evaluateDesiredSize();
     }
 
     RecentItemService::~RecentItemService() = default;
 
-    void RecentItemService::draw(QPainter& _p, const QRect& _rect, const Ui::ViewParams& _viewParams, const bool _isSelected, const bool _isHovered, const bool _isDrag, const bool _isKeyboardFocused)
+    void RecentItemService::draw(QPainter& _p, const QRect& _rect, const Ui::ViewParams& _viewParams, const bool _isSelected, const bool _isHovered, const bool _isDrag, const bool _isKeyboardFocused) const
     {
         auto recentParams = GetRecentsParams(_viewParams.regim_);
         const auto ratio = Utils::scale_bitmap_ratio();
@@ -791,15 +631,15 @@ namespace Ui
             line_pen.setColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_TERTIARY));
             _p.setPen(line_pen);
 
-            static QPixmap pixPinned = getPin(false, getPinHeaderSize());
-            static QPixmap pixUnimportant = Utils::renderSvg(qsl(":/unimportant_icon"), getPinHeaderSize(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_TERTIARY));
-            static QPixmap pixRecents = Utils::renderSvg(qsl(":/resources/icon_recents.svg"), getPinHeaderSize());
+            static Utils::StyledPixmap pixPinned = getPin(false, getPinHeaderSize());
+            static Utils::StyledPixmap pixUnimportant = Utils::StyledPixmap(qsl(":/unimportant_icon"), getPinHeaderSize(), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_TERTIARY });
+            static Utils::StyledPixmap pixRecents = Utils::StyledPixmap(qsl(":/resources/icon_recents.svg"), getPinHeaderSize());
 
-            QPixmap p = pixRecents;
+            QPixmap p = pixRecents.actualPixmap();
             if (type_ == ServiceItemType::pinned)
-                p = pixPinned;
+                p = pixPinned.actualPixmap();
             else if (type_ == ServiceItemType::unimportant)
-                p = pixUnimportant;
+                p = pixUnimportant.actualPixmap();
 
             int y = height / 2;
             int xp = ItemWidth(_viewParams) / 2 - (p.width() / 2. / ratio);
@@ -852,14 +692,14 @@ namespace Ui
                 else if (((type_ == ServiceItemType::pinned && Logic::getRecentsModel()->hasAttentionPinned()) || Logic::getRecentsModel()->hasAttentionUnimportant()) &&
                          (!hasMentionsInPinned && !hasUnimportantMentions))
                 {
-                    static auto icon = Utils::renderSvgLayered(qsl(":/tab/attention"),
+                    static auto icon = Utils::LayeredPixmap(qsl(":/tab/attention"),
                         {
-                            { qsl("border"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE) },
-                            { qsl("bg"), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY) },
-                            { qsl("star"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE) },
+                            { qsl("border"), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_GLOBALWHITE } },
+                            { qsl("bg"), Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY } },
+                            { qsl("star"), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_GLOBALWHITE } },
                         },
                         { get_badge_size(), get_badge_size() });
-                    _p.drawPixmap(x - get_badge_size(), y + p.height() / 2. / ratio - get_badge_size() / 2, icon);
+                    _p.drawPixmap(x - get_badge_size(), y + p.height() / 2. / ratio - get_badge_size() / 2, icon.actualPixmap());
                 }
 
                 if ((type_ == ServiceItemType::pinned && hasMentionsInPinned) || hasUnimportantMentions)
@@ -872,8 +712,8 @@ namespace Ui
                     }
 
                     offset += get_badge_size();
-                    static auto icon = getMentionIcon(false, { get_badge_mention_size(), get_badge_mention_size() });
-                    _p.drawPixmap(x - offset, y + p.height() / 2. / ratio - get_badge_size() / 2 + Utils::scale_value(1), icon);
+                    static auto icon = Logic::IconsManager::getMentionIcon(false, { get_badge_mention_size(), get_badge_mention_size() });
+                    _p.drawPixmap(x - offset, y + p.height() / 2. / ratio - get_badge_size() / 2 + Utils::scale_value(1), icon.actualPixmap());
                 }
             }
         }
@@ -890,7 +730,7 @@ namespace Ui
     {
         text_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("contact_list", "New contacts"));
         // FONT
-        text_->init(Fonts::appFontScaled(getUnknownTextSize()), getUnknownTextColor());
+        text_->init({ Fonts::appFontScaled(getUnknownTextSize()), getUnknownTextColor() });
         text_->evaluateDesiredSize();
 
         if (count_)
@@ -919,7 +759,7 @@ namespace Ui
 
     RecentItemUnknowns::~RecentItemUnknowns() = default;
 
-    void RecentItemUnknowns::draw(QPainter& _p, const QRect& _rect, const Ui::ViewParams& _viewParams, const bool _isSelected, const bool _isHovered, const bool _isDrag, const bool _isKeyboardFocused)
+    void RecentItemUnknowns::draw(QPainter& _p, const QRect& _rect, const Ui::ViewParams& _viewParams, const bool _isSelected, const bool _isHovered, const bool _isDrag, const bool _isKeyboardFocused) const
     {
         const auto width = CorrectItemWidth(ItemWidth(_viewParams), _viewParams.fixedWidth_);
 
@@ -989,7 +829,7 @@ namespace Ui
         return st;
     }
 
-    const QPixmap getStatePixmap(const LastStatus& _lastStatus, const bool _selected, const bool _multichat)
+    QPixmap getStatePixmap(const LastStatus& _lastStatus, const bool _selected, const bool _multichat)
     {
         const auto normalClr = Styling::getParameters().getColor(Styling::StyleVariable::BASE_TERTIARY);
         const auto selClr = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
@@ -997,23 +837,15 @@ namespace Ui
         switch (_lastStatus)
         {
             case LastStatus::Pending:
-            {
                 return LastStatusAnimation::getPendingPixmap(_selected ? selClr : normalClr);
-            }
             case LastStatus::DeliveredToServer:
-            {
                 if (_multichat)
                     return LastStatusAnimation::getDeliveredToClientPixmap(_selected ? selClr : normalClr);
-
                 return LastStatusAnimation::getDeliveredToServerPixmap(_selected ? selClr : normalClr);
-            }
             case LastStatus::DeliveredToPeer:
-            {
                 if (_multichat)
                     return LastStatusAnimation::getDeliveredToServerPixmap(_selected ? selClr : normalClr);
-
                 return LastStatusAnimation::getDeliveredToClientPixmap(_selected ? selClr : normalClr);
-            }
 
             case LastStatus::None:
             case LastStatus::Read:
@@ -1055,9 +887,12 @@ namespace Ui
     //////////////////////////////////////////////////////////////////////////
     RecentItemRecent::RecentItemRecent(
         const Data::DlgState& _state,
-        const bool _compactMode,
-        const bool _hideMessage,
-        const bool _showHeads
+        bool _compactMode,
+        bool _hideSender,
+        bool _hideMessage,
+        bool _showHeads,
+        AlertType _alertType,
+        bool _isNotification
     )
         : RecentItemBase(_state)
         , multichat_(Logic::getContactListModel()->isChat(_state.AimId_))
@@ -1077,26 +912,29 @@ namespace Ui
         , mediaType_((_hideMessage || _state.hasDraft()) ? MediaType::noMedia : _state.mediaType_)
         , readOnlyChat_(multichat_ && (_state.AimId_ == _state.senderAimId_))
     {
-        const auto friendly = Logic::getFriendlyContainerProxy(Logic::FriendlyContainerProxy::ReplaceFavorites).getFriendly2(_state.AimId_);
-        displayName_ = Utils::replaceLine(friendly.name_);
-        official_ = friendly.official_;
+        official_ = false;
+
+        displayName_ = formatNotificationTitle(_state, _alertType, !_hideSender);
+        if (!_hideSender)
+        {
+            const auto friendly = Logic::getFriendlyContainerProxy(Logic::FriendlyContainerProxy::ReplaceFavorites).getFriendly2(_state.AimId_);
+            official_ = friendly.official_;
+        }
+
         const auto& contactListParams = compactMode_ ? Ui::GetContactListParams() : Ui::GetRecentsParams();
         name_ = TextRendering::MakeTextUnit(displayName_, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-        name_->init(Fonts::appFont(contactListParams.contactNameFontSize(), contactListParams.contactNameFontWeight()),
-            Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID),
-            QColor(), QColor(), QColor(),
-            TextRendering::HorAligment::LEFT,
-            1
-            );
+        TextRendering::TextUnit::InitializeParameters params{ Fonts::appFont(contactListParams.contactNameFontSize(), contactListParams.contactNameFontWeight()), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } };
+        params.maxLinesCount_ = 1;
+        name_->init(params);
         name_->evaluateDesiredSize();
         nameWidth_ = name_->desiredWidth();
 
         //////////////////////////////////////////////////////////////////////////
         // init message
+        draft_ = _state.hasDraft();
         if (!compactMode_)
         {
-            draft_ = !typersCount_ && _state.hasDraft();
-            const auto nameColor = getNameColor(false, draft_);
+            const auto nameColor = getNameColor(false, draft_ && !typersCount_);
             const int fontSize = contactListParams.messageFontSize();
             const auto font = Fonts::appFontScaled(fontSize, Fonts::FontWeight::Normal);
 
@@ -1104,10 +942,10 @@ namespace Ui
             (const QString& _text, const QFont& _font, TextRendering::ProcessLineFeeds _processFeeds, int _lineCount = 1)
             {
                 auto name = TextRendering::MakeTextUnit(_text, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, _processFeeds);
-                name->init(_font,
-                    nameColor,
-                    QColor(), QColor(), QColor(),
-                    TextRendering::HorAligment::LEFT, _lineCount, TextRendering::LineBreakType::PREFER_SPACES);
+                TextRendering::TextUnit::InitializeParameters params{ _font, nameColor };
+                params.maxLinesCount_ = _lineCount;
+                params.lineBreak_ = TextRendering::LineBreakType::PREFER_SPACES;
+                name->init(params);
                 return name;
             };
 
@@ -1119,7 +957,7 @@ namespace Ui
 
                 const QString nameText = multichat_ ? typer_ % QChar::LineFeed : QString();
 
-                messageShortName_ = createUnit(nameText, Fonts::appFontScaled(fontSize, getNameFontWeight(draft_)), TextRendering::ProcessLineFeeds::KEEP_LINE_FEEDS, 2);
+                messageShortName_ = createUnit(nameText, Fonts::appFontScaled(fontSize, getNameFontWeight(false)), TextRendering::ProcessLineFeeds::KEEP_LINE_FEEDS, 2);
                 messageShortName_->evaluateDesiredSize();
                 messageShortName_->setLineSpacing(getMessageLineSpacing());
                 messageNameWidth_ = messageShortName_->desiredWidth();
@@ -1138,9 +976,13 @@ namespace Ui
             }
             else
             {
-                const QString messageText = _hideMessage
-                    ? QT_TRANSLATE_NOOP("notifications", "New message")
-                    : Utils::replaceLine(draft_ ? _state.draftText_ : _state.GetText());
+                QString messageText;
+                if (_isNotification)
+                    messageText = formatNotificationText(_state, _alertType, !_hideSender, !_hideMessage, draft_);
+                else
+                    messageText = _hideMessage ?
+                        QT_TRANSLATE_NOOP("notifications", "New message") :
+                        Utils::replaceLine(draft_ ? _state.draftText_ : _state.GetText());
 
                 if (!draft_ && (!multichat_ || readOnlyChat_))
                 {
@@ -1154,10 +996,10 @@ namespace Ui
                     if (draft_)
                         sender = QT_TRANSLATE_NOOP("contact_list", "Draft");
                     else
-                        sender = getSender(_state, _state.Outgoing_);
+                        sender = _isNotification ? formatNotificationSubtitle(_state, _alertType, !_hideSender) : getSender(_state, _state.Outgoing_);
 
-                    if (!sender.isEmpty())
-                        sender += qsl(": ");
+                    if (!sender.isEmpty() && !_isNotification)
+                        sender += u": ";
 
                     if (mediaType_ == MediaType::noMedia)
                         sender += QChar::LineFeed;
@@ -1165,7 +1007,13 @@ namespace Ui
                     messageShortName_ = createUnit(sender, Fonts::appFontScaled(fontSize, getNameFontWeight(draft_)), TextRendering::ProcessLineFeeds::KEEP_LINE_FEEDS, 2);
                     messageShortName_->evaluateDesiredSize();
 
-                    if (mediaType_ == MediaType::noMedia)
+                    if (_isNotification)
+                    {
+                        messageNameWidth_ = messageShortName_->desiredWidth();
+
+                        messageLongName_ = createUnit(messageText, font, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS, 1);
+                    }
+                    else if (mediaType_ == MediaType::noMedia)
                     {
                         messageShortName_->setLineSpacing(getMessageLineSpacing());
                         messageNameWidth_ = messageShortName_->desiredWidth();
@@ -1194,14 +1042,14 @@ namespace Ui
         const auto timeStr = _state.Time_ > 0 ? ::Ui::FormatTime(QDateTime::fromSecsSinceEpoch(_state.Time_)) : QString();
         time_ = TextRendering::MakeTextUnit(timeStr, {}, Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS);
         constexpr auto timeFontSize = platform::is_apple() ? 12 : 11;
-        time_->init(Fonts::appFontScaledFixed(timeFontSize, Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::BASE_TERTIARY));
+        time_->init({ Fonts::appFontScaledFixed(timeFontSize, Fonts::FontWeight::Normal), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_TERTIARY } });
         time_->evaluateDesiredSize();
 
         //////////////////////////////////////////////////////////////////////////
         // init unread
         if (unreadCount_)
         {
-            unreadBalloonWidth_ = Utils::getUnreadsBadgeSize(unreadCount_, getUnreadBubbleHeight()).width();
+            unreadBalloonWidth_ = Utils::getUnreadsBadgeSize(unreadCount_, Logic::IconsManager::getUnreadBubbleHeight()).width();
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -1246,7 +1094,180 @@ namespace Ui
 
     bool RecentItemRecent::needsTooltip(QPoint _posCursor) const
     {
-        return name_->isElided() && (!_posCursor.isNull() ? name_->contains(_posCursor) : true);
+        return (draft_ && isInDraftIconRect(_posCursor)) || (name_->isElided() && (!_posCursor.isNull() ? name_->contains(_posCursor) : true));
+    }
+
+    void RecentItemRecent::fixMaxWidthIfIcons(const Ui::ViewParams& _viewParams, int& _maxWidth) const
+    {
+        Data::DlgState state = Logic::getRecentsModel()->getDlgState(getAimid());
+        if (!needDrawDraft(_viewParams, state))
+            return;
+        auto contactListParams = compactMode_ ? Ui::GetContactListParams() : Ui::GetRecentsParams();
+        _maxWidth -= (Logic::IconsManager::getDraftSize().width() + contactListParams.official_hor_padding());
+    }
+
+    bool RecentItemRecent::isUnknown(const Ui::ViewParams& _viewParams) const
+    {
+        return _viewParams.regim_ == ::Logic::MembersWidgetRegim::UNKNOWN;
+    }
+
+    bool RecentItemRecent::isPictOnly(const Ui::ViewParams& _viewParams) const
+    {
+        return _viewParams.pictOnly_;
+    }
+
+    bool RecentItemRecent::isUnknownAndNotPictOnly(const Ui::ViewParams& _viewParams) const
+    {
+        return (isUnknown(_viewParams) && !isPictOnly(_viewParams));
+    }
+
+    bool RecentItemRecent::needDrawUnreads(const Data::DlgState& _state) const
+    {
+        return unreadCount_;
+    }
+
+    bool RecentItemRecent::needDrawMentions(const Ui::ViewParams& _viewParams, const Data::DlgState& _state) const
+    {
+        Q_UNUSED(_state);
+        return (mention_ && !isUnknown(_viewParams));
+    }
+
+    bool RecentItemRecent::needDrawAttention(const Data::DlgState& _state) const
+    {
+        Q_UNUSED(_state);
+        return (!unreadCount_ && attention_);
+    }
+
+    bool RecentItemRecent::needDrawDraft(const Ui::ViewParams& _viewParams, const Data::DlgState& _state) const
+    {
+        return (_state.hasDraft() && !isPictOnly(_viewParams) && compactMode_);
+    }
+
+    void RecentItemRecent::drawDraft(QPainter* _painter, const Data::DlgState& _state, bool _isSelected, const QRect& _rect, const Ui::ViewParams& _viewParams, int& _rightAreaRight) const
+    {
+        if (!needDrawDraft(_viewParams, _state) || !_painter)
+            return;
+
+        auto contactListParams = compactMode_ ? Ui::GetContactListParams() : Ui::GetRecentsParams();
+
+        using im = Logic::IconsManager;
+
+        const QPixmap badge = im::getDraftIcon(_isSelected).actualPixmap();
+        _rightAreaRight -= Utils::unscale_bitmap(badge.width());
+
+        if (needDrawUnreads(_state))
+        {
+            _rightAreaRight -= im::getUnreadBubbleRightMarginPictOnly();
+            _rightAreaRight -= unreadBalloonWidth_;
+        }
+
+        if (needDrawAttention(_state))
+        {
+            _rightAreaRight -= im::getUnreadBubbleRightMarginPictOnly();
+            _rightAreaRight -= im::getAttentionSize().width();
+        }
+
+        if (needDrawMentions(_viewParams, _state))
+        {
+            _rightAreaRight -= im::getUnreadBubbleRightMarginPictOnly();
+            _rightAreaRight -= im::getMentionSize().width();
+        }
+        const auto draftY = _rect.top() + (contactListParams.itemHeight() - Logic::IconsManager::getDraftSize().height())/2;
+        _painter->drawPixmap(_rightAreaRight, draftY, badge);
+
+        draftIconRect_.setRect(_rightAreaRight, draftY, badge.width(), badge.height());
+
+        _rightAreaRight -= contactListParams.official_hor_padding();
+
+    }
+
+    void RecentItemRecent::drawUnreads(QPainter* _painter, const Data::DlgState& _state, bool _isSelected, const QRect& _rect, const Ui::ViewParams& _viewParams, int& _unreadsX, int& _unreadsY) const
+    {
+        if (!needDrawUnreads(_state) || !_painter)
+            return;
+
+        auto contactListParams = compactMode_ ? Ui::GetContactListParams() : Ui::GetRecentsParams();
+
+        using im = Logic::IconsManager;
+        _unreadsX -= isPictOnly(_viewParams) ? im::getUnreadBubbleRightMarginPictOnly() : im::getUnreadBubbleRightMargin(compactMode_);
+        _unreadsX -= unreadBalloonWidth_;
+
+        using st = Styling::StyleVariable;
+        std::function getColor = [_isSelected](st selectedColor, st color){ return Styling::getParameters().getColor(_isSelected ? selectedColor : color); };
+
+        const auto bgColor = getColor(st::TEXT_SOLID_PERMANENT, muted_ ? st::BASE_TERTIARY : st::PRIMARY);
+        const auto textColor = getColor(st::PRIMARY_SELECTED, st::BASE_GLOBALWHITE);
+
+        auto x = isUnknownAndNotPictOnly(_viewParams) ? getUnknownUnreads(_viewParams, _rect) : _rect.left() + _unreadsX;
+        auto y = isUnknownAndNotPictOnly(_viewParams) ? _rect.top() + (contactListParams.itemHeight() - im::getUnreadBubbleHeight()) / 2 : _rect.top() + _unreadsY;
+
+        Utils::drawUnreads(*(_painter), contactListParams.unreadsFont(), bgColor, textColor, unreadCount_, im::getUnreadBubbleHeight(), x, y);
+    }
+
+    void RecentItemRecent::drawMentions(QPainter* _painter, const Data::DlgState& _state, bool _isSelected, const QRect& _rect, const Ui::ViewParams& _viewParams, int& _unreadsX, int& _unreadsY) const
+    {
+        if (!needDrawMentions(_viewParams, _state) || !_painter)
+            return;
+
+        using im = Logic::IconsManager;
+        if (unreadCount_)
+            _unreadsX -= isPictOnly(_viewParams) ? im::getUnreadLeftPaddingPictOnly() : im::getUnreadLeftPadding();
+        else
+            _unreadsX -= isPictOnly(_viewParams) ? im::getUnreadBubbleRightMarginPictOnly() : im::getUnreadBubbleRightMargin(compactMode_);
+
+        _unreadsX -= im::getMentionSize().width();
+
+        _painter->drawPixmap(_rect.left() + _unreadsX, _rect.top() + _unreadsY, im::getMentionIcon(_isSelected).cachedPixmap());
+    }
+
+    void RecentItemRecent::drawAttention(QPainter* _painter, const Data::DlgState& _state, bool _isSelected, const QRect& _rect, const Ui::ViewParams& _viewParams, int& _unreadsX, int& _unreadsY) const
+    {
+        if (!needDrawAttention(_state) || !_painter)
+            return;
+
+        auto contactListParams = compactMode_ ? Ui::GetContactListParams() : Ui::GetRecentsParams();
+
+        using im = Logic::IconsManager;
+        _unreadsX -= isPictOnly(_viewParams) ? im::getUnreadBubbleRightMarginPictOnly() : im::getUnreadBubbleRightMargin(compactMode_);
+        _unreadsX -= im::getAttentionSize().width();
+
+        auto x = isUnknownAndNotPictOnly(_viewParams) ? getUnknownUnreads(_viewParams, _rect) : _rect.left() + _unreadsX;
+        auto y = isUnknownAndNotPictOnly(_viewParams) ? _rect.top() + (contactListParams.itemHeight() - im::getUnreadBubbleHeight()) / 2 : _rect.top() + _unreadsY;
+
+        _painter->drawPixmap(x, y, im::getAttentionIcon(_isSelected).cachedPixmap());
+    }
+
+    int  RecentItemRecent::getUnknownUnreads(const Ui::ViewParams& _viewParams, const QRect& _rect) const
+    {
+        auto unknownUnreads = 0;
+        if (!isUnknownAndNotPictOnly(_viewParams))
+            return 0;
+        const int addX = (_rect.width() - Logic::IconsManager::buttonWidth());
+        const int x = _rect.x() + addX;
+        unknownUnreads = x - Logic::IconsManager::getUnknownRightOffset();
+        return unknownUnreads;
+    }
+
+    void RecentItemRecent::drawRemoveIcon(QPainter& _p, bool _isSelected, const QRect& _rect, const Ui::ViewParams& _viewParams) const
+    {
+        if (!isUnknownAndNotPictOnly(_viewParams))
+            return;
+        const auto ratio = Utils::scale_bitmap_ratio();
+        const auto remove_img = getRemove(_isSelected);
+
+        auto contactListParams = compactMode_ ? Ui::GetContactListParams() : Ui::GetRecentsParams();
+
+        const int addX = (_rect.width() - Logic::IconsManager::buttonWidth());
+        const int x = _rect.x() + addX;
+        const int addY = (contactListParams.itemHeight() - remove_img.height() / ratio) / 2.;
+        const int y = _rect.top() + addY;
+
+        contactListParams.removeContactFrame().setX(addX);
+        contactListParams.removeContactFrame().setY(addY);
+        contactListParams.removeContactFrame().setWidth(remove_img.width());
+        contactListParams.removeContactFrame().setHeight(remove_img.height());
+
+        _p.drawPixmap(x, y, remove_img);
     }
 
     void RecentItemRecent::draw(
@@ -1256,7 +1277,7 @@ namespace Ui
         const bool _isSelected,
         const bool _isHovered,
         const bool _isDrag,
-        const bool _isKeyboardFocused)
+        const bool _isKeyboardFocused) const
     {
         Utils::PainterSaver ps(_p);
         _p.setClipRect(_rect);
@@ -1286,31 +1307,16 @@ namespace Ui
 
         const auto statusBadge = isFavorites ? QPixmap() : Utils::getStatusBadge(getAimid(), avatar.width());
 
-        Utils::drawAvatarWithBadge(_p, QPoint(avatarX, avatarY), avatar, official_, statusBadge, muted_, _isSelected, online_, compactMode_);
+        Utils::StatusBadgeFlags statusFlags { Utils::StatusBadgeFlag::Small };
+        statusFlags.setFlag(Utils::StatusBadgeFlag::Official, official_);
+        statusFlags.setFlag(Utils::StatusBadgeFlag::Muted, muted_);
+        statusFlags.setFlag(Utils::StatusBadgeFlag::Selected, _isSelected);
+        statusFlags.setFlag(Utils::StatusBadgeFlag::Online, online_);
+        statusFlags.setFlag(Utils::StatusBadgeFlag::SmallOnline, compactMode_);
+        Utils::drawAvatarWithBadge(_p, QPoint(avatarX, avatarY), avatar, statusBadge, statusFlags);
 
         const auto isUnknown = (_viewParams.regim_ == ::Logic::MembersWidgetRegim::UNKNOWN);
-
-        auto unknownUnreads = 0;
-        if (isUnknown && !_viewParams.pictOnly_)
-        {
-            const auto& remove_img = getRemove(_isSelected);
-
-            static const auto buttonWidth = Utils::scale_value(32);
-
-            const int addX = (_rect.width() - buttonWidth);
-            const int x = _rect.x() + addX;
-            const int addY = (contactListParams.itemHeight() - remove_img.height() / ratio) / 2.;
-            const int y = _rect.top() + addY;
-
-            contactListParams.removeContactFrame().setX(addX);
-            contactListParams.removeContactFrame().setY(addY);
-            contactListParams.removeContactFrame().setWidth(remove_img.width());
-            contactListParams.removeContactFrame().setHeight(remove_img.height());
-
-            _p.drawPixmap(x, y, remove_img);
-
-            unknownUnreads = x - getUnknownRightOffset();
-        }
+        drawRemoveIcon(_p, _isSelected, _rect, _viewParams);
 
         auto unreadsY = (contactListParams.itemHeight() - getUnreadsSize()) / 2;
 
@@ -1323,58 +1329,15 @@ namespace Ui
 
         //////////////////////////////////////////////////////////////////////////
         // draw unreads
-
-        if (unreadCount_)
-        {
-            unreadsX -= _viewParams.pictOnly_ ? getUnreadBubbleRightMarginPictOnly() : getUnreadBubbleRightMargin(compactMode_);
-
-            unreadsX -= unreadBalloonWidth_;
-
-            const auto bgColor = Styling::getParameters().getColor(_isSelected ? Styling::StyleVariable::TEXT_SOLID_PERMANENT : muted_ ? Styling::StyleVariable::BASE_TERTIARY : Styling::StyleVariable::PRIMARY);
-            const auto textColor = Styling::getParameters().getColor(_isSelected ? Styling::StyleVariable::PRIMARY_SELECTED : Styling::StyleVariable::BASE_GLOBALWHITE);
-
-            auto x = (isUnknown && !_viewParams.pictOnly_) ? unknownUnreads : _rect.left() + unreadsX;
-            auto y = (isUnknown && !_viewParams.pictOnly_) ? _rect.top() + (contactListParams.itemHeight() - getUnreadBubbleHeight()) / 2 : _rect.top() + unreadsY;
-
-            Utils::drawUnreads(_p, contactListParams.unreadsFont(), bgColor, textColor, unreadCount_, getUnreadBubbleHeight(), x, y);
-        }
-        else if (attention_)
-        {
-            unreadsX -= _viewParams.pictOnly_ ? getUnreadBubbleRightMarginPictOnly() : getUnreadBubbleRightMargin(compactMode_);
-
-            static QPixmap attentionPixNormal = getAttentionIcon(false);
-            static QPixmap attentionPixSelected = getAttentionIcon(true);
-            const auto& attentionPix = _isSelected ? attentionPixSelected : attentionPixNormal;
-
-            unreadsX -= getAttentionSize().width();
-
-            auto x = (isUnknown && !_viewParams.pictOnly_) ? unknownUnreads : _rect.left() + unreadsX;
-            auto y = (isUnknown && !_viewParams.pictOnly_) ? _rect.top() + (contactListParams.itemHeight() - getUnreadBubbleHeight()) / 2 : _rect.top() + unreadsY;
-
-            _p.drawPixmap(x, y, attentionPix);
-        }
-
-        //////////////////////////////////////////////////////////////////////////
-        // draw mention
-        if (mention_ && !isUnknown)
-        {
-            if (unreadCount_)
-                unreadsX -= _viewParams.pictOnly_ ? getUnreadLeftPaddingPictOnly() : getUnreadLeftPadding();
-            else
-                unreadsX -= _viewParams.pictOnly_ ? getUnreadBubbleRightMarginPictOnly() : getUnreadBubbleRightMargin(compactMode_);
-
-            unreadsX -= getMentionSize().width();
-
-            static QPixmap pixNormal = getMentionIcon(false);
-            static QPixmap pixSelected = getMentionIcon(true);
-            QPixmap& pix = _isSelected ? pixSelected : pixNormal;
-
-            _p.drawPixmap(_rect.left() + unreadsX, _rect.top() + unreadsY, pix);
-        }
+        Data::DlgState state = Logic::getRecentsModel()->getDlgState(getAimid());
+        drawUnreads(&_p, state, _isSelected, _rect, _viewParams, unreadsX, unreadsY);
+        drawAttention(&_p, state, _isSelected, _rect, _viewParams, unreadsX, unreadsY);
+        drawMentions(&_p, state, _isSelected, _rect, _viewParams, unreadsX, unreadsY);
 
         //////////////////////////////////////////////////////////////////////////
         // draw status
-        const int avatarRightMargin = (getRigthLineCenter(compactMode_) - (contactListParams.getLastReadAvatarSize()) / 2);
+        using im = Logic::IconsManager;
+        const int avatarRightMargin = (im::getRigthLineCenter(compactMode_) - (contactListParams.getLastReadAvatarSize()) / 2);
 
         if (!_viewParams.pictOnly_ && !isUnknown && !draft_)
         {
@@ -1392,7 +1355,7 @@ namespace Ui
                 unreadsX -= avatarRightMargin;
                 unreadsX -= Utils::unscale_bitmap(lastReadAvatar.width());
 
-                const int y_offset = (getUnreadBubbleHeight() - Utils::unscale_bitmap(lastReadAvatar.height())) / 2;
+                const int y_offset = (im::getUnreadBubbleHeight() - Utils::unscale_bitmap(lastReadAvatar.height())) / 2;
 
                 _p.drawPixmap(_rect.left() + unreadsX, _rect.top() + unreadsY + y_offset, lastReadAvatar);
 
@@ -1402,12 +1365,12 @@ namespace Ui
             {
                 if (const auto& pix = getStatePixmap(lastStatus_, _isSelected, multichat_); !pix.isNull())
                 {
-                    const int rightMargin = getRigthLineCenter(compactMode_) - (Utils::unscale_bitmap(pix.width()) / 2);
+                    const int rightMargin = im::getRigthLineCenter(compactMode_) - (Utils::unscale_bitmap(pix.width()) / 2);
 
                     unreadsX -= rightMargin;
                     unreadsX -= Utils::unscale_bitmap(pix.width());
 
-                    const int y_offset = (getUnreadBubbleHeight() - Utils::unscale_bitmap(pix.height())) / 2;
+                    const int y_offset = (im::getUnreadBubbleHeight() - Utils::unscale_bitmap(pix.height())) / 2;
 
                     _p.drawPixmap(_rect.left() + unreadsX, _rect.top() + unreadsY + y_offset, pix);
                 }
@@ -1433,7 +1396,7 @@ namespace Ui
 
                     unreadsX -= whiteAreaD;
 
-                    int y_offset = (getUnreadBubbleHeight() - Utils::unscale_bitmap(headAvatar.height())) / 2;
+                    int y_offset = (im::getUnreadBubbleHeight() - Utils::unscale_bitmap(headAvatar.height())) / 2;
 
                     const int border = (whiteAreaD - Utils::unscale_bitmap(headAvatar.height())) / 2;
                     const int overlap = Utils::scale_value(4);
@@ -1461,6 +1424,7 @@ namespace Ui
 
         //////////////////////////////////////////////////////////////////////////
         // render contact name
+        auto unknownUnreads = getUnknownUnreads(_viewParams, _rect);
         const int rightMarginName = isUnknown ? unknownUnreads : width - contactListParams.itemHorPaddingRight();
         const int rightMarginMessage = isUnknown ? unknownUnreads : unreadsX;
 
@@ -1478,9 +1442,7 @@ namespace Ui
         {
             nameMaxWidth -= (getPinSize().width() + contactListParams.official_hor_padding());
 
-            static QPixmap badgeNormal = getPin(false, getPinSize());
-            static QPixmap badgeSelected = getPin(true, getPinSize());
-            const QPixmap& badge = _isSelected ? badgeSelected : badgeNormal;
+            const QPixmap badge = getPin(_isSelected, getPinSize()).actualPixmap();
 
             right_area_right -= Utils::unscale_bitmap(badge.width());
 
@@ -1490,12 +1452,15 @@ namespace Ui
         }
 
         //////////////////////////////////////////////////////////////////////////
+        drawDraft(&_p, state, _isSelected, _rect, _viewParams, right_area_right);
+        fixMaxWidthIfIcons(_viewParams, nameMaxWidth);
+        //////////////////////////////////////////////////////////////////////////
         // draw time
-        if (!_viewParams.pictOnly_ && !compactMode_ && !isUnknown)
+        if (!_viewParams.pictOnly_ && !compactMode_ && !isUnknown && !draft_)
         {
             const int time_width = time_->cachedSize().width();
 
-            time_->setColor(Styling::getParameters().getColor(_isSelected ? Styling::StyleVariable::TEXT_SOLID_PERMANENT : Styling::StyleVariable::BASE_PRIMARY));
+            time_->setColor(Styling::ThemeColorKey{ _isSelected ? Styling::StyleVariable::TEXT_SOLID_PERMANENT : Styling::StyleVariable::BASE_PRIMARY });
             time_->setOffsets(right_area_right - time_width, contactNameY + getTimeYOffsetFromName() + Utils::text_sy());
             time_->draw(_p);
 
@@ -1514,7 +1479,7 @@ namespace Ui
 
             const bool widthNameChanged = (nameMaxWidth != prevWidthName_);
 
-            const QColor contactNameColor = getContactNameColor(_isSelected, isFavorites);
+            const auto contactNameColor = getContactNameColor(_isSelected, isFavorites);
 
             name_->setColor(contactNameColor);
             name_->setOffsets(contactNameX, contactNameY + Utils::text_sy());
@@ -1533,7 +1498,7 @@ namespace Ui
         // draw mediatype
         if (mediaType_ != MediaType::noMedia && !compactMode_ && !_viewParams.pictOnly_ && !typersCount_)
         {
-            const QPixmap& mediaPix = getMediaTypePix(mediaType_, _isSelected);
+            const QPixmap mediaPix = Logic::IconsManager::getMediaTypePix(mediaType_, _isSelected);
 
             const int pixY = _rect.top() + getMediaTypeIconTopMargin(multichat_ && !readOnlyChat_);
 
@@ -1550,9 +1515,9 @@ namespace Ui
                 int messageX = _rect.left() + contactListParams.messageX();
 
                 messageShortName_->setOffsets(messageX, messageY + Utils::text_sy() + getMultiChatMessageOffset());
-                messageShortName_->setColor(getNameColor(_isSelected, draft_));
+                messageShortName_->setColor(getNameColor(_isSelected, draft_ && !typersCount_));
 
-                const int textOffset = Utils::scale_value(getMediaIconSize().width()) + Utils::scale_value(4);
+                const int textOffset = Utils::scale_value(Logic::IconsManager::getMediaIconSize().width()) + Utils::scale_value(4);
 
                 messageX += textOffset;
                 messageY += get2LineMessageOffset() - getMultiChatMessageOffset();
@@ -1584,7 +1549,7 @@ namespace Ui
 
                     if (mediaType_ != MediaType::noMedia && !typersCount_)
                     {
-                        textOffset = Utils::scale_value(getMediaIconSize().width()) + Utils::scale_value(4);
+                        textOffset = Utils::scale_value(Logic::IconsManager::getMediaIconSize().width()) + Utils::scale_value(4);
                     }
 
                     messageX += textOffset;
@@ -1600,7 +1565,7 @@ namespace Ui
                         messageControl->getHeight(messageMaxWidth);
                     }
 
-                    messageControl->setColor(getNameColor(_isSelected, draft_));
+                    messageControl->setColor(getNameColor(_isSelected, draft_ && !typersCount_));
                     if (!_isSelected)
                         messageControl->setColorForAppended(getMessageColor(false));
 
@@ -1613,22 +1578,27 @@ namespace Ui
         prevWidthMessage_ = messageMaxWidth;
 
         if (_isDrag)
-            renderRecentsDragOverlay(_p, _rect, _viewParams);
+            renderDragOverlay(_p, _rect, _viewParams);
     }
-
-
-
 
     //////////////////////////////////////////////////////////////////////////
     // MessageAlertItem
     //////////////////////////////////////////////////////////////////////////
-    MessageAlertItem::MessageAlertItem(const Data::DlgState& _state, const bool _compactMode)
+    MessageAlertItem::MessageAlertItem(const Data::DlgState& _state, const bool _compactMode, AlertType _alertType)
         : RecentItemRecent(
             _state,
             _compactMode,
-            !Features::showNotificationsText() || LocalPIN::instance()->locked(), false)
+            isMessageAlertSenderHidden(),
+            isMessageAlertTextHidden(),
+            false,
+            _alertType,
+            true)
     {
         mention_ = _state.mentionAlert_;
+
+        const int scale = Utils::scale_bitmap(getAlertAvatarSize());
+        const QSize size(scale, scale);
+        cachedLogo_ = QImage(qsl(":/logo/logo")).scaled(size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
     }
 
     MessageAlertItem::~MessageAlertItem() = default;
@@ -1640,7 +1610,7 @@ namespace Ui
         const bool _isSelected,
         const bool _isHovered,
         const bool _isDrag,
-        const bool _isKeyboardFocused)
+        const bool _isKeyboardFocused) const
     {
         Utils::PainterSaver ps(_p);
 
@@ -1650,7 +1620,7 @@ namespace Ui
 
         drawMouseState(_p, _rect, _isHovered, _isSelected);
 
-        const auto width = _rect.width();//CorrectItemWidth(ItemWidth(_viewParams), _viewParams.fixedWidth_);
+        const auto width = _rect.width();
 
         bool isDefaultAvatar = false;
 
@@ -1658,16 +1628,36 @@ namespace Ui
 
         //////////////////////////////////////////////////////////////////////////
         // render avatar
-        auto avatar = Logic::GetAvatarStorage()->GetRounded(getAimid(), displayName_, Utils::scale_bitmap(getAlertAvatarSize()),
-            isDefaultAvatar, false, compactMode_);
+        int avatarX = 0, avatarY = 0;
+        if (isMessageAlertSenderHidden())
+        {
+            const int scale = Utils::scale_bitmap(getAlertAvatarSize());
+            const auto ratio = Utils::scale_bitmap_ratio();
 
-        const auto ratio = Utils::scale_bitmap_ratio();
-        const auto avatarX = _rect.left() + getAlertAvatarX();
-        const auto avatarY = _rect.top() + (_rect.height() - avatar.height() / ratio) / 2;
+            const QSize size(scale, scale);
+            avatarX = _rect.left() + getAlertAvatarX();
+            avatarY = _rect.top() + (_rect.height() - size.height() / ratio) / 2;
+            _p.drawImage(QPoint(avatarX, avatarY), cachedLogo_);
+        }
+        else
+        {
+            auto avatar = Logic::GetAvatarStorage()->GetRounded(getAimid(), displayName_, Utils::scale_bitmap(getAlertAvatarSize()),
+                isDefaultAvatar, false, compactMode_);
 
-        const auto isOnline = Logic::GetLastseenContainer()->isOnline(getAimid());
-        const auto statusBadge = Utils::getStatusBadge(getAimid(), avatar.width());
-        Utils::drawAvatarWithBadge(_p, QPoint(avatarX, avatarY), avatar, !multichat_ && official_, statusBadge, !mention_ && !multichat_ && muted_, _isSelected, isOnline, false);
+            const auto isOnline = Logic::GetLastseenContainer()->isOnline(getAimid());
+            const auto statusBadge = Utils::getStatusBadge(getAimid(), avatar.width());
+            const auto ratio = Utils::scale_bitmap_ratio();
+
+            avatarX = _rect.left() + getAlertAvatarX();
+            avatarY = _rect.top() + (_rect.height() - avatar.height() / ratio) / 2;
+
+            Utils::StatusBadgeFlags statusFlags { Utils::StatusBadgeFlag::Small };
+            statusFlags.setFlag(Utils::StatusBadgeFlag::Official, !multichat_ && official_);
+            statusFlags.setFlag(Utils::StatusBadgeFlag::Muted, !mention_ && !multichat_ && muted_);
+            statusFlags.setFlag(Utils::StatusBadgeFlag::Selected, _isSelected);
+            statusFlags.setFlag(Utils::StatusBadgeFlag::Online, isOnline);
+            Utils::drawAvatarWithBadge(_p, QPoint(avatarX, avatarY), avatar, statusBadge, statusFlags);
+        }
 
         //////////////////////////////////////////////////////////////////////////
         // render contact name
@@ -1690,9 +1680,7 @@ namespace Ui
             currentNameWidth = nameMaxWidth;
 
         if (widthNameChanged)
-        {
             name_->elide(nameMaxWidth);
-        }
 
         name_->draw(_p);
 
@@ -1701,78 +1689,57 @@ namespace Ui
         // draw mediatype
         if (mediaType_ != MediaType::noMedia)
         {
-            const QPixmap& mediaPix = getMediaTypePix(mediaType_, _isSelected);
+            const QPixmap mediaPix = Logic::IconsManager::getMediaTypePix(mediaType_, _isSelected);
 
             const int pixY = _rect.top() + getMediaTypeIconTopMarginAlert(multichat_ && !readOnlyChat_);
 
             _p.drawPixmap(contactNameX, pixY, mediaPix);
         }
 
-
         //////////////////////////////////////////////////////////////////////////
         // draw message
-        if (mediaType_ != MediaType::noMedia && multichat_ && messageLongName_ && messageShortName_)
-        {
-            const auto messageY = _rect.top() + getAlertMessageY();
 
-            const int iconOffset = Utils::scale_value(getMediaIconSize().width()) + Utils::scale_value(4);
+        const auto messageY = _rect.top() + getAlertMessageY();
 
-            const bool widthMessageChanged = (messageMaxWidth != prevWidthMessage_);
-            if (widthMessageChanged)
-            {
-                messageShortName_->elide(messageMaxWidth);
-                messageLongName_->elide(messageMaxWidth - iconOffset);
-            }
+        const int iconOffset = Utils::scale_value(Logic::IconsManager::getMediaIconSize().width()) + Utils::scale_value(4);
 
-            messageShortName_->setOffsets(contactNameX, messageY + Utils::text_sy());
-            messageShortName_->setColor(getNameColor(_isSelected, draft_));
-            messageShortName_->draw(_p);
+        const bool widthMessageChanged = (messageMaxWidth != prevWidthMessage_);
+        if (widthMessageChanged)
+            messageShortName_->elide(messageMaxWidth);
 
+        int yOffset = messageY + Utils::text_sy();
+        if (mediaType_ != MediaType::noMedia && !messageLongName_)
             contactNameX += iconOffset;
 
-            messageLongName_->setOffsets(contactNameX, messageY + Utils::text_sy() + get2LineMessageOffset());
+        messageShortName_->setColor(messageLongName_ ? getNameColor(_isSelected, draft_ && !typersCount_) : getMessageColor(_isSelected));
+        messageShortName_->setOffsets(contactNameX, yOffset);
+        messageShortName_->draw(_p);
+
+        if (messageLongName_)
+        {
+            if (!messageShortName_->getText().isEmpty())
+                yOffset += get2LineMessageOffset();
+
+            if (mediaType_ != MediaType::noMedia)
+                contactNameX += iconOffset;
+
+            messageLongName_->elide(messageMaxWidth - iconOffset);
+            messageLongName_->setOffsets(contactNameX, yOffset);
             messageLongName_->setColor(getMessageColor(_isSelected));
             messageLongName_->draw(_p);
-        }
-        else
-        {
-            const auto& messageControl = (messageNameWidth_ > messageMaxWidth) ? messageLongName_ : messageShortName_;
-            im_assert(messageControl);
-            if (messageControl)
-            {
-                if (mediaType_ != MediaType::noMedia)
-                    contactNameX += Utils::scale_value(getMediaIconSize().width()) + Utils::scale_value(4);
-
-                const auto messageY = _rect.top() + getAlertMessageY();
-
-                messageControl->setOffsets(contactNameX, messageY + Utils::text_sy());
-
-                const bool widthMessageChanged = (messageMaxWidth != prevWidthMessage_);
-
-                if (widthMessageChanged)
-                {
-                    messageControl->getHeight(messageMaxWidth);
-                }
-
-                messageControl->setColor(getNameColor(_isSelected, draft_));
-                if (!_isSelected)
-                    messageControl->setColorForAppended(getMessageColor(false));
-
-                messageControl->draw(_p);
-            }
         }
 
         //////////////////////////////////////////////////////////////////////////
         // draw mention
         if (mention_)
         {
-            static QPixmap mentionIcon = getMentionIcon(_isSelected, QSize(getMentionAvatarIconSize(), getMentionAvatarIconSize()));
+            static auto mentionIcon = Logic::IconsManager::getMentionIcon(_isSelected, QSize(getMentionAvatarIconSize(), getMentionAvatarIconSize()));
 
             const auto iconX = _rect.left() + getAvatarIconMargin();
             const auto iconY = _rect.top() + getAvatarIconMargin();
 
-            static QBrush hoverBrush(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
-            static QBrush normalBrush(Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
+            QBrush hoverBrush(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
+            QBrush normalBrush(Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
             _p.setPen(Qt::NoPen);
             _p.setBrush(_isHovered ? hoverBrush : normalBrush);
             _p.setRenderHint(QPainter::Antialiasing);
@@ -1788,20 +1755,17 @@ namespace Ui
                 iconY + getAvatarIconBorderSize(),
                 Utils::unscale_bitmap(getMentionAvatarIconSize()),
                 Utils::unscale_bitmap(getMentionAvatarIconSize()),
-                mentionIcon);
+                mentionIcon.actualPixmap());
         }
 
         prevWidthName_ = nameMaxWidth;
         prevWidthMessage_ = messageMaxWidth;
 
         // draw underline
-        static QColor underlineColor = getAlertUnderlineColor();
-
-        QPen underlinePen(underlineColor);
+        QPen underlinePen(getAlertUnderlineColor());
         underlinePen.setWidth(Utils::scale_value(1));
 
-        _p.setPen(underlineColor);
-
+        _p.setPen(underlinePen);
         _p.drawLine(_rect.bottomLeft(), _rect.bottomRight());
     }
 
@@ -1818,7 +1782,8 @@ namespace Ui
         const auto& contactListParams = Ui::GetRecentsParams();
 
         name_ = TextRendering::MakeTextUnit(Utils::replaceLine(_state.senderNick_), Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        name_->init(Fonts::appFont(contactListParams.contactNameFontSize(), Fonts::FontWeight::Normal), Qt::black);
+        TextRendering::TextUnit::InitializeParameters params{ Fonts::appFont(contactListParams.contactNameFontSize(), Fonts::FontWeight::Normal), Styling::ColorParameter{ Qt::black } };
+        name_->init(params);
         name_->evaluateDesiredSize();
         nameWidth_ = name_->desiredWidth();
 
@@ -1831,11 +1796,15 @@ namespace Ui
 
         messageLongName_ = TextRendering::MakeTextUnit(u"(" % _state.senderAimId_ % u")" % QChar::LineFeed, Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS,
             Ui::TextRendering::ProcessLineFeeds::KEEP_LINE_FEEDS);
-        messageLongName_->init(Fonts::appFontScaled(fontSize, Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1, Ui::TextRendering::LineBreakType::PREFER_SPACES);
+        params.setFonts(Fonts::appFontScaled(fontSize, Fonts::FontWeight::Normal));
+        params.color_ = Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID };
+        params.maxLinesCount_ = 1;
+        params.lineBreak_ = Ui::TextRendering::LineBreakType::PREFER_SPACES;
+        messageLongName_->init(params);
         messageLongName_->setLineSpacing(getMessageLineSpacing());
 
         auto secondPath2 = TextRendering::MakeTextUnit(_state.GetText(), Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS, Ui::TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-        secondPath2->init(Fonts::appFontScaled(fontSize, Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1, Ui::TextRendering::LineBreakType::PREFER_SPACES);
+        secondPath2->init(params);
 
         messageLongName_->appendBlocks(std::move(secondPath2));
         messageLongName_->evaluateDesiredSize();
@@ -1850,7 +1819,7 @@ namespace Ui
         const bool _isSelected,
         const bool _isHovered,
         const bool _isDrag,
-        const bool _isKeyboardFocused)
+        const bool _isKeyboardFocused) const
     {
         const Utils::PainterSaver saver(_p);
 
@@ -1882,8 +1851,8 @@ namespace Ui
         const auto iconX = _rect.left() + getAvatarIconMargin();
         const auto iconY = _rect.top() + getAvatarIconMargin();
 
-        static QBrush hoverBrush(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
-        static QBrush normalBrush(Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
+        QBrush hoverBrush(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
+        QBrush normalBrush(Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
         _p.setPen(Qt::NoPen);
         _p.setBrush(_isHovered ? hoverBrush : normalBrush);
         _p.setRenderHint(QPainter::Antialiasing);
@@ -1949,7 +1918,7 @@ namespace Ui
         const auto& contactListParams = Ui::GetRecentsParams();
 
         name_ = TextRendering::MakeTextUnit(_state.GetText(), Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        name_->init(Fonts::appFont(contactListParams.contactNameFontSize(), Fonts::FontWeight::Normal), Qt::black);
+        name_->init({ Fonts::appFont(contactListParams.contactNameFontSize(), Fonts::FontWeight::Normal), Styling::ColorParameter{ Qt::black } });
         name_->evaluateDesiredSize();
         nameWidth_ = name_->desiredWidth();
     }
@@ -1963,7 +1932,7 @@ namespace Ui
         const bool _isSelected,
         const bool _isHovered,
         const bool _isDrag,
-        const bool _isKeyboardFocused)
+        const bool _isKeyboardFocused) const
     {
         static QPixmap mailIcon = getMailIcon(Utils::scale_bitmap(getMailIconSize()), _isSelected);
         im_assert(!mailIcon.isNull());
@@ -2102,7 +2071,7 @@ namespace Ui
             return std::make_unique<PinnedServiceItem>(_state);
 
         const bool compactMode = !Ui::get_gui_settings()->get_value<bool>(settings_show_last_message, !config::get().is_on(config::features::compact_mode_by_default));
-        return std::make_unique<RecentItemRecent>(_state, compactMode, false, shouldDisplayHeads(_state));
+        return std::make_unique<RecentItemRecent>(_state, compactMode, false, false, shouldDisplayHeads(_state));
     }
 
     bool RecentItemDelegate::shouldDisplayHeads(const Data::DlgState& _state)
@@ -2120,6 +2089,14 @@ namespace Ui
     {
         const auto it = items_.find(_aimId);
         return it != items_.end() && it->second && it->second->needsTooltip(std::move(_posCursor));
+    }
+
+    QRect RecentItemDelegate::getDraftIconRectWrapper(const QString& _aimId, const QModelIndex&, QPoint _posCursor) const
+    {
+        const auto it = items_.find(_aimId);
+        if (it != items_.end() && it->second)
+            return it->second->getDraftIconRectWrapper();
+        return {};
     }
 
     void RecentItemDelegate::onFriendlyChanged(const QString& _aimId, const QString& /*_friendly*/)
@@ -2142,7 +2119,6 @@ namespace Ui
     {
         items_.clear();
     }
-
 
     RecentItemDelegate::ItemKey::ItemKey(const bool isSelected, const bool isHovered, const int unreadDigitsNumber)
         : IsSelected(isSelected)

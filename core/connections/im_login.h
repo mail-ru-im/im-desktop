@@ -10,7 +10,8 @@ namespace core
     enum class login_type
     {
         lt_login_password,
-        lt_phone
+        lt_phone,
+        lt_oauth2
     };
 
 

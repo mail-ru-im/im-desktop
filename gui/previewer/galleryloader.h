@@ -134,6 +134,8 @@ public:
     virtual QString caption() const override { return caption_; }
     virtual QString aimId() const override { return aimid_; }
 
+    bool isMediaVirusInfected() const override;
+
 Q_SIGNALS:
     void loaded(const QString& _link, int64_t _msgId);
     void previewLoaded(const QString& _link, int64_t _msgId);

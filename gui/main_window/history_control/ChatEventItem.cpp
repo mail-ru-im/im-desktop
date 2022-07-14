@@ -146,7 +146,10 @@ namespace Ui
     {
         const auto color = getTextColor(getContact());
         const auto linkColor = getLinkColor(getContact());
-        TextWidget_->init(getTextFont(textFontSize()), color, linkColor, QColor(), QColor(), textAligment());
+        TextRendering::TextUnit::InitializeParameters params(getTextFont(textFontSize()), color);
+        params.linkColor_ = linkColor;
+        params.align_ = textAlignment();
+        TextWidget_->init(params);
         TextWidget_->applyFontToLinks(getTextFontBold(textFontSize()));
     }
 
@@ -186,12 +189,6 @@ namespace Ui
         const auto maxBubbleContentWidth = maxBubbleWidth - 2 * getTextHorPadding();
 
         return maxBubbleContentWidth;
-    }
-
-    void ChatEventItem::updateStyle()
-    {
-        TextWidget_->setColor(getTextColor(getContact()));
-        update();
     }
 
     void ChatEventItem::updateFonts()
@@ -270,7 +267,7 @@ namespace Ui
             textPlaceholder_->setFixedHeight(height_);
 
         auto additionalOffset = TextWidget_->getLinesCount() > 1 ? (lineSpacing() / 2) : 0;
-        TextWidget_->setOffsets(textAligment() == TextRendering::HorAligment::CENTER ? (width() - TextWidget_->cachedSize().width()) / 2 : BubbleRect_.x() + getTextHorPadding(),
+        TextWidget_->setOffsets(textAlignment() == TextRendering::HorAligment::CENTER ? (width() - TextWidget_->cachedSize().width()) / 2 : BubbleRect_.x() + getTextHorPadding(),
             BubbleRect_.top() + getTextTopPadding(textFontSize()) + additionalOffset);
     }
 
@@ -280,10 +277,10 @@ namespace Ui
         buttonsWidget_ = new QWidget(this);
         buttonsWidget_->setFixedHeight(getButtonsHeight() + additionalButtonsPadding());
 
-        const auto bgNormal = Styling::getParameters().getColor(Styling::StyleVariable::CHAT_PRIMARY);
-        const auto bgHover = Styling::getParameters().getColor(Styling::StyleVariable::CHAT_PRIMARY_HOVER);
-        const auto bgActive = Styling::getParameters().getColor(Styling::StyleVariable::CHAT_PRIMARY_ACTIVE);
-        const auto textColor = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY);
+        const auto bgNormal = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_GLOBALWHITE };
+        const auto bgHover = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_BRIGHT_INVERSE };
+        const auto bgActive = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_BRIGHT_INVERSE };
+        const auto textColor = Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY };
 
         auto hLayout = Utils::emptyHLayout(buttonsWidget_);
         hLayout->setSpacing(getButtonsSpacing());
@@ -392,11 +389,11 @@ namespace Ui
         return 0;
     }
 
-    TextRendering::HorAligment ChatEventItem::textAligment() const
+    TextRendering::HorAligment ChatEventItem::textAlignment() const
     {
         if (EventInfo_ && (EventInfo_->eventType() == core::chat_event_type::warn_about_stranger || EventInfo_->eventType() == core::chat_event_type::no_longer_stranger))
         {
-            const auto text = EventInfo_->formatEventText();
+            const auto& text = EventInfo_->formatEventText();
             return text.contains(QChar(0x2023)) ? TextRendering::HorAligment::LEFT : TextRendering::HorAligment::CENTER;
         }
 
@@ -440,14 +437,14 @@ namespace Ui
         return margin;
     }
 
-    QColor ChatEventItem::getTextColor(const QString& _contact)
+    Styling::ThemeColorKey ChatEventItem::getTextColor(const QString& _contact)
     {
-        return Styling::getParameters(_contact).getColor(Styling::StyleVariable::CHATEVENT_TEXT);
+        return Styling::ThemeColorKey(Styling::StyleVariable::CHATEVENT_TEXT, _contact);
     }
 
-    QColor ChatEventItem::getLinkColor(const QString& _contact)
+    Styling::ThemeColorKey ChatEventItem::getLinkColor(const QString& _contact)
     {
-        return Styling::getParameters(_contact).getColor(Styling::StyleVariable::TEXT_PRIMARY);
+        return Styling::ThemeColorKey(Styling::StyleVariable::TEXT_PRIMARY, _contact);
     }
 
     QFont ChatEventItem::getTextFont(int _size)
@@ -593,7 +590,7 @@ namespace Ui
         p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform | QPainter::TextAntialiasing);
         p.setPen(Qt::NoPen);
 
-        p.setBrush(Styling::getParameters(getContact()).getColor(Styling::StyleVariable::CHATEVENT_BACKGROUND));
+        p.setBrush(Styling::getParameters(getContact()).getColor(Styling::StyleVariable::GHOST_ULTRALIGHT_INVERSE));
         p.drawRoundedRect(BubbleRect_, MessageStyle::getBorderRadius(), MessageStyle::getBorderRadius());
 
         if (hasButtons())

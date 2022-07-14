@@ -81,20 +81,21 @@ std::string external_url_config::make_url(std::string_view _domain, std::string_
     return su::concat("https://", _domain, '/', json_name());
 }
 
-std::string external_url_config::make_url_preset(std::string_view _login_domain)
+std::string external_url_config::make_url_preset(std::string_view _login_domain, bool _has_domain)
 {
     std::string url;
+
     if (auto suggested_host = get().string(config::values::external_config_preset_url);
-        !suggested_host.empty() && config::get().is_on(config::features::external_config_use_preset_url))
+        !suggested_host.empty() && !_has_domain)
     {
         url = make_url(suggested_host, su::concat("domain=", _login_domain));
     }
     return url;
 }
 
-std::string external_url_config::make_url_auto_preset(std::string_view _login_domain, std::string_view _host)
+std::string external_url_config::make_url_auto_preset(std::string_view _login_domain, std::string_view _host, bool _has_domain)
 {
-    if (auto url_preset = make_url_preset(_login_domain); !url_preset.empty())
+    if (auto url_preset = make_url_preset(_login_domain, _has_domain); !url_preset.empty())
         return url_preset;
 
     if (!_host.empty())
@@ -109,7 +110,7 @@ external_url_config& external_url_config::instance()
     return c;
 }
 
-void external_url_config::load_async(std::string_view _url, load_callback_t _callback)
+void external_url_config::load_async(std::string_view _url, load_callback_t _callback, int _retry_count)
 {
     auto fire_callback = [_callback = std::move(_callback)](core::ext_url_config_error _error, std::string _url) mutable
     {
@@ -130,10 +131,13 @@ void external_url_config::load_async(std::string_view _url, load_callback_t _cal
     request->set_normalized_url("ext_url_cfg");
     request->set_use_curl_decompresion(true);
 
-    request->get_async([fire_callback = std::move(fire_callback), request, url = std::string(_url), use_develop_local_config = use_develop_local_config_](curl_easy::completion_code _code) mutable
+    request->get_async([fire_callback = std::move(fire_callback), request, url = std::string(_url), use_develop_local_config = use_develop_local_config_, _retry_count, this](curl_easy::completion_code _code) mutable
     {
         if (_code != curl_easy::completion_code::success)
         {
+            if (_code != curl_easy::completion_code::cancelled && _retry_count > 0 && g_core->try_to_apply_alternative_settings())
+                return load_async(std::move(url), std::move(fire_callback), _retry_count - 1);
+
             fire_callback(ext_url_config_error::config_host_invalid, std::move(url));
             return;
         }
@@ -173,6 +177,7 @@ void external_url_config::load_async(std::string_view _url, load_callback_t _cal
 
         response->reset_out();
         response->save_2_file(config_filename());
+        external_config_loaded_ = true;
 
         fire_callback(ext_url_config_error::ok, std::move(url));
     });
@@ -226,7 +231,7 @@ void external_url_config::clear()
 
 host_cache config::hosts::external_url_config::get_cache() const
 {
-    if (const auto c = get_config(); c)
+    if (const auto c = get_config())
         return c->cache_;
     return {};
 }
@@ -262,7 +267,7 @@ void external_url_config::override_config(const features_vector& _features, cons
         external_configuration conf;
         conf.features = _features;
         conf.values = _values;
-        config::set_external(std::make_shared<external_configuration>(std::move(conf)));
+        config::set_external(std::make_shared<external_configuration>(std::move(conf)), use_develop_local_config_);
     }
 }
 
@@ -290,7 +295,7 @@ bool external_url_config::config_p::unserialize(const rapidjson::Value& _node)
     cache_.clear();
     auto get_url = [&cache_ = cache_](const auto& _url_node, auto _node_name, auto _type)
     {
-        if (auto res = common::json::get_value<std::string_view>(_url_node, _node_name); res)
+        if (auto res = common::json::get_value<std::string_view>(_url_node, _node_name))
         {
             if (auto url = extract_host(*res); !url.empty())
             {
@@ -310,6 +315,7 @@ bool external_url_config::config_p::unserialize(const rapidjson::Value& _node)
         if (!get_url(iter_api->value, "main-binary-api", host_url_type::base_binary))
             return false;
     }
+
     {
         const auto iter_templ = _node.FindMember("templates-urls");
         if (iter_templ == _node.MemberEnd() || !iter_templ->value.IsObject())
@@ -318,13 +324,9 @@ bool external_url_config::config_p::unserialize(const rapidjson::Value& _node)
             return false;
         if (!get_url(iter_templ->value, "stickerpack-sharing", host_url_type::stickerpack_share))
             return false;
+        get_url(iter_templ->value, "miniapp-sharing", host_url_type::miniapp_sharing);
         if (!get_url(iter_templ->value, "profile", host_url_type::profile))
             return false;
-
-        get_url(iter_templ->value, "di", host_url_type::di);
-        get_url(iter_templ->value, "di-dark", host_url_type::di_dark);
-        get_url(iter_templ->value, "tasks", host_url_type::tasks);
-        get_url(iter_templ->value, "calendar", host_url_type::calendar);
 
         vcs_rooms_.clear();
         const auto iter_vcs = iter_templ->value.FindMember("vcs-room");
@@ -335,6 +337,17 @@ bool external_url_config::config_p::unserialize(const rapidjson::Value& _node)
             while (std::getline(iss, url, ';'))
                 vcs_rooms_.emplace_back(std::exchange(url, {}));
         }
+
+        // TODO: remove when deprecated
+        get_url(iter_templ->value, "di", host_url_type::di);
+        get_url(iter_templ->value, "di-dark", host_url_type::di_dark);
+        get_url(iter_templ->value, "tasks", host_url_type::tasks);
+        get_url(iter_templ->value, "calendar", host_url_type::calendar);
+        get_url(iter_templ->value, "mail", host_url_type::mail);
+
+        get_url(iter_templ->value, "tarm-mail", host_url_type::tarm_mail);
+        get_url(iter_templ->value, "tarm-cloud", host_url_type::tarm_cloud);
+        get_url(iter_templ->value, "tarm-calls", host_url_type::tarm_calls);
     }
     {
         const auto iter_mail = _node.FindMember("mail-interop");
@@ -369,20 +382,43 @@ bool external_url_config::config_p::unserialize(const rapidjson::Value& _node)
         if (auto enabled = common::json::get_value<bool>(_node, name); enabled)
             override_features_.emplace_back(feature, *enabled);
     };
+
     const auto unserialize_feature = [&_node, &unserialize_feature_from_node](auto feature, auto name)
     {
         unserialize_feature_from_node(_node, feature, name);
     };
+
     const auto unserialize_value = [this, &_node](auto value, auto name)
     {
         if (auto val = common::json::get_value<std::string>(_node, name); val)
             override_values_.emplace_back(value, *val);
     };
 
+    const auto unserialize_number = [this, &_node](auto value, auto name)
+    {
+        if (auto val = common::json::get_value<int64_t>(_node, name))
+            override_values_.emplace_back(value, *val);
+    };
+
+    const auto node_to_config = [this](rapidjson::GenericStringRef<char> _name, auto _node, auto _value)
+    {
+        rapidjson::Document doc;
+        doc.SetObject();
+        auto& a = doc.GetAllocator();
+        rapidjson::Value newNode(_node->value, a);
+        doc.SetObject().AddMember(_name, newNode, a);
+        rapidjson::StringBuffer sb;
+        rapidjson::Writer writer(sb);
+        doc.Accept(writer);
+        override_values_.emplace_back(_value, sb.GetString());
+    };
+
     unserialize_feature(config::features::avatar_change_allowed, "allow-self-avatar-change");
     unserialize_feature(config::features::changeable_name, "allow-self-name-change");
+    unserialize_feature(config::features::allow_contacts_rename, "allow-contacts-rename");
     unserialize_feature(config::features::info_change_allowed, "allow-self-info-change");
     unserialize_feature(config::features::snippet_in_chat, "snippets-enabled");
+    unserialize_feature(config::features::call_link_v2_enabled, "call-link-v2-enabled");
     unserialize_feature(config::features::vcs_call_by_link_enabled, "allow-vcs-call-creation");
     unserialize_feature(config::features::vcs_webinar_enabled, "allow-vcs-webinar-creation");
     unserialize_feature(config::features::phone_allowed, "attach-phone-enabled");
@@ -393,15 +429,102 @@ bool external_url_config::config_p::unserialize(const rapidjson::Value& _node)
     unserialize_feature(config::features::restricted_files_enabled, "restricted-files-enabled");
     unserialize_feature(config::features::antivirus_check_enabled, "antivirus-check-enabled");
     unserialize_feature(config::features::threads_enabled, "threads-enabled");
+    unserialize_feature(config::features::omicron_enabled, "omicron-enabled");
+    unserialize_feature(config::features::statistics, "external-statistics-enabled");
+    unserialize_feature(config::features::statistics_mytracker, "external-statistics-enabled");
+    unserialize_feature(config::features::task_creation_in_chat_enabled, "task-creation-in-chat-enabled");
+    unserialize_feature(config::features::hiding_message_info_enabled, "force-hide-notification-all-data");
+    unserialize_feature(config::features::hiding_message_text_enabled, "force-hide-notification-text");
+    unserialize_feature(config::features::delete_account_enabled, "delete-account-enabled");
     unserialize_value(config::values::status_banner_emoji_csv, "status-banner-emoji");
+    unserialize_value(config::values::bots_commands_disabled, "bots-commands-disabled");
+    unserialize_value(config::values::additional_theme, "additional-theme");
+    unserialize_number(config::values::wim_parallel_packets_count, "wim-parallel-packets-count");
+    unserialize_number(config::values::server_api_version, "api-version");
+    unserialize_value(config::values::digital_assistant_bot_aimid, "digital-assistant-bot-aimid");
+    unserialize_feature(config::features::digital_assistant_search_positioning, "digital-assistant-search-positioning");
+    unserialize_feature(config::features::leading_last_name, "leading-last-name");
+    unserialize_feature(config::features::report_messages_enabled, "report-messages-enabled");
+    unserialize_feature(config::features::ptt_recognition, "ptt-recognition-enabled");
 
-    const auto iter_apps = _node.FindMember("mini-apps");
-    if (iter_apps != _node.MemberEnd() && iter_apps->value.IsObject())
+    bool service_apps_overridden = false;
+    const auto iter_services = _node.FindMember("services");
+    if (iter_services != _node.MemberEnd() && iter_services->value.IsObject())
     {
-        unserialize_feature_from_node(iter_apps->value, config::features::tasks_enabled, "tasks-enabled");
-        unserialize_feature_from_node(iter_apps->value, config::features::task_creation_in_chat_enabled, "task-creation-in-chat-enabled");
-        unserialize_feature_from_node(iter_apps->value, config::features::organization_structure_enabled, "organization-structure-enabled");
-        unserialize_feature_from_node(iter_apps->value, config::features::calendar_enabled, "calendar-enabled");
+        const auto disposition = iter_services->value.FindMember("disposition");
+        if (disposition != iter_services->value.MemberEnd() && disposition->value.IsObject())
+        {
+            const auto desktop = disposition->value.FindMember("desktop");
+            if (desktop != disposition->value.MemberEnd() && desktop->value.IsObject())
+            {
+                const auto leftbar = desktop->value.FindMember("leftbar");
+                if (leftbar != desktop->value.MemberEnd() && leftbar->value.IsArray())
+                {
+                    node_to_config("apps-order", leftbar, config::values::service_apps_order);
+                    service_apps_overridden = true;
+                }
+            }
+        }
+
+        auto service_apps_config = iter_services->value.FindMember("config");
+        if (service_apps_config != iter_services->value.MemberEnd() && service_apps_config->value.IsObject())
+            node_to_config("apps-config", service_apps_config, config::values::service_apps_config);
+    }
+
+    const auto iter_custom_apps = _node.FindMember("custom-miniapps");
+    {
+        if (iter_custom_apps != _node.MemberEnd() && iter_custom_apps->value.IsArray())
+            node_to_config("custom-miniapps", iter_custom_apps, config::values::custom_miniapps);
+    }
+
+    unserialize_feature(config::features::calendar_self_auth, "calendar-self-auth");
+    unserialize_feature(config::features::mail_self_auth, "mail-self-auth");
+    unserialize_feature(config::features::cloud_self_auth, "cloud-self-auth");
+
+    // TODO: remove node parsing when deprecated
+    if (!service_apps_overridden)
+    {
+        const auto iter_apps = _node.FindMember("mini-apps");
+        if (iter_apps != _node.MemberEnd() && iter_apps->value.IsObject())
+        {
+            unserialize_feature_from_node(iter_apps->value, config::features::tasks_enabled, "tasks-enabled");
+            unserialize_feature_from_node(iter_apps->value, config::features::organization_structure_enabled, "organization-structure-enabled");
+            unserialize_feature_from_node(iter_apps->value, config::features::calendar_enabled, "calendar-enabled");
+            unserialize_feature_from_node(iter_apps->value, config::features::mail_enabled, "mail-enabled");
+            unserialize_feature_from_node(iter_apps->value, config::features::tarm_mail, "tarm-mail-enabled");
+            unserialize_feature_from_node(iter_apps->value, config::features::tarm_cloud, "tarm-cloud-enabled");
+            unserialize_feature_from_node(iter_apps->value, config::features::tarm_calls, "tarm-calls-enabled");
+        }
+    }
+
+    // user agreement
+    const auto user_agreement = _node.FindMember("user-agreement");
+    if (user_agreement != _node.MemberEnd() && user_agreement->value.IsObject())
+    {
+        unserialize_feature_from_node(user_agreement->value, config::features::external_user_agreement, "enabled");
+        const auto urls = user_agreement->value.FindMember("config");
+        if (urls != _node.MemberEnd() && urls->value.IsObject())
+        {
+            get_url(urls->value, "privacy-policy-url", host_url_type::privacy_policy_url);
+            get_url(urls->value, "terms-of-use-url", host_url_type::terms_of_use_url);
+        }
+    }
+
+    // authorization
+    const auto authentication = _node.FindMember("oauth-authorization");
+    if (authentication != _node.MemberEnd() && authentication->value.IsObject())
+    {
+        unserialize_feature_from_node(authentication->value, config::features::login_by_oauth2_allowed, "enabled");
+
+        const auto config_iter = authentication->value.FindMember("config");
+        if (config_iter != _node.MemberEnd() && config_iter->value.IsObject())
+        {
+            get_url(config_iter->value, "oauth-url", host_url_type::oauth_url);
+            get_url(config_iter->value, "token-url", host_url_type::token_url);
+            get_url(config_iter->value, "redirect-uri", host_url_type::redirect_uri);
+            unserialize_value(config::values::oauth_scope, "scope");
+            unserialize_value(config::values::client_id, "client-id");
+        }
     }
 
     // enable smartreply suggests for quotes if enabled for stickers and text

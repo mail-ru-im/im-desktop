@@ -5,11 +5,11 @@
 #include "GenericBlock.h"
 #include "types/filesharing_meta.h"
 #include "types/filesharing_download_result.h"
+#include "../FileStatus.h"
 
 namespace Ui
 {
     enum class MediaType;
-    enum class FileStatus;
 }
 
 CORE_NS_BEGIN
@@ -99,6 +99,7 @@ public:
     bool isPreviewable() const override;
 
     bool isPlayable() const;
+    bool isPlayableType() const;
 
     bool isVideo() const;
 
@@ -108,7 +109,16 @@ public:
     bool isBlockedFileSharing() const override;
     bool isFileSharingWithStatus() const override;
 
+    bool isFileTrustAllowed() const;
+
+    bool isVirusInfected() const;
+    bool isAllowedByAntivirus() const override;
+    core::antivirus::check antivirusCheckState() const;
+
     bool isDraggable() const override;
+
+    void processMetaInfo(const Utils::FileSharingId& _fsId, const Data::FileSharingMeta& _meta);
+    void processMetaInfoError(const Utils::FileSharingId& _fsId, qint32 _errorCode);
 
 Q_SIGNALS:
     void uploaded(QPrivateSignal) const;
@@ -151,19 +161,18 @@ protected:
 
     virtual void onPreviewMetainfoDownloaded() = 0;
 
-    enum class MetainfoCache
-    {
-        Check,
-        DontCheck,
-    };
-
-    void requestMetainfo(const bool _isPreview, const MetainfoCache _cache = MetainfoCache::Check);
+    void requestMetainfo(bool _isPreview);
 
     void setBlockLayout(IFileSharingBlockLayout* _layout);
 
     void setSelected(const bool _isSelected) override;
 
-    void startDownloading(const bool _sendStats, const bool _forceRequestMetainfo = false, bool _highPriority = false);
+    enum class Priority
+    {
+        Low,
+        High
+    };
+    void startDownloading(const bool _sendStats, Priority Priority = Priority::Low);
 
     void stopDataTransfer();
 
@@ -184,7 +193,7 @@ protected:
 
     bool isInited() const;
 
-    std::optional<Data::FileSharingMeta> getMeta(const Utils::FileSharingId& _id) const override;
+    QStringList messageLinks() const override;
 
 private:
     void connectSignals();
@@ -196,39 +205,23 @@ private:
     void startDataTransferTimeoutTimer();
     void stopDataTransferTimeoutTimer();
 
-    int64_t BytesTransferred_;
-
-    bool CopyFile_;
-
-    int64_t DownloadRequestId_;
-
-    int64_t FileMetaRequestId_;
-
-    int64_t fileDirectLinkRequestId_;
-
-    bool IsSelected_;
-
-    IFileSharingBlockLayout *Layout_;
-
     QString Link_;
-
-    Utils::FileSharingId fileId_;
-
-    int64_t PreviewMetaRequestId_;
-
     QString SaveAs_;
-
-    std::unique_ptr<core::file_sharing_content_type> Type_;
-
-    bool inited_;
-
-    bool loadedFromLocal_;
-
     QString uploadId_;
-
+    Utils::FileSharingId fileId_;
+    IFileSharingBlockLayout *Layout_ = nullptr;
     QTimer* dataTransferTimeout_ = nullptr;
-
+    std::unique_ptr<core::file_sharing_content_type> Type_;
+    int64_t BytesTransferred_ = -1;
+    int64_t DownloadRequestId_ = -1;
+    int64_t FileMetaRequestId_ = -1;
+    int64_t fileDirectLinkRequestId_ = -1;
+    int64_t PreviewMetaRequestId_ = -1;
     std::function<void()> delayedCallDownloading_;
+    bool CopyFile_ = false;
+    bool IsSelected_ = false;
+    bool inited_ = false;
+    bool loadedFromLocal_ = false;
 
 protected:
     Data::FileSharingMeta Meta_;
@@ -238,8 +231,6 @@ private Q_SLOTS:
     void onFileDownloaded(qint64 _seq, const Data::FileSharingDownloadResult& _result);
 
     void onFileDownloading(qint64 _seq, QString _rawUri, qint64 _bytesTransferred, qint64 _bytesTotal);
-
-    void onFileMetainfoDownloaded(qint64 _seq, const Data::FileSharingMeta& _meta);
 
     void onFileSharingError(qint64 _seq, QString _rawUri, qint32 _errorCode);
 

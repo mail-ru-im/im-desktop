@@ -20,29 +20,21 @@ namespace Ui
         return _state.AimId_ == u"mail";
     }
 
-    std::unique_ptr<RecentItemBase> createItem(const Data::DlgState& _state)
+    std::unique_ptr<RecentItemBase> createItem(const Data::DlgState& _state, Ui::AlertType _alertType)
     {
-        if (isMail(_state))
-        {
-            if (_state.MailId_.isEmpty())
-            {
-                return std::make_unique<ComplexMailAlertItem>(_state);
-            }
-            else
-            {
-                return std::make_unique<MailAlertItem>(_state);
-            }
-        }
+        if (!isMail(_state))
+            return std::make_unique<MessageAlertItem>(_state, false, _alertType);
+
+        if (_state.MailId_.isEmpty())
+            return std::make_unique<ComplexMailAlertItem>(_state);
         else
-        {
-            return std::make_unique<MessageAlertItem>(_state, false);
-        }
+            return std::make_unique<MailAlertItem>(_state);
     }
 
-    MessageAlertWidget::MessageAlertWidget(const Data::DlgState& _state, QWidget* _parent)
+    MessageAlertWidget::MessageAlertWidget(const Data::DlgState& _state, Ui::AlertType _alertType, QWidget* _parent)
         : QWidget(_parent)
         , State_(_state)
-        , item_(createItem(_state))
+        , item_(createItem(_state, _alertType))
         , hovered_(false)
     {
         Options_.initFrom(this);
@@ -77,10 +69,7 @@ namespace Ui
     void MessageAlertWidget::paintEvent(QPaintEvent*)
     {
         QPainter painter(this);
-
         item_->draw(painter, Options_.rect, Ui::ViewParams(), false, hovered_, false, false);
-
-        //Delegate_->paint(&painter, Options_, State_, false);
     }
 
     void MessageAlertWidget::resizeEvent(QResizeEvent* e)
@@ -119,7 +108,7 @@ namespace Ui
 
     void MessageAlertWidget::avatarChanged(const QString& aimId)
     {
-        if (aimId == State_.AimId_ || State_.Friendly_.contains(aimId))
+        if (aimId == id() || State_.Friendly_.contains(aimId))
             update();
     }
 }

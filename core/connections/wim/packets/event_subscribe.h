@@ -19,7 +19,8 @@ namespace core
             event_subscribe(wim_packet_params _params, subscriptions::subscr_ptr_v _subscriptions);
             ~event_subscribe() = default;
 
-            virtual std::string_view get_method() const override;
+            std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
         };
     }
 }

@@ -32,6 +32,7 @@ namespace Previewer
 
     class ContentLoader;
     class GalleryLoader;
+    class ContentItem;
 
     class GalleryWidget : public QWidget
     {
@@ -112,6 +113,8 @@ namespace Previewer
 
         void onPlayClicked(bool _paused);
 
+        void onConfigChanged();
+
     private:
         template <typename ... Args>
         void addAction(int action, Ui::ContextMenu* parent, Args && ...args);
@@ -138,7 +141,7 @@ namespace Previewer
 
         QSize getViewSize();
 
-        QPoint getToastPos();
+        QPoint getToastPos() const;
 
         ContentLoader* createGalleryLoader(const Utils::GalleryData& _data);
 
@@ -151,6 +154,9 @@ namespace Previewer
         void showOverAll();
 
         void resumeGrabKeyboard();
+
+        // returns true if item's file infected
+        bool showVirusToastIfInfected(ContentItem* _item) const;
 
     private:
         QString aimId_;
@@ -177,6 +183,7 @@ namespace Previewer
 
         int controlWidgetHeight_;
 
+        bool antivirusCheckEnabled_;
         bool isClosing_;
         bool fromThreadFeed_;
 

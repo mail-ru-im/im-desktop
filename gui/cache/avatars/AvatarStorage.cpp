@@ -8,14 +8,28 @@
 #include "../../utils/gui_coll_helper.h"
 #include "../../utils/utils.h"
 #include "../../utils/InterConnector.h"
+#include "styles/ThemesContainer.h"
 
 namespace
 {
+    QStringView emptyPrefix() { return u"default"; }
+
     QString CreateKey(QStringView _aimId, const int _sizePx)
     {
         im_assert(_sizePx > 0);
-        const QStringView aimId = _aimId.isEmpty() ? u"default" : _aimId;
+        const QStringView aimId = _aimId.isEmpty() ? emptyPrefix() : _aimId;
         return aimId % u'/' % QString::number(_sizePx);
+    }
+
+    void eraseUnnamedAvatars(Logic::AvatarStorage::CacheMap& _cacheMap)
+    {
+        for (auto i = _cacheMap.begin(), last = _cacheMap.end(); i != last; )
+        {
+            if (i->first.startsWith(emptyPrefix()))
+                i = _cacheMap.erase(i);
+            else
+                ++i;
+        }
     }
 
     constexpr std::chrono::milliseconds CLEANUP_TIMEOUT = std::chrono::minutes(5);
@@ -36,6 +50,7 @@ namespace Logic
             updateAvatar(contact);
         });
         connect(Timer_, &QTimer::timeout, this, &AvatarStorage::cleanup);
+        connect(&Styling::getThemesContainer(), &Styling::ThemesContainer::globalThemeChanged, this, &AvatarStorage::onThemeChange);
     }
 
     AvatarStorage::~AvatarStorage()
@@ -164,6 +179,13 @@ namespace Logic
     bool AvatarStorage::isDefaultAvatar(const QString& _aimId) const
     {
         return !LoadedAvatars_.contains(_aimId);
+    }
+
+    void AvatarStorage::onThemeChange()
+    {
+        AvatarsByAimId_.erase(QString());
+        eraseUnnamedAvatars(AvatarsByAimIdAndSize_);
+        eraseUnnamedAvatars(RoundedAvatarsByAimIdAndSize_);
     }
 
     void AvatarStorage::updateAvatar(const QString& _aimId, bool force)

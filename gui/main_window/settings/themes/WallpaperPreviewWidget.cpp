@@ -59,6 +59,7 @@ namespace Ui
 
         connect(&Styling::getThemesContainer(), &Styling::ThemesContainer::wallpaperImageAvailable, this, &WallpaperPreviewWidget::onWallpaperAvailable);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::chatFontParamsChanged, this, &WallpaperPreviewWidget::onFontParamsChanged);
+        connect(&Styling::getThemesContainer(), &Styling::ThemesContainer::globalThemeChanged, this, &WallpaperPreviewWidget::onGlobalThemeChanged);
     }
 
     void WallpaperPreviewWidget::updateFor(const QString& _aimId)
@@ -67,8 +68,6 @@ namespace Ui
             aimId_ = _aimId;
 
         bg_->updateWallpaper(aimId_);
-
-        foreachMessage(this, [](const auto msg) { msg->updateStyle(); });
     }
 
     void WallpaperPreviewWidget::resizeEvent(QResizeEvent *)
@@ -91,6 +90,11 @@ namespace Ui
     void WallpaperPreviewWidget::onFontParamsChanged()
     {
         foreachMessage(this, [](const auto msg) { msg->updateFonts(); });
+    }
+
+    void WallpaperPreviewWidget::onGlobalThemeChanged()
+    {
+        updateFor(aimId_);
     }
 
     void WallpaperPreviewWidget::onResize()

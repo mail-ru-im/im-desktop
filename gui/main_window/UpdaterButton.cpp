@@ -27,7 +27,9 @@ namespace Ui
 
         const auto name = config::get().string(config::values::product_name_full);
         textUnit_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("UpdaterButton", "Update %1").arg(QString::fromUtf8(name.data(), name.size()).toUpper()), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        textUnit_->init(Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
+        TextRendering::TextUnit::InitializeParameters params{ Fonts::appFontScaled(15), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID_PERMANENT } };
+        params.align_ = TextRendering::HorAligment::CENTER;
+        textUnit_->init(params);
 
         connect(this, &ClickableWidget::clicked, this, &UpdaterButton::updateAction);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::updateWhenUserInactive, this, [this]()

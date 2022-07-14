@@ -123,7 +123,8 @@ namespace Ui
 
         textEdit_->setParent(this);
         textEdit_->move(QPoint());
-        textEdit_->document()->setDocumentMargin((minHeight() - textEditMinHeight()) / 2);
+        textEdit_->setDocumentMargin((minHeight() - textEditMinHeight()) / 2);
+        textEdit_->document()->clearUndoRedoStacks();
     }
 
     void TextEditViewport::adjustHeight(const int _curEditHeight)
@@ -340,7 +341,7 @@ namespace Ui
             buttonEmoji_->setCheckable(true);
             buttonEmoji_->setChecked(false);
             buttonEmoji_->setFocusPolicy(Qt::TabFocus);
-            buttonEmoji_->setFocusColor(focusColorPrimary());
+            buttonEmoji_->setFocusColor(focusColorPrimaryKey());
 
             updateButtonColors(buttonEmoji_, InputStyleMode::Default);
             connect(buttonEmoji_, &CustomButton::clicked, this, [this]()
@@ -417,8 +418,7 @@ namespace Ui
             topHost_->layout()->addWidget(draftVersionWidget_);
             connect(draftVersionWidget_, &DraftVersionWidget::cancel, this, [this]()
             {
-                hidePopups();
-                Q_EMIT draftVersionCancelled(QPrivateSignal());
+                cancelDraft();
             });
             connect(draftVersionWidget_, &DraftVersionWidget::accept, this, [this]()
             {
@@ -429,6 +429,15 @@ namespace Ui
 
         draftVersionWidget_->setDraft(_draft);
         setCurrentTopWidget(draftVersionWidget_);
+    }
+
+    void InputPanelMain::cancelDraft()
+    {
+        if (draftVersionWidget_)
+        {
+            hidePopups();
+            Q_EMIT draftVersionCancelled(QPrivateSignal());
+        }
     }
 
     void InputPanelMain::cancelEdit()
@@ -490,6 +499,7 @@ namespace Ui
     {
         if (Ui::get_gui_settings()->get_value<bool>(settings_fast_drop_search_results, settings_fast_drop_search_default()))
             Q_EMIT Utils::InterConnector::instance().searchEnd();
+        textEdit_->setFocus();
     }
 
     void InputPanelMain::resizeAnimated(const int _height, const ResizeCondition _condition)
@@ -784,7 +794,7 @@ namespace Ui
 
         escCancel_->removeChild(attachPopup_);
     }
-    
+
     bool InputPanelMain::isDraftVersionVisible() const
     {
         return draftVersionWidget_ && draftVersionWidget_->isVisible();

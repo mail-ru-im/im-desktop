@@ -27,6 +27,7 @@
         <file alias="delete_icon">resources/delete_icon.svg</file>
         <file alias="history_icon">resources/history_icon.svg</file>
         <file alias="ignore_icon">resources/ignore_icon.svg</file>
+        <file alias="pencil_icon">resources/pencil_icon.svg</file>
         <file alias="get_logs_icon">resources/get_logs_icon.svg</file>
         <file alias="mail_icon">resources/mail_notification_icon.svg</file>
         <file alias="mention_notification_icon">resources/mention_notification_icon.svg</file>
@@ -46,6 +47,7 @@
         <file alias="official_icon_invert">resources/official_icon_invert.svg</file>
         <file alias="pin_chat_icon">resources/pin_chat_icon.svg</file>
         <file alias="pin_icon">resources/pin_icon.svg</file>
+        <file alias="plus_icon">resources/plus.svg</file>
         <file alias="recent_mention_icon">resources/recent_mention_icon.svg</file>
         <file alias="report_icon">resources/report_icon.svg</file>
         <file alias="share_button">resources/share_button.svg</file>
@@ -72,6 +74,7 @@
         <file alias="add_user_icon">resources/add_user_icon.svg</file>
         <file alias="alert_icon">resources/alert_icon.svg</file>
         <file alias="chat_icon">resources/chat_icon.svg</file>
+        <file alias="chat_icon_small">resources/chat_icon_small.svg</file>
         <file alias="favorites_icon">resources/favorites_icon.svg</file>
         <file alias="clear_chat_icon">resources/clear_chat_icon.svg</file>
         <file alias="colors_icon">resources/colors_icon.svg</file>
@@ -91,6 +94,7 @@
         <file alias="online_selected">resources/online_selected.svg</file>
         <file>resources/main_window/tray_email.ico</file>
         <file>resources/icon_recents.svg</file>
+        <file>resources/qwebchannel.js</file>
         <file alias="lang_icon">resources/lang_icon.svg</file>
         <file alias="contact_us_icon">resources/contact_us.svg</file>
         <file alias="about_icon">resources/about_icon.svg</file>
@@ -127,6 +131,9 @@
         <file alias="reaction_icon_filled">resources/reaction_icon_filled.svg</file>
         <file alias="thread_icon">resources/thread_icon.svg</file>
         <file alias="thread_icon_filled">resources/thread_icon_filled.svg</file>
+        <file alias="thread_subscription">resources/thread_subscription.svg</file>
+        <file alias="thread_subscribe">resources/thread_subscribe.svg</file>
+        <file alias="thread_unsubscribe">resources/thread_unsubscribe.svg</file>
         <file alias="arrow_small">resources/arrow_small.svg</file>
         <file alias="add_emoji_icon">resources/add_emoji_icon.svg</file>
         <file alias="edit_icon">resources/edit_icon.svg</file>
@@ -183,9 +190,7 @@
         <file alias="status_blocked">resources/file_sharing/blocked_file.svg</file>
         <file alias="status_av_ok">resources/file_sharing/virus_checked.svg</file>
         <file alias="status_av_infected">resources/file_sharing/virus_infected.svg</file>
-        <file alias="status_av_pending">resources/file_sharing/virus_waiting.svg</file>
         <file alias="status_av_inprogress">resources/file_sharing/virus_searching.svg</file>
-        <file alias="status_av_blocked">resources/file_sharing/virus_blocked.svg</file>
         <file alias="status_av_nocheck">resources/file_sharing/virus_nocheck.svg</file>
     </qresource>
     <qresource prefix="/avatar_badges">
@@ -494,6 +499,20 @@
         <file alias="shaders">resources/videoplayer/shaders.metallib</file>
     </qresource>
     <qresource prefix="/voip">
+        <file alias="check_mark">resources/video_panel/check_mark.svg</file>
+        <file alias="grid_view">resources/video_panel/grid_view.svg</file>
+        <file alias="speaker_view">resources/video_panel/speaker_view.svg</file>
+        <file alias="fullscreen_view">resources/video_panel/fullscreen_view.svg</file>
+        <file alias="normal_view">resources/video_panel/normal_view.svg</file>
+        <file alias="link">resources/video_panel/link.svg</file>
+        <file alias="arrow_left">resources/video_panel/arrow_left.png</file>
+        <file alias="arrow_right">resources/video_panel/arrow_right.png</file>
+        <file alias="arrow_left_h">resources/video_panel/arrow_left_h.png</file>
+        <file alias="arrow_right_h">resources/video_panel/arrow_right_h.png</file>
+        <file alias="ic_calling_1">resources/video_panel/ic_calling_1.png</file>
+        <file alias="ic_calling_2">resources/video_panel/ic_calling_2.png</file>
+        <file alias="ic_calling_3">resources/video_panel/ic_calling_3.png</file>
+        <file alias="mute_icon">resources/video_panel/mute_icon.png</file>
         <file alias="endcall_icon">resources/video_panel/ic_endcall_fill.svg</file>
         <file alias="microphone_off_icon">resources/video_panel/ic_microphoneoff_fill.svg</file>
         <file alias="microphone_icon">resources/video_panel/ic_microphone_fill.svg</file>
@@ -508,7 +527,6 @@
         <file alias="add_contact">resources/video_panel/ic_addtocall_fill.svg</file>
         <file alias="show_participants">resources/video_panel/ic_show_participants.svg</file>
         <file alias="call_share">resources/video_panel/ic_call_share_line.svg</file>
-        <file alias="open_masks">resources/video_panel/ic_mask_fill.svg</file>
         <file alias="more_micro">resources/video_panel/ic_more-micro_fill.svg</file>
         <file alias="device_mark">resources/video_panel/ic_selectedl_empty.svg</file>
         <file alias="device_mark_checked">resources/video_panel/ic_selectedl_checked.svg</file>
@@ -744,6 +762,10 @@
 		<file alias="micro_icon">resources/gallery/micro_icon.svg</file>
 		<file alias="placeholder_link">resources/gallery/placeholder_link.svg</file>
     </qresource>
+    <qresource prefix="/expanded_gallery">
+		<file alias="burger">resources/gallery/burger.svg</file>
+		<file alias="arrow_down">resources/gallery/arrow_small.svg</file>
+    </qresource>
     <qresource prefix="/delivery">
         <file alias="sending">resources/message_statuses/not_sent_icon.svg</file>
         <file alias="sent">resources/message_statuses/sent_icon.svg</file>
@@ -797,17 +819,16 @@
         <file alias="badge_1">resources/basic_elements/badge.svg</file>
         <file alias="badge_2">resources/basic_elements/badge_2_sign.svg</file>
         <file alias="badge_3">resources/basic_elements/badge_3_sign.svg</file>
+        <file alias="tab_badge_1">resources/basic_elements/tab_badge.svg</file>
+        <file alias="tab_badge_2">resources/basic_elements/tab_badge_2_sign.svg</file>
+        <file alias="tab_badge_3">resources/basic_elements/tab_badge_3_sign.svg</file>
         <file alias="arrow_right">resources/basic_elements/arrow_small_right.svg</file>
         <file alias="reload">resources/basic_elements/reload.svg</file>
     </qresource>
     <qresource prefix="/qss">
         <file alias="video_panel">voip/video_panel.qss</file>
-        <file alias="video_panel_linux">voip/video_panel_linux.qss</file>
-        <file alias="mask_panel">voip/mask_panel.qss</file>
-        <file alias="mask_panel_linux">voip/mask_panel_linux.qss</file>
         <file alias="mstyles">main_window/mplayer/mstyles.qss</file>
         <file alias="incoming_call">voip/incoming_call.qss</file>
-        <file alias="incoming_call_linux">voip/incoming_call_linux.qss</file>
     </qresource>
     <qresource prefix="/menubar">
         <file alias="mail_black">resources/main_window/mac_tray/agent_osx_black.svg</file>
@@ -858,13 +879,14 @@
         <file alias="strikethrough">resources/context_menu/strikethrough_icon.svg</file>
         <file alias="clear">resources/context_menu/clear_format_icon.svg</file>
         <file alias="mention">resources/context_menu/mention_icon.svg</file>
-        <file alias="mute">resources/context_menu/mute_icon.svg</file>
-        <file alias="mute_off">resources/context_menu/unmute_icon.svg</file>
+        <file alias="mute">resources/context_menu/mute_on_icon.svg</file>
+        <file alias="mute_off">resources/context_menu/mute_off_icon.svg</file>
         <file alias="mark_read">resources/context_menu/mark_read_icon.svg</file>
         <file alias="mark_read_all">resources/context_menu/readall_icon.svg</file>
         <file alias="mark_unread">resources/context_menu/unread_icon.svg</file>
         <file alias="notice">resources/context_menu/notice_icon.svg</file>
         <file alias="readonly">resources/context_menu/onlyread_icon.svg</file>
+        <file alias="unblock">resources/context_menu/unlock.svg</file>
         <file alias="readonly_off">resources/context_menu/onlyread_off_icon.svg</file>
         <file alias="reply">resources/context_menu/reply_icon.svg</file>
         <file alias="profile">resources/context_menu/profile_icon.svg</file>
@@ -882,6 +904,7 @@
         <file alias="favorites">resources/context_menu/favorites_icon.svg</file>
         <file alias="conference_one_icon">resources/context_menu/picture_in_picture_icon.svg</file>
         <file alias="conference_all_icon">resources/context_menu/show_in_grid_icon.svg</file>
+        <file alias="mail">resources/context_menu/mail.svg</file>
     </qresource>
     <qresource prefix="/phone_widget">
         <file alias="sim_100">resources/phone_widget/sim_icon_100.png</file>
@@ -911,6 +934,18 @@
         <file alias="structure_active">resources/tabs/ic_structure_fill.svg</file>
         <file alias="calendar">resources/tabs/ic_calendar.svg</file>
         <file alias="calendar_active">resources/tabs/ic_calendar_fill.svg</file>
+        <file alias="tarm_mail">resources/tabs/ic_mail.svg</file>
+        <file alias="tarm_mail_active">resources/tabs/ic_mail_fill.svg</file>
+        <file alias="tarm_calls">resources/tabs/ic_trueconf.svg</file>
+        <file alias="tarm_calls_active">resources/tabs/ic_trueconf_fill.svg</file>
+        <file alias="tarm_cloud">resources/tabs/ic_cloud.svg</file>
+        <file alias="tarm_cloud_active">resources/tabs/ic_cloud_fill.svg</file>
+        <file alias="mail">resources/tabs/ic_mail.svg</file>
+        <file alias="mail_active">resources/tabs/ic_mail_fill.svg</file>
+        <file alias="news">resources/tabs/ic_channels.svg</file>
+        <file alias="news_active">resources/tabs/ic_channels_fill.svg</file>
+        <file alias="polls">resources/tabs/ic_polls.svg</file>
+        <file alias="polls_active">resources/tabs/ic_polls_fill.svg</file>
     </qresource>
     <qresource prefix="/header">
         <file alias="add_user">resources/header/add_user_line_icon.svg</file>

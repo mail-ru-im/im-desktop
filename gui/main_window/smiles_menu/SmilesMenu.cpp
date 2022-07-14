@@ -22,6 +22,7 @@
 #include "utils/features.h"
 
 #include "../../styles/ThemeParameters.h"
+#include "../../styles/ThemesContainer.h"
 
 #include <boost/range/adaptor/reversed.hpp>
 
@@ -113,8 +114,8 @@ namespace
 
     void drawGifLabel(QPainter& _p, const QPoint& _topLeft)
     {
-        static const QPixmap icon = Utils::renderSvg(qsl(":/smiles_menu/gif_label_small"), gifLabelSize());
-        _p.drawPixmap(_topLeft, icon);
+        static auto icon = Utils::StyledPixmap(qsl(":/smiles_menu/gif_label_small"), gifLabelSize());
+        _p.drawPixmap(_topLeft, icon.actualPixmap());
     }
 
     QPixmap addGifLabel(QPixmap _icon, int _setId)
@@ -196,7 +197,7 @@ namespace
     QPixmap categoryButtonIcon(const QString& _category)
     {
         auto color = Styling::getParameters().getColor(Styling::StyleVariable::BASE_TERTIARY);
-        color.setAlphaF(.6);
+        color.setAlphaF(0.6);
         return categoryButtonIconColored(_category, color);
     }
 
@@ -719,7 +720,7 @@ namespace Ui
         LabelEx* setHeader = new LabelEx(this);
         setHeader->setText(QT_TRANSLATE_NOOP("input_widget", "EMOJI"));
         setHeader->setFont(Fonts::appFontScaled(14, Fonts::FontWeight::SemiBold));
-        setHeader->setColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
+        setHeader->setColor(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY });
 
         Testing::setAccessibleName(setHeader, qsl("AS EmojiAndStickerPicker emojiHeader"));
         vLayout->addWidget(setHeader);
@@ -864,6 +865,18 @@ namespace Ui
     bool EmojisWidget::isKeyboardActive() const
     {
         return view_->isKeyboardActive();
+    }
+
+    void Ui::Smiles::EmojisWidget::updateTheme()
+    {
+        const auto& categories = view_->getCategories();
+        for (size_t i = 0; i < categories.size(); ++i)
+        {
+            const auto& category = categories[i].name_;
+            buttons_[i]->setPixmap(categoryButtonIcon(category));
+            buttons_[i]->setHoveredPixmap(categoryButtonHoveredIcon(category));
+            buttons_[i]->setCheckedPixmap(categoryButtonCheckedIcon(category));
+        }
     }
 
     void EmojisWidget::resizeEvent(QResizeEvent* _event)
@@ -1180,12 +1193,12 @@ namespace Ui
 
     bool StickersTable::hasSelection() const
     {
-        return !getSelected().second.fileId.isEmpty();
+        return !getSelected().second.fileId_.isEmpty();
     }
 
     int StickersTable::selectedItemColumn() const
     {
-        if (const auto sel = getSelected(); !sel.second.fileId.isEmpty())
+        if (const auto sel = getSelected(); !sel.second.fileId_.isEmpty())
         {
             const auto& stickersList = getStickerIds();
             auto it = std::find_if(stickersList.begin(), stickersList.end(), [&sel](const auto _s) { return _s == sel.second; });
@@ -1268,7 +1281,7 @@ namespace Ui
 
     bool StickersTable::selectRight()
     {
-        if (const auto sel = getSelected(); !sel.second.fileId.isEmpty())
+        if (const auto sel = getSelected(); !sel.second.fileId_.isEmpty())
         {
             const auto& stickersList = getStickerIds();
             auto it = std::find_if(stickersList.begin(), stickersList.end(), [&sel](const auto _s) { return _s == sel.second; });
@@ -1289,7 +1302,7 @@ namespace Ui
 
     bool StickersTable::selectLeft()
     {
-        if (const auto sel = getSelected(); !sel.second.fileId.isEmpty())
+        if (const auto sel = getSelected(); !sel.second.fileId_.isEmpty())
         {
             const auto& stickersList = getStickerIds();
             auto it = std::find_if(stickersList.begin(), stickersList.end(), [&sel](const auto _s) { return _s == sel.second; });
@@ -1306,7 +1319,7 @@ namespace Ui
 
     bool StickersTable::selectUp()
     {
-        if (const auto sel = getSelected(); !sel.second.fileId.isEmpty())
+        if (const auto sel = getSelected(); !sel.second.fileId_.isEmpty())
         {
             const auto& stickersList = getStickerIds();
             auto it = std::find_if(stickersList.begin(), stickersList.end(), [&sel](const auto _s) { return _s == sel.second; });
@@ -1327,7 +1340,7 @@ namespace Ui
 
     bool StickersTable::selectDown()
     {
-        if (const auto sel = getSelected(); !sel.second.fileId.isEmpty())
+        if (const auto sel = getSelected(); !sel.second.fileId_.isEmpty())
         {
             const auto& stickersList = getStickerIds();
             auto it = std::find_if(stickersList.begin(), stickersList.end(), [&sel](const auto _s) { return _s == sel.second; });
@@ -1374,7 +1387,7 @@ namespace Ui
 
     bool StickersTable::sendSelected()
     {
-        if (const auto sel = getSelected(); !sel.second.fileId.isEmpty())
+        if (const auto sel = getSelected(); !sel.second.fileId_.isEmpty())
         {
             Q_EMIT stickerSelected(sel.second);
             return true;
@@ -1399,13 +1412,13 @@ namespace Ui
             longtapTimer_->stop();
 
         const auto sticker = getStickerFromPos(_pos);
-        if (!sticker.second.fileId.isEmpty())
+        if (!sticker.second.fileId_.isEmpty())
             Q_EMIT stickerSelected(sticker.second);
     }
 
     void StickersTable::redrawSticker(const int32_t _setId, const Utils::FileSharingId& _stickerId)
     {
-        if (!_stickerId.fileId.isEmpty())
+        if (!_stickerId.fileId_.isEmpty())
         {
             if (const auto stickerPosInSet = getStickerPosInSet(_stickerId); stickerPosInSet >= 0)
                 if (auto item = layout_->itemAt(stickerPosInSet))
@@ -1456,7 +1469,7 @@ namespace Ui
             redrawSticker(sticker.first, sticker.second);
             redrawSticker(prevSticker.first, prevSticker.second);
 
-            if (!sticker.second.fileId.isEmpty())
+            if (!sticker.second.fileId_.isEmpty())
                 Q_EMIT stickerHovered(sticker.first, sticker.second);
         }
     }
@@ -1471,13 +1484,13 @@ namespace Ui
     {
         const auto pos = mapFromGlobal(QCursor::pos());
         const auto sticker = getStickerFromPos(pos);
-        if (!sticker.second.fileId.isEmpty())
+        if (!sticker.second.fileId_.isEmpty())
             Q_EMIT stickerPreview(sticker.second);
     }
 
     void StickersTable::mousePressEventInternal(const QPoint& _pos)
     {
-        if (const auto sticker = getStickerFromPos(_pos); !sticker.second.fileId.isEmpty())
+        if (const auto sticker = getStickerFromPos(_pos); !sticker.second.fileId_.isEmpty())
         {
             if (!longtapTimer_)
             {
@@ -1520,7 +1533,7 @@ namespace Ui
 
     bool RecentsStickersTable::selectRight()
     {
-        if (const auto sel = getSelected(); !sel.second.fileId.isEmpty())
+        if (const auto sel = getSelected(); !sel.second.fileId_.isEmpty())
         {
             if (rowCount_ * columnCount_ < max_stickers_count && getStickerPosInSet(sel.second) >= rowCount_ * columnCount_ - 1)
                 return false;
@@ -1532,7 +1545,7 @@ namespace Ui
 
     bool RecentsStickersTable::selectDown()
     {
-        if (const auto sel = getSelected(); !sel.second.fileId.isEmpty())
+        if (const auto sel = getSelected(); !sel.second.fileId_.isEmpty())
         {
             if (getStickerPosInSet(sel.second) / columnCount_ == rowCount_ - 1)
                 return false;
@@ -1578,7 +1591,7 @@ namespace Ui
 
         if (resized)
         {
-            if (const auto sel = getSelected(); !sel.second.fileId.isEmpty())
+            if (const auto sel = getSelected(); !sel.second.fileId_.isEmpty())
             {
                 if (rowCount_ * columnCount_ < max_stickers_count && getStickerPosInSet(sel.second) >= rowCount_ * columnCount_ - 1)
                     selectLast();
@@ -1655,7 +1668,7 @@ namespace Ui
 
         LabelEx* setHeader = new LabelEx(this);
         setHeader->setFont(Fonts::appFontScaled(14, Fonts::FontWeight::SemiBold));
-        setHeader->setColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        setHeader->setColor(Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
         setHeader->setText(Stickers::getSetName(_setId));
         setHeader->setFixedHeight(getPackHeaderHeight());
         setHeader->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
@@ -1857,7 +1870,7 @@ namespace Ui
 
         LabelEx* setHeader = new LabelEx(this);
         setHeader->setFont(Fonts::appFontScaled(14, Fonts::FontWeight::SemiBold));
-        setHeader->setColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
+        setHeader->setColor(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY });
         setHeader->setText(QT_TRANSLATE_NOOP("input_widget", "RECENTS"));
         vLayout_->addWidget(setHeader);
 
@@ -1911,8 +1924,8 @@ namespace Ui
         vStickers.reserve(recentsStickers.size());
 
         for (const auto& s : recentsStickers)
-            if (!s.fileId.isEmpty())
-                vStickers.push_back(s.fileId % recentsSettingsSourceDelimiter() % (s.sourceId ? *s.sourceId : QString()));
+            if (!s.fileId_.isEmpty())
+                vStickers.push_back(s.fileId_ % recentsSettingsSourceDelimiter() % (s.sourceId_ ? *s.sourceId_ : QString()));
 
         get_gui_settings()->set_value<QString>(Ui::Stickers::recentsStickerSettingsPath().data(), vStickers.join(recentsSettingsDelimiter()));
     }
@@ -2013,7 +2026,7 @@ namespace Ui
 
     bool RecentsWidget::selectionInStickers() const
     {
-        return stickersView_ && !stickersView_->getSelected().second.fileId.isEmpty();
+        return stickersView_ && !stickersView_->getSelected().second.fileId_.isEmpty();
     }
 
     bool RecentsWidget::sendSelectedEmoji()
@@ -2056,7 +2069,7 @@ namespace Ui
         auto added = false;
         for (const auto& s : _stickers)
         {
-            if (!s.fileId.isEmpty())
+            if (!s.fileId_.isEmpty())
             {
                 const auto sticker = Stickers::getSticker(s);
                 const auto isLottie = sticker && sticker->isLottie();
@@ -2121,7 +2134,7 @@ namespace Ui
     {
         if (stickersView_ && emojiView_)
         {
-            if (!stickersView_->getSelected().second.fileId.isEmpty())
+            if (!stickersView_->getSelected().second.fileId_.isEmpty())
             {
                 emojiView_->clearSelection();
                 return stickersView_->selectUp();
@@ -2429,6 +2442,8 @@ namespace Ui
         InitStickers();
         InitRecents();
 
+        connect(&Styling::getThemesContainer(), &Styling::ThemesContainer::globalThemeChanged, this, &SmilesMenu::updateTheme);
+
         stickersView_->init();
         recentsView_->initStickersFromSettings();
     }
@@ -2520,6 +2535,11 @@ namespace Ui
                 if (!isVisible_)
                     clearCache();
             });
+        }
+        else
+        {
+           if (animHeight_->state() == QAbstractAnimation::Running)
+               return;
         }
 
         animHeight_->stop();
@@ -2923,16 +2943,16 @@ namespace Ui
         topToolbar_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
         topToolbar_->setFixedHeight(getToolBarButtonSize() + Utils::scale_value(1));
 
-        auto recentsButton = topToolbar_->addButton(Utils::renderSvgScaled(qsl(":/smiles_menu/recent"), QSize(20, 20), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY)));
-        Testing::setAccessibleName(recentsButton, qsl("AS EmojiAndStickerPicker recentsButton"));
-        recentsButton->setFixedSize(getToolBarButtonSize(), getToolBarButtonSize());
-        recentsButton->AttachView(recentsView_);
-        recentsButton->setFixed(true);
-        recentsButton->setHoveredBackgroundColor(toolbarButtonHoveredBackground());
-        recentsButton->setCheckedBackgroundColor(toolbarButtonCheckedBackground());
-        recentsButton->setCheckedBorderColor(toolbarButtonCheckedBorder());
+        recentsButton_ = topToolbar_->addButton(Utils::renderSvgScaled(qsl(":/smiles_menu/recent"), QSize(20, 20), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY)));
+        Testing::setAccessibleName(recentsButton_, qsl("AS EmojiAndStickerPicker recentsButton"));
+        recentsButton_->setFixedSize(getToolBarButtonSize(), getToolBarButtonSize());
+        recentsButton_->AttachView(recentsView_);
+        recentsButton_->setFixed(true);
+        recentsButton_->setHoveredBackgroundColor(toolbarButtonHoveredBackground());
+        recentsButton_->setCheckedBackgroundColor(toolbarButtonCheckedBackground());
+        recentsButton_->setCheckedBorderColor(toolbarButtonCheckedBorder());
 
-        connect(recentsButton, &TabButton::clicked, this, &SmilesMenu::showRecents);
+        connect(recentsButton_, &TabButton::clicked, this, &SmilesMenu::showRecents);
 
         auto makeEmojiImage = []()
         {
@@ -3188,6 +3208,22 @@ namespace Ui
         stickerPreview_->hide();
         delete stickerPreview_;
         stickerPreview_ = nullptr;
+    }
+
+    void Smiles::SmilesMenu::updateTheme()
+    {
+        Utils::ApplyStyle(this, Styling::getParameters().getSmilesQss());
+
+        recentsButton_->setPixmap(Utils::renderSvgScaled(qsl(":/smiles_menu/recent"), QSize(20, 20), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY)));
+
+        for (const auto btn : topToolbar_->GetButtons())
+        {
+            btn->setHoveredBackgroundColor(toolbarButtonHoveredBackground());
+            btn->setCheckedBackgroundColor(toolbarButtonCheckedBackground());
+            btn->setCheckedBorderColor(toolbarButtonCheckedBorder());
+        }
+
+        emojiView_->updateTheme();
     }
 
     void SmilesMenu::resizeEvent(QResizeEvent * _e)

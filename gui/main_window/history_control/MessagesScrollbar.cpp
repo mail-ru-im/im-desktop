@@ -2,6 +2,8 @@
 
 #include "MessagesScrollbar.h"
 #include "../../utils/utils.h"
+#include "styles/StyleSheetContainer.h"
+#include "styles/StyleSheetGenerator.h"
 
 namespace
 {
@@ -15,7 +17,7 @@ namespace Ui
     MessagesScrollbar::MessagesScrollbar(QWidget *page)
         : QScrollBar(page)
         , AutoscrollEnablerTimer_(new QTimer(this))
-        , OpacityAnimation_(minOpacity, maxOpacity, this, false)
+        , OpacityAnimation_(minOpacity, maxOpacity, this, FadeOutPolicy::Manual)
         , CanScrollDown_(false)
         , IsHovered_(false)
     {
@@ -29,6 +31,8 @@ namespace Ui
         setMinimum(0);
         setMaximum(0);
         setPageStep(100);
+
+        Styling::setStyleSheet(this, Styling::getParameters().getScrollBarQss());
     }
 
     bool MessagesScrollbar::canScrollDown() const

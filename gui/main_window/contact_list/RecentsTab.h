@@ -26,6 +26,11 @@ namespace Tooltip
     enum class ArrowPointPos;
 }
 
+namespace Utils
+{
+    class PersonTooltip;
+}
+
 namespace Ui
 {
     class CustomButton;
@@ -38,26 +43,9 @@ namespace Ui
     class RecentsView;
     class RecentItemDelegate;
     class RecentsPlaceholder;
+    enum class PageOpenedAs;
 
     using highlightsV = std::vector<QString>;
-
-    class RCLEventFilter : public QObject
-    {
-        Q_OBJECT
-
-    private Q_SLOTS:
-        void onTimer();
-
-    public:
-        RCLEventFilter(RecentsTab* _cl);
-
-    protected:
-        bool eventFilter(QObject* _obj, QEvent* _event) override;
-
-    private:
-        RecentsTab* recents_;
-        QTimer* dragMouseoverTimer_;
-    };
 
     enum CurrentTab
     {
@@ -70,7 +58,7 @@ namespace Ui
         Q_OBJECT
 
     Q_SIGNALS :
-        void itemSelected(const QString&, qint64 _message_id, const highlightsV& _highlights, bool _ignoreScroll = false);
+        void itemSelected(const QString& /*_aimId*/, qint64 _messageId, qint64 /*_threadId*/, const highlightsV& _highlights, bool _ignoreScroll = false);
         void groupClicked(int);
         void tabChanged(int);
         void createGroupChatClicked();
@@ -82,6 +70,7 @@ namespace Ui
     public Q_SLOTS:
         void select(const QString& _aimId);
         void scrollToItem(const QString& _aimId, QAbstractItemView::ScrollHint _hint);
+        void scrollToTop();
 
         void changeSelected(const QString& _aimId);
         void recentsClicked();
@@ -99,6 +88,9 @@ namespace Ui
         void itemPressedImpl(const QModelIndex&, Qt::MouseButtons);
         void statsRecentItemPressed(const QModelIndex&);
         void statsCLItemPressed(const QModelIndex&);
+
+        void onDragPositionUpdate(QPoint _pos);
+        void dropMimeData(QPoint _pos, const QMimeData* _mimeData);
 
         void guiSettingsChanged();
         void touchScrollStateChangedRecents(QScroller::State);
@@ -130,8 +122,6 @@ namespace Ui
         bool isSearchMode() const;
         void changeTab(CurrentTab _currTab, bool silent = false);
         CurrentTab currentTab() const;
-        void dragPositionUpdate(const QPoint& _pos, bool fromScroll = false);
-        void dropMimeData(const QPoint& _pos, const QMimeData *_mimeData);
 
         void setPictureOnlyView(bool _isPictureOnly);
         bool getPictureOnlyView() const;
@@ -163,6 +153,11 @@ namespace Ui
         void highlightContact(const QString& _aimId);
         void setNextSelectWithOffset();
         QRect getAvatarRect(const QModelIndex& _index) const;
+        QRect getContactFriendlyRect(const QModelIndex& _index) const;
+
+        void setPageOpenedAs(PageOpenedAs _openedAs);
+
+        void setCloseOnThreadResult(bool _val);
 
     protected:
         void resizeEvent(QResizeEvent* _event) override;
@@ -176,13 +171,15 @@ namespace Ui
         void setKeyboardFocused(const bool _isFocused);
         void onMouseMoved(const QPoint& _pos, const QModelIndex& _index);
 
-        void showTooltip(QString _text, QRect _rect, Tooltip::ArrowDirection _arrowDir, Tooltip::ArrowPointPos _arrowPos);
+        void showTooltip(const Data::FString& _text, const QRect& _rect, Tooltip::ArrowDirection _arrowDir, Tooltip::ArrowPointPos _arrowPos);
         void hideTooltip();
+        void dragPositionUpdate(QPoint _pos, bool _fromScroll);
+
+        bool isOverUnknownsCloseButton(const QModelIndex& _current) const;
 
     private:
-        RCLEventFilter* listEventFilter_;
         QPointer<RecentsPlaceholder> recentsPlaceholder_;
-        Ui::ContextMenu* popupMenu_;
+        QPointer<Ui::ContextMenu> popupMenu_;
 
         Ui::RecentItemDelegate* recentsDelegate_;
         Logic::UnknownItemDelegate* unknownsDelegate_;
@@ -212,7 +209,10 @@ namespace Ui
 
         int currentTab_;
         int prevTab_;
+        PageOpenedAs openedAs_;
         bool pictureOnlyView_;
         bool nextSelectWithOffset_;
+
+        Utils::PersonTooltip* personTooltip_ = nullptr;
     };
 }

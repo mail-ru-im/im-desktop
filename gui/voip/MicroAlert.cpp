@@ -33,6 +33,11 @@ namespace
         return Utils::scale_value(12);
     }
 
+    auto getVerticalOffset() noexcept
+    {
+        return Utils::scale_value(40);
+    }
+
     auto getSpacing() noexcept
     {
         return Utils::scale_value(8);
@@ -53,61 +58,51 @@ namespace
 using namespace Ui;
 
 MicroAlert::MicroAlert(QWidget* _parent)
-#ifdef __APPLE__
-    : BaseTopVideoPanel(_parent, Qt::Window | Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint)
-#elif defined(__linux__)
-    : BaseTopVideoPanel(_parent, Qt::Widget)
-#else
-    : BaseTopVideoPanel(_parent)
-#endif
+    : QWidget(_parent)
     , microButton_(nullptr)
     , text_(nullptr)
     , settingsButton_(nullptr)
     , closeButton_(nullptr)
 {
-    if constexpr (!platform::is_linux())
-    {
-        setAttribute(Qt::WA_NoSystemBackground, true);
-        setAttribute(Qt::WA_TranslucentBackground, true);
-    }
+    setAttribute(Qt::WA_NoSystemBackground, true);
+    setAttribute(Qt::WA_TranslucentBackground, true);
 
-    setContentsMargins(getMargin(), getMargin(), getMargin(), getMargin());
-    const auto minSize = getButtonSize().width() + 2 * (getMargin() + getSpacing());
+    const auto minSize = getButtonSize().width() + 2 * getMargin();
     setMinimumSize(minSize, minSize);
 
-    auto layout = Utils::emptyHLayout(this);
-    layout->setAlignment(Qt::AlignVCenter);
+    const auto textColorKey = Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID_PERMANENT };
+    const auto borderColorKey = textColorKey;
 
-    const auto borderColor = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
-    const auto textColor = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
+    microButton_ = new CustomButton(this, qsl(":/voip/no_micro"), getButtonSize(), borderColorKey);
+    // workaround for buggy TextEmojiWidget::sizeHint()
+    microButton_->setFixedWidth(getButtonSize().width() + 2 * getMargin() - 2 * getSpacing());
 
-    microButton_ = new CustomButton(this, qsl(":/voip/no_micro"), getButtonSize(), borderColor);
-
-    text_ = new TextEmojiWidget(this, Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
+    text_ = new TextEmojiWidget(this, Fonts::appFontScaled(15), textColorKey);
     text_->setMultiline(true);
     text_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-    text_->installEventFilter(this);
 
     settingsButton_ = new DialogButton(this, QT_TRANSLATE_NOOP("voip_video_panel", "Settings"), DialogButtonRole::CUSTOM);
-    settingsButton_->setBorderColor(borderColor, borderColor, borderColor);
-    settingsButton_->setTextColor(textColor, textColor, textColor);
+    settingsButton_->setBorderColor(borderColorKey, borderColorKey, borderColorKey);
+    settingsButton_->setTextColor(textColorKey, textColorKey, textColorKey);
+    settingsButton_->setFixedWidth(settingsButton_->sizeHint().width());
 
-    closeButton_ = new CustomButton(this, qsl(":/voip/close_alert"), getButtonSize(), borderColor);
+    closeButton_ = new CustomButton(this, qsl(":/voip/close_alert"), getButtonSize(), borderColorKey);
+    closeButton_->setFixedWidth(getButtonSize().width() + 2 * getMargin() - 2 * getSpacing());
 
-    layout->setSpacing(getSpacing());
-    layout->addSpacing(getSpacing());
-    layout->addWidget(microButton_);
-    layout->addWidget(text_);
-    layout->addWidget(settingsButton_);
-    layout->addWidget(closeButton_);
-    layout->addSpacing(getSpacing());
+    auto rootLayout = Utils::emptyHLayout(this);
+    rootLayout->setContentsMargins(getSpacing(), 0, getSpacing(), 0);
+    rootLayout->setSpacing(getSpacing());
+    rootLayout->addWidget(microButton_);
+    rootLayout->addWidget(text_);
+    rootLayout->addWidget(settingsButton_);
+    rootLayout->addWidget(closeButton_);
 
     setIssue(MicroIssue::NoPermission);
-    setState(MicroAlertState::Full);
+    setState(MicroAlertState::Expanded);
 
     connect(microButton_, &CustomButton::clicked, this, [this]()
     {
-        setState(MicroAlertState::Full);
+        setState(MicroAlertState::Expanded);
     });
 
     connect(closeButton_, &CustomButton::clicked, this, [this]()
@@ -118,37 +113,38 @@ MicroAlert::MicroAlert(QWidget* _parent)
     connect(settingsButton_, &DialogButton::clicked, this, &MicroAlert::openSettings);
 }
 
-void MicroAlert::updatePosition(const QWidget&)
-{
-    BaseTopVideoPanel::updatePosition(*parentWidget());
-    updateSize();
-}
-
 void MicroAlert::paintEvent(QPaintEvent *_e)
 {
     QWidget::paintEvent(_e);
     QPainter p(this);
     p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
-    p.fillRect(rect(), Qt::transparent);
+
     const auto r = Utils::scale_value(12);
     p.setPen(Qt::NoPen);
     p.setBrush(Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION, 0.8));
-    const auto newRect = rect().adjusted(getMargin(), getMargin(), -getMargin(), -getMargin());
-    p.drawRoundedRect(newRect, r, r);
+    p.drawRoundedRect(rect(), r, r);
 }
 
-void MicroAlert::changeEvent(QEvent* _e)
+void MicroAlert::resizeEvent(QResizeEvent* _e)
 {
-    QWidget::changeEvent(_e);
-    if (_e->type() == QEvent::ActivationChange && isActiveWindow())
-        raise();
+    // workaround for buggy TextEmojiWidget::sizeHint()
+    if (state_ == MicroAlertState::Expanded)
+        updateTextSize();
+    QWidget::resizeEvent(_e);
 }
 
-bool MicroAlert::eventFilter(QObject* _o, QEvent* _e)
+void MicroAlert::updateTextSize()
 {
-    if (_o == text_ && _e->type() == QEvent::Resize)
-        updateSize();
-    return QWidget::eventFilter(_o, _e);
+    // workaround for buggy TextEmojiWidget::sizeHint()
+    int w = width();
+    w -= 4 * getSpacing();
+    w -= getButtonSize().width();
+    w -= getSpacing();
+    w -= getButtonSize().width();
+    w -= getSpacing();
+    w -= settingsButton_->width();
+    w -= getSpacing();
+    text_->setMaximumWidth(w);
 }
 
 void MicroAlert::setIssue(MicroIssue _issue)
@@ -166,10 +162,18 @@ void MicroAlert::setState(MicroAlertState _state)
         return;
 
     state_ = _state;
-    text_->setVisible(state_ == MicroAlertState::Full);
-    settingsButton_->setVisible(state_ == MicroAlertState::Full);
-    closeButton_->setVisible(state_ == MicroAlertState::Full);
-    updateSize();
+    const bool expanded = state_ == MicroAlertState::Expanded;
+    text_->setVisible(expanded);
+    settingsButton_->setVisible(expanded);
+    closeButton_->setVisible(expanded);
+    setMaximumSize(expanded ? QSize(QWIDGETSIZE_MAX, minimumHeight()) : minimumSize());
+    setSizePolicy(expanded ? QSizePolicy::Expanding : QSizePolicy::Fixed,
+                  expanded ? QSizePolicy::Preferred : QSizePolicy::Fixed);
+}
+
+int MicroAlert::alertOffset()
+{
+    return getVerticalOffset();
 }
 
 void MicroAlert::openSettings() const
@@ -192,15 +196,6 @@ void MicroAlert::openSettings() const
     }
 }
 
-void MicroAlert::updateSize()
-{
-    auto newHeight = (text_->height() < getHeight()) ? getHeight() + 2 * getMargin() : text_->height() + 2 * (getMargin() + getSpacing());
-    setFixedHeight(state_ == MicroAlertState::Full ? newHeight : getButtonSize().width() + 2 * (getMargin() + getSpacing()));
-    setFixedWidth(state_ == MicroAlertState::Full ? parentWidget()->width() : (getButtonSize().width() + 2 * (getMargin() + getSpacing())));
-    microButton_->move(microButton_->x(), (height() - getButtonSize().height()) / 2);
-    update();
-}
-
 void Utils::showPermissionDialog(QWidget* _parent)
 {
     if (get_gui_settings()->get_value<bool>(show_microphone_request, show_microphone_request_default()))
@@ -213,11 +208,11 @@ void Utils::showPermissionDialog(QWidget* _parent)
         auto w = new Utils::CheckableInfoWidget(nullptr);
         w->setCheckBoxText(QT_TRANSLATE_NOOP("popup_window", "Don't show again"));
         w->setCheckBoxChecked(false);
-        w->setInfoText(text, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        w->setInfoText(text, Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
 
         GeneralDialog generalDialog(w, _parent);
         generalDialog.addLabel(caption);
-        generalDialog.addButtonsPair(btnCancel, btnConfirm, true);
+        generalDialog.addButtonsPair(btnCancel, btnConfirm);
 
         if (auto parentAsPanel = qobject_cast<FullVideoWindowPanel*>(_parent))
         {
@@ -225,32 +220,8 @@ void Utils::showPermissionDialog(QWidget* _parent)
             QObject::connect(parentAsPanel, &FullVideoWindowPanel::aboutToHide, &generalDialog, &Ui::GeneralDialog::reject);
         }
 
-        if (generalDialog.showInCenter())
+        if (generalDialog.execute())
             media::permissions::openPermissionSettings(media::permissions::DeviceType::Microphone);
         get_gui_settings()->set_value(show_microphone_request, !w->isChecked());
     }
-}
-
-ResizeDialogEventFilter::ResizeDialogEventFilter(GeneralDialog* _dialog, QObject* _parent)
-    : QObject(_parent)
-    , dialog_(_dialog)
-{
-}
-
-bool ResizeDialogEventFilter::eventFilter(QObject* _obj, QEvent* _e)
-{
-    QWidget* parent = qobject_cast<QWidget*>(_obj);
-    if (parent && (_e->type() == QEvent::Resize ||
-                   _e->type() == QEvent::Move ||
-                   _e->type() == QEvent::WindowActivate ||
-                   _e->type() == QEvent::NonClientAreaMouseButtonPress ||
-                   _e->type() == QEvent::ZOrderChange ||
-                   _e->type() == QEvent::ShowToParent ||
-                   _e->type() == QEvent::WindowStateChange ||
-                   _e->type() == QEvent::UpdateRequest))
-    {
-        if (dialog_)
-            dialog_->updateSize();
-    }
-    return QObject::eventFilter(_obj, _e);
 }

@@ -109,8 +109,10 @@ namespace Ui
 {
 
     QuoteRow::QuoteRow(const Data::Quote& _quote)
-        : msgId_(_quote.msgId_)
-        , chatId_(_quote.chatId_)
+        : sourceMsgId_(_quote.msgId_)
+        , sourceChatId_(_quote.chatId_)
+        , currentChatId_(_quote.currentChatId_)
+        , currentMsgId_(_quote.currentMsgId_)
     {
         const auto friendly = Logic::GetFriendlyContainer()->getFriendly2(_quote.senderId_);
         if (friendly.default_)
@@ -118,13 +120,18 @@ namespace Ui
         else
             aimId_ = _quote.senderId_;
 
-        const auto textColor = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
+        const auto textColor = Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID };
 
         textUnit_ = TextRendering::MakeTextUnit(getName() % u": ", {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-        textUnit_->init(Fonts::appFontScaled(14, Fonts::FontWeight::Medium), textColor, textColor, textColor, QColor(), TextRendering::HorAligment::LEFT, 1);
+        TextRendering::TextUnit::InitializeParameters params{ Fonts::appFontScaled(14, Fonts::FontWeight::Medium), textColor };
+        params.linkColor_ = textColor;
+        params.selectionColor_ = textColor;
+        params.maxLinesCount_ = 1;
+        textUnit_->init(params);
 
         auto quoteText = TextRendering::MakeTextUnit(plainTextFromQuote(_quote), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-        quoteText->init(Fonts::appFontScaled(14, Fonts::FontWeight::Normal), textColor, textColor, textColor, QColor(), TextRendering::HorAligment::LEFT, 1);
+        params.setFonts(Fonts::appFontScaled(14, Fonts::FontWeight::Normal));
+        quoteText->init(params);
         textUnit_->append(std::move(quoteText));
 
         const auto horOffset = getInputTextLeftMargin() + avatarSize() + getAvatarTextOffset();
@@ -180,7 +187,7 @@ namespace Ui
 
     bool QuotesContainer::setQuotes(const Data::QuotesVec& _quotes)
     {
-        if (std::equal(rows_.begin(), rows_.end(), _quotes.begin(), _quotes.end(), [](const auto& _r, const auto& _q) { return _r.getMsgId() == _q.msgId_; }))
+        if (std::equal(rows_.begin(), rows_.end(), _quotes.begin(), _quotes.end(), [](const auto& _r, const auto& _q) { return _r.getSourceMsgId() == _q.msgId_; }))
             return false;
 
         setUpdatesEnabled(false);
@@ -290,9 +297,18 @@ namespace Ui
         const auto it = std::find_if(rows_.begin(), rows_.end(), [](const auto& _row) { return _row.isUnderMouse(); });
         if (it != rows_.end())
         {
-            if (const auto msgId = it->getMsgId(); msgId != -1)
+            if (const auto msgId = it->getCurrentMsgId(); msgId != -1)
             {
-                Utils::InterConnector::instance().openDialog(it->getChatId(), msgId);
+                const auto chatId = it->getCurrentChatId();
+                if (Logic::getContactListModel()->isThread(chatId))
+                {
+                    Q_EMIT Utils::InterConnector::instance().openThread(chatId, msgId);
+                    Q_EMIT Utils::InterConnector::instance().scrollThreadToMsg(chatId, msgId);
+                }
+                else
+                {
+                    Utils::InterConnector::instance().openDialog(chatId, msgId);
+                }
                 Q_EMIT rowClicked(std::distance(rows_.begin(), it), QPrivateSignal());
             }
         }
@@ -339,11 +355,6 @@ namespace Ui
 
         update();
     }
-
-
-
-
-
 
     QuotesWidget::QuotesWidget(QWidget* _parent)
         : QWidget(_parent)

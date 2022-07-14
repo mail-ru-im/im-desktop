@@ -52,8 +52,8 @@ namespace Ui
         layout->setContentsMargins(0, 0, Utils::scale_value(4), 0);
         layout->setAlignment(Qt::AlignRight);
 
-        auto button = new CustomButton(this, qsl(":/controls/add_gray_icon"), QSize(20, 20), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
-        button->setHoverColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER));
+        auto button = new CustomButton(this, qsl(":/controls/add_gray_icon"), QSize(20, 20), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY });
+        button->setHoverColor(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY_HOVER });
         button->setFixedSize(Utils::scale_value(QSize(32, 32)));
         connect(button, &CustomButton::clicked, this, &AddButton::clicked);
 
@@ -407,7 +407,7 @@ namespace Ui
         else
             scrollStep(direction::right);
 
-        QWidget::wheelEvent(_e);
+        _e->accept();
     }
 
     void Toolbar::touchScrollStateChanged(QScroller::State state)

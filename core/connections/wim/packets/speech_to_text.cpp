@@ -3,6 +3,7 @@
 #include "../../../http_request.h"
 #include "../../../../common.shared/json_helper.h"
 #include "../../urls_cache.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -150,4 +151,9 @@ int32_t speech_to_text::get_comeback() const
 std::string_view speech_to_text::get_method() const
 {
     return "pushToTalkRecognition";
+}
+
+int core::wim::speech_to_text::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }

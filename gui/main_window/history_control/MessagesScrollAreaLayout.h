@@ -60,6 +60,7 @@ namespace Ui
         bool isBackgroundMode = false;
         bool updateExistingOnly = false;
         bool forceUpdateItems = false;
+        bool isThread_ = false;
     };
 
     class MessagesScrollAreaLayout : public QLayout
@@ -132,11 +133,11 @@ namespace Ui
 
         void removeAllExcluded(const InsertHistMessagesParams& _params);
 
-        bool hasItemsOfType(Logic::control_type _type) const;
+        bool hasItemsOfType(Logic::ControlType _type) const;
 
-        void removeItemsByType(Logic::control_type _type);
+        void removeItemsByType(Logic::ControlType _type);
 
-        bool removeItemAtEnd(Logic::control_type _type);
+        bool removeItemAtEnd(Logic::ControlType _type);
 
         void lock();
         void unlock();
@@ -211,8 +212,6 @@ namespace Ui
 
         void setSmartreplyButton(QWidget* _button);
         void notifyQuotesResize();
-
-        std::optional<Data::FileSharingMeta> getMeta(const Utils::FileSharingId& _id) const;
 
     private:
 
@@ -298,6 +297,9 @@ namespace Ui
         void removeDatesImpl();
         std::vector<Logic::MessageKey> getKeysForDates() const;
         InsertHistMessagesParams::WidgetsList makeDates(const std::vector<Logic::MessageKey>& _keys) const;
+
+        std::optional<Logic::MessageKey> getKeyForReplies() const;
+        InsertHistMessagesParams::PositionWidget makeReplies(const Logic::MessageKey& _keys) const;
 
         int insertWidgetsImpl(InsertHistMessagesParams& _params);
 

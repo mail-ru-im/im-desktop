@@ -40,24 +40,22 @@ double shadowColorAlpha()
     return 0.12;
 }
 
-const QPixmap reactionButtonIcon(bool _outgoing, bool _pressed)
+QPixmap reactionButtonIcon(bool _outgoing, bool _pressed)
 {
     if (_pressed)
     {
-        static auto icon = Utils::renderSvg(qsl(":/reaction_icon"), iconSize(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
-        return icon;
+        static auto icon = Utils::StyledPixmap(qsl(":/reaction_icon"), iconSize(), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_GLOBALWHITE });
+        return icon.actualPixmap();
     }
 
     if (_outgoing)
     {
-        static auto icon = Utils::renderSvg(qsl(":/reaction_icon"), iconSize(), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_PASTEL));
-        return icon;
+        static auto icon = Utils::StyledPixmap(qsl(":/reaction_icon"), iconSize(), Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_PASTEL });
+        return icon.actualPixmap();
     }
-    else
-    {
-        static auto icon = Utils::renderSvg(qsl(":/reaction_icon"), iconSize(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
-        return icon;
-    }
+
+    static auto icon = Utils::StyledPixmap(qsl(":/reaction_icon"), iconSize(), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY });
+    return icon.actualPixmap();
 }
 
 QColor backgroundColor(bool _outgoing, bool _hovered, bool _pressed)
@@ -470,7 +468,7 @@ void AddReactionButton::onPlatePositionChanged()
 
 void AddReactionButton::onMultiselectChanged()
 {
-    if (isVisible())
+    if (isVisible() && d->item_->isMultiselectEnabled())
         d->startHideAnimation();
 }
 

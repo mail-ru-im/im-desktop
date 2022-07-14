@@ -63,6 +63,11 @@ namespace core
         void on_dialogs_search_local_ended(int64_t _seq, coll_helper& _params);
         void on_dialogs_search_server(int64_t _seq, coll_helper& _params);
 
+        void on_thread_feed_search_local(int64_t _seq, coll_helper& _params);
+        void on_threads_search_local(int64_t _seq, coll_helper& _params);
+        void on_threads_search_local_ended(int64_t _seq, coll_helper& _params);
+        void on_threads_search_server(int64_t _seq, coll_helper& _params);
+
         void on_dialogs_search_add_pattern(int64_t _seq, coll_helper& _params);
         void on_dialogs_search_remove_pattern(int64_t _seq, coll_helper& _params);
 
@@ -168,17 +173,8 @@ namespace core
 #ifndef STRIP_VOIP
         void on_voip_call_message(int64_t _seq, coll_helper& _params);
         void on_voip_avatar_msg(std::shared_ptr<base_im> im, coll_helper& _params);
-        void on_voip_background_msg(std::shared_ptr<base_im> im, coll_helper& _params);
-        void fromInternalProxySettings2Voip(const core::proxy_settings& proxySettings, voip_manager::VoipProxySettings& voipProxySettings);
         void on_get_voip_calls_quality_popup_conf(const int64_t _seq, coll_helper& _params);
         void on_send_voip_calls_quality_report(const int64_t _seq, coll_helper& _params);
-
-        // masks
-        void on_get_mask_id_list(int64_t _seq, coll_helper& _params);
-        void on_get_mask_preview(int64_t _seq, coll_helper& _params);
-        void on_get_mask_model(int64_t _seq, coll_helper& _params);
-        void on_get_mask(int64_t _seq, coll_helper& _params);
-        void on_get_existent_masks(int64_t _seq, coll_helper& _params);
 #endif
 
         // group chat
@@ -229,6 +225,7 @@ namespace core
         void on_get_ram_usage(const int64_t _seq, coll_helper& _params);
 
         void on_make_archive_holes(const int64_t _seq, coll_helper& _params);
+        void on_invalidate_history(const int64_t _seq, coll_helper& _params);
         void on_invalidate_archive_data(const int64_t _seq, coll_helper& _params);
 
         void on_ui_activity(const int64_t _seq, coll_helper& _params);
@@ -301,18 +298,37 @@ namespace core
         void on_subscribe_call_room_info(const int64_t _seq, coll_helper& _params);
         void on_unsubscribe_call_room_info(const int64_t _seq, coll_helper& _params);
 
-        void on_subscribe_thread(const int64_t _seq, coll_helper& _params);
-        void on_unsubscribe_thread(const int64_t _seq, coll_helper& _params);
+        void on_subscribe_thread_events(const int64_t _seq, coll_helper& _params);
+        void on_unsubscribe_thread_events(const int64_t _seq, coll_helper& _params);
 
         void on_subscribe_task(const int64_t _seq, coll_helper& _params);
         void on_unsubscribe_task(const int64_t _seq, coll_helper& _params);
+
+        void on_subscribe_filesharing_antivirus(const int64_t _seq, coll_helper& _params);
+        void on_unsubscribe_filesharing_antivirus(const int64_t _seq, coll_helper& _params);
+
+        void on_subscribe_mails_counter(const int64_t _seq, coll_helper& _params);
+        void on_unsubscribe_mails_counter(const int64_t _seq, coll_helper& _params);
+
+        void on_subscribe_tasks_counter(const int64_t _seq, coll_helper& _params);
+        void on_unsubscribe_tasks_counter(const int64_t _seq, coll_helper& _params);
 
         void on_get_emoji(const int64_t _seq, coll_helper& _params);
 
         void on_send_notify_sms(const int64_t _seq, coll_helper& _params);
 
         void on_add_thread(const int64_t _seq, coll_helper& _params);
+        void on_get_thread(const int64_t _seq, coll_helper& _params);
         void on_threads_feed_get(const int64_t _seq, coll_helper& _params);
+        void on_subscribe_thread(const int64_t _seq, coll_helper& _params);
+        void on_unsubscribe_thread(const int64_t _seq, coll_helper& _params);
+        void on_threads_subscribers_get(const int64_t _seq, coll_helper& _params);
+        void on_threads_subscribers_search(const int64_t _seq, coll_helper& _params);
+        void on_thread_autosubscribe(const int64_t _seq, coll_helper& _params);
+
+        void on_chats_thread_add(const int64_t _seq, coll_helper& _params);
+        void on_chats_thread_remove(const int64_t _seq, coll_helper& _params);
+
         void on_draft_set(const int64_t _seq, coll_helper& _params);
         void on_draft_get(const int64_t _seq, coll_helper& _params);
 

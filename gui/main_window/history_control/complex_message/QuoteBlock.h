@@ -8,7 +8,6 @@
 
 UI_NS_BEGIN
 
-class LabelEx;
 class PictureWidget;
 class ContactAvatarWidget;
 
@@ -92,6 +91,10 @@ public:
 
     Data::LinkInfo linkAtPos(const QPoint& pos) const override;
 
+    bool isOverLink(const QPoint& _mousePosGlobal) const override;
+
+    QStringList messageLinks() const override;
+
     bool clicked(const QPoint& _p) override;
     void doubleClicked(const QPoint& _p, std::function<void(bool)> _callback = std::function<void(bool)>()) override;
     bool pressed(const QPoint& _p) override;
@@ -110,8 +113,10 @@ public:
 
     int effectiveBlockWidth() const override;
 
-    void updateFileStatus(FileStatus _status) override;
+    void markTrustRequired() override;
     bool isBlockedFileSharing() const override;
+
+    bool needToExpand() const override;
 
 protected:
     void drawBlock(QPainter &p, const QRect& _rect, const QColor& _quoteColor) override;
@@ -129,7 +134,6 @@ private:
     int32_t getLeftAdditional() const;
     void initSenderName();
 
-    void updateStyle() override;
     void updateFonts() override;
 
 private Q_SLOTS:

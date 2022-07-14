@@ -6,11 +6,12 @@
 #include "ClickWidget.h"
 
 #include "../fonts.h"
-#include "../utils/utils.h"
 #include "../utils/InterConnector.h"
 #include "../main_window/MainWindow.h"
 
 #include "styles/ThemeParameters.h"
+#include "styles/StyleSheetGenerator.h"
+#include "styles/StyleSheetContainer.h"
 
 #ifdef __APPLE__
 #   include "../utils/macos/mac_support.h"
@@ -40,7 +41,7 @@ namespace Ui
     TextAction::TextAction(const QString& text, QObject* parent)
         : QWidgetAction(parent)
     {
-        textWidget_ = new ClickableTextWidget(nullptr, Fonts::appFont(fontSize()), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), TextRendering::HorAligment::LEFT);
+        textWidget_ = new ClickableTextWidget(nullptr, Fonts::appFont(fontSize()), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID }, TextRendering::HorAligment::LEFT);
         textWidget_->setFixedHeight(itemHeight());
         textWidget_->setCursor(Qt::ArrowCursor);
         textWidget_->setText(text);
@@ -68,7 +69,7 @@ namespace Ui
     ContextMenu::ContextMenu(QWidget* _parent, Color _color, int _iconSize)
         : QMenu(_parent)
         , color_(_color)
-        , iconSize_(_iconSize, _iconSize)
+        , iconSize_(QSize(_iconSize, _iconSize))
     {
         applyStyle(this, true, fontSize(), itemHeight(), _color, iconSize_);
         QObject::connect(this, &QMenu::hovered, this, [this](QAction* action)
@@ -102,9 +103,9 @@ namespace Ui
     {
     }
 
-    void ContextMenu::applyStyle(QMenu* menu, bool withPadding, int fonSize, int height, const QSize& _iconSize)
+    void ContextMenu::applyStyle(QMenu* _menu, bool _withPadding, int _fonSize, int _height, const QSize& _iconSize)
     {
-        applyStyle(menu, withPadding, fonSize, height, Color::Default, _iconSize);
+        applyStyle(_menu, _withPadding, _fonSize, _height, Color::Default, _iconSize);
     }
 
     void ContextMenu::updatePosition(QMenu* _menu, QPoint _position, bool _forceShowAtLeft)
@@ -152,13 +153,13 @@ namespace Ui
         if (platform::is_linux() && !_withPadding) // fix for linux native menu with icons
             itemPaddingLeft += iconPadding;
 
-        const auto styleString = color == Color::Default
+        std::unique_ptr<Styling::BaseStyleSheetGenerator> styleString = color == Color::Default
             ? Styling::getParameters().getContextMenuQss(itemHeight, itemPaddingLeft, itemPaddingRight, iconPadding)
             : Styling::getParameters().getContextMenuDarkQss(itemHeight, itemPaddingLeft, itemPaddingRight, iconPadding);
         _menu->setWindowFlags(_menu->windowFlags() | Qt::NoDropShadowWindowHint | Qt::WindowStaysOnTopHint);
 
         Utils::SetProxyStyle(_menu, new MenuStyle(_iconSize.width()));
-        Utils::ApplyStyle(_menu, styleString);
+        Styling::setStyleSheet(_menu, std::move(styleString));
 
         _menu->setFont(Fonts::appFont(_fontSize));
 
@@ -195,16 +196,41 @@ namespace Ui
         return nullptr;
     }
 
+    QIcon ContextMenu::makeIconForCache(const QString& _iconPath)
+    {
+        static std::map<QString, QIcon> iconCache;
+
+        static Styling::ThemeChecker checker;
+        if (checker.checkAndUpdateHash())
+            iconCache.clear();
+
+        auto& icon = iconCache[_iconPath];
+        if (icon.isNull())
+            icon = makeIcon(_iconPath, iconSize_);
+
+        return icon;
+    }
+
+    QColor ContextMenu::normalIconColor()
+    {
+        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY);
+    }
+
+    QColor ContextMenu::disabledIconColor()
+    {
+        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_TERTIARY);
+    }
+
     QAction* ContextMenu::addActionWithIcon(const QString& _iconPath, const QString& _name, const QVariant& _data)
     {
-        return addActionWithIcon(makeIcon(_iconPath), _name, _data);
+        return addActionWithIcon(makeIconForCache(_iconPath), _name, _data);
     }
 
     bool ContextMenu::modifyAction(QStringView _command, const QString& _iconPath, const QString& _name, const QVariant& _data, bool _enable)
     {
         if (auto action = findAction(_command))
         {
-            action->setIcon(makeIcon(_iconPath));
+            action->setIcon(makeIconForCache(_iconPath));
             action->setText(_name);
             action->setData(_data);
             action->setEnabled(_enable);
@@ -244,7 +270,6 @@ namespace Ui
             return;
 
         const auto menuWidth = sizeHint().width();
-        const auto menuHeight = sizeHint().height();
         const QPoint menuPosAtLeft = { _rect.x(), _rect.y() + _rect.height() / 2 };
         const QPoint menuPosAtRight = { _rect.x() + _rect.width(), _rect.y() + _rect.height() / 2 };
 #ifdef __APPLE__
@@ -282,6 +307,13 @@ namespace Ui
         return showAsync_;
     }
 
+    QIcon ContextMenu::makeIcon(const QString& _iconPath, const QSize& _iconSize)
+    {
+        auto icon = QIcon(Utils::renderSvgScaled(_iconPath, _iconSize, normalIconColor()));
+        icon.addPixmap(Utils::renderSvgScaled(_iconPath, _iconSize, disabledIconColor()), QIcon::Mode::Disabled);
+        return icon;
+    }
+
     void ContextMenu::showEvent(QShowEvent*)
     {
         const auto p = (pos_ && pos() != pos_) ? *pos_ : pos();
@@ -317,15 +349,5 @@ namespace Ui
             close();
         else
             QMenu::mouseReleaseEvent(_event);
-    }
-
-    QIcon ContextMenu::makeIcon(const QString& _iconPath) const
-    {
-        static std::map<QString, QIcon> iconCache;
-
-        auto& icon = iconCache[_iconPath];
-        if (icon.isNull())
-            icon = QIcon(Utils::renderSvgScaled(_iconPath, iconSize_, Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_SECONDARY)));
-        return icon;
     }
 }

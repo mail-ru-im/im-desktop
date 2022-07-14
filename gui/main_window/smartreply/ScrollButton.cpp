@@ -9,9 +9,9 @@ namespace
 {
     int buttonSize() { return Utils::scale_value(32); }
     QSize iconSize() { return Utils::scale_value(QSize(20, 20)); }
-    QPixmap icon(const Styling::StyleVariable _var)
+    Utils::StyledPixmap icon(Styling::StyleVariable _var)
     {
-        return Utils::renderSvg(qsl(":/controls/arrow_right"), iconSize(), Styling::getParameters().getColor(_var));
+        return Utils::StyledPixmap(qsl(":/controls/arrow_right"), iconSize(), Styling::ThemeColorKey{ _var });
     }
 }
 
@@ -62,23 +62,18 @@ namespace Ui
 
     QPixmap ScrollButton::getIcon() const
     {
-        QPixmap ret;
         if (isPressed())
         {
-            static const auto pm = icon(Styling::StyleVariable::BASE_PRIMARY_ACTIVE);
-            ret = pm;
+            static auto pm = icon(Styling::StyleVariable::BASE_PRIMARY_ACTIVE);
+            return pm.actualPixmap();
         }
         else if (isHovered())
         {
-            static const auto pm = icon(Styling::StyleVariable::BASE_PRIMARY_HOVER);
-            ret = pm;
+            static auto pm = icon(Styling::StyleVariable::BASE_PRIMARY_HOVER);
+            return pm.actualPixmap();
         }
-        else
-        {
-            static const auto pm = icon(Styling::StyleVariable::BASE_PRIMARY);
-            ret = pm;
-        }
-        return ret;
+        static auto pm = icon(Styling::StyleVariable::BASE_PRIMARY);
+        return pm.actualPixmap();
     }
 
     QColor ScrollButton::getBubbleColor() const

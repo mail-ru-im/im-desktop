@@ -39,12 +39,9 @@ void ContactNotRegisteredWidget::setInfo(const QString &_phoneNumber, const QStr
     if (!textUnit_)
     {
         textUnit_ = TextRendering::MakeTextUnit(text);
-        textUnit_->init(Fonts::appFontScaled(16),
-                        Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID),
-                        QColor(),
-                        QColor(),
-                        QColor(),
-                        TextRendering::HorAligment::CENTER);
+        TextRendering::TextUnit::InitializeParameters params(Fonts::appFontScaled(16), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
+        params.align_ = TextRendering::HorAligment::CENTER;
+        textUnit_->init(params);
         textUnit_->getHeight(w);
         textUnit_->setOffsets(Utils::scale_value(24), Utils::scale_value(228));
         return;

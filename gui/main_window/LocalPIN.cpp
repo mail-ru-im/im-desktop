@@ -3,7 +3,7 @@
 #include "main_window/MainWindow.h"
 #include "user_activity/user_activity.h"
 #include "controls/ContactAvatarWidget.h"
-#include "controls/TooltipWidget.h"
+#include "controls/TextWidget.h"
 #include "controls/DialogButton.h"
 
 #include "controls/LineEditEx.h"
@@ -36,7 +36,7 @@ public:
     {
         auto lineEdit = new LineEditEx(_parent);
         lineEdit->setCustomPlaceholder(_placeholder);
-        lineEdit->setCustomPlaceholderColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+        lineEdit->setCustomPlaceholderColor(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY });
         lineEdit->setFixedWidth(Utils::scale_value(mode_ == LocalPINWidget::Mode::VerifyPIN ? lineEditVerifyWidth : lineEditWidth));
         lineEdit->setFont(Fonts::appFontScaled(16));
         lineEdit->setAttribute(Qt::WA_MacShowFocusRect, false);
@@ -152,10 +152,11 @@ LocalPINWidget::LocalPINWidget(LocalPINWidget::Mode _mode, QWidget* _parent)
     d->avatar_ = new ContactAvatarWidget(this, MyInfo()->aimId(), MyInfo()->friendly(), Utils::scale_value(80), true, false, false);
 
     d->name_ = new Ui::TextWidget(this, MyInfo()->friendly(), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
-    d->name_->init(
-        Fonts::appFontScaled(22, Fonts::FontWeight::SemiBold),
-        Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID),
-        QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER, 1);
+
+    TextRendering::TextUnit::InitializeParameters params{ Fonts::appFontScaled(22, Fonts::FontWeight::SemiBold), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } };
+    params.align_ = TextRendering::HorAligment::CENTER;
+    params.maxLinesCount_ = 1;
+    d->name_->init(params);
     d->name_->setMaxWidthAndResize(Utils::scale_value(260));
 
     connect(MyInfo(), &my_info::received, this, &LocalPINWidget::onMyInfoLoaded);
@@ -243,8 +244,6 @@ LocalPINWidget::LocalPINWidget(LocalPINWidget::Mode _mode, QWidget* _parent)
     }
 
     mainLayout->addSpacing(Utils::scale_value(16));
-
-    Utils::setDefaultBackground(this);
 
     setAttribute(Qt::WA_DeleteOnClose, _mode != Mode::VerifyPIN);
 }
@@ -525,11 +524,10 @@ FooterWidget::FooterWidget(QWidget* _parent)
     const auto textEnd = QT_TRANSLATE_NOOP("local_pin", " and authorize again.");
 
     d->textUnit_ = TextRendering::MakeTextUnit(textBegin % logOutText % textEnd);
-    d->textUnit_->init(
-        Fonts::appFontScaled(14, Fonts::FontWeight::Normal),
-        Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY),
-        Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY),
-        QColor(), QColor(), TextRendering::HorAligment::CENTER);
+    TextRendering::TextUnit::InitializeParameters params{ Fonts::appFontScaled(14, Fonts::FontWeight::Normal), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY } };
+    params.linkColor_ = Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY };
+    params.align_ = TextRendering::HorAligment::CENTER;
+    d->textUnit_->init(params);
 
     const std::map<QString, QString> links = {{logOutText, QString()}};
     d->textUnit_->applyLinks(links);

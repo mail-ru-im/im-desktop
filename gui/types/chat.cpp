@@ -10,7 +10,12 @@ namespace Data
 {
     QVector<ChatMemberInfo> UnserializeChatMembers(core::coll_helper* helper, const QString& _creator)
     {
-        core::iarray* membersArray = helper->get_value_as_array("members");
+        core::iarray* membersArray;
+        if (helper->is_value_exist("members"))
+            membersArray = helper->get_value_as_array("members");
+        else
+            membersArray = helper->get_value_as_array("subscribers");
+
         const auto size = membersArray->size();
         QVector<ChatMemberInfo> members;
         members.reserve(size);
@@ -62,6 +67,8 @@ namespace Data
         info.Controlled_ = helper->get_value_as_bool("controlled");
         info.ApprovedJoin_ = helper->get_value_as_bool("joinModeration");
         info.trustRequired_ = helper->get_value_as_bool("trustRequired") && Features::isRestrictedFilesEnabled();
+        info.ThreadsEnabed_ = helper->get_value_as_bool("threadsEnabled");
+        info.threadsAutoSubscribe_ = helper->get_value_as_bool("threadsAutoSubscribe") && Features::isThreadsEnabled();
         info.Members_ = UnserializeChatMembers(helper, info.Creator_);
         return info;
     }

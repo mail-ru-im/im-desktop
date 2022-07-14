@@ -6,6 +6,8 @@
 #include "../utils/utils.h"
 #include "../main_window/MainWindow.h"
 #include "styles/ThemeParameters.h"
+#include "styles/StyleSheetContainer.h"
+#include "styles/StyleSheetGenerator.h"
 
 #include "FlatMenu.h"
 
@@ -19,29 +21,26 @@ namespace Ui
     {
         int s = QProxyStyle::pixelMetric(_metric, _option, _widget);
         if (_metric == QStyle::PM_SmallIconSize)
-        {
             s = Utils::scale_value(24);
-        }
         return s;
     }
 
     int FlatMenu::shown_ = 0;
 
     FlatMenu::FlatMenu(QWidget* _parent/* = nullptr*/, BorderStyle _shape/* = BorderStyle::SOLID*/)
-        : QMenu(_parent),
-        iconSticked_(false),
-        needAdjustSize_(false)
+        : QMenu(_parent)
+        , iconSticked_(false)
+        , needAdjustSize_(false)
     {
         setWindowFlags(windowFlags() | Qt::NoDropShadowWindowHint | Qt::WindowStaysOnTopHint);
 
         Utils::SetProxyStyle(this, new FlatMenuStyle());
-        Utils::ApplyStyle(this, Styling::getParameters().getFlatMenuQss(_shape == BorderStyle::SOLID ? Styling::StyleVariable::BASE_BRIGHT : Styling::StyleVariable::GHOST_ULTRALIGHT_INVERSE));
+        auto styleContainer = new Styling::StyleSheetContainer(this);
+        styleContainer->setGenerator(Styling::getParameters().getFlatMenuQss(_shape == BorderStyle::SOLID ? Styling::StyleVariable::BASE_BRIGHT : Styling::StyleVariable::GHOST_ULTRALIGHT_INVERSE));
 
         setFont(Fonts::appFontScaled(15));
         if constexpr (platform::is_apple())
-        {
             QObject::connect(&Utils::InterConnector::instance(), &Utils::InterConnector::closeAnyPopupMenu, this, &FlatMenu::close);
-        }
     }
 
     FlatMenu::~FlatMenu()

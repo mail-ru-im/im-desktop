@@ -36,7 +36,7 @@ namespace Ui
         , selectedProxyIndex_(0)
     {
         mainWidget_->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
-        Utils::ApplyStyle( mainWidget_, Styling::getParameters().getGeneralSettingsQss());
+        Utils::ApplyStyle(mainWidget_, Styling::getParameters().getGeneralSettingsQss());
 
         auto userProxy = Utils::get_proxy_settings();
 
@@ -178,14 +178,14 @@ namespace Ui
         QObject::connect(passwordEdit_, &LineEditEx::enter, this, &ConnectionSettingsWidget::enterClicked);
 
         generalDialog_->addLabel(QT_TRANSLATE_NOOP("settings_connection", "Connection settings"));
-        generalDialog_->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "Done"), true);
+        generalDialog_->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "Done"));
 
         setVisibleParams(selectedProxyIndex_, userProxy->needAuth_);
     }
 
     void ConnectionSettingsWidget::show()
     {
-        if (generalDialog_->showInCenter())
+        if (generalDialog_->execute())
             saveProxy();
         delete generalDialog_;
     }

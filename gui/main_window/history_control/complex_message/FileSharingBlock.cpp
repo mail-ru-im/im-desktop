@@ -60,17 +60,6 @@ namespace
     constexpr std::chrono::milliseconds previewButtonAnimDelay = std::chrono::seconds(1);
     constexpr auto stickerSize = core::sticker_size::xlarge;
 
-    QSize getGhostSize()
-    {
-        return Utils::scale_value(QSize(160, 160));
-    }
-
-    QPixmap getGhost()
-    {
-        static const auto ghost = Utils::renderSvg(qsl("://themes/stickers/ghost_sticker"), getGhostSize());
-        return ghost;
-    }
-
     auto scaledForStickerSize = [](const auto& image)
     {
         auto image_scaled = image.scaled(QSize(
@@ -83,19 +72,19 @@ namespace
         return image_scaled;
     };
 
-    QColor getNameColor()
+    auto getNameColor()
     {
-        return Ui::MessageStyle::getTextColor();
+        return Ui::MessageStyle::getTextColorKey();
     }
 
-    QColor getProgressColor(const bool _isOutgoing)
+    auto getProgressColor(const bool _isOutgoing)
     {
-        return Ui::MessageStyle::Files::getFileSizeColor(_isOutgoing);
+        return Ui::MessageStyle::Files::getFileSizeColorKey(_isOutgoing);
     }
 
-    QColor getShowInFolderColor()
+    auto getShowInFolderColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_INVERSE);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_INVERSE };
     }
 
     int fileStatusMaring() noexcept
@@ -109,14 +98,14 @@ namespace
     {
         return QT_TRANSLATE_NOOP("chat_page", "File is not available");
     }
-}
+} // namespace
 
 Q_LOGGING_CATEGORY(fileSharingBlock, "fileSharingBlock")
 
 UI_COMPLEX_MESSAGE_NS_BEGIN
 
-FileSharingBlock::FileSharingBlock(ComplexMessageItem* _parent, const QString &link, const core::file_sharing_content_type type)
-    : FileSharingBlockBase(_parent, link, type)
+FileSharingBlock::FileSharingBlock(ComplexMessageItem* _parent, const QString& _link, const core::file_sharing_content_type _type)
+    : FileSharingBlockBase(_parent, _link, _type)
 {
     parseLink();
 
@@ -124,16 +113,17 @@ FileSharingBlock::FileSharingBlock(ComplexMessageItem* _parent, const QString &l
         init();
 }
 
-FileSharingBlock::FileSharingBlock(ComplexMessageItem* _parent, const HistoryControl::FileSharingInfoSptr& fsInfo, const core::file_sharing_content_type type)
-    : FileSharingBlockBase(_parent, fsInfo->GetUri(), type)
+FileSharingBlock::FileSharingBlock(ComplexMessageItem* _parent, const HistoryControl::FileSharingInfoSptr& _fsInfo, const core::file_sharing_content_type _type)
+    : FileSharingBlockBase(_parent, _fsInfo->GetUri(), _type)
+    , antivirusCheckEnabled_{ Features::isAntivirusCheckEnabled() }
 {
     if (!_parent->isHeadless())
         init();
 
-    if (fsInfo->IsOutgoing())
+    if (_fsInfo->IsOutgoing())
     {
-        setLocalPath(fsInfo->GetLocalPath());
-        const auto &uploadingProcessId = fsInfo->GetUploadingProcessId();
+        setLocalPath(_fsInfo->GetLocalPath());
+        const auto& uploadingProcessId = _fsInfo->GetUploadingProcessId();
         if (!uploadingProcessId.isEmpty())
         {
             if (isPreviewable())
@@ -385,7 +375,7 @@ bool FileSharingBlock::loadPreviewFromLocalFile()
 
 bool FileSharingBlock::getLocalFileMetainfo()
 {
-    const auto &localPath = getFileLocalPath();
+    const auto& localPath = getFileLocalPath();
     QFileInfo info(localPath);
 
     if (!info.exists())
@@ -489,28 +479,13 @@ void FileSharingBlock::setPreview(QPixmap _preview, QPixmap _background)
     getParentComplexMessage()->update();
 }
 
-void FileSharingBlock::updateStyle()
-{
-    const auto updateLabel = [](const auto& _label, const QColor& _color)
-    {
-        if (_label)
-            _label->setColor(_color);
-    };
-
-    updateLabel(nameLabel_,         getNameColor());
-    updateLabel(sizeProgressLabel_, getProgressColor(isOutgoing()));
-    updateLabel(showInFolderLabel_, getShowInFolderColor());
-
-    update();
-}
-
 void FileSharingBlock::updateFonts()
 {
-    const auto updateLabel = [](const auto& _label, const QFont& _font, const QColor& _color)
+    const auto updateLabel = [](const auto& _label, const QFont& _font, const Styling::ThemeColorKey& _color)
     {
         if (_label)
         {
-            _label->init(_font, _color);
+            _label->init({ _font, _color });
             _label->evaluateDesiredSize();
         }
     };
@@ -531,7 +506,7 @@ bool FileSharingBlock::isProgressVisible() const
 
 void FileSharingBlock::onSticker(qint32 _error, const Utils::FileSharingId& _fsId)
 {
-    if (_error != 0 || _fsId.fileId.isEmpty() || _fsId != getFileSharingId())
+    if (_error != 0 || _fsId.fileId_.isEmpty() || _fsId != getFileSharingId())
         return;
 
     im_assert(isSticker());
@@ -581,12 +556,13 @@ void FileSharingBlock::onSticker(qint32 _error, const Utils::FileSharingId& _fsI
 
 QRect FileSharingBlock::getFileStatusRect() const
 {
-    if (status_ == FileStatus::NoStatus)
-        return {};
-
-    const auto x = width() - getFileStatusIconSizeWithCircle().width();
-    const auto y = isStandalone() ? 0 : fileStatusMaring();
-    return { {x, y}, getFileStatusIconSizeWithCircle() };
+    if (needShowStatus(status_))
+    {
+        const auto x = width() - getFileStatusIconSizeWithCircle().width();
+        const auto y = isStandalone() ? 0 : fileStatusMaring();
+        return { { x, y }, getFileStatusIconSizeWithCircle() };
+    }
+    return {};
 }
 
 QRect FileSharingBlock::getPlainButtonRect() const
@@ -612,25 +588,23 @@ void FileSharingBlock::setPlainFileName(const QString& _name)
     }
 }
 
-void FileSharingBlock::updatePlainButtonBlockReason(bool _condition)
+void FileSharingBlock::updatePlainButtonBlockReason(bool _forcePlaceholder)
 {
     if (!plainButton_)
         return;
 
     auto reason = FileSharingIcon::BlockReason::NoBlock;
-    if (_condition && status_ != FileStatus::NoStatus)
-    {
-        if (status_ == FileStatus::AntivirusInfected || status_ == FileStatus::AntivirusOkButBlocked)
-            reason = FileSharingIcon::BlockReason::Antivirus;
-        else if (status_ == FileStatus::Blocked)
-            reason = FileSharingIcon::BlockReason::TrustCheck;
-    }
+    if (_forcePlaceholder && status_.isTrustRequired())
+        reason = FileSharingIcon::BlockReason::TrustCheck;
+    else if (status_.isVirusInfectedType())
+        reason = FileSharingIcon::BlockReason::Antivirus;
+
     plainButton_->setBlocked(reason);
 }
 
 bool FileSharingBlock::isPlaceholder() const
 {
-    return getFileSharingId().fileId == filesharingPlaceholder();
+    return getFileSharingId().fileId_ == filesharingPlaceholder();
 }
 
 QSize FileSharingBlock::getImageMaxSize()
@@ -676,13 +650,13 @@ void FileSharingBlock::onDistanceToViewportChanged(const QRect& _widgetAbsGeomet
     qCDebug(fileSharingBlock) << "set distance load " << IsInPreloadDistance_ << ", file: " << getFileLocalPath();
 }
 
-void FileSharingBlock::setCtrlButtonGeometry(const QRect &rect)
+void FileSharingBlock::setCtrlButtonGeometry(const QRect& _rect)
 {
-    if (!previewButton_ || rect.isEmpty())
+    if (!previewButton_ || _rect.isEmpty())
         return;
 
     const auto bias = previewButton_->getCenterBias();
-    const auto fixedRect = rect.translated(-bias);
+    const auto fixedRect = _rect.translated(-bias);
     previewButton_->setGeometry(fixedRect);
     previewButton_->setVisible(isButtonVisible());
 
@@ -690,25 +664,25 @@ void FileSharingBlock::setCtrlButtonGeometry(const QRect &rect)
         previewButton_->raise();
 }
 
-void FileSharingBlock::drawBlock(QPainter &p, const QRect& _rect, const QColor& quote_color)
+void FileSharingBlock::drawBlock(QPainter& _p, const QRect& _rect, const QColor& quote_color)
 {
     const auto& contentRect = getFileSharingLayout()->getContentRect();
     im_assert(!contentRect.isEmpty());
 
     if (isPreviewable())
     {
-        drawPreviewableBlock(p, contentRect, quote_color);
+        drawPreviewableBlock(_p, contentRect, quote_color);
 
         if (quote_color.isValid() && !isVideo())
         {
             const auto clip_path = Utils::renderMessageBubble(_rect, MessageStyle::Preview::getBorderRadius(isStandalone()));
-            p.setClipPath(clip_path);
-            p.fillRect(_rect, QBrush(quote_color));
+            _p.setClipPath(clip_path);
+            _p.fillRect(_rect, QBrush(quote_color));
         }
     }
     else
     {
-        drawPlainFileBlock(p, contentRect, quote_color);
+        drawPlainFileBlock(_p, contentRect, quote_color);
     }
 }
 
@@ -743,6 +717,9 @@ void FileSharingBlock::initializeFileSharingBlock()
     else
     {
         sendGenericMetainfoRequests();
+
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated, this, &FileSharingBlock::onConfigChanged);
+        connect(GetDispatcher(), &core_dispatcher::externalUrlConfigUpdated, this, &FileSharingBlock::onConfigChanged);
     }
 }
 
@@ -767,7 +744,7 @@ void FileSharingBlock::init()
     setMouseTracking(true);
 }
 
-void FileSharingBlock::applyClippingPath(QPainter &p, const QRect &_previewRect)
+void FileSharingBlock::applyClippingPath(QPainter& _p, const QRect& _previewRect)
 {
     im_assert(isPreviewable());
     im_assert(!_previewRect.isEmpty());
@@ -796,7 +773,7 @@ void FileSharingBlock::applyClippingPath(QPainter &p, const QRect &_previewRect)
         LastContentRect_ = _previewRect;
     }
 
-    p.setClipPath(PreviewClippingPath_);
+    _p.setClipPath(PreviewClippingPath_);
 }
 
 void FileSharingBlock::connectImageSignals()
@@ -810,22 +787,22 @@ void FileSharingBlock::connectImageSignals()
     }
 }
 
-void FileSharingBlock::drawPlainFileBlock(QPainter &p, const QRect &frameRect, const QColor& quote_color)
+void FileSharingBlock::drawPlainFileBlock(QPainter& _p, const QRect& frameRect, const QColor& _quoteColor)
 {
     im_assert(isPlainFile());
 
     if (!isStandalone() && isSelected())
-        drawPlainFileFrame(p, frameRect);
+        drawPlainFileFrame(_p, frameRect);
 
-    drawPlainFileName(p);
-    drawPlainFileProgress(p);
-    drawPlainFileStatus(p);
+    drawPlainFileName(_p);
+    drawPlainFileProgress(_p);
+    drawPlainFileStatus(_p);
 
-    if (status_ != FileStatus::Blocked || !Utils::InterConnector::instance().isMultiselect(getChatAimid()))
-        drawPlainFileShowInDirLink(p);
+    if ((!isBlockedFileSharing() || !Utils::InterConnector::instance().isMultiselect(getChatAimid())) && isAllowedByAntivirus())
+        drawPlainFileShowInDirLink(_p);
 }
 
-void FileSharingBlock::drawPlainFileFrame(QPainter& _p, const QRect &frameRect)
+void FileSharingBlock::drawPlainFileFrame(QPainter& _p, const QRect& _frameRect)
 {
     im_assert(!isStandalone());
 
@@ -835,16 +812,14 @@ void FileSharingBlock::drawPlainFileFrame(QPainter& _p, const QRect &frameRect)
     _p.setBrush(MessageStyle::getBodyBrush(isOutgoing(), getChatAimid()));
     _p.setPen(Qt::NoPen);
 
-    _p.drawRoundedRect(frameRect, MessageStyle::getBorderRadius(), MessageStyle::getBorderRadius());
+    _p.drawRoundedRect(_frameRect, MessageStyle::getBorderRadius(), MessageStyle::getBorderRadius());
 }
 
-void FileSharingBlock::drawPlainFileName(QPainter &p)
+void FileSharingBlock::drawPlainFileName(QPainter& _p)
 {
     im_assert(isPlainFile());
-    if (!nameLabel_)
-        return;
-
-    nameLabel_->draw(p);
+    if (nameLabel_)
+        nameLabel_->draw(_p);
 }
 
 void FileSharingBlock::drawPlainFileProgress(QPainter& _p)
@@ -861,7 +836,7 @@ void FileSharingBlock::drawPlainFileProgress(QPainter& _p)
     if (!sizeProgressLabel_)
     {
         sizeProgressLabel_ = TextRendering::MakeTextUnit(text);
-        sizeProgressLabel_->init(MessageStyle::Files::getFileSizeFont(), getProgressColor(isOutgoing()));
+        sizeProgressLabel_->init({ MessageStyle::Files::getFileSizeFont(), getProgressColor(isOutgoing()) });
         sizeProgressLabel_->setOffsets(getLabelLeftOffset(), getSecondRowVerOffset());
         sizeProgressLabel_->evaluateDesiredSize();
     }
@@ -873,7 +848,7 @@ void FileSharingBlock::drawPlainFileProgress(QPainter& _p)
     sizeProgressLabel_->draw(_p, TextRendering::VerPosition::BASELINE);
 }
 
-void FileSharingBlock::drawPlainFileShowInDirLink(QPainter &p)
+void FileSharingBlock::drawPlainFileShowInDirLink(QPainter& _p)
 {
     if (isFileDownloading() || isFileUploading() || !isFileDownloaded())
         return;
@@ -881,7 +856,7 @@ void FileSharingBlock::drawPlainFileShowInDirLink(QPainter &p)
     if (!showInFolderLabel_)
     {
         showInFolderLabel_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("chat_page", "Show in folder"));
-        showInFolderLabel_->init(MessageStyle::Files::getShowInDirLinkFont(), getShowInFolderColor());
+        showInFolderLabel_->init({ MessageStyle::Files::getShowInDirLinkFont(), getShowInFolderColor() });
         showInFolderLabel_->evaluateDesiredSize();
     }
 
@@ -897,7 +872,7 @@ void FileSharingBlock::drawPlainFileShowInDirLink(QPainter &p)
         showInFolderLabel_->elide(width() - showInFolderLabel_->horOffset() - MessageStyle::Files::getHorMargin());
     }
 
-    showInFolderLabel_->draw(p, TextRendering::VerPosition::BASELINE);
+    showInFolderLabel_->draw(_p, TextRendering::VerPosition::BASELINE);
 }
 
 void FileSharingBlock::drawPlainFileStatus(QPainter& _p) const
@@ -909,19 +884,19 @@ void FileSharingBlock::drawPlainFileStatus(QPainter& _p) const
     Utils::PainterSaver ps(_p);
     _p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
     _p.setPen(Qt::NoPen);
-    _p.setBrush(MessageStyle::getFileStatusIconBackground(status_, isOutgoing()));
+    _p.setBrush(MessageStyle::getFileStatusIconBackground(status_.type(), isOutgoing()));
 
     _p.drawEllipse(r);
 
     const auto x = r.left() + (r.width() - getFileStatusIconSize().width()) / 2;
     const auto y = r.top() + (r.height() - getFileStatusIconSize().height()) / 2;
-    _p.drawPixmap(x, y, getFileStatusIcon(status_, MessageStyle::getFileStatusIconColor(status_, isOutgoing())));
+    _p.drawPixmap(x, y, getFileStatusIcon(status_.type(), MessageStyle::getFileStatusIconColor(status_.type(), isOutgoing())));
 }
 
-void FileSharingBlock::drawPreview(QPainter &p, const QRect &previewRect, const QColor& quote_color)
+void FileSharingBlock::drawPreview(QPainter& _p, const QRect& _previewRect, const QColor& _quoteColor)
 {
     im_assert(isPreviewable());
-    im_assert(!previewRect.isEmpty());
+    im_assert(!_previewRect.isEmpty());
 
     if (isPreviewReady())
     {
@@ -943,21 +918,20 @@ void FileSharingBlock::drawPreview(QPainter &p, const QRect &previewRect, const 
             }
 
             if ((getParentComplexMessage() && getParentComplexMessage()->maxEffectiveBlockWidth() > effectiveBlockWidth()) || MediaUtils::isNarrowMedia(originSizeScaled()) || MediaUtils::isWideMedia(originSizeScaled()))
-                p.drawPixmap(r, Background_, bRect);
+                _p.drawPixmap(r, Background_, bRect);
         }
-
 
         const auto backgroundMode = (isSticker() || !Background_.isNull()) ? MediaUtils::BackgroundMode::NoBackground : MediaUtils::BackgroundMode::Auto;
 #ifndef STRIP_AV_MEDIA
         if (!videoplayer_)
 #endif // !STRIP_AV_MEDIA
         {
-            MediaUtils::drawMediaInRect(p, previewRect, Meta_.preview_, originSizeScaled(), backgroundMode);
+            MediaUtils::drawMediaInRect(_p, _previewRect, Meta_.preview_, originSizeScaled(), backgroundMode);
 
-            if (quote_color.isValid())
+            if (_quoteColor.isValid())
             {
-                p.setBrush(QBrush(quote_color));
-                p.drawRoundedRect(previewRect, Utils::scale_value(8), Utils::scale_value(8));
+                _p.setBrush(QBrush(_quoteColor));
+                _p.drawRoundedRect(_previewRect, Utils::scale_value(8), Utils::scale_value(8));
             }
         }
 #ifndef STRIP_AV_MEDIA
@@ -970,11 +944,11 @@ void FileSharingBlock::drawPreview(QPainter &p, const QRect &previewRect, const 
                     videoplayer_->setClippingPath(PreviewClippingPath_);
 
                     if (videoplayer_->state() == QMovie::MovieState::Paused)
-                        MediaUtils::drawMediaInRect(p, previewRect, videoplayer_->getActiveImage(), originSizeScaled(), backgroundMode);
+                        MediaUtils::drawMediaInRect(_p, _previewRect, videoplayer_->getActiveImage(), originSizeScaled(), backgroundMode);
                 }
                 else
                 {
-                    MediaUtils::drawMediaInRect(p, previewRect, videoplayer_->getActiveImage(), originSizeScaled(), backgroundMode);
+                    MediaUtils::drawMediaInRect(_p, _previewRect, videoplayer_->getActiveImage(), originSizeScaled(), backgroundMode);
                 }
             }
         }
@@ -983,7 +957,7 @@ void FileSharingBlock::drawPreview(QPainter &p, const QRect &previewRect, const 
     else if (!isSticker())
     {
         const auto brush = MessageStyle::Preview::getImagePlaceholderBrush();
-        p.fillRect(previewRect, brush);
+        _p.fillRect(_previewRect, brush);
     }
 }
 
@@ -997,12 +971,12 @@ void FileSharingBlock::drawPreviewableBlock(QPainter& _p, const QRect& _previewR
 
 void FileSharingBlock::initPlainFile()
 {
+    im_assert(previewButton_ == nullptr);
     auto layout = new FileSharingPlainBlockLayout();
     setBlockLayout(layout);
     setLayout(layout);
 
-    if (Logic::getContactListModel()->isTrustRequired(getChatAimid()))
-        status_ = FileStatus::Blocked;
+    status_.setTrustRequired(Logic::getContactListModel()->isTrustRequired(getChatAimid()) || Meta_.trustRequired_);
 
     if (!plainButton_)
     {
@@ -1013,17 +987,21 @@ void FileSharingBlock::initPlainFile()
         connect(plainButton_, &FileSharingIcon::clicked, this, &FileSharingBlock::onPlainFileIconClicked);
         connect(getParentComplexMessage(), &ComplexMessageItem::hoveredBlockChanged, this, [this]()
         {
-            plainButton_->setHovered(getParentComplexMessage()->getHoveredBlock() == this);
+            if (plainButton_)
+                plainButton_->setHovered(getParentComplexMessage()->getHoveredBlock() == this);
         });
     }
 
     const auto text = isPlaceholder() ? notAvailable() : formatRecentsText();
     nameLabel_ = TextRendering::MakeTextUnit(text, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-    nameLabel_->init(MessageStyle::Files::getFilenameFont(), getNameColor(), {}, {}, {}, TextRendering::HorAligment::LEFT, 1);
+    TextRendering::TextUnit::InitializeParameters params{ MessageStyle::Files::getFilenameFont(), getNameColor() };
+    params.maxLinesCount_ = 1;
+    nameLabel_->init(params);
 }
 
 void FileSharingBlock::initPreview()
 {
+    im_assert(plainButton_ == nullptr);
     auto layout = new FileSharingImagePreviewBlockLayout();
     setBlockLayout(layout);
     setLayout(layout);
@@ -1032,7 +1010,7 @@ void FileSharingBlock::initPreview()
     {
         auto resourceSet = &ActionButtonResource::ResourceSet::DownloadMediaFile_;
 
-        if (isPlayable())
+        if (isPlayableType())
             resourceSet = &ActionButtonResource::ResourceSet::DownloadVideo_;
 
         initPreviewButton(*resourceSet);
@@ -1111,7 +1089,7 @@ void FileSharingBlock::onDownloadedAction()
 #endif // !STRIP_AV_MEDIA
 }
 
-bool FileSharingBlock::onLeftMouseClick(const QPoint &_pos)
+bool FileSharingBlock::onLeftMouseClick(const QPoint& _pos)
 {
     if (!rect().contains(_pos) || Utils::InterConnector::instance().isMultiselect(getChatAimid()))
         return false;
@@ -1125,6 +1103,27 @@ bool FileSharingBlock::onLeftMouseClick(const QPoint &_pos)
 
     if (previewButton_ && previewButton_->isWaitingForDelay())
         return false;
+
+    if (isPlainFile())
+    {
+        if (!isAllowedByAntivirus() || (!isFileTrustAllowed() && !isFileDownloaded()))
+        {
+            showFileStatusToast(status_.type());
+            return true;
+        }
+        if (isFileDownloaded())
+        {
+            if (plainButton_ && QRect(plainButton_->pos(), plainButton_->size()).contains(_pos))
+                showFileInDir(Utils::OpenAt::Launcher);
+            else
+                showFileInDir(Utils::OpenAt::Folder);
+        }
+        else
+        {
+            startDownloading(true, Priority::High);
+        }
+        return true;
+    }
 
     if (isImage())
     {
@@ -1147,22 +1146,6 @@ bool FileSharingBlock::onLeftMouseClick(const QPoint &_pos)
         return true;
     }
 
-    if (isPlainFile())
-    {
-        if (isFileDownloaded())
-        {
-            if (plainButton_ && QRect(plainButton_->pos(), plainButton_->size()).contains(_pos))
-                showFileInDir(Utils::OpenAt::Launcher);
-            else
-                showFileInDir(Utils::OpenAt::Folder);
-        }
-        else
-        {
-            startDownloading(true, false, true);
-        }
-        return true;
-    }
-
     return false;
 }
 
@@ -1181,7 +1164,6 @@ MediaUtils::MediaType FileSharingBlock::mediaType() const
         return MediaUtils::MediaType::Gif;
     else
         return MediaUtils::MediaType::Image;
-
 }
 
 bool FileSharingBlock::needStretchToOthers() const
@@ -1263,11 +1245,12 @@ QString FileSharingBlock::getProgressText() const
     return FileSharingBlockBase::getProgressText();
 }
 
-void FileSharingBlock::updateFileStatus(FileStatus _status)
+void FileSharingBlock::markTrustRequired()
 {
-    if (status_ != _status && isPlainFile())
+    const auto oldStatus = status_.type();
+    status_.setTrustRequired(true);
+    if (oldStatus != status_.type() && isPlainFile())
     {
-        status_ = _status;
         setPlainFileName(getFilename());
         update();
     }
@@ -1283,26 +1266,39 @@ IItemBlock::ContentType FileSharingBlock::getContentType() const
 
 void FileSharingBlock::parseLink()
 {
-    im_assert(!getFileSharingId().fileId.isEmpty());
+    im_assert(!getFileSharingId().fileId_.isEmpty());
 
     if (isPlaceholder())
-        status_ = FileStatus::Blocked;
+        status_.setTrustRequired(true);
 
     if (isPreviewable())
     {
-        OriginalPreviewSize_ = extractSizeFromFileSharingId(getFileSharingId().fileId);
+        OriginalPreviewSize_ = extractSizeFromFileSharingId(getFileSharingId().fileId_);
 
         if (OriginalPreviewSize_.isEmpty())
             OriginalPreviewSize_ = Utils::scale_value(QSize(64, 64));
     }
 }
 
-void FileSharingBlock::onStartClicked(const QPoint & _globalPos)
+void FileSharingBlock::onAntivirusCheckResult(const Utils::FileSharingId& _fileHash, core::antivirus::check::result _result)
+{
+    if (_fileHash == getFileSharingId())
+    {
+        Meta_.antivirusCheck_.result_ = _result;
+        if (core::antivirus::check::result::unchecked != _result)
+        {
+            disconnect(Ui::GetDispatcher(), &Ui::core_dispatcher::antivirusCheckResult, this, &FileSharingBlock::onAntivirusCheckResult);
+            onMetainfoDownloaded();
+        }
+    }
+}
+
+void FileSharingBlock::onStartClicked(const QPoint& _globalPos)
 {
     onLeftMouseClick(mapFromGlobal(_globalPos));
 }
 
-void FileSharingBlock::onStopClicked(const QPoint &)
+void FileSharingBlock::onStopClicked(const QPoint&)
 {
     stopDataTransfer();
     notifyBlockContentsChanged();
@@ -1321,16 +1317,16 @@ void FileSharingBlock::onPlainFileIconClicked()
     Q_EMIT Utils::InterConnector::instance().setFocusOnInput(getChatAimid());
 }
 
-void FileSharingBlock::localPreviewLoaded(QPixmap pixmap, const QSize _originalSize)
+void FileSharingBlock::localPreviewLoaded(QPixmap _pixmap, const QSize _originalSize)
 {
-    if (pixmap.isNull())
+    if (_pixmap.isNull())
         return;
 
     OriginalPreviewSize_ = _originalSize;
 
     notifyBlockContentsChanged();
 
-    setPreview(pixmap);
+    setPreview(_pixmap);
 }
 
 void FileSharingBlock::localDurationLoaded(qint64 _duration)
@@ -1353,13 +1349,16 @@ void FileSharingBlock::localGotAudioLoaded(bool _gotAudio)
 
 void FileSharingBlock::multiselectChanged()
 {
+    if (!getParentComplexMessage()->isMultiselectEnabled())
+        return;
+
     if (isPlainFile())
     {
-        const auto selected = Utils::InterConnector::instance().isMultiselect(getChatAimid());
-        updatePlainButtonBlockReason(isPlaceholder() || selected);
+        const auto multiselectInCurrentChat = Utils::InterConnector::instance().isMultiselect(getChatAimid());
+        updatePlainButtonBlockReason(isPlaceholder() || multiselectInCurrentChat);
 
         if (isBlockedFileSharing())
-            setPlainFileName(selected ? notAvailable() : getFilename());
+            setPlainFileName(multiselectInCurrentChat ? notAvailable() : getFilename());
     }
     else if (isPlayable())
     {
@@ -1388,7 +1387,17 @@ void FileSharingBlock::prepareBackground(const QPixmap& _result, qint64 _srcCach
     update();
 }
 
-void FileSharingBlock::resizeEvent(QResizeEvent * _event)
+void FileSharingBlock::onConfigChanged()
+{
+    const auto antivirusEnabled = Features::isAntivirusCheckEnabled();
+    if (std::exchange(antivirusCheckEnabled_, antivirusEnabled) != antivirusEnabled)
+    {
+        onMetainfoDownloaded();
+        notifyBlockContentsChanged();
+    }
+}
+
+void FileSharingBlock::resizeEvent(QResizeEvent* _event)
 {
     FileSharingBlockBase::resizeEvent(_event);
 #ifndef STRIP_AV_MEDIA
@@ -1446,12 +1455,12 @@ void FileSharingBlock::resizeEvent(QResizeEvent * _event)
     }
 }
 
-void FileSharingBlock::requestPreview(const QString &uri)
+void FileSharingBlock::requestPreview(const QString& _uri)
 {
     im_assert(isPreviewable());
     im_assert(PreviewRequestId_ == -1);
 
-    PreviewRequestId_ = GetDispatcher()->downloadImage(uri, QString(), false, 0, 0, false);
+    PreviewRequestId_ = GetDispatcher()->downloadImage(_uri, QString(), false, 0, 0, false);
 }
 
 void FileSharingBlock::sendGenericMetainfoRequests()
@@ -1482,7 +1491,7 @@ void FileSharingBlock::updateFileTypeIcon()
 
     if (plainButton_)
     {
-        if (const auto &filename = getFilename(); !filename.isEmpty())
+        if (const auto& filename = getFilename(); !filename.isEmpty())
             plainButton_->setFilename(filename);
 
         if (!getFileLocalPath().isEmpty())
@@ -1521,6 +1530,43 @@ void FileSharingBlock::onDataTransfer(const int64_t _bytesTransferred, const int
 
 void FileSharingBlock::onMetainfoDownloaded()
 {
+    antivirusCheckEnabled_ = Features::isAntivirusCheckEnabled();
+    const auto trustRequired = Meta_.trustRequired_ || Logic::getContactListModel()->isTrustRequired(getChatAimid());
+    const auto& antivirusCheck = Meta_.antivirusCheck_;
+    status_.updateData(antivirusCheck, trustRequired, antivirusCheckEnabled_);
+    if (antivirusCheckEnabled_)
+    {
+        if (status_.isAntivirusInProgress())
+        {
+            if (!getLink().isEmpty())
+            {
+                Ui::GetDispatcher()->subscribeFileSharingAntivirus(getFileSharingId());
+                connect(Ui::GetDispatcher(), &Ui::core_dispatcher::antivirusCheckResult, this, &FileSharingBlock::onAntivirusCheckResult, Qt::UniqueConnection);
+            }
+        }
+        else if (previewButton_ && core::antivirus::check::result::unsafe == antivirusCheck.result_)
+        {
+            // Collapse preview block to plain file block when photo/video unsafe
+#ifndef STRIP_AV_MEDIA
+            videoplayer_.reset();
+#endif
+            previewButton_->deleteLater();
+            previewButton_ = nullptr;
+            initPlainFile();
+        }
+        updatePlainButtonBlockReason(false);
+    }
+    else
+    {
+        // Expand preview again when antivirus check disabled
+        if (isPreviewable() && plainButton_)
+        {
+            plainButton_->deleteLater();
+            plainButton_ = nullptr;
+            initPreview();
+        }
+    }
+
     if (isPlayable())
     {
         if (previewButton_ && isProgressVisible())
@@ -1542,48 +1588,36 @@ void FileSharingBlock::onMetainfoDownloaded()
         }
         else
 #endif // !STRIP_AV_MEDIA
-        if (isSticker() || isAutoplay())
+        if ((isSticker() || isAutoplay()) && isDownloadAllowed())
         {
             startDownloading(false);
         }
     }
     else if (isPlainFile())
     {
-        if (Meta_.trustRequired_)
-            status_ = FileStatus::Blocked;
-
         setPlainFileName(getFilename());
         updateFileTypeIcon();
+        updatePlainButtonBlockReason(false);
         notifyBlockContentsChanged();
     }
 }
 
-void FileSharingBlock::onImageDownloadError(qint64 seq, QString /*rawUri*/)
+void FileSharingBlock::onImageDownloadError(qint64 _seq, QString /*_rawUri*/)
 {
-    if (PreviewRequestId_ != seq)
+    if (PreviewRequestId_ != _seq)
         return;
 
     PreviewRequestId_ = -1;
 
-    onDownloadingFailed(seq);
+    onDownloadingFailed(_seq);
 }
 
-FileSharingBlock::MenuFlags FileSharingBlock::getMenuFlags(QPoint p) const
+FileSharingBlock::MenuFlags FileSharingBlock::getMenuFlags(QPoint _p) const
 {
     if (isSticker())
         return FileSharingBlock::MenuFlags::MenuFlagNone;
 
-    return FileSharingBlockBase::getMenuFlags(p);
-}
-
-void FileSharingBlock::setSelected(const bool _isSelected)
-{
-    const auto prevSelected = isSelected();
-
-    FileSharingBlockBase::setSelected(_isSelected);
-
-    if (const auto sel = isSelected(); sel != prevSelected)
-        updateStyle();
+    return FileSharingBlockBase::getMenuFlags(_p);
 }
 
 bool FileSharingBlock::isSmallPreview() const
@@ -1607,10 +1641,10 @@ void FileSharingBlock::mouseMoveEvent(QMouseEvent* _event)
                 ? QRect(0, nameLabel_->offsets().y(), width(), nameLabel_->cachedSize().height())
                 : getFileStatusRect();
 
-            auto isFullyVisible = visibleRegion().boundingRect().y() < ttRect.top();
+            const auto isFullyVisible = visibleRegion().boundingRect().y() < ttRect.top();
             const auto arrowDir = isFullyVisible ? Tooltip::ArrowDirection::Down : Tooltip::ArrowDirection::Up;
             const auto arrowPos = isFullyVisible ? Tooltip::ArrowPointPos::Top : Tooltip::ArrowPointPos::Bottom;
-            const auto text = overName ? nameLabel_->getSourceText().string() : getFileStatusText(status_);
+            const auto text = overName ? nameLabel_->getSourceText().string() : getFileStatusText(status_.type());
             showTooltip(text, QRect(mapToGlobal(ttRect.topLeft()), ttRect.size()), arrowDir, arrowPos);
         }
     }
@@ -1627,40 +1661,36 @@ void FileSharingBlock::leaveEvent(QEvent* _event)
     GenericBlock::leaveEvent(_event);
 }
 
-const QPixmap &FileSharingBlock::getPreview() const
+const QPixmap& FileSharingBlock::getPreview() const
 {
     return Meta_.preview_;
 }
 
-const QPixmap &FileSharingBlock::getBackground() const
+const QPixmap& FileSharingBlock::getBackground() const
 {
     return Background_;
 }
 
-void FileSharingBlock::onImageDownloaded(int64_t seq, QString uri, QPixmap image)
+void FileSharingBlock::onImageDownloaded(int64_t _seq, QString /*_uri*/, QPixmap _image)
 {
-    if (PreviewRequestId_ != seq)
+    if (PreviewRequestId_ != _seq)
+        return;
+    if (isVirusInfected())
         return;
 
     PreviewRequestId_ = -1;
-    setPreview(image);
+    setPreview(_image);
 
     update();
 }
 
-void FileSharingBlock::onImageDownloadingProgress(qint64 seq, int64_t bytesTotal, int64_t bytesTransferred, int32_t pctTransferred)
+void FileSharingBlock::onImageDownloadingProgress(qint64 /*seq*/, int64_t /*bytesTotal*/, int64_t /*bytesTransferred*/, int32_t /*pctTransferred*/)
 {
-    Q_UNUSED(seq);
-    Q_UNUSED(bytesTotal);
-    Q_UNUSED(bytesTransferred);
 }
 
-void FileSharingBlock::onImageMetaDownloaded(int64_t seq, Data::LinkMetadata meta)
+void FileSharingBlock::onImageMetaDownloaded(int64_t /*_seq*/, Data::LinkMetadata /*_meta*/)
 {
     im_assert(isPreviewable());
-
-    Q_UNUSED(seq);
-    Q_UNUSED(meta);
 }
 
 void FileSharingBlock::onGifImageVisibilityChanged(const bool _isVisible)
@@ -1681,9 +1711,9 @@ void FileSharingBlock::onGifImageVisibilityChanged(const bool _isVisible)
 #endif // !STRIP_AV_MEDIA
 }
 
-void FileSharingBlock::onLocalCopyInfoReady(const bool isCopyExists)
+void FileSharingBlock::onLocalCopyInfoReady(const bool _isCopyExists)
 {
-    if (isCopyExists)
+    if (_isCopyExists)
         update();
 }
 
@@ -1740,7 +1770,7 @@ int FileSharingBlock::filenameDesiredWidth() const
 
 int FileSharingBlock::getMaxFilenameWidth() const
 {
-    const auto statusWidth = status_ != FileStatus::NoStatus
+    const auto statusWidth = needShowStatus(status_)
         ? getFileStatusIconSizeWithCircle().width() + fileStatusMaring()
         : 0;
 
@@ -1755,12 +1785,12 @@ void FileSharingBlock::requestPinPreview()
 {
     auto connMeta = std::make_shared<QMetaObject::Connection>();
     *connMeta = connect(GetDispatcher(),&core_dispatcher::fileSharingPreviewMetainfoDownloaded, this,
-        [connMeta, this](qint64 _seq, auto miniPreviewUri, auto fullPreviewUri)
+        [connMeta, this](qint64 _seq, auto _miniPreviewUri, auto _fullPreviewUri)
     {
         if (getPreviewMetaRequestId() == _seq)
         {
-            Meta_.miniPreviewUri_ = miniPreviewUri;
-            Meta_.fullPreviewUri_ = fullPreviewUri;
+            Meta_.miniPreviewUri_ = _miniPreviewUri;
+            Meta_.fullPreviewUri_ = _fullPreviewUri;
             onPreviewMetainfoDownloaded();
 
             clearPreviewMetaRequestId();
@@ -1782,7 +1812,7 @@ void FileSharingBlock::requestPinPreview()
         }
     });
 
-    requestMetainfo(true, MetainfoCache::DontCheck);
+    requestMetainfo(true);
 }
 
 UI_COMPLEX_MESSAGE_NS_END

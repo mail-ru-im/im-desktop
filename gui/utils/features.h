@@ -10,9 +10,9 @@ namespace Features
     bool opensOnClick();
     bool phoneAllowed();
     bool externalPhoneAttachment();
-    bool showNotificationsText();
-    bool showNotificationsTextSettings();
-
+    bool hideMessageInfoEnabled();
+    bool hideMessageTextEnabled();
+    bool isPttRecognitionEnabled();
     QString dataVisibilityLink();
     QString passwordRecoveryLink();
     QString securityCallLink();
@@ -28,6 +28,10 @@ namespace Features
     LoginMethod loginMethod();
     bool isOAuth2LoginAllowed();
     size_t getSMSResultTime();
+
+    QString getOAuthScope();
+    QString getClientId();
+    QString getOAuthType();
 
     bool showAttachPhoneNumberPopup();
     bool closeBtnAttachPhoneNumberPopup();
@@ -54,6 +58,7 @@ namespace Features
     bool clRemoveContactsAllowed();
 
     bool changeNameAllowed();
+    bool changeContactNamesAllowed();
     bool changeInfoAllowed();
 
     bool pollsEnabled();
@@ -73,6 +78,7 @@ namespace Features
     int getVoipBigConferenceBoundary();
 
     bool isVcsCallByLinkEnabled();
+    bool isVcsCallByLinkV2Enabled();
     bool isVcsWebinarEnabled();
 
     QString getVcsRoomList();
@@ -127,12 +133,10 @@ namespace Features
     bool isMessengerTabBarVisible();
     bool isStatusInAppsNavigationBar();
 
-    bool isOrganizationStructureEnabled();
-    bool isTasksEnabled();
-    bool isCalendarEnabled();
-
     bool isRecentsPinnedItemsEnabled();
     bool isScheduledMessagesEnabled();
+
+    bool isThreadsForbidEnabled();
     bool isThreadsEnabled();
     bool isRemindersEnabled();
 
@@ -157,4 +161,39 @@ namespace Features
     bool hasWebEngine();
 
     std::chrono::seconds webPageReloadInterval();
+    QStringList getBotCommandsDisabledChats();
+
+    bool isDeleteAccountViaAdmin();
+    bool isDeleteAccountEnabled();
+    QString deleteAccountUrl(const QString& _aimId);
+
+    bool hasRegistryAbout();
+
+    QString getServiceAppsOrder();
+    std::string getServiceAppsJson();
+    std::string getServiceAppsDesktopJson();
+    std::string getCustomAppsJson();
+
+    // TODO: remove when deprecated
+    bool isContactsEnabled();
+    bool isTasksEnabled();
+    bool isCalendarEnabled();
+    bool isMailEnabled();
+
+    QString getDigitalAssistantAimid();
+    bool isDigitalAssistantPinEnabled();
+
+    QStringList getAdditionalTheme();
+
+    bool isTarmMailEnabled();
+    bool isTarmCallsEnabled();
+    bool isTarmCloudEnabled();
+
+    bool calendarSelfAuth();
+    bool mailSelfAuth();
+    bool cloudSelfAuth();
+
+    bool leadingLastName();
+
+    bool isReportMessagesEnabled();
 }

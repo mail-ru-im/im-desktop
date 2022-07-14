@@ -5,15 +5,20 @@
 
 #include "controls/TextEditEx.h"
 #include "controls/FileSharingIcon.h"
+#include "controls/CustomButton.h"
+#include "controls/EmojiPickerDialog.h"
 
 #include "fonts.h"
 #include "gui_settings.h"
 
 #include "utils/utils.h"
+#include "utils/MimeDataUtils.h"
+#include "utils/features.h"
 #include "utils/translator.h"
 #include "utils/InterConnector.h"
 #include "utils/LoadPixmapFromFileTask.h"
 #include "utils/LoadFirstFrameTask.h"
+#include "input_widget/InputWidgetUtils.h"
 
 #include "history_control/FileSizeFormatter.h"
 #include "history_control/ThreadPlate.h"
@@ -22,18 +27,20 @@
 namespace
 {
     constexpr auto DIALOG_WIDTH = 340;
+    constexpr auto DIALOG_HEIGHT = 178;
     constexpr auto HEADER_HEIGHT = 56;
     constexpr auto INPUT_AREA = 56;
     constexpr auto INPUT_AREA_MAX = 86;
     constexpr auto HOR_OFFSET = 16;
+    constexpr auto HOR_OFFSET_MY = 16;
     constexpr auto HOR_OFFSET_SMALL = 8;
     constexpr auto VER_OFFSET = 10;
-    constexpr auto INPUT_TOP_OFFSET = 16;
+    constexpr auto INPUT_TOP_OFFSET = 20;
     constexpr auto INPUT_BOTTOM_OFFSET = 8;
     constexpr auto BOTTOM_OFFSET = 12;
     constexpr auto DEFAULT_INPUT_HEIGHT = 24;
     constexpr auto MIN_PREVIEW_HEIGHT = 80;
-    constexpr auto MAX_PREVIEW_HEIGHT = 308;
+    constexpr auto MAX_PREVIEW_HEIGHT = 268;
     constexpr auto PREVIEW_TOP_OFFSET = 16;
     constexpr auto FILE_PREVIEW_SIZE = 44;
     constexpr auto FILE_PREVIEW_HOR_OFFSET = 12;
@@ -51,25 +58,42 @@ namespace
 
     const auto roundRadius() noexcept { return Utils::scale_value(5); }
     const auto threadPlateMargin() noexcept { return Utils::scale_value(16); }
-
-    QPixmap getRemoveIcon(Styling::StyleVariable _color)
+    constexpr auto emojiWidgetWidthNonScaled() { return 32; }
+    const auto emojiWidgetSize() noexcept { return Utils::scale_value(QSize(emojiWidgetWidthNonScaled(), emojiWidgetWidthNonScaled())); }
+    constexpr auto emojiWidgetRightMarginNonScaled() { return 8; }
+    const auto emojiWidgetRightMargin() noexcept { return Utils::scale_value(emojiWidgetRightMarginNonScaled()); }
+    const auto descriptionInputSize() noexcept
     {
-        return Utils::renderSvgScaled(qsl(":/history_icon"), QSize(REMOVE_BUTTON_SIZE, REMOVE_BUTTON_SIZE), Styling::getParameters().getColor(_color));
+        return Utils::scale_value(QSize(
+            DIALOG_WIDTH - HOR_OFFSET * 2 - emojiWidgetWidthNonScaled() - emojiWidgetRightMarginNonScaled(),
+            DEFAULT_INPUT_HEIGHT));
+    }
+    const auto descriptionMinimumHeight() noexcept { return Utils::scale_value(32); }
+    const auto descriptionDefaultHeight() noexcept { return Utils::scale_value(48); }
+
+    QSize addEmojiIconSize() noexcept
+    {
+        return Utils::scale_value(QSize(32, 32));
     }
 
-    QPixmap getRemoveIcon()
+    auto getRemoveIcon(Styling::StyleVariable _color)
+    {
+        return Utils::StyledPixmap::scaled(qsl(":/history_icon"), QSize(REMOVE_BUTTON_SIZE, REMOVE_BUTTON_SIZE), Styling::ThemeColorKey{ _color });
+    }
+
+    Utils::StyledPixmap getRemoveIcon()
     {
         static auto remove_normal = getRemoveIcon(Styling::StyleVariable::BASE_SECONDARY);
         return remove_normal;
     }
 
-    QPixmap getRemoveIconHover()
+    Utils::StyledPixmap getRemoveIconHover()
     {
         static auto remove_hover = getRemoveIcon(Styling::StyleVariable::BASE_SECONDARY_HOVER);
         return remove_hover;
     }
 
-    QPixmap getRemoveIconActive()
+    Utils::StyledPixmap getRemoveIconActive()
     {
         static auto remove_active = getRemoveIcon(Styling::StyleVariable::BASE_SECONDARY_ACTIVE);
         return remove_active;
@@ -77,8 +101,8 @@ namespace
 
     QPixmap getDurationIcon()
     {
-        static auto video_icon = Utils::renderSvgScaled(qsl(":/videoplayer/duration_time_icon"), QSize(VIDEO_ICON_SIZE, VIDEO_ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
-        return video_icon;
+        static auto video_icon = Utils::StyledPixmap::scaled(qsl(":/videoplayer/duration_time_icon"), QSize(VIDEO_ICON_SIZE, VIDEO_ICON_SIZE), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID_PERMANENT });
+        return video_icon.actualPixmap();
     }
 
     QString formatDuration(const qint64 _seconds)
@@ -97,7 +121,7 @@ namespace
     bool isDragDisallowed(const QMimeData* _mimeData)
     {
         bool oneExternalUrl = _mimeData->hasUrls() && _mimeData->urls().count() == 1 && !_mimeData->urls().constFirst().isLocalFile();
-        return oneExternalUrl || Utils::isMimeDataWithImage(_mimeData);
+        return oneExternalUrl || MimeData::isMimeDataWithImage(_mimeData);
     }
 }
 
@@ -176,14 +200,14 @@ namespace Ui
     void FilesAreaItem::initText(const QString& _name, int64_t _size, int _width)
     {
         name_ = TextRendering::MakeTextUnit(_name, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-        name_->init(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        name_->init({ Fonts::appFontScaled(16), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } });
         name_->evaluateDesiredSize();
         name_->elide(_width - Utils::scale_value(FILE_PREVIEW_SIZE + FILE_SIZE_OFFSET + REMOVE_BUTTON_SIZE + FILE_NAME_OFFSET + REMOVE_BUTTON_OFFSET));
 
         if (_size >= 0)
         {
             size_ = TextRendering::MakeTextUnit(HistoryControl::formatFileSize(_size));
-            size_->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+            size_->init({ Fonts::appFontScaled(13), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY } });
             size_->evaluateDesiredSize();
         }
     }
@@ -370,7 +394,7 @@ namespace Ui
         for (const auto& i : items_)
         {
             if (j == removeIndex_)
-                p.drawPixmap(width() - Utils::scale_value(REMOVE_BUTTON_SIZE + REMOVE_BUTTON_OFFSET), at.y() + Utils::scale_value(FILE_PREVIEW_SIZE) / 2 - Utils::scale_value(REMOVE_BUTTON_SIZE) / 2, removeButton_);
+                p.drawPixmap(width() - Utils::scale_value(REMOVE_BUTTON_SIZE + REMOVE_BUTTON_OFFSET), at.y() + Utils::scale_value(FILE_PREVIEW_SIZE) / 2 - Utils::scale_value(REMOVE_BUTTON_SIZE) / 2, removeButton_.actualPixmap());
 
             i->draw(p, at);
             at.setY(at.y() + Utils::scale_value(FILE_PREVIEW_SIZE + FILE_PREVIEW_VER_OFFSET));
@@ -463,7 +487,7 @@ namespace Ui
         , prevMax_(-1)
     {
         title_ = TextRendering::MakeTextUnit(QString());
-        title_->init(Fonts::appFontScaled(23), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        title_->init({ Fonts::appFontScaled(23), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } });
         title_->setOffsets(Utils::scale_value(HOR_OFFSET), Utils::scale_value(VER_OFFSET));
         title_->evaluateDesiredSize();
 
@@ -474,21 +498,43 @@ namespace Ui
             threadPlate_->show();
         }
 
-        description_ = new TextEditEx(this, Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), true, false);
-        Utils::ApplyStyle(description_, Styling::getParameters().getTextEditCommonQss(true));
+        descriptionBox_ = new TextEditBox(this, Fonts::appFontScaled(15), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID }, true, false, addEmojiIconSize());
+        descriptionBox_->initUi();
+        descriptionBox_->layout()->setSpacing(emojiWidgetRightMargin());
+        descriptionBox_->layout()->setContentsMargins({ 0, 0, 0, Utils::scale_value(4) });
+        descriptionBox_->setFixedWidth(Utils::scale_value(DIALOG_WIDTH - 2*HOR_OFFSET));
+        Utils::ApplyStyle(descriptionBox_, Styling::getParameters().getTextEditBoxCommonQss());
+
+        description_ = descriptionBox_->textEdit<TextEditEx>();
+        description_->document()->documentLayout()->setPaintDevice(nullptr);//avoid unnecessary scaling performed by its own paintDevice
+        description_->setFormatEnabled(Features::isFormattingInInputEnabled());
+        description_->setTabChangesFocus(true);
         description_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
         description_->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
         description_->setTextInteractionFlags(Qt::TextEditable | Qt::TextEditorInteraction);
         description_->setFrameStyle(QFrame::NoFrame);
-        description_->document()->setDocumentMargin(0);
+        description_->setDocumentMargin(0);
+        description_->setHeightSupplement(Utils::scale_value(4));
         description_->setContentsMargins(0, 0, 0, 0);
         description_->setPlaceholderText(QT_TRANSLATE_NOOP("files_widget", "Add caption"));
         description_->setAcceptDrops(false);
+        description_->setUndoRedoEnabled(true);
         description_->setEnterKeyPolicy(TextEditEx::EnterKeyPolicy::FollowSettingsRules);
-
-        description_->setFixedSize(Utils::scale_value(QSize(DIALOG_WIDTH - HOR_OFFSET * 2, DEFAULT_INPUT_HEIGHT)));
-
+        description_->setFixedWidth(descriptionInputSize().width());
+        description_->setStyleSheet(qsl("background-color: transparent; border-style: none;"));
         connect(description_, &TextEditEx::enter, this, &FilesWidget::enter);
+        Testing::setAccessibleName(description_, qsl("AS FilesWidget description"));
+
+        emojiButton_ = descriptionBox_->emojiButton<CustomButton>();
+        emojiButton_->setDefaultImage(qsl(":/smile"));
+        emojiButton_->setFixedSize(addEmojiIconSize());
+        emojiButton_->setCheckable(true);
+        emojiButton_->setChecked(false);
+        emojiButton_->setFocusPolicy(Qt::TabFocus);
+        emojiButton_->setFocusColor(focusColorPrimaryKey());
+        updateButtonColors(emojiButton_, InputStyleMode::Default);
+        Testing::setAccessibleName(emojiButton_, qsl("AS FilesWidget emojiWidget"));
+        connect(emojiButton_, &CustomButton::clicked, this, &FilesWidget::popupEmojiPicker);
 
         filesArea_ = new FilesArea(this);
         connect(filesArea_, &FilesArea::sizeChanged, this, &FilesWidget::updateFilesArea);
@@ -499,14 +545,7 @@ namespace Ui
         area_->setWidgetResizable(true);
         area_->setFocusPolicy(Qt::NoFocus);
         area_->setFrameShape(QFrame::NoFrame);
-        Utils::ApplyStyle(area_->verticalScrollBar(), qsl("\
-            QScrollBar:vertical\
-            {\
-                width: 4dip;\
-                margin-top: 0px;\
-                margin-bottom: 0px;\
-                margin-right: 0px;\
-            }"));
+        Utils::ApplyStyle(area_->verticalScrollBar(), Styling::getParameters().getVerticalScrollBarSimpleQss());//ok
 
         filesArea_->setFixedWidth(Utils::scale_value(DIALOG_WIDTH - HOR_OFFSET - RIGHT_OFFSET));
         area_->setFixedWidth(Utils::scale_value(DIALOG_WIDTH - HOR_OFFSET - RIGHT_OFFSET));
@@ -532,9 +571,9 @@ namespace Ui
             return filesArea_->getItems();
     }
 
-    QString FilesWidget::getDescription() const
+    Data::FString FilesWidget::getDescription() const
     {
-        return description_->getPlainText();
+        return description_->getText();
     }
 
     int FilesWidget::getCursorPos() const
@@ -557,11 +596,11 @@ namespace Ui
         description_->setFocus();
     }
 
-    void FilesWidget::setDescription(const QString& _text, const Data::MentionMap& _mentions)
+    void FilesWidget::setDescription(const Data::FString& _text, const Data::MentionMap& _mentions)
     {
         description_->setMentions(_mentions);
         description_->document()->setTextWidth(description_->width());
-        description_->setPlainText(_text, false);
+        description_->setFormattedText(_text);
     }
 
     void FilesWidget::paintEvent(QPaintEvent* _event)
@@ -569,52 +608,59 @@ namespace Ui
         QPainter p(this);
         p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
 
+        p.save();
         title_->draw(p);
+        p.restore();
 
         if (!singlePreview_.isNull())
         {
             p.setPen(Qt::NoPen);
 
-            auto x = (width() - singlePreview_.width()) / 2;
+            QRect pixmapRect = singlePreview_.rect();
+
             auto y = Utils::scale_value(VER_OFFSET + PREVIEW_TOP_OFFSET) + title_->cachedSize().height();
             if (singlePreview_.height() < Utils::scale_value(MIN_PREVIEW_HEIGHT) || singlePreview_.width() < Utils::scale_value(MAX_PREVIEW_HEIGHT))
             {
                 const QRect r(
                     Utils::scale_value(HOR_OFFSET),
                     y,
-                    Utils::scale_value(MAX_PREVIEW_HEIGHT),
+                    width() - Utils::scale_value(2*HOR_OFFSET),
                     std::max(singlePreview_.height(), Utils::scale_value(MIN_PREVIEW_HEIGHT))
                 );
 
                 p.setBrush(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT));
                 p.drawRoundedRect(r, roundRadius(), roundRadius());
 
-                if (singlePreview_.height() < Utils::scale_value(MIN_PREVIEW_HEIGHT))
-                    y += (Utils::scale_value(MIN_PREVIEW_HEIGHT) - singlePreview_.height()) / 2;
-
-                p.drawPixmap(x, y, singlePreview_);
+                pixmapRect.moveCenter(r.center());
             }
             else
             {
-                auto b = QBrush(singlePreview_);
-                QMatrix m;
-                m.translate(x, y);
-                b.setMatrix(m);
-                p.setBrush(b);
-                p.drawRoundedRect(QRect(QPoint(x, y), singlePreview_.size()), roundRadius(), roundRadius());
+                const QRect r(
+                    Utils::scale_value(HOR_OFFSET),
+                    y,
+                    width() - Utils::scale_value(2*HOR_OFFSET),
+                    singlePreview_.height()
+                );
+
+                pixmapRect.moveCenter(r.center());
+
+                QPainterPath clipPath;
+                clipPath.addRoundedRect(pixmapRect, roundRadius(), roundRadius());
+                p.setClipPath(clipPath);
             }
+            p.drawPixmap(pixmapRect, singlePreview_);
 
             if (drawDuration_)
             {
                 p.setBrush(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID, 0.5));
-                p.drawRoundedRect(Utils::scale_value(HOR_OFFSET + HOR_OFFSET_SMALL), Utils::scale_value(VER_OFFSET + PREVIEW_TOP_OFFSET) + title_->cachedSize().height() + Utils::scale_value(HOR_OFFSET_SMALL), Utils::scale_value(DURATION_WIDTH) + (isGif_ ? 0 : Utils::scale_value(VIDEO_ICON_SIZE)), Utils::scale_value(DURATION_HEIGHT), Utils::scale_value(8), Utils::scale_value(8));
+                p.drawRoundedRect(pixmapRect.x() + Utils::scale_value(HOR_OFFSET_SMALL), Utils::scale_value(VER_OFFSET + PREVIEW_TOP_OFFSET) + title_->cachedSize().height() + Utils::scale_value(HOR_OFFSET_SMALL), Utils::scale_value(DURATION_WIDTH) + (isGif_ ? 0 : Utils::scale_value(VIDEO_ICON_SIZE)), Utils::scale_value(DURATION_HEIGHT), Utils::scale_value(8), Utils::scale_value(8));
 
                 if (!isGif_)
                     p.drawPixmap(Utils::scale_value(HOR_OFFSET + HOR_OFFSET_SMALL) + Utils::scale_value(1), Utils::scale_value(VER_OFFSET + PREVIEW_TOP_OFFSET) + title_->cachedSize().height() + Utils::scale_value(HOR_OFFSET_SMALL) + Utils::scale_value(2), getDurationIcon());
 
                 if (durationLabel_)
                 {
-                    durationLabel_->setOffsets(Utils::scale_value(HOR_OFFSET + HOR_OFFSET_SMALL) + (Utils::scale_value(DURATION_WIDTH) - durationLabel_->desiredWidth()) / 2 + (isGif_ ? 0 : Utils::scale_value(VIDEO_ICON_SIZE)), Utils::scale_value(VER_OFFSET + PREVIEW_TOP_OFFSET) + title_->cachedSize().height() + Utils::scale_value(HOR_OFFSET_SMALL) + Utils::scale_value(DURATION_HEIGHT) / 2);
+                    durationLabel_->setOffsets(pixmapRect.x() + Utils::scale_value(HOR_OFFSET_SMALL) + (Utils::scale_value(DURATION_WIDTH) - durationLabel_->desiredWidth()) / 2 + (isGif_ ? 0 : Utils::scale_value(VIDEO_ICON_SIZE)), Utils::scale_value(VER_OFFSET + PREVIEW_TOP_OFFSET) + title_->cachedSize().height() + Utils::scale_value(HOR_OFFSET_SMALL) + Utils::scale_value(DURATION_HEIGHT) / 2);
                     durationLabel_->draw(p, TextRendering::VerPosition::MIDDLE);
                 }
             }
@@ -632,6 +678,14 @@ namespace Ui
         }
     }
 
+    void FilesWidget::keyPressEvent(QKeyEvent* _event)
+    {
+        if (_event->key() == Qt::Key_Escape && emojiPicker_)
+            emojiPicker_->close();
+        else
+            QWidget::keyPressEvent(_event);
+    }
+
     void FilesWidget::descriptionChanged()
     {
         updateDescriptionHeight();
@@ -640,44 +694,54 @@ namespace Ui
     void FilesWidget::updateFilesArea()
     {
         auto items = filesArea_->getItems();
-        if (!singlePreview_.isNull() || items.size() == 1)
-        {
-            if (!singlePreview_.isNull())
-                items.insert(items.begin(), singleFile_);
 
-            initPreview(items);
+        if (!singlePreview_.isNull())
+        {
+            QSignalBlocker sb(filesArea_);
+            filesArea_->clear();
+            filesArea_->addItem(new FilesAreaItem(singleFile_, Utils::scale_value(DIALOG_WIDTH - HOR_OFFSET * 2)));
+            filesArea_->addItem(new FilesAreaItem(*items.begin(), Utils::scale_value(DIALOG_WIDTH - HOR_OFFSET * 2)));
+            singlePreview_ = QPixmap();
+            items = filesArea_->getItems();
         }
 
-        updateTitle();
+        if (items.size() == 1)
+            initPreview(items);
 
-        Q_EMIT setButtonActive(!items.empty());
         area_->setPlaceholder(items.empty());
-
+        updateTitle();
+        Q_EMIT setButtonActive(!items.empty());
         updateSize();
     }
 
     void FilesWidget::localPreviewLoaded(QPixmap pixmap, const QSize _originalSize)
     {
-        if (!pixmap.isNull())
+        auto items = filesArea_->getItems();
+        if(items.size() == 1)
         {
-            if (pixmap.width() > pixmap.height())
+            filesArea_->clear();
+            if (!pixmap.isNull())
             {
-                if (pixmap.width() > Utils::scale_value(DIALOG_WIDTH - HOR_OFFSET * 2))
-                    singlePreview_ = pixmap.scaledToWidth(Utils::scale_value(DIALOG_WIDTH - HOR_OFFSET * 2), Qt::SmoothTransformation);
+                if (pixmap.width() > pixmap.height())
+                {
+                    if (pixmap.width() > Utils::scale_value(DIALOG_WIDTH - HOR_OFFSET * 2))
+                        singlePreview_ = pixmap.scaledToWidth(Utils::scale_value(DIALOG_WIDTH - HOR_OFFSET * 2), Qt::SmoothTransformation);
+                    else
+                        singlePreview_ = pixmap;
+                }
                 else
-                    singlePreview_ = pixmap;
+                {
+                    if (pixmap.height() > Utils::scale_value(MAX_PREVIEW_HEIGHT))
+                        singlePreview_ = pixmap.scaledToHeight(Utils::scale_value(MAX_PREVIEW_HEIGHT), Qt::SmoothTransformation);
+                    else
+                        singlePreview_ = pixmap;
+                }
             }
-            else
-            {
-                if (pixmap.height() > Utils::scale_value(MAX_PREVIEW_HEIGHT))
-                    singlePreview_ = pixmap.scaledToHeight(Utils::scale_value(MAX_PREVIEW_HEIGHT), Qt::SmoothTransformation);
-                else
-                    singlePreview_ = pixmap;
-            }
-        }
 
-        updateSize();
-        update();
+            updateSize();
+            update();
+            singleFile_ = items.at(0);
+        }
     }
 
     void FilesWidget::enter()
@@ -699,9 +763,36 @@ namespace Ui
         prevMax_ = max;
     }
 
+    void FilesWidget::popupEmojiPicker(bool _on)
+    {
+        if (emojiPicker_ && !_on)
+        {
+            emojiPicker_->close();
+        }
+        else
+        {
+            if (!emojiPicker_)
+                emojiPicker_ = new EmojiPickerDialog(description_, emojiButton_, this);
+            connect(emojiPicker_, &EmojiPickerDialog::emojiSelected, this, &FilesWidget::onEmojiSelected);
+            connect(emojiPicker_, &EmojiPickerDialog::destroyed, this, [this]()
+            {
+                emojiButton_->setChecked(false);
+            });
+            emojiPicker_->popup();
+            description_->setFocus();
+        }
+    }
+
+    void FilesWidget::onEmojiSelected(const Emoji::EmojiCode& _code)
+    {
+        description_->insertEmoji(_code);
+        description_->setFocus();
+    }
+
     void FilesWidget::updateSize()
     {
-        auto h = Utils::scale_value(HEADER_HEIGHT + PREVIEW_TOP_OFFSET + BOTTOM_OFFSET) + description_->height();
+        auto descrHeight = std::max(descriptionBox_->height(), descriptionDefaultHeight());
+        auto h = Utils::scale_value(HEADER_HEIGHT + PREVIEW_TOP_OFFSET + BOTTOM_OFFSET) + descrHeight;
         if (!singlePreview_.isNull())
         {
             const auto needHeight = std::max(singlePreview_.height(), Utils::scale_value(MIN_PREVIEW_HEIGHT));
@@ -714,10 +805,13 @@ namespace Ui
             h += area_->height();
         }
 
-        setFixedSize(Utils::scale_value(DIALOG_WIDTH), h);
+        setFixedSize(Utils::scale_value(DIALOG_WIDTH), std::max(h, Utils::scale_value(DIALOG_HEIGHT)));
 
         area_->move(Utils::scale_value(HOR_OFFSET), Utils::scale_value(VER_OFFSET + PREVIEW_TOP_OFFSET) + title_->cachedSize().height());
-        description_->move(QPoint(width() / 2 - description_->width() / 2, rect().height() - Utils::scale_value(BOTTOM_OFFSET + VER_OFFSET/2 - (platform::is_apple() ? Utils::scale_value(2) : 0) ) - description_->height()));
+
+        const auto yOffset = height() - BOTTOM_OFFSET - descriptionBox_->height();
+        descriptionBox_->move(Utils::scale_value(HOR_OFFSET), yOffset);
+
         update();
     }
 
@@ -726,7 +820,10 @@ namespace Ui
         if (!durationLabel_)
         {
             durationLabel_ = TextRendering::MakeTextUnit(_duration);
-            durationLabel_->init(Fonts::appFontScaledFixed(durationFontSize, Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+
+            TextRendering::TextUnit::InitializeParameters params{ Fonts::appFontScaledFixed(durationFontSize, Fonts::FontWeight::Normal), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID_PERMANENT } };
+            params.maxLinesCount_ = 1;
+            durationLabel_->init(params);
         }
         else
         {
@@ -737,7 +834,6 @@ namespace Ui
 
     void FilesWidget::initPreview(const FilesToSend& _files)
     {
-        filesArea_->clear();
         singlePreview_ = QPixmap();
         singleFile_ = FileToSend();
         drawDuration_ = false;
@@ -745,16 +841,18 @@ namespace Ui
         if (_files.empty())
             return;
 
-        const auto addFilesToArea = [this, &_files]()
+        const auto& file = _files.front();
+
+        const auto addFilesToArea = [this, &file, &_files]()
         {
             QSignalBlocker sb(filesArea_);
             for (const auto& f : _files)
                 filesArea_->addItem(new FilesAreaItem(f, Utils::scale_value(DIALOG_WIDTH - HOR_OFFSET * 2)));
+            singleFile_ = file;
         };
 
         if (_files.size() == 1)
         {
-            const auto& file = _files.front();
             if (file.isFile())
             {
                 const auto& fi = file.getFileInfo();
@@ -784,23 +882,20 @@ namespace Ui
                     connect(task, &Utils::LoadFirstFrameTask::duration, this, &FilesWidget::duration);
                     QThreadPool::globalInstance()->start(task);
                 }
-                else
-                {
+
+                if (filesArea_->getItems() != _files)
                     addFilesToArea();
-                }
             }
             else
             {
+                addFilesToArea();
                 localPreviewLoaded(file.getPixmap(), file.getPixmap().size());
             }
-
-            singleFile_ = file;
         }
         else
         {
             addFilesToArea();
         }
-
         updateTitle();
     }
 
@@ -811,16 +906,16 @@ namespace Ui
         if ((currentDocumentHeight_ != -1 && newDocHeight == currentDocumentHeight_) || newDocHeight == 0)
             return;
 
+        static const auto minBoxHeight = Utils::scale_value(platform::is_apple() ? 37 : 36); // add 1px for apple retina
+
         static const auto marginDiff = Utils::scale_value(INPUT_TOP_OFFSET + INPUT_BOTTOM_OFFSET);
         static const auto minHeight = Utils::scale_value(INPUT_AREA) - marginDiff;
-        static const auto maxHeight = Utils::scale_value(INPUT_AREA_MAX) - marginDiff;
+        static const auto maxHeight = Utils::scale_value(INPUT_AREA_MAX)  - marginDiff / 2;
 
         if (currentDocumentHeight_ == -1)
         {
-            neededHeight_ = minHeight;
-
-            static auto defaultDocumentHeight = newDocHeight;
-            currentDocumentHeight_ = defaultDocumentHeight;
+            neededHeight_ = std::max(newDocHeight, Utils::scale_value(DEFAULT_INPUT_HEIGHT));
+            currentDocumentHeight_ = newDocHeight;
         }
 
         const auto diff = newDocHeight - currentDocumentHeight_;
@@ -831,18 +926,15 @@ namespace Ui
         auto newEditHeight = neededHeight_;
         auto sbPolicy = Qt::ScrollBarAlwaysOff;
 
-        if (newEditHeight < minHeight)
-        {
-            newEditHeight = minHeight;
-        }
-        else if (newEditHeight > maxHeight)
+        if (newEditHeight > maxHeight)
         {
             newEditHeight = maxHeight;
             sbPolicy = Qt::ScrollBarAsNeeded;
         }
-
         description_->setVerticalScrollBarPolicy(sbPolicy);
         description_->setFixedHeight(newEditHeight);
+        descriptionBox_->setFixedHeight(std::max(newEditHeight + (newEditHeight > minHeight) * Utils::scale_value(2), minBoxHeight));
+
         updateSize();
     }
 

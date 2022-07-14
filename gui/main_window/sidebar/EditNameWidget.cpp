@@ -71,8 +71,6 @@ namespace Ui
 
     EditNameWidget::EditNameWidget(QWidget *_parent, const FormData& _initData)
         : QWidget(_parent)
-        , okButton_(nullptr)
-        , cancelButton_(nullptr)
     {
         setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
         setFixedWidth(getWidgetWidth());
@@ -81,7 +79,7 @@ namespace Ui
         globalLayout_->setContentsMargins(getLeftMargin(), getTopMargin(), getRightMargin(), 0);
 
         headerUnit_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("profile_edit_dialogs", "Edit name"));
-        headerUnit_->init(getHeaderFont(), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        headerUnit_->init({ getHeaderFont(), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } });
         headerUnit_->evaluateDesiredSize();
         headerUnit_->setOffsets(getHeaderHorOffset(), getHeaderVerOffset());
 
@@ -104,6 +102,22 @@ namespace Ui
         Utils::ApplyStyle(firstName_, Styling::getParameters().getLineEditCommonQss(false, nameEditHeight));
         Testing::setAccessibleName(firstName_, qsl("AS ProfilePage firstNameEdit"));
 
+        if (!_initData.middleName_.isEmpty())
+        {
+            middleName_ = new LineEditEx(this, lineEditOptions);
+            middleName_->setPlaceholderText(QT_TRANSLATE_NOOP("profile_edit_dialogs", "Middle Name"));
+            middleName_->setSizePolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Fixed);
+            middleName_->setFixedWidth(nameEditWidth);
+            middleName_->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+            middleName_->setFont(getNameFont());
+            middleName_->setText(_initData.middleName_);
+            middleName_->setAttribute(Qt::WA_MacShowFocusRect, false);
+            middleName_->setContextMenuPolicy(Qt::ContextMenuPolicy::NoContextMenu);
+            middleName_->setEnabled(false);
+            Utils::ApplyStyle(middleName_, Styling::getParameters().getLineEditCommonQss(false, nameEditHeight));
+            Testing::setAccessibleName(middleName_, qsl("AS ProfilePage middleNameEdit"));
+        }
+
         lastName_ = new LineEditEx(this, lineEditOptions);
         lastName_->setPlaceholderText(QT_TRANSLATE_NOOP("profile_edit_dialogs", "Last name"));
         lastName_->setSizePolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Fixed);
@@ -121,6 +135,11 @@ namespace Ui
 
         globalLayout_->addWidget(firstName_);
         globalLayout_->addSpacing(getNamesSpacing());
+        if (middleName_)
+        {
+            globalLayout_->addWidget(middleName_);
+            globalLayout_->addSpacing(getNamesSpacing());
+        }
         globalLayout_->addWidget(lastName_);
         globalLayout_->addSpacerItem(new QSpacerItem(0, getNamesSpacing() + Utils::scale_value(2), QSizePolicy::Fixed, QSizePolicy::Expanding));
 
@@ -212,7 +231,7 @@ namespace Ui
 
     bool EditNameWidget::isFormComplete() const
     {
-        return !firstName_->text().isEmpty();
+        return !firstName_->text().trimmed().isEmpty();
     }
 
     void EditNameWidget::connectToLineEdit(LineEditEx *_lineEdit, LineEditEx *_onUp, LineEditEx *_onDown) const

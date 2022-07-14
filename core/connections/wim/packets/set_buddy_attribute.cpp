@@ -4,6 +4,7 @@
 #include "../../../http_request.h"
 #include "../../../tools/system.h"
 #include "../../urls_cache.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -25,6 +26,11 @@ set_buddy_attribute::~set_buddy_attribute()
 std::string_view set_buddy_attribute::get_method() const
 {
     return "setBuddyAttribute";
+}
+
+int core::wim::set_buddy_attribute::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t set_buddy_attribute::init_request(const std::shared_ptr<core::http_request_simple>& _request)

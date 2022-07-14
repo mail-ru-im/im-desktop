@@ -12,9 +12,12 @@
 #include "../common.shared/config/config.h"
 #include "../common.shared/omicron_keys.h"
 #include "cache/emoji/EmojiCode.h"
+#include "opengl.h"
 
 namespace
 {
+    constexpr int64_t kMinimalThreadsForbidSupportVersion = 80;
+    constexpr int64_t kMinimalThreadsSupportedApiVersion = 71;
 
     bool myteamConfigOrOmicronFeatureEnabled(config::features _feature, const char* _omicron_key)
     {
@@ -26,6 +29,7 @@ namespace
 
 namespace Features
 {
+
     bool isNicksEnabled()
     {
         return Omicron::_o(omicron::keys::profile_nickname_allowed, feature::default_profile_nickname_allowed());
@@ -74,9 +78,7 @@ namespace Features
     {
         const auto defaultValue = config::get().is_on(config::features::phone_allowed);
         const auto omicronValue = Omicron::_o(omicron::keys::phone_allowed, defaultValue);
-        if (config::get().is_on(config::features::store_version))
-            return defaultValue && omicronValue;
-        return omicronValue;
+        return defaultValue && omicronValue;
     }
 
     bool externalPhoneAttachment()
@@ -84,16 +86,21 @@ namespace Features
         return Omicron::_o(omicron::keys::external_phone_attachment, config::get().is_on(config::features::external_phone_attachment));
     }
 
-    bool showNotificationsTextSettings()
+    bool hideMessageInfoEnabled()
     {
-        return Omicron::_o(omicron::keys::show_notification_text, config::get().is_on(config::features::show_notification_text));
+        return myteamConfigOrOmicronFeatureEnabled(config::features::hiding_message_info_enabled, omicron::keys::hiding_message_info_enabled);
     }
 
-    bool showNotificationsText()
+    bool isPttRecognitionEnabled()
     {
-        if (showNotificationsTextSettings())
-            return !(Ui::get_gui_settings()->get_value<bool>(settings_hide_message_notification, false));
-        return false;
+        return myteamConfigOrOmicronFeatureEnabled(config::features::ptt_recognition, omicron::keys::ptt_recognition_enabled);
+    }
+
+    bool hideMessageTextEnabled()
+    {
+        if (hideMessageInfoEnabled())
+            return true;
+        return  myteamConfigOrOmicronFeatureEnabled(config::features::hiding_message_text_enabled, omicron::keys::hiding_message_text_enabled);
     }
 
     QString dataVisibilityLink()
@@ -148,7 +155,32 @@ namespace Features
 
     bool isOAuth2LoginAllowed()
     {
-        return hasWebEngine() && Omicron::_o(omicron::keys::login_by_oauth2_allowed, config::get().is_on(config::features::login_by_oauth2_allowed));
+        if (!hasWebEngine() || !myteamConfigOrOmicronFeatureEnabled(config::features::login_by_oauth2_allowed, omicron::keys::login_by_oauth2_allowed))
+            return false;
+
+        return !Ui::getUrlConfig().getAuthUrl().isEmpty();
+    }
+
+    QString getOAuthScope()
+    {
+        const auto scope = config::get().string(config::values::oauth_scope);
+        const auto config_value = QString::fromUtf8(scope.data(), scope.size());
+        const auto omicron_value = Omicron::_o(omicron::keys::oauth_scope, config_value);
+        return (config::is_overridden(config::values::oauth_type) && omicron_value.isEmpty()) ? config_value : omicron_value;
+    }
+
+    QString getOAuthType()
+    {
+        const auto oauth = config::get().string(config::values::oauth_type);
+        return QString::fromUtf8(oauth.data(), oauth.size());
+    }
+
+    QString getClientId()
+    {
+        const auto sv = config::get().string(config::values::client_id);
+        const auto config_value = QString::fromUtf8(sv.data(), sv.size());
+        const auto omicron_value = Omicron::_o(omicron::keys::client_id, config_value);
+        return (config::is_overridden(config::values::client_id) && omicron_value.isEmpty()) ? config_value : omicron_value;
     }
 
     size_t getSMSResultTime()
@@ -278,6 +310,11 @@ namespace Features
         return myteamConfigOrOmicronFeatureEnabled(config::features::changeable_name, omicron::keys::changeable_name);
     }
 
+    bool changeContactNamesAllowed()
+    {
+        return myteamConfigOrOmicronFeatureEnabled(config::features::allow_contacts_rename, omicron::keys::allow_contacts_rename);
+    }
+
     bool changeInfoAllowed()
     {
         return config::get().is_on(config::features::info_change_allowed);
@@ -340,7 +377,12 @@ namespace Features
 
     bool isVcsCallByLinkEnabled()
     {
-        return myteamConfigOrOmicronFeatureEnabled(config::features::vcs_call_by_link_enabled, omicron::keys::vcs_call_by_link_enabled);
+        return myteamConfigOrOmicronFeatureEnabled(config::features::vcs_call_by_link_enabled, omicron::keys::vcs_call_by_link_enabled) || isVcsCallByLinkV2Enabled();
+    }
+
+    bool isVcsCallByLinkV2Enabled()
+    {
+        return myteamConfigOrOmicronFeatureEnabled(config::features::call_link_v2_enabled, omicron::keys::call_link_v2_enabled);
     }
 
     bool isVcsWebinarEnabled()
@@ -450,13 +492,13 @@ namespace Features
 
     bool isAnimatedStickersInPickerAllowed()
     {
-        const auto disabled = Omicron::_o(omicron::keys::animated_stickers_in_picker_disabled, false);
+        const auto disabled = Omicron::_o(omicron::keys::animated_stickers_in_picker_disabled, false) || !isOpenGLSupported();
         return !disabled;
     }
 
     bool isAnimatedStickersInChatAllowed()
     {
-        const auto disabled = Omicron::_o(omicron::keys::animated_stickers_in_chat_disabled, false);
+        const auto disabled = Omicron::_o(omicron::keys::animated_stickers_in_chat_disabled, false) || !isOpenGLSupported();
         return !disabled;
     }
 
@@ -517,21 +559,6 @@ namespace Features
         return isAppsNavigationBarVisible() && config::get().is_on(config::features::status_in_apps_bar);
     }
 
-    bool isOrganizationStructureEnabled()
-    {
-        return myteamConfigOrOmicronFeatureEnabled(config::features::organization_structure_enabled, omicron::keys::organization_structure_enabled);
-    }
-
-    bool isTasksEnabled()
-    {
-        return myteamConfigOrOmicronFeatureEnabled(config::features::tasks_enabled, omicron::keys::tasks_enabled);
-    }
-
-    bool isCalendarEnabled()
-    {
-        return myteamConfigOrOmicronFeatureEnabled(config::features::calendar_enabled, omicron::keys::calendar_enabled);
-    }
-
     bool isRecentsPinnedItemsEnabled()
     {
         return isThreadsEnabled() || isScheduledMessagesEnabled() || isRemindersEnabled();
@@ -540,6 +567,12 @@ namespace Features
     bool isScheduledMessagesEnabled()
     {
         return config::get().is_on(config::features::scheduled_messages_enabled);
+    }
+
+    bool isThreadsForbidEnabled()
+    {
+        const auto version = config::get().number<int64_t>(config::values::server_api_version).value_or(kMinimalThreadsSupportedApiVersion);
+        return isThreadsEnabled() && version >= kMinimalThreadsForbidSupportVersion;
     }
 
     bool isThreadsEnabled()
@@ -609,7 +642,7 @@ namespace Features
 
     bool isAntivirusCheckProgressVisible()
     {
-        return config::get().is_on(config::features::antivirus_check_progress_visible);
+        return Features::isAntivirusCheckEnabled() && config::get().is_on(config::features::antivirus_check_progress_visible);
     }
 
     bool isExpandedGalleryEnabled()
@@ -635,5 +668,184 @@ namespace Features
         const auto defaultValue = config::get().number<int64_t>(config::values::base_retry_interval_sec);
         const auto omicronValue = Omicron::_o(omicron::keys::base_retry_interval_sec, defaultValue.value_or(feature::default_base_retry_interval_sec()));
         return std::chrono::seconds(omicronValue);
+    }
+
+    QStringList getBotCommandsDisabledChats()
+    {
+        QStringList result;
+        const auto comma = ql1c(',');
+
+        std::string configValues(config::get().string(config::values::bots_commands_disabled));
+        if (!configValues.empty())
+            result.append(QString::fromStdString(configValues).split(comma));
+        auto omicronValues = Omicron::_o(omicron::keys::bots_commands_disabled, qsl());
+        if (!omicronValues.isEmpty())
+            result.append(omicronValues.split(comma));
+
+        result.removeDuplicates();
+        return result;
+    }
+
+    bool isDeleteAccountViaAdmin()
+    {
+        return config::get().is_on(config::features::delete_account_via_admin);
+    }
+
+    bool isDeleteAccountEnabled()
+    {
+        return myteamConfigOrOmicronFeatureEnabled(config::features::delete_account_enabled, omicron::keys::delete_account_enabled);
+    }
+
+    QString deleteAccountUrlEmail()
+    {
+        if (!isDeleteAccountEnabled())
+            return QString();
+
+        const static auto default_value = []() -> QString {
+            const auto value = config::get().url(config::urls::delete_account_url_email);
+            return QString::fromUtf8(value.data(), value.size());
+        }();
+
+        return Omicron::_o(omicron::keys::delete_account_url_email, default_value);
+    }
+
+    QString deleteAccountUrl(const QString& _aimId)
+    {
+        if (!isDeleteAccountEnabled())
+            return QString();
+
+        if (!Utils::isUin(_aimId))
+            return deleteAccountUrlEmail();
+
+        const static auto default_value = []() -> QString {
+            const auto value = config::get().url(config::urls::delete_account_url);
+            return QString::fromUtf8(value.data(), value.size());
+        }();
+
+        return Omicron::_o(omicron::keys::delete_account_url, default_value);
+    }
+
+    bool hasRegistryAbout()
+    {
+        return config::get().is_on(config::features::has_registry_about);
+    }
+
+    QString getServiceAppsOrder()
+    {
+        const QString defaultApps = []() -> QString
+        {
+            const std::string_view link = config::get().string(config::values::service_apps_order);
+            return QString::fromUtf8(link.data(), link.size());
+        }();
+
+        return Omicron::_o_json(omicron::keys::service_apps_order, defaultApps);
+    }
+
+    std::string getServiceAppsJson()
+    {
+        return config::get().string(config::values::service_apps_config).data();
+    }
+
+    std::string getServiceAppsDesktopJson()
+    {
+        return config::get().string(config::values::service_apps_desktop).data();
+    }
+
+    std::string getCustomAppsJson()
+    {
+        return config::get().string(config::values::custom_miniapps).data();
+    }
+
+    // TODO: remove when deprecated in server configs
+    [[deprecated("Use Logic::GetAppsContainer()->isAppEnabled(Utils::MiniApps::getOrgstructureId())")]]
+    bool isContactsEnabled()
+    {
+        return myteamConfigOrOmicronFeatureEnabled(config::features::organization_structure_enabled, omicron::keys::organization_structure_enabled);
+    }
+
+    [[deprecated("Use Logic::GetAppsContainer()->isAppEnabled(Utils::MiniApps::getTasksId())")]]
+    bool isTasksEnabled()
+    {
+        return myteamConfigOrOmicronFeatureEnabled(config::features::tasks_enabled, omicron::keys::tasks_enabled);
+    }
+
+    [[deprecated("Use Logic::GetAppsContainer()->isAppEnabled(Utils::MiniApps::getCalendarId())")]]
+    bool isCalendarEnabled()
+    {
+        return myteamConfigOrOmicronFeatureEnabled(config::features::calendar_enabled, omicron::keys::calendar_enabled);
+    }
+
+    [[deprecated("Use Logic::GetAppsContainer()->isAppEnabled(Utils::MiniApps::getMailId())")]]
+    bool isMailEnabled()
+    {
+        return myteamConfigOrOmicronFeatureEnabled(config::features::mail_enabled, omicron::keys::mail_enabled);
+    }
+
+    [[deprecated("Use Logic::GetAppsContainer()->isAppEnabled(Utils::MiniApps::getTarmMailId())")]]
+    bool isTarmMailEnabled()
+    {
+        return config::get().is_on(config::features::tarm_mail);
+    }
+
+    [[deprecated("Use Logic::GetAppsContainer()->isAppEnabled(Utils::MiniApps::getTarmCallsId())")]]
+    bool isTarmCallsEnabled()
+    {
+        return config::get().is_on(config::features::tarm_calls);
+    }
+
+    [[deprecated("Use Logic::GetAppsContainer()->isAppEnabled(Utils::MiniApps::getTarmCloudId())")]]
+    bool isTarmCloudEnabled()
+    {
+        return config::get().is_on(config::features::tarm_cloud);
+    }
+
+    bool calendarSelfAuth()
+    {
+        return config::get().is_on(config::features::calendar_self_auth);
+    }
+
+    bool mailSelfAuth()
+    {
+        return config::get().is_on(config::features::mail_self_auth);
+    }
+
+    bool cloudSelfAuth()
+    {
+        return config::get().is_on(config::features::cloud_self_auth);
+    }
+
+    QString getDigitalAssistantAimid()
+    {
+        const std::string configValues(config::get().string(config::values::digital_assistant_bot_aimid));
+        if (!configValues.empty())
+            return QString::fromStdString(configValues);
+
+        return Omicron::_o(omicron::keys::digital_assistant_bot_aimid, qsl());
+
+    }
+
+    bool isDigitalAssistantPinEnabled()
+    {
+        return myteamConfigOrOmicronFeatureEnabled(config::features::digital_assistant_search_positioning, omicron::keys::digital_assistant_search_positioning);
+    }
+
+    QStringList getAdditionalTheme()
+    {
+        const std::string configValues(config::get().string(config::values::additional_theme));
+        if (!configValues.empty())
+            return QString::fromStdString(configValues).split(qsl(","));
+
+        auto tmp = Omicron::_o(omicron::keys::additional_theme, qsl());
+        return (tmp == qsl("")) ? QStringList() : tmp.split(qsl(","));
+    }
+
+    bool leadingLastName()
+    {
+        return myteamConfigOrOmicronFeatureEnabled(config::features::leading_last_name, omicron::keys::delete_account_enabled);
+    }
+
+    bool isReportMessagesEnabled()
+    {
+        return myteamConfigOrOmicronFeatureEnabled(config::features::report_messages_enabled, omicron::keys::report_messages_enabled);
     }
 }

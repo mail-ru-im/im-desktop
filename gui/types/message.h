@@ -9,8 +9,9 @@
 #include "poll.h"
 #include "thread.h"
 #include "task.h"
+#include "fstring.h"
 
-#include "utils/StringComparator.h"
+#include "../utils/StringComparator.h"
 
 namespace core
 {
@@ -91,9 +92,6 @@ namespace Data
         style getStyle() const;
     };
 
-    Q_DECLARE_FLAGS(FormatTypes, core::data::format_type)
-    Q_DECLARE_OPERATORS_FOR_FLAGS(FormatTypes)
-
     struct LinkInfo
     {
         QString url_;
@@ -112,171 +110,9 @@ namespace Data
     [[nodiscard]] constexpr QChar singleBackTick() noexcept { return u'`'; }
     [[nodiscard]] constexpr QStringView tripleBackTick() noexcept { return u"```"; }
 
-    class FStringView;
-    struct FString
-    {
-    public:
-        class Builder
-        {
-        public:
-            template <typename T>
-            Builder& operator%=(const T& _part)
-            {
-                if (_part.size() == 0)
-                    return *this;
-
-                size_ += _part.size();
-                parts_.emplace_back(_part);
-                return *this;
-            }
-
-            template <typename T>
-            Builder& operator%=(T&& _part)
-            {
-                if (_part.size() == 0)
-                    return *this;
-
-                size_ += _part.size();
-                parts_.emplace_back(std::move(_part));
-                return *this;
-            }
-
-            FString finalize(bool _mergeMentions = false);
-            qsizetype size() const { return size_; }
-            bool isEmpty() const { return parts_.empty(); }
-        protected:
-            std::vector<std::variant<FString, FStringView, QString, QStringView>> parts_;
-            qsizetype size_ = 0;
-        };
-    public:
-        FString() = default;
-        FString(const QString& _string, const core::data::format& _format = {}, bool _doDebugValidityCheck = true);
-        FString(const QString& _string, core::data::range_format&& _format)
-            : string_(_string), format_(std::move(_format)) { }
-        FString(QString&& _string, core::data::range_format&& _format)
-            : string_(std::move(_string)), format_(std::move(_format)) { }
-        FString(QString&& _string, core::data::format_type _type, core::data::format_data _data = {})
-            : string_(std::move(_string)), format_({ _type, core::data::range{0, static_cast<int>(string_.size())}, _data }) { }
-
-        bool hasFormatting() const { return !format_.empty(); }
-        bool containsFormat(core::data::format_type _type) const;
-        bool containsAnyFormatExceptFor(FormatTypes _types) const;
-        void replace(QChar _old, QChar _new) { string_.replace(_old, _new); }
-        bool isEmpty() const { return string_.isEmpty(); }
-        bool isTrimmedEmpty() const { return QStringView(string_).trimmed().isEmpty(); }
-        const QString& string() const { return string_; }
-        const core::data::format& formatting() const { return format_; }
-        core::data::format& formatting() { return format_; }
-        int size() const { return string_.size(); }
-        QChar at(int _pos) const { return string_.at(_pos); }
-
-        template <typename T>
-        Builder operator%(const T& _part) const { return (Builder() %= *this) %= _part; }
-
-        bool startsWith(const QString& _prefix) const { return string_.startsWith(_prefix); }
-        bool endsWith(const QString& _suffix) const { return string_.endsWith(_suffix); }
-
-        bool startsWith(QChar _ch) const { return string_.startsWith(_ch); }
-        bool endsWith(QChar _ch) const { return string_.endsWith(_ch); }
-
-        int indexOf(QChar _ch, int _from = 0) const { return string_.indexOf(_ch, _from); }
-        int lastIndexOf(QChar _char) const { return string_.lastIndexOf(_char); }
-
-        bool operator!=(const FString& _other);
-
-        void reserve(int _size) { string_.reserve(_size); }
-
-        void chop(int _n);
-
-        bool contains(const QString& _str) const { return string().contains(_str); }
-        bool contains(QChar _ch) const { return string().contains(_ch); }
-
-        FString& operator+=(QChar _ch) { string_ += _ch; return *this; }
-        FString& operator+=(const QString& _other) { string_ += _other; return *this; }
-        FString& operator+=(QStringView _other);
-        FString& operator+=(const FString& _other);
-        FString& operator+=(FStringView _other);
-
-        void clear() { string_.clear(); format_.clear(); }
-        void clearFormat() { format_.clear(); }
-        void setFormatting(const core::data::format& _formatting);
-        void addFormat(core::data::format_type _type);
-        bool operator==(const FString& _other) const;
-        bool operator!=(const FString& _other) const;
-
-        bool isFormatValid() const;
-
-        void removeAllBlockFormats();
-        void removeMentionFormats();
-
-    protected:
-        QString string_;
-        core::data::format format_;
-    };
 
     void serializeFormat(const core::data::format& _format, core::icollection* _collection, std::string_view _name);
     void serializeFormat(const core::data::format& _format, core::coll_helper& _coll, std::string_view _name);
-
-    //! NB: FormattedStringView doesn't take care of keeping any ownership
-    class FStringView
-    {
-    public:
-        FStringView() : string_(&emptyString), offset_(0), size_(0) {}
-        FStringView(const FString& _string, int _offset = 0, int _size = -1);
-
-        FStringView& operator=(const FStringView& _other) = default;
-
-        bool hasFormatting() const;
-        bool isEmpty() const { return size_ == 0 || string_->isEmpty(); }
-        int size() const { return size_; }
-        std::vector<core::data::range_format> getStyles() const;
-
-        [[nodiscard]] FStringView trimmed() const;
-        FStringView mid(int _offset, int _size = -1) const { return { *string_, _offset + offset_, _size == -1 ? std::max(0, size_ - _offset) : _size }; }
-        FStringView left(int _size) const { return mid(0, _size); }
-        FStringView right(int _size) const { return mid(size() - _size, _size); }
-        void chop(int _n) { size_ -= qBound(0, _n, size_); }
-        QChar at(int _pos) const { im_assert(_pos < size_);  return string_->at(offset_ + _pos); }
-        QChar lastChar() const { return string().back(); }
-        int indexOf(QChar _char, qsizetype _from = 0) const { return string().indexOf(_char, _from); }
-        int indexOf(QStringView _string, qsizetype _from = 0) const { return string().indexOf(_string, _from); }
-        int lastIndexOf(QChar _char) const { return string().lastIndexOf(_char); }
-        bool startsWith(QStringView _prefix) const { return string().startsWith(_prefix); }
-        bool endsWith(QStringView _prefix) const { return string().endsWith(_prefix); }
-
-        std::vector<FStringView> splitByTypes(FormatTypes _types) const;
-
-        FString toFString() const;
-
-        //! Check if entire view has these format types
-        bool isAnyOf(FormatTypes _types) const;
-
-        bool operator==(QStringView _other) const { return string() == _other; }
-        bool operator!=(QStringView _other) const { return !operator==(_other); }
-
-        QStringView string() const;
-        QString toString() const { return string().toString(); }
-        const FString& sourceString() const { return *string_; }
-        core::data::range sourceRange() const { return { offset_, size_ }; }
-
-        //! Replace plain string and extend range if it occupied entire string
-        FString replaceByString(QStringView _newString, bool _keepMentionFormat = true) const;
-
-        bool tryToAppend(FStringView _other);
-        bool tryToAppend(QChar _ch);
-        bool tryToAppend(QStringView _text);
-
-    protected:
-        [[nodiscard]] core::data::range cutRangeToFitView(core::data::range _range) const;
-        [[nodiscard]] core::data::format getFormat() const;
-
-    protected:
-        static const FString emptyString;
-
-        const FString* string_ = nullptr;
-        int offset_;
-        int size_;
-    };
 
 
     using MentionMap = std::map<QString, QString, Utils::StringComparator>; // uin - friendly
@@ -667,6 +503,8 @@ namespace Data
         QString url_;
         FString description_;
         QString quoterId_;    // if exists, it is an id of the user quoted the message
+        QString currentChatId_;
+        qint64 currentMsgId_;
         qint32 time_;
         qint64 msgId_;
         int32_t setId_;

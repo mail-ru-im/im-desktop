@@ -4,6 +4,7 @@
 #include "RecentsTab.h"
 #include "ContactItem.h"
 #include "ContactListModel.h"
+#include "IgnoreMembersModel.h"
 #include "ContactListItemDelegate.h"
 #include "ContactListWidget.h"
 #include "ContactListUtils.h"
@@ -17,6 +18,7 @@
 #include "SearchWidget.h"
 #include "../MainWindow.h"
 #include "../contact_list/ChatMembersModel.h"
+#include "../contact_list/ServiceContacts.h"
 #include "../../core_dispatcher.h"
 #include "../../gui_settings.h"
 #include "../settings/SettingsTab.h"
@@ -32,6 +34,7 @@
 #include "../../controls/CustomButton.h"
 #include "../../controls/HorScrollableView.h"
 #include "../../utils/utils.h"
+#include "../../utils/MimeDataUtils.h"
 #include "../../utils/async/AsyncTask.h"
 #include "../../utils/stat_utils.h"
 #include "../../utils/InterConnector.h"
@@ -40,15 +43,18 @@
 #include "../../utils/log/log.h"
 #include "../../fonts.h"
 #include "../Placeholders.h"
+#include "../../utils/DragAndDropEventFilter.h"
 #include "AddContactDialogs.h"
 #include "FavoritesUtils.h"
 #include "statuses/StatusTooltip.h"
 #include "main_window/containers/StatusContainer.h"
+#include "main_window/containers/LastseenContainer.h"
 
 #include "styles/ThemeParameters.h"
 
 #include "../common.shared/string_utils.h"
 #include "../common.shared/config/config.h"
+#include "IconsDelegate.h"
 
 namespace
 {
@@ -59,7 +65,24 @@ namespace
 
     constexpr int RECENTS_HEIGHT = 68;
 
-    constexpr std::chrono::milliseconds dragActivateDelay = std::chrono::milliseconds(500);
+    QString getAimId(const QModelIndex& _index)
+    {
+        if (const auto model = qobject_cast<const Logic::RecentsModel*>(_index.model()))
+        {
+            return model->data(_index, Qt::DisplayRole).value<Data::DlgState>().AimId_;
+        }
+        else if (const auto model = qobject_cast<const Logic::ContactListWithHeaders*>(_index.model()))
+        {
+            if (const auto dlg = model->data(_index, Qt::DisplayRole).value<Data::Contact*>())
+                return dlg->AimId_;
+        }
+        else if (const auto model = qobject_cast<const Logic::SearchModel*>(_index.model()))
+        {
+            if (const auto dlg = model->data(_index, Qt::DisplayRole).value<Data::AbstractSearchResultSptr>())
+                return dlg->getAimId();
+        }
+        return QString();
+    }
 
     QString contactForDrop(const QModelIndex& _index)
     {
@@ -70,12 +93,14 @@ namespace
         if (!model || !model->isDropableItem(_index))
             return QString();
 
-        const auto dlg = model->data(_index, Qt::DisplayRole).value<Data::DlgState>();
-        if (!dlg.AimId_.isEmpty())
+        if (const QString aimId = getAimId(_index); !aimId.isEmpty())
         {
-            const auto role = Logic::getContactListModel()->getYourRole(dlg.AimId_);
+            if (Logic::getContactListModel()->isDeleted(aimId) || Logic::getIgnoreModel()->contains(aimId) || Logic::GetLastseenContainer()->getLastSeen(aimId).isBlocked())
+                return QString();
+
+            const auto role = Logic::getContactListModel()->getYourRole(aimId);
             if (role != u"notamember" && role != u"readonly")
-                return dlg.AimId_;
+                return aimId;
         }
         return QString();
     }
@@ -83,75 +108,13 @@ namespace
 
 namespace Ui
 {
-    RCLEventFilter::RCLEventFilter(RecentsTab* _recents)
-        : QObject(_recents)
-        , recents_(_recents)
-        , dragMouseoverTimer_(new QTimer(this))
-    {
-        dragMouseoverTimer_->setInterval(dragActivateDelay);
-        dragMouseoverTimer_->setSingleShot(true);
-        connect(dragMouseoverTimer_, &QTimer::timeout, this, &RCLEventFilter::onTimer);
-    }
-
-    void RCLEventFilter::onTimer()
-    {
-        Utils::InterConnector::instance().getMainWindow()->activate();
-        Utils::InterConnector::instance().getMainWindow()->closeGallery();
-    }
-
-    bool RCLEventFilter::eventFilter(QObject* _obj, QEvent* _event)
-    {
-        if (_event->type() == QEvent::DragEnter || _event->type() == QEvent::DragMove)
-        {
-            dragMouseoverTimer_->start();
-
-            QDropEvent* de = static_cast<QDropEvent*>(_event);
-            auto acceptDrop = de->mimeData() && (de->mimeData()->hasUrls() || Utils::isMimeDataWithImage(de->mimeData()));
-            if (QApplication::activeModalWidget() == nullptr && acceptDrop)
-            {
-                de->acceptProposedAction();
-                recents_->dragPositionUpdate(de->pos());
-            }
-            else
-            {
-                de->setDropAction(Qt::IgnoreAction);
-            }
-            return true;
-        }
-        else if (_event->type() == QEvent::DragLeave)
-        {
-            dragMouseoverTimer_->stop();
-            recents_->dragPositionUpdate(QPoint());
-            return true;
-        }
-        else if (_event->type() == QEvent::Drop)
-        {
-            dragMouseoverTimer_->stop();
-            onTimer();
-
-            QDropEvent* e = static_cast<QDropEvent*>(_event);
-            recents_->dropMimeData(e->pos(), e->mimeData());
-            e->acceptProposedAction();
-            recents_->dragPositionUpdate(QPoint());
-            return true;
-        }
-        else if (_event->type() == QEvent::MouseButtonDblClick)
-        {
-            _event->ignore();
-            return true;
-        }
-
-        return QObject::eventFilter(_obj, _event);
-    }
-
     RecentsTab::RecentsTab(QWidget* _parent)
         : QWidget(_parent)
-        , listEventFilter_(new RCLEventFilter(this))
         , recentsPlaceholder_(nullptr)
         , popupMenu_(nullptr)
         , recentsDelegate_(new Ui::RecentItemDelegate(this))
         , unknownsDelegate_(new Logic::UnknownItemDelegate(this))
-        , clDelegate_(new Logic::ContactListItemDelegate(this, Logic::MembersWidgetRegim::CONTACT_LIST))
+        , clDelegate_(new Logic::ContactListItemDelegate(this, Logic::MembersWidgetRegim::CONTACT_LIST, nullptr, Logic::NeedDrawIcons))
         , contactListWidget_(new ContactListWidget(this, Logic::MembersWidgetRegim::CONTACT_LIST, nullptr))
         , clWithHeaders_(new Logic::ContactListWithHeaders(this, Logic::getContactListModel()))
         , scrolledView_(nullptr)
@@ -161,8 +124,10 @@ namespace Ui
         , tooltipTimer_(nullptr)
         , currentTab_(RECENTS)
         , prevTab_(RECENTS)
+        , openedAs_(PageOpenedAs::MainPage)
         , pictureOnlyView_(false)
         , nextSelectWithOffset_(false)
+        , personTooltip_(new Utils::PersonTooltip(this))
     {
         clDelegate_->setReplaceFavorites(true);
 
@@ -209,19 +174,22 @@ namespace Ui
 
         Utils::grabTouchWidget(recentsView_->viewport(), true);
 
-        contactListWidget_->installEventFilterToView(listEventFilter_);
+        auto listEventFilter = new Utils::DragAndDropEventFilter(this);
+        connect(listEventFilter, &Utils::DragAndDropEventFilter::dragPositionUpdate, this, &RecentsTab::onDragPositionUpdate);
+        connect(listEventFilter, &Utils::DragAndDropEventFilter::dropMimeData, this, &RecentsTab::dropMimeData);
+        contactListWidget_->installEventFilterToView(listEventFilter);
         recentsView_->viewport()->grabGesture(Qt::TapAndHoldGesture);
         recentsView_->viewport()->grabGesture(Qt::TapGesture);
-        recentsView_->viewport()->installEventFilter(listEventFilter_);
+        recentsView_->viewport()->installEventFilter(listEventFilter);
 
         connect(QScroller::scroller(recentsView_->viewport()), &QScroller::stateChanged, this, &RecentsTab::touchScrollStateChangedRecents, Qt::QueuedConnection);
 
-        connect(Logic::getContactListModel(), &Logic::ContactListModel::select, this, [this](const QString& _aimId, const qint64 _msgId, const Logic::UpdateChatSelection _mode, bool _ignoreScroll)
+        connect(Logic::getContactListModel(), &Logic::ContactListModel::select, this, [this](const QString& _aimId, const qint64 _msgId, const Logic::UpdateChatSelection _mode, bool _ignoreScroll, PageOpenedAs _openedAs)
         {
             if (_msgId > 0)
                 Log::write_network_log(su::concat("message-transition", " jump to <", _aimId.toStdString(), "> ", std::to_string(_msgId), "\r\n"));
 
-            contactListWidget_->select(_aimId, _msgId, {}, _mode, _ignoreScroll);
+            contactListWidget_->select(_aimId, _msgId, {}, _mode, _ignoreScroll, _openedAs);
         });
 
         connect(contactListWidget_->getView(), &Ui::FocusableListView::clicked, this, &RecentsTab::statsCLItemPressed);
@@ -299,10 +267,7 @@ namespace Ui
         });
     }
 
-    RecentsTab::~RecentsTab()
-    {
-
-    }
+    RecentsTab::~RecentsTab() = default;
 
     void RecentsTab::setSearchMode(bool _search)
     {
@@ -390,6 +355,10 @@ namespace Ui
         if (changeSelection)
         {
             Q_EMIT Utils::InterConnector::instance().clearDialogHistory();
+
+            if (isOverUnknownsCloseButton(_current))
+                return;
+
             contactListWidget_->selectionChanged(_current);
         }
     }
@@ -405,20 +374,14 @@ namespace Ui
         const auto unkModel = qobject_cast<const Logic::UnknownsModel*>(_current.model());
 
         const auto isLeftButton = _buttons & Qt::LeftButton || _buttons == Qt::NoButton;
-        if (isLeftButton && unkModel && !unkModel->isServiceItem(_current))
+        if (isLeftButton && isOverUnknownsCloseButton(_current))
         {
-            const auto rect = recentsView_->visualRect(_current);
-            const auto pos1 = recentsView_->mapFromGlobal(QCursor::pos());
-            if (rect.contains(pos1))
+            if (const auto aimId = Logic::aimIdFromIndex(_current); !aimId.isEmpty())
             {
-                QPoint pos(pos1.x(), pos1.y() - rect.y());
-                if (const auto aimId = Logic::aimIdFromIndex(_current); !aimId.isEmpty() && unknownsDelegate_->isInRemoveContactFrame(pos))
-                {
-                    Logic::getContactListModel()->removeContactFromCL(aimId);
-                    GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::unknowns_close);
-                    GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chats_unknown_senders_close);
-                    return;
-                }
+                Logic::getContactListModel()->removeContactFromCL(aimId);
+                GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::unknowns_close);
+                GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chats_unknown_senders_close);
+                return;
             }
         }
 
@@ -439,15 +402,13 @@ namespace Ui
                 const auto searchRes = _current.data().value<Data::AbstractSearchResultSptr>();
                 if (searchRes && searchRes->isContact())
                 {
-                    const auto cont = Logic::getContactListModel()->getContactItem(searchRes->getAimId());
-                    if (cont)
+                    if (const auto cont = Logic::getContactListModel()->getContactItem(searchRes->getAimId()))
                         contactListWidget_->showContactsPopupMenu(cont->get_aimid(), cont->is_chat());
                 }
             }
             else
             {
-                auto cont = _current.data(Qt::DisplayRole).value<Data::Contact*>();
-                if (cont)
+                if (const auto cont = _current.data(Qt::DisplayRole).value<Data::Contact*>())
                     contactListWidget_->showContactsPopupMenu(cont->AimId_, cont->Is_chat_);
             }
 
@@ -458,7 +419,8 @@ namespace Ui
             if (!rcntModel->isServiceItem(_current))
             {
                 Data::DlgState dlg = _current.data(Qt::DisplayRole).value<Data::DlgState>();
-                Logic::getRecentsModel()->hideChat(dlg.AimId_);
+                if (const auto id = dlg.AimId_; !id.isEmpty() && !ServiceContacts::isServiceContact(id))
+                    Logic::getRecentsModel()->hideChat(id);
             }
         }
     }
@@ -580,7 +542,7 @@ namespace Ui
         return (CurrentTab)currentTab_;
     }
 
-    void RecentsTab::dragPositionUpdate(const QPoint& _pos, bool fromScroll)
+    void RecentsTab::dragPositionUpdate(QPoint _pos, bool _fromScroll)
     {
         int autoscroll_offset = Utils::scale_value(autoscroll_offset_cl);
 
@@ -598,35 +560,45 @@ namespace Ui
             }
             else
             {
-                contactListWidget_->setDragIndexForDelegate(QModelIndex());
+                contactListWidget_->setDragIndexForDelegate({});
             }
 
             scrolledView_ = contactListWidget_->getView();
         }
         else if (currentTab_ == RECENTS)
         {
-            QModelIndex index = QModelIndex();
+            QModelIndex index;
             if (!_pos.isNull())
                 index = recentsView_->indexAt(_pos);
 
-            if (!contactForDrop(index).isEmpty())
+            if (isCLWithHeadersOpen())
             {
-                if (recentsView_->itemDelegate() == recentsDelegate_)
-                    recentsDelegate_->setDragIndex(index);
+                if (!contactForDrop(index).isEmpty())
+                    clDelegate_->setDragIndex(index);
                 else
-                    unknownsDelegate_->setDragIndex(index);
-
-                recentsView_->update(index);
+                    clDelegate_->setDragIndex({});
             }
             else
             {
-                recentsDelegate_->setDragIndex(QModelIndex());
+                if (!contactForDrop(index).isEmpty())
+                {
+                    if (recentsView_->itemDelegate() == recentsDelegate_)
+                        recentsDelegate_->setDragIndex(index);
+                    else
+                        unknownsDelegate_->setDragIndex(index);
+
+                    recentsView_->update(index);
+                }
+                else
+                {
+                    recentsDelegate_->setDragIndex({});
+                    unknownsDelegate_->setDragIndex({});
+                }
             }
 
             scrolledView_ = recentsView_;
             autoscroll_offset = Utils::scale_value(autoscroll_offset_recents);
         }
-
 
         auto rTop = scrolledView_->rect();
         rTop.setBottomLeft(QPoint(rTop.x(), autoscroll_offset));
@@ -636,7 +608,7 @@ namespace Ui
 
         if (!_pos.isNull() && (rTop.contains(_pos) || rBottom.contains(_pos)))
         {
-            scrollMultipler_ =  (rTop.contains(_pos)) ? 1 : -1;
+            scrollMultipler_ =  rTop.contains(_pos) ? 1 : -1;
             scrollTimer_->start();
         }
         else
@@ -644,132 +616,48 @@ namespace Ui
             scrollTimer_->stop();
         }
 
-        if (!fromScroll)
+        if (!_fromScroll)
             lastDragPos_ = _pos;
 
         scrolledView_->update();
     }
 
-    void RecentsTab::dropMimeData(const QPoint& _pos, const QMimeData* _mimeData)
+    void RecentsTab::dropMimeData(QPoint _pos, const QMimeData* _mimeData)
     {
-        auto send = [](const QMimeData* _mimeData, const QString& aimId)
-        {
-            const auto& quotes = Logic::InputStateContainer::instance().getQuotes(aimId);
-            bool mayQuotesSent = false;
-
-            const auto isWebpScreenshot = Features::isWebpScreenshotEnabled();
-
-            auto sendAsScreenshot = [isWebpScreenshot, aimId](const auto& _f, const auto& _quotes)
-            {
-                Async::runAsync([_f, aimId, _quotes, isWebpScreenshot]() mutable
-                {
-                    auto array = FileToSend::loadImageData(_f, isWebpScreenshot ? FileToSend::Format::webp : FileToSend::Format::png);
-                    if (array.isEmpty())
-                        return;
-
-                    Async::runInMain([array = std::move(array), aimId = std::move(aimId), quotes = std::move(_quotes), isWebpScreenshot]()
-                    {
-                        Ui::GetDispatcher()->uploadSharedFile(aimId, array, isWebpScreenshot ? u".webp" : u".png", quotes);
-                    });
-                });
-            };
-
-            if (Utils::isMimeDataWithImage(_mimeData))
-            {
-                sendAsScreenshot(FileToSend(QPixmap::fromImage(Utils::getImageFromMimeData(_mimeData))), quotes);
-
-                mayQuotesSent = true;
-                Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_sendmedia_action, { { "chat_type", Utils::chatTypeByAimId(aimId) }, { "count", "single" }, { "type", "dndrecents"} });
-                Q_EMIT Utils::InterConnector::instance().messageSent(aimId);
-            }
-            else
-            {
-                auto count = 0;
-                auto sendQuotesOnce = true;
-                const auto urls = _mimeData->urls();
-                bool alreadySentWebp = false;
-                for (const QUrl& url : urls)
-                {
-                    if (url.isLocalFile())
-                    {
-                        const auto fileName = url.toLocalFile();
-                        const QFileInfo info(fileName);
-                        const bool canDrop = (!(info.isBundle() || info.isDir())) && info.size() > 0;
-
-                        if (canDrop)
-                        {
-                            if (const FileToSend f(info); !alreadySentWebp && isWebpScreenshot && f.canConvertToWebp())
-                            {
-                                sendAsScreenshot(f, sendQuotesOnce ? quotes : Data::QuotesVec());
-                                alreadySentWebp = true;
-                            }
-                            else
-                            {
-                                Ui::GetDispatcher()->uploadSharedFile(aimId, fileName, sendQuotesOnce ? quotes : Data::QuotesVec());
-                            }
-                            sendQuotesOnce = false;
-                            mayQuotesSent = true;
-
-                            Q_EMIT Utils::InterConnector::instance().messageSent(aimId);
-
-                            ++count;
-                        }
-                    }
-                    else if (url.isValid())
-                    {
-                        Ui::GetDispatcher()->sendMessageToContact(aimId, url.toString(), sendQuotesOnce ? quotes : Data::QuotesVec());
-                        sendQuotesOnce = false;
-                        mayQuotesSent = true;
-
-                        Q_EMIT Utils::InterConnector::instance().messageSent(aimId);
-                    }
-                }
-
-                if (count > 0)
-                    Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_sendmedia_action, { { "chat_type", Utils::chatTypeByAimId(aimId) },{ "count", count > 1 ? "multi" : "single" },{ "type", "dndrecents" } });
-            }
-
-            if (mayQuotesSent && !quotes.isEmpty())
-            {
-                GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::quotes_messagescount, { { "Quotes_MessagesCount", std::to_string(quotes.size()) } });
-                Q_EMIT Utils::InterConnector::instance().clearInputQuotes(aimId);
-            }
-
-        };
         if (isSearchMode())
         {
             if (!_pos.isNull())
             {
-                QModelIndex index = contactListWidget_->getView()->indexAt(_pos);
-                const auto contact = contactForDrop(index);
-                if (!contact.isEmpty())
+                const QModelIndex index = contactListWidget_->getView()->indexAt(_pos);
+                const QString aimId = contactForDrop(index);
+                if (!aimId.isEmpty())
                 {
-                    if (contact != Logic::getContactListModel()->selectedContact())
-                        Q_EMIT Logic::getContactListModel()->select(contact, -1);
+                    if (aimId != Logic::getContactListModel()->selectedContact())
+                        Q_EMIT Logic::getContactListModel()->select(aimId, -1);
 
-                    send(_mimeData, contact);
+                    MimeData::sendToChat(_mimeData, aimId);
                     contactListWidget_->getView()->update(index);
                 }
             }
-            contactListWidget_->setDragIndexForDelegate(QModelIndex());
+            contactListWidget_->setDragIndexForDelegate({});
         }
         else if (currentTab_ == RECENTS)
         {
             if (!_pos.isNull())
             {
-                QModelIndex index = recentsView_->indexAt(_pos);
-                const auto contact = contactForDrop(index);
-                if (!contact.isEmpty())
+                const QModelIndex index = recentsView_->indexAt(_pos);
+                if (const QString aimId = contactForDrop(index); !aimId.isEmpty())
                 {
-                    if (contact != Logic::getContactListModel()->selectedContact())
-                        Q_EMIT Logic::getContactListModel()->select(contact, -1);
+                    if (aimId != Logic::getContactListModel()->selectedContact())
+                        Q_EMIT Logic::getContactListModel()->select(aimId, -1);
 
-                    send(_mimeData, contact);
+                    MimeData::sendToChat(_mimeData, aimId);
                     recentsView_->update(index);
                 }
             }
-            recentsDelegate_->setDragIndex(QModelIndex());
-            unknownsDelegate_->setDragIndex(QModelIndex());
+            recentsDelegate_->setDragIndex({});
+            unknownsDelegate_->setDragIndex({});
+            clDelegate_->setDragIndex({});
         }
     }
 
@@ -943,75 +831,17 @@ namespace Ui
         if (recentsView_->model() != Logic::getRecentsModel())
             return;
 
-        if (!popupMenu_)
-        {
-            popupMenu_ = new ContextMenu(this);
-            Testing::setAccessibleName(popupMenu_, qsl("AS RecentsTab popupMenu"));
-            connect(popupMenu_, &ContextMenu::triggered, this, &RecentsTab::showPopupMenu);
-        }
-        else
-        {
-            popupMenu_->clear();
-        }
+        if (popupMenu_)
+            return;
+        popupMenu_ = new ContextMenu(this);
+        Testing::setAccessibleName(popupMenu_, qsl("AS RecentsTab popupMenu"));
+        popupMenu_->setAttribute(Qt::WA_DeleteOnClose);
+        connect(popupMenu_, &ContextMenu::triggered, this, &RecentsTab::showPopupMenu);
 
         const Data::DlgState dlg = _current.data(Qt::DisplayRole).value<Data::DlgState>();
         const QString& aimId = dlg.AimId_;
 
-        if (dlg.UnreadCount_ != 0 || dlg.Attention_)
-            popupMenu_->addActionWithIcon(qsl(":/context_menu/mark_read"), QT_TRANSLATE_NOOP("context_menu", "Mark as read"), Logic::makeData(qsl("recents/mark_read"), aimId));
-        else if (!dlg.Attention_)
-            popupMenu_->addActionWithIcon(qsl(":/context_menu/mark_unread"), QT_TRANSLATE_NOOP("context_menu", "Mark as unread"), Logic::makeData(qsl("recents/mark_unread"), aimId));
-
-        if (!Logic::getRecentsModel()->isUnimportant(aimId))
-        {
-            if (Logic::getRecentsModel()->isFavorite(aimId))
-                popupMenu_->addActionWithIcon(qsl(":/context_menu/unpin"), QT_TRANSLATE_NOOP("context_menu", "Unpin"), Logic::makeData(qsl("recents/unfavorite"), aimId));
-            else
-                popupMenu_->addActionWithIcon(qsl(":/context_menu/pin"), QT_TRANSLATE_NOOP("context_menu", "Pin"), Logic::makeData(qsl("recents/favorite"), aimId));
-        }
-
-        if (!Logic::getRecentsModel()->isFavorite(aimId))
-        {
-            if (Logic::getRecentsModel()->isUnimportant(aimId))
-                popupMenu_->addActionWithIcon(qsl(":/context_menu/unmark_unimportant"), QT_TRANSLATE_NOOP("context_menu", "Remove from Unimportant"), Logic::makeData(qsl("recents/remove_from_unimportant"), aimId));
-            else
-                popupMenu_->addActionWithIcon(qsl(":/context_menu/mark_unimportant"), QT_TRANSLATE_NOOP("context_menu", "Move to Unimportant"), Logic::makeData(qsl("recents/mark_unimportant"), aimId));
-        }
-
-        if (!Favorites::isFavorites(aimId))
-        {
-            if (Logic::getContactListModel()->isMuted(aimId))
-                popupMenu_->addActionWithIcon(qsl(":/context_menu/mute_off"), QT_TRANSLATE_NOOP("context_menu", "Turn on notifications"), Logic::makeData(qsl("recents/unmute"), aimId));
-            else
-                popupMenu_->addActionWithIcon(qsl(":/context_menu/mute"), QT_TRANSLATE_NOOP("context_menu", "Turn off notifications"), Logic::makeData(qsl("recents/mute"), aimId));
-
-            popupMenu_->addSeparator();
-
-            popupMenu_->addActionWithIcon(qsl(":/clear_chat_icon"), QT_TRANSLATE_NOOP("context_menu", "Clear history"), Logic::makeData(qsl("recents/clear_history"), aimId));
-            popupMenu_->addActionWithIcon(qsl(":/ignore_icon"), QT_TRANSLATE_NOOP("context_menu", "Block"), Logic::makeData(qsl("recents/ignore"), aimId));
-
-            if (Logic::getContactListModel()->isChat(aimId))
-            {
-                popupMenu_->addActionWithIcon(qsl(":/alert_icon"), QT_TRANSLATE_NOOP("context_menu", "Report and block"), Logic::makeData(qsl("recents/report"), aimId));
-                popupMenu_->addActionWithIcon(qsl(":/exit_icon"), QT_TRANSLATE_NOOP("context_menu", "Leave and delete"), Logic::makeData(qsl("contacts/remove"), aimId));
-            }
-            else if (Features::clRemoveContactsAllowed())
-            {
-                popupMenu_->addActionWithIcon(qsl(":/alert_icon"), QT_TRANSLATE_NOOP("context_menu", "Report"), Logic::makeData(qsl("recents/report"), aimId));
-            }
-        }
-
-
-        if (!Logic::getRecentsModel()->isFavorite(aimId) && !Logic::getRecentsModel()->isUnimportant(aimId))
-        {
-            if (Features::clRemoveContactsAllowed() && !Logic::getContactListModel()->isChat(aimId) && !Favorites::isFavorites(aimId))
-                popupMenu_->addActionWithIcon(qsl(":/context_menu/delete"), QT_TRANSLATE_NOOP("context_menu", "Remove"), Logic::makeData(qsl("recents/remove"), aimId));
-
-            popupMenu_->addSeparator();
-            popupMenu_->addActionWithIcon(qsl(":/context_menu/close"), QT_TRANSLATE_NOOP("context_menu", "Hide"), Logic::makeData(qsl("recents/close"), aimId));
-        }
-
-        popupMenu_->popup(QCursor::pos());
+        Logic::addItemToContextMenu(popupMenu_, aimId, dlg);
     }
 
     void RecentsTab::showPopupMenu(QAction* _action)
@@ -1110,7 +940,7 @@ namespace Ui
         return recentsView_->model() == Logic::getUnknownsModel();
     }
 
-    bool Ui::RecentsTab::isCLWithHeadersOpen() const
+    bool RecentsTab::isCLWithHeadersOpen() const
     {
         return recentsView_->model() == clWithHeaders_;
     }
@@ -1374,37 +1204,53 @@ namespace Ui
     {
         setKeyboardFocused(false);
 
-        if (Statuses::isStatusEnabled())
+        const auto model = qobject_cast<Logic::CustomAbstractListModel*>(recentsView_->model());
+        if (!model || (model && model->isServiceItem(_index)))
+            return;
+
+        const auto aimId = Logic::aimIdFromIndex(_index);
+        const auto avatarRect = getAvatarRect(_index);
+        const auto muted = Logic::getContactListModel()->isMuted(aimId);
+        if (avatarRect.contains(_pos) && !Favorites::isFavorites(aimId))
         {
-            const auto model = qobject_cast<Logic::CustomAbstractListModel*>(recentsView_->model());
-            if (!model || (model && model->isServiceItem(_index)))
-                return;
-
-            const auto aimId = Logic::aimIdFromIndex(_index);
-            const auto avatarRect = getAvatarRect(_index);
-            const auto muted = Logic::getContactListModel()->isMuted(aimId);
-
-            if (avatarRect.contains(_pos) && !Favorites::isFavorites(aimId) && !muted)
+            const auto localPos = recentsView_->mapFromGlobal(QCursor::pos());
+            const auto index = recentsView_->indexAt(localPos);
+            if (!Features::isAppsNavigationBarVisible())
             {
-                StatusTooltip::instance()->objectHovered([this, aimId]()
+                if (Statuses::isStatusEnabled() && !muted)
                 {
-                    auto localPos = recentsView_->mapFromGlobal(QCursor::pos());
-                    auto index = recentsView_->indexAt(localPos);
-                    if (aimId != Logic::aimIdFromIndex(index) || popupMenu_ && popupMenu_->isVisible())
-                        return QRect();
+                    StatusTooltip::instance()->objectHovered([this, aimId, index]()
+                    {
+                        if (aimId != Logic::aimIdFromIndex(index) || popupMenu_ && popupMenu_->isVisible())
+                            return QRect();
 
-                    auto avatarRect = getAvatarRect(index);
-                    return QRect(recentsView_->mapToGlobal(avatarRect.topLeft()), avatarRect.size());
-                }, aimId, recentsView_->viewport(), recentsView_);
+                        const auto avatarRect = getAvatarRect(index);
+                        return QRect(recentsView_->mapToGlobal(avatarRect.topLeft()), avatarRect.size());
+                    }, aimId, recentsView_->viewport(), recentsView_);
+                }
             }
+            else if (aimId == Logic::aimIdFromIndex(index) && !(popupMenu_ && popupMenu_->isVisible()))
+            {
+                const auto tooltipRect = getAvatarRect(index);
+                const auto linkGlobalRect = QRect(recentsView_->mapToGlobal(tooltipRect.topLeft()), tooltipRect.size());
+                personTooltip_->show(Utils::PersonTooltipType::Person, aimId, linkGlobalRect, Tooltip::ArrowDirection::Down, Tooltip::ArrowPointPos::Top);
+                return;
+            }
+        }
+        else
+        {
+            hideTooltip();
+            personTooltip_->hide();
         }
 
         if (Features::longPathTooltipsAllowed())
         {
             const auto aimId = Logic::senderAimIdFromIndex(_index);
             const auto isCompactMode = !get_gui_settings()->get_value<bool>(settings_show_last_message, !config::get().is_on(config::features::compact_mode_by_default));
-            const auto posCursor = (isCompactMode || pictureOnlyView_) ? QPoint() : _pos;
-            const auto needTooltip = isUnknownsOpen() ? unknownsDelegate_->needsTooltip(aimId, _index, posCursor) : recentsDelegate_->needsTooltip(aimId, _index, posCursor);
+            const auto posCursor = (pictureOnlyView_) ? QPoint() : _pos;
+            const auto needTooltip = isUnknownsOpen() ? unknownsDelegate_->needsTooltip(aimId, _index, _pos) :
+                                                        (isCLWithHeadersOpen() ? clDelegate_->needsTooltip(aimId, _index, _pos) :
+                                                                               recentsDelegate_->needsTooltip(aimId, _index, _pos));
             if (needTooltip)
             {
                 if (tooltipIndex_ != _index)
@@ -1417,7 +1263,16 @@ namespace Ui
                     auto name = Logic::GetFriendlyContainer()->getFriendly(aimId);
                     const auto direction = rect.y() < 0 ? Tooltip::ArrowDirection::Up : Tooltip::ArrowDirection::Down;
                     const auto arrowPosition = rect.y() < 0 ? Tooltip::ArrowPointPos::Bottom : Tooltip::ArrowPointPos::Top;
-                    showTooltip(std::move(name), ttRect, direction, arrowPosition);
+                    const bool hasDraft = Logic::getRecentsModel()->getDlgState(aimId).hasDraft();
+                    auto draftIconRect = isUnknownsOpen() ? unknownsDelegate_->getDraftIconRectWrapper(aimId, _index, posCursor) :
+                                                            (isCLWithHeadersOpen() ? clDelegate_->getDraftIconRect() :
+                                                                                    recentsDelegate_->getDraftIconRectWrapper(aimId, _index, posCursor) );
+                    auto cursorInDraftRect = draftIconRect.contains(posCursor);
+                    draftIconRect.moveTop(ttRect.y());
+                    draftIconRect.moveLeft(ttRect.x() + draftIconRect.x() - draftIconRect.width()/2);
+                    const bool needShowDraftTooltip = hasDraft && cursorInDraftRect && (isCompactMode || isUnknownsOpen() || isCLWithHeadersOpen() || Favorites::isFavorites(aimId));
+                    const auto draftMessageFormatted = makeDraftText(aimId);
+                    showTooltip(needShowDraftTooltip ? draftMessageFormatted : name, needShowDraftTooltip ? draftIconRect : ttRect, direction, arrowPosition);
                 }
             }
             else
@@ -1427,7 +1282,7 @@ namespace Ui
         }
     }
 
-    void RecentsTab::showTooltip(QString _text, QRect _rect, Tooltip::ArrowDirection _arrowDir, Tooltip::ArrowPointPos _arrowPos)
+    void RecentsTab::showTooltip(const Data::FString& _text, const QRect& _rect, Tooltip::ArrowDirection _arrowDir, Tooltip::ArrowPointPos _arrowPos)
     {
         Tooltip::hide();
 
@@ -1443,9 +1298,9 @@ namespace Ui
             tooltipTimer_->disconnect(this);
         }
 
-        connect(tooltipTimer_, &QTimer::timeout, this, [text = std::move(_text), _rect, _arrowDir, _arrowPos]()
+        connect(tooltipTimer_, &QTimer::timeout, this, [text = _text, _rect, _arrowDir, _arrowPos]()
         {
-            Tooltip::show(text, _rect, {}, _arrowDir, _arrowPos, {}, Tooltip::TooltipMode::Multiline);
+            Tooltip::show(text, _rect, {}, _arrowDir, _arrowPos, TextRendering::HorAligment::CENTER, {}, Tooltip::TooltipMode::Multiline);
         });
         tooltipTimer_->start();
     }
@@ -1458,6 +1313,22 @@ namespace Ui
             tooltipTimer_->stop();
 
         Tooltip::hide();
+    }
+
+    bool Ui::RecentsTab::isOverUnknownsCloseButton(const QModelIndex& _current) const
+    {
+        const auto unkModel = qobject_cast<const Logic::UnknownsModel*>(_current.model());
+        if (!unkModel || unkModel->isServiceItem(_current))
+            return false;
+
+        const auto rect = recentsView_->visualRect(_current);
+        const auto cursorPos = recentsView_->mapFromGlobal(QCursor::pos());
+        if (!rect.contains(cursorPos))
+            return false;
+
+        QPoint pos(cursorPos.x(), cursorPos.y() - rect.y());
+        const auto aimId = Logic::aimIdFromIndex(_current);
+        return !aimId.isEmpty() && unknownsDelegate_->isInRemoveContactFrame(pos);
     }
 
     void RecentsTab::switchToContactListWithHeaders(const SwichType _switchType)
@@ -1524,5 +1395,38 @@ namespace Ui
         const auto avatarX = pictureOnlyView_ ? (itemRect.width() - avatarSize) / 2 : params.getAvatarX();
 
         return QRect(itemRect.topLeft() + QPoint(avatarX, params.getAvatarY()), QSize(avatarSize, avatarSize));
+    }
+
+    QRect RecentsTab::getContactFriendlyRect(const QModelIndex& _index) const
+    {
+        const auto itemRect = recentsView_->visualRect(_index);
+        const auto isCompact = !get_gui_settings()->get_value<bool>(settings_show_last_message, !config::get().is_on(config::features::compact_mode_by_default));
+
+        const auto& params = isCompact || isCLWithHeadersOpen() ? Ui::GetContactListParams() : Ui::GetRecentsParams();
+
+        return QRect(itemRect.topLeft() + QPoint(params.getContactNameX(), params.getContactNameYTop()),
+            QSize(itemRect.width() - params.getAvatarSize(), params.contactNameHeight()));
+    }
+
+    void RecentsTab::setPageOpenedAs(PageOpenedAs _openedAs)
+    {
+        openedAs_ = _openedAs;
+        contactListWidget_->setPageOpenedAs(_openedAs);
+    }
+
+    void RecentsTab::setCloseOnThreadResult(bool _val)
+    {
+        contactListWidget_->setCloseOnThreadResult(_val);
+    }
+
+    void RecentsTab::onDragPositionUpdate(QPoint _pos)
+    {
+        dragPositionUpdate(_pos, false);
+    }
+
+    void RecentsTab::scrollToTop()
+    {
+        if (isRecentsOpen())
+            recentsView_->scrollToTop();
     }
 }

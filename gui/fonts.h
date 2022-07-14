@@ -3,40 +3,65 @@
 #include "namespaces.h"
 #include "utils/utils.h"
 
-FONTS_NS_BEGIN
-
-    enum class FontFamily
+namespace Fonts
+{
+    class FontFamilyParams : public QObject
     {
-        MIN,
+        Q_OBJECT
+    public:
+        FontFamilyParams(QObject* _parent = nullptr)
+            : QObject(_parent)
+        {
+        }
 
-        SOURCE_SANS_PRO,
-        SEGOE_UI,
-        ROUNDED_MPLUS,
-        ROBOTO_MONO,
-        SF_PRO_TEXT,
-        SF_MONO,
+        enum class Family
+        {
+            MIN,
 
-        MAX,
+            SOURCE_SANS_PRO,
+            SEGOE_UI,
+            ROUNDED_MPLUS,
+            ROBOTO_MONO,
+            SF_PRO_TEXT,
+            SF_MONO,
+
+            MAX,
+        };
+        Q_ENUM(Family);
     };
 
-    enum class FontWeight
+    class FontWeightParams : public QObject
     {
-        Min,
+        Q_OBJECT
+    public:
+        FontWeightParams(QObject* _parent = nullptr)
+            : QObject(_parent)
+        {
+        }
 
-        Light,
-        Normal,
-        Medium,
-        SemiBold,
-        Bold,
+        enum class Weight
+        {
+            Min,
 
-        Max,
+            Light,
+            Normal,
+            Medium,
+            SemiBold,
+            Bold,
+
+            Max,
+        };
+        Q_ENUM(Weight);
     };
+
+    using FontFamily = FontFamilyParams::Family;
+    using FontWeight = FontWeightParams::Weight;
 
     enum class FontSize
     {
-        Small   = 0,
-        Medium  = 1,
-        Large   = 2,
+        Small = 0,
+        Medium = 1,
+        Large = 2,
     };
 
     enum class FontAdjust
@@ -87,7 +112,6 @@ FONTS_NS_BEGIN
 
     QString SetFont(QString _qss);
 
-
     int adjustFontSize(const int _size);
     FontWeight adjustFontWeight(const FontWeight _weight);
 
@@ -110,4 +134,4 @@ FONTS_NS_BEGIN
     QFont getInputTextFont();
     QFont getInputMonospaceTextFont();
 
-FONTS_NS_END
+} // namespace Fonts

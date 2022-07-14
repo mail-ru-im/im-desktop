@@ -2,12 +2,12 @@
 #include "OAuth2Dialog.h"
 
 #include "../core/core.h"
+#include "../utils/features.h"
+#include "url_config.h"
 
 namespace
 {
     constexpr QStringView responseType() noexcept { return u"code"; }
-    constexpr QStringView scopeType() noexcept { return u"aimsid"; }
-    constexpr QStringView redirectHost() noexcept { return u"localhost"; }
     constexpr QSize kMinimalSize(512, 610);
     constexpr size_t kMaxRetryCount = 3;
 }
@@ -20,6 +20,8 @@ class OAuth2DialogPrivate
 public:
     QString authUrl_;
     QString clientId_;
+    QUrl redirectUrl_;
+    QString scope_;
     QWebEngineView* view_;
     int result_;
     size_t retryCount_;
@@ -70,13 +72,14 @@ public:
     {
         im_assert(!authUrl_.isEmpty());
         im_assert(!clientId_.isEmpty());
+        im_assert(!redirectUrl_.isEmpty());
+        im_assert(!scope_.isEmpty());
 
-        QString url;
-        url = authUrl_ % u'?' %
+        QString url = authUrl_ % u'?' %
               u"client_id=" % clientId_ %
               u"&response_type=" % responseType() %
-              u"&scope=" % scopeType() %
-              u"&redirect_uri=" % u"http://" % redirectHost();
+              u"&scope=" % scope_ %
+              u"&redirect_uri=" % redirectUrl_.toString();
 
         return QUrl(url);
     }
@@ -106,7 +109,7 @@ void OAuth2Dialog::setClientId(const QString& _clientId)
     d->clientId_ = _clientId;
 }
 
-const QString& OAuth2Dialog::clientId() const
+QString OAuth2Dialog::clientId() const
 {
     return d->clientId_;
 }
@@ -116,9 +119,29 @@ void OAuth2Dialog::setAuthUrl(const QString& _url)
     d->authUrl_ = _url;
 }
 
-const QString& OAuth2Dialog::authUrl() const
+QString OAuth2Dialog::authUrl() const
 {
     return d->authUrl_;
+}
+
+void OAuth2Dialog::setRedirectUrl(const QString& _url)
+{
+    d->redirectUrl_ = _url;
+}
+
+QString OAuth2Dialog::redirectUrl() const
+{
+    return d->redirectUrl_.toString();
+}
+
+void OAuth2Dialog::setScope(const QString& _scope)
+{
+    d->scope_ = _scope;
+}
+
+QString OAuth2Dialog::scope() const
+{
+    return d->scope_;
 }
 
 void OAuth2Dialog::start()
@@ -128,7 +151,7 @@ void OAuth2Dialog::start()
 
 void OAuth2Dialog::onUrlChanged(const QUrl& _url)
 {
-    if (_url.host() == redirectHost())
+    if (_url.host() == d->redirectUrl_.host())
     {
         QUrlQuery query(_url);
         QString code = query.queryItemValue(ql1s("code"));

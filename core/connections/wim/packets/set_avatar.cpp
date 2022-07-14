@@ -5,6 +5,7 @@
 #include "../../../tools/system.h"
 #include "../../../../common.shared/json_helper.h"
 #include "../../urls_cache.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -22,6 +23,11 @@ set_avatar::~set_avatar() = default;
 std::string_view set_avatar::get_method() const
 {
     return "avatarSet";
+}
+
+int core::wim::set_avatar::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t set_avatar::init_request(const std::shared_ptr<core::http_request_simple>& _request)

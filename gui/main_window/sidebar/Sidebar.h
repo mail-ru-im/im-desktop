@@ -1,9 +1,12 @@
 #pragma once
 #include "utils/utils.h"
 #include "main_window/EscapeCancellable.h"
+#include "styles/StyledWidget.h"
 
 namespace Ui
 {
+    using highlightsV = std::vector<QString>;
+
     class SemitransparentWindowAnimated;
     class SlideController;
 
@@ -16,7 +19,7 @@ namespace Ui
         QString parentPageId_;
     };
 
-    class SidebarPage : public QWidget, public IEscapeCancellable
+    class SidebarPage : public Styling::StyledWidget, public IEscapeCancellable
     {
         Q_OBJECT
 
@@ -26,13 +29,11 @@ namespace Ui
         static constexpr std::chrono::milliseconds kShowDuration = std::chrono::milliseconds(100);
 
         explicit SidebarPage(QWidget* _parent)
-            : QWidget(_parent)
+            : Styling::StyledWidget(_parent)
             , IEscapeCancellable(this)
-            , isActive_(false)
         {
-            Utils::setDefaultBackground(this);
+            setDefaultBackground();
         }
-        virtual ~SidebarPage() {}
 
         virtual const QString& prev() const { return prevAimId_; }
         virtual void setPrev(const QString& _aimId) { prevAimId_ = _aimId; }
@@ -46,6 +47,9 @@ namespace Ui
         virtual void scrollToTop() { }
         virtual QString parentAimId() const { return {}; }
         virtual void onPageBecomeVisible() {}
+        virtual bool hasInputOrHistoryFocus() const { return false; }
+        virtual bool hasSearchFocus() const { return false; }
+        virtual void updateWidgetsTheme() {}
 
     Q_SIGNALS:
         void contentsChanged(QPrivateSignal);
@@ -58,7 +62,7 @@ namespace Ui
 
     protected:
         QString prevAimId_;
-        bool isActive_;
+        bool isActive_ = false;
     };
 
     //////////////////////////////////////////////////////////////////////////
@@ -69,6 +73,8 @@ namespace Ui
 
     Q_SIGNALS:
         void pageChanged(const QString& _aimId, QPrivateSignal) const;
+        void visibilityAnimationFinished(bool _isVisible) const;
+        void hidden() const;
 
     public:
         explicit Sidebar(QWidget* _parent = nullptr);
@@ -77,6 +83,7 @@ namespace Ui
         void preparePage(const QString& _aimId, SidebarParams _params = {}, bool _selectionChanged = false);
         void showMembers(const QString& _aimId);
 
+        void updateSize();
         enum class ResolveThread
         {
             No,
@@ -84,8 +91,6 @@ namespace Ui
         };
         QString currentAimId(ResolveThread _resolve = ResolveThread::No) const;
         QString parentAimId() const;
-        void updateSize();
-        void changeHeight();
 
         bool isThreadOpen() const;
         bool wasVisible() const noexcept;
@@ -93,14 +98,21 @@ namespace Ui
         bool isNeedShadow() const noexcept;
         void setNeedShadow(bool _value);
 
+        FrameCountMode getFrameCountMode() const;
         void setFrameCountMode(FrameCountMode _mode);
 
         void setWidth(int _width);
+        int getCurrentWidth() const;
+        void saveWidth();
+        void restoreWidth();
 
-        static int getDefaultWidth();
+        static int getDefaultWidth() noexcept;
+        static int getDefaultMaximumWidth() noexcept;
         static constexpr QStringView getThreadPrefix() { return u"thread/"; }
 
         QString getSelectedText() const;
+        bool hasInputOrHistoryFocus() const;
+        bool hasSearchFocus() const;
 
     public Q_SLOTS:
         void showAnimated();
@@ -108,10 +120,12 @@ namespace Ui
 
         void show();
         void hide();
+        void changeHeight();
 
     private:
         void moveToWindowEdge();
         void closePage(SidebarPage* _page);
+        void updateSizePrivate();
 
     private Q_SLOTS:
         void animate(const QVariant& _value);
@@ -119,6 +133,7 @@ namespace Ui
         void onCurrentChanged(int _index);
         void onContentChanged();
         void onIndexChanged(int _index);
+        void onThemeChanged();
 
     protected:
         void paintEvent(QPaintEvent* _event) override;

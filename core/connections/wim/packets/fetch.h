@@ -34,10 +34,10 @@ namespace core
             timepoint fetch_time_;
             relogin relogin_;
 
-            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& request) override;
-            virtual int32_t parse_response_data(const rapidjson::Value& _data) override;
-            virtual int32_t on_response_error_code() override;
-            virtual int32_t execute_request(const std::shared_ptr<core::http_request_simple>& request) override;
+            int32_t init_request(const std::shared_ptr<core::http_request_simple>& request) override;
+            int32_t parse_response_data(const rapidjson::Value& _data) override;
+            int32_t on_response_error_code() override;
+            int32_t execute_request(const std::shared_ptr<core::http_request_simple>& request) override;
 
             void on_session_ended(const rapidjson::Value& _data);
 
@@ -87,9 +87,10 @@ namespace core
                 std::function<bool(std::chrono::milliseconds)> _wait_function);
             virtual ~fetch();
 
-            virtual priority_t get_priority() const override;
-            virtual std::string_view get_method() const override;
-            virtual bool support_self_resending() const override { return true; }
+            priority_t get_priority() const override;
+            std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
+            bool support_self_resending() const override { return true; }
         };
 
     }

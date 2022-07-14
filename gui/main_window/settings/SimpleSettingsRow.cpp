@@ -7,6 +7,7 @@
 #include "../../utils/utils.h"
 #include "../../fonts.h"
 #include "styles/ThemeParameters.h"
+#include "styles/StyleVariable.h"
 
 namespace
 {
@@ -35,24 +36,19 @@ namespace
         return normalIconOffset() + iconWidth() + Utils::scale_value(12);
     }
 
-    QColor normalTextColor()
+    Styling::ThemeColorKey normalTextColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID };
     }
 
-    QColor activeTextColor()
+    Styling::ThemeColorKey activeTextColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID_PERMANENT };
     }
 
-    QColor normalIconColor(const Styling::StyleVariable _var)
+    Styling::ThemeColorKey activeIconColor()
     {
-        return Styling::getParameters().getColor(_var);
-    }
-
-    QColor activeIconColor()
-    {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID_PERMANENT };
     }
 
     QColor activeBackgroundColor()
@@ -75,16 +71,16 @@ namespace Ui
 {
     SimpleSettingsRow::SimpleSettingsRow(const QString& _icon, const Styling::StyleVariable _bg, const QString& _name, QWidget* _parent)
         : SimpleListItem(_parent)
-        , isSelected_(false)
-        , isCompactMode_(false)
-        , normalIcon_(Utils::renderSvg(_icon, { pixmapWidth(), pixmapWidth() }, normalIconColor(_bg)))
-        , selectedIcon_(Utils::renderSvg(_icon, { pixmapWidth(), pixmapWidth() }, activeIconColor()))
+        , normalIcon_(Utils::StyledPixmap(_icon, { pixmapWidth(), pixmapWidth() }, Styling::ThemeColorKey{ _bg }))
+        , selectedIcon_(Utils::StyledPixmap(_icon, { pixmapWidth(), pixmapWidth() }, activeIconColor()))
         , name_(_name)
         , iconBg_(_bg)
+        , isSelected_(false)
+        , isCompactMode_(false)
     {
         setFixedHeight(settingRowHeight());
         nameTextUnit_ = TextRendering::MakeTextUnit(name_);
-        nameTextUnit_->init(getNameTextFont(), normalTextColor());
+        nameTextUnit_->init({ getNameTextFont(), normalTextColor() });
     }
 
     SimpleSettingsRow::~SimpleSettingsRow()
@@ -141,7 +137,7 @@ namespace Ui
 
         const auto pmX = iconX + (iconW - pixmapWidth()) / 2;
         const auto pmY = iconY + (iconW - pixmapWidth()) / 2;
-        p.drawPixmap(pmX, pmY, isSelected() ? selectedIcon_ : normalIcon_);
+        p.drawPixmap(pmX, pmY, (isSelected() ? selectedIcon_ : normalIcon_).actualPixmap());
 
         if (!isCompactMode())
         {

@@ -4,16 +4,30 @@
 
 namespace Ui
 {
+    enum class SoundType
+    {
+        Unknown = -1,
+        IncomingMail = 0,
+        IncomingMessage,
+        OutgoingMessage,
+        StartPtt,
+        PttLimit,
+        RemovePtt,
+
+        Size
+    };
+
     struct PlayingData
     {
         PlayingData()
             : Source_(0)
             , Buffer_(0)
-            , Id_(-1)
+            , Id_(SoundType::Unknown)
         {
         }
 
-        void init();
+        void init(const SoundType _sound);
+        void setVolume(const SoundType _sound);
         void setBuffer(const QByteArray& data, qint64 freq, qint64 fmt)
         {
             setBuffer(data.data(), data.size(), freq, fmt);
@@ -35,50 +49,38 @@ namespace Ui
 
         openal::ALuint Source_;
         openal::ALuint Buffer_;
-        int Id_;
+        SoundType Id_;
     };
 
     class SoundsManager : public QObject, device::DeviceMonitoringCallback
     {
         Q_OBJECT
 Q_SIGNALS:
-        void pttPaused(int id, int sampleOffset, QPrivateSignal);
-        void pttFinished(int, bool ended, QPrivateSignal);
+        void pttPaused(SoundType id, int sampleOffset, QPrivateSignal);
+        void pttFinished(SoundType, bool ended, QPrivateSignal);
         void needUpdateDeviceTimer(QPrivateSignal);
 
         void deviceListChangedInternal(QPrivateSignal);
 
         void deviceListChanged(QPrivateSignal);
 
-    public:
-        enum class Sound
-        {
-            IncomingMail = 0,
-            IncomingMessage,
-            OutgoingMessage,
-            StartPtt,
-            PttLimit,
-            RemovePtt,
-
-            Size
-        };
 
     public:
         SoundsManager();
         ~SoundsManager();
 
-        std::chrono::milliseconds playSound(Sound _type);
+        std::chrono::milliseconds playSound(SoundType _type);
 
-        int playPtt(const QString& file, int id, int& duration, double progress = 0);
-        int playPtt(const char* data, size_t size, qint64 freq, qint64 fmt, int id, int& duration, size_t sampleOffset = 0);
-        void stopPtt(int id);
-        void pausePtt(int id);
+        SoundType playPtt(const QString& file, SoundType id, int& duration, double progress = 0);
+        SoundType playPtt(const char* data, size_t size, qint64 freq, qint64 fmt, SoundType id, int& duration, size_t sampleOffset = 0);
+        void stopPtt(SoundType id);
+        void pausePtt(SoundType id);
 
-        bool isPaused(int id) const;
+        bool isPaused(SoundType id) const;
 
-        size_t sampleOffset(int id) const;
-        bool setSampleOffset(int id, size_t _offset);
-        void setProgressOffset(int id, double percent);
+        size_t sampleOffset(SoundType id) const;
+        bool setSampleOffset(SoundType id, size_t _offset);
+        void setProgressOffset(SoundType id, double percent);
 
         void delayDeviceTimer();
         void sourcePlay(unsigned source);
@@ -109,24 +111,20 @@ Q_SIGNALS:
             qint64 frequency = 0;
             qint64 format = 0;
         };
-        std::optional<int> checkPlayPtt(int id, int& duration, const std::optional<size_t>& sampleOffset);
+        std::optional<SoundType> checkPlayPtt(SoundType id, int& duration, const std::optional<size_t>& sampleOffset);
         std::optional<PttBuffer> getBuffer(const QString& file);
-        int playPttImpl(const char* data, size_t size, qint64 freq, qint64 fmt, int& duration, size_t sampleOffset);
-        void initPlayingData(PlayingData& _data, const QString& _file);
+        SoundType playPttImpl(const char* data, size_t size, qint64 freq, qint64 fmt, int& duration, size_t sampleOffset);
+        void initPlayingData(PlayingData& _data, const QString& _file, const SoundType& _sound);
 
         void initSounds();
         void deInitSounds();
 
-        bool canPlaySound(Sound _type);
+        bool canPlaySound(SoundType _type);
         static std::string selectedDeviceName();
 
     private:
         bool CallInProgress_;
         bool CanPlayIncoming_;
-
-        PlayingData Incoming_;
-        PlayingData Outgoing_;
-        PlayingData Mail_;
 
         std::vector<PlayingData> sounds_;
 

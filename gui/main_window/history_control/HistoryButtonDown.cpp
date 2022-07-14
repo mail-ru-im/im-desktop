@@ -35,9 +35,9 @@ UI_NS_BEGIN
 
 HistoryButton::HistoryButton(QWidget* _parent, const QString& _imageName)
     : ClickableWidget(_parent)
+    , icon_(Utils::StyledPixmap::scaled(_imageName, QSize(iconSize, iconSize), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY }))
+    , iconHover_(Utils::StyledPixmap::scaled(_imageName, QSize(iconSize, iconSize), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY_HOVER }))
     , counter_(0)
-    , icon_(Utils::renderSvgScaled(_imageName, QSize(iconSize, iconSize), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY)))
-    , iconHover_(Utils::renderSvgScaled(_imageName, QSize(iconSize, iconSize), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER)))
 {
     setFixedSize(Utils::scale_value(QSize(buttonSize, buttonSize)));
 
@@ -66,7 +66,7 @@ void HistoryButton::paintEvent(QPaintEvent *_event)
         p.setBrush(Styling::getParameters().getColor( isHovered() ? Styling::StyleVariable::BASE_BRIGHT_INVERSE : Styling::StyleVariable::BASE_GLOBALWHITE));
         p.drawPath(path);
 
-        const auto icon = isHovered() ? iconHover_ : icon_;
+        const auto icon = (isHovered() ? iconHover_ : icon_).actualPixmap();
         const auto ratio = Utils::scale_bitmap_ratio();
         const auto x = (getBubbleSize() - icon.width() / ratio) / 2;
         const auto y = (getBubbleSize() - icon.height() / ratio) / 2;
@@ -75,15 +75,15 @@ void HistoryButton::paintEvent(QPaintEvent *_event)
 
     if (counter_ > 0)
     {
-        static auto font = Fonts::appFont(getCounterFontSize(), Fonts::FontWeight::SemiBold);
-        static auto bgColor = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
-        static auto textColor = Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
+        static const auto font = Fonts::appFont(getCounterFontSize(), Fonts::FontWeight::SemiBold);
+        static Styling::ColorContainer bgColor = Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY };
+        static Styling::ColorContainer textColor = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_GLOBALWHITE };
 
         const auto size = Utils::getUnreadsSize(font, true, counter_, getCounterBubbleSize());
         const auto x = width() - size.width();
         const auto y = Utils::scale_value(2);
 
-        Utils::drawUnreads(&p, font, bgColor, textColor, QColor(), counter_, getCounterBubbleSize(), x, y);
+        Utils::drawUnreads(&p, font, bgColor.actualColor(), textColor.actualColor(), QColor(), counter_, getCounterBubbleSize(), x, y);
     }
 }
 

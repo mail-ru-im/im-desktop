@@ -2,6 +2,7 @@
 #include "RecentsModel.h"
 #include "UnknownsModel.h"
 #include "ContactListModel.h"
+#include "IgnoreMembersModel.h"
 #include "../../cache/avatars/AvatarStorage.h"
 #include "../../main_window/MainWindow.h"
 
@@ -18,6 +19,7 @@
 #include "../../types/thread.h"
 #include "FavoritesUtils.h"
 #include "ServiceContacts.h"
+#include "Common.h"
 
 
 namespace
@@ -45,10 +47,10 @@ namespace
 
 namespace Logic
 {
-    std::unique_ptr<RecentsModel> g_recents_model;
+    QObjectUniquePtr<RecentsModel> g_recents_model;
 
-    RecentsModel::RecentsModel(QObject *parent)
-        : CustomAbstractListModel(parent)
+    RecentsModel::RecentsModel(QObject* _parent)
+        : CustomAbstractListModel(_parent)
         , PinnedCount_(0)
         , PinnedVisible_(true)
         , UnimportantCount_(0)
@@ -104,19 +106,19 @@ namespace Logic
         return count;
     }
 
-    QVariant RecentsModel::data(const QModelIndex &i, int r) const
+    QVariant RecentsModel::data(const QModelIndex& _index, int _role) const
     {
-        if (!i.isValid() || (r != Qt::DisplayRole && !Testing::isAccessibleRole(r)))
+        if (!_index.isValid() || (_role != Qt::DisplayRole && !Testing::isAccessibleRole(_role)))
             return QVariant();
 
-        int cur = i.row();
-        if (cur >= rowCount(i))
+        int cur = _index.row();
+        if (cur >= rowCount(_index))
             return QVariant();
 
         const auto serviceDlgState = serviceItemByIndex(cur);
         if (serviceDlgState)
         {
-            if (Testing::isAccessibleRole(r))
+            if (Testing::isAccessibleRole(_role))
                 return accessibleName(*serviceDlgState);
 
             return QVariant::fromValue(*serviceDlgState);
@@ -129,7 +131,7 @@ namespace Logic
 
         const Data::DlgState& cont = Dialogs_[cur];
 
-        if (Testing::isAccessibleRole(r))
+        if (Testing::isAccessibleRole(_role))
             return accessibleName(cont);
 
         return QVariant::fromValue(cont);
@@ -218,6 +220,11 @@ namespace Logic
         auto processDlgState = [this, &updatedItems, mainPageOpened](const auto& dlgState)
         {
             const auto pinnedServiceFavorite = Favorites::isFavorites(dlgState.AimId_) && Features::isRecentsPinnedItemsEnabled();
+            if (pinnedServiceFavorite)
+            {
+                pinnedServiceFavoriteState_ = dlgState;
+                Q_EMIT dlgStateChanged(pinnedServiceFavoriteState_);
+            }
             const auto noUpdate =
                 dlgState.noRecentsUpdate_ ||
                 dlgState.hasParentTopic() ||
@@ -244,7 +251,7 @@ namespace Logic
                     sendLastRead(dlgState.AimId_);
 
                 if (dlgState.hasParentTopic())
-                    Logic::getContactListModel()->markAsThread(dlgState.AimId_, Data::MessageParentTopic::getChat(*dlgState.parentTopic_));
+                    Logic::getContactListModel()->markAsThread(dlgState.AimId_, dlgState.parentTopic_->get());
 
                 Q_EMIT updated();
                 return;
@@ -269,7 +276,7 @@ namespace Logic
             }
 
             if (dlgState.lastMessage_)
-                Logic::getContactListModel()->markAsThread(dlgState.lastMessage_->threadData_.id_, Data::MessageParentTopic::getChat(dlgState.lastMessage_->threadData_.parentTopic_));
+                Logic::getContactListModel()->markAsThread(dlgState.lastMessage_->threadData_.id_, dlgState.lastMessage_->threadData_.parentTopic_.get());
 
             Logic::getContactListModel()->setContactVisible(dlgState.AimId_, !dlgState.isStranger_);
 
@@ -384,7 +391,6 @@ namespace Logic
 
                 Dialogs_.push_back(dlgState);
 
-
                 if (Dialogs_.size() == 1)
                     Q_EMIT Utils::InterConnector::instance().hideRecentsPlaceholder();
             }
@@ -396,7 +402,14 @@ namespace Logic
         };
 
         for (const auto& dlgState : _states)
+        {
             processDlgState(dlgState);
+            if (Logic::getContactListModel()->isFeed(dlgState.AimId_))
+            {
+                if (const auto type = Logic::getContactListModel()->getFeedType(dlgState.AimId_))
+                    Q_EMIT Utils::InterConnector::instance().updateMiniAppCounter(*type, dlgState.UnreadCount_);
+            }
+        }
 
         if (!_states.empty() && !Favorites::pinnedOnStart() && !Features::isRecentsPinnedItemsEnabled())
         {
@@ -450,24 +463,24 @@ namespace Logic
         Ui::GetDispatcher()->sendMessageToContact(Favorites::aimId(), Favorites::firstMessageText());
     }
 
-    void RecentsModel::unknownToRecents(const Data::DlgState& dlgState)
+    void RecentsModel::unknownToRecents(const Data::DlgState& _dlgState)
     {
-        auto iter = std::find(Dialogs_.begin(), Dialogs_.end(), dlgState);
-        if (iter == Dialogs_.end() && (!dlgState.GetText().isEmpty() || dlgState.PinnedTime_ != -1 || dlgState.UnimportantTime_ != -1))
+        auto iter = std::find(Dialogs_.begin(), Dialogs_.end(), _dlgState);
+        if (iter == Dialogs_.end() && (!_dlgState.GetText().isEmpty() || _dlgState.PinnedTime_ != -1 || _dlgState.UnimportantTime_ != -1))
         {
-            if (dlgState.PinnedTime_ != -1)
+            if (_dlgState.PinnedTime_ != -1)
             {
                 ++PinnedCount_;
-                Q_EMIT favoriteChanged(dlgState.AimId_);
+                Q_EMIT favoriteChanged(_dlgState.AimId_);
             }
 
-            if (dlgState.UnimportantTime_ != -1)
+            if (_dlgState.UnimportantTime_ != -1)
             {
                 ++UnimportantCount_;
-                Q_EMIT unimportantChanged(dlgState.AimId_);
+                Q_EMIT unimportantChanged(_dlgState.AimId_);
             }
 
-            Dialogs_.push_back(dlgState);
+            Dialogs_.push_back(_dlgState);
             sortDialogs();
         }
     }
@@ -582,7 +595,7 @@ namespace Logic
 
         for (const auto& [_, upd] : _updates.messages_)
         {
-            Logic::getContactListModel()->markAsThread(upd->threadId_, Data::MessageParentTopic::getChat(upd->parent_));
+            Logic::getContactListModel()->markAsThread(upd->threadId_, upd->parent_.get());
 
             if (upd->yoursLastRead_ < 0 && upd->yoursLastReadMention_ < 0)
                 continue;
@@ -626,8 +639,9 @@ namespace Logic
                 return *iter;
             return std::nullopt;
         };
+
         if (Features::isRecentsPinnedItemsEnabled() && Favorites::isFavorites(_aimId))
-            state = favoritesDlgState();
+            return pinnedServiceFavoriteState_;
         else if (auto d = getState(Dialogs_))
             state = std::move(*d);
         else if (auto h = getState(HiddenDialogs_))
@@ -920,8 +934,8 @@ namespace Logic
         int result = 0;
         for (const auto& dlg : Dialogs_)
         {
-            if (!Logic::getContactListModel()->isMuted(dlg.AimId_))
-                result += dlg.UnreadCount_;
+            if (!Logic::getContactListModel()->isMuted(dlg.AimId_) && !Logic::getIgnoreModel()->contains(dlg.AimId_))
+                result += static_cast<int>(dlg.UnreadCount_);
         }
         return result;
     }
@@ -1263,7 +1277,7 @@ namespace Logic
         else if (_index == threadsItemIndex())
         {
             Data::DlgState s;
-            s.AimId_ = qsl("~threads~");
+            s.AimId_ = ServiceContacts::getThreadsName();
             s.SetText(ServiceContacts::contactName(ServiceContacts::ContactType::ThreadsFeed));
             s.setPinnedServiceItemType(Data::DlgState::PinnedServiceItemType::Threads);
             s.UnreadCount_ = threadsFeed_.unreadCount_;
@@ -1477,7 +1491,7 @@ namespace Logic
     RecentsModel* getRecentsModel()
     {
         if (!g_recents_model)
-            g_recents_model = std::make_unique<RecentsModel>(nullptr);
+            g_recents_model = makeUniqueQObjectPtr<RecentsModel>();
 
         return g_recents_model.get();
     }

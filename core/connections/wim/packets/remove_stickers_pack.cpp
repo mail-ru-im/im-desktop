@@ -6,6 +6,7 @@
 #include "../../../tools/system.h"
 #include "../../../utils.h"
 #include "../../urls_cache.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -98,4 +99,9 @@ priority_t remove_stickers_pack_packet::get_priority() const
 std::string_view remove_stickers_pack_packet::get_method() const
 {
     return "stickersStoreDeletePurchase";
+}
+
+int core::wim::remove_stickers_pack_packet::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }

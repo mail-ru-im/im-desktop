@@ -12,6 +12,7 @@ public:
     set_draft(wim_packet_params _params, std::string_view _contact, const archive::draft& _draft);
 
     std::string_view get_method() const override;
+    int minimal_supported_api_version() const override;
     bool auto_resend_on_fail() const override { return true; }
 
 private:

@@ -18,13 +18,13 @@ namespace core
     {
         std::string from_utf16(std::wstring_view _source_16)
         {
-             static converter_t converter;
+             static converter_t converter("", L"");
              return converter.to_bytes(_source_16.data(), _source_16.data() + _source_16.size());
         }
 
         std::wstring from_utf8(std::string_view _source_8)
         {
-             static converter_t converter;
+             static converter_t converter("", L"");
              return converter.from_bytes(_source_8.data(), _source_8.data() + _source_8.size());
         }
 

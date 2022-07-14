@@ -39,8 +39,10 @@ namespace core
                 time_t _write_time = 0);
             virtual ~request_avatar();
 
-            virtual priority_t get_priority() const override;
-            virtual std::string_view get_method() const override;
+            priority_t get_priority() const override;
+            std::string_view get_method() const override;
+
+            int minimal_supported_api_version() const override;
         };
     }
 }

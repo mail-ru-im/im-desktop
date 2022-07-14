@@ -52,9 +52,7 @@ void showAddContactsDialog(const QString& _name, const QString& _phone, AddConta
 
     auto okCancelBtns = gd->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"),
                                            QT_TRANSLATE_NOOP("popup_window", "Add"),
-                                           true,   /* isActive */
-                                           false,  /* rejectable - handle it in the widget */
-                                           false); /* _acceptable - handle it in the widget */
+                                           Ui::ButtonsStateFlag::AcceptingForbidden | Ui::ButtonsStateFlag::RejectionForbidden);
     w->setOkCancelButtons(okCancelBtns);
 
     if (!_name.isEmpty())
@@ -63,7 +61,7 @@ void showAddContactsDialog(const QString& _name, const QString& _phone, AddConta
     if (!_phone.isEmpty())
         w->setPhone(_phone);
 
-    gd->showInCenter();
+    gd->execute();
 
     if (w->getResult() == Ui::AddContactResult::Added && _callback)
         _callback();
@@ -82,7 +80,7 @@ void showAddContactsDialog(const AddContactDialogs::Initiator &_initiator)
                            : QT_TRANSLATE_NOOP("add_widget", "Add contact by phone or email?"));
 
     generalDialog.addCancelButton(QT_TRANSLATE_NOOP("report_widget", "Cancel"), true);
-    if (generalDialog.showInCenter())
+    if (generalDialog.execute())
     {
         if (w->selectedIndex() == 0)
             showAddContactsDialog(QString(), QString(), AddContactCallback(), _initiator);

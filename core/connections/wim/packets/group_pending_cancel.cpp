@@ -2,6 +2,7 @@
 #include "group_pending_cancel.h"
 #include "../../../http_request.h"
 #include "../../../../common.shared/json_helper.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -16,6 +17,11 @@ group_pending_cancel::group_pending_cancel(wim_packet_params _params, std::strin
 std::string_view group_pending_cancel::get_method() const
 {
     return "group/pending/cancel";
+}
+
+int core::wim::group_pending_cancel::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t group_pending_cancel::init_request(const std::shared_ptr<core::http_request_simple>& _request)

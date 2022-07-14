@@ -11,6 +11,8 @@
 #include "../utils/JsonUtils.h"
 #include "../core_dispatcher.h"
 #include "../app_config.h"
+#include "../utils/features.h"
+#include "../gui_settings.h"
 
 namespace
 {
@@ -23,8 +25,6 @@ namespace
     constexpr std::chrono::milliseconds unloadCheckTimeout = std::chrono::hours(1);
     constexpr auto checkMetaUpdates = false;
     constexpr auto userWallpaperOverlay = Styling::StyleVariable::GHOST_ULTRALIGHT;
-
-    constexpr auto darkThemeId() noexcept { return QStringView(u"black"); }
 }
 
 namespace Styling
@@ -71,6 +71,73 @@ namespace Styling
         isLoaded_ = true;
     }
 
+    void ThemesContainer::mergeAdditionalThemes(const QStringList& _themes)
+    {
+        static auto additionalThemesCached = QStringList(qsl("no theme"));
+
+        if (additionalThemesCached != _themes)
+        {
+            additionalThemesCached = _themes;
+            availableThemes_.erase(std::remove_if(availableThemes_.begin(), availableThemes_.end(), [&](auto &_t)
+            { return _t->isHidden(); }), availableThemes_.end());
+
+            for (const auto &t: _themes)
+            {
+                std::for_each(additionalThemes_.rbegin(), additionalThemes_.rend(), [&](const auto &theme)
+                {
+                    if (theme->getId().contains(t))
+                    {
+                        if (const auto it = std::find_if(availableThemes_.begin(), availableThemes_.end(), [&theme](const auto &t) { return t->getId() == theme->getId(); });
+                            it == availableThemes_.end())
+                            availableThemes_.insert(availableThemes_.begin(), theme);
+                    }
+                });
+            }
+        }
+    }
+
+    void ThemesContainer::chooseAndSetTheme()
+    {
+        QString additionalThemeId;
+        auto additionalThemes = Features::getAdditionalTheme();
+        mergeAdditionalThemes(additionalThemes);
+        Q_EMIT Utils::InterConnector::instance().additionalThemesChanged();
+
+        if (!additionalThemes.isEmpty())
+            additionalThemeId = additionalThemes.first();
+
+        const auto isCurrentThemeDark = getCurrentTheme()->isDark();
+
+        QString lightId, darkId;
+
+        if (!additionalThemeId.isEmpty())
+        {
+            const auto availableThemes = getAvailableThemes();
+            const auto itLight = std::find_if(availableThemes.begin(), availableThemes.end(), [additionalThemeId](const auto& p) { return p.first.contains(additionalThemeId) && !Styling::getThemesContainer().getTheme(p.first)->isDark(); });
+            const auto itDark = std::find_if(availableThemes.begin(), availableThemes.end(), [additionalThemeId](const auto& p) { return p.first.contains(additionalThemeId) && Styling::getThemesContainer().getTheme(p.first)->isDark(); });
+            if (itLight == availableThemes.end() || itDark == availableThemes.end() || getCurrentThemeId().contains(additionalThemeId))
+                return;
+
+            lightId = (*itLight).first;
+            darkId = (*itDark).first;
+
+            additionalThemeId = isCurrentThemeDark ? darkId : lightId;
+        }
+        else
+        {
+            if (!getCurrentTheme()->isHidden())
+                return;
+
+            additionalThemeId = isCurrentThemeDark ? qsl("black") : qsl("default");
+        }
+
+        if (lightId != Ui::get_gui_settings()->get_value<QString>(startup_set_additional_theme, QString()))
+        {
+            Styling::getThemesContainer().setCurrentTheme(additionalThemeId);
+            Ui::get_gui_settings()->set_value<QString>(startup_set_additional_theme, lightId);
+        }
+    }
+
     void ThemesContainer::unserializeMeta(const QString& _meta)
     {
         rapidjson::Document doc;
@@ -104,6 +171,7 @@ namespace Styling
             availableThemes_.reserve(themeIter->value.Size());
 
         Theme defaultTheme;
+        defaultTheme.setProperty(Styling::StyleVariable::INVALID, {});
         if (styleIter != doc.MemberEnd() && styleIter->value.IsObject())
             defaultTheme.unserialize(doc);
 
@@ -111,12 +179,13 @@ namespace Styling
         {
             for (auto& themeNodeIt : themeIter->value.GetArray())
             {
-                if (bool themeHidden = false; !Ui::GetAppConfig().IsShowHiddenThemes() && JsonUtils::unserialize_value(themeNodeIt, "hidden", themeHidden) && themeHidden)
-                    continue;
-
                 Theme tmpTheme = defaultTheme;
                 tmpTheme.unserialize(themeNodeIt.GetObject());
-                availableThemes_.push_back(std::make_shared<Theme>(tmpTheme));
+
+                if (!Ui::GetAppConfig().IsShowHiddenThemes() && tmpTheme.isHidden())
+                    additionalThemes_.push_back(std::make_shared<Theme>(tmpTheme));
+                else
+                    availableThemes_.push_back(std::make_shared<Theme>(tmpTheme));
             }
         }
 
@@ -152,6 +221,9 @@ namespace Styling
                         {
                             for (const auto& theme : availableThemes_)
                                 addWallpaper(theme, wallpaperNodeIt);
+
+                            for (const auto& theme : additionalThemes_)
+                                addWallpaper(theme, wallpaperNodeIt);
                             break;
                         }
                         else if (const auto& theme = getTheme(id))
@@ -166,6 +238,7 @@ namespace Styling
                 }
             }
         }
+        setThemesAreLoaded(true);
     }
 
     void ThemesContainer::unserializeUserWallpapers(core::coll_helper _collection)
@@ -184,8 +257,7 @@ namespace Styling
 
             for (const auto& theme : availableThemes_)
             {
-                auto wp = theme->getWallpaper(id);
-                if (!wp)
+                if (auto wp = theme->getWallpaper(id); !wp)
                 {
                     wp = createUserWallpaper(theme, id);
                     theme->addWallpaper(wp);
@@ -282,7 +354,7 @@ namespace Styling
             {
                 if (globalTheme.isEmpty() && isAppInDarkMode())
                 {
-                    const auto it = std::find_if(availableThemes_.begin(), availableThemes_.end(), [](const auto& t) { return t->getId() == darkThemeId(); });
+                    const auto it = std::find_if(availableThemes_.begin(), availableThemes_.end(), [this](const auto& t) { return t->getId() == darkThemeId(); });
                     if (it != availableThemes_.end())
                     {
                         setCurrentTheme((*it)->getId(), GuiCall::no);
@@ -307,8 +379,8 @@ namespace Styling
 
         for (const auto& wp : getAllAvailableWallpapers())
         {
-            const auto id = wp->getId();
-            if (id.isUser() && std::find(tiledWP.begin(), tiledWP.end(), id.id_) != tiledWP.end())
+            const auto& id = wp->getId();
+            if (id.isUser() && std::find(tiledWP.begin(), tiledWP.end(), id.id()) != tiledWP.end())
                 wp->setTiled(true);
         }
 
@@ -328,7 +400,7 @@ namespace Styling
 
         for (const auto& wall : allWallpapers)
         {
-            const auto wpId = wall->getId().id_;
+            const auto wpId = wall->getId().id();
             if (!wall->getId().isUser() && !wpIds.count(wpId) && wall->hasWallpaper())
             {
                 Ui::gui_coll_helper collWall(coll->create_collection(), true);
@@ -367,7 +439,7 @@ namespace Styling
         Ui::gui_coll_helper clColl(Ui::GetDispatcher()->create_collection(), true);
 
         if (currentTheme_ && currentWallpaper_ && currentWallpaper_->getId() != currentTheme_->getDefaultWallpaperId())
-            clColl.set_value_as_qstring(get_global_wp_id_setting_field(), currentWallpaper_->getId().id_);
+            clColl.set_value_as_qstring(get_global_wp_id_setting_field(), currentWallpaper_->getId().id());
 
         Ui::GetDispatcher()->post_message_to_core("themes/default/wallpaper/id", clColl.get());
     }
@@ -383,7 +455,7 @@ namespace Styling
             QString result;
 
             for (const auto& [aimId, wp] : contactWallpapers_)
-                result.append(ql1s("%1:%2,").arg(aimId, wp->getId().id_));
+                result.append(ql1s("%1:%2,").arg(aimId, wp->getId().id()));
 
             if (!result.isEmpty())
                 result.chop(1);
@@ -415,7 +487,7 @@ namespace Styling
             for (const auto& [aimId, wp] : contactWallpapers_)
             {
                 if (wp->getId().isUser() && wp->isTiled())
-                    result.append(wp->getId().id_ % ql1c(','));
+                    result.append(wp->getId().id() % ql1c(','));
             }
 
             if (!result.isEmpty())
@@ -488,8 +560,6 @@ namespace Styling
 
     WallpaperPtr ThemesContainer::getThemeDefaultWallpaper() const
     {
-        im_assert(currentTheme_);
-
         if (currentTheme_)
         {
             im_assert(currentTheme_->getDefaultWallpaperId().isValid());
@@ -507,14 +577,20 @@ namespace Styling
     {
         if (const auto& theme = getTheme(_themeName))
         {
-            const auto changingCurTheme = !!currentTheme_;
-            currentTheme_ = theme;
+            const bool needToChangeWallpaper = !!currentTheme_;
+            bool needToSetDefaultWallpaper = false;
+            if (const auto& wp = getThemeDefaultWallpaper(); wp && needToChangeWallpaper)
+                needToSetDefaultWallpaper = currentWallpaper_->getId() == wp->getId();
 
+            currentTheme_ = theme;
             {
                 QSignalBlocker sb(this);
 
-                if (const auto& wp = getThemeDefaultWallpaper(); wp && changingCurTheme)
-                    setGlobalWallpaper(wp->getId(), GuiCall::yes);
+                if (needToChangeWallpaper)
+                {
+                    if (const auto& wp = needToSetDefaultWallpaper ? getThemeDefaultWallpaper() : currentWallpaper_)
+                        setGlobalWallpaper(wp->getId(), GuiCall::yes);
+                }
 
                 for (const auto& [aimId, wp] : contactWallpapers_)
                     setContactWallpaper(aimId, wp->getId(), GuiCall::no);
@@ -636,6 +712,14 @@ namespace Styling
         if (it != availableThemes_.end())
             return *it;
 
+        const auto itAdditional = std::find_if(additionalThemes_.begin(), additionalThemes_.end(), [&_themeName](const auto& _theme)
+        {
+            return _theme->getId() == _themeName;
+        });
+
+        if (itAdditional != additionalThemes_.end())
+            return *itAdditional;
+
         return nullptr;
     }
 
@@ -645,6 +729,23 @@ namespace Styling
         res.reserve(availableThemes_.size());
 
         for (const auto& t : availableThemes_)
+        {
+            const auto id = t->getId();
+            const auto translatedName = QApplication::translate("appearance", t->getName().toUtf8().constData());
+            const QString name =  build::is_debug() ? translatedName % u" [" % id % u']' : translatedName;
+            res.emplace_back(t->getId(), !name.isEmpty() ? name : id);
+        }
+
+        im_assert(!res.empty());
+        return res;
+    }
+
+    std::vector<std::pair<QString, QString>> ThemesContainer::getAdditionalThemes() const
+    {
+        std::vector<std::pair<QString, QString>> res;
+        res.reserve(additionalThemes_.size());
+
+        for (const auto& t : additionalThemes_)
         {
             const auto id = t->getId();
             const auto translatedName = QApplication::translate("appearance", t->getName().toUtf8().constData());
@@ -693,9 +794,9 @@ namespace Styling
             im_assert(wall);
             if (wall)
             {
-                const auto id = wall->getId();
+                const auto& id = wall->getId();
                 if (!id.isUser())
-                    result[id.id_]++;
+                    result[id.id()]++;
             }
         }
 
@@ -747,7 +848,7 @@ namespace Styling
         if (!_wallpaper)
             return;
 
-        const auto id = _wallpaper->getId();
+        const auto& id = _wallpaper->getId();
         const auto image = _wallpaper->getWallpaperImage();
 
         for (const auto& theme : availableThemes_)
@@ -766,7 +867,7 @@ namespace Styling
         if (!image.isNull())
         {
             Ui::gui_coll_helper clColl(Ui::GetDispatcher()->create_collection(), true);
-            clColl.set_value_as_qstring("id", id.id_);
+            clColl.set_value_as_qstring("id", id.id());
 
             QByteArray imageData;
             QBuffer buffer(&imageData);
@@ -828,7 +929,7 @@ namespace Styling
         _wallpaper->setImageRequested(true);
 
         Ui::gui_coll_helper clColl(Ui::GetDispatcher()->create_collection(), true);
-        clColl.set_value_as_qstring("id", _wallpaper->getId().id_);
+        clColl.set_value_as_qstring("id", _wallpaper->getId().id());
 
         Ui::GetDispatcher()->post_message_to_core("themes/wallpaper/get", clColl.get());
     }
@@ -847,7 +948,7 @@ namespace Styling
         _wallpaper->setPreviewRequested(true);
 
         Ui::gui_coll_helper clColl(Ui::GetDispatcher()->create_collection(), true);
-        clColl.set_value_as_qstring("id", _wallpaper->getId().id_);
+        clColl.set_value_as_qstring("id", _wallpaper->getId().id());
 
         Ui::GetDispatcher()->post_message_to_core("themes/wallpaper/preview/get", clColl.get());
     }
@@ -922,5 +1023,15 @@ namespace Styling
     QString getTryOnAccount()
     {
         return qsl("~tryonaccount~");
+    }
+
+    bool getThemesAreLoaded()
+    {
+        return ThemesContainer::themesAreLoaded_;
+    }
+
+    void setThemesAreLoaded(bool v)
+    {
+        ThemesContainer::themesAreLoaded_ = v;
     }
 }

@@ -60,12 +60,18 @@ namespace
     const QPixmap& getMentionIcon(QColor _color)
     {
         static Utils::ColoredCache<MentionIcon> cache;
+        static Styling::ThemeChecker checker;
+        if (checker.checkAndUpdateHash())
+            cache.clear();
         return cache[_color].icon_;
     }
 
     const QPixmap& getThreadIcon(QColor _color)
     {
         static Utils::ColoredCache<ThreadIcon> cache;
+        static Styling::ThemeChecker checker;
+        if (checker.checkAndUpdateHash())
+            cache.clear();
         return cache[_color].icon_;
     }
 }

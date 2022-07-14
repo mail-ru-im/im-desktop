@@ -13,22 +13,16 @@
 #define VOIP_VIDEO_PANEL_BTN_SIZE        (Utils::scale_value(36))
 
 Ui::IncomingCallControls::IncomingCallControls(QWidget* _parent)
-    : BaseBottomVideoPanel(_parent)
+    : BaseBottomVideoPanel(_parent, Qt::Widget)
     , parent_(_parent)
     , rootWidget_(nullptr)
 {
-#ifndef __linux__
     setStyleSheet(Utils::LoadStyle(qsl(":/qss/incoming_call")));
-#else
-    setStyleSheet(Utils::LoadStyle(qsl(":/qss/incoming_call_linux")));
-#endif
 
     setObjectName(qsl("incomingCallControls"));
 
-#ifndef __linux__
     setAttribute(Qt::WA_NoSystemBackground, true);
     setAttribute(Qt::WA_TranslucentBackground, true);
-#endif
 
     QVBoxLayout* rootLayout = Utils::emptyVLayout();
     rootLayout->setAlignment(Qt::AlignVCenter);
@@ -163,6 +157,8 @@ Ui::IncomingCallControls::IncomingCallControls(QWidget* _parent)
         layoutTarget->addSpacing(leftPart - rightPart);
 
     layoutTarget->addStretch(1);
+
+    setFixedSize(rootLayout->minimumSize());
 }
 
 Ui::IncomingCallControls::~IncomingCallControls() = default;
@@ -182,39 +178,14 @@ void Ui::IncomingCallControls::_onVideo()
     Q_EMIT onVideo();
 }
 
-void Ui::IncomingCallControls::changeEvent(QEvent* _e)
-{
-    QWidget::changeEvent(_e);
-    if (_e->type() == QEvent::ActivationChange)
-    {
-        if (isActiveWindow() || rootWidget_->isActiveWindow())
-        {
-            if (parent_)
-            {
-                //QSignalBlocker sb(parent_);
-                parent_->raise();
-                raise();
-            }
-        }
-    }
-}
-
 Ui::VoipSysPanelHeader::VoipSysPanelHeader(QWidget* _parent, int maxAvalibleWidth)
-    : MoveablePanel(_parent)
+    : MoveablePanel(_parent, Qt::Widget)
     , nameAndStatusContainer_(nullptr)
     , rootWidget_(nullptr)
 {
-#ifdef __linux__
-    setStyleSheet(Utils::LoadStyle(qsl(":/qss/video_panel_linux")));
-#else
     setStyleSheet(Utils::LoadStyle(qsl(":/qss/video_panel")));
-#endif
 
-#ifdef __APPLE__
-    setProperty("VoipPanelHeaderMac", true);
-#else
     setProperty("VoipPanelHeader", true);
-#endif
 
     setAttribute(Qt::WA_NoSystemBackground, true);
     setAttribute(Qt::WA_TranslucentBackground, true);
@@ -249,6 +220,8 @@ Ui::VoipSysPanelHeader::VoipSysPanelHeader(QWidget* _parent, int maxAvalibleWidt
     layout->addSpacing(Utils::scale_value(4));
     layout->addWidget(nameAndStatusContainer_, 0, Qt::AlignHCenter);
     layout->addSpacing(Utils::scale_value(4));
+
+    setFixedSize(rootLayout->minimumSize());
 }
 
 Ui::VoipSysPanelHeader::~VoipSysPanelHeader() = default;

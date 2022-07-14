@@ -22,8 +22,6 @@ using namespace core;
 
 namespace
 {
-    constexpr auto default_http_connect_timeout = std::chrono::seconds(5);
-    constexpr auto default_http_execute_timeout = std::chrono::seconds(8);
     constexpr auto default_max_get_url_length = 3500u;
     constexpr auto uri_too_long_code = 414;
 }
@@ -36,8 +34,8 @@ http_request_simple::http_request_simple(proxy_settings _proxy_settings, std::st
     header_(std::make_shared<tools::binary_stream>()),
     is_time_condition_(false),
     last_modified_time_(0),
-    connect_timeout_(default_http_connect_timeout),
-    timeout_(default_http_execute_timeout),
+    connect_timeout_(core::configuration::get_app_config().get_curl_connection_timeout()),
+    timeout_(core::configuration::get_app_config().get_curl_timeout()),
     range_from_(-1),
     range_to_(-1),
     is_post_form_(false),

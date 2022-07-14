@@ -5,10 +5,11 @@
 #include "../../utils/features.h"
 #include "../../utils/InterConnector.h"
 #include "../containers/StatusContainer.h"
+#include "Common.h"
 
 namespace Logic
 {
-    std::unique_ptr<CallsModel> g_calls_model;
+    QObjectUniquePtr<CallsModel> g_calls_model;
 
     CallsModel::CallsModel(QObject* _parent)
         : CustomAbstractListModel(_parent)
@@ -322,7 +323,7 @@ namespace Logic
     CallsModel* GetCallsModel()
     {
         if (!g_calls_model)
-            g_calls_model = std::make_unique<CallsModel>(nullptr);
+            g_calls_model = makeUniqueQObjectPtr<CallsModel>();
 
         return g_calls_model.get();
     }

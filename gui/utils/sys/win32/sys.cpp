@@ -4,8 +4,8 @@
 
 namespace System
 {
-    void launchApplication(const QString& _path)
+    void launchApplication(const QString& _path, const QStringList& _arguments)
     {
-        QProcess::startDetached(ql1c('\"') % _path % ql1c('\"'));
+        QProcess::startDetached(ql1c('\"') % _path % ql1c('\"'), _arguments);
     }
 }

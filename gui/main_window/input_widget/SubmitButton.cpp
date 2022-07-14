@@ -4,6 +4,7 @@
 #include "CircleHover.h"
 #include "utils/utils.h"
 #include "styles/ThemeParameters.h"
+#include "styles/ThemesContainer.h"
 #include "controls/TooltipWidget.h"
 
 #include "media/permissions/MediaCapturePermissions.h"
@@ -128,6 +129,7 @@ namespace Ui
                 currentIcon_.normal_ = nextIcon_;
                 update();
             });
+        connect(&Styling::getThemesContainer(), &Styling::ThemesContainer::globalThemeChanged, this, &SubmitButton::onThemeChanged);
     }
 
     SubmitButton::~SubmitButton() = default;
@@ -428,31 +430,31 @@ namespace Ui
         {
         case State::Ptt:
         {
-            static const IconStates iconsDefault =
+            const IconStates pttIconsDefault =
             {
                 makePttIcon(Styling::InputButtons::Default::defaultColor()),
                 makePttIcon(Styling::InputButtons::Default::hoverColor()),
                 makePttIcon(Styling::InputButtons::Default::pressedColor())
             };
-            static const IconStates iconsCustom =
+            const IconStates pttIconsCustom =
             {
                 makePttIcon(Styling::InputButtons::Alternate::defaultColor()),
                 makePttIcon(Styling::InputButtons::Alternate::hoverColor()),
                 makePttIcon(Styling::InputButtons::Alternate::pressedColor())
             };
 
-            return alternate ? iconsCustom : iconsDefault;
+            return alternate ? pttIconsCustom : pttIconsDefault;
         }
 
         case State::Send:
         {
-            static const IconStates iconsDefault =
+            const IconStates iconsDefault =
             {
                 makeSendIcon(Styling::StyleVariable::PRIMARY, InputStyleMode::Default),
                 makeSendIcon(Styling::StyleVariable::PRIMARY_HOVER, InputStyleMode::Default),
                 makeSendIcon(Styling::StyleVariable::PRIMARY_ACTIVE, InputStyleMode::Default)
             };
-            static const IconStates iconsCustom =
+            const IconStates iconsCustom =
             {
                 makeSendIcon(Styling::StyleVariable::PRIMARY, InputStyleMode::CustomBg),
                 makeSendIcon(Styling::StyleVariable::PRIMARY_HOVER, InputStyleMode::CustomBg),
@@ -464,7 +466,7 @@ namespace Ui
 
         case State::Edit:
         {
-            static const IconStates icons =
+            const IconStates icons =
             {
                 makeEditIcon(Styling::StyleVariable::PRIMARY),
                 makeEditIcon(Styling::StyleVariable::PRIMARY_HOVER),
@@ -507,6 +509,11 @@ namespace Ui
     {
         if (_v != isUnderLongPress_)
             isUnderLongPress_ = _v;
+    }
+
+    void SubmitButton::onThemeChanged()
+    {
+        setState(getState(), StateTransition::Force);
     }
 
     bool SubmitButton::containsCursorUnder() const

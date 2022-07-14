@@ -11,11 +11,14 @@ namespace Styling
 {
     using ThemePtr = std::shared_ptr<class Theme>;
     using WallpaperPtr = std::shared_ptr<class ThemeWallpaper>;
+    struct ThemeColorKey;
+    class BaseStyleSheetGenerator;
 
     class ThemeParameters
     {
     public:
         ThemeParameters(ThemePtr _theme, WallpaperPtr _wall) : theme_(_theme), wallpaper_(_wall) { im_assert(_theme); }
+        size_t idHash() const;
 
         [[nodiscard]] QColor getColor(const StyleVariable _var) const;
         [[nodiscard]] QColor getColor(const StyleVariable _var, double alpha) const;
@@ -38,34 +41,35 @@ namespace Styling
 
         [[nodiscard]] bool isBorderNeeded() const noexcept;
 
-        [[nodiscard]] QString getBackgroundCommonQss() const;
-
-        [[nodiscard]] QString getLineEditCommonQss(bool _isError = false, int _height = 48) const;
+        [[nodiscard]] QString getLineEditCommonQss(bool _isError = false, int _height = 48, const StyleVariable _var = StyleVariable::BASE_BRIGHT, const double _alpha = 1.0) const;
         [[nodiscard]] QString getTextLineEditCommonQss(bool _isError = false, int _height = 48) const;
         [[nodiscard]] QString getTextLineEditCommonQssNoHeight(bool _isError = false) const;
-        [[nodiscard]] QString getLineEditDisabledQss(int _height = 48) const;
-        [[nodiscard]] QString getLineEditCustomQss(const QColor& _lineFocusColor, const QColor& _lineNoFocusColor = Qt::transparent, int _height = 48) const;
+        [[nodiscard]] QString getLineEditDisabledQss(int _height = 48, const StyleVariable _var = StyleVariable::BASE_PRIMARY, const double _alpha = 1.0) const;
+        [[nodiscard]] QString getLineEditCustomQss(StyleVariable _lineFocusColor, StyleVariable _lineNoFocusColor, int _height = 48) const;
 
-        [[nodiscard]] QString getTextEditCommonQss(bool _hasBorder = false) const;
+        [[nodiscard]] QString getTextEditBoxCommonQss() const;
+        [[nodiscard]] QString getTextEditCommonQss(bool _hasBorder = false, const StyleVariable _var = StyleVariable::BASE_BRIGHT) const;
         [[nodiscard]] QString getTextEditBadQss() const;
 
-        [[nodiscard]] QString getContextMenuQss(int _itemHeight, int _paddingLeft, int _paddingRight, int _paddingIcon) const;
-        [[nodiscard]] QString getContextMenuDarkQss(int _itemHeight, int _paddingLeft, int _paddingRight, int _paddingIcon) const;
-        [[nodiscard]] QString getFlatMenuQss(const StyleVariable _borderColor) const;
+        [[nodiscard]] std::unique_ptr<BaseStyleSheetGenerator> getContextMenuQss(int _itemHeight, int _paddingLeft, int _paddingRight, int _paddingIcon) const;
+        [[nodiscard]] std::unique_ptr<BaseStyleSheetGenerator> getContextMenuDarkQss(int _itemHeight, int _paddingLeft, int _paddingRight, int _paddingIcon) const;
+        [[nodiscard]] std::unique_ptr<BaseStyleSheetGenerator> getFlatMenuQss(StyleVariable _borderColor) const;
 
         [[nodiscard]] QString getStickersQss() const;
         [[nodiscard]] QString getSmilesQss() const;
 
         [[nodiscard]] QString getGeneralSettingsQss() const;
         [[nodiscard]] QString getContactUsQss() const;
-        [[nodiscard]] QString getComboBoxQss() const;
+        [[nodiscard]] std::unique_ptr<BaseStyleSheetGenerator> getComboBoxQss() const;
 
         [[nodiscard]] QString getTitleQss() const;
-        [[nodiscard]] QString getLoginPageQss() const;
+        [[nodiscard]] std::unique_ptr<BaseStyleSheetGenerator> getLoginPageQss() const;
 
-        [[nodiscard]] QString getScrollBarQss(const int _width = 8, const int _margins = 4) const;
-        [[nodiscard]] QString getPhoneComboboxQss() const;
+        [[nodiscard]] std::unique_ptr<BaseStyleSheetGenerator> getScrollBarQss(const int _width = 8, const int _margins = 4) const;
+        [[nodiscard]] QString getVerticalScrollBarSimpleQss() const;
+        [[nodiscard]] std::unique_ptr<BaseStyleSheetGenerator> getPhoneComboboxQss() const;
 
+        [[nodiscard]] Styling::ThemeColorKey getPrimaryTabFocusColorKey() const;
         [[nodiscard]] QColor getPrimaryTabFocusColor() const;
 
         [[nodiscard]] QColor getAppTitlebarColor() const;
@@ -78,21 +82,24 @@ namespace Styling
         WallpaperPtr wallpaper_;
     };
 
-    [[nodiscard]] ThemeParameters getParameters(const QString& _aimId = QString());
+    [[nodiscard]] ThemeParameters getParameters(const QString& _aimId = {});
 
     namespace Scrollbar
     {
         QColor getScrollbarBackgroundColor();
         QColor getScrollbarButtonColor();
         QColor getScrollbarButtonHoveredColor();
-    }
+    } // namespace Scrollbar
 
     namespace Buttons
     {
         void setButtonDefaultColors(Ui::CustomButton* _button);
+        Styling::ThemeColorKey defaultColorKey();
         QColor defaultColor();
+        Styling::ThemeColorKey hoverColorKey();
         QColor hoverColor();
+        Styling::ThemeColorKey pressedColorKey();
         QColor pressedColor();
-        QColor activeColor();
-    }
-}
+        Styling::ThemeColorKey activeColorKey();
+    } // namespace Buttons
+} // namespace Styling

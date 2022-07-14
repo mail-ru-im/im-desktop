@@ -47,7 +47,7 @@ namespace Data
 
         bool isEmpty() const noexcept { return aimsid_.isEmpty(); }
 
-        const QString& getMiniAppAimsid(const QString& _miniAppId) const;
+        const QString& getMiniAppAimsid(const QString& _miniAppId, bool _canUseMainAimisid = true) const;
 
         void clearMiniapps() { miniApps_.clear(); }
 

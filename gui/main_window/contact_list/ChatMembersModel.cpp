@@ -245,6 +245,11 @@ namespace Logic
         loadImpl(MembersMode::All);
     }
 
+    void ChatMembersModel::loadThreadSubscribers()
+    {
+        loadImpl(MembersMode::ThreadSubscribers);
+    }
+
     void ChatMembersModel::loadBlocked()
     {
         loadImpl(MembersMode::Blocked);
@@ -299,7 +304,8 @@ namespace Logic
     void ChatMembersModel::loadChatMembersPage()
     {
         Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-        collection.set_value_as_qstring("aimid", AimId_);
+        const auto isThread = mode_ == MembersMode::ThreadSubscribers;
+        collection.set_value_as_qstring(isThread ? "thread_id" : "aimid", AimId_);
         collection.set_value_as_uint("page_size", std::max(Logic::MembersPageSize, static_cast<unsigned int>(countFirstCheckedMembers_)));
 
         if (cursorNextPage_.isEmpty())
@@ -312,14 +318,16 @@ namespace Logic
             collection.set_value_as_qstring("cursor", cursorNextPage_);
         }
 
-        sequences_[mode_] = Ui::GetDispatcher()->post_message_to_core("chats/members/get", collection.get());
+        const auto message = isThread ? "threads/subscribers/get" : "chats/members/get";
+        sequences_[mode_] = Ui::GetDispatcher()->post_message_to_core(message, collection.get());
         isDoingRequest_ = true;
     }
 
     void ChatMembersModel::searchChatMembersPage()
     {
         Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-        collection.set_value_as_qstring("aimid", AimId_);
+        const auto isThread = mode_ == MembersMode::ThreadSubscribers;
+        collection.set_value_as_qstring(isThread ? "thread_id" : "aimid", AimId_);
         collection.set_value_as_uint("page_size", Logic::MembersPageSize);
 
         if (cursorNextPage_.isEmpty())
@@ -332,7 +340,8 @@ namespace Logic
             collection.set_value_as_qstring("cursor", cursorNextPage_);
         }
 
-        sequences_[mode_] = Ui::GetDispatcher()->post_message_to_core("chats/members/search", collection.get());
+        const auto message = isThread ? "threads/subscribers/search" : "chats/members/search";
+        sequences_[mode_] = Ui::GetDispatcher()->post_message_to_core(message, collection.get());
         isDoingRequest_ = true;
     }
 
@@ -379,6 +388,30 @@ namespace Logic
 
             if (!firstCheckedInOrder.empty())
                 Q_EMIT containsPreCheckedItems(firstCheckedInOrder);
+        }
+    }
+
+    void ChatMembersModel::updateInfo(const Data::ThreadInfo* _info, bool _invalidateCanRemoveTill)
+    {
+        setAimId(_info->threadId_);
+        membersCount_ = _info->subscribersCount_;
+
+        clearResults();
+        if (mode_ == MembersMode::All)
+        {
+            for (const auto& member : _info->subscribers_)
+            {
+                if (isIgnoredMember(member.AimId_))
+                    continue;
+
+                auto resItem = std::make_shared<Data::SearchResultChatMember>();
+                resItem->info_ = member;
+                if (_invalidateCanRemoveTill)
+                    resItem->info_.canRemoveTill_ = {};
+                results_.push_back(std::move(resItem));
+            }
+
+            Q_EMIT dataChanged(index(0), index(rowCount()));
         }
     }
 
@@ -434,6 +467,8 @@ namespace Logic
             return u"blocked";
         case MembersMode::YourInvites:
             return u"invitations";
+        case MembersMode::ThreadSubscribers:
+            return u"thread_subscribers";
         }
         return {};
     }

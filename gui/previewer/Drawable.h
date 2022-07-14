@@ -130,22 +130,14 @@ public:
 
     void setTextUnit(TextRendering::TextUnitPtr _textUnit) { textUnit_ = std::move(_textUnit); }
 
-    template <typename... Args>
-    void initTextUnit(Args&&... args)
-    {
-        if (textUnit_)
-        {
-            textUnit_->init(std::forward<Args>(args)...);
-            textUnit_->getHeight(textUnit_->desiredWidth());
-        }
-    }
+    void initTextUnit(const TextRendering::TextUnit::InitializeParameters& _params);
 
     void setVerticalPosition(TextRendering::VerPosition _pos) { pos_ = _pos; }
 
-    void setDefaultColor(const QColor& _color);
-    void setHoveredColor(const QColor& _color) { hoveredColor_ = _color; }
-    void setPressedColor(const QColor& _color) { pressedColor_ = _color; }
-    void setDisabledColor(const QColor& _color) { disabledColor_ = _color; }
+    void setDefaultColor(const Styling::ColorParameter& _color);
+    void setHoveredColor(const Styling::ColorParameter& _color) { hoveredColor_ = _color; }
+    void setPressedColor(const Styling::ColorParameter& _color) { pressedColor_ = _color; }
+    void setDisabledColor(const Styling::ColorParameter& _color) { disabledColor_ = _color; }
 
     void setUnderline(bool _enable);
     int desiredWidth();
@@ -153,16 +145,15 @@ public:
     QString getText() const;
 
 protected:
-
     void updateColor();
 
-    bool clickable_ = false;
-    QColor defaultColor_;
-    QColor hoveredColor_;
-    QColor pressedColor_;
-    QColor disabledColor_;
+    Styling::ColorParameter defaultColor_;
+    Styling::ColorParameter hoveredColor_;
+    Styling::ColorParameter pressedColor_;
+    Styling::ColorParameter disabledColor_;
     TextRendering::TextUnitPtr textUnit_;
     TextRendering::VerPosition pos_ = TextRendering::VerPosition::TOP;
+    bool clickable_ = false;
 };
 
 class BDrawable : virtual public Drawable // Drawable with background
@@ -173,11 +164,11 @@ public:
 
     virtual void setBorderRadius(int _radius) { borderRadius_ = _radius; }
 
-    int borderRadius_ = 0;
+    Styling::ColorContainer background_;
+    Styling::ColorContainer hoveredBackground_;
+    Styling::ColorContainer pressedBackground_;
 
-    QColor background_;
-    QColor hoveredBackground_;
-    QColor pressedBackground_;
+    int borderRadius_ = 0;
 };
 
 class BButton : public Button, public BDrawable

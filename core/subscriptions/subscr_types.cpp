@@ -18,6 +18,10 @@ namespace core::wim::subscriptions
             return "threadUpdate";
         case subscriptions::type::task:
             return "task";
+        case subscriptions::type::tasks_counter:
+            return "unreadTasksCount";
+        case subscriptions::type::mails_counter:
+            return "unreadEmailsCount";
         default:
             break;
         }
@@ -38,6 +42,10 @@ namespace core::wim::subscriptions
             return subscriptions::type::thread;
         else if (_type_string == "task")
             return subscriptions::type::task;
+        else if (_type_string == "unreadTasksCount")
+            return subscriptions::type::tasks_counter;
+        else if (_type_string == "unreadEmailsCount")
+            return subscriptions::type::mails_counter;
 
         im_assert(!"unsupported subscription event type");
         return subscriptions::type::invalid;

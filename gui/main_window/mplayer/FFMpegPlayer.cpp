@@ -3,6 +3,7 @@
 #include "utils/utils.h"
 #include "utils/InterConnector.h"
 #include "main_window/sounds/SoundsManager.h"
+#include "../contact_list/Common.h"
 
 #include "FrameRenderer.h"
 
@@ -91,9 +92,9 @@ namespace Ui
 
     constexpr int64_t empty_pts = -1000000;
 
-    bool ThreadMessagesQueue::getMessage(ThreadMessage& _message, std::function<bool()> _isQuit, int32_t _wait_timeout)
+    bool ThreadMessagesQueue::getMessage(ThreadMessage& _message, std::function<bool()> _isQuit, int32_t _waitTimeout)
     {
-        condition_.tryAcquire(1, _wait_timeout);
+        condition_.tryAcquire(1, _waitTimeout);
         decltype(messages_) tmpList;
 
         {
@@ -110,9 +111,9 @@ namespace Ui
         return true;
     }
 
-    bool ThreadMessagesQueue::getAllMessages(ThreadMessageList& _messages, std::function<bool()> _isQuit, int32_t _wait_timeout)
+    bool ThreadMessagesQueue::getAllMessages(ThreadMessageList& _messages, std::function<bool()> _isQuit, int32_t _waitTimeout)
     {
-        condition_.tryAcquire(1, _wait_timeout);
+        condition_.tryAcquire(1, _waitTimeout);
         decltype(messages_) tmpList;
         {
             std::scoped_lock lock(queue_mutex_);
@@ -125,7 +126,7 @@ namespace Ui
         return true;
     }
 
-    void ThreadMessagesQueue::pushMessage(const ThreadMessage& _message, bool _forward, bool _clear_others)
+    void ThreadMessagesQueue::pushMessage(const ThreadMessage& _message, bool _forward, bool _clearOthers)
     {
         decltype(messages_) tmpList;
         tmpList.push_back(_message);
@@ -142,7 +143,7 @@ namespace Ui
 
             if (!skipMessage)
             {
-                if (_clear_others)
+                if (_clearOthers)
                     messages_.remove_if([id = _message.videoId_](const auto& x) { return x.videoId_ == id; });
 
                 messages_.splice(_forward ? messages_.cbegin() : messages_.cend(), tmpList, tmpList.cbegin());
@@ -1444,14 +1445,14 @@ namespace Ui
         postVideoThreadMessage(msg, false);
     }
 
-    void VideoContext::postVideoThreadMessage(const ThreadMessage& _message, bool _forward, bool _clear_others)
+    void VideoContext::postVideoThreadMessage(const ThreadMessage& _message, bool _forward, bool _clearOthers)
     {
-        videoThreadMessagesQueue_.pushMessage(_message, _forward, _clear_others);
+        videoThreadMessagesQueue_.pushMessage(_message, _forward, _clearOthers);
     }
 
-    void VideoContext::postDemuxThreadMessage(const ThreadMessage& _message, bool _forward, bool _clear_others)
+    void VideoContext::postDemuxThreadMessage(const ThreadMessage& _message, bool _forward, bool _clearOthers)
     {
-        demuxThreadMessageQueue_.pushMessage(_message, _forward, _clear_others);
+        demuxThreadMessageQueue_.pushMessage(_message, _forward, _clearOthers);
     }
 
     bool VideoContext::getDemuxThreadMessage(ThreadMessage& _message, int32_t _waitTimeout)
@@ -1459,9 +1460,9 @@ namespace Ui
         return demuxThreadMessageQueue_.getMessage(_message, [this] {return isQuit(); }, _waitTimeout);
     }
 
-    void VideoContext::postAudioThreadMessage(const ThreadMessage& _message, bool _forward, bool _clear_others)
+    void VideoContext::postAudioThreadMessage(const ThreadMessage& _message, bool _forward, bool _clearOthers)
     {
-        audioThreadMessageQueue_.pushMessage(_message, _forward, _clear_others);
+        audioThreadMessageQueue_.pushMessage(_message, _forward, _clearOthers);
     }
 
     bool VideoContext::getAudioThreadMessage(ThreadMessage& _message, int32_t _waitTimeout)
@@ -3393,14 +3394,14 @@ namespace Ui
     // MediaContainer
     //////////////////////////////////////////////////////////////////////////
 
-    std::unique_ptr<MediaContainer> g_media_container;
+    QObjectUniquePtr<MediaContainer> g_media_container;
 
     MediaContainer* getMediaContainer()
     {
         if (!g_media_container)
         {
             Utils::ensureMainThread();
-            g_media_container = std::make_unique<MediaContainer>();
+            g_media_container = makeUniqueQObjectPtr<MediaContainer>();
         }
 
         return g_media_container.get();
@@ -3408,8 +3409,7 @@ namespace Ui
 
     void ResetMediaContainer()
     {
-        if (g_media_container)
-            g_media_container.reset();
+        g_media_container.reset();
     }
 
     MediaContainer::MediaContainer()
@@ -3516,9 +3516,9 @@ namespace Ui
         return ctx_.getDuration(_media);
     }
 
-    void MediaContainer::postVideoThreadMessage(const ThreadMessage& _message, bool _forward, bool _clear_others)
+    void MediaContainer::postVideoThreadMessage(const ThreadMessage& _message, bool _forward, bool _clearOthers)
     {
-        ctx_.postVideoThreadMessage(_message, _forward, _clear_others);
+        ctx_.postVideoThreadMessage(_message, _forward, _clearOthers);
     }
 
     void MediaContainer::updateVideoScaleSize(const uint32_t _mediaId, const QSize _sz)
@@ -3526,14 +3526,14 @@ namespace Ui
         ctx_.updateScaledVideoSize(_mediaId, _sz);
     }
 
-    void MediaContainer::postDemuxThreadMessage(const ThreadMessage& _message, bool _forward, bool _clear_others)
+    void MediaContainer::postDemuxThreadMessage(const ThreadMessage& _message, bool _forward, bool _clearOthers)
     {
-        ctx_.postDemuxThreadMessage(_message, _forward, _clear_others);
+        ctx_.postDemuxThreadMessage(_message, _forward, _clearOthers);
     }
 
-    void MediaContainer::postAudioThreadMessage(const ThreadMessage& _message, bool _forward, bool _clear_others)
+    void MediaContainer::postAudioThreadMessage(const ThreadMessage& _message, bool _forward, bool _clearOthers)
     {
-        ctx_.postAudioThreadMessage(_message, _forward, _clear_others);
+        ctx_.postAudioThreadMessage(_message, _forward, _clearOthers);
     }
 
     void MediaContainer::clearMessageQueue()

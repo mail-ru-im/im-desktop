@@ -280,8 +280,8 @@ namespace Logic
 
     void updateIgnoredModel(const QVector<QString>& _ignoredList)
     {
-        Logic::getContactListModel()->removeContactsFromModel(_ignoredList, false);
         getIgnoreModel()->updateMembers(_ignoredList);
+        Logic::getContactListModel()->removeContactsFromModel(_ignoredList, false);
     }
 
     IgnoreMembersModel* getIgnoreModel()

@@ -10,19 +10,20 @@ namespace
 {
     const auto buttonSize = QSize(20, 20);
 
-    Utils::SvgLayers getLayers(const Ui::CheckBox::Activity _state)
+    Utils::ColorParameterLayers getLayers(const Ui::CheckBox::Activity _state)
     {
-        const auto bgColor = (_state == Ui::CheckBox::Activity::NORMAL || _state == Ui::CheckBox::Activity::HOVER)
-            ? Qt::transparent
-            : Styling::getParameters().getColor(
+        const Styling::ColorParameter bgColor = (_state == Ui::CheckBox::Activity::NORMAL || _state == Ui::CheckBox::Activity::HOVER)
+            ? Styling::ColorParameter{ Qt::transparent }
+            : Styling::ColorParameter{ Styling::ThemeColorKey {
             (_state == Ui::CheckBox::Activity::ACTIVE)
-                ? Styling::StyleVariable::PRIMARY : Styling::StyleVariable::BASE_SECONDARY);
+                ? Styling::StyleVariable::PRIMARY : Styling::StyleVariable::BASE_SECONDARY } };
 
-        const auto borderColor = (_state == Ui::CheckBox::Activity::NORMAL || _state == Ui::CheckBox::Activity::HOVER)
-            ? Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY)
-            : Qt::transparent;
+        const Styling::ColorParameter borderColor = (_state == Ui::CheckBox::Activity::NORMAL || _state == Ui::CheckBox::Activity::HOVER)
+            ? Styling::ColorParameter{ Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY } }
+            : Styling::ColorParameter{ Qt::transparent };
 
-        const auto tickColor = (_state == Ui::CheckBox::Activity::NORMAL) ? Qt::transparent : Styling::getParameters().getColor((_state == Ui::CheckBox::Activity::HOVER ? Styling::StyleVariable::BASE_SECONDARY : Styling::StyleVariable::TEXT_SOLID_PERMANENT));
+            const Styling::ColorParameter tickColor = (_state == Ui::CheckBox::Activity::NORMAL)
+                ? Styling::ColorParameter{ Qt::transparent } : Styling::ColorParameter{ Styling::ThemeColorKey{ _state == Ui::CheckBox::Activity::HOVER ? Styling::StyleVariable::BASE_SECONDARY : Styling::StyleVariable::TEXT_SOLID_PERMANENT } };
 
         return
         {
@@ -35,8 +36,11 @@ namespace
 
 namespace Ui
 {
-    CheckboxList::CheckboxList(QWidget* _parent, const QFont& _textFont, const QColor& _textColor, const int _horPaddings, const int _itemHeight, const Options &_options)
+    CheckboxList::CheckboxList(QWidget* _parent, const QFont& _textFont, const Styling::ThemeColorKey& _textColor, const int _horPaddings, const int _itemHeight, const Options &_options)
         : QWidget(_parent)
+        , buttonNormal_{ CheckBox::getCheckBoxIcon(CheckBox::Activity::NORMAL) }
+        , buttonHover_{ CheckBox::getCheckBoxIcon(CheckBox::Activity::NORMAL) }
+        , buttonActive_{ CheckBox::getCheckBoxIcon(CheckBox::Activity::ACTIVE) }
         , itemHeight_(_itemHeight)
         , hoveredIndex_(-1)
         , horPadding_(_horPaddings)
@@ -45,9 +49,6 @@ namespace Ui
         , options_(_options)
         , scrollAreaHeight_(-1)
     {
-        buttonNormal_ = CheckBox::getCheckBoxIcon(CheckBox::Activity::NORMAL);
-        buttonHover_ = CheckBox::getCheckBoxIcon(CheckBox::Activity::NORMAL);
-        buttonActive_ = CheckBox::getCheckBoxIcon(CheckBox::Activity::ACTIVE);
 
         setMouseTracking(true);
     }
@@ -67,7 +68,7 @@ namespace Ui
         item.friendlyText_ = _friendlyText;
 
         item.textUnit_ = TextRendering::MakeTextUnit(_friendlyText);
-        item.textUnit_ ->init(textFont_, textColor_);
+        item.textUnit_->init({ textFont_, textColor_ });
         item.textUnit_ ->evaluateDesiredSize();
         item.textUnit_ ->setOffsets(horPadding_, itemsCount() * itemHeight_ + itemHeight_ / 2);
 
@@ -160,7 +161,7 @@ namespace Ui
 
     int CheckboxList::getTextWidth() const
     {
-        return width() - horPadding_ - Utils::scale_value(buttonSize).width() - buttonHover_.width();
+        return width() - horPadding_ - Utils::scale_value(buttonSize).width() - buttonHover_.cachedPixmap().width();
     }
 
     void CheckboxList::paintEvent(QPaintEvent* _e)
@@ -177,11 +178,11 @@ namespace Ui
                 p.fillRect(QRect(0, i * itemHeight_  + separatorsBefore(i) * options_.separatorHeight_, width(), itemHeight_), Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
 
 
-            const auto& pixmap = item.selected_ ? buttonActive_
+            auto& pixmap = item.selected_ ? buttonActive_
                                                 : (i == hoveredIndex_ ? buttonHover_
                                                                       : buttonNormal_);
 
-            p.drawPixmap(QPoint(width() - horPadding_ - s.width(),  i * itemHeight_ + itemHeight_ / 2 - s.height() / 2), pixmap);
+            p.drawPixmap(QPoint(width() - horPadding_ - s.width(),  i * itemHeight_ + itemHeight_ / 2 - s.height() / 2), pixmap.actualPixmap());
 
             const auto textWidth = getTextWidth();
             if (item.textUnit_->desiredWidth() > textWidth)
@@ -298,7 +299,7 @@ namespace Ui
 
     //----------------------------------------------------------------------
 
-    ComboBoxList::ComboBoxList(QWidget* _parent, const QFont& _textFont, const QColor& _textColor, const int _horPaddings, const int _itemHeight)
+    ComboBoxList::ComboBoxList(QWidget* _parent, const QFont& _textFont, const Styling::ThemeColorKey& _textColor, const int _horPaddings, const int _itemHeight)
         : CheckboxList(_parent, _textFont, _textColor, _horPaddings, _itemHeight)
     {
         buttonNormal_ = CheckBox::getRadioButtonIcon(CheckBox::Activity::NORMAL);
@@ -348,7 +349,7 @@ namespace Ui
 
     // Reversed checkbox list
 
-    RCheckboxList::RCheckboxList(QWidget *_parent, const QFont &_textFont, const QColor &_textColor, const int _horPaddings, const int _itemHeight, const CheckboxList::Options &_options)
+    RCheckboxList::RCheckboxList(QWidget *_parent, const QFont &_textFont, const Styling::ThemeColorKey& _textColor, const int _horPaddings, const int _itemHeight, const CheckboxList::Options &_options)
         : CheckboxList(_parent, _textFont, _textColor, _horPaddings, _itemHeight, _options)
     {
 
@@ -369,17 +370,17 @@ namespace Ui
                 p.fillRect(QRect(0, i * itemHeight_ + separatorsBefore(i) * options_.separatorHeight_, width(), itemHeight_),
                            Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
 
-            const auto& pixmap = item.selected_ ? buttonActive_
+            auto& pixmap = item.selected_ ? buttonActive_
                                                 : (i == hoveredIndex_ ? buttonHover_
                                                                       : buttonNormal_);
 
-            p.drawPixmap(QPoint(horPadding_, item.textUnit_->verOffset() - s.height() / 2), pixmap);
+            p.drawPixmap(QPoint(horPadding_, item.textUnit_->verOffset() - s.height() / 2), pixmap.actualPixmap());
 
             {
                 Utils::PainterSaver ps(p);
 
                 p.translate(
-                    (pixmap.width() / Utils::scale_bitmap_ratio()) + Utils::unscale_value(options_.checkboxToTextOffset_),
+                    (pixmap.cachedPixmap().width() / Utils::scale_bitmap_ratio()) + Utils::unscale_value(options_.checkboxToTextOffset_),
                     0.);
                 item.textUnit_->draw(p, TextRendering::VerPosition::MIDDLE);
             }
@@ -394,16 +395,15 @@ namespace Ui
     CheckBox::CheckBox(QWidget* _parent, Qt::Alignment _align)
         : QCheckBox(_parent)
         , state_(Activity::NORMAL)
+        , button_{ getCheckBoxIcon(state_) }
         , align_(_align)
     {
-        setFixedHeight(Utils::scale_value(40));
+        setFixedHeight(Utils::scale_value(20));
+        setMinimumWidth(Utils::scale_value(20));
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-        button_ = getCheckBoxIcon(state_);
         setFont(Fonts::appFont(Utils::scale_value(15), Fonts::FontWeight::Light));
 
-        QPalette pal(palette());
-        pal.setColor(QPalette::Foreground, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
-        setPalette(pal);
+        updatePalette();
 
         setCursor(Qt::PointingHandCursor);
 
@@ -419,18 +419,20 @@ namespace Ui
         update();
     }
 
-    QPixmap CheckBox::getCheckBoxIcon(const Activity _state)
+    Utils::LayeredPixmap CheckBox::getCheckBoxIcon(const Activity _state)
     {
-        return Utils::renderSvgLayered(qsl(":/controls/checkbox_icon"), getLayers(_state));
+        return Utils::LayeredPixmap(qsl(":/controls/checkbox_icon"), getLayers(_state));
     }
 
-    QPixmap CheckBox::getRadioButtonIcon(const Activity _state)
+    Utils::LayeredPixmap CheckBox::getRadioButtonIcon(const Activity _state)
     {
-        return Utils::renderSvgLayered(qsl(":/controls/radio_button"), getLayers(_state));
+        return Utils::LayeredPixmap(qsl(":/controls/radio_button"), getLayers(_state));
     }
 
     void CheckBox::paintEvent(QPaintEvent*)
     {
+        if (themeChecker_.checkAndUpdateHash())
+            updatePalette();
         QPainter p(this);
         p.setRenderHint(QPainter::Antialiasing);
         p.setRenderHint(QPainter::SmoothPixmapTransform);
@@ -447,7 +449,7 @@ namespace Ui
         }
 
         const QRect indicatorRect(QPoint(leftMargin, (height() - indSize.height()) / 2), indSize);
-        p.drawPixmap(indicatorRect, getCheckBoxIcon(state_));
+        p.drawPixmap(indicatorRect, getCheckBoxIcon(state_).cachedPixmap());
 
         const auto textLeft = indicatorRect.right() + 1 + textPadding;
         const QRect textRect(textLeft, 0, width() - textLeft, height());
@@ -457,5 +459,12 @@ namespace Ui
     bool CheckBox::hitButton(const QPoint&) const
     {
         return true;
+    }
+
+    void CheckBox::updatePalette()
+    {
+        QPalette pal(palette());
+        pal.setColor(QPalette::Foreground, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        setPalette(pal);
     }
 }

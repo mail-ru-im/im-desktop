@@ -1,15 +1,22 @@
 #include "stdafx.h"
 
 #include "../main_window/MainWindow.h"
+#include "../main_window/AppsPage.h"
 #include "../main_window/MainPage.h"
+#ifdef HAS_WEB_ENGINE
+#include "../main_window/WebAppPage.h"
+#endif
 #include "../main_window/ContactDialog.h"
 #include "../main_window/history_control/HistoryControlPage.h"
 #include "../main_window/contact_list/ContactListModel.h"
+#include "../styles/ThemesContainer.h"
+#include "../gui_settings.h"
 #ifdef __APPLE__
 #include "../utils/macos/mac_support.h"
 #endif //__APPLE__
 
 #include "InterConnector.h"
+#include "features.h"
 
 #include "../types/authorization.h"
 #include "../core_dispatcher.h"
@@ -28,14 +35,23 @@ namespace Utils
         : MainWindow_(nullptr)
         , dragOverlay_(false)
         , destroying_(false)
+        , loginComplete_(false)
         , currentElement_(MultiselectCurrentElement::Message)
         , currentMessage_(-1)
         , multiselectAnimation_(new QVariantAnimation(this))
+#ifdef HAS_WEB_ENGINE
+        , localProfile_(nullptr)
+#endif //HAS_WEB_ENGINE
     {
-        multiselectAnimation_->setStartValue(0);
-        multiselectAnimation_->setEndValue(100);
+        multiselectAnimation_->setStartValue(0.);
+        multiselectAnimation_->setEndValue(1.);
         multiselectAnimation_->setDuration(100);
         connect(multiselectAnimation_, &QVariantAnimation::valueChanged, this, &InterConnector::multiselectAnimationUpdate);
+        connect(this, &InterConnector::omicronUpdated, this, &InterConnector::configUpdated);
+        connect(this, &InterConnector::loginCompleted, this, &InterConnector::configUpdated, Qt::QueuedConnection);
+        connect(this, &InterConnector::logout, this, [this] () {setLoginComplete(false);}, Qt::QueuedConnection);
+
+        configUpdated();
     }
 
     InterConnector::~InterConnector()
@@ -65,6 +81,26 @@ namespace Utils
             return nullptr;
 
         return MainWindow_;
+    }
+
+    void InterConnector::setQmlEngine(Qml::Engine* _engine)
+    {
+        qmlEngine_ = _engine;
+    }
+
+    Qml::Engine* InterConnector::qmlEngine() const
+    {
+        return qmlEngine_;
+    }
+
+    void InterConnector::setQmlRootModel(Qml::RootModel* _model)
+    {
+        qmlRootModel_ = _model;
+    }
+
+    Qml::RootModel* InterConnector::qmlRootModel() const
+    {
+        return qmlRootModel_;
     }
 
     Ui::HistoryControlPage* InterConnector::getHistoryPage(const QString& _aimId) const
@@ -128,7 +164,6 @@ namespace Utils
 
     Ui::AppsPage* InterConnector::getAppsPage() const
     {
-
         if (!MainWindow_)
             return nullptr;
 
@@ -143,6 +178,24 @@ namespace Utils
         return MainWindow_->getMessengerPage();
     }
 
+#ifdef HAS_WEB_ENGINE
+    Ui::WebAppPage* InterConnector::getTasksPage() const
+    {
+        if (!MainWindow_)
+            return nullptr;
+
+        return MainWindow_->getTasksPage();
+    }
+#endif
+
+    int InterConnector::getHeaderHeight() const
+    {
+        if (auto w = getAppsPage())
+            return w->getHeaderHeight();
+
+        return 0;
+    }
+
     bool InterConnector::isInBackground() const
     {
         if (MainWindow_)
@@ -150,27 +203,73 @@ namespace Utils
         return false;
     }
 
-    void InterConnector::showSidebar(const QString& aimId)
+    void InterConnector::showSidebar(const QString& _aimId)
     {
-        if (auto page = getMessengerPage())
-            page->showSidebar(aimId);
+        auto appsPage = getAppsPage();
+        if (appsPage->isMessengerPage())
+        {
+            if (auto page = getMessengerPage())
+            {
+                page->showSidebar(_aimId);
+                Q_EMIT sidebarVisibilityChanged(true);
+            }
+        }
+#ifdef HAS_WEB_ENGINE
+        else if (appsPage->isTasksPage())
+        {
+            if (auto page = getTasksPage())
+                page->showThreadInfo(_aimId);
+        }
+#endif
     }
 
-    void InterConnector::showSidebarWithParams(const QString &aimId, Ui::SidebarParams _params)
+    void InterConnector::showSidebarWithParams(const QString &_aimId, Ui::SidebarParams _params)
     {
-        if (auto page = getMessengerPage())
-            page->showSidebarWithParams(aimId, std::move(_params));
+        auto appsPage = getAppsPage();
+        if (appsPage->isMessengerPage())
+        {
+            if (auto page = getMessengerPage())
+            {
+                page->showSidebarWithParams(_aimId, std::move(_params));
+                Q_EMIT sidebarVisibilityChanged(true);
+            }
+        }
+#ifdef HAS_WEB_ENGINE
+        else if (appsPage->isTasksPage())
+        {
+            Q_UNUSED(_params);
+            if (auto page = getTasksPage())
+                page->showProfileFromThreadInfo(_aimId);
+        }
+#endif
     }
 
-    void InterConnector::showMembersInSidebar(const QString& aimId)
+    void InterConnector::showMembersInSidebar(const QString& _aimId)
     {
         if (auto page = getMessengerPage())
-            page->showMembersInSidebar(aimId);
+            page->showMembersInSidebar(_aimId);
     }
 
     void InterConnector::setSidebarVisible(bool _visible)
     {
         Q_EMIT sidebarVisibilityChanged(_visible);
+    }
+
+    void InterConnector::navigateBackFromThreadInfo(const QString& _aimId)
+    {
+        auto appsPage = getAppsPage();
+        if (appsPage->isMessengerPage())
+        {
+            if (auto page = getMessengerPage())
+                page->closeThreadInfo(_aimId);
+        }
+#ifdef HAS_WEB_ENGINE
+        else if (appsPage->isTasksPage())
+        {
+            if(auto page = getTasksPage())
+                page->closeThreadInfo(_aimId);
+        }
+#endif
     }
 
     bool InterConnector::isSidebarVisible() const
@@ -199,6 +298,13 @@ namespace Utils
         if (auto page = getMessengerPage())
             return page->getSidebarSelectedText();
         return {};
+    }
+
+    bool InterConnector::isSidebarWithThreadPage() const
+    {
+        if (auto page = getMessengerPage())
+            return page->isSidebarWithThreadPage();
+        return false;
     }
 
     void InterConnector::setDragOverlay(bool enable)
@@ -244,10 +350,31 @@ namespace Utils
         if (current.isEmpty())
             return;
 
-        if (Logic::getContactListModel()->isThread(current))
+        const auto appsPage = getAppsPage();
+        const auto isAppPageVisible = appsPage && appsPage->isVisible();
+        const auto mainPage = getMessengerPage();
+        const bool infoOnlyVisible = isSidebarVisible() && mainPage && (!mainPage->isSideBarInSplitter() || mainPage->isOneFrameSidebar()) && !mainPage->isSidebarWithThreadPage();
+        bool isTaskThreadOpened = false;
+#ifdef HAS_WEB_ENGINE
+        if (isAppPageVisible)
+        {
+            auto tasks = appsPage->tasksPage();
+            isTaskThreadOpened = tasks && tasks->isSidebarVisible();
+        }
+#endif
+        if ((isAppPageVisible && !appsPage->isMessengerPage() && !appsPage->isTasksPage() || (isAppPageVisible && appsPage->isTasksPage() && !isTaskThreadOpened)
+            || (mainPage && !mainPage->isInRecentsTab() && !mainPage->isInContactsTab()) || infoOnlyVisible) && _enable)
+        {
             return;
+        }
 
         auto prevState = isMultiselect(current);
+
+        if (_enable && !multiselectStates_.empty() && !prevState)
+        {
+            multiselectStates_.clear();
+            Q_EMIT multiselectChanged();
+        }
 
         if (_enable)
             multiselectStates_.insert(current);
@@ -396,9 +523,6 @@ namespace Utils
 
     double InterConnector::multiselectAnimationCurrent() const
     {
-        //if (!isMultiselect())
-          //  return 0.0;
-
         return multiselectAnimation_->currentValue().toDouble();
     }
 
@@ -471,6 +595,7 @@ namespace Utils
     void InterConnector::connectTo(Ui::core_dispatcher* _dispatcher)
     {
         connect(_dispatcher, &Ui::core_dispatcher::authParamsChanged, this, &InterConnector::onAuthParamsChanged, Qt::UniqueConnection);
+        connect(Ui::GetDispatcher(), &Ui::core_dispatcher::externalUrlConfigUpdated, this, &InterConnector::configUpdated);
     }
 
     std::pair<QUrl, bool> InterConnector::signUrl(const QString& _miniappId, QUrl _url) const
@@ -478,13 +603,18 @@ namespace Utils
         bool success = false;
         if (isMiniAppAuthParamsValid(_miniappId) && _url.isValid())
         {
-            auto query = QUrlQuery(_url.query());
+            QUrlQuery query;
             query.addQueryItem(qsl("aimsid"), authParams_->getMiniAppAimsid(_miniappId));
-            _url.setQuery(query);
+            _url = Utils::addQueryItemsToUrl(std::move(_url), std::move(query), Utils::AddQueryItemPolicy::ReplaceIfItemExists);
             success = true;
         }
 
         return { _url, success };
+    }
+
+    QString InterConnector::aimSid() const
+    {
+        return authParams_->getAimsid();
     }
 
     bool InterConnector::isAuthParamsValid() const
@@ -492,9 +622,9 @@ namespace Utils
         return authParams_ && !authParams_->isEmpty();
     }
 
-    bool InterConnector::isMiniAppAuthParamsValid(const QString& _miniappId) const
+    bool InterConnector::isMiniAppAuthParamsValid(const QString& _miniappId, bool _canUseMainAimisid) const
     {
-        return authParams_ && !authParams_->getMiniAppAimsid(_miniappId).isEmpty();
+        return authParams_ && !authParams_->getMiniAppAimsid(_miniappId, _canUseMainAimisid).isEmpty();
     }
 
     void InterConnector::onAuthParamsChanged(const Data::AuthParams& _params)
@@ -505,13 +635,19 @@ namespace Utils
         Q_EMIT authParamsChanged(aimsidChanged);
     }
 
-    void InterConnector::openDialog(const QString& _aimId, qint64 _id, bool _select, std::function<void(Ui::PageBase*)> _getPageCallback, bool _ignoreScroll)
+    void InterConnector::openDialog(const QString& _aimId, qint64 _id, bool _select, Ui::PageOpenedAs _openedAs, std::function<void(Ui::PageBase*)> _getPageCallback, bool _ignoreScroll)
     {
-        getMainWindow()->showMessengerPage();
+        if (!Utils::InterConnector::instance().getMainWindow()->isWebAppTasksPage() && _openedAs == Ui::PageOpenedAs::MainPage)
+            getMainWindow()->showMessengerPage();
 
         if (_aimId.isEmpty())
         {
             Logic::getContactListModel()->setCurrent({});
+            if (_openedAs == Ui::PageOpenedAs::ReopenedMainPage)
+            {
+                if (auto messenger = getMainWindow()->getMessengerPage())
+                    messenger->scrollRecentsToTop();
+            }
             return;
         }
 
@@ -519,7 +655,8 @@ namespace Utils
         const auto it = std::find_if(pages.begin(), pages.end(), [&_aimId](auto p) { return p->aimId() == _aimId; });
         if (it != pages.end())
         {
-            (*it)->scrollToMessage(_id);
+            if (_openedAs == Ui::PageOpenedAs::MainPage || _openedAs == Ui::PageOpenedAs::FeedPageScrollable)
+                (*it)->scrollToMessage(_id);
             if (_getPageCallback)
                 _getPageCallback(*it);
 
@@ -527,7 +664,8 @@ namespace Utils
         }
         else if (!Logic::getContactListModel()->isThread(_aimId))
         {
-            Logic::getContactListModel()->setCurrent(_aimId, _id, _select, std::move(_getPageCallback), _ignoreScroll);
+            const auto openedAsMain = _openedAs == Ui::PageOpenedAs::MainPage || _openedAs == Ui::PageOpenedAs::ReopenedMainPage;
+            Logic::getContactListModel()->setCurrent(_aimId, _id, _select, openedAsMain ? Ui::PageOpenedAs::MainPage : Ui::PageOpenedAs::FeedPage, std::move(_getPageCallback), _ignoreScroll);
         }
         else
         {
@@ -537,7 +675,35 @@ namespace Utils
 
     void InterConnector::closeDialog()
     {
+        updateAppsPageReopenPage({});
         openDialog({});
+    }
+
+    void InterConnector::openThreadSearchResult(const QString& _aimId, const qint64 _messageId, const Ui::highlightsV& _highlights)
+    {
+        const auto& appsPage = getAppsPage();
+        if (appsPage->isMessengerPage())
+        {
+            if (const auto parentAimId = Logic::getContactListModel()->getThreadParent(_aimId).value_or(QString()); !parentAimId.isEmpty())
+            {
+                if (auto page = getHistoryPage(parentAimId))
+                    page->resetMessageHighlights();
+            }
+            Q_EMIT openThread(_aimId, _messageId, Logic::getContactListModel()->getThreadParent(_aimId).value_or(QString()));
+        }
+#ifdef HAS_WEB_ENGINE
+        else if (appsPage->isTasksPage())
+        {
+            if (auto page = getTasksPage())
+                page->showInfo(_aimId, Ui::SidebarContentType::thread);
+        }
+#endif
+        Q_EMIT scrollThreadToMsg(_aimId, _messageId, _highlights);
+    }
+
+    bool InterConnector::areBotCommandsDisabled(const QString& _aimid)
+    {
+        return botCommandsDisabledChats_.contains(_aimid);
     }
 
     void InterConnector::closeAndHighlightDialog()
@@ -545,4 +711,39 @@ namespace Utils
         if (auto mp = getMessengerPage())
             mp->closeAndHighlightDialog();
     }
+
+    void InterConnector::setLoginComplete(bool _lc)
+    {
+        loginComplete_ = _lc;
+    }
+
+    bool InterConnector::getLoginComplete()
+    {
+        return loginComplete_;
+    }
+
+#ifdef HAS_WEB_ENGINE
+    QWebEngineProfile* InterConnector::getLocalProfile()
+    {
+        if (!localProfile_)
+            localProfile_ = new QWebEngineProfile(qsl("local"), getAppsPage());
+
+        return localProfile_;
+    }
+#endif//HAS_WEB_ENGINE
+
+    void InterConnector::configUpdated()
+    {
+        const auto newChats = Features::getBotCommandsDisabledChats();
+        if (newChats != botCommandsDisabledChats_)
+        {
+            botCommandsDisabledChats_ = newChats;
+            Q_EMIT botCommandsDisabledChatsUpdated();
+        }
+
+        if (getLoginComplete() && Styling::getThemesAreLoaded())
+            Styling::getThemesContainer().chooseAndSetTheme();
+
+    }
 }
+

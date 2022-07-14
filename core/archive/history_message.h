@@ -412,6 +412,7 @@ namespace core
                 bool new_join_moderation_;
                 bool new_public_;
                 bool new_trust_required_;
+                bool new_threads_enabled_;
             } chat_;
 
             struct

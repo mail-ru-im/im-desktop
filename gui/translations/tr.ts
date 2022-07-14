@@ -64,6 +64,116 @@
     </message>
 </context>
 <context>
+    <name>RenderViewContextMenuQt</name>
+    <message>
+        <source>Back</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Forward</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Reload</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cut</source>
+        <translation type="unfinished">Kes</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation type="unfinished">Yapıştır</translation>
+    </message>
+    <message>
+        <source>Undo</source>
+        <translation type="unfinished">Geri Al</translation>
+    </message>
+    <message>
+        <source>Redo</source>
+        <translation type="unfinished">Yeniden Yap</translation>
+    </message>
+    <message>
+        <source>Paste and match style</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select all</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open link in new window</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open link in new tab</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy link address</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save link</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy image</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy image address</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save image</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy media address</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show controls</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Loop</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save media</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Inspect</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Exit full screen</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save page</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>View page source</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>Ui::WebPage</name>
+    <message>
+        <source>Select folder to upload</source>
+        <translation type="unfinished">Bir indirme klasörü seçin</translation>
+    </message>
+</context>
+<context>
     <name>UpdaterButton</name>
     <message>
         <source>Update %1</source>
@@ -118,6 +228,18 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <source>Server error</source>
         <translation>Sunucu hatası</translation>
     </message>
+    <message>
+        <source>https://reestr.digital.gov.ru/reestr/307994/</source>
+        <translation>https://reestr.digital.gov.ru/reestr/307994/</translation>
+    </message>
+    <message>
+        <source>registry_copyright</source>
+        <translation>© Mail.Ru Digital Technologies LLC</translation>
+    </message>
+    <message>
+        <source>The product is registered in the Unified Register of Russian Software and Databases</source>
+        <translation>VK Teams ürünü, Myteam (Майтим) adı altında elektronik bilgisayarlar ve veritabanları için Rus programlarının Birleşik Kaydı&apos;na kayıtlıdır.</translation>
+    </message>
 </context>
 <context>
     <name>active_call_plate</name>
@@ -128,6 +250,26 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     <message>
         <source>Active call</source>
         <translation>Aktif çağrı</translation>
+    </message>
+    <message>
+        <source>participant</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -285,6 +427,14 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     <message>
         <source>Turquoise</source>
         <translation>Turkuaz</translation>
+    </message>
+    <message>
+        <source>Sibur</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Dark Sibur</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -494,7 +644,7 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     </message>
     <message>
         <source>Sep</source>
-        <translation>eylül</translation>
+        <translation>Eylül</translation>
     </message>
     <message>
         <source>Oct</source>
@@ -527,10 +677,6 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
 </context>
 <context>
     <name>call_link</name>
-    <message>
-        <source>Link on call</source>
-        <translation>Çağrı bağlantısı</translation>
-    </message>
     <message>
         <source>Link on webinar</source>
         <translation>Web seminerine bağlantı</translation>
@@ -1068,8 +1214,20 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <translation>%1 Tamam veya cevapla&apos;yı tıklayın ve %2 yapabilir:</translation>
     </message>
     <message>
+        <source> %3 call you</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source> %3 add you to groups</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>%1 From now on %2 is able to</source>
         <translation>%1 Şimdi %2 şunları yapabilir:</translation>
+    </message>
+    <message>
+        <source> see if you read his messages</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>%1 You have canceled your join request</source>
@@ -1132,12 +1290,44 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <translation>%1 , son tarihi %2</translation>
     </message>
     <message>
-        <source>%1 changed task assignee to &quot;%2&quot;</source>
-        <translation>%1 sanatçıyı &quot;%2&quot;</translation>
+        <source>%1 changed task assignee to %2</source>
+        <translation>%1 , sanatçıyı %2</translation>
     </message>
     <message>
         <source>Task status changed to &quot;%1&quot;</source>
         <translation>Görev durumu &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>You</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The administrator</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>have allowed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>have forbidden</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>has allowed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>has forbidden</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 %2 threads creation in this channel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 %2 threads creation in this group</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -1418,6 +1608,26 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <comment>21</comment>
         <translation>%1 mesaj seçildi</translation>
     </message>
+    <message>
+        <source>%1 subscriber</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 subscribers</source>
+        <comment>2</comment>
+        <translation>%1 abone</translation>
+    </message>
+    <message>
+        <source>%1 subscribers</source>
+        <comment>5</comment>
+        <translation>%1 abone</translation>
+    </message>
+    <message>
+        <source>%1 subscribers</source>
+        <comment>21</comment>
+        <translation>%1 abone</translation>
+    </message>
 </context>
 <context>
     <name>contactus_page</name>
@@ -1617,10 +1827,6 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
 <context>
     <name>context_menu</name>
     <message>
-        <source>Call</source>
-        <translation>Arama yap</translation>
-    </message>
-    <message>
         <source>Profile</source>
         <translation>Profil</translation>
     </message>
@@ -1671,6 +1877,10 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     <message>
         <source>Reply</source>
         <translation>Yanıtla</translation>
+    </message>
+    <message>
+        <source>Create task</source>
+        <translation>Görev oluştur</translation>
     </message>
     <message>
         <source>Copy to clipboard</source>
@@ -1855,6 +2065,22 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     <message>
         <source>Code</source>
         <translation>Kod</translation>
+    </message>
+    <message>
+        <source>Unsubscribe from thread</source>
+        <translation>Bir dizi aboneliğinden çık</translation>
+    </message>
+    <message>
+        <source>Subscribe to thread</source>
+        <translation>Konuya abone ol</translation>
+    </message>
+    <message>
+        <source>Unblock</source>
+        <translation>engeli kaldırmak</translation>
+    </message>
+    <message>
+        <source>Compose email</source>
+        <translation>Bir mektup yaz</translation>
     </message>
 </context>
 <context>
@@ -3121,10 +3347,18 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
 Only for private groups
 
 This option cannot be disabled</source>
-        <translation>Dosyalara yalnızca güvenilir cihazlara erişim izni ver
+        <translation>Yalnızca güvenilir cihazların dosyalara erişmesine izin ver
 Yalnızca halka açık olmayan gruplar için
 
-Ayarı devre dışı bırakmak imkansız</translation>
+Ayar devre dışı bırakılamıyor</translation>
+    </message>
+    <message>
+        <source>Enable thread feeds</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Allow chat members to create threads</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -3169,8 +3403,8 @@ Ayarı devre dışı bırakmak imkansız</translation>
         <translation>Otomatik durum aramada kimin olduğunu gösterir</translation>
     </message>
     <message>
-        <source>Advantages of calls in Myteam</source>
-        <translation>Myteam&apos;i aramanın faydaları</translation>
+        <source>Advantages of calls in %1</source>
+        <translation>%1aramanın faydaları</translation>
     </message>
     <message>
         <source>Group calls up to %1 participants</source>
@@ -3258,6 +3492,10 @@ Ayarı devre dışı bırakmak imkansız</translation>
     <message>
         <source>The join request has been sent to administrator</source>
         <translation>Katılma isteği yöneticiye gönderildi</translation>
+    </message>
+    <message>
+        <source>The user is blocked</source>
+        <translation>Kullanıcı engellendi</translation>
     </message>
     <message>
         <source>Play record</source>
@@ -3509,6 +3747,10 @@ Ayarı devre dışı bırakmak imkansız</translation>
         <translation>Geçersiz kullanıcı adı veya şifre</translation>
     </message>
     <message>
+        <source>Wrong Email</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Wrong Email or password</source>
         <translation>Geçersiz E-posta veya Şifre</translation>
     </message>
@@ -3595,6 +3837,10 @@ Ayarı devre dışı bırakmak imkansız</translation>
     <message>
         <source>Sign in with Mail.ru</source>
         <translation>Mail.ru ile giriş yapın</translation>
+    </message>
+    <message>
+        <source>Enter your corporate email</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -3754,6 +4000,10 @@ Ayarı devre dışı bırakmak imkansız</translation>
         <source>Report a problem</source>
         <translation>Problemi şikayet et</translation>
     </message>
+    <message>
+        <source>Delete Account</source>
+        <translation>Hesap silme</translation>
+    </message>
 </context>
 <context>
     <name>mentions</name>
@@ -3841,10 +4091,6 @@ Ayarı devre dışı bırakmak imkansız</translation>
     <message>
         <source>You have been mentioned</source>
         <translation>Sizden bahsettiler</translation>
-    </message>
-    <message>
-        <source>You have been mentioned in %1</source>
-        <translation>%1 sohbetinde sizden bahsettiler</translation>
     </message>
 </context>
 <context>
@@ -4030,8 +4276,8 @@ to contact status</source>
         <translation>Bir meslektaşınızı e-postayla bulun ve ona yazın</translation>
     </message>
     <message>
-        <source>Install Myteam on mobile</source>
-        <translation>Myteam&apos;yu mobil cihazınıza yükleyin</translation>
+        <source>Install VK Teams on mobile</source>
+        <translation>VK Teams&apos;i mobil cihazınıza kurun</translation>
     </message>
     <message>
         <source>First name*</source>
@@ -4157,10 +4403,6 @@ to contact status</source>
         <source>%1 poll - %2 votes</source>
         <comment>5</comment>
         <translation>%1 anket - %2 oy</translation>
-    </message>
-    <message>
-        <source>Poll</source>
-        <translation>görüşme</translation>
     </message>
     <message>
         <source>Poll: %1</source>
@@ -4404,10 +4646,6 @@ to contact status</source>
     <message>
         <source>Report</source>
         <translation>Şikayet et</translation>
-    </message>
-    <message>
-        <source>To change the appearance you must restart the application. Continue?</source>
-        <translation>Tasarımı değiştirmek için uygulamayı yeniden başlatmanız gerekir. Devam etsin mi?</translation>
     </message>
     <message>
         <source>Update url, empty for default</source>
@@ -4674,6 +4912,26 @@ to contact status</source>
         <translation>Yazmak</translation>
     </message>
     <message>
+        <source>contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Cancel request?</source>
         <translation>İsteği iptal et?</translation>
     </message>
@@ -4778,6 +5036,26 @@ to contact status</source>
         <translation>Botu oluşturan kişi gruplara ekleme yapmayı yasakladı</translation>
     </message>
     <message>
+        <source>Cannot add %1 contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot add %1 contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot add %1 contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot add %1 contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Are you sure you want to delete user from list?</source>
         <translation>Kullanıcıyı listeden çıkarmak istediğinizden emin misiniz?</translation>
     </message>
@@ -4792,6 +5070,26 @@ to contact status</source>
     <message>
         <source>You can not join the call. It already has</source>
         <translation>Çağrıya bağlanamazsınız. İçinde zaten</translation>
+    </message>
+    <message>
+        <source>participant</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>No</source>
@@ -4934,6 +5232,66 @@ to contact status</source>
         <translation>Giriş reddedildi</translation>
     </message>
     <message>
+        <source>Cannot remove %1 contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot remove %1 contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot remove %1 contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot remove %1 contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Error removing federation user</source>
         <translation>Federasyon kullanıcısı silinirken hata oluştu</translation>
     </message>
@@ -4981,13 +5339,21 @@ to contact status</source>
         <source>Only channel subscribers can view replies</source>
         <translation>Yalnızca kanal aboneleri yanıtları görüntüleyebilir</translation>
     </message>
+    <message>
+        <source>Delete Account</source>
+        <translation>Hesap silme</translation>
+    </message>
+    <message>
+        <source>To delete an account, you must attach a phone number</source>
+        <translation>Bir hesabı silmek için bir telefon numarası bağlamanız gerekir</translation>
+    </message>
+    <message>
+        <source>Attach</source>
+        <translation>bağlamak</translation>
+    </message>
 </context>
 <context>
     <name>previewer</name>
-    <message>
-        <source>Unable to download the image</source>
-        <translation>Görsel indirilemiyor</translation>
-    </message>
     <message>
         <source>%1 of %2</source>
         <translation>%1 / %2</translation>
@@ -5047,6 +5413,10 @@ to contact status</source>
     <message>
         <source>Add to favorites</source>
         <translation>Favorilere ekle</translation>
+    </message>
+    <message>
+        <source>File %1 is being downloaded</source>
+        <translation>%1 dosyası yükleniyor</translation>
     </message>
 </context>
 <context>
@@ -5121,6 +5491,10 @@ to contact status</source>
     <message>
         <source>A short text about you</source>
         <translation>Senin hakkında küçük metin</translation>
+    </message>
+    <message>
+        <source>Middle Name</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -5253,6 +5627,13 @@ to contact status</source>
         <source>OK</source>
         <translation>OK</translation>
     </message>
+    <message>
+        <source> ﻿ ﻿— Reactions
+  — Statuses
+  — New themes
+  — Unreads counter in window title — turn it on in settings :) </source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>report_widget</name>
@@ -5300,12 +5681,20 @@ to contact status</source>
 <context>
     <name>search</name>
     <message>
-        <source>CONTACTS AND GROUPS</source>
-        <translation>KIŞILER VE GRUPLAR</translation>
+        <source>Contacts and groups</source>
+        <translation>Kişiler ve gruplar</translation>
     </message>
     <message>
-        <source>MESSAGES</source>
-        <translation>MESAJ</translation>
+        <source>Messages</source>
+        <translation>Gönderiler</translation>
+    </message>
+    <message>
+        <source>Threads</source>
+        <translation type="unfinished">İş Parçacığı</translation>
+    </message>
+    <message>
+        <source>Thread</source>
+        <translation type="unfinished">iplik</translation>
     </message>
 </context>
 <context>
@@ -5440,6 +5829,10 @@ to contact status</source>
     <message>
         <source>Play sounds</source>
         <translation>Sesleri oynat</translation>
+    </message>
+    <message>
+        <source>Notification volume:</source>
+        <translation>Bildirim hacmi:</translation>
     </message>
     <message>
         <source>Outgoing messages sound</source>
@@ -5774,10 +6167,6 @@ to contact status</source>
         <translation>aramalar</translation>
     </message>
     <message>
-        <source>Show calls tab</source>
-        <translation>Çağrıları Göster Sekmesi</translation>
-    </message>
-    <message>
         <source>Show reactions to messages</source>
         <translation>İletilere tepki göster</translation>
     </message>
@@ -5820,6 +6209,30 @@ to contact status</source>
     <message>
         <source>Warn about disabled microphone</source>
         <translation>Sessiz mikrofon hakkında uyar</translation>
+    </message>
+    <message>
+        <source>Hide sender name in notifications</source>
+        <translation>Bildirimlerde mesaj göndereni gizle</translation>
+    </message>
+    <message>
+        <source>This setting can&apos;t be changed due to security reasons</source>
+        <translation>Güvenlik nedeniyle, ayar devre dışı bırakılamaz.</translation>
+    </message>
+    <message>
+        <source>Delete Account</source>
+        <translation>Hesabı sil</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Kapat</translation>
+    </message>
+    <message>
+        <source>Your corporate account was created by a domain administrator. To remove, contact with your domain administrator</source>
+        <translation>Kurumsal hesabınız bir etki alanı yöneticisi tarafından oluşturuldu. Silmek için alan yöneticisiyle iletişime geçin</translation>
+    </message>
+    <message>
+        <source>All information associated with your profile will be deleted. It will be impossible to restore your account</source>
+        <translation>Profilinizle ilişkili tüm bilgiler silinecektir. Hesap kurtarma imkansız olacak</translation>
     </message>
 </context>
 <context>
@@ -6020,8 +6433,28 @@ to contact status</source>
         <translation>Durumu Ayarla</translation>
     </message>
     <message>
-        <source>Switch microphone state</source>
-        <translation>Mikrofon durumunu değiştir</translation>
+        <source>Paste text without formatting</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Switch %1 state</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>microphone</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>video</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>presentation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>sound</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -6145,6 +6578,10 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <translation>Grubu paylaş</translation>
     </message>
     <message>
+        <source>Subscribe to all threads</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>All members</source>
         <translation>Tüm üyeler</translation>
     </message>
@@ -6223,6 +6660,10 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
     <message>
         <source>Common groups</source>
         <translation>Ortak gruplar</translation>
+    </message>
+    <message>
+        <source>My groups and channels</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Who can see my data</source>
@@ -6369,6 +6810,46 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <translation>Takipçiler</translation>
     </message>
     <message>
+        <source>%1 SUBSCRIBER</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 SUBSCRIBERS</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 SUBSCRIBERS</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 SUBSCRIBERS</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 MEMBER</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 MEMBERS</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 MEMBERS</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 MEMBERS</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>All subscribers</source>
         <translation>Tüm aboneler</translation>
     </message>
@@ -6388,6 +6869,14 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <source>Replies</source>
         <translation>Yanıtlar</translation>
     </message>
+    <message>
+        <source>Subscription to replies</source>
+        <translation>yanıtlara abone ol</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation type="unfinished">Görev</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -6406,6 +6895,10 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
     <message>
         <source>About the group</source>
         <translation>Grup hakkında</translation>
+    </message>
+    <message>
+        <source>Send link to call or invite participants from the contact list</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -6474,6 +6967,86 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
     <message>
         <source>Custom status</source>
         <translation>Kullanıcı durumu</translation>
+    </message>
+    <message>
+        <source>second</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>seconds</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>seconds</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>seconds</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>minute</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>minutes</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>minutes</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>minutes</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>hour</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>hours</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>hours</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>hours</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>day</source>
+        <comment>1</comment>
+        <translation type="unfinished">day</translation>
+    </message>
+    <message>
+        <source>days</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>days</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>days</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Show always</source>
@@ -6659,6 +7232,22 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <source>Calendar</source>
         <translation>Takvim</translation>
     </message>
+    <message>
+        <source>Mail</source>
+        <translation>posta</translation>
+    </message>
+    <message>
+        <source>Cloud</source>
+        <translation>Bulut</translation>
+    </message>
+    <message>
+        <source>News</source>
+        <translation type="unfinished">Haberler</translation>
+    </message>
+    <message>
+        <source>Polls</source>
+        <translation type="unfinished">anketler</translation>
+    </message>
 </context>
 <context>
     <name>tab header</name>
@@ -6710,16 +7299,12 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <translation>Yapmak</translation>
     </message>
     <message>
-        <source>No assignee</source>
-        <translation>Bir icracı olmadan</translation>
+        <source>Unassigned</source>
+        <translation type="unfinished">Аtanan yok</translation>
     </message>
 </context>
 <context>
     <name>task_block</name>
-    <message>
-        <source>Not assigned</source>
-        <translation>Atanmadı</translation>
-    </message>
     <message>
         <source>Task</source>
         <translation>Bir görev</translation>
@@ -6736,12 +7321,16 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <source>Task edit: an error occured</source>
         <translation>Görevi değiştirme: bir hata oluştu</translation>
     </message>
+    <message>
+        <source>Unassigned</source>
+        <translation type="unfinished">Аtanan yok</translation>
+    </message>
 </context>
 <context>
     <name>task_popup</name>
     <message>
         <source>Edit task</source>
-        <translation>Görev değiştirme</translation>
+        <translation>Görevi değiştir</translation>
     </message>
     <message>
         <source>Create task</source>
@@ -6778,8 +7367,8 @@ not found</source>
 isim bulunamadı</translation>
     </message>
     <message>
-        <source>No deadline</source>
-        <translation>son tarih yok</translation>
+        <source>Deadline for the task</source>
+        <translation>Görev için son tarih</translation>
     </message>
 </context>
 <context>
@@ -6797,20 +7386,20 @@ isim bulunamadı</translation>
         <translation>Mail.ru Agent&apos;a Hoşgeldiniz</translation>
     </message>
     <message>
-        <source>Welcome to Myteam</source>
-        <translation>Myteam hoşgeldiniz</translation>
+        <source>Welcome to VK Teams</source>
+        <translation>VK Teams&apos;e hoş geldiniz</translation>
     </message>
     <message>
         <source>Welcome to Messenger</source>
         <translation>Messenger&apos;a Hoşgeldiniz</translation>
     </message>
     <message>
-        <source>ICQ New - the evolution of communication</source>
-        <translation>ICQ New — iletişimin evrimi</translation>
+        <source>ICQ - the evolution of communication</source>
+        <translation>ICQ — iletişimin evrimi</translation>
     </message>
     <message>
-        <source>Welcome to ICQ New</source>
-        <translation>ICQ&apos;ya Hoş Geldiniz Yeni</translation>
+        <source>Welcome to ICQ</source>
+        <translation>ICQ&apos;ya Hoşgeldiniz</translation>
     </message>
 </context>
 <context>
@@ -6822,6 +7411,46 @@ isim bulunamadı</translation>
     <message>
         <source>Threads you subscribed for will be here</source>
         <translation>Abone olduğunuz konular burada görüntülenecektir</translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Replies</source>
@@ -6839,8 +7468,8 @@ isim bulunamadı</translation>
         <translation>Messenger</translation>
     </message>
     <message>
-        <source>Myteam</source>
-        <translation>Myteam</translation>
+        <source>VK Teams</source>
+        <translation>VK Teams</translation>
     </message>
     <message>
         <source>ICQ</source>
@@ -6866,10 +7495,6 @@ isim bulunamadı</translation>
         <translation>Bu kullanıcı adı ile profil veya grup yok</translation>
     </message>
     <message>
-        <source>Copied to clipboard</source>
-        <translation>Panoya kopyalandı</translation>
-    </message>
-    <message>
         <source>There are no profiles with this email</source>
         <translation>Bu e-postada profil yok</translation>
     </message>
@@ -6890,28 +7515,28 @@ isim bulunamadı</translation>
         <translation>Grup yöneticisi, dosyalara erişim konusunda kısıtlamalar belirledi</translation>
     </message>
     <message>
-        <source>Awaiting antivirus check, patience</source>
-        <translation>Antivirüs kontrolünü bekliyoruz, sabır</translation>
-    </message>
-    <message>
-        <source>Antivirus check in progress, patience</source>
-        <translation>Antivirüs denetimi devam ediyor, sabır</translation>
-    </message>
-    <message>
         <source>File is blocked by the antivirus</source>
         <translation>Dosya antivirüs tarafından engellendi</translation>
     </message>
     <message>
-        <source>Checked</source>
-        <translation>Kontrol edildi</translation>
-    </message>
-    <message>
-        <source>No access. You may not have enough rights</source>
-        <translation>Erişim yok. Yeterli haklara sahip olmayabilirsiniz</translation>
-    </message>
-    <message>
         <source>File not checked (and never will be). Available to download</source>
         <translation>Dosya doğrulanmadı (ve doğrulanmayacak). Indirilebilir</translation>
+    </message>
+    <message>
+        <source>No access. Antivirus check in progress</source>
+        <translation>Erişim yok. Antivirüs denetimi devam ediyor</translation>
+    </message>
+    <message>
+        <source>No access. File is blocked by the antivirus</source>
+        <translation>Erişim yok. Dosya antivirüs tarafından engellendi</translation>
+    </message>
+    <message>
+        <source>The file is available. No viruses found</source>
+        <translation>Dosya mevcuttur. Virüs bulunamadı</translation>
+    </message>
+    <message>
+        <source>App not found</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -6953,10 +7578,6 @@ isim bulunamadı</translation>
         <translation>Sesli arama</translation>
     </message>
     <message>
-        <source>Link to call</source>
-        <translation>Çağrı bağlantısı</translation>
-    </message>
-    <message>
         <source>Chat gallery</source>
         <translation>Sohbet galerisi</translation>
     </message>
@@ -6968,8 +7589,8 @@ isim bulunamadı</translation>
 <context>
     <name>tray_menu</name>
     <message>
-        <source>Quit</source>
-        <translation>Çık</translation>
+        <source>Close</source>
+        <translation>Kapat</translation>
     </message>
     <message>
         <source>Open</source>
@@ -6998,6 +7619,36 @@ isim bulunamadı</translation>
         <source> new emails</source>
         <comment>21</comment>
         <translation> yeni e-posta</translation>
+    </message>
+</context>
+<context>
+    <name>user_agreement_widget</name>
+    <message>
+        <source>Accept</source>
+        <translation>İlerlemek</translation>
+    </message>
+    <message>
+        <source>Agree with %1</source>
+        <translation>Agree with %1</translation>
+    </message>
+    <message>
+        <source>processing confidential data</source>
+        <translation>gizli bilgilerin işlenmesine ilişkin kısıtlamalar</translation>
+    </message>
+    <message>
+        <source>using personal data</source>
+        <translation>kişisel verilerin işlenmesi</translation>
+    </message>
+</context>
+<context>
+    <name>video_pages</name>
+    <message>
+        <source>Link</source>
+        <translation type="unfinished">Bağlantı</translation>
+    </message>
+    <message>
+        <source>View</source>
+        <translation type="unfinished">Görüntüle</translation>
     </message>
 </context>
 <context>
@@ -7082,32 +7733,8 @@ veya aramayı aç
 tıklama ile</translation>
     </message>
     <message>
-        <source>VOICE</source>
-        <translation>SES</translation>
-    </message>
-    <message>
-        <source>Connecting...</source>
-        <translation>Bağ...</translation>
-    </message>
-    <message>
-        <source>Calling</source>
-        <translation>Aramak</translation>
-    </message>
-    <message>
-        <source>Busy</source>
-        <translation>Meşgul</translation>
-    </message>
-    <message>
         <source>Hold Space key for temporary unmute</source>
         <translation>Mikrofonun sesini geçici olarak açmak için Boşluk çubuğunu basılı tutun</translation>
-    </message>
-    <message>
-        <source>Microphone disabled</source>
-        <translation>Mikrofon kapalı</translation>
-    </message>
-    <message>
-        <source>Microphone enabled</source>
-        <translation>Mikrofon açık</translation>
     </message>
     <message>
         <source>Call members</source>
@@ -7143,6 +7770,26 @@ Mikrofonu açmak için %1 tuşuna basın
 
 Mikrofonun sesini geçici olarak açmak için Boşluk çubuğunu basılı tutun</translation>
     </message>
+    <message>
+        <source>Press Esc to exit from fullscreen mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Grid</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Speaker</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Microphone disabled</source>
+        <translation type="unfinished">Mikrofon kapalı</translation>
+    </message>
+    <message>
+        <source>Microphone enabled</source>
+        <translation type="unfinished">Mikrofon açık</translation>
+    </message>
 </context>
 <context>
     <name>voip_video_panel</name>
@@ -7151,16 +7798,8 @@ Mikrofonun sesini geçici olarak açmak için Boşluk çubuğunu basılı tutun<
         <translation>ekran</translation>
     </message>
     <message>
-        <source>More</source>
-        <translation>Hala</translation>
-    </message>
-    <message>
         <source>Go to chat</source>
         <translation>Sohbete git</translation>
-    </message>
-    <message>
-        <source>Open masks</source>
-        <translation>Maskeleri etkinleştir</translation>
     </message>
     <message>
         <source>Add user</source>
@@ -7183,16 +7822,8 @@ Mikrofonun sesini geçici olarak açmak için Boşluk çubuğunu basılı tutun<
         <translation>Katılımcılardan birinden videoyu kapatmasını isteyin. %1 &apos;den fazla kişiyle yapılan aramalarda yalnızca bir video gösterilebilir</translation>
     </message>
     <message>
-        <source>Masks aren&apos;t available in calls with more than %1 members</source>
-        <translation>%1 fazla katılımcıyla yapılan aramalarda maskeler mevcut değil</translation>
-    </message>
-    <message>
         <source>Only the creator of the webinar can show the video</source>
         <translation>Videoyu yalnızca web seminerinin yaratıcısı gösterebilir</translation>
-    </message>
-    <message>
-        <source>Only the creator of the webinar can use masks</source>
-        <translation>Yalnızca web seminerinin yaratıcısı maskeleri kullanabilir</translation>
     </message>
     <message>
         <source>Only the creator of the webinar can use a microphone</source>
@@ -7278,10 +7909,6 @@ Meeting</source>
         <translation>Tamamlamak</translation>
     </message>
     <message>
-        <source>SHOW ALL</source>
-        <translation>HEPSİNİ GÖSTER ↓</translation>
-    </message>
-    <message>
         <source>Show
 participants</source>
         <translation>Bak
@@ -7295,44 +7922,48 @@ katılımcılar</translation>
         <source>Show one</source>
         <translation>Birini göster</translation>
     </message>
+    <message>
+        <source>Cancel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation type="unfinished">evet</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to end the meeting?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>End meeting</source>
+        <translation type="unfinished">Tamamlamak</translation>
+    </message>
+    <message>
+        <source>Go to the chat</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open the profile</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>End call</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Share call link</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Call participants management</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>voip_video_panel_mini</name>
     <message>
         <source>End meeting</source>
         <translation>Tamamlamak</translation>
-    </message>
-    <message>
-        <source>Mute</source>
-        <translation>Mikrofonun sesini kapat</translation>
-    </message>
-    <message>
-        <source>Unmute</source>
-        <translation>Mikrofonu aç</translation>
-    </message>
-    <message>
-        <source>Stop video</source>
-        <translation>Videoyu kapat</translation>
-    </message>
-    <message>
-        <source>Start video</source>
-        <translation>Video oynatmak</translation>
-    </message>
-    <message>
-        <source>Disable sound</source>
-        <translation>Sesi kapatın</translation>
-    </message>
-    <message>
-        <source>Enable sound</source>
-        <translation>Sesi aç</translation>
-    </message>
-    <message>
-        <source>Stop share</source>
-        <translation>Göstermeyi bırak</translation>
-    </message>
-    <message>
-        <source>Start share</source>
-        <translation>Ekran paylaşımı</translation>
     </message>
 </context>
 <context>
@@ -7380,6 +8011,29 @@ katılımcılar</translation>
     <message>
         <source>I miss you too :)</source>
         <translation>Ben de seni özledim :)</translation>
+    </message>
+</context>
+<context>
+    <name>web_app</name>
+    <message>
+        <source>Page is loading...</source>
+        <translation>Yükleme sayfası ...</translation>
+    </message>
+    <message>
+        <source>Unable to load</source>
+        <translation>Yüklenemedi</translation>
+    </message>
+    <message>
+        <source>Retry</source>
+        <translation>yeniden denemek için</translation>
+    </message>
+    <message>
+        <source>Print</source>
+        <translation>Fok</translation>
+    </message>
+    <message>
+        <source>The service is not available for your account. Contact technical support</source>
+        <translation>Bu hizmet henüz Ofisiniz için mevcut değil</translation>
     </message>
 </context>
 </TS>

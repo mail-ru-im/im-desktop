@@ -53,7 +53,7 @@ namespace core
             sticker() = default;
             static sticker from_file_id(std::string_view _id)
             {
-                return sticker(_id);
+                return sticker(core::tools::filesharing_id(_id));
             }
             sticker(const core::tools::filesharing_id& _id);
 
@@ -177,10 +177,10 @@ namespace core
                 std::string _source_url,
                 std::string _endpoint,
                 std::wstring _dest_file,
-                int32_t _set_id,
-                int32_t _sticker_id,
-                core::tools::filesharing_id _fs_id,
-                sticker_size _size);
+                int32_t _set_id = -1,
+                int32_t _sticker_id = -1,
+                core::tools::filesharing_id _fs_id = {},
+                sticker_size _size = sticker_size::min);
 
             const std::string& get_source_url() const;
             const std::string& get_endpoint() const;

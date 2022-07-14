@@ -9,6 +9,7 @@
 #include "utils/InterConnector.h"
 #include "utils/features.h"
 #include "styles/ThemeParameters.h"
+#include "styles/ThemesContainer.h"
 
 namespace Ui
 {
@@ -18,7 +19,6 @@ namespace Ui
         , historyControlWidget_(new HistoryControl(this))
     {
         setFrameCountMode(FrameCountMode::_1);
-        setPalette(Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
 
         auto layout = Utils::emptyVLayout(this);
 
@@ -28,7 +28,9 @@ namespace Ui
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::dialogClosed, this, &ContactDialog::removeTopWidget);
 
         connect(historyControlWidget_, &HistoryControl::setTopWidget, this, &ContactDialog::insertTopWidget);
-        connect(historyControlWidget_, &HistoryControl::needUpdateWallpaper, this, &BackgroundWidget::updateWallpaper);
+        connect(historyControlWidget_, &HistoryControl::needUpdateWallpaper, this, [this](const QString& _aimId) { updateWallpaper(_aimId); });
+
+        connect(&Styling::getThemesContainer(), &Styling::ThemesContainer::globalThemeChanged, this, &ContactDialog::onGlobalThemeChanged);
 
         escCancel_->addChild(historyControlWidget_);
 
@@ -131,5 +133,15 @@ namespace Ui
     const QString& ContactDialog::currentAimId() const
     {
         return historyControlWidget_->currentAimId();
+    }
+
+    void ContactDialog::setPageOpenedAs(PageOpenedAs _openedAs)
+    {
+        historyControlWidget_->setPageOpenedAs(_openedAs);
+    }
+
+    void ContactDialog::onGlobalThemeChanged()
+    {
+        updateWallpaper(currentAimId());
     }
 }

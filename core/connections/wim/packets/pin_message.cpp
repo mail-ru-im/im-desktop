@@ -3,6 +3,7 @@
 
 #include "../../../http_request.h"
 #include "../../../tools/system.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -18,6 +19,11 @@ pin_message::pin_message(wim_packet_params _params, const std::string& _aimId, c
 std::string_view pin_message::get_method() const
 {
     return "pinMessage";
+}
+
+int core::wim::pin_message::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t pin_message::init_request(const std::shared_ptr<core::http_request_simple>& _request)

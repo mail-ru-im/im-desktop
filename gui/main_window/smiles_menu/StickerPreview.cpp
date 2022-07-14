@@ -150,7 +150,7 @@ namespace Ui::Smiles
 
             const auto x = getAdjustedImageRect().center().x();
             const auto y = getAdjustedImageRect().bottom() + Utils::scale_value(10);
-            Utils::drawText(p, QPointF(x, y), Qt::AlignHCenter | Qt::AlignBottom, stickerId_.fileId + (stickerId_.sourceId ? (qsl("?source=") + *stickerId_.sourceId) : QString()));
+            Utils::drawText(p, QPointF(x, y), Qt::AlignHCenter | Qt::AlignBottom, stickerId_.fileId_ + (stickerId_.sourceId_ ? (qsl("?source=") + *stickerId_.sourceId_) : QString()));
         }
     }
 

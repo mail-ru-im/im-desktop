@@ -122,14 +122,14 @@ namespace
         return QSize(24, 24);
     }
 
-    auto getIconsColor()
+    auto getIconsColorKey()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY };
     }
 
-    auto getInfoTextColor()
+    auto getInfoTextColorKey()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY };
     }
 
     auto getDebugInfoSpinnerPenWidth()
@@ -310,7 +310,7 @@ void ContactUsWidget::initSuccess()
         resendLayout->setAlignment(Qt::AlignCenter);
         {
             auto resendLink = new TextEmojiWidget(resendWidget, captionFont(),
-                                                  Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY), Utils::scale_value(32));
+                Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY }, Utils::scale_value(32));
             resendLink->setText(QT_TRANSLATE_NOOP("contactus_page", "Send another review"));
             resendLink->setSizePolicy(QSizePolicy::Preferred, resendLink->sizePolicy().verticalPolicy());
             resendLink->setCursor(Qt::PointingHandCursor);
@@ -367,7 +367,7 @@ void ContactUsWidget::initFeedback()
     Testing::setAccessibleName(suggestioner_, qsl("AS ContactUsPage suggestionInput"));
 
     suggestionSizeError_ = new TextEmojiWidget(sendingPage_, captionFont(),
-        Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION), Utils::scale_value(12));
+        Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_ATTENTION }, Utils::scale_value(12));
     Utils::grabTouchWidget(suggestionSizeError_);
     suggestionSizeError_->setVisible(false);
     Testing::setAccessibleName(suggestionSizeError_, qsl("AS ContactUsPage suggestionSizeError"));
@@ -412,7 +412,7 @@ void ContactUsWidget::initFeedback()
     errorOccuredWidget_ = new QWidget(sendWidget_);
     auto errorLayout = Utils::emptyVLayout(errorOccuredWidget_);
     errorOccuredSign_ = new TextEmojiWidget(errorOccuredWidget_, captionFont(),
-                                            Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION), Utils::scale_value(12));
+        Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_ATTENTION }, Utils::scale_value(12));
     Utils::grabTouchWidget(errorOccuredSign_);
     Testing::setAccessibleName(errorOccuredSign_, qsl("AS ContactUsPage errorOccuredSign"));
     errorLayout->addSpacerItem(new QSpacerItem(0, Utils::scale_value(9), QSizePolicy::Expanding, QSizePolicy::Fixed));
@@ -467,7 +467,7 @@ void ContactUsWidget::initFeedback()
     sendLayout->setAlignment(sendSpinner_, horAlignment);
 
     auto sendingSign = new TextEmojiWidget(sendWidget_, labelFont(),
-                                           Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY), Utils::scale_value(16));
+        Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY }, Utils::scale_value(16));
     Utils::grabTouchWidget(sendingSign);
     sendingSign->setText(QT_TRANSLATE_NOOP("contactus_page", "Sending..."));
     sendingSign->setVisible(false);
@@ -662,7 +662,7 @@ AttachFileWidget::AttachFileWidget(QWidget *_parent)
     errorWidget_ = new QWidget(attachWidget_);
     auto errorLayout = Utils::emptyVLayout(errorWidget_);
     attachSizeError_ = new TextEmojiWidget(errorWidget_, captionFont(),
-            Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION), Utils::scale_value(12));
+        Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_ATTENTION }, Utils::scale_value(12));
     Testing::setAccessibleName(attachSizeError_, qsl("AS ContactUsPage attachSizeError"));
     errorLayout->addWidget(attachSizeError_);
     errorLayout->addSpacerItem(new QSpacerItem(0, Utils::scale_value(8), QSizePolicy::Expanding, QSizePolicy::Fixed));
@@ -682,13 +682,13 @@ AttachFileWidget::AttachFileWidget(QWidget *_parent)
     attachLinkLayout->setSpacing(Utils::scale_value(12));
 
     auto attachImage = new CustomButton(attachLinkWidget);
-    attachImage->setDefaultImage(qsl(":/input/attach_photo"), getIconsColor(), getIconsSize());
+    attachImage->setDefaultImage(qsl(":/input/attach_photo"), getIconsColorKey(), getIconsSize());
     attachImage->setFixedSize(Utils::scale_value(getIconsSize()));
     connect(attachImage, &QPushButton::clicked, this, &AttachFileWidget::attachFile);
     Testing::setAccessibleName(attachImage, qsl("AS ContactUsPage attachImage"));
     attachLinkLayout->addWidget(attachImage);
 
-    auto attachLink = new TextEmojiWidget(attachLinkWidget, labelFont(), getInfoTextColor(), Utils::scale_value(16));
+    auto attachLink = new TextEmojiWidget(attachLinkWidget, labelFont(), getInfoTextColorKey(), Utils::scale_value(16));
     Utils::grabTouchWidget(attachLink);
     attachLink->setText(QT_TRANSLATE_NOOP("contactus_page", "Attach screenshot"));
     connect(attachLink, &TextEmojiWidget::clicked, this, &AttachFileWidget::attachFile);
@@ -787,7 +787,7 @@ void AttachFileWidget::processFile(const QString& _filePath)
         fileNameLabel->setText(fileName);
         fileNameLabel->setFont(labelFont());
         QPalette pal = fileNameLabel->palette();
-        pal.setColor(QPalette::Foreground, getInfoTextColor());
+        pal.setColor(QPalette::Foreground, Styling::getColor(getInfoTextColorKey()));
         fileNameLabel->setPalette(pal);
 
         Testing::setAccessibleName(fileNameLabel, qsl("AS ContactUsPage fileName"));
@@ -797,7 +797,7 @@ void AttachFileWidget::processFile(const QString& _filePath)
         Utils::grabTouchWidget(fileSizeLabel);
         fileSizeLabel->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Preferred);
         fileSizeLabel->setText(u" - " % sizeString);
-        fileSizeLabel->setColor(getInfoTextColor());
+        fileSizeLabel->setColor(getInfoTextColorKey());
         fileSizeLabel->setFont(labelFont());
         Testing::setAccessibleName(fileSizeLabel, qsl("AS ContactUsPage fileSize"));
         fileInfoLayout->addWidget(fileSizeLabel);
@@ -805,8 +805,8 @@ void AttachFileWidget::processFile(const QString& _filePath)
         Testing::setAccessibleName(fileInfoWidget, qsl("AS ContactUsPage fileInfoWidget"));
         fileLayout->addWidget(fileInfoWidget);
 
-        auto deleteFile = new CustomButton(fileWidget, qsl(":/controls/close_icon"), QSize(12, 12), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
-        deleteFile->setHoverColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER));
+        auto deleteFile = new CustomButton(fileWidget, qsl(":/controls/close_icon"), QSize(12, 12), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY });
+        deleteFile->setHoverColor(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY_HOVER });
         deleteFile->setFixedSize(Utils::scale_value(QSize(20, 20)));
 
         connect(deleteFile, &CustomButton::clicked, this, [this, fileWidget, fileSize]()
@@ -867,7 +867,7 @@ GetDebugInfoWidget::GetDebugInfoWidget(QWidget* _parent)
         commonWidget->setCursor(Qt::PointingHandCursor);
 
         icon_ = new CustomButton(commonWidget);
-        icon_->setDefaultImage(qsl(":/input/attach_documents"), getIconsColor(), getIconsSize());
+        icon_->setDefaultImage(qsl(":/input/attach_documents"), getIconsColorKey(), getIconsSize());
         icon_->setFixedSize(Utils::scale_value(getIconsSize()));
         connect(icon_, &QPushButton::clicked, this, &GetDebugInfoWidget::onClick);
         Testing::setAccessibleName(icon_, qsl("AS ContactUsPage debug_icon"));
@@ -879,7 +879,7 @@ GetDebugInfoWidget::GetDebugInfoWidget(QWidget* _parent)
         progress_->hide();
         commonLayout->addWidget(progress_);
 
-        auto getLogsButton = new TextEmojiWidget(commonWidget, labelFont(), getInfoTextColor(), Utils::scale_value(16));
+        auto getLogsButton = new TextEmojiWidget(commonWidget, labelFont(), getInfoTextColorKey(), Utils::scale_value(16));
         Utils::grabTouchWidget(getLogsButton);
         getLogsButton->setText(QT_TRANSLATE_NOOP("contactus_page", "Get debug information"));
         connect(getLogsButton, &TextEmojiWidget::clicked, this, &GetDebugInfoWidget::onClick);
@@ -932,7 +932,7 @@ void GetDebugInfoWidget::startAnimation()
     icon_->hide();
     progress_->show();
 
-    progress_->setProgressPenColor(getIconsColor());
+    progress_->setProgressPenColorKey(getIconsColorKey());
     progress_->setProgressPenWidth(getDebugInfoSpinnerPenWidth());
     progress_->start();
 }

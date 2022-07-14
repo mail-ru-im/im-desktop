@@ -36,6 +36,7 @@ namespace Logic
         void setFixedWidth(int _newWidth);
 
         bool needsTooltip(const QString& _aimId, const QModelIndex& _index, QPoint _posCursor = {}) const;
+        QRect getDraftIconRectWrapper(const QString& _aimId, const QModelIndex& _index, QPoint _posCursor = {}) const;
 
     public Q_SLOTS:
         void dlgStateChanged(const Data::DlgState&);

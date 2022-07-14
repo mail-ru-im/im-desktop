@@ -47,11 +47,12 @@
 #include "../../main_window/contact_list/ContactListModel.h"
 #include "../../main_window/contact_list/ContactListUtils.h"
 #include "../../main_window/contact_list/SelectionContactsForGroupChat.h"
-#include "../../main_window/smiles_menu/suggests_widget.h"
+#include "../../main_window/smiles_menu/SuggestsWidget.h"
 #include "../../main_window/containers/FriendlyContainer.h"
 #include "../../main_window/containers/LastseenContainer.h"
 #include "../../main_window/containers/InputStateContainer.h"
 #include "../tasks/TaskEditWidget.h"
+#include "../contact_list/ServiceContacts.h"
 
 #include "../../utils/gui_coll_helper.h"
 #include "../../utils/exif.h"
@@ -85,7 +86,6 @@ namespace
 {
     constexpr std::chrono::milliseconds viewTransitDuration() noexcept { return std::chrono::milliseconds(100); }
     constexpr std::chrono::milliseconds singleEmojiSuggestDuration() noexcept { return std::chrono::milliseconds(100); }
-    constexpr std::chrono::milliseconds getLoaderOverlayDelay() noexcept { return std::chrono::milliseconds(100); }
     constexpr std::chrono::milliseconds mentionCompleterTimeout() noexcept { return std::chrono::milliseconds(200); }
 
     constexpr auto symbolAt() noexcept { return u'@'; }
@@ -186,6 +186,11 @@ namespace
         }
         return false;
     }
+
+    auto bottomOffsetStickersSuggest() noexcept
+    {
+        return Utils::scale_value(10);
+    }
 }
 
 namespace Ui
@@ -281,6 +286,12 @@ namespace Ui
         });
 
         setInitialState();
+
+        connect(Logic::getContactListModel(), &Logic::ContactListModel::deletedUser, this, [this]()
+        {
+            // initalstate when add deleted contact
+            setInitialState();
+        });
 
         Testing::setAccessibleName(this, qsl("AS ChatInput InputWidget"));
     }
@@ -474,10 +485,16 @@ namespace Ui
         return QWidget::keyPressEvent(_e);
     }
 
-    void InputWidget::keyReleaseEvent(QKeyEvent *_e)
+    void InputWidget::keyReleaseEvent(QKeyEvent* _e)
     {
+        if (!textEdit_)
+            return QWidget::keyReleaseEvent(_e);
+
         if constexpr (platform::is_apple())
         {
+            if (const auto mainPage = MainPage::instance(); mainPage && mainPage->isSemiWindowVisible() && !mainPage->isSidebarWithThreadPage())
+                    return;
+
             if (_e->modifiers() & Qt::AltModifier)
             {
                 QTextCursor cursor = textEdit_->textCursor();
@@ -576,21 +593,7 @@ namespace Ui
         if (suggest.empty())
             return;
 
-        auto pos = suggestPos_;
-        if (pos.isNull())
-        {
-            pos = textEdit_->mapToGlobal(textEdit_->pos());
-            pos.setY(textEdit_->mapToGlobal(textEdit_->geometry().topLeft()).y() + Utils::scale_value(10));
-            if (pos.y() % 2 != 0)
-                pos.ry() += 1;
-
-            if (textEdit_->document()->lineCount() == 1)
-                pos.rx() += textEdit_->document()->idealWidth() / 2 - Tooltip::getDefaultArrowOffset();
-            else
-                pos.rx() = width() / 2 - Tooltip::getDefaultArrowOffset();
-        }
-
-        Q_EMIT needSuggets(suggestText, pos, QPrivateSignal());
+        Q_EMIT needSuggets(suggestText, suggestPosition(), QPrivateSignal());
     }
 
     void InputWidget::requestStickerSuggests()
@@ -860,6 +863,8 @@ namespace Ui
 
     void InputWidget::enterPressed()
     {
+        if (!isActive())
+            return;
         if (mentionCompleter_ && mentionCompleter_->completerVisible() && mentionCompleter_->hasSelectedItem())
         {
             mentionCompleter_->insertCurrent();
@@ -917,6 +922,7 @@ namespace Ui
         {
             clearInputText();
             clearEdit();
+            textEdit_->clearCache();
             switchToPreviousView();
             return;
         }
@@ -932,6 +938,7 @@ namespace Ui
         {
             GetDispatcher()->updateMessage(makeMessage(text));
             clearEdit();
+            textEdit_->clearCache();
         }
         else
         {
@@ -966,7 +973,7 @@ namespace Ui
         if (!isEdit)
         {
 #ifndef STRIP_AV_MEDIA
-            GetSoundsManager()->playSound(SoundsManager::Sound::OutgoingMessage);
+            GetSoundsManager()->playSound(SoundType::OutgoingMessage);
 #endif // !STRIP_AV_MEDIA
 
             Q_EMIT sendMessage(contact_);
@@ -974,6 +981,7 @@ namespace Ui
 
         clearInputText();
         switchToPreviousView();
+        textEdit_->clearCache();
 
         if (!isEdit)
             sendStatsIfNeeded();
@@ -981,7 +989,11 @@ namespace Ui
 
     void InputWidget::selectFileToSend(const FileSelectionFilter _filter)
     {
-        QFileDialog dialog(this);
+        QWidget* parent = this;
+        if constexpr (platform::is_linux())
+            parent = Utils::InterConnector::instance().getMainWindow();
+
+        QFileDialog dialog(parent);
         dialog.setFileMode(QFileDialog::ExistingFiles);
         dialog.setViewMode(QFileDialog::Detail);
         dialog.setDirectory(get_gui_settings()->get_value<QString>(settings_upload_directory, QString()));
@@ -1030,6 +1042,7 @@ namespace Ui
         if (auto& files = currentState().filesToSend_; !files.empty())
         {
             hideSmartreplies();
+            Q_EMIT hideSuggets();
 
             const auto inputText = getInputText();
             const auto mentions = currentState().mentions_;
@@ -1039,26 +1052,27 @@ namespace Ui
             const auto target = Logic::getContactListModel()->isThread(contact_) ? FilesWidget::Target::Thread : FilesWidget::Target::Chat;
             auto filesWidget = new FilesWidget(files, target, this);
             GeneralDialog::Options opt;
-            opt.preferredWidth_ = filesWidget->size().width();
+            opt.preferredWidth_ = filesWidget->width();
             GeneralDialog generalDialog(filesWidget, Utils::InterConnector::instance().getMainWindow(), opt);
-            generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("files_widget", "Cancel"), QT_TRANSLATE_NOOP("files_widget", "Send"), true);
+            generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("files_widget", "Cancel"), QT_TRANSLATE_NOOP("files_widget", "Send"));
 
             connect(filesWidget, &FilesWidget::setButtonActive, &generalDialog, &GeneralDialog::setButtonActive);
 
-            filesWidget->setDescription(inputText.string(), mentions);
+            filesWidget->setDescription(inputText, mentions);
             filesWidget->setFocusOnInput();
+            generalDialog.setFocusPolicyButtons(Qt::TabFocus);
 
-            if (generalDialog.showInCenter())
+            if (generalDialog.execute())
             {
                 files = filesWidget->getFiles();
                 currentState().mentions_ = filesWidget->getMentions();
-                currentState().description_ = filesWidget->getDescription().trimmed();
+                currentState().description_ = filesWidget->getDescription();
                 sendFiles(_source);
             }
-            else if (!inputText.isEmpty())
+            else
             {
-                currentState().mentions_ = mentions;
-                setInputText(inputText);
+                currentState().mentions_ = filesWidget->getMentions();
+                setInputText(filesWidget->getDescription());
                 saveDraft(SyncDraft::Yes);
             }
             clearFiles();
@@ -1313,8 +1327,8 @@ namespace Ui
 
         if (p.hasUrl())
         {
-            if (auto url = p.getUrl(); !url.is_email() && !url.is_filesharing())
-                SnippetCache::instance()->load(QString::fromStdString(url.url_));
+            if (!p.isEmail() && !p.isFileSharing())
+                SnippetCache::instance()->load(p.formattedUrl());
         }
     }
 
@@ -1360,7 +1374,7 @@ namespace Ui
         callLinkCreator_->createCallLink(_type, contact_);
     }
 
-    void InputWidget::saveDraft(SyncDraft _sync)
+    void InputWidget::saveDraft(SyncDraft _sync, bool _textChanged)
     {
         if (!currentState().draftLoaded_ || isEditing() || contact_.isEmpty() || panelMain_ && panelMain_->isDraftVersionVisible())
             return;
@@ -1373,7 +1387,7 @@ namespace Ui
             msg.Quotes_.clear();
 
         const auto sync = _sync == SyncDraft::Yes;
-        auto changed = isDraftChanged(currentDraft.message_, msg);
+        auto changed = isDraftChanged(currentDraft.message_, msg) || _textChanged;
         if (changed || sync && (!currentState().draft_.synced_ && !currentState().draft_.isEmpty()))
         {
             if (changed)
@@ -1598,7 +1612,7 @@ namespace Ui
 
     void InputWidget::activateParentLayout()
     {
-        if (auto wdg = parentWidget())
+        if (auto wdg = parentWidget(); wdg && wdg->layout())
             wdg->layout()->activate();
     }
 
@@ -1708,6 +1722,11 @@ namespace Ui
             currentState().clear();
             setView(InputView::Readonly);
         }
+        else if (Logic::getContactListModel()->isDeleted(contact_))
+        {
+            currentState().clear();
+            setView(InputView::Disabled);
+        }
         else if (currentState().isDisabled())
         {
             currentState().clear();
@@ -1732,6 +1751,9 @@ namespace Ui
 
         if (textEdit_)
             textEdit_->setPlaceholderAnimationEnabled(true);
+
+        if (const auto mainPage = MainPage::instance(); mainPage && !mainPage->isSidebarWithThreadPage())
+            setView(InputView::Default, UpdateMode::Force, SetHistoryPolicy::DontAddToHistory);
 
         activateWindow();
     }
@@ -2062,9 +2084,9 @@ namespace Ui
             stackWidget_->addWidget(panelMultiselect_);
         }
 
+        panelMultiselect_->updateElements();
         setCurrentWidget(panelMultiselect_);
         updateInputHeight();
-        panelMultiselect_->updateElements();
     }
 
     void InputWidget::setCurrentWidget(QWidget* _widget)
@@ -2263,6 +2285,8 @@ namespace Ui
                 pThis->startPttRecord();
                 pThis->setPttMode(_mode);
                 pThis->updateSubmitButtonState(UpdateMode::IfChanged);
+                pThis->setFocus();
+                Q_EMIT pThis->startPttRecording();
             }
             else
             {
@@ -2432,6 +2456,11 @@ namespace Ui
                 {
                     const auto state = Logic::getContactListModel()->isMuted(contact_) ? ReadonlyPanelState::EnableNotifications : ReadonlyPanelState::DisableNotifications;
                     switchToReadonlyPanel(state);
+                }
+                else if (Logic::getContactListModel()->isDeleted(contact_))
+                {
+                    currentState().clear(InputView::Disabled);
+                    switchToDisabledPanel(DisabledPanelState::Deleted);
                 }
                 else if (Logic::getContactListModel()->isThread(contact_))
                 {
@@ -2607,19 +2636,7 @@ namespace Ui
         const auto& quotes = currentState().getQuotes();
         const auto amount = files.size();
 
-        auto descriptionInside = false;
-        if (amount == 1)
-        {
-            if (files.front().isFile())
-            {
-                const auto& fi = files.front().getFileInfo();
-                descriptionInside = Utils::is_image_extension(fi.suffix()) || Utils::is_video_extension(fi.suffix());
-            }
-            else
-            {
-                descriptionInside = true;
-            }
-        }
+        const bool descriptionInside = (amount == 1);
 
         if (!currentState().description_.isEmpty() && !descriptionInside)
         {
@@ -2636,7 +2653,7 @@ namespace Ui
                 continue;
 
             const auto& quotesToSend = sendQuotesOnce ? quotes : Data::QuotesVec();
-            const auto& descToSend = descriptionInside ? currentState().description_ : QString();
+            const auto& fileUploadDescription = descriptionInside ? currentState().description_ : Data::FString();
             const auto& mentionsToSend = descriptionInside ? currentState().mentions_ : Data::MentionMap();
             const auto isWebpScreenshot = Features::isWebpScreenshotEnabled() && f.canConvertToWebp();
 
@@ -2644,23 +2661,23 @@ namespace Ui
             {
                 QFile file(f.getFileInfo().absoluteFilePath());
                 if (file.open(QIODevice::ReadOnly))
-                    GetDispatcher()->uploadSharedFile(contact_, file.readAll(), u".gif", quotesToSend, descToSend, mentionsToSend);
+                    GetDispatcher()->uploadSharedFile(contact_, file.readAll(), u".gif", quotesToSend, fileUploadDescription, mentionsToSend);
             }
             else if (f.isFile() && (currentState().sendAsFile_ || alreadySentWebp || !isWebpScreenshot))
             {
-                GetDispatcher()->uploadSharedFile(contact_, f.getFileInfo().absoluteFilePath(), quotesToSend, descToSend, mentionsToSend, currentState().sendAsFile_);
+                GetDispatcher()->uploadSharedFile(contact_, f.getFileInfo().absoluteFilePath(), quotesToSend, fileUploadDescription, mentionsToSend, currentState().sendAsFile_);
             }
             else
             {
                 if (isWebpScreenshot)
                     alreadySentWebp = true;
-                Async::runAsync([f, contact_ = contact_, quotesToSend, descToSend, mentionsToSend, isWebpScreenshot]() mutable
+                Async::runAsync([f, contact_ = contact_, quotesToSend, fileUploadDescription, mentionsToSend, isWebpScreenshot]() mutable
                 {
                     auto array = FileToSend::loadImageData(f, isWebpScreenshot ? FileToSend::Format::webp : FileToSend::Format::png);
                     if (array.isEmpty())
                         return;
 
-                    Async::runInMain([array = std::move(array), contact_ = std::move(contact_), quotesToSend = std::move(quotesToSend), descToSend = std::move(descToSend), mentionsToSend = std::move(mentionsToSend), isWebpScreenshot]()
+                    Async::runInMain([array = std::move(array), contact_ = std::move(contact_), quotesToSend = std::move(quotesToSend), descToSend = std::move(fileUploadDescription), mentionsToSend = std::move(mentionsToSend), isWebpScreenshot]()
                     {
                         GetDispatcher()->uploadSharedFile(contact_, array, isWebpScreenshot ? u".webp" : u".png", quotesToSend, descToSend, mentionsToSend);
                     });
@@ -2752,8 +2769,10 @@ namespace Ui
         if (core::data::format_type::ordered_list != bf.type() || !block.text().isEmpty())
             textEdit_->registerTextChange();
 
+        const bool isTextChanged = getInputText() != currentState().draft_.message_.getFormattedText();
+        const auto syncDraft = textEdit_ && textEdit_->isEmpty() ? SyncDraft::Yes : SyncDraft::No;
         startDraftTimer();
-        saveDraft(textEdit_ && textEdit_->isEmpty() ? SyncDraft::Yes : SyncDraft::No);
+        saveDraft(syncDraft, isTextChanged);
         cancelDraftVersionByEdit();
 
         Q_EMIT inputTyped();
@@ -2868,8 +2887,6 @@ namespace Ui
 
         activateParentLayout();
 
-        hideSuggets();
-
         if (mentionCompleter_ && mentionCompleter_->isVisible())
             mentionCompleter_->setArrowPosition(tooltipArrowPosition());
     }
@@ -2888,6 +2905,10 @@ namespace Ui
                 connect(clickable, &ClickableWidget::clicked, this, [this]()
                 {
                     setActive(true);
+                    setFocus();
+
+                    if (const auto input = qobject_cast<InputWidget*>(this); input && input->isRecordingPtt())
+                        Utils::InterConnector::instance().getMainWindow()->setLastPttInput(input);
                 }, Qt::UniqueConnection);
             }
             if (auto btn = qobject_cast<CustomButton*>(_w))
@@ -2895,10 +2916,12 @@ namespace Ui
                 connect(btn, &CustomButton::clicked, this, [this]()
                 {
                     setActive(true);
+                    setFocus();
                 }, Qt::UniqueConnection);
                 connect(btn, &CustomButton::clickedWithButtons, this, [this]()
                 {
                     setActive(true);
+                    setFocus();
                 }, Qt::UniqueConnection);
             }
             installEventFilter(_w);
@@ -2928,7 +2951,14 @@ namespace Ui
         if (_event->type() == QEvent::ChildAdded)
             childEvent(static_cast<QChildEvent*>(_event));
         else if (_event->type() == QEvent::KeyPress || _event->type() == QEvent::MouseButtonPress)
-            setActive(true);
+        {
+            const auto mouseEvent = dynamic_cast<QMouseEvent*>(_event);
+            if (mouseEvent && geometry().contains(mouseEvent->pos()))
+            {
+                setActive(true);
+                setFocus();
+            }
+        }
 
         return QWidget::eventFilter(_obj, _event);
     }
@@ -2959,6 +2989,28 @@ namespace Ui
         cursorPos.rx() -= currentMetrics.horizontalAdvance(cursor.selectedText());
 
         return cursorPos;
+    }
+
+    QPoint InputWidget::suggestPosition() const
+    {
+        auto pos = suggestPos_;
+        if (pos.isNull())
+        {
+            const auto addPosX = [](int _width) 
+            {
+                return _width / 2 - Tooltip::getDefaultArrowOffset();
+            };
+            pos = textEdit_->mapToGlobal(textEdit_->pos());
+            pos.setY(textEdit_->mapToGlobal(textEdit_->geometry().topLeft()).y() + bottomOffsetStickersSuggest());
+            if (pos.y() % 2 != 0)
+                pos.ry() += 1;
+
+            if (textEdit_->document()->lineCount() == 1)
+                pos.rx() += addPosX(textEdit_->document()->idealWidth());
+            else
+                pos.rx() = addPosX(width());
+        }
+        return pos;
     }
 
     void InputWidget::sendStatsIfNeeded() const
@@ -2996,13 +3048,7 @@ namespace Ui
         const auto mode = currentStyleMode();
 
         if (bgWidget_)
-        {
-            const auto styleVar = mode == InputStyleMode::Default
-                ? Styling::StyleVariable::CHAT_ENVIRONMENT
-                : Styling::StyleVariable::BASE_GLOBALWHITE;
-            auto color = Styling::getParameters().getColor(styleVar, getBlurAlpha());
-            bgWidget_->setOverlayColor(color);
-        }
+            bgWidget_->setOverlayColor(mode == InputStyleMode::CustomBg ? Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE, getBlurAlpha()) : QColor());
 
         StyledInputElement* elems[] = {
             quotesWidget_,
@@ -3151,7 +3197,7 @@ namespace Ui
                         {
                             Utils::UrlParser p;
                             p.process(aimId);
-                            if (p.hasUrl() && p.getUrl().is_email())
+                            if (p.hasUrl() && p.isEmail())
                             {
                                 link += aimId;
                             }
@@ -3205,30 +3251,35 @@ namespace Ui
         }
     }
 
-    void InputWidget::onAttachTask()
+    void InputWidget::createTaskWidget(const Data::FString& _text, const Data::QuotesVec& _quotes, const Data::MentionMap& _mentions, const QString& _assignee, const bool _isThreadFeedMessage)
     {
-        hideSmartreplies();
-        Q_EMIT hideSuggets();
-
-        const auto mentions = currentState().mentions_;
-        const auto inputText = getInputText().string().trimmed();
-
-        auto taskWidget = new Ui::TaskEditWidget(contact_);
+        auto taskWidget = new Ui::TaskEditWidget(contact_, _assignee);
 
         GeneralDialog::Options opt;
         opt.ignoreKeyPressEvents_ = true;
         opt.threadBadge_ = Logic::getContactListModel()->isThread(contact_);
         GeneralDialog gd(taskWidget, Utils::InterConnector::instance().getMainWindow(), opt);
         taskWidget->setFocusOnTaskTitleInput();
-        taskWidget->setInputData(inputText, currentState().quotes_, currentState().mentions_);
+        taskWidget->setInputData(_text, _quotes, _mentions);
         gd.addLabel(taskWidget->getHeader(), Qt::AlignCenter);
 
         clearInputText();
-        if (!inputText.isEmpty())
+        if (!_text.isEmpty())
             saveDraft(SyncDraft::Yes);
 
-        if (gd.showInCenter())
+        if (gd.execute())
         {
+            if (_isThreadFeedMessage)
+            {
+                if (auto page = Utils::InterConnector::instance().getPage(ServiceContacts::getThreadsName()))
+                    page->scrollToInput(contact_);
+            }
+            else
+            {
+                if (auto page = Utils::InterConnector::instance().getHistoryPage(contact_))
+                    page->scrollToBottom();
+            }
+
             hideQuotes();
             clear();
             notifyDialogAboutSend();
@@ -3236,13 +3287,24 @@ namespace Ui
         else
         {
             setInputText(taskWidget->getInputText(), taskWidget->getCursorPos());
-            currentState().mentions_ = mentions;
+            currentState().mentions_ = _mentions;
             saveDraft(SyncDraft::Yes);
         }
     }
 
+    void InputWidget::onAttachTask()
+    {
+        hideSmartreplies();
+        Q_EMIT hideSuggets();
+
+        auto text = getInputText();
+        Utils::convertMentions(text, currentState().mentions_);
+        createTaskWidget(text, currentState().quotes_, currentState().mentions_, contact_, false);
+    }
+
     void InputWidget::onAttachPtt()
     {
+        Q_EMIT hideSuggets();
         startPtt(PttMode::Lock);
         sendStat(contact_, core::stats::stats_event_names::chatscr_openptt_action, "plus");
     }
@@ -3262,13 +3324,13 @@ namespace Ui
         GeneralDialog::Options opt;
         opt.ignoreKeyPressEvents_ = true;
         GeneralDialog generalDialog(pollWidget, Utils::InterConnector::instance().getMainWindow(), opt);
-        pollWidget->setFocus();
+
         pollWidget->setFocusOnQuestion();
-        pollWidget->setInputData(inputText.string().trimmed(), currentState().quotes_, currentState().mentions_);
+        pollWidget->setInputData(inputText, currentState().quotes_, currentState().mentions_);
 
         clearInputText();
 
-        if (generalDialog.showInCenter())
+        if (generalDialog.execute())
         {
             hideQuotes();
             clear();
@@ -3285,14 +3347,12 @@ namespace Ui
     void InputWidget::onAttachCallByLink()
     {
         hideSmartreplies();
-
         createConference(ConferenceType::Call);
     }
 
     void InputWidget::onAttachWebinar()
     {
         hideSmartreplies();
-
         createConference(ConferenceType::Webinar);
     }
 
@@ -3304,10 +3364,12 @@ namespace Ui
 
     void InputWidget::clear()
     {
+        textEdit_->clearCache();
         clearQuotes();
         clearFiles();
         clearMentions();
         clearEdit();
+        textChanged();
     }
 
     void InputWidget::setEditView()
@@ -3436,6 +3498,7 @@ namespace Ui
 
         const auto loaded = currentState().draftLoaded_;
         const auto openedDialog = (historyPage_ && historyPage_->isPageOpen()) || (threadFeedItem_ && threadFeedItem_->isInputActive());
+        const auto draftIsEmpty = _draft.message_.GetSourceText().isEmpty();
 
         if (_draft.localTimestamp_ > currentState().draft_.localTimestamp_ || !currentState().draftLoaded_)
         {
@@ -3446,12 +3509,15 @@ namespace Ui
                 else
                     currentState().draft_ = _draft;
             }
-            else if (!loaded || !panelMain_ || !openedDialog)
+            else if (!loaded || !panelMain_ || !openedDialog || draftIsEmpty)
             {
                 applyDraft(_draft);
                 currentState().draftLoaded_ = true;
+
+                if(panelMain_ && draftIsEmpty)
+                    panelMain_->cancelDraft();
             }
-            else if (!_draft.message_.GetSourceText().isEmpty())
+            else if (!draftIsEmpty)
             {
                 hideQuotes();
                 currentState().draft_.synced_ = false;
@@ -3469,6 +3535,7 @@ namespace Ui
 
     void InputWidget::onDraftTimer()
     {
+        textEdit_->clearCache();
         saveDraft(SyncDraft::Yes);
     }
 
@@ -3476,7 +3543,7 @@ namespace Ui
     {
         if (currentState().queuedDraft_)
         {
-            if (!isEditing())
+            if (!isEditing() && !currentState().queuedDraft_->isEmpty())
                 applyDraft(*currentState().queuedDraft_);
             else
                 currentState().draft_ = *currentState().queuedDraft_;
@@ -3491,6 +3558,7 @@ namespace Ui
             return;
 
         clearInputText();
+        textEdit_->clearCache();
         saveDraft(SyncDraft::Yes);
     }
 
@@ -3501,6 +3569,18 @@ namespace Ui
         GetDispatcher()->setDraft(currentState().draft_.message_, currentState().draft_.localTimestamp_, true);
         applyDraft(currentState().draft_);
         currentState().queuedDraft_.reset();
+    }
+
+    void InputWidget::createTask(const Data::FString& _text, const Data::MentionMap& _mentions, const QString& _assignee, const bool _isThreadFeedMessage)
+    {
+        auto text = getInputText();
+        text += _text;
+
+        Data::MentionMap mentions = currentState().mentions_;
+        mentions.insert(_mentions.begin(), _mentions.end());
+        Utils::convertMentions(text, mentions);
+
+        createTaskWidget(text, currentState().quotes_, mentions, _assignee, _isThreadFeedMessage);
     }
 
     void InputWidget::requestMoreStickerSuggests()
@@ -3558,6 +3638,9 @@ namespace Ui
 
     void InputWidget::onPageLeave()
     {
+        if(textEdit_)
+          textEdit_->clearCache();
+
         saveDraft(SyncDraft::Yes);
         stopDraftTimer();
         onDraftVersionAccepted();
@@ -3583,10 +3666,17 @@ namespace Ui
                 effect = new QGraphicsOpacityEffect(this);
                 effect->setOpacity(0.5);
                 setGraphicsEffect(effect);
-
-                Q_EMIT editFocusOut();
+                Q_EMIT editFocusOut(Qt::OtherFocusReason);
             }
         }
         active_ = _active;
+    }
+
+    bool InputWidget::isTextEditInFocus() const
+    {
+        if (textEdit_)
+            return textEdit_->hasFocus();
+
+        return false;
     }
 }

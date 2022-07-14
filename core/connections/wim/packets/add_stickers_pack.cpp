@@ -5,6 +5,7 @@
 #include "../../../core.h"
 #include "../../../tools/system.h"
 #include "../../../utils.h"
+#include "../log_replace_functor.h"
 
 #include "../../urls_cache.h"
 
@@ -81,6 +82,11 @@ int32_t add_stickers_pack_packet::execute_request(const std::shared_ptr<core::ht
 std::string_view add_stickers_pack_packet::get_method() const
 {
     return "stickersStoreBuy";
+}
+
+int core::wim::add_stickers_pack_packet::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t add_stickers_pack_packet::parse_response(const std::shared_ptr<core::tools::binary_stream>& _response)

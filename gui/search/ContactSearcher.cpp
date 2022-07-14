@@ -177,7 +177,10 @@ namespace Logic
                     if (hideReadonly_ && ci->is_readonly())
                         continue;
                 }
-
+                localResults_.push_back(res);
+            }
+            else if (res->isLocalResult_ && res->isContact())
+            {
                 localResults_.push_back(res);
             }
         }

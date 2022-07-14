@@ -1,6 +1,10 @@
 #include "stdafx.h"
 
 #include "gui_settings.h"
+#include "styles/ThemeParameters.h"
+#include "styles/ThemesContainer.h"
+#include "styles/StyleSheetContainer.h"
+#include "styles/StyleSheetGenerator.h"
 #include "../cache/emoji/Emoji.h"
 #include "../fonts.h"
 #include "../utils/log/log.h"
@@ -8,6 +12,9 @@
 #include "../utils/utils.h"
 #include "../utils/InterConnector.h"
 #include "../utils/features.h"
+#include "../utils/MimeHtmlConverter.h"
+#include "../utils/MimeDataUtils.h"
+#include "../controls/CustomButton.h"
 #include "../controls/ContextMenu.h"
 #include "../controls/textrendering/FormattedTextRendering.h"
 #include "../main_window/history_control/MessageStyle.h"
@@ -48,16 +55,6 @@ namespace
         _cursor.mergeCharFormat(_format);
     }
 
-    bool isLineBreak(QChar _ch)
-    {
-        return _ch == QChar::LineFeed || _ch == QChar::LineSeparator || _ch == QChar::ParagraphSeparator;
-    }
-
-    qreal getDefaultRootFrameVMargin()
-    {
-        return Utils::scale_value(7);
-    }
-
     void selectText(QTextCursor& _cursor, int _start, int _end)
     {
         im_assert(_start >= 0);
@@ -71,7 +68,7 @@ namespace
         if (_range.size_ < 1)
             return {};
 
-        const auto [offset, length] = _range;
+        const auto [offset, length, startIndex] = _range;
         const auto endPos = offset + length;
         auto result = std::vector<core::data::range>();
 
@@ -203,7 +200,7 @@ namespace
 
     void applyReplacementShifts(core::data::range& _range, const Logic::ReplacementsInfo& _replacements)
     {
-        auto& [offset, length] = _range;
+        auto& [offset, length, startIndex] = _range;
 
         auto offsetDelta = 0;
         auto lengthDelta = 0;
@@ -221,26 +218,41 @@ namespace
 
     //! Keeps mention and etc formats
     template <typename T>
-    void updateCharFormat(QTextCursor _cursor, core::data::range _range, T _updateFunction)
+    void updateCharFormat(QTextCursor _cursor, core::data::range _range, T _updateFunction, ftype ft = ftype::none)
     {
         _cursor.setPosition(_range.offset_);
+        _cursor.select(QTextCursor::WordUnderCursor);
 
         const auto subranges = getSubrangesWithDifferentCharFormats(_cursor, _range);
-        for (auto [pos, subrangeSize] : subranges)
+        for (auto [pos, subrangeSize, startIndex] : subranges)
         {
             auto endPos = pos + subrangeSize;
+            int shift = 0;
 
-            // Workaround for invalid mention handling at start
-            _cursor.setPosition(pos);
-            _cursor.insertText(qsl("_"));
+            _cursor.select(QTextCursor::WordUnderCursor);
+            auto currentCharFormat = _cursor.charFormat();
+            QTextCharFormat charFormat;
 
-            selectText(_cursor, pos + 1, endPos + 1);
-            auto charFormat = _cursor.charFormat();
+
+            bool is_mention = Utils::isMentionLink(currentCharFormat.anchorHref()) || ft == ftype::mention;
+
+            if (is_mention)
+            {
+                shift = 1;
+                _cursor.setPosition(pos);
+                _cursor.insertText(qsl("_"));
+            }
+
             _updateFunction(charFormat);
+
+            selectText(_cursor, pos + shift , endPos + shift);
             mergeCharFormat(_cursor, charFormat);
 
-            _cursor.setPosition(pos);
-            _cursor.deleteChar();
+            if (is_mention)
+            {
+                _cursor.setPosition(pos);
+                _cursor.deleteChar();
+            }
         }
     }
 
@@ -268,36 +280,28 @@ namespace
 
 namespace Ui
 {
-    TextEditEx::TextEditEx(QWidget* _parent, const QFont& _font, const QPalette& _palette, bool _input, bool _isFitToText)
-        :TextEditEx(_parent, _font, QColor(), _input, _isFitToText)
-    {
-        setPalette(_palette);
-    }
-
-    TextEditEx::TextEditEx(QWidget* _parent, const QFont& _font, const QColor& _color, bool _input, bool _isFitToText)
+    TextEditEx::TextEditEx(QWidget* _parent, const QFont& _font, const Styling::ThemeColorKey& _color, bool _input, bool _isFitToText)
         : QTextBrowser(_parent)
         , index_(0)
         , font_(_font)
+        , color_{ _color }
         , prevPos_(-1)
         , input_(_input)
         , isFitToText_(_isFitToText)
-        , add_(0)
+        , heightSupplement_(0)
         , limit_(-1)
         , prevCursorPos_(0)
+        , defaultDocumentMargin_(document()->documentMargin())
         , maxHeight_(Utils::scale_value(250))
     {
         setAttribute(Qt::WA_InputMethodEnabled);
         setInputMethodHints(Qt::ImhMultiLine);
 
+        updatePalette();
+
         setAcceptRichText(false);
         setFont(font_);
         document()->setDefaultFont(font_);
-
-        auto p = palette();
-        p.setColor(QPalette::Text, _color);
-        p.setColor(QPalette::Highlight, MessageStyle::getTextSelectionColor());
-        p.setColor(QPalette::HighlightedText, MessageStyle::getSelectionFontColor());
-        setPalette(p);
 
         if (isFitToText_)
         {
@@ -309,6 +313,8 @@ namespace Ui
 
         connect(this, &QTextBrowser::anchorClicked, this, &TextEditEx::onAnchorClicked);
         connect(this, &TextEditEx::cursorPositionChanged, this, &TextEditEx::onCursorPositionChanged);
+
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::clearSelection, this, &TextEditEx::clearSelection, Qt::QueuedConnection);
 
         if (input_)
             connect(document(), &QTextDocument::contentsChange, this, &TextEditEx::onContentsChanged);
@@ -329,6 +335,10 @@ namespace Ui
         }
 
         onTextChanged();
+
+        connect(&Styling::getThemesContainer(), &Styling::ThemesContainer::globalThemeChanged, this, &TextEditEx::onThemeChange);
+
+        Styling::setStyleSheet(verticalScrollBar(), Styling::getParameters().getScrollBarQss());
     }
 
     void TextEditEx::limitCharacters(const int _count)
@@ -359,24 +369,20 @@ namespace Ui
 
     void TextEditEx::editContentChanged()
     {
-        auto docHeight = qRound(this->document()->size().height());
+        const auto docHeight = qBound(Utils::scale_value(20),
+            qRound(this->document()->size().height()),
+            maxHeight_);
 
-        const auto minHeight = Utils::scale_value(20);
-        if (docHeight < minHeight)
-            docHeight = minHeight;
-
-        if (docHeight > maxHeight_)
-            docHeight = maxHeight_;
-
-        auto oldHeight = height();
-
-        setFixedHeight(docHeight + add_);
-
+        const auto oldHeight = height();
+        setFixedHeight(docHeight + heightSupplement_);
         if (height() != oldHeight)
             Q_EMIT setSize(0, height() - oldHeight);
+
+        if (textCursor().atEnd())
+            verticalScrollBar()->setValue(verticalScrollBar()->maximum());
     }
 
-    void TextEditEx::onAnchorClicked(const QUrl &_url)
+    void TextEditEx::onAnchorClicked(const QUrl& _url)
     {
         Utils::openUrl(_url.toString());
     }
@@ -452,7 +458,7 @@ namespace Ui
         if (!hasFocus())
             return;
 
-        if (auto cursor = textCursor(); cursor.hasSelection())
+        if (const auto cursor = textCursor(); cursor.hasSelection())
         {
             formatSelectionUserAction(_type);
         }
@@ -468,6 +474,18 @@ namespace Ui
                 return true;
             });
         }
+
+        if (textCursor().atEnd())
+            verticalScrollBar()->setValue(verticalScrollBar()->maximum());
+    }
+
+    void TextEditEx::updatePalette()
+    {
+        auto p = palette();
+        p.setColor(QPalette::Text, Styling::getColor(color_));
+        p.setColor(QPalette::Highlight, MessageStyle::getTextSelectionColor());
+        p.setColor(QPalette::HighlightedText, MessageStyle::getSelectionFontColor());
+        setPalette(p);
     }
 
     QString TextEditEx::getPlainText(int _from, int _to) const
@@ -648,8 +666,7 @@ namespace Ui
                     case QChar::Nbsp:
                         *uc = ql1c(' ');
                         break;
-                    default:
-                        ;
+                    default:;
                     }
                 }
 
@@ -670,6 +687,7 @@ namespace Ui
                 {
                     if (end - start > 0)
                         builder %= getStringFromRange(start, end);
+
                     builder %= getStringFromRange(end, end + 1);
                     start = end + 1;
                 }
@@ -782,7 +800,7 @@ namespace Ui
 
     core::data::range TextEditEx::surroundWithNewLinesIfNone(core::data::range _range, bool _onlyIfBlock)
     {
-        auto [offset, length] = _range;
+        auto [offset, length, startIndex] = _range;
         const auto selectionEnd = offset + length;
 
         auto cursor = textCursor();
@@ -820,7 +838,7 @@ namespace Ui
     {
         auto doc = document();
         auto cursor = textCursor();
-        const auto [offset, length] = getSelectionRange(cursor);
+        const auto [offset, length, startIndex] = getSelectionRange(cursor);
 
         const auto firstBlock = doc->findBlock(offset);
         auto firstBF = getBlockFormat(firstBlock);
@@ -865,6 +883,7 @@ namespace Ui
 
     void TextEditEx::onTextChanged()
     {
+        clearCache();
         { // Hack to fix incorrect bullet y-placement in a line containing only emojis
             blockNumbersToApplyDescentHack_.clear();
             for (auto block = document()->findBlockByNumber(0); block.isValid(); block = block.next())
@@ -904,7 +923,7 @@ namespace Ui
             // are not taken into account when calculating document height
             if (isFormatEnabled())
             {
-                auto defaultVMargin = getDefaultRootFrameVMargin();
+                const auto defaultVMargin = defaultDocumentMargin_;
 
                 cursor.setPosition(0);
                 const auto topMargin = getBlockFormat(cursor).type() == ftype::pre
@@ -916,7 +935,9 @@ namespace Ui
 
                 auto rootFrame = document()->rootFrame();
                 auto frameFormat = rootFrame->frameFormat();
-                if (frameFormat.topMargin() != topMargin || frameFormat.bottomMargin() != bottomMargin)
+                const auto currentTopMargin = frameFormat.topMargin();
+                const auto currentBottomMargin = frameFormat.bottomMargin();
+                if (currentTopMargin != topMargin || currentBottomMargin != bottomMargin)
                 {
                     frameFormat.setTopMargin(topMargin);
                     frameFormat.setBottomMargin(bottomMargin);
@@ -1018,6 +1039,13 @@ namespace Ui
         if (!_source->hasText())
             return;
 
+        // avoid double parsing
+        if (QString text = _source->text(); Utils::isBase64EncodedImage(text))
+        {
+            Q_EMIT insertFiles();
+            return;
+        }
+
         if (limit_ != -1 && document()->characterCount() >= limit_)
             return;
 
@@ -1025,7 +1053,9 @@ namespace Ui
         core::data::format format;
         bool withMentions = false;
 
-        if (isFormatEnabled() && _source->hasFormat(MimeData::getTextFormatMimeType()))
+        const auto formatEnabled = isFormatEnabled() && !(QApplication::keyboardModifiers() & Qt::ShiftModifier);
+
+        if (formatEnabled && _source->hasFormat(MimeData::getTextFormatMimeType()))
         {
             if (const auto rawText = _source->data(MimeData::getTextFormatMimeType()); !rawText.isEmpty())
             {
@@ -1037,6 +1067,18 @@ namespace Ui
             }
         }
 
+        if (formatEnabled && _source->hasHtml())
+        {
+            const auto formats = _source->formats();
+            const auto textPriority = formats.indexOf(MimeData::getMimeTextFormat());
+            const auto htmlPriority = formats.indexOf(MimeData::getMimeHtmlFormat());
+            if (textPriority < 0 || textPriority > htmlPriority)
+            {
+                Utils::MimeHtmlConverter converter;
+                insertFormattedText(converter.fromHtml(_source->html()));
+                return;
+            }
+        }
         if (_source->hasFormat(MimeData::getRawMimeType()))
         {
             if (const auto rawText = _source->data(MimeData::getRawMimeType()); !rawText.isEmpty())
@@ -1106,7 +1148,7 @@ namespace Ui
         const auto pos = textCursor().hasSelection() ? textCursor().selectionStart() : textCursor().position();
 
         if (!format.empty())
-            insertFormattedText(Data::FString(text, format));
+            insertFormattedText(Data::FString(text, format), QTextCharFormat::AlignBottom, true);
         else if (!text.isEmpty())
             Logic::Text4Edit(text, *this, Logic::Text2DocHtmlMode::Escape, false, false, nullptr, Emoji::EmojiSizePx::Auto, QTextCharFormat::AlignBottom);
 
@@ -1128,7 +1170,7 @@ namespace Ui
     void TextEditEx::focusOutEvent(QFocusEvent* _event)
     {
         if (_event->reason() != Qt::ActiveWindowFocusReason)
-            Q_EMIT focusOut();
+            Q_EMIT focusOut(_event->reason());
 
         QTextBrowser::focusOutEvent(_event);
     }
@@ -1137,6 +1179,9 @@ namespace Ui
     {
         if (_event->source() == Qt::MouseEventNotSynthesized)
         {
+            if (_event->button() == Qt::LeftButton && !Utils::InterConnector::instance().isMultiselect())
+                Q_EMIT Utils::InterConnector::instance().clearSelection();
+
             Q_EMIT clicked();
             QTextBrowser::mousePressEvent(_event);
             if (!input_)
@@ -1210,7 +1255,7 @@ namespace Ui
                     replaceSelectionBy({});
                     return true;
                 });
-            return;
+                return;
             }
 
             if (key == Qt::Key_Backspace && isAtLineStart)
@@ -1410,6 +1455,8 @@ namespace Ui
         printDebugInfo();
 
         const auto oldPos = textCursor().position();
+        if (_event->key() == Qt::Key_V && (_event->modifiers() & Qt::ControlModifier))
+            _event->setModifiers(_event->modifiers() &= ~Qt::ShiftModifier);//makes QTextBrowser recognize ctrl+shift+v as Paste action
         QTextBrowser::keyPressEvent(_event);
         const auto newPos = textCursor().position();
 
@@ -1619,7 +1666,7 @@ namespace Ui
 
             drawBlockFormatsStuff(p);
 
-            if constexpr (false && needShowDebugInfo())
+            if constexpr (needShowDebugInfo())
                 drawDebugLines(p);
         }
 
@@ -1640,7 +1687,6 @@ namespace Ui
         {
             auto menuFormat = new ContextMenu(menu);
             menuFormat->setTitle(QT_TRANSLATE_NOOP("context_menu", "Format"));
-            ContextMenu::applyStyle(menuFormat, true, Utils::scale_value(15), Utils::scale_value(36));
             Testing::setAccessibleName(menuFormat, qsl("AS ChatInput contextMenuFormat"));
 
             menuFormat->setEnabled(isAnyFormatActionAllowed());
@@ -1718,9 +1764,12 @@ namespace Ui
 
     Data::FString TextEditEx::getText() const
     {
-        auto result = getText(0);
-        Utils::convertFilesPlaceholders(result, files_);
-        return result;
+        if(cache_.isEmpty())
+        {
+            cache_ = getText(0);
+            Utils::convertFilesPlaceholders(cache_, files_);
+        }
+        return cache_;
     }
 
     Data::FormatTypes TextEditEx::getCurrentNonMentionFormats() const
@@ -1750,7 +1799,7 @@ namespace Ui
         });
     }
 
-    void TextEditEx::insertFormattedText(Data::FStringView _view, const QTextCharFormat::VerticalAlignment _alignment)
+    void TextEditEx::insertFormattedText(Data::FStringView _view, const QTextCharFormat::VerticalAlignment _alignment, const bool _isInsertFromMimeData)
     {
         if (!isFormatEnabled() || !_view.hasFormatting())
         {
@@ -1789,11 +1838,20 @@ namespace Ui
         for (auto ft : text.formatting().formats())
         {
             im_assert(ft.type_ != ftype::none);
+
+            const QString textFromBegin = text.string().mid(0, ft.range_.offset_ + ft.range_.size_);
+            const int carriageReturnCount = textFromBegin.count(QChar::CarriageReturn % QChar::LineFeed);
+            if (textFromBegin.at(textFromBegin.size() - 1) == QChar::CarriageReturn)
+                --ft.range_.size_;
+
+            ft.range_.offset_ -= carriageReturnCount;
+
+
             if (ft.type_ == ftype::mention && !ft.data_)
                 ft.data_ = text.string().mid(ft.range_.offset_, ft.range_.size_).toStdString();
             ft.range_.offset_ += startPos;
             applyReplacementShifts(ft.range_, replacements);
-            formatRange(ft);
+            formatRange(ft, _isInsertFromMimeData);
         }
 
         //! Keep font monospaced if needed
@@ -1879,6 +1937,24 @@ namespace Ui
     void TextEditEx::insertEmoji(const Emoji::EmojiCode& _code)
     {
         mergeResources(Logic::InsertEmoji(_code, *this));
+#ifdef __APPLE__
+        auto cursor = textCursor();
+        if (getBlockFormat(cursor).type() == ftype::pre)
+        {
+            blockIntermediateTextChangeSignalsWrapper<WrapperPolicy::KeepText>([this, &cursor]()
+            {
+                const auto block = cursor.block();
+                auto blockRange = core::data::range{ block.position(), block.text().size() };
+                blockRange = surroundWithNewLinesIfNone(blockRange, true);
+                formatRangeClearBlockTypes(blockRange);
+                discardAllStylesAtCursor();
+                blockRange = formatRange({ftype::pre, blockRange});
+                return blockRange.size_ > 0;
+            });
+
+            setTextCursor(cursor);
+        }
+#endif
     }
 
     void TextEditEx::selectWholeText()
@@ -1970,8 +2046,10 @@ namespace Ui
     void TextEditEx::clearSelection()
     {
         QTextCursor cur = textCursor();
+        const auto scrollPos = verticalScrollBar()->value();
         cur.clearSelection();
         setTextCursor(cur);
+        verticalScrollBar()->setValue(scrollPos);
         prevPos_ = -1;
     }
 
@@ -2043,7 +2121,7 @@ namespace Ui
     void TextEditEx::formatRangeStyleType(core::data::range_format _format)
     {
         auto& [format_type, range, format_data] = _format;
-        auto& [offset, length] = range;
+        auto& [offset, length, startIndex] = range;
         im_assert(core::data::is_style_or_none(format_type));
         im_assert(format_type != ftype::mention || format_data);
 
@@ -2083,14 +2161,14 @@ namespace Ui
             {
                 const auto subRangeOffset = qMax(block.position(), offset);
                 const auto subRangeSize = qMin(blockEnd, rangeEnd) - subRangeOffset;
-                updateCharFormat(cursor, {subRangeOffset, subRangeSize},
+                updateCharFormat(cursor, core::data::range{subRangeOffset, subRangeSize},
                     [type = format_type, needToAdd, data = format_data](QTextCharFormat& _charFormat)
                     {
                         if (type == ftype::none)
                             clearCharFormats(_charFormat);
                         else
                             setTextStyle(_charFormat, type, needToAdd, data);
-                    });
+                    }, format_type);
             }
 
             block = block.next();
@@ -2100,7 +2178,7 @@ namespace Ui
 
     void TextEditEx::formatRangeCreateLink(core::data::range _range)
     {
-        const auto [offset, length] = _range;
+        const auto [offset, length, startIndex] = _range;
         auto name = getText(offset, offset + length);
         Utils::convertMentions(name, mentions_);
         const auto nameTrimmed = Data::FStringView(name).trimmed();
@@ -2121,19 +2199,47 @@ namespace Ui
             setLinkToSelection(url);
     }
 
-    core::data::range TextEditEx::formatRangeBlockType(core::data::range_format _format)
+    bool TextEditEx::clearBlockFormatOnDemand(core::data::range_format _format)
+    {
+        auto doc = document();
+        auto [offset, length, startIndex] = _format.range_;
+        auto cursor = textCursor();
+
+        const auto firstBlockNum = doc->findBlock(offset).blockNumber();
+        const auto lastBlockNum = doc->findBlock(offset + length - 1).blockNumber();
+        cursor.setPosition(offset);
+
+        bool res = false;
+
+        for (auto i = firstBlockNum; i <= lastBlockNum; ++i)
+        {
+            auto block = doc->findBlockByNumber(i);
+            cursor.setPosition(block.position());
+            auto bf = getBlockFormat(cursor);
+
+            if (bf.type() == _format.type_)
+            {
+                removeBlockFormatFromLine(block.position() + 1);
+                res = true;
+            }
+        }
+
+        return res;
+    }
+
+    core::data::range TextEditEx::formatRangeBlockType(core::data::range_format _format, const bool _isInsertFromMimeData)
     {
         im_assert(!core::data::is_style_or_none(_format.type_));
         auto doc = document();
         if (!doc)
             return _format.range_;
 
-        auto [offset, length] = _format.range_;
+        auto [offset, length, startIndex] = _format.range_;
         auto cursor = textCursor();
 
         if (_format.type_ == ftype::pre)
         {
-            formatRangeClearBlockTypes(_format.range_);
+            clearSelectionFormats();
 
             updateCharFormat(cursor, {offset, length}, [](QTextCharFormat& _charFormat)
             {
@@ -2144,12 +2250,16 @@ namespace Ui
         }
         cursor.setPosition(offset);
 
-        if (!core::data::is_style(_format.type_))
+        if (clearBlockFormatOnDemand(_format))
+            return {offset, length};
+
+        if (!core::data::is_style(_format.type_) && !_isInsertFromMimeData)
             offset = surroundWithNewLinesIfNone(_format.range_).offset_;
 
         const auto firstBlockNum = doc->findBlock(offset).blockNumber();
         const auto lastBlockNum = doc->findBlock(offset + length - 1).blockNumber();
         cursor.setPosition(offset);
+
         for (auto i = firstBlockNum; i <= lastBlockNum; ++i)
         {
             auto block = doc->findBlockByNumber(i);
@@ -2219,7 +2329,7 @@ namespace Ui
             return false;
 
         const auto cursor = textCursor();
-        const auto [offset, size] = getSelectionRange(cursor);
+        const auto [offset, size, startIndex] = getSelectionRange(cursor);
         const auto selectedText = getText(offset, offset + size);
         const auto& formats = selectedText.formatting().formats();
         const auto hasSelection = size > 0;
@@ -2273,7 +2383,7 @@ namespace Ui
         return getCurrentNonMentionFormats().testFlag(ftype::pre);
     }
 
-    core::data::range TextEditEx::formatRange(const core::data::range_format& _format)
+    core::data::range TextEditEx::formatRange(const core::data::range_format& _format, const bool _isInsertFromMimeData)
     {
         if (ftype::none == _format.type_)
         {
@@ -2291,7 +2401,8 @@ namespace Ui
         else
         {
             auto range = _format.range_;
-            range = surroundWithNewLinesIfNone(range);
+            if (!_isInsertFromMimeData)
+                range = surroundWithNewLinesIfNone(range);
             formatRangeClearBlockTypes(range);
             return formatRangeBlockType({_format.type_, range, _format.data_});
         }
@@ -2305,19 +2416,96 @@ namespace Ui
         auto cursor = textCursor();
         auto range = getSelectionRange(cursor);
 
-        cursor.setPosition(range.offset_ + qMin(range.size_, 1));
+        selectText(cursor, 0, 1);
+        auto currentFormat = cursor.charFormat();
+        bool is_mention = Utils::isMentionLink(currentFormat.anchorHref());
 
-        blockIntermediateTextChangeSignalsWrapper<WrapperPolicy::KeepText>([this, &range, _type]()
+        int shift = 0;
+        if (is_mention)
         {
-            if (_type == ftype::link)
+            shift = 1;
+            cursor.setPosition(0);
+            cursor.insertText(qsl("_"));
+        }
+
+        selectText(cursor, range.offset_ + shift, range.offset_ + range.size_ + shift);
+        currentFormat = cursor.charFormat();
+
+        QTextCharFormat fmt;
+        switch (_type)
+        {
+            case ftype::bold:
+                Logic::setBoldStyle(fmt, currentFormat.fontWeight() == QFont::Weight::Normal ? true : false);
+                break;
+            case ftype::italic:
+                fmt.setFontItalic(!currentFormat.fontItalic());
+                break;
+            case ftype::monospace:
+                Logic::setMonospaceStyle(fmt, !(currentFormat.fontFamily() == Fonts::getInputMonospaceTextFont().family()));
+                break;
+            case ftype::underline:
+                Logic::setUnderlineStyle(fmt, !currentFormat.fontUnderline());
+                break;
+            case ftype::strikethrough:
+                fmt.setFontStrikeOut(!currentFormat.fontStrikeOut());
+                break;
+            case ftype::ordered_list:
+                formatRangeBlockType({ ftype::ordered_list, range });
+                break;
+            case ftype::unordered_list:
+                formatRangeBlockType({ ftype::unordered_list, range });
+                break;
+            case ftype::pre:
+                formatRangeBlockType({ ftype::pre, range });
+                break;
+            case ftype::quote:
+                formatRangeBlockType({ ftype::quote, range });
+                break;
+            case ftype::link:
                 formatRangeCreateLink(range);
-            else
-                range = formatRange({_type, range});
-            return range.size_ > 0;
-        });
+                break;
+            default:
+                break;
+        }
+
+        if (_type == ftype::none)
+            clearSelectionFormats();
+        else
+            cursor.mergeCharFormat(fmt);
+
+        if (is_mention)
+        {
+            cursor.setPosition(0);
+            cursor.deleteChar();
+        }
 
         cursor.setPosition(range.offset_ + range.size_);
         setTextCursor(cursor);
+    }
+
+    void TextEditEx::clearSelectionFormats()
+    {
+        auto cursor = textCursor();
+        auto range = getSelectionRange(cursor);
+        auto block = document()->findBlock(range.offset_);
+
+        while (block.isValid() && block.position() < range.end())
+        {
+            for (auto itFragment = block.begin(); itFragment != block.end(); ++itFragment)
+            {
+                auto fragment = itFragment.fragment();
+
+                cursor.setPosition(fragment.position());
+                selectText(cursor, fragment.position(), fragment.position() + fragment.length());
+
+                auto cf = fragment.charFormat();
+                clearCharFormats(cf);
+                mergeCharFormat(cursor, cf);
+            }
+
+            block = block.next();
+        }
+        formatRangeClearBlockTypes(range);
     }
 
     QSize TextEditEx::getTextSize() const
@@ -2399,8 +2587,8 @@ namespace Ui
             document()->setTextWidth(_width);
         }
 
-        int height = getTextSize().height();
-        setFixedHeight(height + add_);
+        const auto height = getTextSize().height();
+        setFixedHeight(height + heightSupplement_);
 
         return height;
     }
@@ -2417,9 +2605,16 @@ namespace Ui
             QAbstractScrollArea::setViewportMargins(left, top, right, bottom);
     }
 
-    void TextEditEx::contextMenuEvent(QContextMenuEvent *e)
+    void TextEditEx::setDocumentMargin(int _margin)
     {
-        execContextMenu(e->globalPos());
+        defaultDocumentMargin_ = _margin;
+        document()->setDocumentMargin(_margin);
+        document()->adjustSize();
+    }
+
+    void TextEditEx::contextMenuEvent(QContextMenuEvent* _e)
+    {
+        execContextMenu(_e->globalPos());
     }
 
     bool Ui::TextEditEx::isCursorInBlockFormat() const
@@ -2434,6 +2629,11 @@ namespace Ui
             menu->exec(_globalPos);
             menu->deleteLater();
         }
+    }
+
+    void TextEditEx::clearCache()
+    {
+        cache_.clear();
     }
 
     bool TextEditEx::catchEnterWithSettingsPolicy(const int _modifiers) const
@@ -2494,6 +2694,93 @@ namespace Ui
         const auto& numbers = blockNumbersToApplyDescentHack_;
         return std::any_of(numbers.cbegin(), numbers.cend(),
                            [_blockNumber](auto _value) { return _value == _blockNumber; });
+    }
+
+    void Ui::TextEditEx::onThemeChange()
+    {
+        const auto text = getText();
+        updatePalette();
+        setFormattedText(text);
+    }
+
+
+    class TextEditBoxPrivate
+    {
+    public:
+        QWidget* textWidget_ = nullptr;
+        QWidget* emojiWidget_ = nullptr;
+        QHBoxLayout* layout_ = nullptr;
+        QFont font_;
+        Styling::ThemeColorKey color_;
+        QSize iconSize_;
+        bool input_;
+        bool fitToText_;
+    };
+
+
+    TextEditBox::TextEditBox(QWidget* _parent, const QFont& _font, const Styling::ThemeColorKey& _color,
+                             bool _input, bool _isFitToText, const QSize& _iconSize)
+        : QFrame(_parent), d(std::make_unique<TextEditBoxPrivate>())
+    {
+        d->font_ = _font;
+        d->color_ = _color;
+        d->input_ = _input;
+        d->fitToText_ = _isFitToText;
+        d->iconSize_ = _iconSize;
+        d->layout_ = Utils::emptyHLayout(this);
+        setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+    }
+
+    TextEditBox::~TextEditBox() {}
+
+    void TextEditBox::initUi()
+    {
+        if (!d->textWidget_)
+        {
+            d->textWidget_ = createTextEdit(this);
+            d->textWidget_->installEventFilter(this);
+            d->layout_->addWidget(d->textWidget_, 0, Qt::AlignBottom);
+        }
+
+        if (!d->emojiWidget_)
+        {
+            d->emojiWidget_ = createEmojiButton(this);
+            d->layout_->addWidget(d->emojiWidget_, 0, Qt::AlignBottom);
+        }
+    }
+
+    QWidget* TextEditBox::textWidget() const { return d->textWidget_; }
+
+    QWidget* TextEditBox::emojiWidget() const { return d->emojiWidget_; }
+
+    void Ui::TextEditBox::paintEvent(QPaintEvent* _event)
+    {
+        QPainter p(this);
+        QStyleOptionFrame panel;
+        initStyleOption(&panel);
+
+        if (d->textWidget_ && d->textWidget_->hasFocus())
+            panel.state |= QStyle::State_HasFocus;
+
+        style()->drawPrimitive(QStyle::PE_PanelLineEdit, &panel, &p, this);
+    }
+
+    bool Ui::TextEditBox::eventFilter(QObject* _object, QEvent* _event)
+    {
+        if (_object == d->textWidget_ && (_event->type() == QEvent::FocusIn || _event->type() == QEvent::FocusOut))
+            update();
+
+        return QFrame::eventFilter(_object, _event);
+    }
+
+    QWidget* TextEditBox::createTextEdit(QWidget* _parent) const
+    {
+        return new TextEditEx(_parent, d->font_, d->color_, d->input_, d->fitToText_);
+    }
+
+    QWidget* TextEditBox::createEmojiButton(QWidget* _parent) const
+    {
+        return new CustomButton(_parent);
     }
 }
 

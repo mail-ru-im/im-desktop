@@ -6,14 +6,14 @@
 
 namespace Ui
 {
-    QColor getHighlightColor()
+    Styling::ThemeColorKey getHighlightColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_RAINBOW_WARNING);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_RAINBOW_WARNING };
     }
 
-    QColor getTextHighlightedColor()
+    Styling::ThemeColorKey getTextHighlightedColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::GHOST_PRIMARY);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::GHOST_PRIMARY };
     }
 
     HighlightFindResult findNextHighlight(QStringView _text, const highlightsV& _highlights, const int _posStart, const HighlightPosition _hlPos)
@@ -71,8 +71,8 @@ namespace Ui
     TextRendering::TextUnitPtr createHightlightedText(
         const QString& _text,
         const QFont& _font,
-        const QColor& _baseColor,
-        const QColor& _hlColor,
+        const Styling::ThemeColorKey& _baseColor,
+        const Styling::ThemeColorKey& _hlColor,
         const int _maxLines,
         const highlightsV& _highlights,
         const Data::MentionMap& _mentions,
@@ -82,10 +82,16 @@ namespace Ui
             return TextRendering::TextUnitPtr();
 
         std::list<TextRendering::TextUnitPtr> units;
-        const auto appendUnit = [&units, &_font, &_mentions, _maxLines](const QString& _fragment, const QColor& _color, const bool _hl)
+        const auto appendUnit = [&units, &_font, &_mentions, _maxLines, &_baseColor, &_hlColor](const QString& _fragment, const bool _hl)
         {
             auto unit = TextRendering::MakeTextUnit(_fragment, _mentions, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-            unit->init(_font, _color, _color, _color, getHighlightColor(), TextRendering::HorAligment::LEFT, _maxLines);
+            TextRendering::TextUnit::InitializeParameters params{ _font, _baseColor };
+            params.linkColor_ = _baseColor;
+            params.selectionColor_ = _baseColor;
+            params.highlightColor_ = getHighlightColor();
+            params.maxLinesCount_ = _maxLines;
+            unit->init(params);
+            unit->setHighlightedTextColor(_hlColor);
             unit->setHighlighted(_hl);
             units.push_back(std::move(unit));
         };
@@ -96,16 +102,16 @@ namespace Ui
         while (res.indexStart_ != -1)
         {
             if (curIndex < res.indexStart_ && res.indexStart_ - curIndex > 0)
-                appendUnit(convertedText.mid(curIndex, res.indexStart_ - curIndex), _baseColor, false);
+                appendUnit(convertedText.mid(curIndex, res.indexStart_ - curIndex), false);
 
-            appendUnit(convertedText.mid(res.indexStart_, res.length_), _hlColor, true);
+            appendUnit(convertedText.mid(res.indexStart_, res.length_), true);
 
             curIndex = res.indexStart_ + res.length_;
             res = findNextHighlight(convertedText, _highlights, curIndex, _hlPos);
         }
 
         if (convertedText.length() - curIndex > 0)
-            appendUnit(convertedText.mid(curIndex, convertedText.length() - curIndex), _baseColor, false);
+            appendUnit(convertedText.mid(curIndex, convertedText.length() - curIndex), false);
 
         auto firstUnit = std::move(units.front());
         units.pop_front();

@@ -62,3 +62,8 @@ std::string_view get_themes_index::get_method() const
     return "wallpaperList";
 }
 
+int core::wim::get_themes_index::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
+}
+

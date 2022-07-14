@@ -195,9 +195,9 @@ namespace Ui
             linkDisallow_ = new Ui::LabelEx(this);
             Testing::setAccessibleName(linkDisallow_, qsl("AS PrivacyPage Disallowed"));
             linkDisallow_->setFont(Fonts::appFontScaled(15));
-            linkDisallow_->setColors(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY),
-                            Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_HOVER),
-                            Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_ACTIVE));
+            linkDisallow_->setColors(Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY },
+                Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY_HOVER },
+                Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY_ACTIVE });
             linkDisallow_->setText(groupDisallowButtonCaption());
             linkDisallow_->setCursor(Qt::PointingHandCursor);
             Utils::grabTouchWidget(linkDisallow_);

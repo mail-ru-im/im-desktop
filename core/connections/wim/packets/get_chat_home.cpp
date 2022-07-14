@@ -3,6 +3,7 @@
 
 #include "../../../http_request.h"
 #include "../../../../common.shared/json_helper.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -22,6 +23,11 @@ get_chat_home::~get_chat_home() = default;
 std::string_view get_chat_home::get_method() const
 {
     return "getChatHome";
+}
+
+int core::wim::get_chat_home::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t get_chat_home::init_request(const std::shared_ptr<core::http_request_simple>& _request)

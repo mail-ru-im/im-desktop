@@ -13,6 +13,7 @@
 #include "../../core_dispatcher.h"
 
 #include "../common.shared/config/config.h"
+#include "Common.h"
 
 Q_LOGGING_CATEGORY(mentionsModel, "mentionsModel")
 
@@ -25,7 +26,7 @@ namespace
 
 namespace Logic
 {
-    std::unique_ptr<MentionModel> g_mention_model;
+    QObjectUniquePtr<MentionModel> g_mention_model;
 
     MentionModel::MentionModel(QObject * _parent)
         : AbstractSearchModel(_parent)
@@ -401,20 +402,19 @@ namespace Logic
 
     bool Logic::MentionModel::isChatOrThread() const
     {
-        return Logic::getContactListModel()->isChat(dialogAimId_) || Logic::getContactListModel()->isThread(dialogAimId_);
+        return Logic::getContactListModel()->isChat(dialogAimId_) || (Logic::getContactListModel()->isThread(dialogAimId_) && !Logic::getContactListModel()->isTaskThread(dialogAimId_));
     }
 
     MentionModel* GetMentionModel()
     {
         if (!g_mention_model)
-            g_mention_model = std::make_unique<MentionModel>(nullptr);
+            g_mention_model = makeUniqueQObjectPtr<Logic::MentionModel>();
 
         return g_mention_model.get();
     }
 
     void ResetMentionModel()
     {
-        if (g_mention_model)
-            g_mention_model.reset();
+        g_mention_model.reset();
     }
 }

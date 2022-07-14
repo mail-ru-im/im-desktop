@@ -10,7 +10,7 @@
 #include "main_window/MainWindow.h"
 #include "main_window/MainPage.h"
 #include "main_window/ContactDialog.h"
-#include "main_window/smiles_menu/suggests_widget.h"
+#include "main_window/smiles_menu/SuggestsWidget.h"
 #include "main_window/smiles_menu/SmilesMenu.h"
 #include "main_window/history_control/MentionCompleter.h"
 #include "main_window/contact_list/ContactListModel.h"
@@ -25,9 +25,9 @@ namespace
 {
     constexpr auto symbolAt() noexcept { return u'@'; }
 
-    QColor getInputTextColor()
+    auto getInputTextColorKey()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID };
     }
 
     QString textEditStyle()
@@ -54,7 +54,7 @@ namespace
 namespace Ui
 {
     HistoryTextEdit::HistoryTextEdit(QWidget* _parent)
-        : TextEditEx(_parent, Fonts::getInputTextFont(), getInputTextColor(), true, false)
+        : TextEditEx(_parent, Fonts::getInputTextFont(), getInputTextColorKey(), true, false)
         , placeholderAnim_(new QVariantAnimation(this))
         , placeholderOpacityAnim_(new QVariantAnimation(this))
         , isEmpty_(true)
@@ -72,7 +72,7 @@ namespace Ui
         setEnterKeyPolicy(EnterKeyPolicy::FollowSettingsRules);
         setFormatEnabled(true);
 
-        document()->setDocumentMargin(0);
+        setDocumentMargin(0);
         document()->documentLayout()->setPaintDevice(nullptr);//avoid unnecessary scaling performed by its own paintDevice
 
         setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);

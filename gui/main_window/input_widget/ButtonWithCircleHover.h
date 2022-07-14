@@ -9,7 +9,7 @@ namespace Ui
     {
         Q_OBJECT
     public:
-        explicit ButtonWithCircleHover(QWidget* _parent, const QString& _svgName = QString(), const QSize& _iconSize = QSize(), const QColor& _defaultColor = QColor());
+        explicit ButtonWithCircleHover(QWidget* _parent, const QString& _svgName = QString(), const QSize& _iconSize = QSize(), const Styling::ColorParameter& _defaultColor = Styling::ColorParameter());
         ~ButtonWithCircleHover();
 
         void setCircleHover(std::unique_ptr<CircleHover>&& _) override;
@@ -37,12 +37,12 @@ namespace Ui
         void hideToolTip();
 
     private:
+        std::unique_ptr<CircleHover> circleHover_;
+        QTimer tooltipTimer_;
+        QMargins extention_;
         bool enableCircleHover_ = false;
         bool underLongPress_ = false;
         bool enableTooltip_ = false;
         bool underMouse_ = false;
-        std::unique_ptr<CircleHover> circleHover_;
-        QTimer tooltipTimer_;
-        QMargins extention_;
     };
 }

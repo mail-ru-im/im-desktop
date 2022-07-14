@@ -1,23 +1,29 @@
 #include "stdafx.h"
 #include "LineEditEx.h"
 #include "ContextMenu.h"
-#include "../utils/utils.h"
 #include "../styles/ThemeParameters.h"
+#include "../styles/ThemesContainer.h"
 #include "../main_window/history_control/MessageStyle.h"
+#include "../utils/InterConnector.h"
 
 
 namespace Ui
 {
+    constexpr double alphaChannelDisabledText() noexcept
+    {
+        return 0.4;
+    }
+
     LineEditEx::LineEditEx(QWidget* _parent, const Options &_options)
         : QLineEdit(_parent)
         , options_(_options)
     {
         installEventFilter(this);
-        changeTextColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
-        connect(this, &QLineEdit::textChanged, this, [=]()
-        {
-            changeTextColor(Styling::getParameters().getColor(text().length() > 0 ? Styling::StyleVariable::TEXT_SOLID : Styling::StyleVariable::BASE_PRIMARY));
-        });
+        changeTextColor(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_TERTIARY, alphaChannelDisabledText() });
+        connect(this, &QLineEdit::textChanged, this, &LineEditEx::updateTextColor);
+        connect(&Styling::getThemesContainer(), &Styling::ThemesContainer::globalThemeChanged, this, &LineEditEx::onThemeChaged);
+
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::clearSelection, this, &LineEditEx::deselect);
     }
 
     void LineEditEx::setCustomPlaceholder(const QString& _text)
@@ -25,18 +31,26 @@ namespace Ui
         customPlaceholder_ = _text;
     }
 
-    void LineEditEx::setCustomPlaceholderColor(const QColor& _color)
+    void LineEditEx::setCustomPlaceholderColor(const Styling::ThemeColorKey& _color)
     {
         customPlaceholderColor_ = _color;
     }
 
-    void LineEditEx::changeTextColor(const QColor & _color)
+    void LineEditEx::changeTextColor(const Styling::ThemeColorKey& _color)
     {
         QPalette pal(palette());
-        pal.setColor(QPalette::Text, _color);
+        pal.setColor(QPalette::Text, Styling::getColor(_color));
         pal.setColor(QPalette::Highlight, MessageStyle::getTextSelectionColor());
         pal.setColor(QPalette::HighlightedText, MessageStyle::getSelectionFontColor());
         setPalette(pal);
+    }
+
+    void LineEditEx::updateTextColor()
+    {
+        if (isEnabled())
+            changeTextColor(Styling::ThemeColorKey{ text().length() > 0 ? Styling::StyleVariable::TEXT_SOLID : Styling::StyleVariable::BASE_TERTIARY });
+        else
+            changeTextColor(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_TERTIARY, alphaChannelDisabledText() });
     }
 
     QMenu *LineEditEx::contextMenu()
@@ -65,8 +79,13 @@ namespace Ui
 
     void LineEditEx::mousePressEvent(QMouseEvent* _event)
     {
+        if (_event->button() == Qt::LeftButton && !Utils::InterConnector::instance().isMultiselect())
+            Q_EMIT Utils::InterConnector::instance().clearSelection();
+
         Q_EMIT clicked(_event->button());
         QLineEdit::mousePressEvent(_event);
+
+        setFocus();
     }
 
     void LineEditEx::keyPressEvent(QKeyEvent* _event)
@@ -115,6 +134,12 @@ namespace Ui
         contextMenu_ = nullptr;
     }
 
+    void LineEditEx::showEvent(QShowEvent* _event)
+    {
+        QLineEdit::showEvent(_event);
+        updateTextColor();
+    }
+
     void LineEditEx::paintEvent(QPaintEvent *_event)
     {
         if (!customPlaceholder_.isEmpty() && text().isEmpty())
@@ -136,7 +161,7 @@ namespace Ui
             const int horMargin = 2;
             QRect lineRect(r.x() + horMargin, vscroll, r.width() - 2*horMargin, fm.height());
 
-            p.setPen(customPlaceholderColor_);
+            p.setPen(customPlaceholderColor_.cachedColor());
             p.setFont(font());
             QString elidedText = fm.elidedText(customPlaceholder_, Qt::ElideRight, lineRect.width());
             p.drawText(lineRect, elidedText);
@@ -207,5 +232,11 @@ namespace Ui
             margins_ = _margins;
             update();
         }
+    }
+
+    void LineEditEx::onThemeChaged()
+    {
+        updateTextColor();
+        customPlaceholderColor_.updateColor();
     }
 }

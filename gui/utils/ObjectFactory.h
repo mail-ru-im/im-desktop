@@ -1,5 +1,7 @@
 #pragma once
 
+#include "utils/utils.h"
+
 namespace Detail
 {
     template <typename Base, typename ...Args>
@@ -95,5 +97,4 @@ namespace Utils
         std::unordered_map<Id, std::unique_ptr<Factory>> factories_;
         std::unique_ptr<Factory> defaultFactory_;
     };
-
 } // namespace Utils

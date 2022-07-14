@@ -19,7 +19,7 @@ namespace common { namespace json
 
     template <>
     inline std::string_view rapidjson_get_string_view<rapidjson::StringBuffer>(const rapidjson::StringBuffer& value) { return std::string_view(value.GetString(), value.GetSize()); }
-}} 
+}}
 
 namespace common { namespace json
 {

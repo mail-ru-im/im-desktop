@@ -68,6 +68,7 @@ namespace core
                 skip_patches_and_deleted
             };
 
+            int64_t get_last_msgid() const;
             void get_messages(int64_t _from, int64_t _count_early, int64_t _count_later, history_block& _messages, get_message_policy policy) const;
             void get_messages_index(int64_t _from, int64_t _count_early, int64_t _count_later, headers_list& _headers) const;
 
@@ -130,6 +131,7 @@ namespace core
             void make_gallery_hole(int64_t _from, int64_t _till);
             void make_holes();
             bool is_gallery_hole_requested() const;
+            void invaliadte_history();
             void invalidate_message_data(const std::vector<int64_t>& _ids);
             void invalidate_message_data(int64_t _from, int64_t _before_count, int64_t _after_count);
             void get_memory_usage(int64_t& _index_size, int64_t& _gallery_size) const;

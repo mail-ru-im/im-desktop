@@ -18,7 +18,7 @@ namespace Ui
         void setColor(const QColor& _color);
 
         void setViewRect(const QRect& _rect);
-        void updateWallpaper(const QString& _aimId);
+        void updateWallpaper(const QString& _aimId, bool _isThread = false);
 
         bool isFlatColor() const;
         const QString& aimId() const { return aimId_; }

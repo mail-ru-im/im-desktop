@@ -12,6 +12,7 @@ namespace core::wim
     public:
         thread_add(wim_packet_params _params, archive::thread_parent_topic _parent_topic);
         std::string_view get_method() const override;
+        int minimal_supported_api_version() const override;
 
         const std::string& get_thread_id() const { return thread_id_; }
         const archive::thread_parent_topic& get_parent_topic() const { return topic_; }

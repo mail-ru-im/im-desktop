@@ -72,6 +72,8 @@ public:
 
     virtual QString aimId() const { return QString(); }
 
+    virtual bool isMediaVirusInfected() const { return false; }
+
 Q_SIGNALS:
     void saved(const QString& _path);
     void saveError();

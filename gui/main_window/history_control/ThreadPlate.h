@@ -1,15 +1,11 @@
 #pragma once
 
 #include "controls/ClickWidget.h"
+#include "../../styles/StyleVariable.h"
 
 namespace Data
 {
     struct ThreadUpdate;
-}
-
-namespace Styling
-{
-    enum class StyleVariable;
 }
 
 namespace TextRendering

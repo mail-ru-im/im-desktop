@@ -125,6 +125,7 @@ namespace Data
         if (error == 0)
         {
             info.firstName_ = QString::fromUtf8(helper->get_value_as_string("firstName"));
+            info.middleName_ = QString::fromUtf8(helper->get_value_as_string("middleName"));
             info.lastName_ = QString::fromUtf8(helper->get_value_as_string("lastName"));
             info.friendly_ = QString::fromUtf8(helper->get_value_as_string("friendly"));
             info.nick_ = QString::fromUtf8(helper->get_value_as_string("nick"));

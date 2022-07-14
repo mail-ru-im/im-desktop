@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.19)
 
 
 project(core)
@@ -43,9 +43,6 @@ if (STRIP_VOIP)
     list(FILTER SUBPROJECT_HEADERS EXCLUDE REGEX  "${SUBPROJECT_ROOT}/Voip/*")
     list(FILTER SUBPROJECT_MM_SOURCES EXCLUDE REGEX  "${SUBPROJECT_ROOT}/Voip/*")
     list(FILTER SUBPROJECT_SOURCES EXCLUDE REGEX  "${SUBPROJECT_ROOT}/Voip/*")
-    list(FILTER SUBPROJECT_HEADERS EXCLUDE REGEX  "${SUBPROJECT_ROOT}/masks/*")
-    list(FILTER SUBPROJECT_MM_SOURCES EXCLUDE REGEX  "${SUBPROJECT_ROOT}/masks/*")
-    list(FILTER SUBPROJECT_SOURCES EXCLUDE REGEX  "${SUBPROJECT_ROOT}/masks/*")
 endif()
 
 if (STRIP_NET_CHANGE_NOTIFY)
@@ -173,6 +170,8 @@ endif()
 if(MSVC)
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy ${MESA_LIBRARY} ${ICQ_BIN_DIR})
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy ${MESA_LIBRARY2} ${ICQ_BIN_DIR})
 endif()
 
 # -----------------------------  copy Qt  -------------------------------
@@ -193,13 +192,24 @@ if(MSVC)
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_PLUGINS_AUDIO_DIR})
 
-    set(ICQ_RESOURCES_DIR "${ICQ_BIN_DIR}/resources")
+    set(ICQ_PLUGINS_PRINT_DIR "${ICQ_BIN_DIR}/plugins/printsupport")
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_RESOURCES_DIR})
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_PLUGINS_PRINT_DIR})
+
+    if (HAS_WEB_ENGINE)
+        set(ICQ_RESOURCES_DIR "${ICQ_BIN_DIR}/resources")
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_RESOURCES_DIR})
+    endif()
 
     FOREACH(PLUGIN ${QT_PLATFORMS_PLUGINS_TO_COPY})
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy ${PLUGIN} ${ICQ_PLUGINS_PLATFORMS_DIR})
+    ENDFOREACH()
+
+    FOREACH(PLUGIN ${QT_PRINTER_PLUGINS_TO_COPY})
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy ${PLUGIN} ${ICQ_PLUGINS_PRINT_DIR})
     ENDFOREACH()
 
     FOREACH(PLUGIN ${QT_IMAGE_PLUGINS_TO_COPY})
@@ -232,10 +242,12 @@ if(MSVC)
             COMMAND ${CMAKE_COMMAND} -E copy ${OPENGL_LIBRARY} ${ICQ_BIN_DIR})
     ENDFOREACH()
 
-    FOREACH(RESOURCE ${QT_RESOURCES_TO_COPY})
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy ${RESOURCE} ${ICQ_RESOURCES_DIR})
-    ENDFOREACH()
+    if (HAS_WEB_ENGINE)
+        FOREACH(RESOURCE ${QT_RESOURCES_TO_COPY})
+            add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy ${RESOURCE} ${ICQ_RESOURCES_DIR})
+        ENDFOREACH()
+    endif()
 
     if (IM_QT_DYNAMIC AND HAS_WEB_ENGINE)
         set(ICQ_TRANSLATIONS_DIR "${ICQ_BIN_DIR}/translations")
@@ -245,6 +257,14 @@ if(MSVC)
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_directory ${QT_TRANSLATIONS_DIR} ${ICQ_TRANSLATIONS_DIR})
     endif()
+
+    im_copy_qt_quick_libraries(LIBS ${QT_QUICK_CONTROLS2_LIBRARIES_TO_COPY} FOLDER ${ICQ_BIN_DIR}/QtQuick/Controls.2)
+    im_copy_qt_quick_libraries(LIBS ${QT_QUICK_TEMPLATES2_LIBRARIES_TO_COPY} FOLDER ${ICQ_BIN_DIR}/QtQuick/Templates.2)
+    im_copy_qt_quick_libraries(LIBS ${QT_QUICK_DIALOGS_LIBRARIES_TO_COPY} FOLDER ${ICQ_BIN_DIR}/QtQuick/Dialogs)
+    im_copy_qt_quick_libraries(LIBS ${QT_QUICK_EXTRAS_LIBRARIES_TO_COPY} FOLDER ${ICQ_BIN_DIR}/QtQuick/Extras)
+    im_copy_qt_quick_libraries(LIBS ${QT_QUICK_LAYOUTS_LIBRARIES_TO_COPY} FOLDER ${ICQ_BIN_DIR}/QtQuick/Layouts)
+    im_copy_qt_quick_libraries(LIBS ${QT_QUICK2_LIBRARIES_TO_COPY} FOLDER ${ICQ_BIN_DIR}/QtQuick.2)
+
 endif()
 
 # --------------------------  copy Runtime Libraries  -------------------------

@@ -124,8 +124,6 @@ namespace Ui
         auto textWidth = label_.desiredWidth();
 
         auto yOffset = _rect.height() / 2;
-//        yOffset += 1;                       //!HACK until TextUnit fixed
-
         auto labelRect = _rect;
         labelRect.setLeft(_rect.right() + labelLeftMargin_);
         labelRect.setWidth(textWidth);
@@ -194,9 +192,9 @@ namespace Ui
 
         int commonMargin() const { return Ui::MessageStyle::getHiddenControlsShift(); }
         int commonHeight() const { return 20; }
-        QColor defaultBackground() const { return QColor(0, 0, 0, static_cast<int>(0.5 * 255)); }
-        QColor hoveredBackground() const { return QColor(0, 0, 0, static_cast<int>(0.6 * 255)); }
-        QColor pressedBackground() const { return QColor(0, 0, 0, static_cast<int>(0.7 * 255)); }
+        Styling::ColorContainer defaultBackground() const;
+        Styling::ColorContainer hoveredBackground() const;
+        Styling::ColorContainer pressedBackground() const;
 
         QSize objectSize(MediaControls::ControlType _type, const QSize& _size) const;
         QPoint objectPosition(MediaControls::ControlType _type, const QSize& _size) const;
@@ -225,9 +223,9 @@ namespace Ui
         void updateVisibility(bool _mouseOver, MediaControls::State _state);
         void updateVisibilityAnimated(bool _mouseover, MediaControls::State _state);
 
-        QTimer animationTimer_;
-        QTimer updateTimer_;
-        QTimer hideTimer_;
+        QTimer* animationTimer_;
+        QTimer* updateTimer_;
+        QTimer* hideTimer_;
         bool doubleClick_;
         int32_t duration_ = 0;
         MediaControls::State state_ = MediaControls::Preview;
@@ -244,6 +242,21 @@ namespace Ui
 
         std::optional<QueuedAnimationState> queuedAnimationState_;
     };
+
+    Styling::ColorContainer MediaControls_p::defaultBackground() const
+    {
+        return Styling::ColorContainer{ Styling::ColorParameter { QColor(0, 0, 0, static_cast<int>(0.5 * 255)) } };
+    }
+
+    Styling::ColorContainer MediaControls_p::hoveredBackground() const
+    {
+        return Styling::ColorContainer{ Styling::ColorParameter { QColor(0, 0, 0, static_cast<int>(0.6 * 255)) } };
+    }
+
+    Styling::ColorContainer MediaControls_p::pressedBackground() const
+    {
+        return Styling::ColorContainer{ Styling::ColorParameter { QColor(0, 0, 0, static_cast<int>(0.7 * 255)) } };
+    }
 
     QSize MediaControls_p::objectSize(MediaControls::ControlType _type, const QSize& _size) const
     {
@@ -382,7 +395,10 @@ namespace Ui
     {
         auto duration = std::make_unique<StaticTextIcon>();
         auto durationUnit = TextRendering::MakeTextUnit(durationStr(_duration));
-        durationUnit->init(Fonts::appFontScaled(11, Fonts::FontWeight::Normal), Qt::white, QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+
+        TextRendering::TextUnit::InitializeParameters params{ Fonts::appFontScaled(11, Fonts::FontWeight::Normal), Styling::ColorParameter{ Qt::white } };
+        params.maxLinesCount_ = 1;
+        durationUnit->init(params);
         duration->label_.setTextUnit(std::move(durationUnit));
         duration->icon_.setPixmap(Utils::renderSvgScaled(qsl(":/videoplayer/duration_time_icon"), QSize(14, 14), Qt::white));
         duration->background_ = defaultBackground();
@@ -406,7 +422,10 @@ namespace Ui
     {
         auto gifLabel = std::make_unique<BLabel>();
         auto gifUnit = TextRendering::MakeTextUnit(qsl("GIF"));
-        gifUnit->init(Fonts::appFontScaled(13, Fonts::FontWeight::SemiBold), Qt::white, QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER, 1);
+        TextRendering::TextUnit::InitializeParameters params{ Fonts::appFontScaled(13, Fonts::FontWeight::SemiBold), Styling::ColorParameter{ Qt::white } };
+        params.maxLinesCount_ = 1;
+        params.align_ = TextRendering::HorAligment::CENTER;
+        gifUnit->init(params);
         gifLabel->setTextUnit(std::move(gifUnit));
         gifLabel->background_ = defaultBackground();
         gifLabel->setBorderRadius(Utils::scale_value(10));
@@ -423,7 +442,9 @@ namespace Ui
         if (!(options_ & MediaControls::ShortNoSound))
         {
             auto noSoundUnit = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("videoplayer", "No sound"));
-            noSoundUnit->init(Fonts::appFontScaled(11, Fonts::FontWeight::Normal), Qt::white, QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+            TextRendering::TextUnit::InitializeParameters params{ Fonts::appFontScaled(11, Fonts::FontWeight::Normal), Styling::ColorParameter{ Qt::white } };
+            params.maxLinesCount_ = 1;
+            noSoundUnit->init(params);
             noSound->label_.setTextUnit(std::move(noSoundUnit));
         }
         noSound->icon_.setPixmap(Utils::renderSvgScaled(qsl(":/videoplayer/mute_video_icon"), QSize(20, 20), QColor(255, 255, 255, 255 * 0.34)));
@@ -469,7 +490,9 @@ namespace Ui
         siteName->setLabelLeftMargin(Utils::scale_value(2));
         siteName->setLabelRightMargin(Utils::scale_value(6));
         auto siteNameUnit = TextRendering::MakeTextUnit(_siteName, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        siteNameUnit->init(Fonts::appFontScaled(12, Fonts::FontWeight::Medium), Qt::white, Qt::white, QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+        TextRendering::TextUnit::InitializeParameters params{ Fonts::appFontScaled(12, Fonts::FontWeight::Medium), Styling::ColorParameter{ Qt::white } };
+        params.maxLinesCount_ = 1;
+        siteNameUnit->init(params);
         siteName->label_.setTextUnit(std::move(siteNameUnit));
         const auto pixmap = _favicon.isNull() ? Utils::renderSvgScaled(qsl(":/copy_link_icon"), faviconSize(), Qt::white) : _favicon;
         siteName->icon_.setPixmap(pixmap);
@@ -641,7 +664,7 @@ namespace Ui
 
     void MediaControls_p::updateVisibilityAnimated(bool _mouseover, MediaControls::State _state)
     {
-        if (animationTimer_.isActive())
+        if (animationTimer_->isActive())
         {
             queuedAnimationState_ = QueuedAnimationState{_mouseover, _state};
             return;
@@ -674,8 +697,8 @@ namespace Ui
 
         if (!animations_.empty())
         {
-            animationTimer_.start();
-            updateTimer_.start();
+            animationTimer_->start();
+            updateTimer_->start();
         }
     }
 
@@ -685,23 +708,26 @@ namespace Ui
 
     MediaControls::MediaControls(const std::set<MediaControls::ControlType>& _controls, uint32_t _options, QWidget* _parent)
         : QWidget(_parent)
-        , d(new MediaControls_p())
+        , d(std::make_unique<MediaControls_p>())
     {
+        d->animationTimer_ = new QTimer(this);
+        d->updateTimer_ = new QTimer(this);
+        d->hideTimer_ = new QTimer(this);
         d->options_ = _options;
         d->createObjects(_controls);
         d->updateObjectsPositions(rect());
 
-        d->animationTimer_.setSingleShot(true);
-        d->animationTimer_.setInterval(animationTimeout);
-        connect(&d->animationTimer_, &QTimer::timeout, this, &MediaControls::onAnimationTimeout);
+        d->animationTimer_->setSingleShot(true);
+        d->animationTimer_->setInterval(animationTimeout);
+        connect(d->animationTimer_, &QTimer::timeout, this, &MediaControls::onAnimationTimeout);
 
-        d->updateTimer_.setInterval(updateInterval);
-        connect(&d->updateTimer_, &QTimer::timeout, this, [this](){ update(); });
+        d->updateTimer_->setInterval(updateInterval);
+        connect(d->updateTimer_, &QTimer::timeout, this, [this](){ update(); });
 
-        d->hideTimer_.setInterval(hideTimeout);
-        d->hideTimer_.setSingleShot(true);
+        d->hideTimer_->setInterval(hideTimeout);
+        d->hideTimer_->setSingleShot(true);
 
-        connect(&d->hideTimer_, &QTimer::timeout, this, [this]()
+        connect(d->hideTimer_, &QTimer::timeout, this, [this]()
         {
             if (d->state_ == Playing)
                 d->updateVisibilityAnimated(false, d->state_);
@@ -711,16 +737,14 @@ namespace Ui
         setMouseTracking(true);
     }
 
-    MediaControls::~MediaControls()
-    {
-    }
+    MediaControls::~MediaControls() = default;
 
     void MediaControls::setState(MediaControls::State _state)
     {
         d->state_ = _state;
 
         if (_state == Playing)
-            d->hideTimer_.start();
+            d->hideTimer_->start();
 
         if (auto play = d->getObject(Play))
             play->setChecked(_state != Playing);
@@ -868,9 +892,9 @@ namespace Ui
 
         auto progress = 100;
 
-        if (d->animationTimer_.isActive())
+        if (d->animationTimer_->isActive())
         {
-            progress = d->animationProgress(animationTimeout, animationTimeout - d->animationTimer_.remainingTime());
+            progress = d->animationProgress(animationTimeout, animationTimeout - d->animationTimer_->remainingTime());
             d->updateObjectsPositions(rect(), progress);
         }
 
@@ -907,7 +931,7 @@ namespace Ui
         QWidget::mouseMoveEvent(_event);
 
         d->updateVisibilityAnimated(true, d->state_);
-        d->hideTimer_.start();
+        d->hideTimer_->start();
     }
 
     void MediaControls::mousePressEvent(QMouseEvent* _event)
@@ -979,6 +1003,9 @@ namespace Ui
 
     void MediaControls::onAnimationTimeout()
     {
+        if (!d)
+            return;
+
         for (auto& [type, animationType] : d->animations_)
         {
             if (animationType == MediaControls_p::AnimationType::HideAnimated)
@@ -986,7 +1013,7 @@ namespace Ui
         }
 
         d->updateObjectsPositions(rect());
-        d->updateTimer_.stop();
+        d->updateTimer_->stop();
 
         if (d->queuedAnimationState_)
         {
@@ -1042,7 +1069,7 @@ namespace Ui
             default:
                 break;
         }
-        d->hideTimer_.start();
+        d->hideTimer_->start();
     }
 
     void MediaControls::onDefaultClick()

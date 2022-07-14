@@ -5,53 +5,136 @@
 #include "../controls/TooltipWidget.h"
 #include "../utils/utils.h"
 #include "../styles/ThemeParameters.h"
+#include "../previewer/GalleryFrame.h"
+#include "../styles/ThemesContainer.h"
 #include "fonts.h"
 
 namespace
 {
-    auto getButtonSize(Ui::PanelButton::ButtonSize _size) noexcept
-    {
+    constexpr std::chrono::milliseconds kTooltipDelay(300);
 
-        return _size == Ui::PanelButton::ButtonSize::Big
-                        ? Utils::scale_value(QSize(70, 96))
-                        : Utils::scale_value(QSize(44, 44));
+    QSize menuButtonSize() noexcept
+    {
+        return Utils::scale_value(QSize{ 20, 20 });
     }
 
-    auto getButtonCircleSize(Ui::PanelButton::ButtonSize _size) noexcept
+    QPoint menuButtonOffset() noexcept
     {
-        return _size == Ui::PanelButton::ButtonSize::Big
-                        ? Utils::scale_value(40)
-                        : Utils::scale_value(36);
+        return QPoint(Utils::scale_value(2), Utils::scale_value(4));
     }
 
-    auto getButtonIconSize() noexcept
+    int menuButtonBorder(Ui::PanelToolButton::IconStyle _iconStyle) noexcept
     {
-        return Utils::scale_value(QSize(32, 32));
+        return _iconStyle == Ui::PanelToolButton::Circle ? Utils::scale_value(2) : 0;
     }
 
-    auto getMoreButtonSize() noexcept
+    auto menuIconSize() noexcept
     {
-        return Utils::scale_value(20);
+        return Utils::scale_value(14);
     }
 
-    auto getGridButtonSize() noexcept
+    auto badgeOffset() noexcept
     {
-        return Utils::scale_value(QSize(32, 32));
+        return QPoint(-Utils::scale_value(16), -Utils::scale_value(8));
     }
 
-    auto getMoreButtonBorder() noexcept
+    auto badgeBorder() noexcept
     {
         return Utils::scale_value(2);
     }
 
-    auto getMoreButtonMarginLeft() noexcept
+    auto badgeHeight() noexcept
     {
-        return Utils::scale_value(28);
+        return Utils::scale_value(20);
     }
 
-    auto getMoreButtonMarginTop() noexcept
+    auto buttonMinimumSize(Ui::PanelToolButton::IconStyle _iconStyle, Qt::ToolButtonStyle _buttonStyle)
     {
-        return Utils::scale_value(26);
+        if (_iconStyle != Ui::PanelToolButton::Circle)
+            return QSize();
+
+        switch (_buttonStyle)
+        {
+        case Qt::ToolButtonTextUnderIcon:
+            return Utils::scale_value(QSize(70, 96));
+        case Qt::ToolButtonIconOnly:
+            return Utils::scale_value(QSize(44, 44));
+        case Qt::ToolButtonTextOnly:
+        default:
+            break;
+        }
+        return Utils::scale_value(QSize(70, 44));
+    }
+
+    auto buttonMaximumSize(Ui::PanelToolButton::IconStyle _iconStyle, Qt::ToolButtonStyle _buttonStyle)
+    {
+        if (_iconStyle == Ui::PanelToolButton::Circle)
+        {
+            switch (_buttonStyle)
+            {
+            case Qt::ToolButtonTextUnderIcon:
+                return Utils::scale_value(QSize(70, 96));
+            case Qt::ToolButtonIconOnly:
+                return Utils::scale_value(QSize(44, 44));
+            case Qt::ToolButtonTextOnly:
+            default:
+                break;
+            }
+            return Utils::scale_value(QSize(70, 44));
+        }
+        else
+        {
+            switch (_buttonStyle)
+            {
+            case Qt::ToolButtonTextUnderIcon:
+                return Utils::scale_value(QSize(70, 96));
+            case Qt::ToolButtonIconOnly:
+                return Utils::scale_value(QSize(44, 44));
+            case Qt::ToolButtonTextOnly:
+            default:
+                break;
+            }
+            return Utils::scale_value(QSize(QWIDGETSIZE_MAX, 44));
+        }
+    }
+
+    auto buttonRectMenuMargins(Qt::ToolButtonStyle _buttonStyle, Ui::PanelToolButton::IconStyle _iconStyle)
+    {
+        if (_iconStyle == Ui::PanelToolButton::Circle)
+        {
+            switch (_buttonStyle)
+            {
+            case Qt::ToolButtonTextBesideIcon:
+            case Qt::ToolButtonTextUnderIcon:
+                return Utils::scale_value(QMargins(0, -8, 0, 0));
+            default:
+                break;
+            }
+            return QMargins{};
+        }
+        return Utils::scale_value(QMargins(4, 4, 4, 4));
+    }
+
+    auto buttonMargins(Qt::ToolButtonStyle _buttonStyle)
+    {
+        switch (_buttonStyle)
+        {
+        case Qt::ToolButtonTextUnderIcon:
+            return Utils::scale_value(QMargins(4, 12, 4, 0));
+        case Qt::ToolButtonTextOnly:
+        case Qt::ToolButtonTextBesideIcon:
+            return Utils::scale_value(QMargins(8, 4, 8, 4));
+        case Qt::ToolButtonIconOnly:
+        default:
+            return Utils::scale_value(QMargins(4, 4, 4, 4));
+        }
+    }
+
+    auto buttonRadius() { return Utils::scale_value(6); }
+
+    auto getButtonIconSize() noexcept
+    {
+        return Utils::scale_value(QSize(32, 32));
     }
 
     auto getMoreIconSize() noexcept
@@ -59,66 +142,14 @@ namespace
         return Utils::scale_value(14);
     }
 
-    auto getSpacing() noexcept
-    {
-        return Utils::scale_value(4);
-    }
-
-    auto getMargin() noexcept
-    {
-        return Utils::scale_value(12);
-    }
-
     auto getButtonTextFont()
     {
         return Fonts::appFontScaled(11, platform::is_apple() ? Fonts::FontWeight::Medium : Fonts::FontWeight::SemiBold);
     }
 
-    auto getButtonCircleVerOffset(Ui::PanelButton::ButtonSize _size) noexcept
-    {
-        return _size == Ui::PanelButton::ButtonSize::Big
-                        ? Utils::scale_value(12)
-                        : Utils::scale_value(4);
-    }
-
-    auto getButtonTextVerOffset() noexcept
-    {
-        return Utils::scale_value(60);
-    }
-
     auto getShadowColor()
     {
         return QColor(0, 0, 0, 255 * 0.35);
-    }
-
-    const QPixmap& getGridButtonIcon(Ui::GridButtonState _state, bool _hovered, const bool _pressed)
-    {
-        auto makeBtn = [](const auto _path, const auto _var)
-        {
-            return Utils::renderSvg(_path, getGridButtonSize(), Styling::getParameters().getColor(_var));
-        };
-
-        auto makeBtnAll = [&makeBtn](const auto _var)
-        {
-            return makeBtn(qsl(":/voip/conference_one_icon"), _var);
-        };
-
-        auto makeBtnOne = [&makeBtn](const auto _var)
-        {
-            return makeBtn(qsl(":/voip/conference_all_icon"), _var);
-        };
-
-        static const QPixmap normalAllPx = makeBtnAll(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
-        static const QPixmap pressedAllPx = makeBtnAll(Styling::StyleVariable::TEXT_SOLID_PERMANENT_ACTIVE);
-        static const QPixmap hoveredAllPx = makeBtnAll(Styling::StyleVariable::TEXT_SOLID_PERMANENT_HOVER);
-
-        static const QPixmap normalOnePx = makeBtnOne(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
-        static const QPixmap pressedOnePx = makeBtnOne(Styling::StyleVariable::TEXT_SOLID_PERMANENT_ACTIVE);
-        static const QPixmap hoveredOnePx = makeBtnOne(Styling::StyleVariable::TEXT_SOLID_PERMANENT_HOVER);
-
-        if (_state == Ui::GridButtonState::ShowAll)
-            return _pressed ? pressedAllPx : (_hovered ? hoveredAllPx : normalAllPx);
-        return _pressed ? pressedOnePx : (_hovered ? hoveredOnePx : normalOnePx);
     }
 
     const QPixmap& getMoreIcon(const bool _hovered, const bool _pressed)
@@ -134,36 +165,6 @@ namespace
 
     constexpr std::chrono::milliseconds animDuration() noexcept { return std::chrono::milliseconds(150); }
 
-    auto badgeNotchHeight() noexcept
-    {
-        return Utils::scale_value(24);
-    }
-    auto badgeHeight() noexcept
-    {
-        return Utils::scale_value(20);
-    }
-    auto badgeNotchPadding() noexcept
-    {
-        return Utils::scale_value(2);
-    }
-
-    auto badgeMarginLeft() noexcept
-    {
-        return Utils::scale_value(26);
-    }
-    auto badgeMarginTop() noexcept
-    {
-        return getButtonCircleSize(Ui::PanelButton::ButtonSize::Big) - badgeMarginLeft() - badgeHeight();
-    }
-    auto badgeNotchMarginLeft() noexcept
-    {
-        return badgeMarginLeft() - badgeNotchPadding();
-    }
-    auto badgeNotchMarginTop() noexcept
-    {
-        return badgeMarginTop() - badgeNotchPadding();
-    }
-
     QFont getBadgeTextForNumbersFont()
     {
         if constexpr (platform::is_apple())
@@ -172,259 +173,865 @@ namespace
             return Fonts::appFontScaled(14, Fonts::FontFamily::SOURCE_SANS_PRO, Fonts::FontWeight::SemiBold);
     }
 
-    QColor badgeTextColor()
+    auto badgeTextColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID_PERMANENT };
     }
 }
 
 namespace Ui
 {
-    MoreButton::MoreButton(QWidget* _parent)
-        : ClickableWidget(_parent)
+    class PanelToolButtonPrivate
     {
-        setFixedSize(getMoreButtonSize(), getMoreButtonSize());
-        setCursor(Qt::PointingHandCursor);
-    }
+    public:
+        PanelToolButton* q;
+        QKeySequence shortcut_;
+        QPalette palette_;
+        QString iconName_;
+        QPixmap icon_;
+        Qt::Alignment menuAlign_;
+        Qt::ToolButtonStyle buttonStyle_;
+        PanelToolButton::PopupMode popupMode_;
+        PanelToolButton::ButtonRole buttonRole_;
+        PanelToolButton::IconStyle iconStyle_;
+        QStyle::SubControls hoverControl_;
+        QSize badgeSize_;
+        QSize sizeHint_;
+        int spacing_;
 
-    void MoreButton::paintEvent(QPaintEvent* _event)
-    {
-        const auto color = Styling::getParameters().getColor(isPressed() ? Styling::StyleVariable::LUCENT_TERTIARY_ACTIVE
-            : (isHovered() ? Styling::StyleVariable::LUCENT_TERTIARY_HOVER
-                : Styling::StyleVariable::LUCENT_TERTIARY));
+        QPointer<QMenu> menu_;
+        std::unique_ptr<TextRendering::TextUnit> textUnit_;
+        std::unique_ptr<TextRendering::TextUnit> badgeTextUnit_;
+        int count_;
 
-        QPainter p(this);
-        p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
-        p.fillRect(rect(), Qt::transparent);
-        p.setPen(Qt::NoPen);
-        p.setBrush(color);
-        const auto border = getMoreButtonBorder();
-        p.drawEllipse(rect().adjusted(border, border, -border, -border));
+        bool autoRaise_;
+        bool tooltipsEnabled_;
+        bool tooltipVisible_;
 
-        const auto delta = (getMoreButtonSize() - getMoreIconSize()) / 2;
-        p.drawPixmap(delta, delta, getMoreIcon(isHovered(), isPressed()));
-    }
-
-    PanelButton::PanelButton(QWidget* _parent, const QString& _text, const QString& _iconName, ButtonSize _size, ButtonStyle _style, bool _hasMore)
-        : ClickableWidget(_parent)
-        , iconName_(_iconName)
-        , textColor_(Styling::getParameters().getColor(Styling::StyleVariable::GHOST_LIGHT))
-        , size_(_size)
-        , textUnit_(nullptr)
-        , more_(nullptr)
-        , badgeTextUnit_(nullptr)
-        , count_(0)
-    {
-        const auto size = getButtonSize(size_);
-
-        setFixedSize(size);
-
-        tooltipHasParent_ = true;
-
-        if (!_text.isEmpty())
+        struct PanelToolButtonOption : QStyleOptionComplex
         {
-            initSetText(_text);
+            QRect badgeRect, iconRect, textRect, menuButtonRect;
+        };
 
-            if (textUnit_->cachedSize().width() > size.width())
+        PanelToolButtonPrivate(PanelToolButton* _q)
+            : q(_q)
+            , menuAlign_(Qt::AlignTop | Qt::AlignHCenter)
+            , buttonStyle_(Qt::ToolButtonTextUnderIcon)
+            , popupMode_(PanelToolButton::MenuButtonPopup)
+            , buttonRole_(PanelToolButton::Regular)
+            , iconStyle_(PanelToolButton::Circle)
+            , hoverControl_(QStyle::SC_None)
+            , spacing_(Utils::scale_value(8))
+            , count_(0)
+            , autoRaise_(false)
+            , tooltipsEnabled_(true)
+            , tooltipVisible_(false)
+        {}
+
+        void setupPalette()
+        {
+            using ColorRole = Styling::StyleVariable;
+            const auto params = Styling::getParameters();
+            palette_.setBrush(QPalette::Shadow, getShadowColor());
+            palette_.setBrush(QPalette::ButtonText, params.getColor(ColorRole::GHOST_LIGHT)); // text color
+            palette_.setBrush(QPalette::Window, params.getColor(ColorRole::GHOST_PERCEPTIBLE)); // background color
+            switch (buttonRole_)
             {
-                textUnit_->getHeight(size.width());
-                textUnit_->elide(size.width());
+            case PanelToolButton::Attention:
+                palette_.setBrush(QPalette::Disabled, QPalette::Base, params.getColor(ColorRole::TEXT_SOLID_PERMANENT)); // normal & checked
+                palette_.setBrush(QPalette::Disabled, QPalette::Button, params.getColor(ColorRole::SECONDARY_ATTENTION)); // normal & checked
+                palette_.setBrush(QPalette::Disabled, QPalette::Light, params.getColor(ColorRole::SECONDARY_ATTENTION_HOVER)); // hovered & checked
+                palette_.setBrush(QPalette::Disabled, QPalette::Highlight, params.getColor(ColorRole::SECONDARY_ATTENTION_ACTIVE)); // pressed & checked
+
+                palette_.setBrush(QPalette::Normal, QPalette::Base, params.getColor(ColorRole::TEXT_SOLID_PERMANENT)); // normal & unchecked
+                palette_.setBrush(QPalette::Normal, QPalette::Button, params.getColor(ColorRole::LUCENT_TERTIARY)); // normal & unchecked
+                palette_.setBrush(QPalette::Normal, QPalette::Light, params.getColor(ColorRole::LUCENT_TERTIARY_HOVER)); // hovered & unchecked
+                palette_.setBrush(QPalette::Normal, QPalette::Highlight, params.getColor(ColorRole::LUCENT_TERTIARY_ACTIVE)); // pressed &checked
+                break;
+            case PanelToolButton::Regular: // PanelToolButton::Regular is the default
+            default:
+                palette_.setBrush(QPalette::Normal, QPalette::Base, params.getColor(ColorRole::BASE_GLOBALBLACK_PERMANENT)); // icon background
+                palette_.setBrush(QPalette::Normal, QPalette::Button, params.getColor(ColorRole::TEXT_SOLID_PERMANENT)); // normal
+                palette_.setBrush(QPalette::Normal, QPalette::Light, params.getColor(ColorRole::TEXT_SOLID_PERMANENT_HOVER)); // hovered
+                palette_.setBrush(QPalette::Normal, QPalette::Highlight, params.getColor(ColorRole::TEXT_SOLID_PERMANENT_ACTIVE)); // pressed
+
+                palette_.setBrush(QPalette::Disabled, QPalette::Base, params.getColor(ColorRole::TEXT_SOLID_PERMANENT)); // normal & unchecked
+                palette_.setBrush(QPalette::Disabled, QPalette::Button, params.getColor(ColorRole::LUCENT_TERTIARY)); // normal & unchecked
+                palette_.setBrush(QPalette::Disabled, QPalette::Light, params.getColor(ColorRole::LUCENT_TERTIARY_HOVER)); // hovered & unchecked
+                palette_.setBrush(QPalette::Disabled, QPalette::Highlight, params.getColor(ColorRole::LUCENT_TERTIARY_ACTIVE)); // pressed &checked
+                break;
             }
-
-            textUnit_->setOffsets((size.width() - textUnit_->cachedSize().width()) / 2, getButtonTextVerOffset());
-            textUnit_->setShadow(0, Utils::scale_value(1), getShadowColor());
         }
 
-        connect(this, &PanelButton::hoverChanged, this, qOverload<>(&PanelButton::update));
-        connect(this, &PanelButton::pressChanged, this, qOverload<>(&PanelButton::update));
-
-        if (_hasMore)
+        void updateTheme()
         {
-            auto layout = Utils::emptyVLayout(this);
-            more_ = new MoreButton(this);
-            layout->addWidget(more_);
-            connect(more_, &ClickableWidget::clicked, this, &PanelButton::moreButtonClicked);
+            setupPalette();
+            updateIcon();
+            q->update();
         }
 
-        updateStyle(_style);
-    }
-
-    void PanelButton::updateStyle(ButtonStyle _style, const QString& _iconName, const QString& _text)
-    {
-        QColor iconColor;
-        const auto params = Styling::getParameters();
-
-        if (!_text.isEmpty())
+        void initStyleOption(PanelToolButtonOption& _option)
         {
-            initSetText(_text);
-            textUnit_->setOffsets((getButtonSize(size_).width() - textUnit_->cachedSize().width()) / 2, getButtonTextVerOffset());
-            textUnit_->setShadow(0, Utils::scale_value(1), getShadowColor());
+            _option.initFrom(q);
+
+            _option.iconRect = iconRect();
+            _option.textRect = textRect(_option.iconRect);
+            _option.badgeRect = badgeRect(_option.iconRect);
+            _option.menuButtonRect = menuButtonRect(_option.iconRect);
+            _option.palette = palette_;
+
+            if (q->isDown())
+                _option.state |= QStyle::State_Sunken;
+            if (q->isChecked())
+                _option.state |= QStyle::State_On;
+            if (!q->isChecked() && !q->isDown())
+                _option.state |= QStyle::State_Raised;
+
+            _option.activeSubControls = hoverControl_;
         }
 
-        switch (_style)
+        QRect iconRect() const
         {
-        case ButtonStyle::Normal:
-            iconColor = params.getColor(Styling::StyleVariable::BASE_GLOBALBLACK_PERMANENT);
-            circleNormal_ = params.getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
-            circleHovered_ = params.getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT_HOVER);
-            circlePressed_ = params.getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT_ACTIVE);
-            break;
-
-        case ButtonStyle::Transparent:
-            iconColor = params.getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
-            circleNormal_ = params.getColor(Styling::StyleVariable::LUCENT_TERTIARY);
-            circleHovered_ = params.getColor(Styling::StyleVariable::LUCENT_TERTIARY_HOVER);
-            circlePressed_ = params.getColor(Styling::StyleVariable::LUCENT_TERTIARY_ACTIVE);
-            break;
-
-        case ButtonStyle::Red:
-            iconColor = params.getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
-            circleNormal_ = params.getColor(Styling::StyleVariable::SECONDARY_ATTENTION);
-            circleHovered_ = params.getColor(Styling::StyleVariable::SECONDARY_ATTENTION_HOVER);
-            circlePressed_ = params.getColor(Styling::StyleVariable::SECONDARY_ATTENTION_ACTIVE);
-            break;
-
-        default:
-            Q_UNREACHABLE();
-            return;
-        }
-
-        if (!_iconName.isEmpty())
-            iconName_ = _iconName;
-
-        if (!iconName_.isEmpty())
-            icon_ = Utils::renderSvg(iconName_, getButtonIconSize(), iconColor);
-
-        update();
-    }
-
-    void PanelButton::setCount(int _count)
-    {
-        if (count_ != _count && _count >= 0)
-        {
-            count_ = _count;
-            QString badgeText = _count > 0 ? QString::number(_count) : QString();
-            if (badgeTextUnit_)
+            const QMargins margins = q->contentsMargins();
+            switch (buttonStyle_)
             {
-                badgeTextUnit_->setText(badgeText);
+            case Qt::ToolButtonIconOnly:
+            case Qt::ToolButtonTextUnderIcon:
+                return QRect(QPoint(), q->iconSize()).translated(q->width() / 2 - q->iconSize().width() / 2, margins.top());
+            case Qt::ToolButtonTextBesideIcon:
+            default:
+                return QRect(QPoint(), q->iconSize()).translated(margins.left(), margins.top());
+            }
+            return QRect();
+        }
+
+        QRect textRect(const QRect& _iconRect) const
+        {
+            QRect r;
+            if (!textUnit_ || buttonStyle_ == Qt::ToolButtonIconOnly)
+                return r;
+
+            r.setSize(textUnit_->cachedSize());
+            switch (buttonStyle_)
+            {
+            case Qt::ToolButtonTextOnly:
+                r.moveLeft(q->contentsMargins().left());
+                r.moveTop(q->contentsMargins().top());
+                break;
+            case Qt::ToolButtonTextBesideIcon:
+                r.moveLeft(_iconRect.right() + spacing_);
+                if constexpr (platform::is_apple())
+                    r.moveTop(q->height() / 2 - textUnit_->cachedSize().height() / 2 + 2);
+                else
+                    r.moveTop(q->height() / 2 - textUnit_->cachedSize().height() / 2);
+                break;
+            case Qt::ToolButtonTextUnderIcon:
+                r.moveLeft(_iconRect.center().x() - r.width() / 2);
+                r.moveTop(_iconRect.bottom() + spacing_ + 1);
+                break;
+            default:
+                return QRect();
+            }
+            return r;
+        }
+
+        QRect badgeRect(const QRect& _iconRect) const
+        {
+            if (count_ < 1 || !badgeTextUnit_)
+                return QRect();
+
+            QRect r(0, 0, badgeSize_.width(), badgeSize_.height());
+            r.moveTo(_iconRect.topRight() + badgeOffset());
+            return r;
+        }
+
+        QRect menuButtonRect(const QRect& _iconRect) const
+        {
+            if (popupMode_ == PanelToolButton::InstantPopup || !menu_)
+                return QRect{};
+
+            QRect r(QPoint{}, menuButtonSize());
+            const QRect txtRc = textRect(_iconRect);
+            if (iconStyle_ == PanelToolButton::Circle)
+            {
+                switch (buttonStyle_)
+                {
+                case Qt::ToolButtonTextOnly:
+                    r.moveTopLeft({ txtRc.right() + spacing_ + r.width() / 2, txtRc.center().y() - r.height() / 2 });
+                    break;
+                case Qt::ToolButtonTextBesideIcon:
+                case Qt::ToolButtonTextUnderIcon:
+                case Qt::ToolButtonIconOnly:
+                default:
+                    r.moveCenter(_iconRect.bottomRight() - menuButtonOffset());
+                    break;
+                }
             }
             else
             {
-                badgeTextUnit_ = TextRendering::MakeTextUnit(badgeText);
-                badgeTextUnit_->init(getBadgeTextForNumbersFont(), badgeTextColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
-            }
-            update();
-        }
-    }
-
-    void PanelButton::paintEvent(QPaintEvent* _event)
-    {
-        QColor circleColor;
-        QColor textColor = textColor_;
-
-        if (isEnabled() && isPressed())
-            circleColor = circlePressed_;
-        else if (isEnabled() && isHovered())
-            circleColor = circleHovered_;
-        else
-            circleColor = circleNormal_;
-
-        QPainter p(this);
-        p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
-        p.setPen(Qt::NoPen);
-        p.fillRect(rect(), Qt::transparent);
-
-        if (!isEnabled())
-        {
-            circleColor.setAlphaF(circleColor.alphaF() * 0.5f);
-            textColor.setAlphaF(textColor.alphaF() * 0.5f);
-            p.setOpacity(0.5f);
-        }
-
-        const auto circleSize = getButtonCircleSize(size_);
-        const auto circlePlace = QRect((width() - circleSize) / 2, getButtonCircleVerOffset(size_), circleSize, circleSize);
-        const bool isDoubleDigitBadge = count_ > 9;
-        if (circleColor.isValid())
-        {
-            QPixmap circle(Utils::scale_bitmap(QSize(circleSize, circleSize)));
-            circle.fill(Qt::transparent);
-            {
-                QPainter _p(&circle);
-                _p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
-                _p.setPen(Qt::NoPen);
-                _p.setBrush(circleColor);
-                _p.drawEllipse(circle.rect());
-            }
-            Utils::check_pixel_ratio(circle);
-
-            QPixmap cut = circle;
-            if (more_ || count_ > 0)
-            {
-                QPainter _p(&cut);
-                _p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
-                _p.setPen(Qt::NoPen);
-                _p.setBrush(Qt::transparent);
-                _p.setCompositionMode(QPainter::CompositionMode_Source);
-
-                if (more_)
+                switch (buttonStyle_)
                 {
-                    const auto r = getMoreButtonSize();
-                    QRect smallCircle(getMoreButtonMarginLeft(), getMoreButtonMarginTop(), r, r);
-                    _p.drawEllipse(smallCircle);
-                }
-                if (count_ > 0)
-                {
-                    const auto r = badgeNotchHeight();
-                    if (isDoubleDigitBadge)
-                    {
-                        QRect smallCircle(badgeNotchMarginLeft(), badgeNotchMarginTop(), 2 * r, r);
-                        _p.drawRoundedRect(smallCircle, r / 2, r / 2);
-                    }
-                    else
-                    {
-                        QRect smallCircle(badgeNotchMarginLeft(), badgeNotchMarginTop(), r, r);
-                        _p.drawEllipse(smallCircle);
-                    }
+                case Qt::ToolButtonTextBesideIcon:
+                case Qt::ToolButtonTextOnly:
+                    r.moveTopLeft({ txtRc.right() + spacing_, txtRc.center().y() - r.height() / 2 });
+                    break;
+                case Qt::ToolButtonTextUnderIcon:
+                case Qt::ToolButtonIconOnly:
+                default:
+                    r.moveCenter(_iconRect.bottomRight() - menuButtonOffset());
+                    break;
                 }
             }
-            p.drawPixmap(circlePlace, cut);
+            return r;
         }
 
-        const auto ratio = Utils::scale_bitmap_ratio();
-        p.drawPixmap(circlePlace.x() + (circlePlace.width() - icon_.width() / ratio) / 2,
-                     circlePlace.y() + (circlePlace.height() - icon_.height() / ratio) / 2,
-                     icon_);
+        QSize textSize() const { return textUnit_ ? textUnit_->cachedSize() : QSize{}; }
+        int spacing(const QSize& _textSz) const { return (_textSz.height() > 0 ? spacing_ : 0); }
 
-        if (textUnit_)
+        void updateIcon()
         {
-            textUnit_->setColor(textColor);
-            textUnit_->draw(p, TextRendering::VerPosition::TOP);
+            if (!iconName_.isEmpty())
+            {
+                const QPalette::ColorGroup group = q->isChecked() ? QPalette::Normal : QPalette::Disabled;
+                icon_ = Utils::renderSvg(iconName_, QSize(), palette_.color(group, QPalette::Base));
+            }
         }
 
-        if (more_)
-            more_->move(circlePlace.left() + getMoreButtonMarginLeft(), circlePlace.top() + getMoreButtonMarginTop());
-
-        if (count_ > 0)
+        QColor buttonColor(const QPalette& _palette, const QStyle::State _state) const
         {
-            const auto color = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT, 0.25);
+            const bool enabled = _state & QStyle::State_Enabled;
+            const bool pressed = _state & QStyle::State_Sunken;
+            const bool hovered = _state & QStyle::State_MouseOver;
+            const bool checked = _state & QStyle::State_On;
+
+            QPalette::ColorGroup group = enabled && checked ? QPalette::Normal : QPalette::Disabled;
+            if (enabled && pressed)
+                return _palette.color(group, QPalette::Highlight);
+            else if (enabled && hovered)
+                return _palette.color(group, QPalette::Light);
+            else
+                return _palette.color(group, QPalette::Button);
+        }
+
+        QPixmap buttonMask(const QSize& _size, PanelToolButtonOption& _option) const
+        {
+            if (_size.isEmpty())
+                return QPixmap();
+
+            QStyle::State state = _option.state;
+            if (!(_option.activeSubControls & QStyle::SC_ToolButton))
+                state &= ~(QStyle::State_MouseOver | QStyle::State_Sunken);
+
+            const qreal dpr = q->devicePixelRatioF();
+            QPixmap pixmap((QSizeF(_size) * dpr).toSize());
+            pixmap.setDevicePixelRatio(dpr);
+            pixmap.fill(Qt::transparent);
+
+            QPainter painter(&pixmap);
+            painter.setRenderHint(QPainter::Antialiasing);
+            drawItemBackground(painter, _option.iconRect, buttonColor(_option.palette, state));
+
+            painter.setCompositionMode(QPainter::CompositionMode_Source);
+            if (!_option.badgeRect.isNull())
+                drawItemBackground(painter, _option.badgeRect, Qt::transparent);
+            if (!_option.menuButtonRect.isNull())
+                drawItemBackground(painter, _option.menuButtonRect, Qt::transparent);
+
+            return pixmap;
+        }
+
+        void drawItemBackground(QPainter& _painter, const QRect& _rect, const QColor& _color) const
+        {
+            _painter.setPen(Qt::NoPen);
+            _painter.setBrush(_color);
+            switch (iconStyle_)
+            {
+            case PanelToolButton::Circle:
+                _painter.drawRoundedRect(_rect, Utils::minSide(_rect) / 2, Utils::minSide(_rect) / 2);
+                break;
+            case PanelToolButton::Rounded:
+                _painter.drawRoundedRect(_rect, buttonRadius(), buttonRadius()); // TODO: make it by design!
+                break;
+            case PanelToolButton::Rectangle:
+            default:
+                _painter.drawRect(_rect);
+                break;
+            }
+        }
+
+        void drawBackground(QPainter& _painter, const QStyleOptionComplex& _option, QStyle::SubControl _control)
+        {
+            if (_option.rect.isNull())
+                return;
+
+            QStyle::State state = _option.state;
+            if (!(_control & _option.activeSubControls))
+                state &= ~(QStyle::State_MouseOver | QStyle::State_Sunken);
+
+            if (_control == QStyle::SC_ToolButtonMenu)
+                state &= ~QStyle::State_On;
+
+            QColor color = buttonColor(_option.palette, state);
+            if (_control == QStyle::SC_CustomBase) // special color for bage
+            {
+                color = _option.palette.color(QPalette::Disabled, QPalette::Base);
+                color.setAlphaF(0.25);
+            }
+
+            Utils::PainterSaver guard(_painter);
+            drawItemBackground(_painter, _option.rect, color);
+        }
+
+        void drawMenuButton(QPainter& _painter, const PanelToolButtonOption& _option)
+        {
+            if (_option.menuButtonRect.isNull())
+                return;
+
+            const bool hovered = _option.activeSubControls & QStyle::SC_ToolButtonMenu;
+            const bool pressed = hovered && (_option.state & QStyle::State_Sunken);
+
+            drawIcon(_painter, getMoreIcon(hovered, pressed), _option.menuButtonRect);
+        }
+
+        void drawBadge(QPainter& _painter, const QStyleOption& _option)
+        {
+            const int r = Utils::minSide(_option.rect) / 2;
+            _painter.setPen(Qt::NoPen);
+            _painter.drawRoundedRect(_option.rect, r, r);
+
             const auto badgeTextColor = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
-            Utils::drawUnreads(p, getBadgeTextForNumbersFont(), color, badgeTextColor, count_, badgeHeight(), circlePlace.x() + badgeMarginLeft(), circlePlace.y() + badgeMarginTop());
+            Utils::drawUnreads(_painter, getBadgeTextForNumbersFont(), Qt::transparent, badgeTextColor, count_, badgeHeight(), _option.rect.x(), _option.rect.y());
         }
+
+        void drawText(QPainter& _painter, const PanelToolButtonOption& _option)
+        {
+            if (!textUnit_ || _option.textRect.isNull())
+                return;
+
+            Utils::PainterSaver guard(_painter);
+            _painter.translate(_option.textRect.topLeft());
+            textUnit_->draw(_painter, TextRendering::VerPosition::TOP);
+        }
+
+        void drawIcon(QPainter& _painter, const QPixmap& _icon, const QRect& _rect)
+        {
+            // draw icon
+            QRect iconRc = _icon.rect();
+            iconRc.setSize(_icon.size() / Utils::scale_bitmap_ratio());
+
+            iconRc.moveCenter(_rect.center());
+            _painter.drawPixmap(iconRc, _icon);
+        }
+
+        void updateContentsMargins()
+        {
+            q->setContentsMargins(buttonMargins(buttonStyle_));
+        }
+
+        void updateTextSize()
+        {
+            if (!textUnit_)
+                return;
+
+            const int maxWidth = buttonMaximumSize(iconStyle_, buttonStyle_).width() -
+                                 (q->contentsMargins().left() + q->contentsMargins().right());
+            if (textUnit_->cachedSize().width() > maxWidth)
+            {
+                textUnit_->getHeight(maxWidth);
+                textUnit_->elide(maxWidth);
+            }
+        }
+
+        void updateHoverControl(const QPoint& _pos)
+        {
+            const QStyle::SubControls lastControl = hoverControl_;
+            hoverControl_ = QStyle::SC_None;
+            if (q->rect().contains(_pos))
+            {
+                hoverControl_ |= QStyle::SC_ToolButton;
+                if (menu_ && popupMode_ != PanelToolButton::InstantPopup && menuButtonRect(iconRect()).contains(_pos))
+                    hoverControl_ |=  QStyle::SC_ToolButtonMenu;
+            }
+
+            if (hoverControl_ != lastControl)
+                q->update();
+        }
+
+        QString formatToolTipText(const QString& _tooltipText, const QString& _buttonText, const QString& _shortcutText)
+        {
+            QString btnText = _buttonText;
+            QString result;
+            if (!_tooltipText.isEmpty())
+                result += _tooltipText;
+            if (!_buttonText.isEmpty() && _tooltipText.isEmpty())
+                result += btnText.replace(ql1c('\n'), ql1c(' '));
+            if (!_shortcutText.isEmpty() && buttonStyle_ != Qt::ToolButtonIconOnly)
+                result += ql1s(" (") % _shortcutText % ql1c(')');
+            return result;
+        }
+
+        void hideToolTip()
+        {
+            Tooltip::hide();
+            tooltipVisible_ = false;
+        }
+
+        void showToolTip()
+        {
+            if (!tooltipsEnabled_)
+                return;
+
+            const QString toolTipText = formatToolTipText(q->toolTip(), q->text(), shortcut_.toString(QKeySequence::NativeText));
+            const QRect area(q->mapToGlobal({}), q->size());
+            if (!toolTipText.isEmpty())
+            {
+                Tooltip::show(toolTipText, area, {}, Tooltip::ArrowDirection::Down, Tooltip::ArrowPointPos::Top, Ui::TextRendering::HorAligment::LEFT, {}, Tooltip::TooltipMode::Multiline, q->parentWidget());
+                tooltipVisible_ = true;
+            }
+        }
+    };
+
+    PanelToolButton::PanelToolButton(QWidget* _parent)
+        : PanelToolButton(QString(), _parent)
+    { }
+
+    PanelToolButton::PanelToolButton(const QString& _text, QWidget* _parent)
+        : QAbstractButton(_parent)
+        , d(std::make_unique<PanelToolButtonPrivate>(this))
+    {
+        d->setupPalette();
+        d->updateContentsMargins();
+        setSizePolicy(QSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed, QSizePolicy::ToolButton));
+        setText(_text);
+        setAttribute(Qt::WA_Hover);
+        setMouseTracking(true);
+        setCheckable(false);
+        setChecked(false);
+        connect(this, &PanelToolButton::toggled, this, [this]() { d->updateIcon(); update(); });
+        connect(&Styling::getThemesContainer(), &Styling::ThemesContainer::globalThemeChanged, this, [this]() { d->updateTheme(); });
     }
 
-    void PanelButton::initSetText(const QString& _text)
+    PanelToolButton::~PanelToolButton() = default;
+
+    void PanelToolButton::setKeySequence(const QKeySequence& _shortcut)
     {
-        if (!textUnit_)
+        d->shortcut_ = _shortcut;
+    }
+
+    QKeySequence PanelToolButton::keySequence() const
+    {
+        return d->shortcut_;
+    }
+
+    void PanelToolButton::setTooltipsEnabled(bool _on)
+    {
+        d->tooltipsEnabled_ = _on;
+    }
+
+    bool PanelToolButton::isTooltipsEnabled() const
+    {
+        return d->tooltipsEnabled_;
+    }
+
+    void PanelToolButton::setText(const QString& _text)
+    {
+        const QString t = text();
+        if (_text == text())
+            return;
+
+        const bool requireToolTip = d->tooltipVisible_;
+        if (requireToolTip)
+            d->hideToolTip();
+
+        QAbstractButton::setText(_text);
+        if (requireToolTip)
+            d->showToolTip();
+
+        if (_text.isEmpty())
         {
-            textUnit_ = TextRendering::MakeTextUnit(_text, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
-            textUnit_->init(getButtonTextFont(), textColor_, QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER, 2);
+            d->textUnit_.reset();
+            return;
+        }
+
+        if (!d->textUnit_)
+        {
+            const auto textColor_ = Styling::ThemeColorKey{ Styling::StyleVariable::GHOST_LIGHT };
+            d->textUnit_ = TextRendering::MakeTextUnit(_text, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
+            TextRendering::TextUnit::InitializeParameters params{ getButtonTextFont(), textColor_ };
+            params.align_ = TextRendering::HorAligment::CENTER;
+            params.maxLinesCount_ = 2;
+            d->textUnit_->init(params);
         }
         else
         {
-            textUnit_->setText(_text);
+            d->textUnit_->setText(_text);
         }
-        textUnit_->evaluateDesiredSize();
+        d->textUnit_->evaluateDesiredSize();
+        const int w = d->textUnit_->desiredWidth();
+        d->textUnit_->getHeight(w);
+        d->updateTextSize();
+
+        d->textUnit_->setShadow(0, Utils::scale_value(1), d->palette_.color(QPalette::Shadow));
+        d->sizeHint_ = QSize();
+        update();
+
     }
+
+    void PanelToolButton::setIcon(const QString& _iconName)
+    {
+        if (d->iconName_ == _iconName)
+            return;
+
+        d->iconName_ = _iconName;
+        d->updateIcon();
+        update();
+    }
+
+    void PanelToolButton::setBadgeCount(int _count)
+    {
+        if (d->count_ == _count)
+            return;
+
+        d->count_ = _count;
+        d->badgeSize_ = d->count_ > 0 ? Utils::getUnreadsBadgeSize(d->count_, badgeHeight() + 2 * badgeBorder()) : QSize();
+
+        const QString badgeText = Utils::getUnreadsBadgeStr(d->count_);
+
+        if (d->badgeTextUnit_)
+        {
+            d->badgeTextUnit_->setText(badgeText);
+        }
+        else
+        {
+            d->badgeTextUnit_ = TextRendering::MakeTextUnit(badgeText);
+            TextRendering::TextUnit::InitializeParameters params{ getBadgeTextForNumbersFont(), badgeTextColor() };
+            params.align_ = TextRendering::HorAligment::CENTER;
+            d->badgeTextUnit_->init(params);
+        }
+        d->sizeHint_ = QSize();
+        update();
+    }
+
+    int PanelToolButton::badgeCount() const
+    {
+        return d->count_;
+    }
+
+    void PanelToolButton::setPopupMode(PanelToolButton::PopupMode _mode)
+    {
+        d->popupMode_ = _mode;
+        d->sizeHint_ = QSize();
+        update();
+    }
+
+    PanelToolButton::PopupMode PanelToolButton::popupMode() const
+    {
+        return d->popupMode_;
+    }
+
+    void PanelToolButton::setButtonRole(PanelToolButton::ButtonRole _role)
+    {
+        if (d->buttonRole_ == _role)
+            return;
+
+        d->buttonRole_ = _role;
+        d->setupPalette();
+        d->updateIcon();
+        update();
+    }
+
+    PanelToolButton::ButtonRole PanelToolButton::role() const
+    {
+        return d->buttonRole_;
+    }
+
+    void PanelToolButton::setIconStyle(PanelToolButton::IconStyle _style)
+    {
+        if (d->iconStyle_ == _style)
+            return;
+
+        d->iconStyle_ = _style;
+        d->sizeHint_ = QSize();
+        d->updateTextSize();
+        d->updateIcon();
+        update();
+    }
+
+    PanelToolButton::IconStyle PanelToolButton::iconStyle() const
+    {
+        return d->iconStyle_;
+    }
+
+    void PanelToolButton::setButtonStyle(Qt::ToolButtonStyle _style)
+    {
+        if (d->buttonStyle_ == _style)
+            return;
+
+        d->buttonStyle_ = _style;
+        d->sizeHint_ = QSize();
+        d->updateTextSize();
+        d->updateContentsMargins();
+        update();
+    }
+
+    Qt::ToolButtonStyle PanelToolButton::buttonStyle() const
+    {
+        return d->buttonStyle_;
+    }
+
+    void PanelToolButton::setAutoRaise(bool _on)
+    {
+        if (d->autoRaise_ == _on)
+            return;
+
+        d->autoRaise_ = _on;
+        update();
+    }
+
+    bool PanelToolButton::isAutoRaise() const
+    {
+        return d->autoRaise_;
+    }
+
+    void PanelToolButton::setMenuAlignment(Qt::Alignment _align)
+    {
+        d->menuAlign_ = _align;
+    }
+
+    Qt::Alignment PanelToolButton::menuAlignment() const
+    {
+        return d->menuAlign_;
+    }
+
+    void PanelToolButton::setMenu(QMenu* _menu)
+    {
+        if (d->menu_ == _menu)
+            return;
+
+        d->menu_ = _menu;
+        d->sizeHint_ = QSize();
+        update();
+    }
+
+    QMenu* PanelToolButton::menu() const
+    {
+        return d->menu_;
+    }
+
+    QSize PanelToolButton::sizeHint() const
+    {
+        if (d->sizeHint_.isValid())
+            return d->sizeHint_;
+
+        const QRect iconRect(QPoint(), iconSize());
+        const QSize textSize = d->textSize();
+        int w = 0, h = 0;
+
+        if (d->buttonStyle_ == Qt::ToolButtonIconOnly)
+        {
+            QRect r = iconRect;
+            if (d->popupMode_ == MenuButtonPopup && d->menu_)
+                r |= d->menuButtonRect(iconRect);
+            w = r.width();
+            h = r.height();
+        }
+        else if (d->buttonStyle_ == Qt::ToolButtonTextOnly)
+        {
+            w = textSize.width() + d->spacing(textSize);
+            h = textSize.height();
+            if (d->popupMode_ == MenuButtonPopup && d->menu_)
+            {
+                w += menuButtonSize().width();
+                h = std::max(h, menuButtonSize().height());
+            }
+        }
+        else if (d->buttonStyle_ == Qt::ToolButtonTextUnderIcon)
+        {
+            QRect r = iconRect;
+            if (d->popupMode_ == MenuButtonPopup && d->menu_)
+                r |= d->menuButtonRect(iconRect);
+
+            w = std::max(textSize.width(), r.width());
+            h = r.height() + d->spacing(textSize) + textSize.height();
+        }
+        else if (d->buttonStyle_ == Qt::ToolButtonTextBesideIcon)
+        {
+            w = iconRect.width() + d->spacing(textSize) + textSize.width();
+            if (d->popupMode_ == MenuButtonPopup && d->menu_)
+                w += (d->spacing_ + d->menuButtonRect(iconRect).width());
+
+            h = std::max(iconRect.height(), textSize.height());
+        }
+
+        w += contentsMargins().left() + contentsMargins().right();
+        h += contentsMargins().top() + contentsMargins().bottom();
+
+        d->sizeHint_ = QSize(w, h);
+
+        if (d->iconStyle_ == Circle)
+        {
+            d->sizeHint_ = d->sizeHint_.expandedTo(buttonMinimumSize(d->iconStyle_, d->buttonStyle_));
+            d->sizeHint_ = d->sizeHint_.boundedTo(buttonMaximumSize(d->iconStyle_, d->buttonStyle_));
+        }
+        return d->sizeHint_;
+    }
+
+    QSize PanelToolButton::minimumSizeHint() const
+    {
+        return sizeHint();
+    }
+
+    void PanelToolButton::showMenu(QMenu* _menu)
+    {
+        if (!_menu)
+            return;
+
+        if (platform::is_apple() && d->tooltipsEnabled_)
+        {
+            connect(_menu, &QMenu::aboutToHide, this, [this]() { d->tooltipsEnabled_ = true; });
+            d->tooltipsEnabled_ = false;
+        }
+
+        d->hideToolTip();
+        aboutToShowMenu(QPrivateSignal{});
+
+        const QRect rc = rect();
+        if (auto customMenu = qobject_cast<Previewer::CustomMenu*>(_menu))
+            customMenu->exec(this, d->menuAlign_, buttonRectMenuMargins(d->buttonStyle_, d->iconStyle_));
+        else
+            _menu->exec(mapToGlobal(rc.bottomLeft()));
+    }
+
+    bool PanelToolButton::event(QEvent* _event)
+    {
+        if (_event->type() == QEvent::HoverLeave)
+            d->hideToolTip();
+
+        if constexpr (platform::is_apple())
+        {
+            // MacOS often lost some events like tooltip,
+            // so here we force tooltip to be shown
+            if (_event->type() == QEvent::HoverMove && d->tooltipsEnabled_)
+            {
+                QTimer::singleShot(kTooltipDelay, this, [this]()
+                {
+                    if (isVisible() && !d->tooltipVisible_ && rect().contains(mapFromGlobal(QCursor::pos())))
+                        d->showToolTip();
+                });
+            }
+        }
+
+        switch (_event->type())
+        {
+        case QEvent::HoverLeave:
+        case QEvent::HoverEnter:
+        case QEvent::HoverMove:
+            d->updateHoverControl(static_cast<const QHoverEvent*>(_event)->pos());
+            break;
+        case QEvent::ToolTip:
+            d->showToolTip();
+            return true;
+        case QEvent::ToolTipChange:
+            d->hideToolTip();
+            d->showToolTip();
+            break;
+        case QEvent::Hide:
+            d->hideToolTip();
+            break;
+        default:
+            break;
+        }
+        return QAbstractButton::event(_event);
+    }
+
+    void PanelToolButton::keyPressEvent(QKeyEvent* _event)
+    {
+        if (_event->key() == Qt::Key_Space && _event->modifiers() == Qt::NoModifier)
+        {
+            QWidget::keyPressEvent(_event);
+            return;
+        }
+        QAbstractButton::keyPressEvent(_event);
+    }
+
+    void PanelToolButton::keyReleaseEvent(QKeyEvent* _event)
+    {
+        if (_event->key() == Qt::Key_Space && _event->modifiers() == Qt::NoModifier)
+        {
+            QWidget::keyPressEvent(_event);
+            return;
+        }
+        QAbstractButton::keyPressEvent(_event);
+    }
+
+    void PanelToolButton::mousePressEvent(QMouseEvent* _event)
+    {
+        if ((_event->button() == Qt::LeftButton) &&
+            (d->popupMode_ == InstantPopup ||
+             d->menuButtonRect(d->iconRect()).contains(_event->pos())))
+        {
+            repaint();
+            showMenu(d->menu_);
+            return;
+        }
+        QAbstractButton::mousePressEvent(_event);
+    }
+
+    void PanelToolButton::paintEvent(QPaintEvent* _event)
+    {
+        PanelToolButtonPrivate::PanelToolButtonOption option;
+        d->initStyleOption(option);
+
+        QPainter painter(this);
+        painter.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
+
+        if (!(option.state & QStyle::State_Enabled))
+            painter.setOpacity(0.5);
+
+        switch (d->iconStyle_)
+        {
+        case Circle:
+            painter.drawPixmap(0, 0, d->buttonMask(size(), option));
+            break;
+        case Rounded:
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(option.palette.window());
+            painter.drawRoundedRect(option.rect, buttonRadius(), buttonRadius());
+            break;
+        case Rectangle:
+        default:
+            painter.fillRect(option.rect, option.palette.window());
+            break;
+        }
+
+        if (d->iconStyle_ != Circle)
+        {
+            if (!d->autoRaise_)
+                d->drawBackground(painter, option, QStyle::SC_ToolButton);
+            else if (option.state & QStyle::State_MouseOver)
+                d->drawBackground(painter, option, QStyle::SC_ToolButton);
+        }
+        if (d->menu_ && d->popupMode_ == MenuButtonPopup)
+        {
+            const int border = menuButtonBorder(d->iconStyle_);
+            option.rect =  option.menuButtonRect.adjusted(border, border, -border, -border);
+            d->drawBackground(painter, option, QStyle::SC_ToolButtonMenu);
+            d->drawMenuButton(painter, option);
+        }
+
+        if (d->count_ > 0)
+        {
+            const int border = badgeBorder();
+            option.rect = option.badgeRect.adjusted(border, border, -border, -border);
+            d->drawBackground(painter, option, QStyle::SC_CustomBase);
+            d->drawBadge(painter, option);
+        }
+
+        option.rect = rect();
+        d->drawIcon(painter, d->icon_, option.iconRect);
+        d->drawText(painter, option);
+    }
+
 
     TransparentPanelButton::TransparentPanelButton(QWidget* _parent, const QString& _iconName, const QString& _tooltipText, Qt::Alignment _align, bool _isAnimated)
         : ClickableWidget(_parent)
@@ -449,9 +1056,9 @@ namespace Ui
         auto makeIcon = [&_iconName](bool _hovered, bool _pressed)
         {
             const auto color = _hovered ? Styling::StyleVariable::TEXT_SOLID_PERMANENT_HOVER
-                            : (_pressed ? Styling::StyleVariable::TEXT_SOLID_PERMANENT_ACTIVE
-                            : Styling::StyleVariable::TEXT_SOLID_PERMANENT);
-            return Utils::renderSvg(_iconName, getButtonIconSize(), Styling::getParameters().getColor(color));
+                : (_pressed ? Styling::StyleVariable::TEXT_SOLID_PERMANENT_ACTIVE
+                    : Styling::StyleVariable::TEXT_SOLID_PERMANENT);
+            return Utils::StyledPixmap{ _iconName, getButtonIconSize(), Styling::ThemeColorKey{ color } };
         };
 
         iconNormal_ = makeIcon(false, false);
@@ -460,7 +1067,7 @@ namespace Ui
 
         connect(this, &ClickableWidget::clicked, this, &TransparentPanelButton::onClicked);
 
-        setFixedSize(getButtonSize(PanelButton::ButtonSize::Small));
+        setFixedSize(Utils::scale_value(QSize(36, 36)));
         setTooltipText(_tooltipText);
     }
 
@@ -473,10 +1080,12 @@ namespace Ui
 
         const auto buttonSize = getButtonIconSize().width();
         const auto offsets = getIconOffset();
-        p.translate(offsets.x() + buttonSize / 2, offsets.y() + buttonSize / 2);
+        const auto x = offsets.x() + buttonSize / 2;
+        const auto y = offsets.y() + buttonSize / 2;
+        p.translate(x, y);
         p.rotate(currentAngle_);
-        p.translate(-(offsets.x() + buttonSize / 2), -(offsets.y() + buttonSize / 2));
-        const auto pm = isHovered() ? iconHovered_ : (isPressed() ? iconPressed_ : iconNormal_);
+        p.translate(-x, -y);
+        const auto pm = (isHovered() ? iconHovered_ : (isPressed() ? iconPressed_ : iconNormal_)).actualPixmap();
         p.drawPixmap(offsets, pm);
     }
 
@@ -507,7 +1116,7 @@ namespace Ui
             return;
 
         const auto area = getTooltipArea();
-        Tooltip::show(tooltipText, { mapToGlobal(area.topLeft()), area.size() }, { 0, 0 }, Tooltip::ArrowDirection::Down, Tooltip::ArrowPointPos::Top, tooltipBoundingRect_, Tooltip::TooltipMode::Multiline, parentWidget());
+        Tooltip::show(tooltipText, { mapToGlobal(area.topLeft()), area.size() }, { 0, 0 }, Tooltip::ArrowDirection::Down, Tooltip::ArrowPointPos::Top, TextRendering::HorAligment::LEFT, tooltipBoundingRect_, Tooltip::TooltipMode::Multiline, parentWidget());
     }
 
     void TransparentPanelButton::onClicked()
@@ -550,118 +1159,53 @@ namespace Ui
         return { topLeftPos, QSize(getButtonIconSize().width(), height()) };
     }
 
-
-    GridButton::GridButton(QWidget *_parent)
-        : ClickableWidget(_parent)
-        , state_(GridButtonState::ShowBig)
+    QString microphoneIcon(bool _checked)
     {
-        text_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("voip_video_panel", "SHOW ALL"), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        text_->init(getButtonTextFont(), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER, 1);
-        text_->evaluateDesiredSize();
-
-        const auto textSize = text_->cachedSize();
-        setFixedHeight(getGridButtonSize().height());
-        setFixedWidth(getMargin() + getGridButtonSize().width() + textSize.width() + getSpacing());
-
-        auto yOffset = (height() - textSize.height()) / 2;
-        if constexpr (platform::is_apple())
-            yOffset += Utils::scale_value(1);
-        text_->setOffsets(getMargin(), yOffset);
+        return _checked ? ql1s(":/voip/microphone_icon") : ql1s(":/voip/microphone_off_icon");
     }
 
-    void GridButton::paintEvent(QPaintEvent *_event)
+    QString speakerIcon(bool _checked)
     {
-        QPainter p(this);
-        p.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing | QPainter::SmoothPixmapTransform);
-        p.fillRect(rect(), Qt::transparent);
-        const auto icon = getGridButtonIcon(state_, isHovered(), isPressed());
-
-        auto xOffset = 0;
-        if (state_ == GridButtonState::ShowAll)
-        {
-            const auto color = (isPressed() ? Styling::StyleVariable::TEXT_SOLID_PERMANENT_ACTIVE
-                              : isHovered() ? Styling::StyleVariable::TEXT_SOLID_PERMANENT_HOVER
-                              : Styling::StyleVariable::TEXT_SOLID_PERMANENT);
-
-            text_->setColor(color);
-            text_->draw(p);
-            xOffset = getMargin() + text_->cachedSize().width() + getSpacing();
-        }
-        p.drawPixmap(xOffset, 0, icon);
+        return _checked ? ql1s(":/voip/speaker_icon") : ql1s(":/voip/speaker_off_icon");
     }
 
-    void GridButton::setState(const GridButtonState _state)
+    QString videoIcon(bool _checked)
     {
-        state_ = _state;
-        if (state_ == GridButtonState::ShowAll)
-            setFixedWidth(getMargin() + getGridButtonSize().width() + text_->cachedSize().width() + getSpacing());
-        else
-            setFixedWidth(getGridButtonSize().width());
-
-        update();
+        return _checked ? ql1s(":/voip/videocall_icon") : ql1s(":/voip/videocall_off_icon");
     }
 
-    QString getMicrophoneButtonText(PanelButton::ButtonStyle _style, PanelButton::ButtonSize _size)
+    QString screensharingIcon()
     {
-        if (_size == PanelButton::ButtonSize::Big)
-        {
-            if (_style == PanelButton::ButtonStyle::Normal)
-                return QT_TRANSLATE_NOOP("voip_video_panel", "Mute");
-            return QT_TRANSLATE_NOOP("voip_video_panel", "Unmute");
-        }
-        else
-        {
-            if (_style == PanelButton::ButtonStyle::Normal)
-                return QT_TRANSLATE_NOOP("voip_video_panel_mini", "Mute");
-            return QT_TRANSLATE_NOOP("voip_video_panel_mini", "Unmute");
-        }
+        return ql1s(":/voip/sharescreen_icon");
     }
 
-    QString getVideoButtonText(PanelButton::ButtonStyle _style, PanelButton::ButtonSize _size)
+    QString hangupIcon()
     {
-        if (_size == PanelButton::ButtonSize::Big)
-        {
-            if (_style == PanelButton::ButtonStyle::Normal)
-                return QT_TRANSLATE_NOOP("voip_video_panel", "Stop\nVideo");
-            return QT_TRANSLATE_NOOP("voip_video_panel", "Start\nVideo");
-        }
-        else
-        {
-            if (_style == PanelButton::ButtonStyle::Normal)
-                return QT_TRANSLATE_NOOP("voip_video_panel_mini", "Stop video");
-            return QT_TRANSLATE_NOOP("voip_video_panel_mini", "Start video");
-        }
+        return ql1s(":/voip/endcall_icon");
     }
 
-    QString getSpeakerButtonText(PanelButton::ButtonStyle _style, PanelButton::ButtonSize _size)
+    QString microphoneButtonText(bool _checked)
     {
-        if (_size == PanelButton::ButtonSize::Big)
-        {
-            if (_style == PanelButton::ButtonStyle::Normal)
-                return QT_TRANSLATE_NOOP("voip_video_panel", "Disable\nSound");
-            return QT_TRANSLATE_NOOP("voip_video_panel", "Enable\nSound");
-        }
-        else
-        {
-            if (_style == PanelButton::ButtonStyle::Normal)
-                return QT_TRANSLATE_NOOP("voip_video_panel_mini", "Disable sound");
-            return QT_TRANSLATE_NOOP("voip_video_panel_mini", "Enable sound");
-        }
+        return _checked ? QT_TRANSLATE_NOOP("voip_video_panel", "Mute") : QT_TRANSLATE_NOOP("voip_video_panel", "Unmute");
     }
 
-    QString getScreensharingButtonText(PanelButton::ButtonStyle _style, PanelButton::ButtonSize _size)
+    QString videoButtonText(bool _checked)
     {
-        if (_size == PanelButton::ButtonSize::Big)
-        {
-            if (_style == PanelButton::ButtonStyle::Normal)
-                return QT_TRANSLATE_NOOP("voip_video_panel", "Stop\nShare");
-            return QT_TRANSLATE_NOOP("voip_video_panel", "Share\nScreen");
-        }
-        else
-        {
-            if (_style == PanelButton::ButtonStyle::Normal)
-                return QT_TRANSLATE_NOOP("voip_video_panel_mini", "Stop share");
-            return QT_TRANSLATE_NOOP("voip_video_panel_mini", "Start share");
-        }
+        return _checked ? QT_TRANSLATE_NOOP("voip_video_panel", "Stop\nVideo") : QT_TRANSLATE_NOOP("voip_video_panel", "Start\nVideo");
+    }
+
+    QString speakerButtonText(bool _checked)
+    {
+        return _checked ? QT_TRANSLATE_NOOP("voip_video_panel", "Disable\nSound") : QT_TRANSLATE_NOOP("voip_video_panel", "Enable\nSound");
+    }
+
+    QString screensharingButtonText(bool _checked)
+    {
+        return _checked ? QT_TRANSLATE_NOOP("voip_video_panel", "Stop\nShare") : QT_TRANSLATE_NOOP("voip_video_panel", "Share\nScreen");
+    }
+
+    QString stopCallButtonText()
+    {
+        return QT_TRANSLATE_NOOP("voip_video_panel", "End call");
     }
 }

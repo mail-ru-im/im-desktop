@@ -15,8 +15,8 @@ namespace core
         class get_user_last_seen: public robusto_packet
         {
 
-            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
-            virtual int32_t parse_results(const rapidjson::Value& _node_results) override;
+            int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            int32_t parse_results(const rapidjson::Value& _node_results) override;
 
             std::map<std::string, lastseen> result_;
             std::vector<std::string> aimids_;
@@ -28,7 +28,8 @@ namespace core
 
             const std::map<std::string, lastseen>& get_result() const;
 
-            virtual std::string_view get_method() const override;
+            std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
         };
     }
 }

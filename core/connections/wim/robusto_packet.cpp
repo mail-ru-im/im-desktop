@@ -97,7 +97,7 @@ int32_t robusto_packet::on_response_error_code()
         return wpie_error_need_relogin;
 
     if (status_code_ >= 40501 && status_code_ <= 40504)//rate limits
-        return wpie_error_robuso_too_fast_sending;
+        return wpie_error_robusto_too_fast_sending;
 
     if (status_code_ == 50000)
         return wpie_robusto_timeout;

@@ -1,10 +1,8 @@
 #pragma once
 #include "textrendering/TextRendering.h"
 
-namespace Styling
-{
-    enum class StyleVariable;
-}
+#include "../styles/StyleVariable.h"
+#include "../styles/ThemeColor.h"
 
 namespace Ui
 {
@@ -20,17 +18,43 @@ namespace Ui
         ParseSinglesAndTriples,
     };
 
-
     namespace TextRendering
     {
         class TextUnit
         {
         public:
+            struct InitializeParameters
+            {
+                InitializeParameters(QFont _font, Styling::ColorParameter _colorKey)
+                    : font_ { _font }
+                    , monospaceFont_ { font_ }
+                    , color_ { std::move(_colorKey) }
+                {}
+
+                void setFonts(const QFont& _font)
+                {
+                    font_ = _font;
+                    monospaceFont_ = _font;
+                }
+
+                QFont font_;
+                QFont monospaceFont_;
+                Styling::ColorParameter color_;
+                Styling::ThemeColorKey linkColor_;                      // color of links
+                Styling::ThemeColorKey selectionColor_;                 // color of selection
+                Styling::ThemeColorKey highlightColor_;                 // color of highlighted text; currlently disabled
+                HorAligment align_ = HorAligment::LEFT;                 // horizontal alignment of the text
+                LineBreakType lineBreak_ = LineBreakType::PREFER_WIDTH; // type of line's break, see LineBreakType for details
+                EmojiSizeType emojiSizeType_ = EmojiSizeType::REGULAR;
+                LinksStyle linksStyle_ = LinksStyle::PLAIN;
+                int maxLinesCount_ = -1; // maximum count of lines, last line will be elided by "..."
+            };
+
             TextUnit();
             TextUnit(const Data::FString& _text, const Data::MentionMap& _mentions, LinksVisible _showLinks, ProcessLineFeeds _processLineFeeds, EmojiSizeType _emojiSizeType);
 
-            void setText(const QString& _text, const QColor& _color = QColor());//set or replace existing text; also init blocks and evaluate height by desired width
-            void setText(const Data::FString& _text, QColor _color = QColor());//set or replace existing text; also init blocks and evaluate height by desired width
+            void setText(const QString& _text, const Styling::ThemeColorKey& _color = {}); // set or replace existing text; also init blocks and evaluate height by desired width
+            void setText(const Data::FString& _text, const Styling::ThemeColorKey& _color = {}); // set or replace existing text; also init blocks and evaluate height by desired width
 
             void setMentions(const Data::MentionMap& _mentions);//set mentions, find they in text and replace by clickable links
             const Data::MentionMap& getMentions() const;//get mentions
@@ -70,19 +94,7 @@ namespace Ui
 
             void evaluateDesiredSize(); //calc height by text's desired width
 
-            void init(const QFont& _font, const QColor& _color, const QFont& _monospaceFont, const QColor& _linkColor = QColor(), const QColor& _selectionColor = QColor(), const QColor& _highlightColor = QColor(), HorAligment _align = HorAligment::LEFT, int _maxLinesCount = -1, LineBreakType _lineBreak = LineBreakType::PREFER_WIDTH, EmojiSizeType _emojiSizeType = EmojiSizeType::REGULAR, const LinksStyle _linksStyle = LinksStyle::PLAIN);
-            //set initial parameters
-            //_linkColor - color of links
-            //_selectionColor - color of selection
-            //_hightLightColor - color of highlighted text; currlently disabled
-            //_align - horizontal alignment of the text
-            //_maxLinesCount - maximum count of lines, last line will be elided by "..."
-            //_lineBreak - type of line's break, see LineBreakType for details
-
-            //! Initialize monospace font with regular font, thus monospace formatting won't work
-            void init(const QFont& _font, const QColor& _color, const QColor& _linkColor = QColor(), const QColor& _selectionColor = QColor(), const QColor& _highlightColor = QColor(), HorAligment _align = HorAligment::LEFT, int _maxLinesCount = -1, LineBreakType _lineBreak = LineBreakType::PREFER_WIDTH, EmojiSizeType _emojiSizeType = EmojiSizeType::REGULAR, const LinksStyle _linksStyle = LinksStyle::PLAIN);
-
-            void updateWordsOfStyle(core::data::format_type _type, const QFont& _newFont, QColor _newColor);
+            void init(const InitializeParameters& _parameters);
 
             void setLastLineWidth(int _width); //only for units with _maxLinesCount != -1
 
@@ -123,6 +135,9 @@ namespace Ui
 
             [[nodiscard]] int desiredWidth() const;//get text's desired width
 
+            int sourceTextWidth() const;
+            int textWidth() const;
+
             void applyLinks(const std::map<QString, QString>& _links);//set links; like <a href=second>first</a> (not literally)
             void applyFontToLinks(const QFont& _font); // set custom font to links
 
@@ -130,21 +145,22 @@ namespace Ui
 
             [[nodiscard]] QSize cachedSize() const;// get cached size
 
-            void setColor(const QColor& _color);// set text color
-            void setColor(const Styling::StyleVariable _var, const QString& _aimid = QString());
-            void setLinkColor(const QColor& _color);
-            void setSelectionColor(const Styling::StyleVariable _var, const QString& _aimid = QString());
-            void setSelectionColor(const QColor _color);
+            void setColor(const Styling::ColorParameter& _color);
+            void setLinkColor(const Styling::ThemeColorKey& _color);
+            void setSelectionColor(const Styling::ThemeColorKey& _color);
+            void setHighlightedTextColor(const Styling::ThemeColorKey& _color); // set color for highlighted text
+            void setHighlightColor(const Styling::ThemeColorKey& _color);
 
-            void setHighlightedTextColor(const QColor& _color); // set color for highlighted text
+            [[nodiscard]] Styling::ThemeColorKey getColorKey() const; // get text color
+            [[nodiscard]] QColor getColor() const;                    // get text color
 
-            [[nodiscard]] QColor getColor() const;// get text color
+            [[nodiscard]] Styling::ThemeColorKey getLinkColorKey() const;
 
             [[nodiscard]] HorAligment getAlign() const; // get text alignment
 
             void setAlign(HorAligment _align);
 
-            void setColorForAppended(const QColor& _color);//set text color for appended blocks
+            void setColorForAppended(const Styling::ThemeColorKey& _color); // set text color for appended blocks
 
             [[nodiscard]] const QFont& getFont() const;
 
@@ -164,6 +180,8 @@ namespace Ui
             int getMaxLineWidth() const; //get max line width; getHeight() or evaluateDesiredSize() must be called before
 
             void setEmojiSizeType(const EmojiSizeType _emojiSizeType);
+
+            LinksVisible linksVisibility() const;
 
             bool needsEmojiMargin() const;
             size_t getEmojiCount() const;
@@ -195,9 +213,15 @@ namespace Ui
             void appendToSourceText(TextUnit& _suffix);
 
         private:
+            void initializeBlocks();
+            void initializeBlocksAndSelectedTextColor();
+            [[nodiscard]] QPoint mapPoint(QPoint) const;
+            void updateColors();
+
+        private:
             std::vector<BaseDrawingBlockPtr> blocks_;
-            int horOffset_;
-            int verOffset_;
+            int horOffset_ = 0;
+            int verOffset_ = 0;
 
             Data::MentionMap mentions_;
             LinksVisible showLinks_;
@@ -206,31 +230,27 @@ namespace Ui
 
             QFont font_;
             QFont monospaceFont_;
-            QColor color_;
-            QColor linkColor_;
-            QColor selectionColor_;
-            QColor highlightColor_;
-            QColor highlightTextColor_;
+            Styling::ColorContainer color_;
+            Styling::ColorContainer linkColor_;
+            Styling::ColorContainer selectionColor_;
+            Styling::ColorContainer highlightColor_;
+            Styling::ColorContainer highlightTextColor_;
             QSize cachedSize_;
-            HorAligment align_;
-            int maxLinesCount_;
-            int appended_;
-            LineBreakType lineBreak_;
+            HorAligment align_ = HorAligment::LEFT;
+            int maxLinesCount_ = -1;
+            int appended_ = -1;
+            LineBreakType lineBreak_ = LineBreakType::PREFER_WIDTH;
             LinksStyle linksStyle_;
-            int lineSpacing_;
-            bool needsEmojiMargin_;
+            int lineSpacing_ = 0;
+            bool needsEmojiMargin_ = false;
 
             int64_t blockId_ = 0;
 
             std::shared_ptr<bool> guard_;
-            TextRendering::VerPosition lastVerPosition_;
-
-        private:
-            [[nodiscard]] QPoint mapPoint(QPoint) const;
+            TextRendering::VerPosition lastVerPosition_ = TextRendering::VerPosition::TOP;
         };
 
         using TextUnitPtr = std::unique_ptr<TextUnit>;
-
 
         TextUnitPtr MakeTextUnit(
             const Data::FString& _text,
@@ -252,5 +272,6 @@ namespace Ui
         bool InsertDebugMsgIdBlockIntoUnit(TextUnitPtr& _textUnit, qint64 _id, size_t _atPosition = 0);
         bool UpdateDebugMsgIdBlock(TextUnitPtr& _textUnit, qint64 _newId);
         bool RemoveDebugMsgIdBlocks(TextUnitPtr& _textUnit);
-    }
-}
+        void ExtractLinkWords(TextUnitPtr& _textUnit, std::vector<const TextWord*>& _words);
+    } // namespace TextRendering
+} // namespace Ui

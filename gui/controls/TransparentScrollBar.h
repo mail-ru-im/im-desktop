@@ -7,6 +7,12 @@ namespace Utils
 
 namespace Ui
 {
+    enum class FadeOutPolicy
+    {
+        Auto,
+        Manual
+    };
+
     //////////////////////////////////////////////////////////////////////////
     // TransparentAnimation
     //////////////////////////////////////////////////////////////////////////
@@ -14,7 +20,7 @@ namespace Ui
     {
         Q_OBJECT
     public:
-        TransparentAnimation(float _minOpacity, float _maxOpacity, QWidget* _host, bool _autoFadeout = true);
+        TransparentAnimation(float _minOpacity, float _maxOpacity, QWidget* _host, FadeOutPolicy _fadeOutPolicy = FadeOutPolicy::Auto);
         virtual ~TransparentAnimation();
 
         qreal currentOpacity() const;
@@ -42,7 +48,11 @@ namespace Ui
         horizontal = 1
     };
 
-
+    enum class ScrollBarPolicy
+    {
+        AutoHide,
+        AlwaysVisible
+    };
 
     //////////////////////////////////////////////////////////////////////////
     // TransparentScrollButton
@@ -60,11 +70,12 @@ namespace Ui
         void fadeOut();
 
     public:
-        TransparentScrollButton(QWidget* parent);
+        TransparentScrollButton(QWidget* parent, FadeOutPolicy _fadeOutPolicy);
         virtual ~TransparentScrollButton();
 
         virtual void hoverOn() = 0;
         virtual void hoverOff() = 0;
+        QPoint dragPoint() const { return dragPoint_; }
 
     Q_SIGNALS:
         void moved(QPoint);
@@ -80,8 +91,8 @@ namespace Ui
         void setHovered(const bool _hovered);
 
     private:
-
         TransparentAnimation* transparentAnimation_;
+        QPoint dragPoint_;
 
         bool isHovered_;
     };
@@ -98,19 +109,16 @@ namespace Ui
         Q_OBJECT
 
     public:
+        int getMinHeight() const;
+        int getMinWidth() const;
+        int getMaxWidth() const;
 
-        int getMinHeight();
-        int getMinWidth();
-        int getMaxWidth();
+        TransparentScrollButtonV(QWidget* _parent, FadeOutPolicy _fadeOutPolicy);
 
-        TransparentScrollButtonV(QWidget* _parent);
-
-        virtual void hoverOn() override;
-        virtual void hoverOff() override;
-
+        void hoverOn() override;
+        void hoverOff() override;
 
     private:
-
         int minScrollButtonWidth_;
         int maxScrollButtonWidth_;
         int minScrollButtonHeight_;
@@ -127,14 +135,14 @@ namespace Ui
         Q_OBJECT
 
     public:
-        TransparentScrollButtonH(QWidget* parent);
+        TransparentScrollButtonH(QWidget* _parent, FadeOutPolicy _fadeOutPolicy);
 
-        int getMinWidth();
-        int getMinHeight();
-        int getMaxHeight();
+        int getMinWidth() const;
+        int getMinHeight() const;
+        int getMaxHeight() const;
 
-        virtual void hoverOn() override;
-        virtual void hoverOff() override;
+        void hoverOn() override;
+        void hoverOff() override;
 
     private:
 
@@ -156,7 +164,7 @@ namespace Ui
         Q_OBJECT
 
     public:
-        TransparentScrollBar();
+        TransparentScrollBar(ScrollBarPolicy _scrollBarPolicy = ScrollBarPolicy::AutoHide);
         virtual ~TransparentScrollBar();
 
         void fadeIn();
@@ -166,8 +174,9 @@ namespace Ui
         void setGetContentSizeFunc(std::function<QSize()> _getContentSize);
 
         QPointer<TransparentScrollButton> getScrollButton() const;
+        QScrollBar* getDefaultScrollBar() const;
 
-        virtual void init();
+        void init();
 
     public Q_SLOTS:
 
@@ -183,13 +192,10 @@ namespace Ui
         virtual double calcButtonWidth() = 0;
         virtual double calcScrollBarRatio() = 0;
         virtual void updatePosition() = 0;
-        virtual QPointer<TransparentScrollButton> createScrollButton(QWidget* _parent) = 0;
+        virtual QPointer<TransparentScrollButton> createScrollButton(QWidget* _parent, FadeOutPolicy _fadeOutPolicy) = 0;
         virtual void setDefaultScrollBar(QAbstractScrollArea* _view) = 0;
         virtual void onResize(QResizeEvent* _e) = 0;
         virtual void moveToGlobalPos(QPoint _moveTo) = 0;
-
-        QScrollBar* getDefaultScrollBar() const;
-
 
         QPointer<QWidget> view_;
         std::function<QSize()> getContentSize_;
@@ -199,11 +205,9 @@ namespace Ui
         void onScrollBtnMoved(QPoint);
 
     private:
-
-
         TransparentAnimation* transparentAnimation_;
-
         QPointer<TransparentScrollButton> scrollButton_;
+        ScrollBarPolicy scrollBarPolicy_;
     };
 
 
@@ -220,21 +224,17 @@ namespace Ui
         Q_OBJECT
 
     public:
-
-        virtual void init() override;
+        using TransparentScrollBar::TransparentScrollBar;
 
     protected:
-
-        virtual double calcButtonHeight() override;
-        virtual double calcButtonWidth() override;
-        virtual double calcScrollBarRatio() override;
-        virtual void updatePosition() override;
-        virtual void setDefaultScrollBar(QAbstractScrollArea* _view) override;
-        virtual QPointer<TransparentScrollButton> createScrollButton(QWidget* _parent) override;
-        virtual void onResize(QResizeEvent* _e) override;
-        virtual void moveToGlobalPos(QPoint _moveTo) override;
-    private:
-
+        double calcButtonHeight() override;
+        double calcButtonWidth() override;
+        double calcScrollBarRatio() override;
+        void updatePosition() override;
+        void setDefaultScrollBar(QAbstractScrollArea* _view) override;
+        QPointer<TransparentScrollButton> createScrollButton(QWidget* _parent, FadeOutPolicy _fadeOutPolicy) override;
+        void onResize(QResizeEvent* _e) override;
+        void moveToGlobalPos(QPoint _moveTo) override;
     };
 
 
@@ -251,19 +251,17 @@ namespace Ui
         Q_OBJECT
 
     public:
-
-        virtual void init() override;
+        using TransparentScrollBar::TransparentScrollBar;
 
     protected:
-
-        virtual double calcButtonHeight() override;
-        virtual double calcButtonWidth() override;
-        virtual double calcScrollBarRatio() override;
-        virtual void updatePosition() override;
-        virtual void setDefaultScrollBar(QAbstractScrollArea* _view) override;
-        virtual QPointer<TransparentScrollButton> createScrollButton(QWidget* _parent) override;
-        virtual void onResize(QResizeEvent* _e) override;
-        virtual void moveToGlobalPos(QPoint _moveTo) override;
+        double calcButtonHeight() override;
+        double calcButtonWidth() override;
+        double calcScrollBarRatio() override;
+        void updatePosition() override;
+        void setDefaultScrollBar(QAbstractScrollArea* _view) override;
+        QPointer<TransparentScrollButton> createScrollButton(QWidget* _parent, FadeOutPolicy _fadeOutPolicy) override;
+        void onResize(QResizeEvent* _e) override;
+        void moveToGlobalPos(QPoint _moveTo) override;
     };
 
 
@@ -288,12 +286,12 @@ namespace Ui
 
         virtual TransparentScrollBarH* getScrollBarH() const;
         virtual void setScrollBarH(TransparentScrollBarH* _scrollBar);
+        void fadeIn();
 
     protected:
         virtual void mouseMoveEvent(QMouseEvent* event);
         virtual void wheelEvent(QWheelEvent* event);
         virtual void updateGeometries();
-        virtual void fadeIn();
 
     private:
         TransparentScrollBarV* scrollBarV_;
@@ -322,9 +320,8 @@ namespace Ui
 
     private:
         QModelIndex startGestureIndex_;
-        bool wasTapAndHold_ = false;
-
         QListView* view_ = nullptr;
+        bool wasTapAndHold_ = false;
     };
 
 
@@ -394,13 +391,13 @@ namespace Ui
         explicit ListViewWithTrScrollBar(QWidget *parent = nullptr);
         virtual ~ListViewWithTrScrollBar();
 
-        virtual QSize contentSize() const override;
-        virtual void setScrollBarV(TransparentScrollBarV* _scrollBar) override;
+        QSize contentSize() const override;
+        void setScrollBarV(TransparentScrollBarV* _scrollBar) override;
 
     protected:
-        virtual void mouseMoveEvent(QMouseEvent *event) override;
-        virtual void wheelEvent(QWheelEvent *event) override;
-        virtual void updateGeometries() override;
+        void mouseMoveEvent(QMouseEvent *event) override;
+        void wheelEvent(QWheelEvent *event) override;
+        void updateGeometries() override;
     };
 
 
@@ -455,8 +452,6 @@ namespace Ui
         void setMaxContentWidth(int _width);
         int getMaxContentWidth() const noexcept { return maxWidth_; }
 
-        virtual void fadeIn() override;
-
     protected:
         void mouseMoveEvent(QMouseEvent *event) override;
         void wheelEvent(QWheelEvent *event) override;
@@ -473,7 +468,7 @@ namespace Ui
 
 
 
-
+    void smoothScroll(QScrollBar* _scrollBar, QVariantAnimation* _animation, int _delta);
 
 
 
@@ -488,17 +483,17 @@ namespace Ui
         explicit TextEditExWithTrScrollBar(QWidget *parent = nullptr);
         virtual ~TextEditExWithTrScrollBar();
 
-        virtual QSize contentSize() const override;
-        virtual void setScrollBarV(TransparentScrollBarV* _scrollBar) override;
+        QSize contentSize() const override;
+        void setScrollBarV(TransparentScrollBarV* _scrollBar) override;
 
     protected:
-        virtual void mouseMoveEvent(QMouseEvent *event) override;
-        virtual void wheelEvent(QWheelEvent *event) override;
+        void mouseMoveEvent(QMouseEvent *event) override;
+        void wheelEvent(QWheelEvent *event) override;
         void updateGeometry();
     };
 
-    ScrollAreaWithTrScrollBar* CreateScrollAreaAndSetTrScrollBarV(QWidget* parent);
-    ScrollAreaWithTrScrollBar* CreateScrollAreaAndSetTrScrollBarH(QWidget* parent);
+    ScrollAreaWithTrScrollBar* CreateScrollAreaAndSetTrScrollBarV(QWidget* parent, ScrollBarPolicy _scrollBarPolicy = ScrollBarPolicy::AutoHide);
+    ScrollAreaWithTrScrollBar* CreateScrollAreaAndSetTrScrollBarH(QWidget* parent, ScrollBarPolicy _scrollBarPolicy = ScrollBarPolicy::AutoHide);
     ListViewWithTrScrollBar* CreateFocusableViewAndSetTrScrollBar(QWidget* parent);
     QTextBrowser* CreateTextEditExWithTrScrollBar(QWidget* parent);
 }

@@ -44,8 +44,10 @@ namespace config
         unknown_contacts,
         stranger_contacts,
         otp_login,
-        show_notification_text,
+        hiding_message_text_enabled,
+        hiding_message_info_enabled,
         changeable_name,
+        allow_contacts_rename,
         avatar_change_allowed,
         beta_update,
         ssl_verify,
@@ -64,6 +66,7 @@ namespace config
         spell_check,
         favorites_message_onpremise,
         info_change_allowed,
+        call_link_v2_enabled,
         vcs_call_by_link_enabled,
         vcs_webinar_enabled,
         statuses_enabled,
@@ -74,7 +77,6 @@ namespace config
         statistics_mytracker,
         force_update_check_allowed,
         call_room_info_enabled,
-        external_config_use_preset_url,
         store_version,
         otp_login_open_mail_link,
         dns_workaround,
@@ -99,8 +101,6 @@ namespace config
         reminders_enabled,
         support_shared_federation_stickerpacks,
         url_ftp_protocols_allowed,
-        organization_structure_enabled,
-        tasks_enabled,
         draft_enabled,
         message_corner_menu,
         task_creation_in_chat_enabled,
@@ -113,7 +113,25 @@ namespace config
         restricted_files_enabled,
         antivirus_check_enabled,
         antivirus_check_progress_visible,
+        external_user_agreement,
+        user_agreement_enabled,
+        delete_account_enabled,
+        delete_account_via_admin,
+        has_registry_about,
+        // TODO: remove when deprecated
+        organization_structure_enabled,
+        tasks_enabled,
         calendar_enabled,
+        tarm_mail,
+        tarm_cloud,
+        tarm_calls,
+        calendar_self_auth,
+        mail_enabled,
+        mail_self_auth,
+        cloud_self_auth,
+        digital_assistant_search_positioning,
+        leading_last_name,
+        report_messages_enabled,
 
         max_size
     };
@@ -126,7 +144,9 @@ namespace config
         profile,
         profile_agent,
         auth_mail_ru,
-        oauth2_mail_ru,
+        oauth_url,
+        token_url,
+        redirect_uri,
         r_mail_ru,
         win_mail_ru,
         read_msg,
@@ -159,9 +179,12 @@ namespace config
         vcs_room,
         dns_cache,
         external_emoji,
+        privacy_policy_url,
+        terms_of_use_url,
+        delete_account_url,
+        delete_account_url_email,
 
         // add type before this place
-
         max_size
     };
 
@@ -177,6 +200,8 @@ namespace config
         client_b64,
         client_id,
         client_rapi,
+        oauth_type,
+        oauth_scope,
         product_name,
         product_name_short,
         product_name_full,
@@ -210,7 +235,9 @@ namespace config
         voip_call_user_limit,
         voip_video_user_limit,
         voip_big_conference_boundary,
+        maximum_history_file_size,
         external_config_preset_url,
+        client_api_version,
         server_api_version,
         server_mention_timeout,
         support_uin,
@@ -223,6 +250,21 @@ namespace config
         smartreply_suggests_click_hide_timeout,
         smartreply_suggests_msgid_cache_size,
         base_retry_interval_sec,
+        product_path_old,
+        product_name_old,
+        crossprocess_pipe_old,
+        main_instance_mutex_win_old,
+        bots_commands_disabled,
+        service_apps_order,
+        service_apps_config,
+        service_apps_desktop,
+        custom_miniapps,
+        wim_parallel_packets_count,
+        digital_assistant_bot_aimid,
+        additional_theme,
+        max_delete_files,
+        delete_files_older_sec,
+        cleanup_period_sec,
 
         max_size
     };
@@ -255,7 +297,7 @@ namespace config
         values_vector values;
     };
 
-    void set_external(std::shared_ptr<external_configuration> _f);
+    void set_external(std::shared_ptr<external_configuration> _f, bool _is_develop);
 
     // all strings are null terminated
     class configuration
@@ -264,6 +306,8 @@ namespace config
         explicit configuration(std::string_view json, bool _is_debug);
         configuration(configuration&&) = default;
         ~configuration();
+
+        void set_develop_command_line_flag(bool _flag);
 
         bool is_valid() const noexcept;
 
@@ -290,9 +334,21 @@ namespace config
         bool is_overridden(values) const noexcept;
 
         bool is_debug() const noexcept;
+        bool is_develop() const noexcept;
+        bool has_develop_cli_flag() const noexcept;
+
+        void set_profile_link(const std::wstring& _profile);
+        std::wstring get_profile_link(bool _secure = true) const;
 
     private:
-        configuration();
+        bool is_external_config_enabled() const noexcept;
+
+        std::shared_ptr<external_configuration> get_external() const;
+        void set_external(std::shared_ptr<external_configuration>, bool);
+
+        friend void config::set_external(std::shared_ptr<external_configuration> _f, bool _is_develop);
+
+    private:
         struct default_c
         {
             urls_array urls;
@@ -301,26 +357,24 @@ namespace config
             translations_array translations;
         } c_;
 
-        const bool is_debug_ = false;
-        bool is_valid_ = false;
-
         std::unique_ptr<common::tools::spin_lock> spin_lock_;
         std::shared_ptr<external_configuration> e_;
 
-    private:
-        bool is_external_config_enabled() const noexcept;
-
-        std::shared_ptr<external_configuration> get_external() const;
-        void set_external(std::shared_ptr<external_configuration>);
-
-        friend void config::set_external(std::shared_ptr<external_configuration> _f);
+        const bool is_debug_ = false;
+        bool is_develop_ = false;
+        bool is_valid_ = false;
+        bool has_develop_command_line_flag_ = false;
+        std::wstring current_profile_link_ = {};
     };
 }
 
 namespace config
 {
     const configuration& get();
+    configuration& get_mutable();
+    bool try_replace_with_develop_config();
     bool is_overridden(features _v);
     bool is_overridden(values _v);
     void reset_external();
+    void reset_config();
 }

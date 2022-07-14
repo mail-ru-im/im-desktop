@@ -15,7 +15,7 @@ namespace Logic
         void onPatternsLoaded(const QString& _contact, const QVector<QString>& _patterns);
 
     public:
-        SearchPatternHistory(QObject* _parent);
+        SearchPatternHistory(QObject* _parent = nullptr);
 
         void addPattern(const QString& _pattern, const QString& _contact);
         SearchPatterns getPatterns(const QString& _contact);

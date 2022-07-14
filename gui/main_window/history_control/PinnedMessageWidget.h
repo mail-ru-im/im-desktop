@@ -105,8 +105,8 @@ namespace Ui
 
         Ui::ComplexMessage::PinPlaceholderType previewType_;
 
-        QPixmap snippet_;
-        QPixmap snippetHover_;
+        std::unique_ptr<Utils::BasePixmap> snippet_;
+        std::unique_ptr<Utils::BasePixmap> snippetHover_;
         int64_t requestId_;
         std::vector<QMetaObject::Connection> connections_;
 

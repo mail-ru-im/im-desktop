@@ -30,6 +30,11 @@ std::string_view normalize_phone::get_method() const
     return "normalizePhoneNumber";
 }
 
+int core::wim::normalize_phone::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
+}
+
 int32_t normalize_phone::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::stringstream ss_url;

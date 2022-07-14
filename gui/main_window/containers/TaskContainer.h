@@ -33,4 +33,4 @@ namespace Logic
 
     TaskContainer* GetTaskContainer();
     void ResetTaskContainer();
-}
+} // namespace Logic

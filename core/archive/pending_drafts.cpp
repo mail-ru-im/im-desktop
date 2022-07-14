@@ -31,15 +31,23 @@ std::string pending_drafts::get_next_pending_draft_contact() const
 }
 
 void pending_drafts::remove_pending_draft_contact(const std::string& _contact, int64_t _timestamp)
-{    
+{
+    bool needToSerialize = false;
     if (!prev_pending_draft_contacts_.empty() && prev_pending_draft_contacts_.back().second == _contact && prev_pending_draft_contacts_.back().first <= _timestamp)
+    {
         prev_pending_draft_contacts_.pop_back();
+        needToSerialize = true;
+    }
 
     auto current_it = current_pending_draft_contacts_.find(_contact);
     if (current_it != current_pending_draft_contacts_.end() && current_it->second <= _timestamp)
+    {
         current_pending_draft_contacts_.erase(current_it);
+        needToSerialize = true;
+    }
 
-    write_file();
+    if(needToSerialize)
+        write_file();
 }
 
 void pending_drafts::add_pending_draft_contact(const std::string& _contact, int64_t _timestamp)

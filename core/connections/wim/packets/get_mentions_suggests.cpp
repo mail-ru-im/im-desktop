@@ -6,6 +6,7 @@
 #include "../../../../common.shared/json_helper.h"
 #include "../../../archive/history_message.h"
 #include "../wim_history.h"
+#include "../log_replace_functor.h"
 
 
 using namespace core;
@@ -27,6 +28,11 @@ const mention_suggest_vec& get_mentions_suggests::get_suggests() const
 std::string_view get_mentions_suggests::get_method() const
 {
     return "getRecentWriters";
+}
+
+int core::wim::get_mentions_suggests::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t get_mentions_suggests::init_request(const std::shared_ptr<core::http_request_simple>& _request)

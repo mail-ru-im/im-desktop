@@ -14,8 +14,15 @@
 #include "styles/ThemeParameters.h"
 #include "../../../common.shared/config/config.h"
 
+namespace
+{
+    int getDndOverlaySize() noexcept { return Utils::scale_value(60); }
+} // namespace
+
 namespace Ui
 {
+    const int MAX_TOOLTIP_TEXT_LEN = 52;
+
     VisualDataBase::VisualDataBase()
         : IsHovered_(false)
         , IsSelected_(false)
@@ -166,13 +173,15 @@ namespace Ui
         return 0;
     }
 
-    QColor ContactListParams::getNameFontColor(bool _isSelected, bool _isMemberChecked, bool _isFavorites) const
+    Styling::ThemeColorKey ContactListParams::getNameFontColor(bool _isSelected, bool _isMemberChecked, bool _isFavorites) const
     {
-        return _isSelected ?
-            Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT) : _isMemberChecked ?
-            Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY) : _isFavorites ?
-            Favorites::nameColor() :
-            Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
+        if (_isSelected)
+            return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID_PERMANENT };
+        if (_isMemberChecked)
+            return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY };
+        if (_isFavorites)
+            return Favorites::nameColor();
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID };
     }
 
     QString ContactListParams::getRecentsMessageFontColor(const bool _isUnread) const
@@ -192,14 +201,14 @@ namespace Ui
         return ql1s("%1; color: %2; background-color: transparent").arg(fontQss, fontColor);
     };
 
-    QColor ContactListParams::timeFontColor(bool _isSelected) const
+    Styling::ThemeColorKey ContactListParams::timeFontColor(bool _isSelected) const
     {
-        return Styling::getParameters().getColor(_isSelected ? Styling::StyleVariable::TEXT_SOLID_PERMANENT : Styling::StyleVariable::BASE_SECONDARY);
+        return Styling::ThemeColorKey{ _isSelected ? Styling::StyleVariable::TEXT_SOLID_PERMANENT : Styling::StyleVariable::BASE_SECONDARY };
     }
 
-    QColor ContactListParams::groupColor() const
+    Styling::ThemeColorKey ContactListParams::groupColor() const
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY };
     }
 
     ContactListParams& GetContactListParams()
@@ -254,6 +263,40 @@ namespace Ui
             color = Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE);
 
         _painter.fillRect(_rect, color);
+    }
+
+    void renderDragOverlay(QPainter& _painter, const QRect& _rect, const ViewParams& _viewParams)
+    {
+        Utils::PainterSaver ps(_painter);
+
+        _painter.setPen(Qt::NoPen);
+        _painter.setRenderHint(QPainter::Antialiasing);
+
+        const QColor overlayColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE, 0.98));
+        _painter.fillRect(_rect, QBrush(overlayColor));
+        _painter.setBrush(QBrush(Styling::getParameters().getColor(Styling::StyleVariable::GHOST_ACCENT)));
+
+        const QPen pen(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY), ContactListParams::dragOverlayBorderWidth(), Qt::SolidLine, Qt::RoundCap);
+        _painter.setPen(pen);
+
+        const QRect overlayRect = _rect.adjusted(
+            ContactListParams::dragOverlayPadding(),
+            ContactListParams::dragOverlayVerPadding(),
+            -ContactListParams::dragOverlayPadding(),
+            -ContactListParams::dragOverlayVerPadding());
+        _painter.drawRoundedRect(overlayRect, ContactListParams::dragOverlayBorderRadius(), ContactListParams::dragOverlayBorderRadius());
+
+        if (_viewParams.pictOnly_)
+        {
+            const auto overlaySize = getDndOverlaySize();
+            static auto fastSendGreen = Utils::StyledPixmap(qsl(":/fast_send"), QSize{ overlaySize, overlaySize }, Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY });
+            _painter.drawPixmap(_rect.left() + _rect.width() / 2 - overlaySize / 2, _rect.top() + _rect.height() / 2 - overlaySize / 2, fastSendGreen.actualPixmap());
+        }
+        else
+        {
+            _painter.setFont(Fonts::appFontScaled(15));
+            Utils::drawText(_painter, QPoint(_rect.width() / 2, _rect.y() + _rect.height() / 2), Qt::AlignCenter, QT_TRANSLATE_NOOP("files_widget", "Quick send"));
+        }
     }
 
     int GetXOfRemoveImg(int _width)
@@ -312,6 +355,22 @@ namespace Ui
             im_assert(!"unknown core::profile_state value");
             return QString();
         }
+    }
+
+    Data::FString makeDraftText(const QString& _aimId)
+    {
+        auto draftText = Logic::getRecentsModel()->getDlgState(_aimId).draftText_;
+        Utils::elideText(draftText, MAX_TOOLTIP_TEXT_LEN);
+        Data::FString draftMessage = QT_TRANSLATE_NOOP("contact_list", "Draft");
+        core::data::format::builder formats;
+        formats %= core::data::range_format(core::data::format_type::bold, { 0, draftMessage.string().length() });
+        draftMessage.setFormatting(formats.finalize());
+        Data::FString::Builder builder;
+        builder %= draftMessage;
+        builder %= qsl("\n\"");
+        builder %= draftText;
+        builder %= qsl("\"");
+        return builder.finalize();
     }
 }
 

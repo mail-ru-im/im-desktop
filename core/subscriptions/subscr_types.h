@@ -11,6 +11,8 @@ namespace core::wim::subscriptions
         call_room_info,
         thread,
         task,
+        tasks_counter,
+        mails_counter
     };
 
     std::string_view type_2_string(subscriptions::type _type) noexcept;

@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "utils/gui_coll_helper.h"
+#include "utils/features.h"
 #include "idinfo.h"
 
 namespace Data
@@ -17,6 +18,9 @@ namespace Data
             _info.sn_ = _coll.get<QString>("sn");
             _info.name_ = _coll.get<QString>("name");
             _info.description_ = _coll.get<QString>("description");
+            _info.firstName_ = _coll.get<QString>("first_name");
+            _info.middleName_ = _coll.get<QString>("middle_name");
+            _info.lastName_ = _coll.get<QString>("last_name");
         };
 
         if (helper.is_value_exist("user"))
@@ -40,4 +44,19 @@ namespace Data
 
         return info;
     }
-}
+
+    QString IdInfo::getName() const
+    {
+        if (isChatInfo() || Features::changeContactNamesAllowed() || firstName_.isEmpty())
+            return name_;
+
+        QStringList names;
+        if (Features::leadingLastName())
+            names << lastName_ << firstName_ << middleName_;
+        else
+            names << firstName_ << middleName_ << lastName_;
+        names.removeAll({});
+
+        return names.join(QChar::Space);
+    }
+} // namespace Data

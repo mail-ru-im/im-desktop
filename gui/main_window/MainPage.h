@@ -5,6 +5,7 @@
 #include "types/idinfo.h"
 
 #include "EscapeCancellable.h"
+#include "contact_list/Common.h"
 
 class QStandardItemModel;
 
@@ -98,14 +99,28 @@ namespace Ui
         video_call
     };
 
+    enum class SidebarStateFlag
+    {
+        Closed = 0,
+        Opened = 1 << 1,
+        Animated = 1 << 2,
+        KeepState = 1 << 3,
+
+        CloseAnimated = Closed | Animated,
+        OpenAnimated = Opened | Animated,
+    };
+    Q_DECLARE_FLAGS(SidebarStateFlags, SidebarStateFlag)
+    Q_DECLARE_OPERATORS_FOR_FLAGS(Ui::SidebarStateFlags)
+
     class MainPage : public QWidget
     {
         Q_OBJECT
 
     public Q_SLOTS:
-        void startSearchInDialog(const QString& _aimid);
+        void startSearchInDialog(const QString& _aimid, const QString& _pattern = {});
         void setSearchFocus();
         void setSearchTabFocus();
+        bool hasSearchFocus() const;
         void settingsClicked();
         void openRecents();
         void openCalls();
@@ -114,7 +129,11 @@ namespace Ui
 
         void tabBarCurrentChanged(int _index);
         void onTabClicked(TabType _tabType, bool _isSameTabClicked);
-        void selectTab(TabType _tab);
+        void selectTab(TabType _tab, bool _needUpdateFocus = true);
+        void closeThreadInfo(const QString& _threadId);
+
+        void onContactFilterRemoved(const QString& _aimId);
+        void onScrollToNewsFeedMesssage(const QString& _aimId, int64_t _msgId, const Ui::highlightsV& _highlights);
 
     private:
         void searchBegin();
@@ -136,7 +155,7 @@ namespace Ui
         //voip
         void onVoipShowVideoWindow(bool);
         void onVoipCallIncoming(const std::string&, const std::string&, const std::string&);
-        void onVoipCallIncomingAccepted(const std::string& call_id);
+        void onVoipCallIncomingAccepted(const std::string& _callId);
         void onVoipCallDestroyed(const voip_manager::ContactEx& _contactEx);
 #endif
 
@@ -188,11 +207,14 @@ namespace Ui
         void onJoinChatResultBlocked(const QString& _stamp);
 
         void openThread(const QString& _threadAimId, int64_t _msgId, const QString& _fromPage);
+        void onSizeChanged(QSize _oldSize = {}, bool _needUpdateFocus = true);
+
+        void onItemSelected(const QString& _aimId, qint64 _messageId, qint64 /*_threadId*/, const highlightsV& _highlights, bool _ignoreScroll);
 
     private:
         explicit MainPage(QWidget* _parent);
 
-        static std::unique_ptr<MainPage> _instance;
+        static std::unique_ptr<MainPage, QObjectDeleteLater> _instance;
 
         enum class OneFrameMode
         {
@@ -210,9 +232,14 @@ namespace Ui
         static void reset();
         ~MainPage();
 
+        static int splitterHandleWidth() noexcept;
+        static int pageMinWidth() noexcept;
+        static int getFrame2MinWidth() noexcept;
+        static int getFrame3MinWidth() noexcept;
+
         void selectRecentChat(const QString& _aimId);
         void recentsTabActivate(bool _selectUnread = false);
-        void selectRecentsTab();
+        void selectRecentsTab(bool _needUpdateFocus = true);
         void settingsTabActivate(Utils::CommonSettingsType _item = Utils::CommonSettingsType::CommonSettingsType_None);
         void onSwitchedToEmpty();
         void cancelSelection();
@@ -227,7 +254,8 @@ namespace Ui
         void updateSplitterHandle(int _width);
         bool isSideBarInSplitter() const;
         void insertSidebarToSplitter();
-        void takeSidebarFromSplitter();
+        void takeSidebarFromSplitter(int _widthHint);
+        void removeSidebarPlaceholder();
         void chatUnreadChanged();
 
 #ifndef STRIP_VOIP
@@ -237,6 +265,9 @@ namespace Ui
         void nextChat();
         void prevChat();
 
+        void saveSidebarState();
+        void restoreSidebarState();
+
         ContactDialog* getContactDialog() const;
         VideoWindow* getVideoWindow() const;
 
@@ -244,10 +275,13 @@ namespace Ui
         void showSidebar(const QString& _aimId, bool _selectionChanged = false);
         void showSidebarWithParams(const QString& _aimId, SidebarParams _params = {}, bool _selectionChanged = false, bool _animate = true);
         bool isSidebarVisible() const;
-        void setSidebarVisible(bool _visible, bool _animate = true);
+        void setSidebarState(SidebarStateFlags _flags);
         void restoreSidebar();
         int getSidebarWidth() const;
-        QString getSidebarAimid() const;
+        QString getSidebarAimid(Sidebar::ResolveThread _resolve = Sidebar::ResolveThread::No) const;
+        bool isSidebarWithThreadPage() const;
+        bool isSidebarInputInFocus() const;
+        bool isSidebarInFocus(bool _checkSearchFocus = false) const;
 
         bool isContactDialog() const;
 
@@ -280,9 +314,12 @@ namespace Ui
 
         LeftPanelState getLeftPanelState() const;
 
+        bool isOneFrameMode() const;
         bool isOneFrameTab() const;
+        bool isOneFrameSidebar() const;
         bool isInSettingsTab() const;
         bool isInRecentsTab() const;
+        bool isInContactsTab() const;
 
         void openDialogOrProfileById(const QString& _id, bool _forceDialogOpen, std::optional<QString> _botParams);
 
@@ -293,12 +330,17 @@ namespace Ui
 
         QString getSidebarSelectedText() const;
 
+        void setOpenedAs(PageOpenedAs _openedAs);
+        void scrollRecentsToTop();
+
     protected:
         void resizeEvent(QResizeEvent* _event) override;
 
         bool eventFilter(QObject* _obj, QEvent* _event) override;
 
     private:
+        void sidebarPosWithRecents(int _width);
+        void sidebarPosWithoutRecents(int _width);
 
         void animateVisibilityCL(int _newWidth, bool _withAnimation);
         void setLeftPanelState(LeftPanelState _newState, bool _withAnimation, bool _for_search = false, bool _force = false);
@@ -315,7 +357,6 @@ namespace Ui
 
         void updateSettingHeader();
         void updateNewMailButton();
-        void updateCallsTabButton();
 
         void switchToContentFrame();
         void switchToTabFrame();
@@ -331,44 +372,51 @@ namespace Ui
 
         void initUpdateButton();
 
-        void updateSidebarSplitterColor();
         void resizeUpdateFocus(QWidget* _prevFocused);
 
+        void updateSidebarWidth(int _desiredWidth);
+        void saveContactListWidth();
+        void restoreContactListWidth();
+
+        bool isOpenedAsMain() const;
+        bool canShowRecents() const;
+
     private:
-        RecentsTab* recentsTab_;
-        SettingsTab* settingsTab_;
-        ContactsTab* contactsTab_;
-        CallsTab* callsTab_;
-        VideoWindow* videoWindow_;
-        VideoSettings* videoSettings_;
-        WidgetsNavigator* pages_;
-        ContactDialog* contactDialog_;
-        EmptyConnectionInfoPage* callsHistoryPage_;
-        QVBoxLayout* pagesLayout_;
-        GeneralSettingsWidget* generalSettings_;
-        Stickers::Store* stickersStore_;
-        QTimer* settingsTimer_;
-        QPropertyAnimation* animCLWidth_;
-        QWidget* clSpacer_;
-        QVBoxLayout* contactsLayout_;
-        QWidget* contactsWidget_;
-        QVBoxLayout* clHostLayout_;
+        RecentsTab* recentsTab_ = nullptr;
+        SettingsTab* settingsTab_  = nullptr;
+        ContactsTab* contactsTab_  = nullptr;
+        CallsTab* callsTab_  = nullptr;
+        VideoWindow* videoWindow_  = nullptr;
+        VideoSettings* videoSettings_  = nullptr;
+        WidgetsNavigator* pages_  = nullptr;
+        ContactDialog* contactDialog_  = nullptr;
+        EmptyConnectionInfoPage* callsHistoryPage_  = nullptr;
+        QVBoxLayout* pagesLayout_  = nullptr;
+        GeneralSettingsWidget* generalSettings_  = nullptr;
+        Stickers::Store* stickersStore_  = nullptr;
+        QTimer* settingsTimer_  = nullptr;
+        QPropertyAnimation* animCLWidth_  = nullptr;
+        QWidget* clSpacer_  = nullptr;
+        QVBoxLayout* contactsLayout_  = nullptr;
+        QWidget* contactsWidget_  = nullptr;
+        QVBoxLayout* clHostLayout_  = nullptr;
         LeftPanelState leftPanelState_;
-        TopPanelWidget* topWidget_;
-        QWidget* spacerBetweenHeaderAndRecents_;
+        TopPanelWidget* topWidget_  = nullptr;
+        QWidget* spacerBetweenHeaderAndRecents_  = nullptr;
         SemitransparentWindowAnimated* semiWindow_;
-        UnreadsCounter* counter_;
-        SettingsHeader* settingsHeader_;
-        MyProfilePage* profilePage_;
-        Splitter* splitter_;
-        QWidget* clContainer_;
-        QWidget* pagesContainer_;
+        UnreadsCounter* counter_  = nullptr;
+        SettingsHeader* settingsHeader_  = nullptr;
+        MyProfilePage* profilePage_  = nullptr;
+        Splitter* splitter_  = nullptr;
+        QWidget* clContainer_  = nullptr;
+        QWidget* pagesContainer_  = nullptr;
+        QWidget* sidebarPlaceholderWidget_  = nullptr;
         QPointer<Sidebar> sidebar_;
         bool sidebarVisibilityOnRecentsFrame_;
-        TabWidget* tabWidget_;
-        ExpandButton* expandButton_;
-        LineLayoutSeparator* spreadedModeLine_;
-        UpdaterButton* updaterButton_;
+        TabWidget* tabWidget_  = nullptr;
+        ExpandButton* expandButton_  = nullptr;
+        LineLayoutSeparator* spreadedModeLine_  = nullptr;
+        UpdaterButton* updaterButton_  = nullptr;
         bool NeedShowUnknownsHeader_;
         int currentTab_;
         bool isManualRecentsMiniMode_;
@@ -376,9 +424,11 @@ namespace Ui
         OneFrameMode oneFrameMode_;
         OneFrameMode prevOneFrameMode_;
 
-        ContextMenu* moreMenu_;
-        QWidget* callsTabButton_;
-        Utils::CallLinkCreator* callLinkCreator_;
+        ContextMenu* moreMenu_  = nullptr;
+        Utils::CallLinkCreator* callLinkCreator_  = nullptr;
+        int currentCLWidth_{0};
+
+        QString threadParentPageId_;
 
         struct DialogByIdLoader
         {
@@ -397,13 +447,6 @@ namespace Ui
             }
 
         } dialogIdLoader_;
-
-        struct UnreadCounters
-        {
-            qint64 unreadMessages_ = 0;
-            qint64 unreadEmails_ = 0;
-            bool attention_ = false;
-        } unreadCounters_;
 
         struct RecentsHeaderButtons
         {
@@ -425,6 +468,8 @@ namespace Ui
 
 
         std::map<std::string, std::shared_ptr<IncomingCallWindow> > incomingCallWindows_;
-        void destroyIncomingCallWindow(const std::string& _account, const std::string& _contact);
+        void destroyIncomingCallWindow(const std::string& _callId);
+
+        PageOpenedAs openedAs_ = PageOpenedAs::MainPage;
     };
 }

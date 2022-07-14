@@ -12,8 +12,6 @@ public:
     MessagesLayout_p(MessagesLayout* _q) : q(_q) {}
     void updateItemsWidth(int _width)
     {
-        const auto m = q->contentsMargins();
-        _width -= m.left() + m.right();
         for (auto item : items_)
         {
             if (auto w = item->widget(); w && w->width() != _width)

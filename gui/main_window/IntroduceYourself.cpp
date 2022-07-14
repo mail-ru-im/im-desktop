@@ -72,7 +72,7 @@ namespace Ui
         title->setTextInteractionFlags(Qt::TextBrowserInteraction);
         title->setOpenExternalLinks(true);
         title->setFont(Fonts::appFontScaled(23));
-        title->setColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        title->setColor(Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
         title->setText(QT_TRANSLATE_NOOP("placeholders", "Add a name and avatar"));
         middleLayout->addWidget(title);
         middleLayout->setAlignment(title, Qt::AlignTop | Qt::AlignHCenter);
@@ -86,7 +86,7 @@ namespace Ui
         explanation->setTextInteractionFlags(Qt::TextBrowserInteraction);
         explanation->setOpenExternalLinks(true);
         explanation->setFont(Fonts::appFontScaled(fontsize));
-        explanation->setColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+        explanation->setColor(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY });
         explanation->setText(QT_TRANSLATE_NOOP("placeholders", "your contacts will see them"));
         middleLayout->addWidget(explanation);
         middleLayout->setAlignment(explanation, Qt::AlignTop | Qt::AlignHCenter);

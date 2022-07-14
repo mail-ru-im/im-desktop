@@ -9,6 +9,7 @@
 #include "../../../tools/system.h"
 #include "../../../tools/md5.h"
 #include "../../urls_cache.h"
+#include "../log_replace_functor.h"
 
 #define WIM_APP_TOKENTYPE		"longterm"
 
@@ -44,6 +45,11 @@ client_login::client_login(wim_packet_params params, const std::string& login, c
 }
 
 client_login::~client_login() = default;
+
+int core::wim::client_login::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
+}
 
 void client_login::set_product_guid_8x(const std::string& _guid)
 {

@@ -126,9 +126,19 @@ void Label::setText(const QString &_text)
     textUnit_->getHeight(rect_.width());
 }
 
-void Label::setDefaultColor(const QColor &_color)
+void Ui::Label::initTextUnit(const TextRendering::TextUnit::InitializeParameters& _params)
 {
-    defaultColor_ = _color; updateColor();
+    if (textUnit_)
+    {
+        textUnit_->init(_params);
+        textUnit_->getHeight(textUnit_->desiredWidth());
+    }
+}
+
+void Label::setDefaultColor(const Styling::ColorParameter& _color)
+{
+    defaultColor_ = _color;
+    updateColor();
 }
 
 void Label::setUnderline(bool _enable)
@@ -158,21 +168,17 @@ void Label::updateColor()
     if (!textUnit_)
         return;
 
-    QColor color;
+    Styling::ColorParameter parameter = defaultColor_;
 
-    if (disabled_)
-        color = disabledColor_;
-    else if (pressed_ )
-        color = pressedColor_;
-    else if (hovered_)
-        color = hoveredColor_;
-    else
-        color = defaultColor_;
+    if (disabled_ && disabledColor_.isValid())
+        parameter = disabledColor_;
+    else if (pressed_ && pressedColor_.isValid())
+        parameter = pressedColor_;
+    else if (hovered_ && hoveredColor_.isValid())
+        parameter = hoveredColor_;
 
-    if (color.isValid())
-        textUnit_->setColor(color);
-    else if (defaultColor_.isValid())
-        textUnit_->setColor(defaultColor_);
+    if (parameter.isValid())
+        textUnit_->setColor(parameter);
 }
 
 QString Label::getText() const
@@ -190,11 +196,11 @@ void BDrawable::draw(QPainter &_p)
     path.addRoundedRect(rect_, borderRadius_, borderRadius_);
 
     if (pressed_ && pressedBackground_.isValid())
-        _p.fillPath(path, pressedBackground_);
+        _p.fillPath(path, pressedBackground_.actualColor());
     else if (hovered_ && hoveredBackground_.isValid())
-        _p.fillPath(path, hoveredBackground_);
+        _p.fillPath(path, hoveredBackground_.actualColor());
     else if (background_.isValid())
-        _p.fillPath(path, background_);
+        _p.fillPath(path, background_.actualColor());
 }
 
 void BButton::draw(QPainter &_p)

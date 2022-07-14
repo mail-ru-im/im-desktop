@@ -1,5 +1,8 @@
 #include "stdafx.h"
 #include "features.h"
+#include "binary_stream.h"
+#include "system.h"
+#include "../core/core.h"
 
 #include "../../common.shared/config/config.h"
 #include "../../common.shared/omicron_keys.h"
@@ -13,6 +16,7 @@
 #include "../../libomicron/include/omicron/omicron.h"
 
 #include "../configuration/app_config.h"
+#include "../configuration/external_config.h"
 
 namespace
 {
@@ -21,6 +25,40 @@ namespace
         const auto config_value = config::get().is_on(_feature);
         const auto omicron_value = omicronlib::_o(_omicron_key, config_value);
         return config::is_overridden(_feature) ? config_value || omicron_value : omicron_value;
+    }
+ 
+    size_t maximum_delete_files()
+    {
+        constexpr auto default_count = 100;
+        const auto config_count = config::get().number<int64_t>(config::values::max_delete_files).value_or(default_count);
+        const auto omicron_count = omicronlib::_o(omicron::keys::max_delete_files, config_count);
+        return omicron_count;
+    }
+
+    std::chrono::hours delete_files_older_hours()
+    {
+        using namespace std::chrono;
+        const auto week_in_seconds = duration_cast<seconds>(hours(7*24)).count();
+        const auto config_value = config::get().number<int64_t>(config::values::delete_files_older_sec).value_or(week_in_seconds);
+        const auto omicron_value = omicronlib::_o(omicron::keys::delete_files_older_sec, config_value);
+        const auto omicron_value_in_hours = duration_cast<hours>(seconds(omicron_value));
+
+        const auto delete_period = omicron_value_in_hours.count() == 0 ? duration_cast<hours>(seconds(week_in_seconds)) : omicron_value_in_hours;
+
+        return delete_period;
+    }
+
+    std::chrono::minutes cleanup_period_minutes()
+    {
+        using namespace std::chrono;
+        const auto default_period = duration_cast<seconds>(minutes(10)).count();//10 min in sec
+        const auto config_value = config::get().number<int64_t>(config::values::cleanup_period_sec).value_or(default_period);
+        const auto omicron_value = omicronlib::_o(omicron::keys::cleanup_period_sec, config_value);
+        const auto omicron_value_in_minutes = duration_cast<minutes>(seconds(omicron_value));
+
+        const auto cleanup_period = omicron_value_in_minutes.count() == 0 ? duration_cast<minutes>(seconds(default_period)) : omicron_value_in_minutes;
+
+        return cleanup_period;
     }
 }
 
@@ -87,10 +125,20 @@ namespace features
         return omicronlib::_o(omicron::keys::fetch_hotstart_enabled, true);
     }
 
+    bool is_ptt_recognition_enabled()
+    {
+        static const auto default_value = config::get().is_on(config::features::ptt_recognition);
+        return omicronlib::_o(omicron::keys::ptt_recognition_enabled, default_value);
+    }
+
     bool is_statistics_mytracker_enabled()
     {
-        static const auto default_value = config::get().is_on(config::features::statistics_mytracker);
-        return omicronlib::_o(omicron::keys::statistics_mytracker, default_value);
+        if (config::hosts::external_url_config::instance().is_external_config_loaded())
+        {
+            const auto default_value = config::get().is_on(config::features::statistics_mytracker);
+            return omicronlib::_o(omicron::keys::statistics_mytracker, default_value);
+        }
+        return false;
     }
 
     bool is_dns_workaround_enabled()
@@ -188,7 +236,7 @@ namespace features
 
     std::chrono::seconds task_cache_lifetime()
     {
-        constexpr std::chrono::seconds default_duration = std::chrono::hours(24*7);
+        constexpr std::chrono::seconds default_duration = std::chrono::hours(24 * 7);
         return std::chrono::seconds(omicronlib::_o(omicron::keys::task_cache_lifetime, default_duration.count()));
     }
 
@@ -210,5 +258,82 @@ namespace features
     bool is_antivirus_check_enabled()
     {
         return myteam_config_or_omicron_feature_enabled(config::features::antivirus_check_enabled, omicron::keys::antivirus_check_enabled);
+    }
+
+    bool is_vcs_call_by_link_v2_enabled()
+    {
+        const auto default_value = config::get().is_on(config::features::call_link_v2_enabled);
+        return omicronlib::_o(omicron::keys::call_link_v2_enabled, default_value);
+    }
+
+    size_t maximum_history_file_size()
+    {
+        const auto default_value = config::get().number<int64_t>(config::values::maximum_history_file_size).value_or(10 * 1024 * 1024);
+        return omicronlib::_o(omicron::keys::maximum_history_file_size, default_value);
+    }
+
+    size_t wim_parallel_packets_count()
+    {
+        constexpr auto default_count = 10;
+        const auto config_count = config::get().number<int64_t>(config::values::wim_parallel_packets_count).value_or(default_count);
+        const auto omicron_count = omicronlib::_o(omicron::keys::wim_parallel_packets_count, config_count);
+        return omicron_count > 0 ? omicron_count : default_count;
+    }
+
+    void cleanup_cache(const std::wstring& content_cache_dir_)
+    {
+        const auto max_files_to_delete = maximum_delete_files();
+        const auto delete_files_older = delete_files_older_hours();
+        const auto cleanup_period = cleanup_period_minutes();
+
+        static std::chrono::system_clock::time_point last_cleanup_time = std::chrono::system_clock::now();
+
+        std::chrono::system_clock::time_point current_time = std::chrono::system_clock::now();
+
+        if ((current_time - last_cleanup_time) < cleanup_period)
+            return;
+
+        core::tools::binary_stream bs;
+        bs.write<std::string_view>("Start cleanup files cache\r\n");
+
+        last_cleanup_time = current_time;
+
+        try
+        {
+            std::vector<boost::filesystem::wpath> files_to_delete;
+
+            boost::filesystem::directory_iterator end_iter;
+
+            boost::system::error_code error;
+
+            if (boost::filesystem::exists(content_cache_dir_, error) && boost::filesystem::is_directory(content_cache_dir_, error))
+            {
+                for (boost::filesystem::directory_iterator dir_iter(content_cache_dir_, error); (dir_iter != end_iter) && (files_to_delete.size() < max_files_to_delete) && !error; dir_iter.increment(error))
+                {
+                    if (boost::filesystem::is_regular_file(dir_iter->status()))
+                    {
+                        const auto write_time = std::chrono::system_clock::from_time_t(core::tools::system::get_file_lastmodified(dir_iter->path().wstring()));
+                        if ((current_time - write_time) > delete_files_older)
+                            files_to_delete.push_back(*dir_iter);
+                    }
+                }
+            }
+
+            for (const auto& _file_path : files_to_delete)
+            {
+                boost::filesystem::remove(_file_path, error);
+
+                bs.write<std::string_view>("Delete file: ");
+                bs.write<std::string_view>(_file_path.string());
+                bs.write<std::string_view>("\r\n");
+            }
+        }
+        catch (const std::exception&)
+        {
+
+        }
+
+        bs.write<std::string_view>("Finish cleanup\r\n");
+        core::g_core->write_data_to_network_log(std::move(bs));
     }
 }

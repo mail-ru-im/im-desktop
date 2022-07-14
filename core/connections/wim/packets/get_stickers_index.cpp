@@ -7,6 +7,7 @@
 #include "../../../utils.h"
 #include "../../urls_cache.h"
 #include "../common.shared/string_utils.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -73,4 +74,9 @@ priority_t get_stickers_index::get_priority() const
 std::string_view get_stickers_index::get_method() const
 {
     return "stikersStoreContentlist";
+}
+
+int core::wim::get_stickers_index::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }

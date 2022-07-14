@@ -18,7 +18,8 @@ class report_abuse : public robusto_packet
 {
 public:
     report_abuse(wim_packet_params _params);
-    virtual std::string_view get_method() const override;
+    std::string_view get_method() const override;
+    int minimal_supported_api_version() const override;
 
 protected:
     virtual int32_t parse_response_data(const rapidjson::Value& _data) override;
@@ -31,7 +32,7 @@ public:
     report_contact(wim_packet_params _params, const std::string& _aimid, const report_reason& _reason);
 
 protected:
-    virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+    int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
 
 private:
     std::string aimId_;
@@ -44,7 +45,7 @@ public:
     report_stickerpack(wim_packet_params _params, const int32_t _id, const report_reason& _reason);
 
 protected:
-    virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+    int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
 
 private:
     int32_t id_;
@@ -57,7 +58,7 @@ public:
     report_sticker(wim_packet_params _params, const std::string& _id, const report_reason& _reason, const std::string& _aimId, const std::string& _chatId);
 
 protected:
-    virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+    int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
 
 private:
     std::string id_;
@@ -72,7 +73,7 @@ public:
     report_message(wim_packet_params _params, const int64_t _id, const std::string& _text, const report_reason& _reason, const std::string& _aimId, const std::string& _chatId);
 
 protected:
-    virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+    int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
 
 private:
     int64_t id_;

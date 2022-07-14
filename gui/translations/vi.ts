@@ -64,6 +64,116 @@
     </message>
 </context>
 <context>
+    <name>RenderViewContextMenuQt</name>
+    <message>
+        <source>Back</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Forward</source>
+        <translation type="unfinished">Chuyển tiếp</translation>
+    </message>
+    <message>
+        <source>Reload</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cut</source>
+        <translation type="unfinished">Cắt</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation type="unfinished">Sao chép</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation type="unfinished">Dán</translation>
+    </message>
+    <message>
+        <source>Undo</source>
+        <translation type="unfinished">Hoàn tác</translation>
+    </message>
+    <message>
+        <source>Redo</source>
+        <translation type="unfinished">Làm lại</translation>
+    </message>
+    <message>
+        <source>Paste and match style</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select all</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open link in new window</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open link in new tab</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy link address</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save link</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy image</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy image address</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save image</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy media address</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show controls</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Loop</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save media</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Inspect</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Exit full screen</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save page</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>View page source</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>Ui::WebPage</name>
+    <message>
+        <source>Select folder to upload</source>
+        <translation type="unfinished">Chọn một thư mục tải xuống</translation>
+    </message>
+</context>
+<context>
     <name>UpdaterButton</name>
     <message>
         <source>Update %1</source>
@@ -118,6 +228,18 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
         <source>Server error</source>
         <translation>Lỗi máy chủ</translation>
     </message>
+    <message>
+        <source>https://reestr.digital.gov.ru/reestr/307994/</source>
+        <translation>https://reestr.digital.gov.ru/reestr/307994/</translation>
+    </message>
+    <message>
+        <source>registry_copyright</source>
+        <translation>© Mail.Ru Digital Technologies LLC</translation>
+    </message>
+    <message>
+        <source>The product is registered in the Unified Register of Russian Software and Databases</source>
+        <translation>Sản phẩm VK Teams đã được đăng ký trong Sổ đăng ký thống nhất các chương trình của Nga dành cho máy tính điện tử và cơ sở dữ liệu với tên Myteam (Майтим)</translation>
+    </message>
 </context>
 <context>
     <name>active_call_plate</name>
@@ -128,6 +250,26 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
     <message>
         <source>Active call</source>
         <translation>Cuộc gọi hoạt động</translation>
+    </message>
+    <message>
+        <source>participant</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -285,6 +427,14 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
     <message>
         <source>Turquoise</source>
         <translation>Ngọc lam</translation>
+    </message>
+    <message>
+        <source>Sibur</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Dark Sibur</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -470,7 +620,7 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
     </message>
     <message>
         <source>Feb</source>
-        <translation>tháng Hai</translation>
+        <translation>Tháng Hai</translation>
     </message>
     <message>
         <source>Mar</source>
@@ -482,7 +632,7 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
     </message>
     <message>
         <source>Jun</source>
-        <translation>tháng Sáu</translation>
+        <translation>Tháng sáu</translation>
     </message>
     <message>
         <source>Jul</source>
@@ -527,10 +677,6 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
 </context>
 <context>
     <name>call_link</name>
-    <message>
-        <source>Link on call</source>
-        <translation>Liên kết cuộc gọi</translation>
-    </message>
     <message>
         <source>Link on webinar</source>
         <translation>Liên kết đến hội thảo trên web</translation>
@@ -1068,8 +1214,20 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
         <translation>%1 Nhấp vào OK hoặc trả lời và %2 có thể</translation>
     </message>
     <message>
+        <source> %3 call you</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source> %3 add you to groups</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>%1 From now on %2 is able to</source>
         <translation>%1 Bây giờ %2 có thể</translation>
+    </message>
+    <message>
+        <source> see if you read his messages</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>%1 You have canceled your join request</source>
@@ -1132,12 +1290,44 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
         <translation>%1 đã thay đổi thời hạn thành %2</translation>
     </message>
     <message>
-        <source>%1 changed task assignee to &quot;%2&quot;</source>
-        <translation>%1 đã thay đổi nghệ sĩ thành &quot;%2&quot;</translation>
+        <source>%1 changed task assignee to %2</source>
+        <translation>%1 đã thay đổi nghệ sĩ thành %2</translation>
     </message>
     <message>
         <source>Task status changed to &quot;%1&quot;</source>
         <translation>Trạng thái công việc đã thay đổi thành &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>You</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The administrator</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>have allowed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>have forbidden</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>has allowed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>has forbidden</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 %2 threads creation in this channel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 %2 threads creation in this group</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -1418,6 +1608,26 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
         <comment>21</comment>
         <translation>%1 tin nhắn được chọn</translation>
     </message>
+    <message>
+        <source>%1 subscriber</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 subscribers</source>
+        <comment>2</comment>
+        <translation>%1 người đăng ký</translation>
+    </message>
+    <message>
+        <source>%1 subscribers</source>
+        <comment>5</comment>
+        <translation>%1 người đăng ký</translation>
+    </message>
+    <message>
+        <source>%1 subscribers</source>
+        <comment>21</comment>
+        <translation>%1 người đăng ký</translation>
+    </message>
 </context>
 <context>
     <name>contactus_page</name>
@@ -1617,10 +1827,6 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
 <context>
     <name>context_menu</name>
     <message>
-        <source>Call</source>
-        <translation>Gọi</translation>
-    </message>
-    <message>
         <source>Profile</source>
         <translation>Hồ sơ</translation>
     </message>
@@ -1671,6 +1877,10 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
     <message>
         <source>Reply</source>
         <translation>Trả lời</translation>
+    </message>
+    <message>
+        <source>Create task</source>
+        <translation>Tạo nhiệm vụ</translation>
     </message>
     <message>
         <source>Copy to clipboard</source>
@@ -1855,6 +2065,22 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
     <message>
         <source>Code</source>
         <translation>Mật mã</translation>
+    </message>
+    <message>
+        <source>Unsubscribe from thread</source>
+        <translation>Hủy đăng ký khỏi một chuỗi</translation>
+    </message>
+    <message>
+        <source>Subscribe to thread</source>
+        <translation>Đăng ký chuỗi</translation>
+    </message>
+    <message>
+        <source>Unblock</source>
+        <translation>Mở khóa</translation>
+    </message>
+    <message>
+        <source>Compose email</source>
+        <translation>Viết một bức thư</translation>
     </message>
 </context>
 <context>
@@ -3126,6 +3352,14 @@ Chỉ dành cho các nhóm không công khai
 
 Không thể tắt cài đặt này</translation>
     </message>
+    <message>
+        <source>Enable thread feeds</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Allow chat members to create threads</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>head</name>
@@ -3169,8 +3403,8 @@ Không thể tắt cài đặt này</translation>
         <translation>Autostatus cho biết ai đang trong cuộc gọi</translation>
     </message>
     <message>
-        <source>Advantages of calls in Myteam</source>
-        <translation>Lợi ích khi gọi Myteam</translation>
+        <source>Advantages of calls in %1</source>
+        <translation>Lợi ích của việc gọi đến %1</translation>
     </message>
     <message>
         <source>Group calls up to %1 participants</source>
@@ -3258,6 +3492,10 @@ Không thể tắt cài đặt này</translation>
     <message>
         <source>The join request has been sent to administrator</source>
         <translation>Yêu cầu tham gia đã được gửi đến quản trị viên</translation>
+    </message>
+    <message>
+        <source>The user is blocked</source>
+        <translation>Người dùng bị chặn</translation>
     </message>
     <message>
         <source>Play record</source>
@@ -3509,6 +3747,10 @@ Không thể tắt cài đặt này</translation>
         <translation>Tên người dùng hoặc mật khẩu không hợp lệ</translation>
     </message>
     <message>
+        <source>Wrong Email</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Wrong Email or password</source>
         <translation>Email hoặc mật khẩu không hợp lệ</translation>
     </message>
@@ -3595,6 +3837,10 @@ Không thể tắt cài đặt này</translation>
     <message>
         <source>Sign in with Mail.ru</source>
         <translation>Đăng nhập với Mail.ru</translation>
+    </message>
+    <message>
+        <source>Enter your corporate email</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -3754,6 +4000,10 @@ Không thể tắt cài đặt này</translation>
         <source>Report a problem</source>
         <translation>Báo cáo sự cố</translation>
     </message>
+    <message>
+        <source>Delete Account</source>
+        <translation>Xóa tài khoản</translation>
+    </message>
 </context>
 <context>
     <name>mentions</name>
@@ -3841,10 +4091,6 @@ Không thể tắt cài đặt này</translation>
     <message>
         <source>You have been mentioned</source>
         <translation>Bạn đã được đề cập đến</translation>
-    </message>
-    <message>
-        <source>You have been mentioned in %1</source>
-        <translation>Bạn đã được đề cập đến trong %1</translation>
     </message>
 </context>
 <context>
@@ -4030,8 +4276,8 @@ tiếp xúc</translation>
         <translation>Tìm một đồng nghiệp qua email và viết thư cho anh ấy</translation>
     </message>
     <message>
-        <source>Install Myteam on mobile</source>
-        <translation>Cài đặt Myteam trên di động</translation>
+        <source>Install VK Teams on mobile</source>
+        <translation>Cài đặt VK Teams trên thiết bị di động</translation>
     </message>
     <message>
         <source>First name*</source>
@@ -4157,10 +4403,6 @@ tiếp xúc</translation>
         <source>%1 poll - %2 votes</source>
         <comment>5</comment>
         <translation>Cuộc thăm dò %1 - %2 phiếu</translation>
-    </message>
-    <message>
-        <source>Poll</source>
-        <translation>Thăm dò ý kiến</translation>
     </message>
     <message>
         <source>Poll: %1</source>
@@ -4404,10 +4646,6 @@ tiếp xúc</translation>
     <message>
         <source>Report</source>
         <translation>Báo cáo</translation>
-    </message>
-    <message>
-        <source>To change the appearance you must restart the application. Continue?</source>
-        <translation>Để thay đổi cách trình bày, bạn cần phải khởi động lại ứng dụng. Tiếp tục?</translation>
     </message>
     <message>
         <source>Update url, empty for default</source>
@@ -4674,6 +4912,26 @@ tiếp xúc</translation>
         <translation>Viết</translation>
     </message>
     <message>
+        <source>contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Cancel request?</source>
         <translation>Hủy yêu cầu?</translation>
     </message>
@@ -4778,6 +5036,26 @@ tiếp xúc</translation>
         <translation>Người tạo bot đã cấm thêm vào nhóm</translation>
     </message>
     <message>
+        <source>Cannot add %1 contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot add %1 contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot add %1 contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot add %1 contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Are you sure you want to delete user from list?</source>
         <translation>Bạn có chắc chắn muốn xóa người dùng khỏi danh sách không?</translation>
     </message>
@@ -4792,6 +5070,26 @@ tiếp xúc</translation>
     <message>
         <source>You can not join the call. It already has</source>
         <translation>Bạn không thể kết nối với cuộc gọi. Trong đó rồi</translation>
+    </message>
+    <message>
+        <source>participant</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>No</source>
@@ -4934,6 +5232,66 @@ tiếp xúc</translation>
         <translation>Truy cập bị từ chối</translation>
     </message>
     <message>
+        <source>Cannot remove %1 contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot remove %1 contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot remove %1 contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot remove %1 contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Error removing federation user</source>
         <translation>Lỗi khi xóa người dùng liên kết</translation>
     </message>
@@ -4981,13 +5339,21 @@ tiếp xúc</translation>
         <source>Only channel subscribers can view replies</source>
         <translation>Chỉ những người đăng ký kênh mới có thể xem câu trả lời</translation>
     </message>
+    <message>
+        <source>Delete Account</source>
+        <translation>Xóa tài khoản</translation>
+    </message>
+    <message>
+        <source>To delete an account, you must attach a phone number</source>
+        <translation>Để xóa tài khoản, bạn cần liên kết số điện thoại</translation>
+    </message>
+    <message>
+        <source>Attach</source>
+        <translation>trói buộc</translation>
+    </message>
 </context>
 <context>
     <name>previewer</name>
-    <message>
-        <source>Unable to download the image</source>
-        <translation>Không thể tải xuống hình ảnh</translation>
-    </message>
     <message>
         <source>%1 of %2</source>
         <translation>%1 của %2</translation>
@@ -5047,6 +5413,10 @@ tiếp xúc</translation>
     <message>
         <source>Add to favorites</source>
         <translation>Thêm vào mục yêu thích</translation>
+    </message>
+    <message>
+        <source>File %1 is being downloaded</source>
+        <translation>Tệp %1 tải</translation>
     </message>
 </context>
 <context>
@@ -5121,6 +5491,10 @@ tiếp xúc</translation>
     <message>
         <source>A short text about you</source>
         <translation>Bài viết nhỏ về bạn</translation>
+    </message>
+    <message>
+        <source>Middle Name</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -5253,6 +5627,13 @@ tiếp xúc</translation>
         <source>OK</source>
         <translation>ĐƯỢC</translation>
     </message>
+    <message>
+        <source> ﻿ ﻿— Reactions
+  — Statuses
+  — New themes
+  — Unreads counter in window title — turn it on in settings :) </source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>report_widget</name>
@@ -5300,12 +5681,20 @@ tiếp xúc</translation>
 <context>
     <name>search</name>
     <message>
-        <source>CONTACTS AND GROUPS</source>
-        <translation>LIÊN HỆ VÀ NHÓM</translation>
+        <source>Contacts and groups</source>
+        <translation>Danh bạ và nhóm</translation>
     </message>
     <message>
-        <source>MESSAGES</source>
-        <translation>TIN NHẮN</translation>
+        <source>Messages</source>
+        <translation>Bài viết</translation>
+    </message>
+    <message>
+        <source>Threads</source>
+        <translation type="unfinished">Chủ đề</translation>
+    </message>
+    <message>
+        <source>Thread</source>
+        <translation type="unfinished">chủ đề</translation>
     </message>
 </context>
 <context>
@@ -5440,6 +5829,10 @@ tiếp xúc</translation>
     <message>
         <source>Play sounds</source>
         <translation>Phát âm thanh</translation>
+    </message>
+    <message>
+        <source>Notification volume:</source>
+        <translation>Khối lượng thông báo:</translation>
     </message>
     <message>
         <source>Outgoing messages sound</source>
@@ -5774,10 +6167,6 @@ tiếp xúc</translation>
         <translation>Các cuộc gọi</translation>
     </message>
     <message>
-        <source>Show calls tab</source>
-        <translation>Hiển thị tab cuộc gọi</translation>
-    </message>
-    <message>
         <source>Show reactions to messages</source>
         <translation>Hiển thị phản ứng với tin nhắn</translation>
     </message>
@@ -5820,6 +6209,30 @@ tiếp xúc</translation>
     <message>
         <source>Warn about disabled microphone</source>
         <translation>Cảnh báo về micrô bị tắt tiếng</translation>
+    </message>
+    <message>
+        <source>Hide sender name in notifications</source>
+        <translation>Ẩn người gửi tin nhắn trong thông báo</translation>
+    </message>
+    <message>
+        <source>This setting can&apos;t be changed due to security reasons</source>
+        <translation>Vì lý do bảo mật, không thể tắt cài đặt này.</translation>
+    </message>
+    <message>
+        <source>Delete Account</source>
+        <translation>Xóa tài khoản</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Gần</translation>
+    </message>
+    <message>
+        <source>Your corporate account was created by a domain administrator. To remove, contact with your domain administrator</source>
+        <translation>Tài khoản công ty của bạn đã được tạo bởi quản trị viên miền. Để xóa, hãy liên hệ với quản trị viên miền</translation>
+    </message>
+    <message>
+        <source>All information associated with your profile will be deleted. It will be impossible to restore your account</source>
+        <translation>Tất cả thông tin liên quan đến hồ sơ của bạn sẽ bị xóa. Việc khôi phục tài khoản sẽ không thể thực hiện được</translation>
     </message>
 </context>
 <context>
@@ -6020,8 +6433,28 @@ tiếp xúc</translation>
         <translation>Đặt trạng thái</translation>
     </message>
     <message>
-        <source>Switch microphone state</source>
-        <translation>Thay đổi trạng thái micrô</translation>
+        <source>Paste text without formatting</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Switch %1 state</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>microphone</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>video</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>presentation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>sound</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -6145,6 +6578,10 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <translation>Chia sẻ nhóm</translation>
     </message>
     <message>
+        <source>Subscribe to all threads</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>All members</source>
         <translation>Tất cả thành viên</translation>
     </message>
@@ -6223,6 +6660,10 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
     <message>
         <source>Common groups</source>
         <translation>Nhón chung</translation>
+    </message>
+    <message>
+        <source>My groups and channels</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Who can see my data</source>
@@ -6369,6 +6810,46 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <translation>Người theo dõi</translation>
     </message>
     <message>
+        <source>%1 SUBSCRIBER</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 SUBSCRIBERS</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 SUBSCRIBERS</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 SUBSCRIBERS</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 MEMBER</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 MEMBERS</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 MEMBERS</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 MEMBERS</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>All subscribers</source>
         <translation>Tất cả người đăng ký</translation>
     </message>
@@ -6388,6 +6869,14 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <source>Replies</source>
         <translation>Câu trả lời</translation>
     </message>
+    <message>
+        <source>Subscription to replies</source>
+        <translation>Đăng ký để trả lời</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation type="unfinished">Nhiệm vụ</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -6406,6 +6895,10 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
     <message>
         <source>About the group</source>
         <translation>Giới thiệu về nhóm</translation>
+    </message>
+    <message>
+        <source>Send link to call or invite participants from the contact list</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -6474,6 +6967,86 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
     <message>
         <source>Custom status</source>
         <translation>Tâm trạng người dùng</translation>
+    </message>
+    <message>
+        <source>second</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>seconds</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>seconds</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>seconds</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>minute</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>minutes</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>minutes</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>minutes</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>hour</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>hours</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>hours</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>hours</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>day</source>
+        <comment>1</comment>
+        <translation type="unfinished">Ngày</translation>
+    </message>
+    <message>
+        <source>days</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>days</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>days</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Show always</source>
@@ -6659,6 +7232,22 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <source>Calendar</source>
         <translation>Lịch</translation>
     </message>
+    <message>
+        <source>Mail</source>
+        <translation>thư</translation>
+    </message>
+    <message>
+        <source>Cloud</source>
+        <translation>Đám mây</translation>
+    </message>
+    <message>
+        <source>News</source>
+        <translation type="unfinished">Tin tức</translation>
+    </message>
+    <message>
+        <source>Polls</source>
+        <translation type="unfinished">Thăm dò ý kiến</translation>
+    </message>
 </context>
 <context>
     <name>tab header</name>
@@ -6710,16 +7299,12 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <translation>Để làm cho</translation>
     </message>
     <message>
-        <source>No assignee</source>
-        <translation>Không có người biểu diễn</translation>
+        <source>Unassigned</source>
+        <translation type="unfinished">Không có người được chuyển nhượng</translation>
     </message>
 </context>
 <context>
     <name>task_block</name>
-    <message>
-        <source>Not assigned</source>
-        <translation>Không được phân công</translation>
-    </message>
     <message>
         <source>Task</source>
         <translation>Một nhiệm vụ</translation>
@@ -6736,12 +7321,16 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <source>Task edit: an error occured</source>
         <translation>Đang sửa đổi tác vụ: đã xảy ra lỗi</translation>
     </message>
+    <message>
+        <source>Unassigned</source>
+        <translation type="unfinished">Không có người được chuyển nhượng</translation>
+    </message>
 </context>
 <context>
     <name>task_popup</name>
     <message>
         <source>Edit task</source>
-        <translation>Thay đổi công việc</translation>
+        <translation>Thay đổi nhiệm vụ</translation>
     </message>
     <message>
         <source>Create task</source>
@@ -6778,8 +7367,8 @@ not found</source>
 không tìm thấy tên</translation>
     </message>
     <message>
-        <source>No deadline</source>
-        <translation>Không có thời hạn</translation>
+        <source>Deadline for the task</source>
+        <translation>Thời hạn cho nhiệm vụ</translation>
     </message>
 </context>
 <context>
@@ -6797,20 +7386,20 @@ không tìm thấy tên</translation>
         <translation>Chào mừng bạn đến với Đại lý Mail.ru</translation>
     </message>
     <message>
-        <source>Welcome to Myteam</source>
-        <translation>Chào mừng đến với myteam</translation>
+        <source>Welcome to VK Teams</source>
+        <translation>Chào mừng đến với VK Teams</translation>
     </message>
     <message>
         <source>Welcome to Messenger</source>
         <translation>Chào mừng đến với sứ giả</translation>
     </message>
     <message>
-        <source>ICQ New - the evolution of communication</source>
-        <translation>ICQ New — sự phát triển của truyền thông</translation>
+        <source>ICQ - the evolution of communication</source>
+        <translation>ICQ — sự phát triển của truyền thông</translation>
     </message>
     <message>
-        <source>Welcome to ICQ New</source>
-        <translation>Chào mừng đến với ICQ Mới</translation>
+        <source>Welcome to ICQ</source>
+        <translation>Chào mừng đến với ICQ</translation>
     </message>
 </context>
 <context>
@@ -6822,6 +7411,46 @@ không tìm thấy tên</translation>
     <message>
         <source>Threads you subscribed for will be here</source>
         <translation>Chủ đề mà bạn đã đăng ký sẽ được hiển thị ở đây</translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Replies</source>
@@ -6839,8 +7468,8 @@ không tìm thấy tên</translation>
         <translation>Messenger</translation>
     </message>
     <message>
-        <source>Myteam</source>
-        <translation>Myteam</translation>
+        <source>VK Teams</source>
+        <translation>VK Teams</translation>
     </message>
     <message>
         <source>ICQ</source>
@@ -6866,10 +7495,6 @@ không tìm thấy tên</translation>
         <translation>Không có hồ sơ hoặc nhóm với tên hiệu như thế này</translation>
     </message>
     <message>
-        <source>Copied to clipboard</source>
-        <translation>Sao chép vào clipboard</translation>
-    </message>
-    <message>
         <source>There are no profiles with this email</source>
         <translation>Không có hồ sơ với email này</translation>
     </message>
@@ -6890,28 +7515,28 @@ không tìm thấy tên</translation>
         <translation>Quản trị viên nhóm đã đặt các hạn chế về quyền truy cập vào tệp</translation>
     </message>
     <message>
-        <source>Awaiting antivirus check, patience</source>
-        <translation>Chúng tôi đang đợi kiểm tra chống vi-rút, hãy kiên nhẫn</translation>
-    </message>
-    <message>
-        <source>Antivirus check in progress, patience</source>
-        <translation>Đang tiến hành kiểm tra chống vi-rút, hãy kiên nhẫn</translation>
-    </message>
-    <message>
         <source>File is blocked by the antivirus</source>
         <translation>Tệp bị chặn bởi phần mềm chống vi-rút</translation>
     </message>
     <message>
-        <source>Checked</source>
-        <translation>Đã kiểm tra</translation>
-    </message>
-    <message>
-        <source>No access. You may not have enough rights</source>
-        <translation>Không truy cập. Bạn có thể không có đủ quyền</translation>
-    </message>
-    <message>
         <source>File not checked (and never will be). Available to download</source>
         <translation>Tệp chưa được xác minh (và sẽ không được xác minh). Có sẵn để tải xuống</translation>
+    </message>
+    <message>
+        <source>No access. Antivirus check in progress</source>
+        <translation>Không truy cập. Đang tiến hành kiểm tra chống vi-rút</translation>
+    </message>
+    <message>
+        <source>No access. File is blocked by the antivirus</source>
+        <translation>Không truy cập. Tệp bị chặn bởi phần mềm chống vi-rút</translation>
+    </message>
+    <message>
+        <source>The file is available. No viruses found</source>
+        <translation>Tệp có sẵn. Không tìm thấy vi rút</translation>
+    </message>
+    <message>
+        <source>App not found</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -6953,10 +7578,6 @@ không tìm thấy tên</translation>
         <translation>Cuộc gọi âm thanh</translation>
     </message>
     <message>
-        <source>Link to call</source>
-        <translation>Liên kết cuộc gọi</translation>
-    </message>
-    <message>
         <source>Chat gallery</source>
         <translation>Thư viện trò chuyện</translation>
     </message>
@@ -6968,8 +7589,8 @@ không tìm thấy tên</translation>
 <context>
     <name>tray_menu</name>
     <message>
-        <source>Quit</source>
-        <translation>Thoát</translation>
+        <source>Close</source>
+        <translation>Gần</translation>
     </message>
     <message>
         <source>Open</source>
@@ -6998,6 +7619,36 @@ không tìm thấy tên</translation>
         <source> new emails</source>
         <comment>21</comment>
         <translation> email mới</translation>
+    </message>
+</context>
+<context>
+    <name>user_agreement_widget</name>
+    <message>
+        <source>Accept</source>
+        <translation>Tiếp tục</translation>
+    </message>
+    <message>
+        <source>Agree with %1</source>
+        <translation>Agree with %1</translation>
+    </message>
+    <message>
+        <source>processing confidential data</source>
+        <translation>hạn chế trong việc xử lý thông tin bí mật</translation>
+    </message>
+    <message>
+        <source>using personal data</source>
+        <translation>xử lý dữ liệu cá nhân</translation>
+    </message>
+</context>
+<context>
+    <name>video_pages</name>
+    <message>
+        <source>Link</source>
+        <translation type="unfinished">Liên kết</translation>
+    </message>
+    <message>
+        <source>View</source>
+        <translation type="unfinished">Xem</translation>
     </message>
 </context>
 <context>
@@ -7082,32 +7733,8 @@ hoặc mở cuộc gọi
 bằng cách nhấp chuột</translation>
     </message>
     <message>
-        <source>VOICE</source>
-        <translation>TIẾNG NÓI</translation>
-    </message>
-    <message>
-        <source>Connecting...</source>
-        <translation>Kết nối...</translation>
-    </message>
-    <message>
-        <source>Calling</source>
-        <translation>Gọi</translation>
-    </message>
-    <message>
-        <source>Busy</source>
-        <translation>Bận</translation>
-    </message>
-    <message>
         <source>Hold Space key for temporary unmute</source>
         <translation>Giữ thanh Dấu cách để tạm thời bật tiếng micrô</translation>
-    </message>
-    <message>
-        <source>Microphone disabled</source>
-        <translation>Micrô tắt</translation>
-    </message>
-    <message>
-        <source>Microphone enabled</source>
-        <translation>Bật micrô</translation>
     </message>
     <message>
         <source>Call members</source>
@@ -7143,6 +7770,26 @@ Nhấn %1 để bật micrô
 
 Nhấn và giữ thanh Dấu cách để tạm thời bật tiếng micrô</translation>
     </message>
+    <message>
+        <source>Press Esc to exit from fullscreen mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Grid</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Speaker</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Microphone disabled</source>
+        <translation type="unfinished">Micrô tắt</translation>
+    </message>
+    <message>
+        <source>Microphone enabled</source>
+        <translation type="unfinished">Bật micrô</translation>
+    </message>
 </context>
 <context>
     <name>voip_video_panel</name>
@@ -7151,16 +7798,8 @@ Nhấn và giữ thanh Dấu cách để tạm thời bật tiếng micrô</tran
         <translation>Màn hình</translation>
     </message>
     <message>
-        <source>More</source>
-        <translation>Chưa</translation>
-    </message>
-    <message>
         <source>Go to chat</source>
         <translation>Đi trò chuyện</translation>
-    </message>
-    <message>
-        <source>Open masks</source>
-        <translation>Kích hoạt mặt nạ</translation>
     </message>
     <message>
         <source>Add user</source>
@@ -7183,16 +7822,8 @@ Nhấn và giữ thanh Dấu cách để tạm thời bật tiếng micrô</tran
         <translation>Yêu cầu một trong những người tham gia tắt video. Trong các cuộc gọi với hơn %1 người, chỉ một video có thể được hiển thị</translation>
     </message>
     <message>
-        <source>Masks aren&apos;t available in calls with more than %1 members</source>
-        <translation>Trong các cuộc gọi có hơn %1 người tham gia, mặt nạ không khả dụng</translation>
-    </message>
-    <message>
         <source>Only the creator of the webinar can show the video</source>
         <translation>Chỉ người tạo webinar mới có thể hiển thị video</translation>
-    </message>
-    <message>
-        <source>Only the creator of the webinar can use masks</source>
-        <translation>Chỉ người tạo webinar mới có thể sử dụng mặt nạ</translation>
     </message>
     <message>
         <source>Only the creator of the webinar can use a microphone</source>
@@ -7278,10 +7909,6 @@ Meeting</source>
         <translation>Hoàn thành</translation>
     </message>
     <message>
-        <source>SHOW ALL</source>
-        <translation>HIỂN THỊ TẤT CẢ</translation>
-    </message>
-    <message>
         <source>Show
 participants</source>
         <translation>Nhìn
@@ -7295,44 +7922,48 @@ những người tham gia</translation>
         <source>Show one</source>
         <translation>Hiển thị một</translation>
     </message>
+    <message>
+        <source>Cancel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation type="unfinished">Vâng</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to end the meeting?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>End meeting</source>
+        <translation type="unfinished">Hoàn thành</translation>
+    </message>
+    <message>
+        <source>Go to the chat</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open the profile</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>End call</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Share call link</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Call participants management</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>voip_video_panel_mini</name>
     <message>
         <source>End meeting</source>
         <translation>Hoàn thành</translation>
-    </message>
-    <message>
-        <source>Mute</source>
-        <translation>Tắt tiếng micrô</translation>
-    </message>
-    <message>
-        <source>Unmute</source>
-        <translation>Bật micrô</translation>
-    </message>
-    <message>
-        <source>Stop video</source>
-        <translation>Tắt video</translation>
-    </message>
-    <message>
-        <source>Start video</source>
-        <translation>Phát video</translation>
-    </message>
-    <message>
-        <source>Disable sound</source>
-        <translation>Tắt âm thanh</translation>
-    </message>
-    <message>
-        <source>Enable sound</source>
-        <translation>Bật âm thanh</translation>
-    </message>
-    <message>
-        <source>Stop share</source>
-        <translation>Ngừng hiển thị</translation>
-    </message>
-    <message>
-        <source>Start share</source>
-        <translation>Chia sẻ màn hình</translation>
     </message>
 </context>
 <context>
@@ -7380,6 +8011,29 @@ những người tham gia</translation>
     <message>
         <source>I miss you too :)</source>
         <translation>Tôi cũng nhớ bạn lắm :)</translation>
+    </message>
+</context>
+<context>
+    <name>web_app</name>
+    <message>
+        <source>Page is loading...</source>
+        <translation>Đang tải trang ...</translation>
+    </message>
+    <message>
+        <source>Unable to load</source>
+        <translation>Không tải được</translation>
+    </message>
+    <message>
+        <source>Retry</source>
+        <translation>Thử lại</translation>
+    </message>
+    <message>
+        <source>Print</source>
+        <translation>Niêm phong</translation>
+    </message>
+    <message>
+        <source>The service is not available for your account. Contact technical support</source>
+        <translation>Dịch vụ này chưa khả dụng cho Office của bạn</translation>
     </message>
 </context>
 </TS>

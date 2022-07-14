@@ -3,6 +3,7 @@
 #include "controls/ClickWidget.h"
 #include "controls/SimpleListWidget.h"
 #include "controls/TextUnit.h"
+#include "utils/SvgUtils.h"
 
 namespace Utils
 {
@@ -19,7 +20,7 @@ namespace Ui
         void selectChanged(QPrivateSignal) const;
 
     public:
-        AttachFileMenuItem(QWidget* _parent, const QString& _icon, const QString& _caption, const QColor& _iconBgColor);
+        AttachFileMenuItem(QWidget* _parent, const QString& _iconPath, const QString& _caption, const Styling::ThemeColorKey& _iconBgColor);
 
         void setSelected(bool _value) override;
         bool isSelected() const override;
@@ -28,8 +29,8 @@ namespace Ui
         void paintEvent(QPaintEvent*) override;
 
     private:
-        QColor iconBgColor_;
-        QPixmap icon_;
+        Styling::ColorContainer iconBgColor_;
+        Utils::StyledPixmap icon_;
         TextRendering::TextUnitPtr caption_;
         bool isSelected_ = false;
     };

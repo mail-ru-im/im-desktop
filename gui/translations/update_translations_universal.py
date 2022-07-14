@@ -103,7 +103,7 @@ if __name__ == "__main__":
     log.info("[lupdate] Update translations...")
     log.info(f"[lupdate] {lupdate_bin}")
 
-    languages = ("ru",)
+    languages = ("ar", "cs", "de", "en", "es", "fr", "pt", "ru", "tr", "uk", "vi", "zh",)
     for lang in languages:
         lupdate_cmd = (str(lupdate_bin),
                        str(pathlib.Path("..")),

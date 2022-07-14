@@ -13,8 +13,15 @@
 #include "ContactUs.h"
 #include "SettingsForTesters.h"
 #include "SessionsPage.h"
+#include "SettingsTab.h"
+#ifdef HAS_WEB_ENGINE
+#include "../WebAppPage.h"
+#endif
 
 #include "../common.shared/config/config.h"
+#include "styles/ThemesContainer.h"
+#include "controls/RadioTextRow.h"
+
 
 namespace Ui
 {
@@ -22,7 +29,7 @@ namespace Ui
         : QStackedWidget(_parent)
     {
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-        setStyleSheet(ql1s("QWidget{border: none; background-color: %1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
+        setStyleSheet(ql1s("QWidget{border: none; background-color: transparent;}"));
     }
 
     GeneralSettingsWidget::~GeneralSettingsWidget() = default;
@@ -33,6 +40,7 @@ namespace Ui
 
         if (type == Utils::CommonSettingsType::CommonSettingsType_General)
         {
+            Q_EMIT Utils::InterConnector::instance().showSettingsHeader(QT_TRANSLATE_NOOP("main_page", "General settings"));
             if (!general_)
             {
                 general_ = new GeneralSettings(this);
@@ -52,12 +60,14 @@ namespace Ui
         else if (type == Utils::CommonSettingsType::CommonSettingsType_VoiceVideo)
         {
 #ifndef STRIP_VOIP
+            Q_EMIT Utils::InterConnector::instance().showSettingsHeader(QT_TRANSLATE_NOOP("main_page", "Voice and video"));
             initVoiceAndVideo();
             setCurrentWidget(voiceAndVideo_.rootWidget);
 #endif
         }
         else if (type == Utils::CommonSettingsType::CommonSettingsType_Notifications)
         {
+            Q_EMIT Utils::InterConnector::instance().showSettingsHeader(QT_TRANSLATE_NOOP("main_page", "Notifications"));
             if (!notifications_)
             {
                 notifications_ = new NotificationSettings(this);
@@ -72,9 +82,10 @@ namespace Ui
         }
         else if (type == Utils::CommonSettingsType::CommonSettingsType_Appearance)
         {
+            Q_EMIT Utils::InterConnector::instance().showSettingsHeader(QT_TRANSLATE_NOOP("main_page", "Appearance"));
             if (!appearance_)
             {
-                appearance_ = new QWidget(this);
+                appearance_ = new AppearanceWidget(this);
                 appearance_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
                 Creator::initAppearance(appearance_);
                 addWidget(appearance_);
@@ -86,6 +97,7 @@ namespace Ui
         }
         else if (type == Utils::CommonSettingsType::CommonSettingsType_About)
         {
+            Q_EMIT Utils::InterConnector::instance().showSettingsHeader(QT_TRANSLATE_NOOP("main_page", "About app"));
             if (!about_)
             {
                 about_ = new QWidget(this);
@@ -100,6 +112,7 @@ namespace Ui
         }
         else if (type == Utils::CommonSettingsType::CommonSettingsType_ContactUs)
         {
+            Q_EMIT Utils::InterConnector::instance().showSettingsHeader(SettingsTab::getContactUsText());
             if (!contactus_)
             {
                 contactus_ = new ContactUsWidget(this);
@@ -114,6 +127,7 @@ namespace Ui
         }
         else if (type == Utils::CommonSettingsType::CommonSettingsType_Language)
         {
+            Q_EMIT Utils::InterConnector::instance().showSettingsHeader(QT_TRANSLATE_NOOP("main_page", "Language"));
             if (!language_)
             {
                 language_ = new QWidget(this);
@@ -128,6 +142,7 @@ namespace Ui
         }
         else if (type == Utils::CommonSettingsType::CommonSettingsType_Shortcuts)
         {
+            Q_EMIT Utils::InterConnector::instance().showSettingsHeader(QT_TRANSLATE_NOOP("main_page", "Shortcuts"));
             if (!shortcuts_)
             {
                 shortcuts_ = new ShortcutsSettings(this);
@@ -142,18 +157,32 @@ namespace Ui
         }
         else if (type == Utils::CommonSettingsType::CommonSettingsType_Security)
         {
+            QString headerName;
             if (!security_)
             {
-                security_ = new QWidget(this);
+                security_ = new QStackedWidget(this);
                 security_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-                initSessionsPage();
                 Creator::initSecurity(security_);
                 addWidget(security_);
 
                 Testing::setAccessibleName(security_, qsl("AS PrivacyPage"));
             }
 
+            switch (security_->currentIndex())
+            {
+            case 1:
+                headerName = QT_TRANSLATE_NOOP("main_page", "Delete Account");
+                break;
+            case 2:
+                headerName = QT_TRANSLATE_NOOP("settings", "Session List");
+                break;
+            default:
+                headerName = QT_TRANSLATE_NOOP("main_page", "Privacy");
+                break;
+            }
+
+            Q_EMIT Utils::InterConnector::instance().showSettingsHeader(headerName);
             setCurrentWidget(security_);
         }
         else if (type == Utils::CommonSettingsType::CommonSettingsType_Stickers)
@@ -175,6 +204,7 @@ namespace Ui
         }
         else if (type == Utils::CommonSettingsType::CommonSettingsType_Debug)
         {
+            Q_EMIT Utils::InterConnector::instance().showSettingsHeader(QT_TRANSLATE_NOOP("settings", "Advanced Settings"));
             if (!debugSettings_)
             {
                 debugSettings_ = new SettingsForTesters(this);
@@ -186,27 +216,29 @@ namespace Ui
 
             setCurrentWidget(debugSettings_);
         }
-        else if (type == Utils::CommonSettingsType::CommonSettingsType_Sessions)
-        {
-            initSessionsPage();
-            setCurrentWidget(sessions_);
-        }
     }
 
     bool GeneralSettingsWidget::isSessionsShown() const
     {
-        return sessions_ && currentWidget() == sessions_;
+        return security_ && currentWidget() == security_ && qobject_cast<SessionsPage*>(security_->currentWidget());
     }
 
-    void GeneralSettingsWidget::initSessionsPage()
-    {
-        if (!sessions_)
-        {
-            sessions_ = new SessionsPage(this);
-            sessions_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-            addWidget(sessions_);
 
-            Testing::setAccessibleName(sessions_, qsl("AS SessionsList"));
+    bool GeneralSettingsWidget::isWebViewShown() const
+    {
+#if HAS_WEB_ENGINE
+        return security_ && currentWidget() == security_ && qobject_cast<WebAppPage*>(security_->currentWidget());
+#else
+        return false;
+#endif
+    }
+
+    void GeneralSettingsWidget::navigateBack()
+    {
+        if (isSessionsShown() || isWebViewShown())
+        {
+            setCurrentWidget(security_);
+            security_->setCurrentIndex(0);
         }
     }
 
@@ -472,10 +504,9 @@ namespace Ui
     void NotificationSettings::value_changed(const QString& name)
     {
         if (sounds_ && name == ql1s(settings_sounds_enabled))
-        {
-            QSignalBlocker sb(sounds_);
             sounds_->setChecked(get_gui_settings()->get_value<bool>(settings_sounds_enabled, true));
-        }
+        if (notifications_ && name == ql1s(settings_notify_new_messages))
+            notifications_->setChecked(get_gui_settings()->get_value<bool>(settings_notify_new_messages, true));
     }
 
     ShortcutsSettings::ShortcutsSettings(QWidget* _parent)
@@ -501,5 +532,49 @@ namespace Ui
     {
         onOmicronUpdate();
         onSettingsChanged(ql1s(settings_allow_statuses));
+    }
+
+    AppearanceWidget::AppearanceWidget(QWidget* _parent)
+        :QWidget(_parent)
+        , list_(new SimpleListWidget(Qt::Vertical))
+    {
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::additionalThemesChanged, this, &AppearanceWidget::resetThemesList, Qt::QueuedConnection);
+    }
+
+    void AppearanceWidget::resetThemesList()
+    {
+        list_->clear();
+        list_->setCurrentIndex(-1);
+
+        const auto themesList = Styling::getThemesContainer().getAvailableThemes();
+        const auto current = Styling::getThemesContainer().getCurrentThemeId();
+        const auto it = std::find_if(themesList.begin(), themesList.end(), [&current](const auto& _p) { return _p.first == current; });
+        const auto currentIdx = it != themesList.end() ? int(std::distance(themesList.begin(), it)) : std::numeric_limits<int>::max();
+
+        for (const auto& [id, name] : themesList)
+        {
+            auto row = new RadioTextRow(name);
+            Testing::setAccessibleName(row, u"AS AppearancePage " % id);
+            list_->addItem(row);
+        }
+
+        list_->setCurrentIndex(currentIdx);
+
+        QObject::connect(list_, &SimpleListWidget::clicked, list_, [this, themesList](int _idx)
+        {
+            if (_idx < 0 && _idx >= int(themesList.size()))
+                return;
+
+            if (const auto clickedTheme = themesList[_idx].first; clickedTheme != Styling::getThemesContainer().getCurrentThemeId())
+            {
+                list_->setCurrentIndex(_idx);
+                Styling::getThemesContainer().setCurrentTheme(clickedTheme);
+            }
+        }, Qt::UniqueConnection);
+    }
+
+    SimpleListWidget* AppearanceWidget::getList() const
+    {
+        return list_;
     }
 }

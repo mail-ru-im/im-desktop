@@ -146,9 +146,9 @@ namespace Logic
         {
             if (cur == 0)
             {
-                const auto makeIcon = [](const QString& _icon, const Styling::StyleVariable _var)
+                const auto makeIcon = [](const QString& _icon, const Styling::StyleVariable _var) -> Utils::StyledPixmap
                 {
-                    return Utils::renderSvg(_icon, Utils::scale_value(QSize(24, 24)), Styling::getParameters().getColor(_var));
+                    return Utils::StyledPixmap(_icon, Utils::scale_value(QSize(24, 24)), Styling::ThemeColorKey{ _var });
                 };
 
                 const auto dropDownBtn = [&makeIcon](QString _aimId, QString _friendly, const QString& _icon)

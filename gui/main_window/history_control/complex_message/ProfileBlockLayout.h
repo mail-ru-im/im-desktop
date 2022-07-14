@@ -14,10 +14,9 @@ public:
     virtual ~ProfileBlockLayout() override;
 
     QRect getContentRect() const;
-    QSize blockSizeForMaxWidth(const int32_t maxWidth) override;
 
 protected:
-    virtual QSize setBlockGeometryInternal(const QRect &widgetGeometry) override;
+    virtual QSize setBlockGeometryInternal(const QRect& _widgetGeometry) override;
 
 protected:
     QRect contentRect_;

@@ -68,6 +68,9 @@ namespace Ui
 
         void setIsUnderLongPress(bool _v);
 
+    private Q_SLOTS:
+        void onThemeChanged();
+
     private:
         State state_ = State::Send;
 

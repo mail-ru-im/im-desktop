@@ -73,9 +73,14 @@ const QString& getMonthName(size_t _month) noexcept
     return (_month >= 1 && _month <= months.size()) ? months[_month - 1] : fallbackString;
 }
 
+Styling::ThemeColorKey normalTextColorKey()
+{
+    return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID };
+}
+
 QColor normalTextColor()
 {
-    return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
+    return Styling::getColor(normalTextColorKey());
 }
 
 QColor pastTextColor()
@@ -93,19 +98,19 @@ QColor todayTextColor()
     return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY);
 }
 
-QColor weekDayNameColor()
+auto weekDayNameColorKey()
 {
-    return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
+    return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY };
 }
 
-QColor monthNavigationButtonNormalColor()
+auto monthNavigationButtonNormalColor()
 {
-    return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
+    return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY };
 }
 
-QColor monthNavigationButtonDisabledColor()
+auto monthNavigationButtonDisabledColorKey()
 {
-    return Styling::getParameters().getColor(Styling::StyleVariable::BASE_TERTIARY);
+    return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_TERTIARY };
 }
 
 QColor selectedDayTextColor()
@@ -157,7 +162,7 @@ QDate calcFirstDateOfMonthGrid(int _month, int _year)
 class CustomButtomCustomHover : public Ui::CustomButton
 {
 public:
-explicit CustomButtomCustomHover(QWidget* _parent, const QString& _svgName = QString(), const QSize& _iconSize = QSize(), const QColor& _defaultColor = QColor())
+explicit CustomButtomCustomHover(QWidget* _parent, const QString& _svgName = QString(), const QSize& _iconSize = QSize(), const Styling::ColorParameter& _defaultColor = Styling::ColorParameter())
     : CustomButton(_parent, _svgName, _iconSize, _defaultColor) {}
 
 void leaveEvent(QEvent* _e) override
@@ -316,7 +321,7 @@ CalendarWidget::CalendarWidget(QWidget* _parent)
     auto createMonthNavigationWidget = [this](const QString& _name, NavigationArrowDirection _direction)
     {
         auto button = new CustomButtomCustomHover(this, _name, monthNavigationButtonSize(), monthNavigationButtonNormalColor());
-        button->setDisabledColor(monthNavigationButtonDisabledColor());
+        button->setDisabledColor(monthNavigationButtonDisabledColorKey());
         button->setFixedSize(dayWidgetSize());
         Testing::setAccessibleName(button, _direction == NavigationArrowDirection::Forward
             ? qsl("AS calendar nextMonth")
@@ -337,7 +342,7 @@ CalendarWidget::CalendarWidget(QWidget* _parent)
         auto w = new LabelEx(this);
         w->setText(getDayOfWeekShortString(_dayOfWeek));
         w->setFixedSize(dayWidgetSize());
-        w->setColor(weekDayNameColor());
+        w->setColor(weekDayNameColorKey());
         w->setFont(calendarFont());
         w->setAlignment(Qt::AlignCenter);
         return w;
@@ -524,7 +529,7 @@ MonthYearHeader::MonthYearHeader(QWidget* _parent)
         auto w = new LabelEx(this);
         w->setAlignment(Qt::AlignCenter);
         w->setFont(calendarFont());
-        w->setColor(normalTextColor());
+        w->setColor(normalTextColorKey());
         return w;
     };
 

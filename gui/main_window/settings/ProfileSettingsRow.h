@@ -39,7 +39,6 @@ namespace Ui
         void onNicknameContextMenu(const QPoint& _pos);
         void onContextMenuItemClicked(QAction* _action);
 
-        void updateArrowIcon();
         void updateTextColor();
         void updateHeight();
         void updateNickname();
@@ -56,6 +55,9 @@ namespace Ui
         bool isEmailProfile() const;
 
         void updateNickVisibility();
+
+    private Q_SLOTS:
+        void updateArrowIcon();
 
     private:
         bool isSelected_;

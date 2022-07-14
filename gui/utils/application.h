@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../main_window/contact_list/Common.h"
+
 namespace Ui
 {
     class MainWindow;
@@ -26,8 +28,8 @@ namespace Utils
         bool succeeded() const;
 
     private:
-        HANDLE Mutex_;
-        bool Exist_;
+        const HANDLE mutex_;
+        const bool exist_;
     };
 #endif //_WIN32
 
@@ -49,10 +51,10 @@ namespace Utils
         ~Application();
 
         int exec();
-        bool init(launch::CommandLineParser& _cmdParser);
+        bool init(const launch::CommandLineParser& _cmdParser);
 
         bool isMainInstance();
-        int switchInstance(launch::CommandLineParser& _cmdParser);
+        int switchInstance(const launch::CommandLineParser& _cmdParser);
 
         enum class MainWindowMode
         {

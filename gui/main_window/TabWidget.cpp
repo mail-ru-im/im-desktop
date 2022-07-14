@@ -7,36 +7,20 @@
 #include "../utils/features.h"
 #include "../utils/animations/SlideController.h"
 #include "styles/ThemeParameters.h"
-
-namespace
-{
-    constexpr std::chrono::milliseconds kFadeDuration = std::chrono::milliseconds(85);
-}
+#include "Common.h"
 
 namespace Ui
 {
     TabWidget::TabWidget(QWidget* _parent)
         : QWidget(_parent)
     {
-        using Utils::SlideController;
-
         setContentsMargins(0, 0, 0, 0);
 
-        Utils::setDefaultBackground(this);
-
         auto layout = Utils::emptyVLayout(this);
-        tabbar_ = new TabBar();
+        tabbar_ = new TabBar(this);
 
-        pages_ = new QStackedWidget();
-        pages_->setStyleSheet(ql1s("background: transparent; border: none; color: %1").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_PRIMARY)));
-
-        SlideController* slideController = new SlideController(pages_);
-        slideController->setWidget(pages_);
-        slideController->setDuration(kFadeDuration);
-        slideController->setFading(SlideController::Fading::FadeInOut);
-        slideController->setEffects(SlideController::SlideEffect::NoEffect);
-        slideController->setSlideDirection(SlideController::SlideDirection::NoSliding);
-        slideController->setInverse(true);
+        pages_ = new QStackedWidget(this);
+        pages_->setStyleSheet(ql1s("background-color: transparent; border: none;"));
 
         Testing::setAccessibleName(pages_, qsl("AS Tab page"));
         layout->addWidget(pages_);
@@ -62,6 +46,9 @@ namespace Ui
     std::pair<int, QWidget*> TabWidget::addTab(QWidget* _widget, const QString& _name, const QString& _icon, const QString& _iconActive)
     {
         QWidget* icon = nullptr;
+        if (!pages_)
+            return std::make_pair(-1, nullptr);
+
         int index = pages_->indexOf(_widget);
         if (index == -1)
         {
@@ -87,7 +74,7 @@ namespace Ui
 
     void TabWidget::setCurrentIndex(int _index)
     {
-        if (tabbar_->getCurrentIndex() != _index)
+        if (tabbar_ && tabbar_->getCurrentIndex() != _index)
         {
             setUpdatesEnabled(false);
             tabbar_->setCurrentIndex(_index);
@@ -101,6 +88,8 @@ namespace Ui
 
     int TabWidget::currentIndex() const noexcept
     {
+        if (!tabbar_)
+            return -1;
         return tabbar_->getCurrentIndex();
     }
 
@@ -111,12 +100,20 @@ namespace Ui
 
     void TabWidget::setBadgeText(int _index, const QString& _text)
     {
-        tabbar_->setBadgeText(_index, _text);
+        if (tabbar_)
+            tabbar_->setBadgeText(_index, _text);
     }
 
     void TabWidget::setBadgeIcon(int _index, const QString& _icon)
     {
-        tabbar_->setBadgeIcon(_index, _icon);
+        if (tabbar_)
+            tabbar_->setBadgeIcon(_index, _icon);
+    }
+
+    void TabWidget::updateItemInfo(int _index, const QString& _badgeText, const QString& _badgeIcon)
+    {
+        setBadgeText(_index, _badgeText);
+        setBadgeIcon(_index, _badgeIcon);
     }
 
     void TabWidget::insertAdditionalWidget(QWidget * _w)
@@ -127,8 +124,10 @@ namespace Ui
 
     void TabWidget::onTabClicked(int _index)
     {
+        if (!tabbar_)
+            return;
+
         Q_EMIT tabBarClicked(_index, QPrivateSignal());
-        if (tabbar_->getCurrentIndex() != _index)
-            setCurrentIndex(_index);
+        setCurrentIndex(_index);
     }
 }

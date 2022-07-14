@@ -1,65 +1,95 @@
 #pragma once
 #include "../controls/ClickWidget.h"
+#include "utils/SvgUtils.h"
+
+namespace Previewer
+{
+    class CustomMenu;
+}
 
 namespace Ui
 {
-    class MoreButton : public ClickableWidget
+    class PanelToolButton : public QAbstractButton
     {
         Q_OBJECT
-
     public:
-        MoreButton(QWidget* _parent);
+        enum IconStyle
+        {
+            Circle,
+            Rounded,
+            Rectangle
+        };
+        Q_ENUM(IconStyle)
 
-    protected:
-        void paintEvent(QPaintEvent* _event) override;
-    };
+        enum ButtonRole
+        {
+            Regular,
+            Attention
+        };
+        Q_ENUM(ButtonRole)
 
-    class PanelButton : public ClickableWidget
-    {
-        Q_OBJECT
+        enum PopupMode
+        {
+            MenuButtonPopup,
+            InstantPopup
+        };
+        Q_ENUM(PopupMode)
+
+        explicit PanelToolButton(QWidget* _parent = nullptr);
+        explicit PanelToolButton(const QString& _text, QWidget* _parent = nullptr);
+        ~PanelToolButton();
+
+        void setKeySequence(const QKeySequence& _shortcut);
+        QKeySequence keySequence() const;
+
+        void setTooltipsEnabled(bool _on);
+        bool isTooltipsEnabled() const;
+
+        void setText(const QString& text);
+        void setIcon(const QString& _iconName);
+        void setBadgeCount(int _count);
+        int badgeCount() const;
+
+        void setPopupMode(PopupMode _mode);
+        PopupMode popupMode() const;
+
+        void setButtonRole(ButtonRole _role);
+        ButtonRole role() const;
+
+        void setIconStyle(IconStyle _style);
+        IconStyle iconStyle() const;
+
+        void setButtonStyle(Qt::ToolButtonStyle _style);
+        Qt::ToolButtonStyle buttonStyle() const;
+
+        void setAutoRaise(bool _on);
+        bool isAutoRaise() const;
+
+        void setMenuAlignment(Qt::Alignment _align);
+        Qt::Alignment menuAlignment() const;
+
+        void setMenu(QMenu* _menu);
+        QMenu* menu() const;
+
+        QSize sizeHint() const override;
+        QSize minimumSizeHint() const override;
+
+        void showMenu(QMenu* _menu);
 
     Q_SIGNALS:
-        void moreButtonClicked();
-    public:
-        enum class ButtonStyle
-        {
-            Normal,
-            Transparent,
-            Red
-        };
-
-        enum class ButtonSize
-        {
-            Big,
-            Small
-        };
-
-        PanelButton(QWidget* _parent, const QString& _text, const QString& _iconName, ButtonSize _size = ButtonSize::Big, ButtonStyle _style = ButtonStyle::Normal, bool _hasMore = false);
-
-        void updateStyle(ButtonStyle _style, const QString& _iconName = {}, const QString& _text = {});
-
-        void setCount(int _count);
+        void aboutToShowMenu(QPrivateSignal);
 
     protected:
+        bool event(QEvent* _event) override;
+        void keyPressEvent(QKeyEvent* _event) override;
+        void keyReleaseEvent(QKeyEvent* _event) override;
+        void mousePressEvent(QMouseEvent* _event) override;
         void paintEvent(QPaintEvent* _event) override;
 
     private:
-        void initSetText(const QString& _text);
-
-    private:
-        QString iconName_;
-        QPixmap icon_;
-        QColor circleNormal_;
-        QColor circleHovered_;
-        QColor circlePressed_;
-        QColor textColor_;
-        ButtonSize size_;
-
-        std::unique_ptr<TextRendering::TextUnit> textUnit_;
-        MoreButton* more_;
-        std::unique_ptr<TextRendering::TextUnit> badgeTextUnit_;
-        int count_;
+        std::unique_ptr<class PanelToolButtonPrivate> d;
     };
+
 
     class TransparentPanelButton : public ClickableWidget
     {
@@ -96,9 +126,9 @@ namespace Ui
         QRect getTooltipArea() const;
 
     private:
-        QPixmap iconNormal_;
-        QPixmap iconHovered_;
-        QPixmap iconPressed_;
+        Utils::StyledPixmap iconNormal_;
+        Utils::StyledPixmap iconHovered_;
+        Utils::StyledPixmap iconPressed_;
         Qt::Alignment align_;
         QVariantAnimation* anim_;
         double currentAngle_;
@@ -107,31 +137,16 @@ namespace Ui
         QRect tooltipBoundingRect_;
     };
 
-    enum class GridButtonState
-    {
-        ShowAll,
-        ShowBig
-    };
 
-    class GridButton : public ClickableWidget
-    {
-        Q_OBJECT
+    QString microphoneIcon(bool _checked);
+    QString speakerIcon(bool _checked);
+    QString videoIcon(bool _checked);
+    QString screensharingIcon();
+    QString hangupIcon();
 
-    public:
-        GridButton(QWidget* _parent);
-
-        void setState(const GridButtonState _state);
-
-    protected:
-        void paintEvent(QPaintEvent* _event) override;
-
-    private:
-        std::unique_ptr<TextRendering::TextUnit> text_;
-        GridButtonState state_;
-    };
-
-    QString getMicrophoneButtonText(PanelButton::ButtonStyle _style, PanelButton::ButtonSize _size = PanelButton::ButtonSize::Big);
-    QString getVideoButtonText(PanelButton::ButtonStyle _style, PanelButton::ButtonSize _size = PanelButton::ButtonSize::Big);
-    QString getSpeakerButtonText(PanelButton::ButtonStyle _style, PanelButton::ButtonSize _size = PanelButton::ButtonSize::Big);
-    QString getScreensharingButtonText(PanelButton::ButtonStyle _style, PanelButton::ButtonSize _size = PanelButton::ButtonSize::Big);
+    QString microphoneButtonText(bool _checked);
+    QString videoButtonText(bool _checked);
+    QString speakerButtonText(bool _checked);
+    QString screensharingButtonText(bool _checked);
+    QString stopCallButtonText();
 }

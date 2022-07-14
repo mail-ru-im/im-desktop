@@ -12,6 +12,7 @@ namespace Ui
     class LottiePlayer;
 
     enum class FrameCountMode;
+    enum class IsPurchased;
 
     namespace TextRendering
     {
@@ -110,6 +111,8 @@ namespace Ui
             virtual void onPacksAdded() = 0;
             virtual void clear() = 0;
 
+            virtual bool isEqual(const std::vector<int32_t>& _sets, IsPurchased _purshased) const = 0;
+
             virtual ~PacksViewBase() = default;
         };
 
@@ -138,6 +141,7 @@ namespace Ui
             QHBoxLayout* layout_;
 
             QPropertyAnimation* animScroll_;
+            std::vector<PackItemBase*> items_;
 
             enum class direction
             {
@@ -158,6 +162,7 @@ namespace Ui
             void onPacksAdded() override;
             void onSetIcon(const int32_t _setId);
             void clear() override;
+            bool isEqual(const std::vector<int32_t>& _sets, IsPurchased _purshased) const override;
             void connectNativeScrollbar(QScrollBar* _sb);
         };
 
@@ -258,6 +263,8 @@ namespace Ui
 
             void onPacksAdded() override;
 
+            bool isEqual(const std::vector<int32_t>& _sets, IsPurchased _purshased) const override;
+
         Q_SIGNALS:
             void startScrollUp();
             void startScrollDown();
@@ -286,7 +293,7 @@ namespace Ui
             void updateItemsVisibility();
             void arrangePacks();
 
-            std::vector<PackItem*> items_;
+            std::vector<PackItemBase*> items_;
             PackViewMode mode_ = PackViewMode::myPacks;
 
             QPoint startDragPos_;
@@ -370,12 +377,13 @@ namespace Ui
             Q_OBJECT
 
             PacksView* packs_;
-            bool syncedWithServer_;
             QWidget* noResultsWidget_;
+            QLabel* noResultsPlaceholder_;
+            QLabel* noResultsLabel_;
+            bool syncedWithServer_;
             bool searchRequested_;
 
         public:
-
             SearchPacksWidget(QWidget* _parent);
             void onSetIcon(const int32_t _setId);
             void init(PacksViewBase::InitFrom _init);
@@ -385,6 +393,9 @@ namespace Ui
             void setScrollBarToView(QWidget* _scrollBar);
             void connectNativeScrollbar(QScrollBar* _scrollBar);
             void touchSearchRequested(); // for statistics
+
+        private Q_SLOTS:
+            void updateStyle();
         };
 
 

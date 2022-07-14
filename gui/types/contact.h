@@ -1,8 +1,7 @@
 #pragma once
 
 #include "lastseen.h"
-
-class QPixmap;
+#include "utils/SvgUtils.h"
 
 namespace core
 {
@@ -28,22 +27,7 @@ namespace Data
     class Buddy
     {
     public:
-        Buddy()
-            : GroupId_(-1)
-            , Unreads_(0)
-            , OutgoingMsgCount_(0)
-            , Is_chat_(false)
-            , Muted_(false)
-            , IsChecked_(false)
-            , IsLiveChat_(false)
-            , IsOfficial_(false)
-            , IsPublic_(false)
-            , isChannel_(false)
-            , isDeleted_(false)
-            , isAutoAdded_(false)
-            , isTemporary_(false)
-        {
-        }
+        Buddy() = default;
 
         bool operator==(const Buddy& other) const
         {
@@ -80,33 +64,33 @@ namespace Data
             // Intentionally ignoring IsChecked_
         }
 
-        QString		AimId_;
-        QString		Friendly_;
-        QString		AbContactName_;
-        QString		UserType_;
-        QString		StatusMsg_;
-        QString		OtherNumber_;
-        LastSeen    LastSeen_;
-        int             GroupId_;
-        int     	    Unreads_;
-        int             OutgoingMsgCount_;
-        bool            Is_chat_;
-        bool            Muted_;
-        bool            IsChecked_;
-        bool            IsLiveChat_;
-        bool            IsOfficial_;
-        bool            IsPublic_;
-        bool            isChannel_;
-        bool            isDeleted_;
-        bool            isAutoAdded_;
-        bool            isTemporary_;
-        QString         iconId_;
-        QString         bigIconId_;
-        QString         largeIconId_;
+        Utils::StyledPixmap iconPixmap_;
+        Utils::StyledPixmap iconHoverPixmap_;
+        Utils::StyledPixmap iconPressedPixmap_;
 
-        QPixmap     iconPixmap_;
-        QPixmap     iconHoverPixmap_;
-        QPixmap     iconPressedPixmap_;
+        LastSeen LastSeen_;
+        QString AimId_;
+        QString Friendly_;
+        QString AbContactName_;
+        QString UserType_;
+        QString StatusMsg_;
+        QString OtherNumber_;
+        QString iconId_;
+        QString bigIconId_;
+        QString largeIconId_;
+        int GroupId_ = -1;
+        int Unreads_ = 0;
+        int OutgoingMsgCount_ = 0;
+        bool Is_chat_ = false;
+        bool Muted_ = false;
+        bool IsChecked_ = false;
+        bool IsLiveChat_ = false;
+        bool IsOfficial_ = false;
+        bool IsPublic_ = false;
+        bool isChannel_ = false;
+        bool isDeleted_ = false;
+        bool isAutoAdded_ = false;
+        bool isTemporary_ = false;
     };
 
     using BuddyPtr = std::shared_ptr<Buddy>;
@@ -210,6 +194,7 @@ namespace Data
     struct UserInfo
     {
         QString firstName_;
+        QString middleName_;
         QString lastName_;
         QString friendly_;
         QString nick_;

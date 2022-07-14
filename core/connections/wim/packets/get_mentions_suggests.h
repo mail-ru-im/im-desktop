@@ -38,7 +38,8 @@ namespace core
 
             const std::shared_ptr<core::archive::persons_map>& get_persons() const override { return persons_; }
 
-            virtual std::string_view get_method() const override;
+            std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
         };
     }
 }

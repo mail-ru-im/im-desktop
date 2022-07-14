@@ -1,73 +1,33 @@
 #include "stdafx.h"
-//#include "md5.h"
-
-#include "openssl/md5.h"
+#include "md5.h"
+#include <openssl/md5.h>
 
 namespace core
 {
     namespace tools
     {
-        uint8_t hextobin(const char* str, uint8_t * bytes, size_t blen)
+        template<size_t N>
+        std::string digest_string(unsigned char (&_digest)[N])
         {
-            uint8_t pos;
-            uint8_t idx0;
-            uint8_t idx1;
+            char format_buffer[4];
+            char result[N * 2 + 1] = { 0 };
 
-            // mapping of ASCII characters to hex values
-            const uint8_t hashmap[] =
+            char* ptr = result;
+            for (size_t i = 0; i < N; ++i)
             {
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // ........
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // ........
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // ........
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // ........
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, //  !"#$%&'
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // ()*+,-./
-                0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, // 01234567
-                0x08, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // 89:;<=>?
-                0x00, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x00, // @ABCDEFG
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // HIJKLMNO
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // PQRSTUVW
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // XYZ[\]^_
-                0x00, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x00, // `abcdefg
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // hijklmno
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // pqrstuvw
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // xyz{|}~.
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // ........
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // ........
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // ........
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // ........
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // ........
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // ........
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // ........
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // ........
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // ........
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // ........
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // ........
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // ........
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // ........
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // ........
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // ........
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00  // ........
-            };
+#ifdef _WIN32
+                const size_t n = sprintf_s(format_buffer, "%02x", _digest[i]);
+#else
+                const size_t n = sprintf(format_buffer, "%02x", _digest[i]);
+#endif
+                ptr = std::copy_n(format_buffer, n, ptr);
+            }
 
-            ::memset(bytes, 0, blen);
-
-            const auto len = strlen(str);
-            for (pos = 0; pos < (blen * 2) && pos < len; pos += 2)
-            {
-                idx0 = (uint8_t)str[pos + 0];
-                idx1 = (uint8_t)str[pos + 1];
-                bytes[pos / 2] = (uint8_t)(hashmap[idx0] << 4) | hashmap[idx1];
-            };
-
-            return 0;
+            return result;
         }
-
 
         std::string md5(const void* _data, size_t _size)
         {
-            std::string ss_hash;
-
             MD5_CTX md5handler;
             unsigned char md5digest[MD5_DIGEST_LENGTH];
 
@@ -75,20 +35,28 @@ namespace core
             MD5_Update(&md5handler, _data, _size);
             MD5_Final(md5digest,&md5handler);
 
-            char format_buffer[10];
+            return digest_string(md5digest);
+        }
+        std::string md5(std::istream& _input)
+        {
+            if (!_input)
+                return {};
 
-            for (size_t i = 0; i < MD5_DIGEST_LENGTH; ++i)
+            char buffer[4096];
+            unsigned char md5digest[MD5_DIGEST_LENGTH];
+
+            MD5_CTX md5handler;
+            MD5_Init(&md5handler);
+
+            while (_input.good())
             {
-#ifdef _WIN32
-                sprintf_s(format_buffer, 10, "%02x", md5digest[i]);
-#else
-                sprintf(format_buffer, "%02x", md5digest[i]);
-#endif
-
-                ss_hash += format_buffer;
+                _input.read(buffer, std::size(buffer));
+                MD5_Update(&md5handler, buffer, _input.gcount());
             }
 
-            return ss_hash;
+            MD5_Final(md5digest, &md5handler);
+
+            return digest_string(md5digest);
         }
     }
 }

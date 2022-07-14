@@ -61,6 +61,7 @@ namespace core
     private:
         std::function<void()> func_;
         stack_vec stack_;
+        bool need_stack_ = false;
     };
 
     namespace update
@@ -165,7 +166,7 @@ namespace core
         void load_statistics();
         void load_im_stats();
 
-        void post_user_proxy_to_gui();
+        void update_parellel_packets_count();
 
         void setup_memory_stats_collector();
 
@@ -186,6 +187,8 @@ namespace core
         void start(const common::core_gui_settings&);
         std::string get_uniq_device_id() const;
         void execute_core_context(stacked_task _func);
+        void on_external_config_changed();
+        void on_omicron_updated(const std::string& _data);
 
         void write_data_to_network_log(tools::binary_stream _data);
         void write_string_to_network_log(std::string_view _text);
@@ -240,10 +243,13 @@ namespace core
 
         void on_thread_finish();
 
+        // may be empty
         const std::shared_ptr<core::stats::statistics>& get_statistics() const;
 
         proxy_settings get_proxy_settings() const;
         bool try_to_apply_alternative_settings();
+
+        void post_proxy_to_gui(const proxy_settings& _proxy_settings);
 
         void set_user_proxy_settings(const proxy_settings& _user_proxy_settings);
 
@@ -301,7 +307,11 @@ namespace core
         void check_if_network_change_notifier_available();
         bool is_network_change_notifier_valid() const;
 
+        void update_omicron(bool _need_add_account);
+
         void try_send_crash_report();
+
+        void notify_history_dropped(const std::string& _aimid);
 
 #ifndef STRIP_ZSTD
         const std::shared_ptr<zstd_helper>& get_zstd_helper() const;

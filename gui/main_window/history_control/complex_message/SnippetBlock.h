@@ -93,6 +93,8 @@ public:
 
     const QPixmap& getPreviewImage() const;
 
+    QStringList messageLinks() const override;
+
 protected:
     void drawBlock(QPainter& _p, const QRect& _rect, const QColor& _quoteColor) override;
     void initialize() override;
@@ -114,7 +116,6 @@ private Q_SLOTS:
     void onContentLoaded();
 
 private:
-    void updateStyle() override;
     void updateFonts() override;
 
     void initWithMeta(const Data::LinkMetadata& _meta);

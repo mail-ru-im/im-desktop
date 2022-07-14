@@ -1,6 +1,5 @@
 #pragma once
 #include "voip/voip3.h"
-#include "render/BuiltinVideoWindowRenderer.h"
 #include "VoipManagerDefines.h"
 #include "voip_memory_reporter.h"
 

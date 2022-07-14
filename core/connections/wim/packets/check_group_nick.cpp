@@ -3,6 +3,7 @@
 
 #include "../../../http_request.h"
 #include "../../../tools/system.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -16,6 +17,11 @@ check_group_nick::check_group_nick(wim_packet_params _params, const std::string&
 std::string_view check_group_nick::get_method() const
 {
     return "checkGroupStamp";
+}
+
+int core::wim::check_group_nick::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t check_group_nick::init_request(const std::shared_ptr<core::http_request_simple>& _request)

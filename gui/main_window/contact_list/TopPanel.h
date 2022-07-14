@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../controls/CustomButton.h"
+#include "styles/StyledWidget.h"
 
 namespace Ui
 {
@@ -82,6 +83,7 @@ namespace Ui
         ~HeaderTitleBar();
 
         void setTitle(const QString& _title);
+        void setSubTitle(const QString& _subtitle);
         void addButtonToLeft(HeaderTitleBarButton* _button);
         void addButtonToRight(HeaderTitleBarButton* _button);
         void addCentralWidget(QWidget* _widget);
@@ -94,6 +96,8 @@ namespace Ui
         void setArrowVisible(bool _visible);
         void setTitleVisible(bool _visible);
         void setCentralWidgetVisible(bool _visible);
+
+        void setTitleLeftOffset(int _offset);
 
     protected:
         void paintEvent(QPaintEvent* _event) override;
@@ -124,10 +128,13 @@ namespace Ui
         bool isCompactMode_;
         QString title_;
         std::unique_ptr<TextRendering::TextUnit> titleTextUnit_;
+        QString subtitle_;
+        std::unique_ptr<TextRendering::TextUnit> subtitleTextUnit_;
         QSize buttonSize_;
         bool arrowVisible_;
         bool titleVisible_;
         QPoint clicked_;
+        int titleLeftOffset_;
 
         friend class OverlayTopWidget;
     };

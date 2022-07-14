@@ -3,6 +3,7 @@
 
 #include "../../../http_request.h"
 #include "../../login_info.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -55,7 +56,7 @@ int32_t attach_phone::get_response_error_code()
     case 40020: // phone attached to another account
         return wpie_error_attach_busy_phone;
     case 40500: // rate limit overflow
-        return wpie_error_robuso_too_fast_sending;
+        return wpie_error_robusto_too_fast_sending;
     case 50000: // internal server error
         return wpie_error_message_unknown;
     }
@@ -66,4 +67,9 @@ int32_t attach_phone::get_response_error_code()
 std::string_view attach_phone::get_method() const
 {
     return "auth/attachPhone";
+}
+
+int core::wim::attach_phone::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }

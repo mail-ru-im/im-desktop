@@ -6,6 +6,8 @@
 #include "../../../core.h"
 #include "../../../tools/system.h"
 #include "../../../../common.shared/json_helper.h"
+#include "../log_replace_functor.h"
+#include "../../urls_cache.h"
 
 using namespace core;
 using namespace wim;
@@ -151,4 +153,9 @@ const std::string& send_file::get_file_id() const
 std::string_view send_file::get_method() const
 {
     return "filesUploadRange";
+}
+
+int core::wim::send_file::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }

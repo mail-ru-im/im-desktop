@@ -1,0 +1,8 @@
+<RCC>
+    <qresource>
+        <file>qml_components/expanded_gallery/GalleryTabs.qml</file>
+        <file>qml_components/expanded_gallery/GalleryTabButton.qml</file>
+        <file>qml_components/expanded_gallery/BurgerButton.qml</file>
+        <file>qml_components/expanded_gallery/TabsList.qml</file>
+    </qresource>
+</RCC>

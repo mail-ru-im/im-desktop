@@ -90,24 +90,24 @@ namespace
         return 2;
     }
 
-    auto getProgressAnimationPenColor()
+    auto getProgressAnimationPenColorKey()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY };
     }
 
     auto getHintColorNormal()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY };
     }
 
     auto getHintColorBad()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_ATTENTION };
     }
 
     auto getHintColorAvailable()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_RAINBOW_MINT);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_RAINBOW_MINT };
     }
 }
 
@@ -135,7 +135,7 @@ namespace Ui
         auto globalLayout = Utils::emptyVLayout(this);
         globalLayout->setContentsMargins(QMargins());
 
-        nick_ = new TextEditEx(this, getNickFont(), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), true, false);
+        nick_ = new TextEditEx(this, getNickFont(), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID }, true, false);
         nick_->setPlaceholderText(QT_TRANSLATE_NOOP("nick_edit", "Come up with a unique nickname"));
         nick_->setSizePolicy(QSizePolicy::Policy::Preferred, QSizePolicy::Policy::Fixed);
         nick_->setAlignment(Qt::AlignLeft | Qt::AlignTop);
@@ -158,17 +158,19 @@ namespace Ui
         progressAnimation_ = new ProgressAnimation(this);
         progressAnimation_->setProgressWidth(getProgressAnimationSize());
         progressAnimation_->setProgressPenWidth(getProgressAnimationPenSize());
-        progressAnimation_->setProgressPenColor(getProgressAnimationPenColor());
+        progressAnimation_->setProgressPenColorKey(getProgressAnimationPenColorKey());
         progressAnimation_->setFixedWidth(getProgressAnimationSize() + Utils::scale_value(2));
         hintLayout->addWidget(progressAnimation_);
         hintLayout->addStretch();
 
-        hintUnit_ = TextRendering::MakeTextUnit(QString());
-        hintUnit_->init(getHintFont(), getHintColorNormal(), getHintColorBad());
-
         counterUnit_ = TextRendering::MakeTextUnit(QString());
-        counterUnit_->init(getHintFont(), getHintColorNormal());
+        TextRendering::TextUnit::InitializeParameters params{ getHintFont(), getHintColorNormal() };
+        counterUnit_->init(params);
         updateCounter();
+
+        hintUnit_ = TextRendering::MakeTextUnit(QString());
+        params.linkColor_ = getHintColorBad();
+        hintUnit_->init(params);
 
         globalLayout->addWidget(nick_);
         globalLayout->addSpacing(getSpinnerSpacing());
@@ -511,7 +513,7 @@ namespace Ui
         lastServerRequest_ = ServerRequest::CheckNick;
     }
 
-    void NickLineEdit::updateHint(HintTextCode _code, const QColor& _color)
+    void NickLineEdit::updateHint(HintTextCode _code, const Styling::ThemeColorKey& _color)
     {
         QString text;
         switch (_code)
@@ -577,7 +579,10 @@ namespace Ui
         const auto linkText = QT_TRANSLATE_NOOP("nick_edit", "Repeat verification");
         const std::map<QString, QString> links = { {linkText, QString()} };
         auto linkUnit = TextRendering::MakeTextUnit(linkText);
-        linkUnit->init(getHintFont(), getHintColorBad(), getHintColorBad());
+        TextRendering::TextUnit::InitializeParameters params{ getHintFont(), getHintColorBad() };
+        params.linkColor_ = getHintColorBad();
+        linkUnit->init(params);
+
         linkUnit->setUnderline(true);
         linkUnit->applyLinks(links);
 

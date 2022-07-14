@@ -5,6 +5,7 @@
 #include "../../../corelib/enumerations.h"
 #include "../../../tools/system.h"
 #include "../../urls_cache.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -51,4 +52,9 @@ int32_t set_attention_attribute::parse_response(const std::shared_ptr<core::tool
 std::string_view set_attention_attribute::get_method() const
 {
     return "setAttentionAttribute";
+}
+
+int core::wim::set_attention_attribute::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }

@@ -45,6 +45,7 @@ namespace core
             bool get_need_fill_profile() const { return need_fill_profile_; }
             bool is_valid() const override { return true; }
             std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
         };
     }
 }

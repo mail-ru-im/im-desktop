@@ -4,6 +4,8 @@
 #include "types/link_metadata.h"
 #include "types/filesharing_meta.h"
 #include "types/filesharing_download_result.h"
+#include "../../common.shared/antivirus/antivirus_types.h"
+#include "../main_window/history_control/complex_message/FileSharingUtils.h"
 
 namespace Utils
 {
@@ -47,6 +49,7 @@ public:
     virtual const QString& fileName() const { return fileName_; }
     virtual const QString& downloadUri() const { return downloadPath_; }
     virtual const QString& fileFormat() const { return fileFormat_; }
+    virtual bool isMediaVirusInfected() const { return false; }
 
 Q_SIGNALS:
     void previewLoaded(const QPixmap& _preview, const QSize& _originSize);
@@ -75,15 +78,18 @@ class FileSharingLoader : public MediaLoader
     Q_OBJECT
 public:
     FileSharingLoader(const QString& _link, LoadMeta _loadMeta = LoadMeta::BeforeMedia);
-    void load(const QString& _downloadPath = QString()) override;
+    void load(const QString& _downloadPath = {}) override;
     void loadPreview() override;
 
     void cancel() override;
     void cancelPreview() override;
+    bool isMediaVirusInfected() const override { return mediaVirusInfected_; }
+
+    void processMetaInfo(const Utils::FileSharingId& _fsId, const Data::FileSharingMeta& _meta);
+    void processMetaInfoError(const Utils::FileSharingId& _fsId, qint32 _errorCode);
 
 private Q_SLOTS:
-    void onPreviewMetainfo(qint64 _seq, const QString &_miniPreviewUri, const QString &_fullPreviewUri);
-    void onFileMetainfo(qint64 _seq, const Data::FileSharingMeta& _meta);
+    void onPreviewMetainfo(qint64 _seq, const QString& _miniPreviewUri, const QString& _fullPreviewUri);
     void onPreviewDownloaded(qint64 _seq, QString _url, QPixmap _image, QString _local);
     void onFileDownloaded(int64_t _seq, const Data::FileSharingDownloadResult& _result);
     void onFileError(qint64 _seq);
@@ -94,11 +100,8 @@ private:
 
 private:
     QString previewLink_;
-    QMetaObject::Connection fileDownloadedConnection_;
-    QMetaObject::Connection fileMetaDownloadedConnection_;
-    QMetaObject::Connection previewMetaDownloadedConnection_;
-    QMetaObject::Connection imageDownloadedConnection_;
-    QMetaObject::Connection fileErrorConnection_;
+    FileSharingId fileSharingId_;
+    bool mediaVirusInfected_ = false;
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -127,10 +130,6 @@ private:
     void disconnectSignals();
 
     QString downloadLink_;
-    QMetaObject::Connection imageDownloadedConneection_;
-    QMetaObject::Connection metaDownloadedConneection_;
-    QMetaObject::Connection imageErrorConneection_;
-    QMetaObject::Connection progressConneection_;
 };
 
 

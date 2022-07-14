@@ -2,6 +2,7 @@
 #include "ServiceContacts.h"
 #include "utils/utils.h"
 #include "styles/ThemeParameters.h"
+#include "ContactListUtils.h"
 
 namespace
 {
@@ -17,8 +18,8 @@ struct ServiceContact
 const std::vector<ServiceContact>& serviceContacts()
 {
     static const std::vector<ServiceContact> contacts = {
-        { qsl("~threads~"), QT_TRANSLATE_NOOP("contact_list", "Threads"), ServiceContacts::ContactType::ThreadsFeed },
-        { qsl("~tasks~"), QT_TRANSLATE_NOOP("contact_list", "Tasks"), ServiceContacts::ContactType::Tasks }
+        { ServiceContacts::getThreadsName(), QT_TRANSLATE_NOOP("contact_list", "Threads"), ServiceContacts::ContactType::ThreadsFeed },
+        { ServiceContacts::getTasksName(), QT_TRANSLATE_NOOP("contact_list", "Tasks"), ServiceContacts::ContactType::Tasks }
     };
     return contacts;
 }
@@ -94,6 +95,18 @@ QPixmap avatar(ContactType _type, int32_t _size)
 QPixmap avatar(const QString& _contactId, int32_t _size)
 {
     return avatar(contactType(_contactId), _size);
+}
+
+const QString& getThreadsName() noexcept
+{
+    static const auto str = qsl("~threads~");
+    return str;
+}
+
+const QString& getTasksName() noexcept
+{
+    static const auto str = qsl("~tasks~");
+    return str;
 }
 
 }

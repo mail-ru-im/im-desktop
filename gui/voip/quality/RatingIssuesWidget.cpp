@@ -37,7 +37,7 @@ RatingIssuesWidget::RatingIssuesWidget(const ShowQualityReasonsPopupConfig& _con
     br_options.bodyMargins_ = QMargins(Utils::scale_value(16), Utils::scale_value(12), Utils::scale_value(16), Utils::scale_value(20));
 
     title_ = new TextBrowserEx(br_options, this);
-    title_->setHtml(u"<body>" % _config.surveyTitle() % u"</body>");
+    title_->setHtmlSource(u"<body>" % _config.surveyTitle() % u"</body>");
     title_->setFixedWidth(Utils::scale_value(DIALOG_WIDTH));
 
     const auto& metrics = Utils::evaluateTextHeightMetrics(_config.surveyTitle(),
@@ -69,7 +69,7 @@ RatingIssuesWidget::RatingIssuesWidget(const ShowQualityReasonsPopupConfig& _con
 
     reasonsList_ = new RCheckboxList(scrollArea_,
                                      Fonts::appFontScaled(16),
-                                     Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID),
+                                     Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID },
                                      Utils::scale_value(HOR_OFFSET),
                                      Utils::scale_value(REASON_HEIGHT),
                                      options);

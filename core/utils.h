@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../common.shared/utils.h"
+
 namespace core
 {
     namespace utils
@@ -7,10 +9,7 @@ namespace core
         using string_opt = std::optional<std::string>;
 
         std::string_view get_dev_id();
-        std::wstring get_product_data_path(std::wstring_view relative); // use it config.cpp only
         std::wstring get_product_data_path();
-        std::wstring get_local_product_data_path();
-        std::string get_product_name();
         std::string_view get_app_name();
         std::string get_ua_os_version();
         std::string get_user_agent(const string_opt &_uin = string_opt());

@@ -6,6 +6,7 @@
 *.user
 *.sln.docstates
 *.autosave
+*.depends
 **/*.vscode
 **/*.sublime-project
 **/*.sublime-workspace
@@ -73,6 +74,8 @@ BuildLog.htm
 UpgradeReport.xslt
 AppxManifest.xml
 CMakeSettings.json
+
+cmake-build-debug/*
 
 # Visual C++ cache files
 ipch/

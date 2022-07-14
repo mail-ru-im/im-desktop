@@ -2,6 +2,7 @@
 
 #include "../../../http_request.h"
 #include "../../../../common.shared/json_helper.h"
+#include "../log_replace_functor.h"
 
 #include "remove_reaction.h"
 
@@ -19,6 +20,11 @@ remove_reaction::remove_reaction(wim_packet_params _params, int64_t _msg_id, con
 std::string_view remove_reaction::get_method() const
 {
     return "reaction/remove";
+}
+
+int remove_reaction::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t remove_reaction::init_request(const std::shared_ptr<http_request_simple>& _request)

@@ -10,6 +10,8 @@
 #include "main_window/MainWindow.h"
 #include "fonts.h"
 #include "styles/ThemeParameters.h"
+#include "../../previewer/toast.h"
+#include "../../utils/features.h"
 
 #include "ImageVideoList.h"
 
@@ -233,8 +235,15 @@ MediaContentWidget::ItemData ImageVideoList::itemAt(const QPoint &_pos)
 
 void ImageVideoList::onClicked(MediaContentWidget::ItemData _data)
 {
-    Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::fullmediascr_view, { { "chat_type", Utils::chatTypeByAimId(aimId_) }, { "from", "gallery" }, { "media_type", _data.is_video_ ? "video" : (_data.is_gif_ ? "gif" : "photo") } });
-    Utils::InterConnector::instance().openGallery(Utils::GalleryData(aimId_, _data.link_, _data.msg_, _data.sender_, _data.time_));
+    if (!_data.isVirusInfected_ || !Features::isAntivirusCheckEnabled())
+    {
+        Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::fullmediascr_view, { { "chat_type", Utils::chatTypeByAimId(aimId_) }, { "from", "gallery" }, { "media_type", _data.isVideo_ ? "video" : (_data.isGif_ ? "gif" : "photo") } });
+        Utils::InterConnector::instance().openGallery(Utils::GalleryData(aimId_, _data.link_, _data.msg_, _data.sender_, _data.time_));
+    }
+    else
+    {
+        Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("toast", "File is blocked by the antivirus"), Utils::defaultToastVerOffset());
+    }
 }
 
 void ImageVideoList::onVisitorTimeout()
@@ -303,7 +312,9 @@ ImageVideoBlock::ImageVideoBlock(QObject* _parent, const QString& _aimid)
 {
     static auto dateFont(Fonts::appFontScaled(11, Fonts::FontWeight::SemiBold));
     auto dateLabelUnit = TextRendering::MakeTextUnit(QString());
-    dateLabelUnit->init(dateFont, Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+    TextRendering::TextUnit::InitializeParameters params{ dateFont, Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY }};
+    params.maxLinesCount_ = 1;
+    dateLabelUnit->init(params);
 
     dateLabel_ = std::make_unique<Label>();
     dateLabel_->setTextUnit(std::move(dateLabelUnit));
@@ -424,7 +435,7 @@ MediaContentWidget::ItemData ImageVideoBlock::itemAt(const QPoint &_pos)
 {
     MediaContentWidget::ItemData data;
 
-    for (auto & item : items_)
+    for (auto& item : items_)
     {
         if (item->rect().contains(_pos))
         {
@@ -432,8 +443,9 @@ MediaContentWidget::ItemData ImageVideoBlock::itemAt(const QPoint &_pos)
             data.msg_ = item->getMsg();
             data.sender_ = item->sender();
             data.time_ = item->time();
-            data.is_video_ = item->isVideo();
-            data.is_gif_ = item->isGif();
+            data.isVideo_ = item->isVideo();
+            data.isGif_ = item->isGif();
+            data.isVirusInfected_ = item->isVirusInfected();
             break;
         }
     }
@@ -644,12 +656,12 @@ ImageVideoItem::ImageVideoItem(QObject* _parent, const QString& _link, qint64 _m
     Utils::UrlParser parser;
     parser.process(_link);
 
-    filesharing_ = parser.hasUrl() && parser.getUrl().is_filesharing();
+    filesharing_ = parser.hasUrl() && parser.isFileSharing();
 
     if (filesharing_)
-        loader_.reset(new Utils::FileSharingLoader(_link, Utils::MediaLoader::LoadMeta::OnlyForVideo));
+        loader_ = std::make_unique<Utils::FileSharingLoader>(_link, Utils::MediaLoader::LoadMeta::BeforePreview);
     else
-        loader_.reset(new Utils::CommonMediaLoader(_link, Utils::MediaLoader::LoadMeta::OnlyForVideo));
+        loader_ = std::make_unique<Utils::CommonMediaLoader>(_link, Utils::MediaLoader::LoadMeta::OnlyForVideo);
 
     connect(loader_.get(), &Utils::MediaLoader::previewLoaded, this, &ImageVideoItem::onPreviewLoaded);
 
@@ -660,9 +672,7 @@ ImageVideoItem::ImageVideoItem(QObject* _parent, const QString& _link, qint64 _m
     connect(&loadDelayTimer_, &QTimer::timeout, this, [this](){ loader_->loadPreview(); });
 }
 
-ImageVideoItem::~ImageVideoItem()
-{
-}
+ImageVideoItem::~ImageVideoItem() = default;
 
 void ImageVideoItem::load(LoadType _loadType)
 {
@@ -743,6 +753,11 @@ void ImageVideoItem::cancelLoading()
     loader_->cancelPreview();
 }
 
+bool Ui::ImageVideoItem::isVirusInfected() const
+{
+    return loader_->isMediaVirusInfected();
+}
+
 void ImageVideoItem::onPreviewLoaded(const QPixmap& _preview)
 {
     previewPtr_ = std::make_unique<Preview>();
@@ -771,7 +786,9 @@ void ImageVideoItem::onPreviewLoaded(const QPixmap& _preview)
 
         const auto durationFont(Fonts::appFontScaled(13, Fonts::FontWeight::Normal));
         durationLabel_ = TextRendering::MakeTextUnit(durationStr);
-        durationLabel_->init(durationFont, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+        TextRendering::TextUnit::InitializeParameters params{ durationFont, Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID_PERMANENT } };
+        params.maxLinesCount_ = 1;
+        durationLabel_->init(params);
 
         updateDurationLabel();
      }

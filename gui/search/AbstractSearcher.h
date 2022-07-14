@@ -12,6 +12,12 @@ namespace Logic
         localAndServer = local | server
     };
 
+    enum class CursorMode
+    {
+        new_search,
+        continue_search
+    };
+
     class AbstractSearcher : public QObject
     {
         Q_OBJECT

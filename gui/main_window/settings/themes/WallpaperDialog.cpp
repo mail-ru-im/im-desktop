@@ -6,6 +6,7 @@
 
 #include "gui_settings.h"
 #include "utils/utils.h"
+#include "utils/MimeDataUtils.h"
 #include "utils/InterConnector.h"
 #include "utils/LoadPixmapFromFileTask.h"
 #include "utils/ResizePixmapTask.h"
@@ -50,7 +51,7 @@ namespace
 
     int checkboxHeight()
     {
-        return Utils::scale_value(24);
+        return Utils::scale_value(40);
     }
 
     QFont getCaptionFont()
@@ -168,12 +169,12 @@ namespace Ui
         onTimer();
 
         const QMimeData* mimeData = _e->mimeData();
-        const auto mimeDataWithImage = Utils::isMimeDataWithImage(mimeData);
+        const auto mimeDataWithImage = MimeData::isMimeDataWithImage(mimeData);
         if (mimeData->hasUrls() || mimeDataWithImage)
         {
             if (mimeDataWithImage)
             {
-                auto image = Utils::getImageFromMimeData(mimeData);
+                auto image = MimeData::getImageFromMimeData(mimeData);
                 if (!image.isNull())
                 {
                     auto task = new Utils::ResizePixmapTask(QPixmap::fromImage(std::move(image)), Utils::getMaxImageSize());
@@ -283,7 +284,9 @@ namespace Ui
         else
         {
             contactName_ = TextRendering::MakeTextUnit(Logic::GetFriendlyContainer()->getFriendly(targetContact_), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-            contactName_->init(Fonts::appFontScaled(12), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+            TextRendering::TextUnit::InitializeParameters params{ Fonts::appFontScaled(12), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY } };
+            params.maxLinesCount_ = 1;
+            contactName_->init(params);
             contactName_->evaluateDesiredSize();
             contactName_->setOffsets(getLeftMargin(), Utils::scale_value(2));
         }
@@ -450,13 +453,13 @@ namespace Ui
 
         const auto addWallpaper = [this, defaultWpId = defaultWp->getId()](const auto& _wpWidget, const auto& _slot)
         {
-            const auto wpId = _wpWidget->getId();
+            const auto& wpId = _wpWidget->getId();
 
             if (wpId == defaultWpId)
                 _wpWidget->setCaption(QT_TRANSLATE_NOOP("wallpaper_select", "Default"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
 
             Utils::grabTouchWidget(_wpWidget);
-            Testing::setAccessibleName(_wpWidget, u"AS Wallpaper " % wpId.id_);
+            Testing::setAccessibleName(_wpWidget, u"AS Wallpaper " % wpId.id());
             thumbLayout_->addWidget(_wpWidget);
 
             connect(_wpWidget, &WallpaperWidget::wallpaperClicked, this, _slot);
@@ -538,9 +541,9 @@ namespace Ui
             vLayout->insertSpacing(0, neededHeight - curHeight);
         }
 
-        auto [okBtn, _] = dialog.addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "Apply"), true);
+        auto [okBtn, _] = dialog.addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "Apply"));
         QObject::connect(okBtn, &DialogButton::clicked, ws, &WallpaperSelectWidget::onOkClicked);
 
-        dialog.showInCenter();
+        dialog.execute();
     }
 }

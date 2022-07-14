@@ -32,12 +32,6 @@ namespace
             _type != Utils::CommonSettingsType::CommonSettingsType_Updater &&
             _type != Utils::CommonSettingsType::CommonSettingsType_None;
     }
-
-    auto getContactUsText()
-    {
-        static const auto contactUs = Features::isContactUsViaBackend() ? QT_TRANSLATE_NOOP("main_page", "Report a problem") : QT_TRANSLATE_NOOP("main_page", "Contact Us");
-        return contactUs;
-    }
 }
 
 namespace Ui
@@ -234,6 +228,11 @@ namespace Ui
             ui_->settingsList_->itemAt(i)->setCompactMode(isCompact_);
     }
 
+    QString SettingsTab::getContactUsText()
+    {
+        return Features::isContactUsViaBackend() ? QT_TRANSLATE_NOOP("main_page", "Report a problem") : QT_TRANSLATE_NOOP("main_page", "Contact Us");;
+    }
+
     void SettingsTab::settingsProfileClicked()
     {
         setCurrentItem(Utils::CommonSettingsType::CommonSettingsType_Profile);
@@ -244,6 +243,7 @@ namespace Ui
 
     void SettingsTab::settingsFavoritesClicked()
     {
+        Utils::updateAppsPageReopenPage(Favorites::aimId());
         Utils::InterConnector::instance().openDialog(Favorites::aimId());
     }
 
@@ -251,7 +251,6 @@ namespace Ui
     {
         setCurrentItem(Utils::CommonSettingsType::CommonSettingsType_General);
 
-        Q_EMIT Utils::InterConnector::instance().showSettingsHeader(QT_TRANSLATE_NOOP("main_page", "General settings"));
         Q_EMIT Utils::InterConnector::instance().generalSettingsShow((int)Utils::CommonSettingsType::CommonSettingsType_General);
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::settingsscr_settings_action);
     }
@@ -260,7 +259,6 @@ namespace Ui
     {
         setCurrentItem(Utils::CommonSettingsType::CommonSettingsType_VoiceVideo);
 
-        Q_EMIT Utils::InterConnector::instance().showSettingsHeader(QT_TRANSLATE_NOOP("main_page", "Voice and video"));
         Q_EMIT Utils::InterConnector::instance().generalSettingsShow((int)Utils::CommonSettingsType::CommonSettingsType_VoiceVideo);
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::settingsscr_video_action);
     }
@@ -269,7 +267,6 @@ namespace Ui
     {
         setCurrentItem(Utils::CommonSettingsType::CommonSettingsType_Notifications);
 
-        Q_EMIT Utils::InterConnector::instance().showSettingsHeader(QT_TRANSLATE_NOOP("main_page", "Notifications"));
         Q_EMIT Utils::InterConnector::instance().generalSettingsShow((int)Utils::CommonSettingsType::CommonSettingsType_Notifications);
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::settingsscr_notifications_action);
     }
@@ -278,7 +275,6 @@ namespace Ui
     {
         setCurrentItem(Utils::CommonSettingsType::CommonSettingsType_Appearance);
 
-        Q_EMIT Utils::InterConnector::instance().showSettingsHeader(QT_TRANSLATE_NOOP("main_page", "Appearance"));
         Q_EMIT Utils::InterConnector::instance().generalSettingsShow((int)Utils::CommonSettingsType::CommonSettingsType_Appearance);
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::settingsscr_appearance_action);
     }
@@ -287,7 +283,6 @@ namespace Ui
     {
         setCurrentItem(Utils::CommonSettingsType::CommonSettingsType_About);
 
-        Q_EMIT Utils::InterConnector::instance().showSettingsHeader(QT_TRANSLATE_NOOP("main_page", "About app"));
         Q_EMIT Utils::InterConnector::instance().generalSettingsShow((int)Utils::CommonSettingsType::CommonSettingsType_About);
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::settingsscr_aboutapp_action);
     }
@@ -296,7 +291,6 @@ namespace Ui
     {
         setCurrentItem(Utils::CommonSettingsType::CommonSettingsType_ContactUs);
 
-        Q_EMIT Utils::InterConnector::instance().showSettingsHeader(getContactUsText());
         Q_EMIT Utils::InterConnector::instance().generalSettingsShow((int)Utils::CommonSettingsType::CommonSettingsType_ContactUs);
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::settingsscr_writeus_action);
     }
@@ -305,7 +299,6 @@ namespace Ui
     {
         setCurrentItem(Utils::CommonSettingsType::CommonSettingsType_Language);
 
-        Q_EMIT Utils::InterConnector::instance().showSettingsHeader(QT_TRANSLATE_NOOP("main_page", "Language"));
         Q_EMIT Utils::InterConnector::instance().generalSettingsShow((int)Utils::CommonSettingsType::CommonSettingsType_Language);
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::settingsscr_language_action);
     }
@@ -314,7 +307,6 @@ namespace Ui
     {
         setCurrentItem(Utils::CommonSettingsType::CommonSettingsType_Shortcuts);
 
-        Q_EMIT Utils::InterConnector::instance().showSettingsHeader(QT_TRANSLATE_NOOP("main_page", "Shortcuts"));
         Q_EMIT Utils::InterConnector::instance().generalSettingsShow((int)Utils::CommonSettingsType::CommonSettingsType_Shortcuts);
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::settingsscr_hotkeys_action);
     }
@@ -323,7 +315,6 @@ namespace Ui
     {
         setCurrentItem(Utils::CommonSettingsType::CommonSettingsType_Security);
 
-        Q_EMIT Utils::InterConnector::instance().showSettingsHeader(QT_TRANSLATE_NOOP("main_page", "Privacy"));
         Q_EMIT Utils::InterConnector::instance().generalSettingsShow((int)Utils::CommonSettingsType::CommonSettingsType_Security);
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::settingsscr_privacy_action);
     }
@@ -341,7 +332,6 @@ namespace Ui
     {
         setCurrentItem(Utils::CommonSettingsType::CommonSettingsType_Debug);
 
-        Q_EMIT Utils::InterConnector::instance().showSettingsHeader(QT_TRANSLATE_NOOP("settings", "Advanced Settings"));
         Q_EMIT Utils::InterConnector::instance().generalSettingsShow((int)Utils::CommonSettingsType::CommonSettingsType_Debug);
     }
 

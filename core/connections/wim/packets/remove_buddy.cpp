@@ -4,6 +4,7 @@
 #include "../../../http_request.h"
 #include "../../../tools/system.h"
 #include "../../urls_cache.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -23,6 +24,11 @@ remove_buddy::~remove_buddy()
 std::string_view remove_buddy::get_method() const
 {
     return "removeBuddy";
+}
+
+int core::wim::remove_buddy::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t remove_buddy::init_request(const std::shared_ptr<core::http_request_simple>& _request)

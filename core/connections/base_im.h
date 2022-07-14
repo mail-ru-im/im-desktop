@@ -31,8 +31,6 @@ namespace core
     enum class message_read_mode;
     class auto_callback;
 
-    class masks;
-
     namespace wim
     {
         class im;
@@ -124,7 +122,7 @@ namespace core
 
     namespace tools
     {
-        struct filesharing_id;
+        class filesharing_id;
     }
 
     class base_im
@@ -140,7 +138,6 @@ namespace core
 
     protected:
         std::shared_ptr<core::memory_stats::memory_stats_collector> memory_stats_collector_;
-        std::shared_ptr<masks> masks_;
 
         std::wstring get_contactlist_file_name() const;
         std::wstring get_my_info_file_name() const;
@@ -151,7 +148,6 @@ namespace core
         std::wstring get_im_data_path() const;
         std::wstring get_avatars_data_path() const;
         std::wstring get_file_name_by_url(const std::string& _url) const;
-        std::wstring get_masks_path() const;
         std::wstring get_stickers_path() const;
         std::wstring get_im_downloads_path(const std::string &alt) const;
         std::wstring get_content_cache_path() const;
@@ -164,10 +160,6 @@ namespace core
         virtual std::string _get_protocol_uid() = 0;
         void set_id(int32_t _id);
         int32_t get_id() const;
-
-#ifndef STRIP_VOIP
-        void create_masks(std::weak_ptr<wim::im> _im);
-#endif
 
         std::shared_ptr<stickers::face> get_stickers();
         std::shared_ptr<themes::wallpaper_loader> get_wallpaper_loader();
@@ -280,13 +272,19 @@ namespace core
         virtual void load_cached_smartreplies(const std::string_view _aimid) const = 0;
 
         virtual void get_chat_home(int64_t _seq, const std::string& _tag) = 0;
-        virtual void get_chat_info(int64_t _seq, const std::string& _aimid, const std::string& _stamp, int32_t _limit) = 0;
+        virtual void get_chat_info(int64_t _seq, const std::string& _aimid, const std::string& _stamp, int32_t _limit, bool _threads_auto_subscribe) = 0;
         virtual void get_chat_member_info(int64_t _seq, const std::string& _aimid, const std::vector<std::string>& _members) = 0;
         virtual void get_chat_members_page(int64_t _seq, std::string_view _aimid, std::string_view _role, uint32_t _page_size) = 0;
         virtual void get_chat_members_next_page(int64_t _seq, std::string_view _aimid, std::string_view _cursor, uint32_t _page_size) = 0;
         virtual void search_chat_members_page(int64_t _seq, std::string_view _aimid, std::string_view _role, std::string_view _keyword, uint32_t _page_size) = 0;
         virtual void search_chat_members_next_page(int64_t _seq, std::string_view _aimid, std::string_view _cursor, uint32_t _page_size) = 0;
         virtual void get_chat_contacts(int64_t _seq, const std::string& _aimid, const std::string& _cursor, uint32_t _page_size) = 0;
+
+        virtual void get_thread_subscribers_page(int64_t _seq, std::string_view _aimid, std::string_view _role, uint32_t _page_size) = 0;
+        virtual void get_thread_subscribers_next_page(int64_t _seq, std::string_view _aimid, std::string_view _cursor, uint32_t _page_size) = 0;
+        virtual void search_thread_subscribers_page(int64_t _seq, std::string_view _aimid, std::string_view _role, std::string_view _keyword, uint32_t _page_size) = 0;
+        virtual void search_thread_subscribers_next_page(int64_t _seq, std::string_view _aimid, std::string_view _cursor, uint32_t _page_size) = 0;
+        virtual void thread_autosubscribe(int64_t _seq, const std::string& _chatid, const bool _enable) = 0;
 
         virtual void check_themes_meta_updates(int64_t _seq) = 0;
         virtual void get_theme_wallpaper(const std::string_view _wp_id) = 0;
@@ -312,13 +310,16 @@ namespace core
         virtual void get_mentions_suggests(int64_t _seq, const std::string& _aimid, const std::string& _pattern) = 0;
 
         // search functions
-        virtual void search_dialogs_local(const std::string& search_patterns, const std::vector<std::string>& _aimids) = 0;
-        virtual void search_contacts_local(const std::vector<std::vector<std::string>>& search_patterns, int64_t _req_id, unsigned fixed_patterns_count, const std::string& pattern) = 0;
-        virtual void setup_search_dialogs_params(int64_t _req_id) = 0;
-        virtual void clear_search_dialogs_params() = 0;
+        virtual void search_dialogs_local(const std::string& _search_patterns, const std::vector<std::string>& _aimids) = 0;
+        virtual void search_thread_feed_local(const std::string& _search_patterns, const std::string& _aimid) = 0;
+        virtual void search_threads_local(const std::string& _search_patterns, const std::string& _aimid) = 0;
+        virtual void search_contacts_local(const std::vector<std::vector<std::string>>& _search_patterns, int64_t _req_id, unsigned _fixed_patterns_count, const std::string& _pattern) = 0;
+        virtual void setup_search_dialogs_params(int64_t _req_id, bool _in_thread) = 0;
+        virtual void clear_search_dialogs_params(bool _in_thread) = 0;
 
         virtual void add_search_pattern_to_history(const std::string_view _search_pattern, const std::string_view _contact) = 0;
         virtual void remove_search_pattern_from_history(const std::string_view _search_pattern, const std::string_view _contact) = 0;
+
 
         // cl
         virtual std::string get_contact_friendly_name(const std::string& contact_login) = 0;
@@ -339,8 +340,6 @@ namespace core
 #ifndef STRIP_VOIP
 
         // voip
-        //virtual void on_peer_list_updated(const std::vector<std::string>& peers) = 0;
-        //virtual void on_voip_call_set_proxy(const voip_manager::VoipProxySettings& proxySettings);
         virtual void on_voip_call_start(const std::vector<std::string> &contacts, const voip_manager::CallStartParams &params);
         virtual void on_voip_add_window(voip_manager::WindowParams& windowParams);
         virtual void on_voip_remove_window(void* hwnd);
@@ -352,20 +351,11 @@ namespace core
         virtual void on_voip_update();
         virtual void on_voip_reset();
 
-        virtual bool on_voip_avatar_actual_for_voip(const std::string& contact, unsigned avatar_size);
         virtual void on_voip_user_update_avatar(const std::string& contact, const unsigned char* data, unsigned size, unsigned avatar_h, unsigned avatar_w, voip_manager::AvatarThemeType theme);
         virtual void on_voip_user_update_avatar_no_video(const std::string& contact, const unsigned char* data, unsigned size, unsigned h, unsigned w, voip_manager::AvatarThemeType theme);
-        //virtual void on_voip_user_update_avatar_camera_off(const std::string& contact, const unsigned char* data, unsigned size, unsigned h, unsigned w, voip_manager::AvatarThemeType theme);
-        //virtual void on_voip_user_update_avatar_no_camera(const std::string& contact, const unsigned char* data, unsigned size, unsigned h, unsigned w, voip_manager::AvatarThemeType theme);
         virtual void on_voip_user_update_avatar_text(const std::string& contact, const unsigned char* data, unsigned size, unsigned h, unsigned w, voip_manager::AvatarThemeType theme);
         virtual void on_voip_user_update_avatar_text_header(const std::string& contact, const unsigned char* data, unsigned size, unsigned h, unsigned w, voip_manager::AvatarThemeType theme);
         virtual void on_voip_user_update_avatar_background(const std::string& contact, const unsigned char* data, unsigned size, unsigned h, unsigned w, voip_manager::AvatarThemeType theme);
-        virtual void on_voip_window_update_background(void* hwnd, const unsigned char* data, unsigned size, unsigned w, unsigned h);
-        virtual void on_voip_window_set_offsets(void* hwnd, unsigned l, unsigned t, unsigned r, unsigned b);
-        virtual void on_voip_window_set_primary(void* hwnd, const std::string& contact);
-        virtual void on_voip_window_set_conference_layout(void* hwnd, int);
-        virtual void on_voip_window_set_hover(void* hwnd, bool);
-        virtual void on_voip_window_set_large(void* hwnd, bool);
 
         virtual void on_voip_device_changed(std::string_view dev_type, const std::string& uid, bool force_reset);
         virtual void on_voip_devices_changed(DeviceClass deviceClass);
@@ -375,10 +365,8 @@ namespace core
         virtual void on_voip_set_mute(bool mute);
         virtual void on_voip_mute_incoming_call_sounds(bool mute);
 
-        virtual void on_voip_load_mask(const std::string& path);
-        virtual void on_voip_init_mask_engine();
+        virtual void on_voip_peer_resolution_changed(const std::string& _contact, int _width, int _height);
 
-        virtual void voip_set_model_path(const std::string& _local_path, bool _force_reload);
         virtual bool has_created_call();
 
         virtual void post_voip_msg_to_server(const voip_manager::VoipProtoMsg& msg) = 0;
@@ -390,13 +378,6 @@ namespace core
 
         virtual void send_voip_calls_quality_report(int _score, const std::string& _survey_id,
             const std::vector<std::string>& _reasons, const std::string& _aimid);
-
-        // masks
-        virtual void get_mask_id_list(int64_t _seq) = 0;
-        virtual void get_mask_preview(int64_t _seq, const std::string& mask_id) = 0;
-        virtual void get_mask_model(int64_t _seq) = 0;
-        virtual void get_mask(int64_t _seq, const std::string& mask_id) = 0;
-        virtual void get_existent_masks(int64_t _seq) = 0;
 #endif
 
         // files functions
@@ -421,7 +402,7 @@ namespace core
 
         virtual void download_file_sharing_metainfo(
             const int64_t _seq,
-            const std::string& _file_url) = 0;
+            const core::tools::filesharing_id& _fs_id) = 0;
 
         virtual void download_file_sharing(
             const int64_t _seq,
@@ -450,9 +431,9 @@ namespace core
             const bool _load_preview,
             std::string_view _log_str) = 0;
 
-        virtual void cancel_loader_task(std::string _url, std::optional<int64_t> _seq) = 0;
+        virtual void cancel_loader_task(const std::string& _url, std::optional<int64_t> _seq) = 0;
 
-        virtual void abort_file_sharing_download(std::string _url, std::optional<int64_t> _seq) = 0;
+        virtual void abort_file_sharing_download(const std::string& _url, std::optional<int64_t> _seq) = 0;
 
         virtual void abort_file_sharing_upload(
             const int64_t _seq,
@@ -482,6 +463,9 @@ namespace core
         virtual void search_dialogs_one(const int64_t _seq, const std::string_view _keyword, const std::string_view _contact) = 0;
         virtual void search_dialogs_all(const int64_t _seq, const std::string_view _keyword) = 0;
         virtual void search_dialogs_continue(const int64_t _seq, const std::string_view _cursor, const std::string_view _contact) = 0;
+
+        virtual void search_threads(const int64_t _seq, const std::string_view _keyword, const std::string_view _contact) = 0;
+        virtual void search_threads_continue(const int64_t _seq, const std::string_view _cursor, const std::string_view _contact) = 0;
 
         virtual void update_profile(int64_t _seq, const std::vector<std::pair<std::string, std::string>>& _field) = 0;
 
@@ -530,6 +514,7 @@ namespace core
         virtual void get_ram_usage(const int64_t _seq) = 0;
 
         virtual void make_archive_holes(const int64_t _seq, const std::string& _archive) = 0;
+        virtual void invalidate_archive_history(const int64_t _seq, const std::string& _archive) = 0;
         virtual void invalidate_archive_data(const int64_t _seq, const std::string& _archive, std::vector<int64_t> _ids) = 0;
         virtual void invalidate_archive_data(const int64_t _seq, const std::string& _archive, int64_t _from, int64_t _before_count, int64_t _after_count) = 0;
         virtual void on_ui_activity(const int64_t _time) = 0;
@@ -557,9 +542,9 @@ namespace core
         virtual void stop_poll(const int64_t _seq, const std::string& _poll_id) = 0;
 
         virtual void create_task(int64_t _seq, const core::tasks::task_data& _task) = 0;
-        virtual void edit_task(const int64_t _seq, const core::tasks::task_change& _task) = 0;
-        virtual void request_initial_tasks(const int64_t _seq) = 0;
-        virtual void update_task_last_used(const int64_t _seq, const std::string& _task_id) = 0;
+        virtual void edit_task(int64_t _seq, const core::tasks::task_change& _task) = 0;
+        virtual void request_initial_tasks(int64_t _seq) = 0;
+        virtual void update_task_last_used(int64_t _seq, const std::string& _task_id) = 0;
 
         virtual void group_subscribe(const int64_t _seq, std::string_view _stamp, std::string_view _aimid) = 0;
         virtual void cancel_group_subscription(const int64_t _seq, std::string_view _stamp, std::string_view _aimid) = 0;
@@ -573,6 +558,8 @@ namespace core
 
         virtual void get_sessions() = 0;
         virtual void reset_session(std::string_view _session_hash) = 0;
+
+        virtual void update_parellel_packets_count(size_t _count) = 0;
 
         virtual void cancel_pending_join(std::string _sn) = 0;
         virtual void cancel_pending_invitation(std::string _contact, std::string _chat) = 0;
@@ -602,6 +589,15 @@ namespace core
         virtual void subscribe_thread_updates(std::vector<std::string> _thread_ids) = 0;
         virtual void unsubscribe_thread_updates(std::vector<std::string> _thread_ids) = 0;
 
+        virtual void subscribe_filesharing_antivirus(const core::tools::filesharing_id& _filesharing_id) = 0;
+        virtual void unsubscribe_filesharing_antivirus(const core::tools::filesharing_id& _filesharing_id) = 0;
+
+        virtual void subscribe_mails_counter() = 0;
+        virtual void unsubscribe_mails_counter() = 0;
+
+        virtual void subscribe_tasks_counter() = 0;
+        virtual void unsubscribe_tasks_counter() = 0;
+
         virtual void get_emoji(int64_t _seq, std::string_view _code, int _size) = 0;
 
         virtual void add_to_inviters_blacklist(std::vector<std::string> _contacts) = 0;
@@ -612,9 +608,19 @@ namespace core
         virtual void misc_support(int64_t _seq, std::string_view _aimid, std::string_view _message, std::string_view _attachment_file_name, std::vector<std::string> _screenshot_file_name_list) = 0;
 
         virtual void add_thread(int64_t _seq, archive::thread_parent_topic _topic) = 0;
+        virtual void subscribe_thread(int64_t _seq, std::string_view _thread_id) = 0;
+        virtual void unsubscribe_thread(int64_t _seq, std::string_view _thread_id) = 0;
+        virtual void get_thread_info(int64_t _seq, std::string_view _thread_id) = 0;
         virtual void get_threads_feed(int64_t _seq, const std::string& _cursor) = 0;
 
+        virtual void add_chat_thread(std::string_view _parent_id, int64_t _msg_id, std::string_view _thread_id) = 0;
+        virtual void remove_chat_thread(std::string_view _parent_id, std::string_view _thread_id) = 0;
+        virtual void remove_chat_thread(std::string_view _parent_id, int64_t _msg_id) = 0;
+        virtual void remove_chat_thread(std::string_view _parent_id) = 0;
+
         virtual void start_miniapp_session(std::string_view _miniapp_id) = 0;
+
+        virtual void notify_history_droppped(const std::string& _aimid) = 0;
     };
 
 }

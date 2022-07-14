@@ -39,7 +39,7 @@ namespace core::wim::subscriptions
     class antivirus_subscription : public subscription_base
     {
     public:
-        antivirus_subscription(std::vector<std::string> _file_hashes);
+        antivirus_subscription(std::vector<std::string> _file_hashes = {});
 
         void serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const override;
         void serialize_args(rapidjson::Value& _node, rapidjson_allocator& _a) const override;
@@ -56,7 +56,7 @@ namespace core::wim::subscriptions
     class status_subscription : public subscription_base
     {
     public:
-        status_subscription(std::vector<std::string> _contacts);
+        status_subscription(std::vector<std::string> _contacts = {});
 
         void serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const override;
         void serialize_args(rapidjson::Value& _node, rapidjson_allocator& _a) const override;
@@ -72,7 +72,7 @@ namespace core::wim::subscriptions
     class call_room_info_subscription : public subscription_base
     {
     public:
-        call_room_info_subscription(std::vector<std::string> _room_ids);
+        call_room_info_subscription(std::vector<std::string> _room_ids = {});
 
         void serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const override;
         void serialize_args(rapidjson::Value& _node, rapidjson_allocator& _a) const override;
@@ -88,7 +88,7 @@ namespace core::wim::subscriptions
     class thread_subscription : public subscription_base
     {
     public:
-        thread_subscription(std::vector<std::string> _thread_ids);
+        thread_subscription(std::vector<std::string> _thread_ids = {});
 
         void serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const override;
         void serialize_args(rapidjson::Value& _node, rapidjson_allocator& _a) const override;
@@ -104,7 +104,7 @@ namespace core::wim::subscriptions
     class task_subscription : public subscription_base
     {
     public:
-        task_subscription(std::vector<std::string> _room_ids);
+        task_subscription(std::vector<std::string> _room_ids = {});
 
         void serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const override;
         void serialize_args(rapidjson::Value& _node, rapidjson_allocator& _a) const override;
@@ -115,6 +115,30 @@ namespace core::wim::subscriptions
 
     private:
         std::vector<std::string> task_ids_;
+    };
+
+    class tasks_counter_subscription : public subscription_base
+    {
+    public:
+        tasks_counter_subscription();
+        void serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const override {};
+        void serialize_args(rapidjson::Value& _node, rapidjson_allocator& _a) const override {};
+        subscr_clock_t::duration renew_interval() const override;
+
+    private:
+        bool equal(const subscription_base&) const override { return true; };
+    };
+
+    class mails_counter_subscription : public subscription_base
+    {
+    public:
+        mails_counter_subscription();
+        void serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const override {};
+        void serialize_args(rapidjson::Value& _node, rapidjson_allocator& _a) const override {};
+        subscr_clock_t::duration renew_interval() const override;
+
+    private:
+        bool equal(const subscription_base&) const override { return true; };
     };
 
     using subscr_ptr = std::shared_ptr<subscription_base>;
@@ -135,6 +159,10 @@ namespace core::wim::subscriptions
                 return std::make_shared<thread_subscription>(std::forward<Args>(args)...);
             case subscriptions::type::task:
                 return std::make_shared<task_subscription>(std::forward<Args>(args)...);
+            case subscriptions::type::tasks_counter:
+                return std::make_shared<tasks_counter_subscription>();
+            case subscriptions::type::mails_counter:
+                return std::make_shared<mails_counter_subscription>();
             default:
                 im_assert(!"Unknown subscription type");
                 break;

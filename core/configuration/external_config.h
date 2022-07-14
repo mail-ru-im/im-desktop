@@ -23,13 +23,13 @@ namespace config
         class external_url_config
         {
         public:
-            static std::string make_url_preset(std::string_view _login_domain);
-            static std::string make_url_auto_preset(std::string_view _login_domain, std::string_view _host = {});
+            static std::string make_url_preset(std::string_view _login_domain, bool _has_domain = false);
+            static std::string make_url_auto_preset(std::string_view _login_domain, std::string_view _host = {}, bool _has_domain = false);
             static std::string_view extract_host(std::string_view _host);
 
             static external_url_config& instance();
 
-            void load_async(std::string_view _host, load_callback_t _callback);
+            void load_async(std::string_view _host, load_callback_t _callback, int _retry_count = 1);
             bool load_from_file();
 
             [[nodiscard]] std::string get_host(host_url_type _type) const;
@@ -39,6 +39,8 @@ namespace config
 
             [[nodiscard]] host_cache get_cache() const;
             [[nodiscard]] bool is_valid() const;
+            [[nodiscard]] bool is_develop_local_config() const {return use_develop_local_config_;};
+            [[nodiscard]] bool is_external_config_loaded() const {return external_config_loaded_;};
 
         private:
             static std::string make_url(std::string_view _domain, std::string_view _query = {});
@@ -63,6 +65,7 @@ namespace config
             std::shared_ptr<config_p> config_;
             mutable common::tools::spin_lock spin_lock_;
             bool use_develop_local_config_ = false;
+            bool external_config_loaded_ = false;
 
         private:
             std::shared_ptr<config_p> get_config() const;

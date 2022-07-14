@@ -1,8 +1,17 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.19)
 
 include(CheckFunctionExists)
 
-project(icq)
+get_filename_component(ICQ_ROOT "${CMAKE_SOURCE_DIR}" ABSOLUTE)
+set(PRODUCT_SPEC_DIR "${ICQ_ROOT}/products/${PRODUCT}")
+if(EXISTS "${PRODUCT_SPEC_DIR}")
+    message(STATUS "PRODUCT_SPEC_DIR = ${PRODUCT_SPEC_DIR}")
+else()
+    message(FATAL_ERROR "Folder ${PRODUCT_SPEC_DIR} is not exists!)")
+endif()
+include(${PRODUCT_SPEC_DIR}/project_settings.cmake)
+
+project(${APP_PROJECT_NAME})
 
 message(STATUS "")
 message(STATUS "[CMAKE]")
@@ -48,14 +57,22 @@ if(BUILD_PKG_MSI)
     add_definitions(-DBUILD_PKG_MSI=1)
 endif()
 
+if(BUILD_PKG_RPM)
+    message(STATUS "[cmake] This build makes RPM package -> BUILD_PKG_RPM")
+    message(STATUS "add_definitions(-DBUILD_PKG_RPM=1)")
+    add_definitions(-DBUILD_PKG_RPM=1)
+endif()
+
 option(IM_QT_DYNAMIC "Qt dynamic linking" ON)
 
 if(NOT IM_QT_DYNAMIC)
     add_definitions(-DIM_QT_STATIC)
+    set(IM_QT_STATIC YES)
     message(STATUS "[INFO] Qt linking: static")
     message(STATUS "[INFO] add_definitions(-DIM_QT_STATIC)")
 else()
     add_definitions(-DIM_QT_DYNAMIC)
+    set(IM_QT_STATIC NO)
     message(STATUS "[INFO] Qt linking: dynamic")
     message(STATUS "[INFO] add_definitions(-DIM_QT_DYNAMIC)")
 endif()
@@ -93,7 +110,7 @@ if (GIT_FOUND)
     message(STATUS "[BRANCH] Current GIT BRANCH NAME = ${GIT_BRANCH_NAME}")
     message(STATUS "[BRANCH] Current GIT COMMIT HASH = ${GIT_COMMIT_HASH}")
     message(STATUS "")
-    
+
     if (ENABLE_BUILD_INFO)
         add_definitions("-DGIT_BRANCH_NAME=\"${GIT_BRANCH_NAME}\"")
         message(STATUS "add_definitions(-DGIT_BRANCH_NAME=${GIT_BRANCH_NAME})")
@@ -111,15 +128,6 @@ if (ENABLE_BUILD_INFO)
     message(STATUS "add_definitions(-DBUILD_TIME=${BUILD_TIME})")
     message(STATUS "Current BILD TIME = ${BUILD_TIME}")
 endif()
-
-get_filename_component(ICQ_ROOT "${CMAKE_SOURCE_DIR}" ABSOLUTE)
-set(PRODUCT_SPEC_DIR "${ICQ_ROOT}/products/${PRODUCT}")
-if(EXISTS "${PRODUCT_SPEC_DIR}")
-    message(STATUS "PRODUCT_SPEC_DIR = ${PRODUCT_SPEC_DIR}")
-else()
-    message(FATAL_ERROR "Folder ${PRODUCT_SPEC_DIR} is not exists!)")
-endif()
-include(${PRODUCT_SPEC_DIR}/project_settings.cmake)
 
 if(IM_QT_DYNAMIC)
     if (HAS_WEB_ENGINE)
@@ -164,8 +172,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(ENABLE_ASAN)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fno-omit-frame-pointer -fno-common")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fno-omit-frame-pointer -fno-common")
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
   list(APPEND _build_flags "-fsanitize=address")
 endif()
@@ -287,18 +295,21 @@ elseif(UNIX)
         add_definitions(-fdebug-prefix-map=${ICQ_ROOT}=.)
     endif()
 
-    set(LINUX_COMMON_FLAGS "-ffunction-sections -g -fdata-sections -fno-stack-protector -U_FORTIFY_SOURCE -DBOOST_NO_AUTO_PTR -Wno-deprecated-declarations")
+    set(LINUX_COMMON_FLAGS "-g -DBOOST_NO_AUTO_PTR -Wno-deprecated-declarations")
+    list(APPEND _build_flags "-g")
+    list(APPEND _build_flags "-DBOOST_NO_AUTO_PTR")
     if(ENABLE_LTO)
       list(APPEND _build_flags "-flto")
       set(LINUX_COMMON_FLAGS "${LINUX_COMMON_FLAGS} -flto")
       set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -flto")
     endif()
-    list(APPEND _build_flags "-ffunction-sections")
-    list(APPEND _build_flags "-fdata-sections")
-    list(APPEND _build_flags "-g")
-    list(APPEND _build_flags "-fno-stack-protector")
-    list(APPEND _build_flags "-U_FORTIFY_SOURCE")
-    list(APPEND _build_flags "-DBOOST_NO_AUTO_PTR")
+    if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
+        set(LINUX_COMMON_FLAGS "${LINUX_COMMON_FLAGS} -ffunction-sections -fdata-sections -fno-stack-protector -U_FORTIFY_SOURCE")
+        list(APPEND _build_flags "-ffunction-sections")
+        list(APPEND _build_flags "-fdata-sections")
+        list(APPEND _build_flags "-fno-stack-protector")
+        list(APPEND _build_flags "-U_FORTIFY_SOURCE")
+    endif()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ARCH_FLAGS} ${LINUX_COMMON_FLAGS}")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARCH_FLAGS} ${LINUX_COMMON_FLAGS}")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
@@ -449,11 +460,11 @@ if(RUN_VALIDATOR)
     find_package(PythonInterp 3 REQUIRED)
     message(STATUS "[INFO] PYTHON_EXECUTABLE = ${PYTHON_EXECUTABLE}")
     execute_process(COMMAND
-                    "${PYTHON_EXECUTABLE}" buildsystem/products_json_validator.py --products "${ICQ_ROOT}/products"
+                    "${PYTHON_EXECUTABLE}" buildsystem/validator_products_json.py --products "${ICQ_ROOT}/products"
                     WORKING_DIRECTORY ${ICQ_ROOT}
                     RESULT_VARIABLE RETURN_VALUE)
     if (NOT RETURN_VALUE EQUAL 0)
-        message(STATUS "Fix JSON or update validator rules in buildsystem/products_json_validator.py")
+        message(STATUS "Fix JSON or update validator rules in buildsystem/validator_products_json.py")
         message(FATAL_ERROR "Products JSON check failed, return value ${RETURN_VALUE}")
     else()
         message(STATUS "Products JSON ${ICQ_ROOT}/products are valid")
@@ -553,7 +564,6 @@ elseif(APPLE)
     set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARY_DIR}/libboost_locale.a")
     set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARY_DIR}/libboost_system.a")
     set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARY_DIR}/libboost_filesystem.a")
-    set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARY_DIR}/libboost_unit_test_framework.a")
     set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARY_DIR}/libboost_regex.a")
     set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARY_DIR}/libboost_thread.a")
 elseif(LINUX)
@@ -611,11 +621,11 @@ endif()
 # --------------------------    zlib    ---------------------------------------
 set_include_var(ZLIB_INCLUDE_DIR "${pkg_zlib_location}/include")
 if(MSVC)
-	# just precompiled binary
-	message(INFO "[lib] ZLIB_LIBRARIES = ${pkg_bin_zlib.lib_location}")
+    # just precompiled binary
+    message(INFO "[lib] ZLIB_LIBRARIES = ${pkg_bin_zlib.lib_location}")
     set(ZLIB_LIBRARIES "${pkg_bin_zlib.lib_location}")
 else()
-	set_lib_var(ZLIB_LIBRARY_DIR "${pkg_zlib_location}")
+    set_lib_var(ZLIB_LIBRARY_DIR "${pkg_zlib_location}")
 endif()
 
 
@@ -697,7 +707,8 @@ set(D3D_COMPILER_LIBRARY "${pkg_bin_d3dcompiler_47.dll_location}")
 set(GPU_BLACKLIST "${ICQ_ROOT}/config/qt/${ICQ_PLATFORM}/gpu_blacklist.json")
 
 # --------------------------   mesa3d   ---------------------------------------
-set(MESA_LIBRARY "${pkg_mesa3d_location}/lib/opengl32sw.dll")
+set(MESA_LIBRARY "${pkg_mesa3d_location}/bin/opengl32sw.dll")
+set(MESA_LIBRARY2 "${pkg_mesa3d_location}/bin/libgallium_wgl.dll")
 
 
 # -------------------   windows runtime libraries  ----------------------------
@@ -844,87 +855,49 @@ endif()
 
 # ------------------------ additional libs & xkb ------------------------------
 if(LINUX)
-
-    set_lib_var(LIBXAU_LIBRARY_DIR "${pkg_libxau_location}")
-    set_include_var(LIBXAU_INCLUDEDIR "${pkg_libxau_location}/include")
-
-    set_lib_var(LIBXDMCP_LIBRARY_DIR "${pkg_libxdmcp_location}")
-    set_include_var(LIBXDMCP_INCLUDE_DIR "${pkg_libxdmcp_location}/include")
-
-    # Manual set, because custom *.a paths (not in lib subdir)
-    SET(XKBCOMMON_LIBRARY_DIR "${pkg_xkbcommon_location}")
-    SET(XKBCOMMON_X11_LIBRARY_DIR "${pkg_xkbcommon-x11_location}")
-    message(STATUS "[lib] XKBCOMMON_LIBRARY_DIR -> ${XKBCOMMON_LIBRARY_DIR}")
-    message(STATUS "[lib] XKBCOMMON_X11_LIBRARY_DIR -> ${XKBCOMMON_X11_LIBRARY_DIR}")
-
     set_lib_var(DBUS_LIBRARY_DIR ${pkg_libdbus_location})
 
-    set_lib_var(XCBUTIL_LIBRARY_DIR "${pkg_xcb-util_location}")
-    set_include_var(XCBUTIL_INCLUDE_DIR "${pkg_xcb-util_location}/include")
+    set_lib_var(XLIBS_LIBRARY_DIR "${pkg_xlibs-bundle_location}")
+    set_include_var(XLIBS_INCLUDE_DIR "${pkg_xlibs-bundle_location}/include")
+    message(STATUS "[lib] XLIBS_LIBRARY_DIR -> ${XLIBS_LIBRARY_DIR}")
 
     set(ADDITIONAL_LIBRARIES
-        "${pkg_bin_libXi.a_location}"
-        "${LIBXAU_LIBRARY_DIR}/libXau.a"
-        "${LIBXDMCP_LIBRARY_DIR}/libXdmcp.a"
-        "${XKBCOMMON_LIBRARY_DIR}/libxkbcommon.a"
-        "${XKBCOMMON_X11_LIBRARY_DIR}/libxkbcommon-x11.a"
         "${DBUS_LIBRARY_DIR}/libdbus-1.a"
-        "${XCBUTIL_LIBRARY_DIR}/libxcb-util.a"
-        "${pkg_bin_libXext.a_location}"
+        "${XLIBS_LIBRARY_DIR}64/libxkbcommon.so"
+        "${XLIBS_LIBRARY_DIR}64/libxkbcommon-x11.so"
+        "${XLIBS_LIBRARY_DIR}/libXi.so"
+        "${XLIBS_LIBRARY_DIR}/libXau.so"
+        "${XLIBS_LIBRARY_DIR}/libXdmcp.so"
+        "${XLIBS_LIBRARY_DIR}/libxcb-util.so"
+        "${XLIBS_LIBRARY_DIR}/libXext.so"
+        "${XLIBS_LIBRARY_DIR}/libX11.so"
+        "${XLIBS_LIBRARY_DIR}/libXrandr.so"
+        "${XLIBS_LIBRARY_DIR}/libXrender.so"
+        "${XLIBS_LIBRARY_DIR}/libXdamage.so"
+        "${XLIBS_LIBRARY_DIR}/libXfixes.so"
+        "${XLIBS_LIBRARY_DIR}/libXcomposite.so"
+        "${XLIBS_LIBRARY_DIR}64/libGl.so"
     )
 
     message(STATUS "[libs] ADDITIONAL_LIBRARIES -> ${ADDITIONAL_LIBRARIES}")
 
-    set_lib_var(XCB_LIBRARY_DIR "${pkg_xcb_location}")
-    set_include_var(XCB_INCLUDE_DIR "${pkg_xcb_location}/include")
-
-    set_lib_var(XPROTO_LIBRARY_DIR "${pkg_xproto_location}")
-    set_include_var(XPROTO_INCLUDE_DIR "${pkg_xproto_location}/include")
-
-    set_lib_var(XCB-UTIL-IMAGE_LIBRARY_DIR "${pkg_xcb-util-image_location}")
-    set_include_var(XCB-UTIL-IMAGE_INCLUDE_DIR "${pkg_xcb-util-image_location}/include")
-
-    set_lib_var(XCB-UTIL-WM_LIBRARY_DIR "${pkg_xcb-util-wm_location}")
-    set_include_var(XCB-UTIL-WM_INCLUDE_DIR "${pkg_xcb-util-wm_location}/include")
-
-    set_lib_var(XCB-UTIL-KEYSYMS_LIBRARY_DIR "${pkg_xcb-util-keysyms_location}")
-    set_include_var(XCB-UTIL-KEYSYMS_INCLUDE_DIR "${pkg_xcb-util-keysyms_location}/include")
-
-    set_lib_var(XCB-UTIL-RENDERUTIL_LIBRARY_DIR "${pkg_xcb-util-renderutil_location}")
-    set_include_var(XCB-UTIL-RENDERUTIL_INCLUDE_DIR "${pkg_xcb-util-renderutil_location}/include")
-
     set(XCB_LIBRARIES
-        "${XCB_LIBRARY_DIR}/libxcb.a"
-        "${XCB-UTIL-KEYSYMS_LIBRARY_DIR}/libxcb-keysyms.a"
-        "${XCB-UTIL-IMAGE_LIBRARY_DIR}/libxcb-image.a"
-        "${XCB_LIBRARY_DIR}/libxcb-shm.a"
-        "${XCB-UTIL-WM_LIBRARY_DIR}/libxcb-icccm.a"
-        "${XCB_LIBRARY_DIR}/libxcb-sync.a"
-        "${XCB_LIBRARY_DIR}/libxcb-xfixes.a"
-        "${XCB_LIBRARY_DIR}/libxcb-shape.a"
-        "${XCB_LIBRARY_DIR}/libxcb-randr.a"
-        "${XCB_LIBRARY_DIR}/libxcb-render.a"
-        "${XCB-UTIL-RENDERUTIL_LIBRARY_DIR}/libxcb-render-util.a"
-        "${XCB_LIBRARY_DIR}/libxcb-xkb.a"
-
-        "${XCB_LIBRARY_DIR}/libxcb-xinput.a"
-
-        "${XCB_LIBRARY_DIR}/libxcb-composite.a"
-        "${XCB_LIBRARY_DIR}/libxcb-damage.a"
-        "${XCB_LIBRARY_DIR}/libxcb-dpms.a"
-        "${XCB_LIBRARY_DIR}/libxcb-dri2.a"
-        "${XCB_LIBRARY_DIR}/libxcb-dri3.a"
-        "${XCB_LIBRARY_DIR}/libxcb-glx.a"
-        "${XCB_LIBRARY_DIR}/libxcb-present.a"
-        "${XCB_LIBRARY_DIR}/libxcb-record.a"
-        "${XCB_LIBRARY_DIR}/libxcb-res.a"
-        "${XCB_LIBRARY_DIR}/libxcb-screensaver.a"
-        "${XCB_LIBRARY_DIR}/libxcb-shm.a"
-        "${XCB_LIBRARY_DIR}/libxcb-xf86dri.a"
-        "${XCB_LIBRARY_DIR}/libxcb-xtest.a"
-        "${XCB_LIBRARY_DIR}/libxcb-xv.a"
-        "${XCB_LIBRARY_DIR}/libxcb-xvmc.a"
-
+        "${XLIBS_LIBRARY_DIR}/libxcb.so"
+        "${XLIBS_LIBRARY_DIR}/libxcb-icccm.so"
+        "${XLIBS_LIBRARY_DIR}/libxcb-ewmh.so"
+        "${XLIBS_LIBRARY_DIR}/libxcb-image.so"
+        "${XLIBS_LIBRARY_DIR}/libxcb-keysyms.so"
+        "${XLIBS_LIBRARY_DIR}/libxcb-randr.so"
+        "${XLIBS_LIBRARY_DIR}/libxcb-render.so"
+        "${XLIBS_LIBRARY_DIR}/libxcb-render-util.so"
+        "${XLIBS_LIBRARY_DIR}/libxcb-shape.so"
+        "${XLIBS_LIBRARY_DIR}/libxcb-shm.so"
+        "${XLIBS_LIBRARY_DIR}/libxcb-sync.so"
+        "${XLIBS_LIBRARY_DIR}/libxcb-util.so"
+        "${XLIBS_LIBRARY_DIR}/libxcb-xfixes.so"
+        "${XLIBS_LIBRARY_DIR}/libxcb-xinerama.so"
+        "${XLIBS_LIBRARY_DIR}/libxcb-xkb.so"
+        "${XLIBS_LIBRARY_DIR}/libX11-xcb.so"
         )
     message(STATUS "[libs] XCB_LIBRARIES -> ${XCB_LIBRARIES}")
 
@@ -941,6 +914,7 @@ set(ICQ_QT_INCLUDE_DIR "${ICQ_QT_ROOT}/include")
 set(ICQ_QT_LIBEXEC_DIR "${ICQ_QT_ROOT}/libexec")
 set(ICQ_QT_PLUGINS_DIR "${ICQ_QT_ROOT}/plugins")
 set(ICQ_QT_RESOURCES_DIR "${ICQ_QT_ROOT}/resources")
+set(ICQ_QT_QML_DIR "${ICQ_QT_ROOT}/qml")
 
 if(LINUX)
     EXEC_PROGRAM("chmod +x ${pkg_bin_lrelease_location}")
@@ -948,15 +922,15 @@ if(LINUX)
     EXEC_PROGRAM("chmod +x ${pkg_bin_rcc_location}")
     EXEC_PROGRAM("chmod +x ${pkg_bin_uic_location}")
     set(IM_QT_BIN_LRELEASE "${pkg_bin_lrelease_location}")
-    set(IM_QT_BIN_MOC "${pkg_bin_moc_location}")
-    set(IM_QT_BIN_RCC "${pkg_bin_rcc_location}")
-    set(IM_QT_BIN_UIC "${pkg_bin_uic_location}")
+    set(IM_QT_BIN_MOC "${ICQ_QT_ROOT}/bin/moc")
+    set(IM_QT_BIN_RCC "${ICQ_QT_ROOT}/bin/rcc")
+    set(IM_QT_BIN_UIC "${ICQ_QT_ROOT}/bin/uic")
 
 elseif(MSVC)
-	set(IM_QT_BIN_LRELEASE "${pkg_bin_lrelease.exe_location}")
+    set(IM_QT_BIN_LRELEASE "${pkg_bin_lrelease.exe_location}")
     get_filename_component(IM_QT_BIN_MOC "${ICQ_QT_BIN_DIR}/moc.exe" ABSOLUTE)
     get_filename_component(IM_QT_BIN_RCC "${ICQ_QT_BIN_DIR}/rcc.exe" ABSOLUTE)
-    get_filename_component(IM_QT_BIN_UIC "${ICQ_QT_BIN_DIR}/uic.exe" ABSOLUTE)	
+    get_filename_component(IM_QT_BIN_UIC "${ICQ_QT_BIN_DIR}/uic.exe" ABSOLUTE)
 
 else()
     get_filename_component(IM_QT_BIN_LRELEASE "${ICQ_QT_BIN_DIR}/lrelease" ABSOLUTE)
@@ -971,6 +945,7 @@ message(STATUS "[Qt Utils] IM_QT_BIN_RCC      = ${IM_QT_BIN_RCC}")
 message(STATUS "[Qt Utils] IM_QT_BIN_UIC      = ${IM_QT_BIN_UIC}")
 
 set(ICQ_QT_VERSION "${pkg_qt_headers}")
+string(REGEX REPLACE "-.+$" "" ICQ_QT_VERSION ${ICQ_QT_VERSION})
 set(QT_MAJOR_VERSION "5")
 
 include_directories("${ICQ_QT_INCLUDE_DIR}")
@@ -987,6 +962,7 @@ include_directories("${ICQ_QT_INCLUDE_DIR}/QtOpenGL")
 include_directories("${ICQ_QT_INCLUDE_DIR}/QtNetwork")
 include_directories("${ICQ_QT_INCLUDE_DIR}/QtSvg")
 include_directories("${ICQ_QT_INCLUDE_DIR}/QtMacExtras")
+include_directories("${ICQ_QT_INCLUDE_DIR}/QtX11Extras")
 if(IM_AUTO_TESTING)
     message(STATUS "[INFO] include: QtTest")
     include_directories("${ICQ_QT_INCLUDE_DIR}/QtTest")
@@ -995,6 +971,8 @@ endif()
 if(NOT IM_QT_DYNAMIC)
     add_definitions(-DQT_STATIC)
 endif()
+
+include(requirements/QtQuickFunctions.cmake)
 
 if(MSVC)
     set(QT_LIBRARIES
@@ -1020,6 +998,13 @@ if(MSVC)
         optimized ${ICQ_QT_LIB_DIR}/qtharfbuzz.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/qtharfbuzzd.${QT_LIB_EXT}
         optimized ${ICQ_QT_LIB_DIR}/qtfreetype.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/qtfreetyped.${QT_LIB_EXT}
         optimized ${ICQ_QT_LIB_DIR}/qtlibpng.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/qtlibpngd.${QT_LIB_EXT}
+        optimized ${ICQ_QT_LIB_DIR}/Qt5Quick.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/Qt5Quickd.${QT_LIB_EXT}
+        optimized ${ICQ_QT_LIB_DIR}/Qt5QuickControls2.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/Qt5QuickControls2d.${QT_LIB_EXT}
+        optimized ${ICQ_QT_LIB_DIR}/Qt5QuickTemplates2.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/Qt5QuickTemplates2d.${QT_LIB_EXT}
+        optimized ${ICQ_QT_LIB_DIR}/Qt5QuickWidgets.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/Qt5QuickWidgetsd.${QT_LIB_EXT}
+        optimized ${ICQ_QT_LIB_DIR}/Qt5Qml.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/Qt5Qmld.${QT_LIB_EXT}
+        optimized ${ICQ_QT_LIB_DIR}/Qt5QmlModels.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/Qt5QmlModelsd.${QT_LIB_EXT}
+        optimized ${ICQ_QT_LIB_DIR}/Qt5QmlWorkerScript.${QT_LIB_EXT} debug ${ICQ_QT_LIB_DIR}/Qt5QmlWorkerScriptd.${QT_LIB_EXT}
     )
 
     set(QT_PLUGINS
@@ -1034,6 +1019,7 @@ if(MSVC)
         optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qwebp.${QT_PLUGIN_EXT} debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qwebpd.${QT_PLUGIN_EXT}
         optimized ${ICQ_QT_PLUGINS_DIR}/audio/qtaudio_windows.${QT_PLUGIN_EXT} debug ${ICQ_QT_PLUGINS_DIR}/audio/qtaudio_windowsd.${QT_PLUGIN_EXT}
         optimized ${ICQ_QT_PLUGINS_DIR}/platforms/qwindows.${QT_PLUGIN_EXT} debug ${ICQ_QT_PLUGINS_DIR}/platforms/qwindowsd.${QT_PLUGIN_EXT}
+        optimized ${ICQ_QT_PLUGINS_DIR}/printsupport/windowsprintersupport.${QT_PLUGIN_EXT} debug ${ICQ_QT_PLUGINS_DIR}/printsupport/windowsprintersupportd.${QT_PLUGIN_EXT}
     )
 
     if(IM_QT_DYNAMIC)
@@ -1056,6 +1042,13 @@ if(MSVC)
                 ${ICQ_QT_BIN_DIR}/Qt5Svgd.${QT_DLL_EXT}
                 ${ICQ_QT_BIN_DIR}/Qt5Widgetsd.${QT_DLL_EXT}
                 ${ICQ_QT_BIN_DIR}/Qt5WinExtrasd.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5Quickd.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5QuickControls2d.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5QuickTemplates2d.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5QuickWidgetsd.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5Qmld.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5QmlModelsd.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5QmlWorkerScriptd.${QT_DLL_EXT}
                 )
 
             set(QT_IMAGE_PLUGINS_TO_COPY
@@ -1078,6 +1071,10 @@ if(MSVC)
                 ${ICQ_QT_PLUGINS_DIR}/platforms/qwindowsd.${QT_DLL_EXT}
                 )
 
+            set(QT_PRINTER_PLUGINS_TO_COPY
+                ${ICQ_QT_PLUGINS_DIR}/printsupport/windowsprintersupportd.${QT_DLL_EXT}
+                )
+
             set(QT_AUDIO_PLUGINS_TO_COPY
                 ${ICQ_QT_PLUGINS_DIR}/audio/qtaudio_windowsd.${QT_DLL_EXT}
                 )
@@ -1087,29 +1084,52 @@ if(MSVC)
                 ${ANGLE_LIB_DIR}/libGLESv2d.dll
                 )
 
+            im_find_qt_quick_libraries_to_copy(
+                QT_QUICK_CONTROLS2_LIBRARIES_TO_COPY
+                QtQuick/Controls.2
+                qtquickcontrols2plugind.${QT_DLL_EXT}
+            )
+            im_find_qt_quick_libraries_to_copy(
+                QT_QUICK_TEMPLATES2_LIBRARIES_TO_COPY
+                QtQuick/Templates.2
+                qtquicktemplates2plugind.${QT_DLL_EXT}
+            )
+            im_find_qt_quick_libraries_to_copy(
+                QT_QUICK_DIALOGS_LIBRARIES_TO_COPY
+                QtQuick/Dialogs
+                dialogplugind.${QT_DLL_EXT}
+            )
+            im_find_qt_quick_libraries_to_copy(
+                QT_QUICK_EXTRAS_LIBRARIES_TO_COPY
+                QtQuick/Extras
+                qtquickextrasplugind.${QT_DLL_EXT}
+            )
+            im_find_qt_quick_libraries_to_copy(
+                QT_QUICK_LAYOUTS_LIBRARIES_TO_COPY
+                QtQuick/Layouts
+                qquicklayoutsplugind.${QT_DLL_EXT}
+            )
+            im_find_qt_quick_libraries_to_copy(
+                QT_QUICK2_LIBRARIES_TO_COPY
+                QtQuick.2
+                qtquick2plugind.${QT_DLL_EXT}
+            )
 
             if(HAS_WEB_ENGINE)
                 set(QT_LIBRARIES "${QT_LIBRARIES}"
                     ${ICQ_QT_LIB_DIR}/Qt5WebEngined.${QT_LIB_EXT}
                     ${ICQ_QT_LIB_DIR}/Qt5WebEngineCored.${QT_LIB_EXT}
                     ${ICQ_QT_LIB_DIR}/Qt5WebEngineWidgetsd.${QT_LIB_EXT}
-                    ${ICQ_QT_LIB_DIR}/Qt5Quickd.${QT_LIB_EXT}
-                    ${ICQ_QT_LIB_DIR}/Qt5QmlModelsd.${QT_LIB_EXT}
-                    ${ICQ_QT_LIB_DIR}/Qt5Qmld.${QT_LIB_EXT}
                     ${ICQ_QT_LIB_DIR}/Qt5Positioningd.${QT_LIB_EXT}
-                    ${ICQ_QT_LIB_DIR}/Qt5QuickWidgetsd.${QT_LIB_EXT}
-					${ICQ_QT_LIB_DIR}/Qt5WebChanneld.${QT_LIB_EXT}
+                    ${ICQ_QT_LIB_DIR}/Qt5WebChanneld.${QT_LIB_EXT}
+                    ${ICQ_QT_LIB_DIR}/Qt5PrintSupportd.${QT_LIB_EXT}
                     )
 
                 set(QT_LIBRARIES_TO_COPY "${QT_LIBRARIES_TO_COPY}"
                     ${ICQ_QT_BIN_DIR}/Qt5WebEngined.${QT_DLL_EXT}
                     ${ICQ_QT_BIN_DIR}/Qt5WebEngineCored.${QT_DLL_EXT}
                     ${ICQ_QT_BIN_DIR}/Qt5WebEngineWidgetsd.${QT_DLL_EXT}
-                    ${ICQ_QT_BIN_DIR}/Qt5Quickd.${QT_DLL_EXT}
-                    ${ICQ_QT_BIN_DIR}/Qt5QmlModelsd.${QT_DLL_EXT}
-                    ${ICQ_QT_BIN_DIR}/Qt5Qmld.${QT_DLL_EXT}
                     ${ICQ_QT_BIN_DIR}/Qt5Positioningd.${QT_DLL_EXT}
-                    ${ICQ_QT_BIN_DIR}/Qt5QuickWidgetsd.${QT_DLL_EXT}
                     ${ICQ_QT_BIN_DIR}/Qt5WebChanneld.${QT_DLL_EXT}
                     ${ICQ_QT_BIN_DIR}/Qt5PrintSupportd.${QT_DLL_EXT}
                     )
@@ -1132,6 +1152,13 @@ if(MSVC)
                 ${ICQ_QT_BIN_DIR}/Qt5Svg.${QT_DLL_EXT}
                 ${ICQ_QT_BIN_DIR}/Qt5Widgets.${QT_DLL_EXT}
                 ${ICQ_QT_BIN_DIR}/Qt5WinExtras.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5QuickWidgets.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5Quick.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5QmlModels.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5Qml.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5QuickControls2.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5QuickTemplates2.${QT_DLL_EXT}
+                ${ICQ_QT_BIN_DIR}/Qt5QmlWorkerScript.${QT_DLL_EXT}
                 )
 
             set(QT_IMAGE_PLUGINS_TO_COPY
@@ -1154,6 +1181,10 @@ if(MSVC)
                 ${ICQ_QT_PLUGINS_DIR}/platforms/qwindows.${QT_DLL_EXT}
                 )
 
+            set(QT_PRINTER_PLUGINS_TO_COPY
+                ${ICQ_QT_PLUGINS_DIR}/printsupport/windowsprintersupport.${QT_DLL_EXT}
+                )
+
             set(QT_AUDIO_PLUGINS_TO_COPY
                 ${ICQ_QT_PLUGINS_DIR}/audio/qtaudio_windows.${QT_DLL_EXT}
                 )
@@ -1162,6 +1193,37 @@ if(MSVC)
                 ${ANGLE_LIB_DIR}/libEGL.dll
                 ${ANGLE_LIB_DIR}/libGLESv2.dll
                 )
+
+            im_find_qt_quick_libraries_to_copy(
+                QT_QUICK_CONTROLS2_LIBRARIES_TO_COPY
+                QtQuick/Controls.2
+                qtquickcontrols2plugin.${QT_DLL_EXT}
+            )
+            im_find_qt_quick_libraries_to_copy(
+                QT_QUICK_TEMPLATES2_LIBRARIES_TO_COPY
+                QtQuick/Templates.2
+                qtquicktemplates2plugin.${QT_DLL_EXT}
+            )
+            im_find_qt_quick_libraries_to_copy(
+                QT_QUICK_DIALOGS_LIBRARIES_TO_COPY
+                QtQuick/Dialogs
+                dialogplugin.${QT_DLL_EXT}
+            )
+            im_find_qt_quick_libraries_to_copy(
+                QT_QUICK_EXTRAS_LIBRARIES_TO_COPY
+                QtQuick/Extras
+                qtquickextrasplugin.${QT_DLL_EXT}
+            )
+            im_find_qt_quick_libraries_to_copy(
+                QT_QUICK_LAYOUTS_LIBRARIES_TO_COPY
+                QtQuick/Layouts
+                qquicklayoutsplugin.${QT_DLL_EXT}
+            )
+            im_find_qt_quick_libraries_to_copy(
+                QT_QUICK2_LIBRARIES_TO_COPY
+                QtQuick.2
+                qtquick2plugin.${QT_DLL_EXT}
+            )
 
             if(HAS_WEB_ENGINE)
                 set(QT_LIBRARIES "${QT_LIBRARIES}"
@@ -1173,7 +1235,8 @@ if(MSVC)
                     ${ICQ_QT_LIB_DIR}/Qt5Qml.${QT_LIB_EXT}
                     ${ICQ_QT_LIB_DIR}/Qt5Positioning.${QT_LIB_EXT}
                     ${ICQ_QT_LIB_DIR}/Qt5QuickWidgets.${QT_LIB_EXT}
-					${ICQ_QT_LIB_DIR}/Qt5WebChannel.${QT_LIB_EXT}
+                    ${ICQ_QT_LIB_DIR}/Qt5WebChannel.${QT_LIB_EXT}
+                    ${ICQ_QT_LIB_DIR}/Qt5PrintSupport.${QT_LIB_EXT}
                     )
 
                 set(QT_LIBRARIES_TO_COPY "${QT_LIBRARIES_TO_COPY}"
@@ -1194,15 +1257,15 @@ if(MSVC)
                 )
             endif()
         endif()
-        set(QT_RESOURCES_TO_COPY
-            ${ICQ_QT_RESOURCES_DIR}/icudtl.dat
-            ${ICQ_QT_RESOURCES_DIR}/qtwebengine_devtools_resources.pak
-            ${ICQ_QT_RESOURCES_DIR}/qtwebengine_resources.pak
-            ${ICQ_QT_RESOURCES_DIR}/qtwebengine_resources_100p.pak
-            ${ICQ_QT_RESOURCES_DIR}/qtwebengine_resources_200p.pak
-            )
 
         if(HAS_WEB_ENGINE)
+            set(QT_RESOURCES_TO_COPY
+                ${ICQ_QT_RESOURCES_DIR}/icudtl.dat
+                ${ICQ_QT_RESOURCES_DIR}/qtwebengine_devtools_resources.pak
+                ${ICQ_QT_RESOURCES_DIR}/qtwebengine_resources.pak
+                ${ICQ_QT_RESOURCES_DIR}/qtwebengine_resources_100p.pak
+                ${ICQ_QT_RESOURCES_DIR}/qtwebengine_resources_200p.pak
+                )
             set(QT_TRANSLATIONS_DIR "${ICQ_QT_ROOT}/translations")
         endif()
     else()
@@ -1226,6 +1289,13 @@ elseif(APPLE)
         ${ICQ_QT_LIB_DIR}/libQt5AccessibilitySupport.${QT_SUP_EXT}
         ${ICQ_QT_LIB_DIR}/libQt5GraphicsSupport.${QT_SUP_EXT}
         ${ICQ_QT_LIB_DIR}/libQt5ThemeSupport.${QT_SUP_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5QuickWidgets.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Quick.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5QmlModels.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Qml.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5QuickControls2.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5QuickTemplates2.${QT_LIB_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5QmlWorkerScript.${QT_LIB_EXT}
         ${ICQ_QT_LIB_DIR}/libqtfreetype.${QT_SUP_EXT}
         ${ICQ_QT_LIB_DIR}/libqtharfbuzz.${QT_SUP_EXT}
         ${ICQ_QT_LIB_DIR}/libqtpcre2.${QT_SUP_EXT}
@@ -1258,6 +1328,13 @@ elseif(APPLE)
             ${ICQ_QT_LIB_DIR}/libQt5MacExtras.${QT_LIB_EXT}
             ${ICQ_QT_LIB_DIR}/libQt5Svg.${QT_LIB_EXT}
             ${ICQ_QT_LIB_DIR}/libQt5MacExtras.${QT_LIB_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5QuickWidgets.${QT_LIB_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5Quick.${QT_LIB_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5QmlModels.${QT_LIB_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5Qml.${QT_LIB_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5QuickControls2.${QT_LIB_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5QuickTemplates2.${QT_LIB_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5QmlWorkerScript.${QT_LIB_EXT}
             )
 
         set(QT_IMAGE_PLUGINS_TO_COPY
@@ -1282,6 +1359,37 @@ elseif(APPLE)
             ${ICQ_QT_PLUGINS_DIR}/platforms/libqcocoa.${QT_LIB_EXT}
             )
 
+        im_find_qt_quick_libraries_to_copy(
+            QT_QUICK_CONTROLS2_LIBRARIES_TO_COPY
+            QtQuick/Controls.2
+            libqtquickcontrols2plugin.${QT_LIB_EXT}
+        )
+        im_find_qt_quick_libraries_to_copy(
+            QT_QUICK_TEMPLATES2_LIBRARIES_TO_COPY
+            QtQuick/Templates.2
+            libqtquicktemplates2plugin.${QT_LIB_EXT}
+        )
+        im_find_qt_quick_libraries_to_copy(
+            QT_QUICK_DIALOGS_LIBRARIES_TO_COPY
+            QtQuick/Dialogs
+            libdialogplugin.${QT_LIB_EXT}
+        )
+        im_find_qt_quick_libraries_to_copy(
+            QT_QUICK_EXTRAS_LIBRARIES_TO_COPY
+            QtQuick/Extras
+            libqtquickextrasplugin.${QT_LIB_EXT}
+        )
+        im_find_qt_quick_libraries_to_copy(
+            QT_QUICK_LAYOUTS_LIBRARIES_TO_COPY
+            QtQuick/Layouts
+            libqquicklayoutsplugin.${QT_LIB_EXT}
+        )
+        im_find_qt_quick_libraries_to_copy(
+            QT_QUICK2_LIBRARIES_TO_COPY
+            QtQuick.2
+            libqtquick2plugin.${QT_LIB_EXT}
+        )
+
         if(HAS_WEB_ENGINE)
             set(QT_TRANSLATIONS_DIR "${ICQ_QT_ROOT}/translations")
 
@@ -1289,24 +1397,16 @@ elseif(APPLE)
                 ${ICQ_QT_LIB_DIR}/libQt5WebEngine.${QT_LIB_EXT}
                 ${ICQ_QT_LIB_DIR}/libQt5WebEngineCore.${QT_LIB_EXT}
                 ${ICQ_QT_LIB_DIR}/libQt5WebEngineWidgets.${QT_LIB_EXT}
-                ${ICQ_QT_LIB_DIR}/libQt5Quick.${QT_LIB_EXT}
-                ${ICQ_QT_LIB_DIR}/libQt5QmlModels.${QT_LIB_EXT}
                 ${ICQ_QT_LIB_DIR}/libQt5WebChannel.${QT_LIB_EXT}
-                ${ICQ_QT_LIB_DIR}/libQt5Qml.${QT_LIB_EXT}
                 ${ICQ_QT_LIB_DIR}/libQt5Positioning.${QT_LIB_EXT}
-                ${ICQ_QT_LIB_DIR}/libQt5QuickWidgets.${QT_LIB_EXT}
                 )
 
             set(QT_LIBRARIES_TO_COPY "${QT_LIBRARIES_TO_COPY}"
                 ${ICQ_QT_LIB_DIR}/libQt5WebEngine.${QT_LIB_EXT}
                 ${ICQ_QT_LIB_DIR}/libQt5WebEngineCore.${QT_LIB_EXT}
                 ${ICQ_QT_LIB_DIR}/libQt5WebEngineWidgets.${QT_LIB_EXT}
-                ${ICQ_QT_LIB_DIR}/libQt5Quick.${QT_LIB_EXT}
-                ${ICQ_QT_LIB_DIR}/libQt5QmlModels.${QT_LIB_EXT}
                 ${ICQ_QT_LIB_DIR}/libQt5WebChannel.${QT_LIB_EXT}
-                ${ICQ_QT_LIB_DIR}/libQt5Qml.${QT_LIB_EXT}
                 ${ICQ_QT_LIB_DIR}/libQt5Positioning.${QT_LIB_EXT}
-                ${ICQ_QT_LIB_DIR}/libQt5QuickWidgets.${QT_LIB_EXT}
                 )
 
             set(QT_LIBEXEC_TO_COPY
@@ -1335,6 +1435,7 @@ elseif(LINUX)
         set(QT_EXT ".${ICQ_QT_VERSION}")
     endif()
     set(QT_LIBRARIES
+        $<$<BOOL:${IM_QT_STATIC}>:${ICQ_QT_PLUGINS_DIR}/xcbglintegrations/libqxcb-glx-integration.${QT_LIB_EXT}>
         ${ICQ_QT_LIB_DIR}/libQt5XcbQpa.${QT_LIB_EXT}${QT_EXT}
         ${ICQ_QT_LIB_DIR}/libQt5ServiceSupport.${QT_SUP_EXT}
         ${ICQ_QT_LIB_DIR}/libQt5ThemeSupport.${QT_SUP_EXT}
@@ -1346,13 +1447,24 @@ elseif(LINUX)
         ${ICQ_QT_LIB_DIR}/libQt5DBus.${QT_LIB_EXT}${QT_EXT}
         ${ICQ_QT_LIB_DIR}/libQt5Widgets.${QT_LIB_EXT}${QT_EXT}
         ${ICQ_QT_LIB_DIR}/libQt5Gui.${QT_LIB_EXT}${QT_EXT}
+        $<$<BOOL:${IM_QT_STATIC}>:${ICQ_QT_LIB_DIR}/libQt5OpenGL.${QT_LIB_EXT}>
+        $<$<BOOL:${IM_QT_STATIC}>:${ICQ_QT_LIB_DIR}/libQt5OpenGLExtensions.${QT_LIB_EXT}>
+        $<$<BOOL:${IM_QT_STATIC}>:${ICQ_QT_LIB_DIR}/libQt5GlxSupport.${QT_LIB_EXT}>
         ${ICQ_QT_LIB_DIR}/libQt5Network.${QT_LIB_EXT}${QT_EXT}
         ${ICQ_QT_LIB_DIR}/libQt5Multimedia.${QT_LIB_EXT}${QT_EXT}
         ${ICQ_QT_LIB_DIR}/libQt5Concurrent.${QT_LIB_EXT}${QT_EXT}
         ${ICQ_QT_LIB_DIR}/libQt5Core.${QT_LIB_EXT}${QT_EXT}
         ${ICQ_QT_LIB_DIR}/libQt5Svg.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Quick.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5QmlModels.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Qml.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5QuickWidgets.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5QuickControls2.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5QuickTemplates2.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5QmlWorkerScript.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5PrintSupport.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5X11Extras.${QT_LIB_EXT}
         ${XCB_LIBRARIES}
-        ${XCB_LIBRARY_DIR}/libxcb.${QT_SUP_EXT}
         )
 
     set(QT_LIBRARIES_TO_COPY
@@ -1367,6 +1479,47 @@ elseif(LINUX)
         ${ICQ_QT_LIB_DIR}/libQt5Svg.${QT_LIB_EXT}${QT_EXT}
         ${ICQ_QT_LIB_DIR}/libQt5OpenGL.${QT_LIB_EXT}${QT_EXT}
         ${ICQ_QT_LIB_DIR}/libQt5PrintSupport.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Quick.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5QmlModels.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5Qml.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5QuickWidgets.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5QuickControls2.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5QuickTemplates2.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5QmlWorkerScript.${QT_LIB_EXT}${QT_EXT}
+        ${ICQ_QT_LIB_DIR}/libQt5X11Extras.${QT_LIB_EXT}${QT_EXT}
+        ${XLIBS_LIBRARY_DIR}64/libxkbcommon.so.0
+        ${XLIBS_LIBRARY_DIR}64/libxkbcommon-x11.so.0
+        ${XLIBS_LIBRARY_DIR}/libXi.so.6
+        ${XLIBS_LIBRARY_DIR}/libXau.so.6
+        ${XLIBS_LIBRARY_DIR}/libXdmcp.so.6
+        ${XLIBS_LIBRARY_DIR}/libxcb-util.so.1
+        ${XLIBS_LIBRARY_DIR}/libXext.so.6
+        ${XLIBS_LIBRARY_DIR}/libX11.so.6
+        ${XLIBS_LIBRARY_DIR}/libXrandr.so.2
+        ${XLIBS_LIBRARY_DIR}/libXrender.so.1
+        ${XLIBS_LIBRARY_DIR}/libXdamage.so.1
+        ${XLIBS_LIBRARY_DIR}/libXfixes.so.3
+        ${XLIBS_LIBRARY_DIR}/libXcomposite.so.1
+        ${XLIBS_LIBRARY_DIR}/libxcb.so.1
+        ${XLIBS_LIBRARY_DIR}/libxcb-glx.so.0
+        ${XLIBS_LIBRARY_DIR}/libxcb-icccm.so.4
+        ${XLIBS_LIBRARY_DIR}/libxcb-ewmh.so.2
+        ${XLIBS_LIBRARY_DIR}/libxcb-image.so.0
+        ${XLIBS_LIBRARY_DIR}/libxcb-keysyms.so.1
+        ${XLIBS_LIBRARY_DIR}/libxcb-randr.so.0
+        ${XLIBS_LIBRARY_DIR}/libxcb-render.so.0
+        ${XLIBS_LIBRARY_DIR}/libxcb-render-util.so.0
+        ${XLIBS_LIBRARY_DIR}/libxcb-shape.so.0
+        ${XLIBS_LIBRARY_DIR}/libxcb-shm.so.0
+        ${XLIBS_LIBRARY_DIR}/libxcb-sync.so.1
+        ${XLIBS_LIBRARY_DIR}/libxcb-util.so.1
+        ${XLIBS_LIBRARY_DIR}/libxcb-xfixes.so.0
+        ${XLIBS_LIBRARY_DIR}/libxcb-xinerama.so.0
+        ${XLIBS_LIBRARY_DIR}/libxcb-xkb.so.1
+        ${XLIBS_LIBRARY_DIR}/libX11-xcb.so.1
+        ${XLIBS_LIBRARY_DIR}64/libGl.so.1
+        ${XLIBS_LIBRARY_DIR}64/libGLsoft.so.1
+
         )
 
     set(QT_PLATFORMS_PLUGINS_TO_COPY
@@ -1382,7 +1535,7 @@ elseif(LINUX)
         ${ICQ_QT_PLUGINS_DIR}/bearer/libqnmbearer.${QT_LIB_EXT}
         ${ICQ_QT_PLUGINS_DIR}/bearer/libqgenericbearer.${QT_LIB_EXT}
         )
-    
+
     set(QT_IMAGE_PLUGINS_TO_COPY
         ${ICQ_QT_PLUGINS_DIR}/imageformats/libqgif.${QT_LIB_EXT}
         ${ICQ_QT_PLUGINS_DIR}/imageformats/libqicns.${QT_LIB_EXT}
@@ -1394,11 +1547,42 @@ elseif(LINUX)
         ${ICQ_QT_PLUGINS_DIR}/imageformats/libqwbmp.${QT_LIB_EXT}
         ${ICQ_QT_PLUGINS_DIR}/imageformats/libqwebp.${QT_LIB_EXT}
         )
-    
+
+    im_find_qt_quick_libraries_to_copy(
+        QT_QUICK_CONTROLS2_LIBRARIES_TO_COPY
+        QtQuick/Controls.2
+        libqtquickcontrols2plugin.${QT_LIB_EXT}
+    )
+    im_find_qt_quick_libraries_to_copy(
+        QT_QUICK_TEMPLATES2_LIBRARIES_TO_COPY
+        QtQuick/Templates.2
+        libqtquicktemplates2plugin.${QT_LIB_EXT}
+    )
+    im_find_qt_quick_libraries_to_copy(
+        QT_QUICK_DIALOGS_LIBRARIES_TO_COPY
+        QtQuick/Dialogs
+        libdialogplugin.${QT_LIB_EXT}
+    )
+    im_find_qt_quick_libraries_to_copy(
+        QT_QUICK_EXTRAS_LIBRARIES_TO_COPY
+        QtQuick/Extras
+        libqtquickextrasplugin.${QT_LIB_EXT}
+    )
+    im_find_qt_quick_libraries_to_copy(
+        QT_QUICK_LAYOUTS_LIBRARIES_TO_COPY
+        QtQuick/Layouts
+        libqquicklayoutsplugin.${QT_LIB_EXT}
+    )
+    im_find_qt_quick_libraries_to_copy(
+        QT_QUICK2_LIBRARIES_TO_COPY
+        QtQuick.2
+        libqtquick2plugin.${QT_LIB_EXT}
+    )
+
     set(QT_CONF_FILE ${ICQ_ROOT}/config/qt/${ICQ_PLATFORM}/qt.conf)
 
     if (NOT IM_QT_DYNAMIC)
-        set(QT_LIBRARIES 
+        set(QT_LIBRARIES
             "${QT_PLATFORMS_PLUGINS_TO_COPY}"
             "${QT_LIBRARIES}"
             ${ICQ_QT_LIB_DIR}/libqtpcre2.${QT_LIB_EXT}
@@ -1414,36 +1598,34 @@ elseif(LINUX)
             ${ICQ_QT_LIB_DIR}/libQt5WebEngine.${QT_LIB_EXT}${QT_EXT}
             ${ICQ_QT_LIB_DIR}/libQt5WebEngineCore.${QT_LIB_EXT}${QT_EXT}
             ${ICQ_QT_LIB_DIR}/libQt5WebEngineWidgets.${QT_LIB_EXT}${QT_EXT}
-            ${ICQ_QT_LIB_DIR}/libQt5Quick.${QT_LIB_EXT}${QT_EXT}
-            ${ICQ_QT_LIB_DIR}/libQt5QmlModels.${QT_LIB_EXT}${QT_EXT}
-            ${ICQ_QT_LIB_DIR}/libQt5Qml.${QT_LIB_EXT}${QT_EXT}
             ${ICQ_QT_LIB_DIR}/libQt5Positioning.${QT_LIB_EXT}${QT_EXT}
-            ${ICQ_QT_LIB_DIR}/libQt5QuickWidgets.${QT_LIB_EXT}${QT_EXT}
-			${ICQ_QT_LIB_DIR}/libQt5WebChannel.${QT_LIB_EXT}${QT_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5WebChannel.${QT_LIB_EXT}${QT_EXT}
             )
 
         set(QT_LIBRARIES_TO_COPY "${QT_LIBRARIES_TO_COPY}"
             ${ICQ_QT_LIB_DIR}/libQt5WebEngine.${QT_LIB_EXT}${QT_EXT}
             ${ICQ_QT_LIB_DIR}/libQt5WebEngineCore.${QT_LIB_EXT}${QT_EXT}
             ${ICQ_QT_LIB_DIR}/libQt5WebEngineWidgets.${QT_LIB_EXT}${QT_EXT}
-            ${ICQ_QT_LIB_DIR}/libQt5Quick.${QT_LIB_EXT}${QT_EXT}
-            ${ICQ_QT_LIB_DIR}/libQt5QmlModels.${QT_LIB_EXT}${QT_EXT}
-            ${ICQ_QT_LIB_DIR}/libQt5Qml.${QT_LIB_EXT}${QT_EXT}
             ${ICQ_QT_LIB_DIR}/libQt5Positioning.${QT_LIB_EXT}${QT_EXT}
-            ${ICQ_QT_LIB_DIR}/libQt5QuickWidgets.${QT_LIB_EXT}${QT_EXT}
-			${ICQ_QT_LIB_DIR}/libQt5WebChannel.${QT_LIB_EXT}${QT_EXT}
+            ${ICQ_QT_LIB_DIR}/libQt5WebChannel.${QT_LIB_EXT}${QT_EXT}
             )
 
         set(QT_LIBEXEC_TO_COPY
             ${ICQ_QT_LIBEXEC_DIR}/QtWebEngineProcess
             )
-        
+
         set(QT_RESOURCES_TO_COPY
             ${ICQ_QT_RESOURCES_DIR}/icudtl.dat
             ${ICQ_QT_RESOURCES_DIR}/qtwebengine_devtools_resources.pak
             ${ICQ_QT_RESOURCES_DIR}/qtwebengine_resources.pak
             ${ICQ_QT_RESOURCES_DIR}/qtwebengine_resources_100p.pak
             ${ICQ_QT_RESOURCES_DIR}/qtwebengine_resources_200p.pak
+            )
+    endif()
+
+    if(IM_AUTO_TESTING)
+        set(QT_LIBRARIES_TO_COPY "${QT_LIBRARIES_TO_COPY}"
+            ${ICQ_QT_LIB_DIR}/libQt5Test.${QT_LIB_EXT}${QT_EXT}
             )
     endif()
 endif()
@@ -1729,8 +1911,9 @@ function(generate_mocs output ${ARGN})
         string(FIND "${file_content}" "Q_OBJECT" pos1)
         string(FIND "${file_content}" "Q_SLOTS" pos2)
         string(FIND "${file_content}" "Q_SIGNALS" pos3)
+        string(FIND "${file_content}" "Q_NAMESPACE" pos4)
 
-        if ((pos1 EQUAL -1) AND (pos2 EQUAL -1) AND (pos3 EQUAL -1))
+        if ((pos1 EQUAL -1) AND (pos2 EQUAL -1) AND (pos3 EQUAL -1) AND (pos4 EQUAL -1))
             continue()
         endif()
 
@@ -1747,7 +1930,7 @@ function(generate_mocs output ${ARGN})
                 DEPENDS ${header} VERBATIM)
         elseif(LINUX)
             add_custom_command(OUTPUT ${moc_file}
-                COMMAND ${IM_QT_BIN_MOC} -D__linux__ -f ${header} -o ${moc_file} ${header} 2> /dev/null
+                COMMAND ${IM_QT_BIN_MOC} -D__linux__-f ${header} -o ${moc_file} 2> /dev/null
                 DEPENDS ${header} VERBATIM)
         else()
             add_custom_command(OUTPUT ${moc_file}
@@ -1791,4 +1974,4 @@ add_subdirectory(gui)
 add_subdirectory(libomicron)
 
 # Set <PROJECT_NAME> as Startup Project for Visual Studio *.sln
-# set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${APP_PROJECT_NAME})

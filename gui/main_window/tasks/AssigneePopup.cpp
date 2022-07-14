@@ -5,7 +5,7 @@
 #include "../containers/FriendlyContainer.h"
 #include "styles/ThemeParameters.h"
 #include "controls/TransparentScrollBar.h"
-#include "controls/TooltipWidget.h"
+#include "controls/TextWidget.h"
 #include "controls/LineEditEx.h"
 #include "../contact_list/ContactListWidget.h"
 #include "../contact_list/AbstractSearchModel.h"
@@ -64,8 +64,7 @@ namespace
     {
         return Utils::scale_value(2);
     }
-}
-
+} // namespace
 
 namespace Ui
 {
@@ -78,7 +77,9 @@ namespace Ui
         {
             auto layout = Utils::emptyVLayout(this);
             auto text = new TextWidget(this, QT_TRANSLATE_NOOP("task_popup", "User with this name\nnot found"));
-            text->init(Fonts::appFontScaled(14), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), QColor(), QColor(), QColor(), Ui::TextRendering::HorAligment::CENTER);
+            TextRendering::TextUnit::InitializeParameters params{ Fonts::appFontScaled(14), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY } };
+            params.align_ = TextRendering::HorAligment::CENTER;
+            text->init(params);
             layout->addWidget(text, 0, Qt::Alignment::enum_type::AlignCenter);
         }
     };
@@ -135,13 +136,12 @@ namespace Ui
         ContactListWidget* contactListWidget_;
     };
 
-
     AssigneePopup::AssigneePopup(AssigneeEdit* _assigneeEdit)
         : QWidget(Utils::InterConnector::instance().getMainWindow())
         , assigneeEdit_{ _assigneeEdit }
-        , content_{ new AssigneePopupContent(_assigneeEdit->width(), this)}
+        , content_{ new AssigneePopupContent(_assigneeEdit->width(), this) }
     {
-        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::mainWindowResized, this, &AssigneePopup::onWindowResized);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::mainWindowResized, this, &AssigneePopup::updatePosition);
 
         auto cl = content_->contactListWidget();
         connect(assigneeEdit_, &LineEditEx::textChanged, this, &AssigneePopup::onSearchPatternChanged);
@@ -151,14 +151,12 @@ namespace Ui
         connect(assigneeEdit_, &LineEditEx::focusOut, this, &QWidget::hide);
         connect(assigneeEdit_, &AssigneeEdit::selectedContactChanged, this, &AssigneePopup::setSelectedContact);
 
-        if (auto contact = assigneeEdit_->selectedContact())
+        if (const auto contact = assigneeEdit_->selectedContact())
             setSelectedContact(*contact);
 
         connect(cl, &ContactListWidget::changeSelected, this, &AssigneePopup::selectContact);
         connect(cl->getSearchModel(), &Logic::AbstractSearchModel::results, this, &AssigneePopup::onSearchResult);
         connect(cl->getSearchModel(), &Logic::AbstractSearchModel::showNoSearchResults, this, &AssigneePopup::onSearchResult);
-
-        onWindowResized();
 
         Testing::setAccessibleName(this, qsl("AS AssigneePopup"));
     }
@@ -172,11 +170,17 @@ namespace Ui
 
     void AssigneePopup::resizeEvent(QResizeEvent* _event)
     {
-        onWindowResized();
+        updatePosition();
         QWidget::resizeEvent(_event);
     }
 
-    void AssigneePopup::onWindowResized()
+    void AssigneePopup::showEvent(QShowEvent* _event)
+    {
+        updatePosition();
+        QWidget::showEvent(_event);
+    }
+
+    void AssigneePopup::updatePosition()
     {
         auto mainWindow = Utils::InterConnector::instance().getMainWindow();
         const auto mainWindowSize = mainWindow->size();
@@ -226,4 +230,4 @@ namespace Ui
             return;
         model->setSelectedContact(_aimId);
     }
-}
+} // namespace Ui

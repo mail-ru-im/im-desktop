@@ -10,6 +10,7 @@ namespace core
         struct user_info
         {
             std::string first_name_;
+            std::string middle_name_;
             std::string last_name_;
             std::string friendly_;
             std::string nick_;

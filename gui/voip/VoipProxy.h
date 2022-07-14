@@ -1,6 +1,7 @@
 #pragma once
 #include "../../core/Voip/VoipManagerDefines.h"
 #include "src/CallStateInternal.h"
+#include "VoipController.h"
 
 #define DEFAULT_DEVICE_UID "default_device"
 
@@ -21,11 +22,6 @@ namespace voip_manager
     struct Contact;
     struct ContactEx;
     struct FrameSize;
-}
-
-namespace voip_masks
-{
-    class MaskManager;
 }
 
 namespace voip_proxy
@@ -111,22 +107,16 @@ namespace voip_proxy
         void onVoipMediaLocalAudio(bool _enabled);
         void onVoipMediaLocalVideo(bool _enabled);
         void onVoipMediaRemoteVideo(const voip_manager::VideoEnable& videoEnable);
-        void onVoipMouseTapped(quintptr _winId, const std::string& _tapType, const std::string& _contact);
-        void onVoipCallOutAccepted(const voip_manager::ContactEx& _contactEx);
         void onVoipCallCreated(const voip_manager::ContactEx& _contactEx);
         void onVoipCallDestroyed(const voip_manager::ContactEx& _contactEx);
         void onVoipCallConnected(const voip_manager::ContactEx& _contactEx);
         void onVoipCallTimeChanged(unsigned _secElapsed, bool _hasCall);
-        //void onVoipFrameSizeChanged(const voip_manager::FrameSize& _fs);
         void onVoipResetComplete(); //hack for correct close
         void onVoipWindowRemoveComplete(quintptr _winId);
         void onVoipWindowAddComplete(quintptr _winId);
-        //void onVoipUpdateCipherState(const voip_manager::CipherState& _state);
-        //void onVoipMinimalBandwidthChanged(bool _enable);
         void onVoipMaskEngineEnable(bool _enable);
         void onVoipVoiceEnable(bool _enable);
-        void onVoipChangeWindowLayout(intptr_t hwnd, bool bTray, const std::string& layout);
-        void onVoipMainVideoLayoutChanged(const voip_manager::MainVideoLayout&);
+        void onVoipVadInfo(const std::vector<im::VADInfo> &_peers);
         void onVoipVideoDeviceSelected(const voip_proxy::device_desc& device);
         void onVoipHideControlsWhenRemDesktopSharing(bool _hide);
 
@@ -134,12 +124,7 @@ namespace voip_proxy
         void _updateCallTime();
         void _checkIgnoreContact(const QString& contact);
 
-        void updateUserAvatar(const voip_manager::ContactEx& _contactEx);
-        void updateUserAvatar(const std::string& _account, const std::string& _contact);
         void avatarChanged(const QString& aimId);
-        void updateVoipMaskEngineEnable(bool _enable);
-
-        void onCallCreate(const voip_manager::ContactEx& _contactEx);
 
     private:
         //voip_manager::CipherState cipherState_;
@@ -149,7 +134,6 @@ namespace voip_proxy
         VoipEmojiManager     voipEmojiManager_;
         voip_manager::ContactsList activePeerList_;
         // It is currenlty connected contacts, contacts, which do not accept call, are not contained in this list.
-        std::unique_ptr<voip_masks::MaskManager> maskManager_;
         QList<voip_proxy::device_desc> screenList_;
         voip_proxy::device_desc currentSelectedVideoDevice_;
         std::unique_ptr<Ui::gui_coll_helper> pendingCallStart_;
@@ -169,7 +153,6 @@ namespace voip_proxy
 
         bool haveEstablishedConnection_ = false;
         bool iTunesWasPaused_ = false;
-        bool maskEngineEnable_ = false;
         bool localAudioEnabled_ = false;
         bool localCameraEnabled_ = false;
         bool localVideoEnabled_ = false;
@@ -183,6 +166,7 @@ namespace voip_proxy
         bool voipIsKilled_ = false; // Do we kill voip on exiting from programm.
 
         bool hideControlsWhenRemDesktopSharing_ = false;
+        bool isResetDialogActive_ = false;
 
         enum UserBitmapParams
         {
@@ -221,9 +205,7 @@ namespace voip_proxy
 
         void setWindowAdd(quintptr hwnd, const char *call_id, bool _primaryWnd, bool _systemWd, int _panelHeight);
         void setWindowRemove(quintptr _hwnd);
-        void setWindowOffsets(quintptr _hwnd, int _lpx, int _tpx, int _rpx, int _bpx);
         void setAvatars(int _size, const char* _contact, bool forPreview = false);
-        void setWindowBackground(quintptr _hwnd);
 
         bool checkPermissions(bool _audio, bool _video, bool _doRequest = true);
         bool setStartCall(const std::vector<QString>& _contacts, bool _video, bool _attach);
@@ -240,24 +222,17 @@ namespace voip_proxy
         void setRequestSettings();
         void setActiveDevice(const device_desc& _description, bool _force_reset = false);
         void setMuteSounds(bool _mute);
-
         void setAPlaybackMute(bool _mute);
+        void setRenderResolution(std::string_view _contact, int _width, int _height);
 
         void handlePacket(core::coll_helper& _collParams);
         static std::string formatCallName(const std::vector<std::string>& _names, const char* _clip);
 
-        void loadMask(const std::string& maskPath);
-
-        void setWindowSetPrimary(quintptr _hwnd, const char* _contact);
-
-        voip_masks::MaskManager* getMaskManager() const;
-
-        bool isMaskEngineEnabled() const;
-        void initMaskEngine() const;
-        void resetMaskManager();
         bool isVoipKilled() const;
         bool isConnectionEstablished() const;
         bool isCallVCS() const { return voip::kCallType_VCS == callType_; }
+        bool isCallVCSLink() const { return voip::kCallType_LINK == callType_; }
+        bool isCallVCSOrLink() const { return isCallVCS() || isCallVCSLink(); }
         bool isCallPinnedRoom() const { return voip::kCallType_PINNED_ROOM == callType_; }
         bool isLocalAudAllowed() const { return localAudAllowed_; }
         bool isLocalCamAllowed() const { return localCamAllowed_; }
@@ -266,13 +241,12 @@ namespace voip_proxy
         bool isCamPermissionGranted() const { return localCamPermission_; }
 
         bool isHideControlsWhenRemDesktopSharing() const { return hideControlsWhenRemDesktopSharing_; }
+        bool isResetCallDialogActive() const;
 
         bool isWebinar() const { return vcsWebinar_; }
-        std::string getChatId() const {return chatId_; }
+        std::string getChatId() const { return chatId_; }
 
         QString getConferenceUrl() const { return QString::fromStdString(vcsConferenceUrl_); }
-
-        void setWindowVideoLayout(quintptr _hwnd, voip_manager::VideoLayout& layout);
 
         const std::vector<device_desc>& deviceList(EvoipDevTypes type) const;
         std::optional<device_desc> activeDevice(EvoipDevTypes type) const;
@@ -288,9 +262,6 @@ namespace voip_proxy
         void switchShareScreen(voip_proxy::device_desc const * _description); // Switch share screen mode.
 
         const QList<voip_proxy::device_desc>& screenList() const;
-
-        void passWindowHover(quintptr _hwnd, bool hover); // Pass hover flag to voip.
-        void updateLargeState(quintptr _hwnd, bool large); // Update large state for window.
 
         void notifyDevicesChanged(bool audio);
         void trackDevices(bool track_video = true);

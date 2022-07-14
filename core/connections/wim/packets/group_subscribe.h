@@ -24,6 +24,7 @@ namespace core
             group_subscribe(wim_packet_params _params, std::string_view _stamp, std::string_view _aimid);
             int32_t get_resubscribe_in() const;
             std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
 
             const std::string& get_param() const noexcept { return stamp_.empty() ? aimid_ : stamp_; }
         };

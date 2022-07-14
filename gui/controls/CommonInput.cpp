@@ -221,9 +221,9 @@ namespace Ui
         {
             auto input_ = new LineEditEx(this);
             input_->setFont(Fonts::appFontScaled(fontSize));
-            input_->changeTextColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
-            input_->setCustomPlaceholderColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
-            Utils::ApplyStyle(input_, Styling::getParameters().getLineEditCustomQss(QColor(), QColor()));
+            input_->changeTextColor(Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
+            input_->setCustomPlaceholderColor(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY });
+            Utils::ApplyStyle(input_, Styling::getParameters().getLineEditCustomQss(Styling::StyleVariable::INVALID, Styling::StyleVariable::INVALID));
             input_->installEventFilter(this);
             inputs_.push_back(input_);
         }
@@ -751,14 +751,14 @@ namespace Ui
     TextEditInputContainer::TextEditInputContainer(QWidget* _parent)
         :QWidget(_parent)
     {
-        input_ = new TextEditEx(this, Fonts::appFontScaled(fontSize), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), true, false);
+        input_ = new TextEditEx(this, Fonts::appFontScaled(fontSize), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID }, true, false);
         input_->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
         input_->setMinimumHeight(getMinHeight());
         input_->setMaxHeight(getMaxHeight() - getVerMargin());
         input_->setTextInteractionFlags(Qt::TextEditable | Qt::TextEditorInteraction);
         input_->setSizePolicy(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Preferred);
         input_->setEnterKeyPolicy(TextEditEx::EnterKeyPolicy::CatchNewLine);
-        Utils::ApplyStyle(input_, qsl("background-color: transparent;"));
+        Utils::transparentBackgroundStylesheet(input_);
         Testing::setAccessibleName(input_, qsl("AS input textEdit"));
 
         auto globalLayout = Utils::emptyHLayout(this);

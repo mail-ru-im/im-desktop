@@ -64,6 +64,116 @@
     </message>
 </context>
 <context>
+    <name>RenderViewContextMenuQt</name>
+    <message>
+        <source>Back</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Forward</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Reload</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cut</source>
+        <translation type="unfinished">剪切</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation type="unfinished">复制</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation type="unfinished">粘贴</translation>
+    </message>
+    <message>
+        <source>Undo</source>
+        <translation type="unfinished">撤消</translation>
+    </message>
+    <message>
+        <source>Redo</source>
+        <translation type="unfinished">重做</translation>
+    </message>
+    <message>
+        <source>Paste and match style</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select all</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open link in new window</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open link in new tab</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy link address</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save link</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy image</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy image address</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save image</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy media address</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show controls</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Loop</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save media</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Inspect</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Exit full screen</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save page</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>View page source</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>Ui::WebPage</name>
+    <message>
+        <source>Select folder to upload</source>
+        <translation type="unfinished">选择下载文件夹</translation>
+    </message>
+</context>
+<context>
     <name>UpdaterButton</name>
     <message>
         <source>Update %1</source>
@@ -118,6 +228,18 @@ You can leave your feedback or report an error here:</source>
         <source>Server error</source>
         <translation>服务器错误</translation>
     </message>
+    <message>
+        <source>https://reestr.digital.gov.ru/reestr/307994/</source>
+        <translation>https://reestr.digital.gov.ru/reestr/307994/</translation>
+    </message>
+    <message>
+        <source>registry_copyright</source>
+        <translation>© Mail.Ru Digital Technologies LLC</translation>
+    </message>
+    <message>
+        <source>The product is registered in the Unified Register of Russian Software and Databases</source>
+        <translation>VK Teams 产品已在俄罗斯电子计算机和数据库程序的统一注册处注册，名称为 Myteam (Майтим)</translation>
+    </message>
 </context>
 <context>
     <name>active_call_plate</name>
@@ -128,6 +250,26 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Active call</source>
         <translation>通话中</translation>
+    </message>
+    <message>
+        <source>participant</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -285,6 +427,14 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Turquoise</source>
         <translation>绿松石</translation>
+    </message>
+    <message>
+        <source>Sibur</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Dark Sibur</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -527,10 +677,6 @@ You can leave your feedback or report an error here:</source>
 </context>
 <context>
     <name>call_link</name>
-    <message>
-        <source>Link on call</source>
-        <translation>通话连结</translation>
-    </message>
     <message>
         <source>Link on webinar</source>
         <translation>链接到网络研讨会</translation>
@@ -1068,8 +1214,20 @@ You can leave your feedback or report an error here:</source>
         <translation>%1单击“确定”或回答，然后%2可以</translation>
     </message>
     <message>
+        <source> %3 call you</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source> %3 add you to groups</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>%1 From now on %2 is able to</source>
         <translation>%1现在%2可以</translation>
+    </message>
+    <message>
+        <source> see if you read his messages</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>%1 You have canceled your join request</source>
@@ -1132,12 +1290,44 @@ You can leave your feedback or report an error here:</source>
         <translation>%1将截止日期更改为%2</translation>
     </message>
     <message>
-        <source>%1 changed task assignee to &quot;%2&quot;</source>
-        <translation>%1将艺术家更改为&quot;%2&quot;</translation>
+        <source>%1 changed task assignee to %2</source>
+        <translation>%1将艺术家更改为%2</translation>
     </message>
     <message>
         <source>Task status changed to &quot;%1&quot;</source>
         <translation>任务状态更改为&quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>You</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The administrator</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>have allowed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>have forbidden</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>has allowed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>has forbidden</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 %2 threads creation in this channel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 %2 threads creation in this group</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -1418,6 +1608,26 @@ You can leave your feedback or report an error here:</source>
         <comment>21</comment>
         <translation>已选择 %1 条消息</translation>
     </message>
+    <message>
+        <source>%1 subscriber</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 subscribers</source>
+        <comment>2</comment>
+        <translation>%1订阅者</translation>
+    </message>
+    <message>
+        <source>%1 subscribers</source>
+        <comment>5</comment>
+        <translation>%1订阅者</translation>
+    </message>
+    <message>
+        <source>%1 subscribers</source>
+        <comment>21</comment>
+        <translation>%1订阅者</translation>
+    </message>
 </context>
 <context>
     <name>contactus_page</name>
@@ -1617,10 +1827,6 @@ You can leave your feedback or report an error here:</source>
 <context>
     <name>context_menu</name>
     <message>
-        <source>Call</source>
-        <translation>致电</translation>
-    </message>
-    <message>
         <source>Profile</source>
         <translation>个人资料</translation>
     </message>
@@ -1671,6 +1877,10 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Reply</source>
         <translation>引用</translation>
+    </message>
+    <message>
+        <source>Create task</source>
+        <translation>创建任务</translation>
     </message>
     <message>
         <source>Copy to clipboard</source>
@@ -1855,6 +2065,22 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Code</source>
         <translation>编码</translation>
+    </message>
+    <message>
+        <source>Unsubscribe from thread</source>
+        <translation>取消订阅一个线程</translation>
+    </message>
+    <message>
+        <source>Subscribe to thread</source>
+        <translation>订阅线程</translation>
+    </message>
+    <message>
+        <source>Unblock</source>
+        <translation>解除封锁</translation>
+    </message>
+    <message>
+        <source>Compose email</source>
+        <translation>写一封信</translation>
     </message>
 </context>
 <context>
@@ -3121,10 +3347,18 @@ You can leave your feedback or report an error here:</source>
 Only for private groups
 
 This option cannot be disabled</source>
-        <translation>仅允许受信任设备访问文件
-仅限非公开团体
+        <translation>只允许受信任的设备访问文件
+仅适用于非公共团体
 
 无法禁用设置</translation>
+    </message>
+    <message>
+        <source>Enable thread feeds</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Allow chat members to create threads</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -3169,8 +3403,8 @@ This option cannot be disabled</source>
         <translation>自动状态显示谁在通话中</translation>
     </message>
     <message>
-        <source>Advantages of calls in Myteam</source>
-        <translation>致电 Myteam 的好处</translation>
+        <source>Advantages of calls in %1</source>
+        <translation>呼叫%1的好处</translation>
     </message>
     <message>
         <source>Group calls up to %1 participants</source>
@@ -3258,6 +3492,10 @@ This option cannot be disabled</source>
     <message>
         <source>The join request has been sent to administrator</source>
         <translation>加入请求已发送给管理员</translation>
+    </message>
+    <message>
+        <source>The user is blocked</source>
+        <translation>用户被阻止</translation>
     </message>
     <message>
         <source>Play record</source>
@@ -3509,6 +3747,10 @@ This option cannot be disabled</source>
         <translation>用户名或密码无效</translation>
     </message>
     <message>
+        <source>Wrong Email</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Wrong Email or password</source>
         <translation>无效的电子邮件或密码</translation>
     </message>
@@ -3595,6 +3837,10 @@ This option cannot be disabled</source>
     <message>
         <source>Sign in with Mail.ru</source>
         <translation>用Mail.ru登录</translation>
+    </message>
+    <message>
+        <source>Enter your corporate email</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -3754,6 +4000,10 @@ This option cannot be disabled</source>
         <source>Report a problem</source>
         <translation>报告一个问题</translation>
     </message>
+    <message>
+        <source>Delete Account</source>
+        <translation>帐户删除</translation>
+    </message>
 </context>
 <context>
     <name>mentions</name>
@@ -3841,10 +4091,6 @@ This option cannot be disabled</source>
     <message>
         <source>You have been mentioned</source>
         <translation>你已被提及</translation>
-    </message>
-    <message>
-        <source>You have been mentioned in %1</source>
-        <translation>你已在 %1 中被提及</translation>
     </message>
 </context>
 <context>
@@ -4030,8 +4276,8 @@ to contact status</source>
         <translation>通过电子邮件找一位同事并写信给他</translation>
     </message>
     <message>
-        <source>Install Myteam on mobile</source>
-        <translation>在移动设备上安装 Myteam</translation>
+        <source>Install VK Teams on mobile</source>
+        <translation>在移动设备上安装 VK Teams</translation>
     </message>
     <message>
         <source>First name*</source>
@@ -4157,10 +4403,6 @@ to contact status</source>
         <source>%1 poll - %2 votes</source>
         <comment>5</comment>
         <translation>%1 调查 - %2 票</translation>
-    </message>
-    <message>
-        <source>Poll</source>
-        <translation>投票</translation>
     </message>
     <message>
         <source>Poll: %1</source>
@@ -4404,10 +4646,6 @@ to contact status</source>
     <message>
         <source>Report</source>
         <translation>报告</translation>
-    </message>
-    <message>
-        <source>To change the appearance you must restart the application. Continue?</source>
-        <translation>要更改外观，必须重启应用程序。继续？</translation>
     </message>
     <message>
         <source>Update url, empty for default</source>
@@ -4674,6 +4912,26 @@ to contact status</source>
         <translation>来写</translation>
     </message>
     <message>
+        <source>contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Cancel request?</source>
         <translation>取消请求？</translation>
     </message>
@@ -4778,6 +5036,26 @@ to contact status</source>
         <translation>机器人创建者禁止添加组</translation>
     </message>
     <message>
+        <source>Cannot add %1 contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot add %1 contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot add %1 contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot add %1 contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Are you sure you want to delete user from list?</source>
         <translation>您确定要从列表中删除用户吗？</translation>
     </message>
@@ -4792,6 +5070,26 @@ to contact status</source>
     <message>
         <source>You can not join the call. It already has</source>
         <translation>您无法连接到呼叫。在它里面</translation>
+    </message>
+    <message>
+        <source>participant</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>No</source>
@@ -4934,6 +5232,66 @@ to contact status</source>
         <translation>访问被拒绝</translation>
     </message>
     <message>
+        <source>Cannot remove %1 contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot remove %1 contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot remove %1 contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot remove %1 contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Error removing federation user</source>
         <translation>删除联盟用户时出错</translation>
     </message>
@@ -4981,13 +5339,21 @@ to contact status</source>
         <source>Only channel subscribers can view replies</source>
         <translation>只有频道订阅者可以查看回复</translation>
     </message>
+    <message>
+        <source>Delete Account</source>
+        <translation>帐户删除</translation>
+    </message>
+    <message>
+        <source>To delete an account, you must attach a phone number</source>
+        <translation>要删除帐户，您需要关联电话号码</translation>
+    </message>
+    <message>
+        <source>Attach</source>
+        <translation>绑定</translation>
+    </message>
 </context>
 <context>
     <name>previewer</name>
-    <message>
-        <source>Unable to download the image</source>
-        <translation>无法下载图像</translation>
-    </message>
     <message>
         <source>%1 of %2</source>
         <translation>%1 个，共 %2 个</translation>
@@ -5047,6 +5413,10 @@ to contact status</source>
     <message>
         <source>Add to favorites</source>
         <translation>添加到收藏夹</translation>
+    </message>
+    <message>
+        <source>File %1 is being downloaded</source>
+        <translation>文件%1加载</translation>
     </message>
 </context>
 <context>
@@ -5121,6 +5491,10 @@ to contact status</source>
     <message>
         <source>A short text about you</source>
         <translation>关于您的一小段文字</translation>
+    </message>
+    <message>
+        <source>Middle Name</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -5253,6 +5627,13 @@ to contact status</source>
         <source>OK</source>
         <translation>行</translation>
     </message>
+    <message>
+        <source> ﻿ ﻿— Reactions
+  — Statuses
+  — New themes
+  — Unreads counter in window title — turn it on in settings :) </source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>report_widget</name>
@@ -5300,12 +5681,20 @@ to contact status</source>
 <context>
     <name>search</name>
     <message>
-        <source>CONTACTS AND GROUPS</source>
+        <source>Contacts and groups</source>
         <translation>联系人和群组</translation>
     </message>
     <message>
-        <source>MESSAGES</source>
-        <translation>消息</translation>
+        <source>Messages</source>
+        <translation>帖子</translation>
+    </message>
+    <message>
+        <source>Threads</source>
+        <translation type="unfinished">线程</translation>
+    </message>
+    <message>
+        <source>Thread</source>
+        <translation type="unfinished">线</translation>
     </message>
 </context>
 <context>
@@ -5440,6 +5829,10 @@ to contact status</source>
     <message>
         <source>Play sounds</source>
         <translation>播放声音</translation>
+    </message>
+    <message>
+        <source>Notification volume:</source>
+        <translation>通知量：</translation>
     </message>
     <message>
         <source>Outgoing messages sound</source>
@@ -5774,10 +6167,6 @@ to contact status</source>
         <translation>来电</translation>
     </message>
     <message>
-        <source>Show calls tab</source>
-        <translation>显示通话标签</translation>
-    </message>
-    <message>
         <source>Show reactions to messages</source>
         <translation>显示对消息的反应</translation>
     </message>
@@ -5820,6 +6209,30 @@ to contact status</source>
     <message>
         <source>Warn about disabled microphone</source>
         <translation>警告麦克风静音</translation>
+    </message>
+    <message>
+        <source>Hide sender name in notifications</source>
+        <translation>在通知中隐藏消息发件人</translation>
+    </message>
+    <message>
+        <source>This setting can&apos;t be changed due to security reasons</source>
+        <translation>出于安全原因，无法禁用该设置。</translation>
+    </message>
+    <message>
+        <source>Delete Account</source>
+        <translation>删除帐户</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>关闭</translation>
+    </message>
+    <message>
+        <source>Your corporate account was created by a domain administrator. To remove, contact with your domain administrator</source>
+        <translation>您的公司帐户是由域管理员创建的。要删除，请联系域管理员</translation>
+    </message>
+    <message>
+        <source>All information associated with your profile will be deleted. It will be impossible to restore your account</source>
+        <translation>与您的个人资料相关的所有信息都将被删除。帐户恢复将是不可能的。</translation>
     </message>
 </context>
 <context>
@@ -6020,8 +6433,28 @@ to contact status</source>
         <translation>设定状态</translation>
     </message>
     <message>
-        <source>Switch microphone state</source>
-        <translation>更改麦克风状态</translation>
+        <source>Paste text without formatting</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Switch %1 state</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>microphone</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>video</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>presentation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>sound</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -6145,6 +6578,10 @@ Please edit phone number and try again.</source>
         <translation>分享群组</translation>
     </message>
     <message>
+        <source>Subscribe to all threads</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>All members</source>
         <translation>所有成员</translation>
     </message>
@@ -6223,6 +6660,10 @@ Please edit phone number and try again.</source>
     <message>
         <source>Common groups</source>
         <translation>共享组</translation>
+    </message>
+    <message>
+        <source>My groups and channels</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Who can see my data</source>
@@ -6369,6 +6810,46 @@ Please edit phone number and try again.</source>
         <translation>追随者</translation>
     </message>
     <message>
+        <source>%1 SUBSCRIBER</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 SUBSCRIBERS</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 SUBSCRIBERS</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 SUBSCRIBERS</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 MEMBER</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 MEMBERS</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 MEMBERS</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 MEMBERS</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>All subscribers</source>
         <translation>所有订阅者</translation>
     </message>
@@ -6388,6 +6869,14 @@ Please edit phone number and try again.</source>
         <source>Replies</source>
         <translation>答案</translation>
     </message>
+    <message>
+        <source>Subscription to replies</source>
+        <translation>订阅回复</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation type="unfinished">任务</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -6406,6 +6895,10 @@ Please edit phone number and try again.</source>
     <message>
         <source>About the group</source>
         <translation>关于群组</translation>
+    </message>
+    <message>
+        <source>Send link to call or invite participants from the contact list</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -6474,6 +6967,86 @@ Please edit phone number and try again.</source>
     <message>
         <source>Custom status</source>
         <translation>用户状态</translation>
+    </message>
+    <message>
+        <source>second</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>seconds</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>seconds</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>seconds</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>minute</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>minutes</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>minutes</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>minutes</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>hour</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>hours</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>hours</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>hours</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>day</source>
+        <comment>1</comment>
+        <translation type="unfinished">日</translation>
+    </message>
+    <message>
+        <source>days</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>days</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>days</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Show always</source>
@@ -6659,6 +7232,22 @@ Please edit phone number and try again.</source>
         <source>Calendar</source>
         <translation>日历</translation>
     </message>
+    <message>
+        <source>Mail</source>
+        <translation>邮件</translation>
+    </message>
+    <message>
+        <source>Cloud</source>
+        <translation>云</translation>
+    </message>
+    <message>
+        <source>News</source>
+        <translation type="unfinished">消息</translation>
+    </message>
+    <message>
+        <source>Polls</source>
+        <translation type="unfinished">民意调查</translation>
+    </message>
 </context>
 <context>
     <name>tab header</name>
@@ -6710,16 +7299,12 @@ Please edit phone number and try again.</source>
         <translation>使</translation>
     </message>
     <message>
-        <source>No assignee</source>
-        <translation>没有表演者</translation>
+        <source>Unassigned</source>
+        <translation type="unfinished">没有艺术家</translation>
     </message>
 </context>
 <context>
     <name>task_block</name>
-    <message>
-        <source>Not assigned</source>
-        <translation>未分配</translation>
-    </message>
     <message>
         <source>Task</source>
         <translation>一个任务</translation>
@@ -6736,12 +7321,16 @@ Please edit phone number and try again.</source>
         <source>Task edit: an error occured</source>
         <translation>修改任务：发生错误</translation>
     </message>
+    <message>
+        <source>Unassigned</source>
+        <translation type="unfinished">没有艺术家</translation>
+    </message>
 </context>
 <context>
     <name>task_popup</name>
     <message>
         <source>Edit task</source>
-        <translation>更改任务</translation>
+        <translation>编辑任务</translation>
     </message>
     <message>
         <source>Create task</source>
@@ -6778,8 +7367,8 @@ not found</source>
 未找到姓名</translation>
     </message>
     <message>
-        <source>No deadline</source>
-        <translation>没有截止日期</translation>
+        <source>Deadline for the task</source>
+        <translation>任务截止日期</translation>
     </message>
 </context>
 <context>
@@ -6797,20 +7386,20 @@ not found</source>
         <translation>欢迎使用Mail.ru代理</translation>
     </message>
     <message>
-        <source>Welcome to Myteam</source>
-        <translation>欢迎来到我的团队</translation>
+        <source>Welcome to VK Teams</source>
+        <translation>欢迎加入 VK 团队</translation>
     </message>
     <message>
         <source>Welcome to Messenger</source>
         <translation>欢迎使用Messenger</translation>
     </message>
     <message>
-        <source>ICQ New - the evolution of communication</source>
-        <translation>ICQ New — 通讯的发展</translation>
+        <source>ICQ - the evolution of communication</source>
+        <translation>ICQ — 通讯的发展</translation>
     </message>
     <message>
-        <source>Welcome to ICQ New</source>
-        <translation>欢迎来到ICQ New</translation>
+        <source>Welcome to ICQ</source>
+        <translation>欢迎来到ICQ</translation>
     </message>
 </context>
 <context>
@@ -6822,6 +7411,46 @@ not found</source>
     <message>
         <source>Threads you subscribed for will be here</source>
         <translation>您订阅的话题将显示在此处</translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Replies</source>
@@ -6839,8 +7468,8 @@ not found</source>
         <translation>Messenger</translation>
     </message>
     <message>
-        <source>Myteam</source>
-        <translation>Myteam</translation>
+        <source>VK Teams</source>
+        <translation>VK Teams</translation>
     </message>
     <message>
         <source>ICQ</source>
@@ -6866,10 +7495,6 @@ not found</source>
         <translation>该昵称无个人资料或群组</translation>
     </message>
     <message>
-        <source>Copied to clipboard</source>
-        <translation>复制到剪贴板</translation>
-    </message>
-    <message>
         <source>There are no profiles with this email</source>
         <translation>该电子邮件没有个人资料</translation>
     </message>
@@ -6890,28 +7515,28 @@ not found</source>
         <translation>组管理员设置了访问文件的限制</translation>
     </message>
     <message>
-        <source>Awaiting antivirus check, patience</source>
-        <translation>我们正在等待防病毒检查，请耐心等待</translation>
-    </message>
-    <message>
-        <source>Antivirus check in progress, patience</source>
-        <translation>正在进行防病毒检查，请耐心等待</translation>
-    </message>
-    <message>
         <source>File is blocked by the antivirus</source>
         <translation>被杀毒软件阻止的文件</translation>
     </message>
     <message>
-        <source>Checked</source>
-        <translation>检查过了</translation>
-    </message>
-    <message>
-        <source>No access. You may not have enough rights</source>
-        <translation>没有访问权限。您可能没有足够的权限</translation>
-    </message>
-    <message>
         <source>File not checked (and never will be). Available to download</source>
         <translation>该文件尚未经过验证（也不会经过验证）。可供下载</translation>
+    </message>
+    <message>
+        <source>No access. Antivirus check in progress</source>
+        <translation>没有访问权限。正在进行防病毒检查</translation>
+    </message>
+    <message>
+        <source>No access. File is blocked by the antivirus</source>
+        <translation>没有访问权限。文件被杀毒软件拦截</translation>
+    </message>
+    <message>
+        <source>The file is available. No viruses found</source>
+        <translation>该文件可用。未发现病毒</translation>
+    </message>
+    <message>
+        <source>App not found</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -6953,10 +7578,6 @@ not found</source>
         <translation>语音通话</translation>
     </message>
     <message>
-        <source>Link to call</source>
-        <translation>通话连结</translation>
-    </message>
-    <message>
         <source>Chat gallery</source>
         <translation>聊天室</translation>
     </message>
@@ -6968,8 +7589,8 @@ not found</source>
 <context>
     <name>tray_menu</name>
     <message>
-        <source>Quit</source>
-        <translation>退出</translation>
+        <source>Close</source>
+        <translation>关闭</translation>
     </message>
     <message>
         <source>Open</source>
@@ -6998,6 +7619,36 @@ not found</source>
         <source> new emails</source>
         <comment>21</comment>
         <translation> 新电子邮件</translation>
+    </message>
+</context>
+<context>
+    <name>user_agreement_widget</name>
+    <message>
+        <source>Accept</source>
+        <translation>继续</translation>
+    </message>
+    <message>
+        <source>Agree with %1</source>
+        <translation>Agree with %1</translation>
+    </message>
+    <message>
+        <source>processing confidential data</source>
+        <translation>对机密信息处理的限制</translation>
+    </message>
+    <message>
+        <source>using personal data</source>
+        <translation>个人资料的处理</translation>
+    </message>
+</context>
+<context>
+    <name>video_pages</name>
+    <message>
+        <source>Link</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>View</source>
+        <translation type="unfinished">查看</translation>
     </message>
 </context>
 <context>
@@ -7082,32 +7733,8 @@ with click</source>
 通过点击</translation>
     </message>
     <message>
-        <source>VOICE</source>
-        <translation>语音</translation>
-    </message>
-    <message>
-        <source>Connecting...</source>
-        <translation>连接...</translation>
-    </message>
-    <message>
-        <source>Calling</source>
-        <translation>呼叫</translation>
-    </message>
-    <message>
-        <source>Busy</source>
-        <translation>忙</translation>
-    </message>
-    <message>
         <source>Hold Space key for temporary unmute</source>
         <translation>按住空格键可暂时取消麦克风静音</translation>
-    </message>
-    <message>
-        <source>Microphone disabled</source>
-        <translation>麦克风关闭</translation>
-    </message>
-    <message>
-        <source>Microphone enabled</source>
-        <translation>麦克风开启</translation>
     </message>
     <message>
         <source>Call members</source>
@@ -7143,6 +7770,26 @@ Press and hold Space key for temporarily unmute</source>
 
 按住空格键可暂时取消麦克风静音</translation>
     </message>
+    <message>
+        <source>Press Esc to exit from fullscreen mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Grid</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Speaker</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Microphone disabled</source>
+        <translation type="unfinished">麦克风关闭</translation>
+    </message>
+    <message>
+        <source>Microphone enabled</source>
+        <translation type="unfinished">麦克风开启</translation>
+    </message>
 </context>
 <context>
     <name>voip_video_panel</name>
@@ -7151,16 +7798,8 @@ Press and hold Space key for temporarily unmute</source>
         <translation>萤幕</translation>
     </message>
     <message>
-        <source>More</source>
-        <translation>然而</translation>
-    </message>
-    <message>
         <source>Go to chat</source>
         <translation>去聊天</translation>
-    </message>
-    <message>
-        <source>Open masks</source>
-        <translation>启用遮罩</translation>
     </message>
     <message>
         <source>Add user</source>
@@ -7183,16 +7822,8 @@ Press and hold Space key for temporarily unmute</source>
         <translation>要求关闭另一位参与者的视频。在通话人数超过%1通话中，只能显示一个视频</translation>
     </message>
     <message>
-        <source>Masks aren&apos;t available in calls with more than %1 members</source>
-        <translation>参加人数超过%1通话中，无法使用口罩</translation>
-    </message>
-    <message>
         <source>Only the creator of the webinar can show the video</source>
         <translation>只有网络研讨会的创建者可以显示视频</translation>
-    </message>
-    <message>
-        <source>Only the creator of the webinar can use masks</source>
-        <translation>只有网络研讨会的创建者可以使用遮罩</translation>
     </message>
     <message>
         <source>Only the creator of the webinar can use a microphone</source>
@@ -7278,10 +7909,6 @@ Meeting</source>
         <translation>去完成</translation>
     </message>
     <message>
-        <source>SHOW ALL</source>
-        <translation>显示所有</translation>
-    </message>
-    <message>
         <source>Show
 participants</source>
         <translation>看
@@ -7295,44 +7922,48 @@ participants</source>
         <source>Show one</source>
         <translation>显示一个</translation>
     </message>
+    <message>
+        <source>Cancel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation type="unfinished">是的</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to end the meeting?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>End meeting</source>
+        <translation type="unfinished">去完成</translation>
+    </message>
+    <message>
+        <source>Go to the chat</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open the profile</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>End call</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Share call link</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Call participants management</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>voip_video_panel_mini</name>
     <message>
         <source>End meeting</source>
         <translation>去完成</translation>
-    </message>
-    <message>
-        <source>Mute</source>
-        <translation>麦克风静音</translation>
-    </message>
-    <message>
-        <source>Unmute</source>
-        <translation>打开麦克风</translation>
-    </message>
-    <message>
-        <source>Stop video</source>
-        <translation>关闭视频</translation>
-    </message>
-    <message>
-        <source>Start video</source>
-        <translation>播放视频</translation>
-    </message>
-    <message>
-        <source>Disable sound</source>
-        <translation>关掉声音</translation>
-    </message>
-    <message>
-        <source>Enable sound</source>
-        <translation>打开声音</translation>
-    </message>
-    <message>
-        <source>Stop share</source>
-        <translation>停止显示</translation>
-    </message>
-    <message>
-        <source>Start share</source>
-        <translation>分享画面</translation>
     </message>
 </context>
 <context>
@@ -7380,6 +8011,29 @@ participants</source>
     <message>
         <source>I miss you too :)</source>
         <translation>我也想你 :)</translation>
+    </message>
+</context>
+<context>
+    <name>web_app</name>
+    <message>
+        <source>Page is loading...</source>
+        <translation>正在加载页面...</translation>
+    </message>
+    <message>
+        <source>Unable to load</source>
+        <translation>无法加载</translation>
+    </message>
+    <message>
+        <source>Retry</source>
+        <translation>重试</translation>
+    </message>
+    <message>
+        <source>Print</source>
+        <translation>海豹</translation>
+    </message>
+    <message>
+        <source>The service is not available for your account. Contact technical support</source>
+        <translation>您的 Office 尚无法使用此服务</translation>
     </message>
 </context>
 </TS>

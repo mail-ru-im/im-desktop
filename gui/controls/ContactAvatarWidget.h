@@ -1,5 +1,10 @@
 #pragma once
 
+namespace Utils
+{
+    class PersonTooltip;
+}
+
 namespace Ui
 {
     class RotatingSpinner;
@@ -61,6 +66,7 @@ namespace Ui
         void leftClicked();
         void rightClicked();
         void badgeClicked();
+        void openSettingsClicked();
         void cancelSelectFileForAvatar();
         void avatarSetToCore();
 
@@ -74,6 +80,7 @@ namespace Ui
         void avatarLeave();
         void setAvatar(qint64 _seq, int _error);
         void onAddStatusTooltipTimer();
+        void openSettings() const;
 
     public Q_SLOTS:
 
@@ -97,7 +104,7 @@ namespace Ui
         void SetImageCropHolder(QWidget *_holder);
         void SetImageCropSize(const QSize &_size);
 
-        void SetMode(ContactAvatarWidget::Mode _mode);
+        void SetMode(ContactAvatarWidget::Mode _mode, bool _forNavBar = false);
         ContactAvatarWidget::Mode getMode() const noexcept { return mode_; }
 
         void SetVisibleShadow(bool _isVisibleShadow);
@@ -112,6 +119,7 @@ namespace Ui
 
         void setIgnoreClicks(bool _ignore);
         void setStatusTooltipEnabled(bool _enabled);
+        void setProfileTooltipEnabled(bool _enabled);
 
     private:
         void postSetAvatarToCore(const QPixmap& _avatar);
@@ -143,8 +151,10 @@ namespace Ui
         int offset_;
         int avatarProxyFlags_ = 0;
         QRect badgeRect_;
+        Utils::PersonTooltip* personTooltip_;
         bool ignoreClicks_ = false;
         bool statusTooltipEnabled_ = false;
+        bool profileTooltipEnabled_ = false;
         QTimer* addStatusTooltipTimer_ = nullptr;
     };
 
@@ -178,6 +188,6 @@ namespace Ui
         QString	text(QAccessible::Text type) const override;
 
     private:
-        QAccessibleInterface* badgeInterface_ = nullptr;
+        std::unique_ptr<AccessibleAvatarBadge> badgeInterface_;
     };
 }

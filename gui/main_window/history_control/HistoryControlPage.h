@@ -164,6 +164,7 @@ namespace Ui
         void needRemove(const Logic::MessageKey&);
         void quote(const Data::QuotesVec&);
         void messageIdsFetched(const QString&, const Data::MessageBuddies&, QPrivateSignal) const;
+        void createTask(const Data::FString& _text, const Data::MentionMap& _mentions, const QString& _assignee, const bool _isThreadFeedMessage);
 
     public Q_SLOTS:
         void scrollMovedToBottom();
@@ -188,7 +189,7 @@ namespace Ui
         void pendingResolves(const Data::MessageBuddies&, const Data::MessageBuddies&);
         void clearAll();
         void emptyHistory();
-
+        void hideStickersAndSuggests(bool _animated = true);
         void fetch(hist::FetchDirection);
 
         void downPressed();
@@ -251,7 +252,6 @@ namespace Ui
         void hideHeads();
         void mentionHeads(const QString& _aimId, const QString& _friendly);
 
-        void onGlobalThemeChanged();
         void onFontParamsChanged();
 
         void onRoleChanged(const QString& _aimId);
@@ -260,6 +260,8 @@ namespace Ui
 
         void onReadOnlyUser(const QString& _aimId, bool _isReadOnly);
         void onBlockUser(const QString& _aimId, bool _isBlock);
+
+        void onCreateTask(const Data::FString& _text, const Data::MentionMap& _mentions, const QString& _assignee, const bool _isThreadFeedMessage);
 
         void onAddReactionPlateActivityChanged(const QString& _contact, bool _active);
 
@@ -271,6 +273,8 @@ namespace Ui
         void onThreadAdded(int64_t _seq, const Data::MessageParentTopic& _parentTopic, const QString& _threadId, int _error);
         void openThread(const QString& _threadId, int64_t _msgId, const QString& _fromPage);
 
+        void startPttRecording();
+
     public:
         HistoryControlPage(const QString& _aimId, QWidget* _parent, BackgroundWidget* _bgWidget);
         ~HistoryControlPage();
@@ -278,6 +282,7 @@ namespace Ui
         void initFor(qint64 _id, hist::scroll_mode_type _type, FirstInit _firstInit = FirstInit::No) override;
         void resetMessageHighlights() override;
         void setHighlights(const highlightsV& _highlights) override;
+        bool isInputActive() const;
 
         std::optional<qint64> getNewPlateId() const;
         void newPlateShowed();
@@ -288,19 +293,15 @@ namespace Ui
         const QString& aimId() const override;
         void cancelSelection() override;
 
-        bool touchScrollInProgress() const;
         void updateWidgetsTheme() override;
         void updateTopPanelStyle();
         void updateSmartreplyStyle();
-
-        void showMainTopPanel();
 
         void scrollToMessage(int64_t _msgId);
         void scrollTo(const Logic::MessageKey& key, hist::scroll_mode_type _scrollMode);
         void updateItems() override;
 
         bool contains(const QString& _aimId) const;
-        bool containsWidgetWithKey(const Logic::MessageKey& _key) const;
 
         void resumeVisibleItems();
         void suspendVisisbleItems() override;
@@ -323,6 +324,7 @@ namespace Ui
 
         void pageOpen() override;
         void pageLeave() override;
+        void mainPageChanged() override;
         bool isPageOpen() const;
 
         void notifyApplicationWindowActive(const bool _active);
@@ -365,8 +367,6 @@ namespace Ui
 
         MessagesScrollArea* scrollArea() const;
 
-        std::optional<Data::FileSharingMeta> getMeta(const Utils::FileSharingId& _id) const;
-
         int getInputHeight() const;
         bool isInputWidgetActive() const; // for update check
         bool canSetFocusOnInput() const;
@@ -389,6 +389,9 @@ namespace Ui
         void hideDragOverlay();
         DragOverlayWindow* getDragOverlayWindow() const noexcept { return dragOverlayWindow_; }
 
+        bool isInputWidgetInFocus() const;
+        bool isInputOrHistoryInFocus() const;
+
     protected:
         void wheelEvent(QWheelEvent *_event) override;
         void showEvent(QShowEvent* _event) override;
@@ -407,7 +410,6 @@ namespace Ui
         bool changeRole(const QString& _aimId, bool _moder);
         bool readonly(const QString& _aimId, bool _readonly);
 
-        void setRecvLastMessage(bool _value);
 
         bool connectToComplexMessageItemImpl(const Ui::ComplexMessage::ComplexMessageItem*) const;
         void connectToComplexMessageItem(const QWidget*) const;
@@ -426,12 +428,18 @@ namespace Ui
             Yes
         };
 
+        enum class UnloadDirection
+        {
+            TOP,
+            BOTTOM,
+        };
+
+        void unload(FromInserting _mode, UnloadDirection _direction);
         void unloadTop(FromInserting _mode = FromInserting::No);
         void unloadBottom(FromInserting _mode = FromInserting::No);
 
-        void updateMessageItems();
-
         void removeNewPlateItem();
+        bool hasNewPlate();
 
         void initButtonDown();
         void initMentionsButton();
@@ -445,15 +453,17 @@ namespace Ui
 
         bool isInBackground() const;
 
-        void updatePendingButtonPosition();
         void updateCallButtonsVisibility();
 
         void sendBotCommand(const QString& _command);
         void startBot();
 
+        void pageLeaveStuff();
+
         class PositionInfo;
 
         Styling::WallpaperId wallpaperId_;
+        Styling::ThemeChecker themeChecker_;
         using PositionInfoSptr = std::shared_ptr<PositionInfo>;
         using PositionInfoList = std::list<PositionInfoSptr>;
         using PositionInfoListIter = PositionInfoList::iterator;
@@ -471,12 +481,9 @@ namespace Ui
 
         bool isScrolling() const;
         QWidget* getWidgetByKey(const Logic::MessageKey& _key) const;
-        QWidget* extractWidgetByKey(const Logic::MessageKey& _key);
-        HistoryControlPageItem* getPageItemByKey(const Logic::MessageKey& _key) const;
         WidgetRemovalResult removeExistingWidgetByKey(const Logic::MessageKey& _key);
         void cancelWidgetRequests(const QVector<Logic::MessageKey>&);
         void removeWidgetByKeys(const QVector<Logic::MessageKey>&);
-        void replaceExistingWidgetByKey(const Logic::MessageKey& _key, std::unique_ptr<QWidget> _widget);
 
         void loadChatInfo();
         qint64 loadChatMembersInfo(const std::vector<QString>& _members);
@@ -485,13 +492,9 @@ namespace Ui
 
         void setState(const State _state, const char* _dbgWhere);
         bool isState(const State _state) const;
-        bool isStateFetching() const;
         bool isStateIdle() const;
-        bool isStateInserting() const;
-        void postponeMessagesRequest(const char* _dbgWhere, bool _isDown);
         void switchToIdleState(const char* _dbgWhere);
         void switchToInsertingState(const char* _dbgWhere);
-        void switchToFetchingState(const char* _dbgWhere);
 
         void showAvatarMenu(const QString& _aimId);
 
@@ -520,6 +523,10 @@ namespace Ui
         void setFocusOnInputWidget();
 
         void initStickerPicker();
+
+        bool needShowSuggests();
+        void onShowDragOverlay();
+        void onHideDragOverlay();
 
         enum class ShowHideSource
         {
@@ -552,26 +559,29 @@ namespace Ui
         void onSuggestShow(const QString& _text, const QPoint& _pos);
         void onSuggestHide();
         void onSuggestedStickerSelected(const Utils::FileSharingId& _stickerId);
-        void hideSuggest();
+        void hideSuggest(bool _animated = true);
         void sendSuggestedStickerStats(const Utils::FileSharingId& _stickerId);
 
         void hideMentionCompleter();
         void onMentionCompleterVisibilityChanged(bool _visible);
+
+        void updateWidgetsThemeImpl();
 
         bool groupSubscribeNeeded() const;
         void updateDragOverlayGeometry();
         void updateDragOverlay();
 
         bool isThread() const;
+        void showStickersSuggest();
 
     private:
         bool isMessagesRequestPostponed_ = false;
         bool isMessagesRequestPostponedDown_ = false;
+        bool needShowSuggests_ = false;
 
         char const* dbgWherePostponed_;
         MessagesScrollArea* messagesArea_ = nullptr;
         MessagesWidgetEventFilter* eventFilter_ = nullptr;
-        QSpacerItem* verticalSpacer_ = nullptr;
         QString aimId_;
         Data::DlgState dlgState_;
         ServiceMessageItem* messagesOverlay_ = nullptr;
@@ -593,7 +603,6 @@ namespace Ui
         float buttonDownTime_ = 0.;
 
         QTimer* buttonDownTimer_ = nullptr;
-        bool isFetchBlocked_ = false;
         bool isPageOpen_ = false;
 
         bool fontsHaveChanged_ = false;
@@ -602,6 +611,12 @@ namespace Ui
         qint64 buttonDownCurrentTime_ = 0;
 
         std::optional<qint64> newPlateId_;
+
+        struct SuggestsCache
+        {
+            QString text_;
+            QPoint pos_;
+        } lastShownSuggests_;
 
         // typing
         qint64 prevTypingTime_ = 0;

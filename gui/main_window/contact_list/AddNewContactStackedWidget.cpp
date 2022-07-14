@@ -41,14 +41,10 @@ AddNewContactStackedWidget::AddNewContactStackedWidget(QWidget *_parent)
 
     globalLayout_->addWidget(stackedWidget_);
 
-    connect(Ui::GetDispatcher(), &Ui::core_dispatcher::syncronizedAddressBook,
-            this, &AddNewContactStackedWidget::onSyncAdressBook);
-    connect(addContactWidget_, &AddNewContactWidget::formDataIncomplete,
-            this, &AddNewContactStackedWidget::onFormDataIncomplete);
-    connect(addContactWidget_, &AddNewContactWidget::formDataSufficient,
-            this, &AddNewContactStackedWidget::onFormDataSufficient);
-    connect(addContactWidget_, &AddNewContactWidget::formSubmissionRequested,
-            this, [this]()
+    connect(Ui::GetDispatcher(), &Ui::core_dispatcher::syncronizedAddressBook, this, &AddNewContactStackedWidget::onSyncAdressBook);
+    connect(addContactWidget_, &AddNewContactWidget::formDataIncomplete, this, &AddNewContactStackedWidget::onFormDataIncomplete);
+    connect(addContactWidget_, &AddNewContactWidget::formDataSufficient, this, &AddNewContactStackedWidget::onFormDataSufficient);
+    connect(addContactWidget_, &AddNewContactWidget::formSubmissionRequested, this, [this]()
     {
         if (!okButton_->isEnabled())
             return;
@@ -56,8 +52,7 @@ AddNewContactStackedWidget::AddNewContactStackedWidget(QWidget *_parent)
         onOkClicked();
     });
 
-    connect(notRegisteredWidget_, &ContactNotRegisteredWidget::enterPressed,
-            this, &AddNewContactStackedWidget::onOkClicked);
+    connect(notRegisteredWidget_, &ContactNotRegisteredWidget::enterPressed, this, &AddNewContactStackedWidget::onOkClicked);
 }
 
 void AddNewContactStackedWidget::setOkCancelButtons(const QPair<DialogButton*, DialogButton*> &_buttons)
@@ -115,70 +110,11 @@ void AddNewContactStackedWidget::onOkClicked()
     }
 }
 
-void AddNewContactStackedWidget::onSyncAdressBook(const bool _hasError)
+void AddNewContactStackedWidget::onSyncAdressBook()
 {
-    if (_hasError)
-    {
-        // Show the not found dialog
-        onContactNotFound(lastFormData_.phoneNumber_, lastFormData_.firstName_);
-        return;
-    }
-
     result_ = AddContactResult::Added;
     Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::conlistscr_addcon_action);
     Q_EMIT finished();
-
-    /*
-    /// For later use maybe. Opens dialog with contact if contact is unique
-
-    auto fd = addContactWidget_->getFormData();
-    auto contactName = fd.firstName_;
-    if (!fd.lastName_.isEmpty())
-        contactName += (qsl(" ") + fd.lastName_);
-
-    const auto aimId = Logic::getContactListModel()->getAimidByABName(contactName);
-
-    if (aimId.isEmpty())
-    {
-        Q_EMIT finished();
-        return;
-    }
-
-    auto renameFn = [this](const QString& _aimId, const QString& _contactName)
-    {
-        Logic::getContactListModel()->renameContact(_aimId, _contactName, [_aimId](bool _success)
-        {
-            Q_UNUSED(_success);
-            Utils::openDialogWithContact(_aimId);
-        });
-
-            result_ = AddContactResult::Added;
-
-            result_ = AddContactResult::Added;
-
-            result_ = AddContactResult::Added;
-
-            Q_EMIT finished();
-        };
-
-    auto contactInCL = Logic::getContactListModel()->getContactItem(aimId);
-    if (contactInCL)
-    {
-        renameFn(aimId, contactName);
-        return;
-    }
-
-    Logic::getContactListModel()->addContactToCL(aimId, [this, aimId, contactName, renameFn](bool _added)
-    {
-        if (!_added)
-        {
-            Q_EMIT finished();
-            return;
-        }
-
-        renameFn(aimId, contactName);
-    });
-    */
 }
 
 void AddNewContactStackedWidget::onFormDataIncomplete()
@@ -194,11 +130,8 @@ void AddNewContactStackedWidget::onFormDataSufficient()
 void AddNewContactStackedWidget::connectToButtons()
 {
     // Intentionally QueuedConnection to override GeneralDialog::rightButtonClick behaviour
-    connect(okButton_, &QPushButton::clicked,
-            this, &AddNewContactStackedWidget::onOkClicked, Qt::QueuedConnection);
-
-    connect(cancelButton_, &QPushButton::clicked,
-            this, &AddNewContactStackedWidget::finished);
+    connect(okButton_, &QPushButton::clicked, this, &AddNewContactStackedWidget::onOkClicked, Qt::QueuedConnection);
+    connect(cancelButton_, &QPushButton::clicked, this, &AddNewContactStackedWidget::finished);
 }
 
 void AddNewContactStackedWidget::enableOkButton(bool _enable)

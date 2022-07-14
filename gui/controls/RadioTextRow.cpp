@@ -75,7 +75,9 @@ namespace Ui
         setFixedHeight(getDefaultHeight());
 
         nameTextUnit_ = TextRendering::MakeTextUnit(name_);
-        nameTextUnit_->init(getNameTextFont(), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+        TextRendering::TextUnit::InitializeParameters params{ getNameTextFont(), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } };
+        params.maxLinesCount_ = 1;
+        nameTextUnit_->init(params);
     }
 
     RadioTextRow::~RadioTextRow()
@@ -99,7 +101,7 @@ namespace Ui
     void RadioTextRow::setComment(const QString& _comment)
     {
         commentTextUnit_ = TextRendering::MakeTextUnit(_comment);
-        commentTextUnit_->init(getNameTextFont(), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT);
+        commentTextUnit_->init({ getNameTextFont(), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } });
     }
 
     void RadioTextRow::resetComment()
@@ -113,8 +115,8 @@ namespace Ui
         p.setRenderHint(QPainter::Antialiasing);
         p.setRenderHint(QPainter::SmoothPixmapTransform);
         const auto r = rect();
-        const static auto normalBackground = Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
-        const static auto hoveredBackground = Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE);
+        const auto normalBackground = Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
+        const auto hoveredBackground = Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE);
         p.fillRect(r, isHovered() ? hoveredBackground : normalBackground);
 
         nameTextUnit_->setOffsets(textHorOffset(), r.height() / 2);
@@ -126,7 +128,7 @@ namespace Ui
             commentTextUnit_->setOffsets(textHorOffset() + nameTextUnit_->getMaxLineWidth() + commentHorOffset(), r.height() / 2);
             commentTextUnit_->getHeight(r.width());
             commentTextUnit_->draw(p, TextRendering::VerPosition::MIDDLE);
-            commentTextUnit_->setColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+            commentTextUnit_->setColor(Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
         }
 
         const auto circleCenter = QPointF(r.width() - circleOffset() - circleRadius(), r.height() / 2.0);

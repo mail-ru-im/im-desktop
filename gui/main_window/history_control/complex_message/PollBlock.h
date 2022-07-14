@@ -26,7 +26,6 @@ public:
     bool isAllSelected() const override { return isSelected(); }
     Data::FString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
 
-    void updateStyle() override;
     void updateFonts() override;
 
     QSize setBlockSize(const QSize& _size);

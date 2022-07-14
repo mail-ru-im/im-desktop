@@ -12,6 +12,9 @@ namespace core
         {
             std::string friendly_;
             std::string nick_;
+            std::string first_name_;
+            std::string middle_name_;
+            std::string last_name_;
             std::optional<bool> official_;
         };
 

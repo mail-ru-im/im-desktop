@@ -4,6 +4,7 @@
 
 #include "../common.shared/json_helper.h"
 #include "http_request.h"
+#include "../log_replace_functor.h"
 
 namespace core::wim
 {
@@ -17,6 +18,11 @@ namespace core::wim
     std::string_view thread_add::get_method() const
     {
         return "thread/add";
+    }
+
+    int thread_add::minimal_supported_api_version() const
+    {
+        return core::urls::api_version::instance().minimal_supported();
     }
 
     int32_t thread_add::init_request(const std::shared_ptr<core::http_request_simple>& _request)

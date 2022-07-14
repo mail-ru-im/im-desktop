@@ -30,7 +30,7 @@ TextBlock::TextBlock(ComplexMessageItem* _parent, const QString& _text, TextRend
 }
 
 TextBlock::TextBlock(ComplexMessageItem* _parent, Data::FStringView _text, TextRendering::EmojiSizeType _emojiSizeType)
-    : GenericBlock(_parent, _text.toFString(), MenuFlags(MenuFlagCopyable), false)
+    : GenericBlock(_parent, _text, MenuFlags(MenuFlagCopyable), false)
     , Layout_(new TextBlockLayout())
     , emojiSizeType_(_emojiSizeType)
 {
@@ -125,13 +125,13 @@ void TextBlock::selectAll()
     update();
 }
 
-IItemBlock::MenuFlags TextBlock::getMenuFlags(QPoint p) const
+IItemBlock::MenuFlags TextBlock::getMenuFlags(QPoint _p) const
 {
-    auto flags = GenericBlock::getMenuFlags(p);
+    auto flags = GenericBlock::getMenuFlags(_p);
     if (!textUnit_ || !ComplexMessageItem::isSpellCheckIsOn())
         return flags;
 
-    if (const auto w = textUnit_->getWordAt(mapPoint(p)); w && (!textUnit_->isSkippableWordForSpellChecking(*w) || (w->syntaxWord && w->syntaxWord->spellError)))
+    if (const auto w = textUnit_->getWordAt(mapPoint(_p)); w && (!textUnit_->isSkippableWordForSpellChecking(*w) || (w->syntaxWord && w->syntaxWord->spellError)))
         return MenuFlags(flags | MenuFlags::MenuFlagSpellItems);
 
     return flags;
@@ -226,6 +226,16 @@ void TextBlock::showTooltip(const QString& _text, QRect _rect)
     GenericBlock::showTooltip(_text, _rect, Tooltip::ArrowDirection::Down, Tooltip::ArrowPointPos::Top);
 }
 
+void TextBlock::botCommandsDisabledChatsUpdated()
+{
+    const auto& contact = getChatAimid();
+    if (!Utils::isChat(contact))
+        return;
+
+    if (commandsDisabledForThisChat_ != Utils::InterConnector::instance().areBotCommandsDisabled(contact))
+        reinit();
+}
+
 void TextBlock::mouseMoveEvent(QMouseEvent *e)
 {
     if (!Utils::InterConnector::instance().isMultiselect(getChatAimid()))
@@ -234,11 +244,15 @@ void TextBlock::mouseMoveEvent(QMouseEvent *e)
         if (const auto link = linkAtPos(globalPos); !link.isEmpty())
         {
             setCursor(Qt::PointingHandCursor);
-            if (!isTooltipActivated() && link.isFormattedLink() && !Utils::isMentionLink(link.url_))
+            if (!isTooltipActivated() && link.isFormattedLink())
             {
                 const auto linkTopLeft = mapToGlobal(rect().topLeft()) + link.rect_.topLeft();
-                const auto linkGlobalRect = QRect{ linkTopLeft, link.rect_.size() };
-                showTooltip(link.url_, linkGlobalRect);
+                const auto linkGlobalRect = QRect{linkTopLeft, link.rect_.size()};
+
+                if (!Utils::isMentionLink(link.url_))
+                    showTooltip(link.url_, linkGlobalRect);
+                else
+                    showMentionTooltip(Utils::getEmailFromMentionLink(link.url_), link.displayName_, linkGlobalRect, Tooltip::ArrowDirection::Down, Tooltip::ArrowPointPos::Top);
             }
         }
         else
@@ -257,6 +271,7 @@ void TextBlock::mouseMoveEvent(QMouseEvent *e)
 
 void TextBlock::leaveEvent(QEvent *e)
 {
+    Q_EMIT Utils::InterConnector::instance().stopTooltipTimer();
     if (isTooltipActivated())
         hideTooltip();
 
@@ -274,6 +289,8 @@ void TextBlock::init(ComplexMessageItem* _parent)
 
     connect(this, &TextBlock::selectionChanged, _parent, &ComplexMessageItem::selectionChanged);
     connect(&Utils::InterConnector::instance(), &Utils::InterConnector::emojiSizeChanged, this, &TextBlock::adjustEmojiSize);
+    connect(&Utils::InterConnector::instance(), &Utils::InterConnector::botCommandsDisabledChatsUpdated, this, &TextBlock::botCommandsDisabledChatsUpdated);
+    connect(_parent, &ComplexMessageItem::contextMenuOpened, this, &TextBlock::hideTooltip);
 
     if (!_parent->isHeadless())
         initTextUnit();
@@ -296,27 +313,30 @@ void TextBlock::initTextUnit()
         ParseBackticksPolicy::ParseSinglesAndTriples);
 
     const auto linkStyle = Styling::getThemesContainer().getCurrentTheme()->isLinksUnderlined() ? TextRendering::LinksStyle::UNDERLINED : TextRendering::LinksStyle::PLAIN;
-    textUnit_->init(MessageStyle::getTextFont()
-                  , MessageStyle::getTextColor()
-                  , MessageStyle::getTextMonospaceFont()
-                  , MessageStyle::getLinkColor()
-                  , MessageStyle::getTextSelectionColor(getChatAimid())
-                  , MessageStyle::getHighlightColor()
-                  , TextRendering::HorAligment::LEFT
-                  , -1
-                  , TextRendering::LineBreakType::PREFER_WIDTH
-                  , emojiSizeType_
-                  , linkStyle);
+    TextRendering::TextUnit::InitializeParameters params{ MessageStyle::getTextFont(), MessageStyle::getTextColorKey() };
+    params.monospaceFont_ = MessageStyle::getTextMonospaceFont();
+    params.linkColor_ = MessageStyle::getLinkColorKey();
+    params.selectionColor_ = MessageStyle::getTextSelectionColorKey(getChatAimid());
+    params.highlightColor_ = MessageStyle::getHighlightColorKey();
+    params.emojiSizeType_ = emojiSizeType_;
+    params.linksStyle_ = linkStyle;
+    textUnit_->init(params);
 
-    textUnit_->setHighlightedTextColor(MessageStyle::getHighlightTextColor());
+    textUnit_->setHighlightedTextColor(MessageStyle::getHighlightTextColorKey());
     textUnit_->setLineSpacing(MessageStyle::getTextLineSpacing());
 
     const auto& contact = getChatAimid();
-    const auto areCommandsEnabled = Logic::GetLastseenContainer()->isBot(contact) || Utils::isChat(contact);
+    const auto isChat = Utils::isChat(contact);
+    if (isChat)
+        commandsDisabledForThisChat_ = Utils::InterConnector::instance().areBotCommandsDisabled(contact);
+
+    const auto areCommandsEnabled = Logic::GetLastseenContainer()->isBot(contact) || (isChat && !commandsDisabledForThisChat_);
     if (!areCommandsEnabled)
         textUnit_->disableCommands();
 
     startSpellCheckingIfNeeded();
+    if (build::is_testing())
+        updateLinkMap();
 }
 
 void TextBlock::adjustEmojiSize()
@@ -507,48 +527,36 @@ bool TextBlock::isOverLink(const QPoint& _mousePosGlobal) const
     return textUnit_ && textUnit_->isOverLink(mapFromGlobal(_mousePosGlobal));
 }
 
-bool TextBlock::clickOnFirstLink() const
+void TextBlock::updateLinkMap()
 {
+    linkWordMap_.clear();
     if (!textUnit_)
-        return false;
+        return;
 
-    for (const auto& block : textUnit_->blocks())
-    {
-        if (block->getType() == TextRendering::BlockType::Text)
-        {
-            for (const auto& word : block->getWords())
-            {
-                if (word.isLink())
-                {
-                    word.clicked();
-                    return true;
-                }
-            }
-        }
-        if (block->getType() == TextRendering::BlockType::Paragraph)
-        {
-            if (auto paragraph = dynamic_cast<TextRendering::TextDrawingParagraph*>(block.get()))
-            for (const auto& b : paragraph->getBlocks())
-            {
-                for (const auto& word : b->getWords())
-                {
-                    if (word.isLink())
-                    {
-                        word.clicked();
-                        return true;
-                    }
-                }
-            }
-        }
-    }
-
-    return false;
+    ExtractLinkWords(textUnit_, linkWordMap_);
 }
 
 void TextBlock::setText(const Data::FString& _text)
 {
     setSourceText(_text);
     reinit();
+}
+
+QStringList TextBlock::messageLinks() const
+{
+    QStringList result;
+    for (const auto& link : linkWordMap_)
+        result += link->getText();
+    return result;
+}
+
+bool TextBlock::activateLink(size_t _linkIndex) const
+{
+    if (_linkIndex < 0 || _linkIndex >= linkWordMap_.size())
+        return false;
+
+    linkWordMap_[_linkIndex]->clicked();
+    return true;
 }
 
 void TextBlock::setEmojiSizeType(const TextRendering::EmojiSizeType _emojiSizeType)
@@ -578,11 +586,6 @@ void TextBlock::removeHighlight()
         textUnit_->setHighlighted(false);
         update();
     }
-}
-
-void TextBlock::updateStyle()
-{
-    reinit();
 }
 
 void TextBlock::updateFonts()

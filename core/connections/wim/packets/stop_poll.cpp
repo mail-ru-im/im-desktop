@@ -2,6 +2,7 @@
 
 #include "../../../http_request.h"
 #include "../../../../common.shared/json_helper.h"
+#include "../log_replace_functor.h"
 
 #include "stop_poll.h"
 
@@ -18,6 +19,11 @@ stop_poll::stop_poll(wim_packet_params _params, const std::string &_poll_id)
 std::string_view stop_poll::get_method() const
 {
     return "poll/stop";
+}
+
+int stop_poll::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t stop_poll::init_request(const std::shared_ptr<core::http_request_simple>& _request)

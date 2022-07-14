@@ -9,6 +9,7 @@
 #include "DialogButton.h"
 #include "../core_dispatcher.h"
 #include "../my_info.h"
+#include "../gui_settings.h"
 #include "../cache/avatars/AvatarStorage.h"
 #include "../main_window/proxy/AvatarStorageProxy.h"
 #include "../main_window/MainWindow.h"
@@ -16,9 +17,11 @@
 #include "../main_window/containers/StatusContainer.h"
 #include "../main_window/Placeholders.h"
 #include "../main_window/contact_list/ContactListModel.h"
+#include "../main_window/MainPage.h"
 #include "../utils/InterConnector.h"
 #include "../utils/utils.h"
 #include "../utils/exif.h"
+#include "../utils/PersonTooltip.h"
 #include "../styles/ThemeParameters.h"
 #include "main_window/contact_list/FavoritesUtils.h"
 #include "TooltipWidget.h"
@@ -103,6 +106,7 @@ namespace Ui
         , smallBadge_(false)
         , displayNameChanged_(false)
         , offset_(0)
+        , personTooltip_(new Utils::PersonTooltip(this))
     {
         setFixedSize(Utils::avatarWithBadgeSize(_size));
 
@@ -120,6 +124,18 @@ namespace Ui
             });
 
             connect(Logic::GetStatusContainer(), &Logic::StatusContainer::statusChanged, this, &ContactAvatarWidget::avatarChanged);
+
+            connect(Ui::GetDispatcher(), &core_dispatcher::myInfo, this,[this]()
+            {
+                UpdateParams(MyInfo()->aimId(), MyInfo()->friendly());
+                avatarChanged(MyInfo()->aimId());
+            });
+
+            connect(get_gui_settings(), &qt_gui_settings::changed, this, [this](const QString& _key)
+            {
+                if (_key == ql1s(settings_allow_statuses))
+                    update();
+            });
         }
 
         infoForSetAvatar_.currentDirectory = QDir::homePath();
@@ -133,6 +149,8 @@ namespace Ui
         addStatusTooltipTimer_->setInterval(addStatusTooltipDelay());
         addStatusTooltipTimer_->setSingleShot(true);
         connect(addStatusTooltipTimer_, &QTimer::timeout, this, &ContactAvatarWidget::onAddStatusTooltipTimer);
+
+        connect(this, &ContactAvatarWidget::openSettingsClicked, this, &ContactAvatarWidget::openSettings);
     }
 
     ContactAvatarWidget::~ContactAvatarWidget()
@@ -194,14 +212,7 @@ namespace Ui
 
             QPen pen(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY), Utils::scale_value(1), Qt::DashLine, Qt::RoundCap);
             p.setPen(pen);
-            p.drawRoundedRect(
-                pen.width(),
-                pen.width(),
-                size_ - (pen.width() * 2),
-                size_ - (pen.width() * 2),
-                (size_ / 2),
-                (size_ / 2)
-            );
+            p.drawRoundedRect(pen.width(), pen.width(), size_ - (pen.width() * 2), size_ - (pen.width() * 2), (size_ / 2), (size_ / 2));
 
             QPixmap newIcon;
             auto bgColor = Styling::StyleVariable::BASE;
@@ -234,7 +245,11 @@ namespace Ui
         {
             if (infoForSetAvatar_.croppedImage.isNull())
             {
-                Utils::drawAvatarWithBadge(p, QPoint(), avatar, aimid_, officialBadgeOnly_, Utils::StatusBadgeState::CanBeOff, false, smallBadge_);
+                Utils::StatusBadgeFlags statusFlags { Utils::StatusBadgeFlag::None };
+                statusFlags.setFlag(Utils::StatusBadgeFlag::Official, officialBadgeOnly_);
+                statusFlags.setFlag(Utils::StatusBadgeFlag::Small, smallBadge_);
+                statusFlags.setFlag(Utils::StatusBadgeFlag::SmallOnline, smallBadge_);
+                Utils::drawAvatarWithBadge(p, QPoint(), avatar, aimid_, Utils::StatusBadgeState::CanBeOff, statusFlags);
             }
             else
             {
@@ -251,13 +266,17 @@ namespace Ui
                 p.setPen(Qt::NoPen);
                 p.setBrush(QBrush(Styling::getParameters().getColor(Styling::StyleVariable::GHOST_SECONDARY)));
                 p.drawEllipse(0, 0, size_, size_);
-                auto change_icon = Utils::renderSvg(camPath, camSize, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
+                const auto change_icon = Utils::renderSvg(camPath, camSize, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
                 p.drawPixmap(width() / 2 - camSize.width() / 2, height() / 2 - camSize.height() / 2, change_icon);
             }
         }
         else if (isVisibleBadge_ && !aimid_.isEmpty() && !skipBadge)
         {
-            Utils::drawAvatarWithBadge(p, QPoint(0, offset_), avatar, aimid_, officialBadgeOnly_, badgeState(mode_, badgeHovered_, pressed_), false, smallBadge_);
+            Utils::StatusBadgeFlags statusFlags { Utils::StatusBadgeFlag::None };
+            statusFlags.setFlag(Utils::StatusBadgeFlag::Official, officialBadgeOnly_);
+            statusFlags.setFlag(Utils::StatusBadgeFlag::Small, smallBadge_);
+            statusFlags.setFlag(Utils::StatusBadgeFlag::SmallOnline, smallBadge_);
+            Utils::drawAvatarWithBadge(p, QPoint(0, offset_), avatar, aimid_, badgeState(mode_, badgeHovered_, pressed_), statusFlags);
         }
         else
         {
@@ -275,7 +294,7 @@ namespace Ui
             p.drawEllipse(QPoint(size_ - elipseRadious, size_ - elipseRadious), elipseRadious, elipseRadious);
 
             const auto edit_size = Utils::scale_value(QSize(12, 12));
-            auto edit_icon = Utils::renderSvg(qsl(":/avatar_edit_icon"), edit_size, Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
+            const auto edit_icon = Utils::renderSvg(qsl(":/avatar_edit_icon"), edit_size, Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
             p.drawPixmap(size_ - elipseRadious - edit_size.width() / 2, size_ - elipseRadious - edit_size.height() / 2, edit_icon);
             //avatar_edit_icon
         }
@@ -308,6 +327,7 @@ namespace Ui
     void ContactAvatarWidget::mouseReleaseEvent(QMouseEvent* _event)
     {
         addStatusTooltipTimer_->stop();
+        personTooltip_->hide();
         Tooltip::hide();
         pressed_ = false;
 
@@ -317,9 +337,9 @@ namespace Ui
         {
             if (_event->button() == Qt::LeftButton)
             {
-                if (Statuses::isStatusEnabled() && (!defaultAvatar_ || mode_ == Mode::StatusPicker || mode_ == Mode::ChangeStatus)
-                        && badgeRect_.isValid() && badgeRect_.contains(_event->pos()))
-                    Q_EMIT badgeClicked();
+                if ((!defaultAvatar_ || mode_ == Mode::StatusPicker || mode_ == Mode::ChangeStatus)
+                    && badgeRect_.isValid() && badgeRect_.contains(_event->pos()))
+                    Statuses::isStatusEnabled() ? Q_EMIT badgeClicked() : Q_EMIT openSettingsClicked();
                 else
                     Q_EMIT leftClicked();
 
@@ -342,7 +362,12 @@ namespace Ui
         hovered_ = !badgeHovered_;
         const auto muted = Logic::getContactListModel()->isMuted(aimid_);
 
-        if (Statuses::isStatusEnabled())
+        const auto rect = tooltipRect();
+        if (profileTooltipEnabled_)
+        {
+            personTooltip_->show(Utils::PersonTooltipType::Person, aimid_, QRect(mapToGlobal(rect.topLeft()), rect.size()), Tooltip::ArrowDirection::Down, Tooltip::ArrowPointPos::Top);
+        }
+        else if (Statuses::isStatusEnabled())
         {
             if (mode_ == Mode::ChangeStatus && Logic::GetStatusContainer()->getStatus(aimid_).isEmpty())
             {
@@ -353,13 +378,14 @@ namespace Ui
                 addStatusTooltipTimer_->stop();
                 Tooltip::hide();
 
-                const auto rect = tooltipRect();
-                StatusTooltip::instance()->objectHovered([this, rect]()
-                {
-                    if (!hovered_ && !badgeHovered_ || pressed_)
-                        return QRect();
-                    return QRect(mapToGlobal(rect.topLeft()), rect.size());
-                }, aimid_, this, nullptr, cursor().shape());
+                StatusTooltip::instance()->objectHovered(
+                    [this, rect]()
+                    {
+                        if (!hovered_ && !badgeHovered_ || pressed_)
+                            return QRect();
+                        return QRect(mapToGlobal(rect.topLeft()), rect.size());
+                    },
+                    aimid_, this, nullptr, cursor().shape());
             }
         }
 
@@ -417,6 +443,7 @@ namespace Ui
 
     void ContactAvatarWidget::hideEvent(QHideEvent*)
     {
+        personTooltip_->hide();
         Logic::GetStatusContainer()->setAvatarVisible(aimid_, false);
     }
 
@@ -435,7 +462,7 @@ namespace Ui
         imageCropSize_ = _size;
     }
 
-    void ContactAvatarWidget::SetMode(ContactAvatarWidget::Mode _mode)
+    void ContactAvatarWidget::SetMode(ContactAvatarWidget::Mode _mode, bool _forNavBar)
     {
         mode_ = _mode;
         auto cursorPointer = Qt::CursorShape::PointingHandCursor;
@@ -473,6 +500,16 @@ namespace Ui
                     connect(this, &ContactAvatarWidget::badgeClicked, this, &ContactAvatarWidget::openStatusPicker);
             }
             badgeRect_ = rect();
+            if (_forNavBar)
+            {
+                const auto statusParams = Utils::getStatusBadgeParams(Utils::scale_bitmap_with_value(size_),
+                                                                      smallBadge_);
+                if (statusParams.isValid())
+                {
+                    badgeRect_ = badgeRect_.united(QRect(statusParams.offset_, statusParams.size_));
+                    setGeometry(badgeRect_);
+                }
+            }
         }
         else
         {
@@ -487,9 +524,12 @@ namespace Ui
 
             cursorPointer = Qt::CursorShape::ArrowCursor;
             acceptDrops = false;
-            const auto statusParams = Utils::getStatusBadgeParams(Utils::scale_bitmap(size_));
+            const auto statusParams = Utils::getStatusBadgeParams(Utils::scale_bitmap(size_), smallBadge_);
             if (statusParams.isValid())
+            {
                 badgeRect_ = QRect(statusParams.offset_, QSize(size_ - offset_, size_ - offset_));
+                SetOffset(offset_);
+            }
         }
         setCursor(cursorPointer);
         setAcceptDrops(acceptDrops);
@@ -568,6 +608,11 @@ namespace Ui
     void ContactAvatarWidget::setStatusTooltipEnabled(bool _enabled)
     {
         statusTooltipEnabled_ = _enabled;
+    }
+
+    void ContactAvatarWidget::setProfileTooltipEnabled(bool _enabled)
+    {
+        profileTooltipEnabled_ = _enabled;
     }
 
     void ContactAvatarWidget::postSetAvatarToCore(const QPixmap& _avatar)
@@ -753,7 +798,7 @@ namespace Ui
         }
 
         imageCropDialog.addLabel((mode_ == Mode::CreateChat || mode_ == Mode::ChangeAvatar || mode_ == Mode::Introduce) ? QT_TRANSLATE_NOOP("avatar_upload", "Edit photo") : QT_TRANSLATE_NOOP("avatar_upload", "Upload photo"));
-        imageCropDialog.addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "Continue"), true, false, false, nullptr);
+        imageCropDialog.addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "Continue"), ButtonsStateFlag::AcceptingForbidden | ButtonsStateFlag::RejectionForbidden, nullptr);
         imageCropDialog.setRightButtonDisableOnClicked(true);
 
         QObject::connect(&imageCropDialog, &GeneralDialog::leftButtonClicked, this, [=, &imageCropDialog, &_drop]()
@@ -777,7 +822,7 @@ namespace Ui
         },
         Qt::QueuedConnection);
 
-        if (!imageCropDialog.showInCenter())
+        if (!imageCropDialog.execute())
             return;
 
         if (mode_ == Mode::CreateChat || mode_ == Mode::ChangeAvatar)
@@ -808,9 +853,9 @@ namespace Ui
 
         Ui::GeneralDialog previewDialog(avatarPreviewHost, Utils::InterConnector::instance().getMainWindow());
         previewDialog.addLabel(QT_TRANSLATE_NOOP("avatar_upload", "Preview"));
-        previewDialog.addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Back"), QT_TRANSLATE_NOOP("popup_window", "Save"), true, true, true, nullptr);
+        previewDialog.addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Back"), QT_TRANSLATE_NOOP("popup_window", "Save"));
 
-        if (previewDialog.showInCenter())
+        if (previewDialog.execute())
         {
             SetVisibleSpinner(true);
             postSetAvatarToCore(croppedAvatar);
@@ -884,6 +929,12 @@ namespace Ui
             Q_EMIT Utils::InterConnector::instance().openStatusPicker();
     }
 
+    void ContactAvatarWidget::openSettings() const
+    {
+        if (auto mainPage = MainPage::instance())
+            mainPage->settingsTabActivate(Utils::CommonSettingsType::CommonSettingsType_Profile);
+    }
+
     QRect ContactAvatarWidget::tooltipRect() const
     {
         return rect().adjusted(-(width() - size_) / 2, -(height() - size_) / 2, 0, 0);
@@ -902,20 +953,20 @@ namespace Ui
     AccessibleAvatarWidget::AccessibleAvatarWidget(ContactAvatarWidget* _avatarWidget)
         : QAccessibleWidget(_avatarWidget)
     {
-        badgeInterface_ = new AccessibleAvatarBadge(_avatarWidget);
+        badgeInterface_ = std::make_unique<AccessibleAvatarBadge>(_avatarWidget);
     }
 
     QAccessibleInterface* AccessibleAvatarWidget::child(int index) const
     {
         if (index == 0)
-            return badgeInterface_;
+            return badgeInterface_.get();
 
         return nullptr;
     }
 
     int AccessibleAvatarWidget::indexOfChild(const QAccessibleInterface* child) const
     {
-        if (child == badgeInterface_)
+        if (child == badgeInterface_.get())
             return 0;
 
         return -1;
@@ -925,6 +976,5 @@ namespace Ui
     {
         return type == QAccessible::Text::Name ? qsl("AS AccessibleAvatarWidget") : QString();
     }
-
 
 }

@@ -6,18 +6,23 @@
 #include "../../utils/utils.h"
 #include "../../cache/emoji/Emoji.h"
 #include "types/lastseen.h"
+#include "RecentsModel.h"
 
-FONTS_NS_BEGIN
-
-enum class FontFamily;
-enum class FontWeight;
-
-FONTS_NS_END
+#include "../../fonts.h"
 
 namespace Ui
 {
     class TextEditEx;
 }
+
+namespace Logic
+{
+    enum DrawIcons
+    {
+        NoNeedDrawIcons,
+        NeedDrawIcons
+    };
+};
 
 namespace Ui
 {
@@ -236,7 +241,7 @@ namespace Ui
             return Fonts::appFont(contactNameFontSize(), _fontWeight);
         }
 
-        QColor getNameFontColor(bool _isSelected, bool _isMemberChecked, bool _isFavorites = false) const;
+        Styling::ThemeColorKey getNameFontColor(bool _isSelected, bool _isMemberChecked, bool _isFavorites = false) const;
 
         //Message
         int messageFontSize() const
@@ -285,7 +290,7 @@ namespace Ui
             return Fonts::appFontScaled(12);
         }
 
-        QColor timeFontColor(bool _isSelected) const;
+        Styling::ThemeColorKey timeFontColor(bool _isSelected) const;
 
         //Additional options
         QSize removeSize() const { return Utils::scale_value(QSize(28, 24)); }
@@ -295,7 +300,7 @@ namespace Ui
         //Groups in Contact list
         int groupY()  const { return Utils::scale_value(17); }
         QFont groupFont() const { return Fonts::appFontScaled(12); }
-        QColor groupColor() const;
+        Styling::ThemeColorKey groupColor() const;
 
         //Unreads counter
         QFont unreadsFont() const
@@ -364,12 +369,15 @@ namespace Ui
     void RenderMouseState(QPainter &_painter, const bool isHovered, const bool _isSelected, const Ui::ViewParams& _viewParams, const int _height);
     void RenderMouseState(QPainter &_painter, const bool isHovered, const bool _isSelected, const QRect& _rect);
 
+    void renderDragOverlay(QPainter& _painter, const QRect& _rect, const ViewParams& _viewParams);
+
     int GetXOfRemoveImg(int width);
 
     bool IsSelectMembers(int regim);
 
     QString getStateString(const QString& _state);
     QString getStateString(const core::profile_state _state);
+    Data::FString makeDraftText(const QString& _aimId);
 }
 
 namespace Logic
@@ -420,6 +428,7 @@ namespace Logic
         }
 
         virtual bool needsTooltip(const QString& _aimId, const QModelIndex& _index, QPoint _posCursor = {}) const { return false; };
+        virtual QRect getDraftIconRectWrapper(const QString& _aimId, const QModelIndex& _index, QPoint _posCursor = {}) const { return {}; };
 
     protected:
         bool keyboardFocused_ = false;
@@ -427,3 +436,26 @@ namespace Logic
         bool opacityEnabled_ = false;
     };
 }
+
+struct QObjectDeleteLater
+{
+    void operator()(QObject* _object)
+    {
+        if (_object)
+            _object->deleteLater();
+    }
+};
+
+template<typename T>
+using QObjectUniquePtr = std::unique_ptr<T, QObjectDeleteLater>;
+
+template<typename T, class... Args>
+QObjectUniquePtr<T> makeUniqueQObjectPtr(Args&&... args)
+{
+    static_assert(std::is_base_of_v<QObject, T>);
+    return QObjectUniquePtr<T>(new T(std::forward<Args>(args)...));
+};
+
+
+
+

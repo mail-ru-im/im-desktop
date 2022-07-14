@@ -38,7 +38,8 @@ namespace core
 
             const std::string& get_bot_req_id() const noexcept;
             const bot_payload& get_payload() const noexcept;
-            virtual std::string_view get_method() const override;
+            std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
         };
 
     }

@@ -4,6 +4,7 @@
 #include "../../../http_request.h"
 #include "../../../tools/system.h"
 #include "../../../../common.shared/json_helper.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -12,18 +13,17 @@ core::wim::sync_ab::sync_ab(wim_packet_params _params, const std::string& _keywo
     : robusto_packet(std::move(_params))
     , keyword_(_keyword)
     , phone_(_phone)
-    , status_code_(0)
 {
-}
-
-int32_t core::wim::sync_ab::get_status_code()
-{
-    return status_code_;
 }
 
 std::string_view core::wim::sync_ab::get_method() const
 {
     return "contacts/sync";
+}
+
+int core::wim::sync_ab::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t core::wim::sync_ab::init_request(const std::shared_ptr<core::http_request_simple>& _request)

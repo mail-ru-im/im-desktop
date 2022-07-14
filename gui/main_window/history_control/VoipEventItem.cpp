@@ -67,9 +67,9 @@ namespace
         return Utils::scale_value(24);
     }
 
-    QColor missedColor()
+    auto missedColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_ATTENTION };
     }
 
     QPixmap getIcon(const bool _isVideoCall, const bool _isMissed, const bool _isOutgoing)
@@ -105,7 +105,7 @@ namespace
             const auto whiteOut = Styling::getParameters().getColor(Styling::StyleVariable::CHAT_SECONDARY);
             const auto whiteIn = Styling::getParameters().getColor(Styling::StyleVariable::CHAT_PRIMARY);
             const auto green = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_INVERSE);
-            const auto red = missedColor();
+            const auto red = Styling::getColor(missedColor());
 
             return
             {
@@ -121,8 +121,15 @@ namespace
             };
         };
 
-        static const auto audio = make(qsl(":/voip_events/call"));
-        static const auto video = make(qsl(":/voip_events/videocall"));
+        static auto audio = make(qsl(":/voip_events/call"));
+        static auto video = make(qsl(":/voip_events/videocall"));
+
+        static Styling::ThemeChecker checker;
+        if (checker.checkAndUpdateHash())
+        {
+            audio = make(qsl(":/voip_events/call"));
+            video = make(qsl(":/voip_events/videocall"));
+        }
 
         const auto& set = _isVideoCall ? video : audio;
         const auto _idxOut = _isOutgoing ? 1 : 0;
@@ -142,9 +149,9 @@ namespace
         );
     }
 
-    QColor callButtonDefTextColor()
+    auto callButtonDefTextColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_INVERSE);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_INVERSE };
     }
 
     QColor blendColors(const QColor& _color1, const QColor& _color2, qreal _ratio)
@@ -352,7 +359,7 @@ namespace Ui
         auto menu = new ContextMenu(this);
 
         const auto aimId = getContact();
-        const auto isDisabled = Logic::getContactListModel()->isReadonly(aimId);
+        const auto isDisabled = Logic::getContactListModel()->isReadonly(aimId) || Logic::getContactListModel()->isDeleted(aimId);
         if (!isDisabled)
             menu->addActionWithIcon(qsl(":/context_menu/reply"), QT_TRANSLATE_NOOP("context_menu", "Reply"), makeData(qsl("quote")));
 
@@ -528,7 +535,7 @@ namespace Ui
         QMargins margins(
             left,
             MessageStyle::getTopMargin(hasTopMargin()),
-            MessageStyle::getRightMargin(outgoing, w, getContact()),
+            MessageStyle::getRightMargin(outgoing, w, isMultiselected()),
             0
         );
 
@@ -594,7 +601,9 @@ namespace Ui
         if (EventInfo_->hasDuration())
         {
             duration_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("chat_event", "Duration %1").arg(EventInfo_->formatDurationText()));
-            duration_->init(getDurationFont(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+            TextRendering::TextUnit::InitializeParameters params{ getDurationFont(), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY } };
+            params.maxLinesCount_ = 1;
+            duration_->init(params);
             duration_->evaluateDesiredSize();
         }
         else if (duration_)
@@ -618,7 +627,7 @@ namespace Ui
                 maxMembers = maxVisibleConfMembers - 1;
 
                 membersPlus_ = TextRendering::MakeTextUnit(ql1c('+') % QString::number(members.size() - maxMembers));
-                membersPlus_->init(getMembersFont(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+                membersPlus_->init({ getMembersFont(), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY } });
                 membersPlus_->evaluateDesiredSize();
             }
             else
@@ -729,23 +738,22 @@ namespace Ui
         updateColors();
     }
 
-    void VoipEventItem::updateStyle()
-    {
-        timeWidget_->updateStyle();
-        update();
-    }
-
     void VoipEventItem::updateFonts()
     {
         if (text_)
         {
-            text_->init(getTextFont(), MessageStyle::getTextColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 2, TextRendering::LineBreakType::PREFER_SPACES);
+            TextRendering::TextUnit::InitializeParameters params{ getTextFont(), MessageStyle::getTextColorKey() };
+            params.maxLinesCount_ = 2;
+            params.lineBreak_ = TextRendering::LineBreakType::PREFER_SPACES;
+            text_->init(params);
             text_->evaluateDesiredSize();
         }
 
         if (duration_)
         {
-            duration_->init(getDurationFont(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+            TextRendering::TextUnit::InitializeParameters params{ getDurationFont(), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY } };
+            params.maxLinesCount_ = 1;
+            duration_->init(params);
             duration_->evaluateDesiredSize();
         }
 
@@ -802,7 +810,10 @@ namespace Ui
         if (!text_)
         {
             text_ = TextRendering::MakeTextUnit(eventText, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-            text_->init(getTextFont(), MessageStyle::getTextColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 2, TextRendering::LineBreakType::PREFER_SPACES);
+            TextRendering::TextUnit::InitializeParameters params{ getTextFont(), MessageStyle::getTextColorKey() };
+            params.maxLinesCount_ = 2;
+            params.lineBreak_ = TextRendering::LineBreakType::PREFER_SPACES;
+            text_->init(params);
         }
         else
         {
@@ -834,10 +845,10 @@ namespace Ui
 
     void VoipEventItem::updateColors()
     {
-        text_->setColor(EventInfo_->isMissed() ? missedColor() : MessageStyle::getTextColor());
+        text_->setColor(EventInfo_->isMissed() ? missedColor() : MessageStyle::getTextColorKey());
 
         if (duration_)
-            duration_->setColor(isOutgoing() ? Styling::StyleVariable::PRIMARY_PASTEL : Styling::StyleVariable::BASE_PRIMARY, getContact());
+            duration_->setColor(Styling::ThemeColorKey{ isOutgoing() ? Styling::StyleVariable::PRIMARY_PASTEL : Styling::StyleVariable::BASE_PRIMARY, getContact() });
 
         update();
     }

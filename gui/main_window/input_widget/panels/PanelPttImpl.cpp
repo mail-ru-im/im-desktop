@@ -53,18 +53,18 @@ namespace Ui
     {
     public:
         DeleteButton(QWidget* _parent, SubmitButton* _submit)
-            : ButtonWithCircleHover(_parent, qsl(":/ptt/delete_record"), deleteButtonSize(), Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION))
+            : ButtonWithCircleHover(_parent, qsl(":/ptt/delete_record"), deleteButtonSize(), Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_ATTENTION })
             , buttonSubmit_(_submit)
         {
             im_assert(_submit);
 
-            setHoverColor(Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION_HOVER));
-            setActiveColor(Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION_ACTIVE));
+            setHoverColor(Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_ATTENTION_HOVER });
+            setActiveColor(Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_ATTENTION_ACTIVE });
             setFixedSize(Utils::scale_value(deleteButtonSize()));
             setCustomToolTip(QT_TRANSLATE_NOOP("input_widget", "Delete"));
             setRectExtention(QMargins(0, 0, Utils::scale_value(8), 0));
             setFocusPolicy(Qt::TabFocus);
-            setFocusColor(focusColorAttention());
+            setFocusColor(focusColorAttentionKey());
 
             auto circleHover = std::make_unique<CircleHover>();
             circleHover->setColor(Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION, 0.22));
@@ -153,7 +153,7 @@ namespace Ui
 
         QObject::connect(recorder_, &ptt::AudioRecorder2::limitReached, this, []()
         {
-            GetSoundsManager()->playSound(SoundsManager::Sound::PttLimit);
+            GetSoundsManager()->playSound(SoundType::PttLimit);
         });
 
         QObject::connect(recorder_, &ptt::AudioRecorder2::tooShortRecord, this, &InputPanelPttImpl::removeRecord);
@@ -198,7 +198,7 @@ namespace Ui
     {
         if (recorder_)
         {
-            auto duration = GetSoundsManager()->playSound(SoundsManager::Sound::StartPtt);
+            auto duration = GetSoundsManager()->playSound(SoundType::StartPtt);
             recordScheduled_ = true;
             histogram_->switchToInit();
 
@@ -407,7 +407,7 @@ namespace Ui
 
         Q_EMIT pttRemoved(QPrivateSignal());
 
-        GetSoundsManager()->playSound(SoundsManager::Sound::RemovePtt);
+        GetSoundsManager()->playSound(SoundType::RemovePtt);
         histogram_->switchToInit();
     }
 

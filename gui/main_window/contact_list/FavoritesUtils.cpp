@@ -80,7 +80,7 @@ namespace Favorites
 
     QPixmap avatar(int32_t _size)
     {
-        static const Utils::SvgLayers layers =
+        const Utils::ColorLayers layers =
         {
             { qsl("circle"), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_LIGHT) },
             { qsl("star"),  Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT)},
@@ -89,9 +89,9 @@ namespace Favorites
         return Utils::renderSvgLayered(qsl(":/contact_list/favorites_avatar"), layers, Utils::unscale_bitmap(QSize(_size, _size)));
     }
 
-    QColor nameColor()
+    Styling::ThemeColorKey nameColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY };
     }
 
     bool isFavorites(const QString& _aimId)
@@ -175,10 +175,13 @@ namespace Favorites
         const auto msgFont = Fonts::appFontScaled(15, Fonts::FontWeight::Normal);
 
         d->message_ = Ui::TextRendering::MakeTextUnit(addedToFavoritesToastText(_messageCount), {}, Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        d->message_->init(msgFont, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT), QColor(), QColor(), QColor(), Ui::TextRendering::HorAligment::CENTER);
+        Ui::TextRendering::TextUnit::InitializeParameters params{ msgFont, Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID_PERMANENT } };
+        params.align_ = Ui::TextRendering::HorAligment::CENTER;
+        d->message_->init(params);
 
         auto favoritesUnit = Ui::TextRendering::MakeTextUnit(name(), {}, Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        favoritesUnit->init(msgFont, nameColor(), QColor(), QColor(), QColor(), Ui::TextRendering::HorAligment::CENTER);
+        params.color_ = nameColor();
+        favoritesUnit->init(params);
 
         const auto messageWidth = d->message_->desiredWidth();
         const auto favoritesWidth = favoritesUnit->desiredWidth();
@@ -190,7 +193,7 @@ namespace Favorites
         d->favoritesLabel_->setYOffset((toastHeight - messageHeight) / 2);
         d->favoritesLabel_->setRect(QRect(xOffset + messageWidth, 0, favoritesWidth, toastHeight));
         d->favoritesLabel_->setDefaultColor(nameColor());
-        d->favoritesLabel_->setHoveredColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_HOVER));
+        d->favoritesLabel_->setHoveredColor(Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY_HOVER });
         d->favoritesLabel_->setUnderline(true);
 
         d->message_->setOffsets(xOffset, (toastHeight - messageHeight) / 2);

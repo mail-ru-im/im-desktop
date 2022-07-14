@@ -4,6 +4,11 @@
 
 #include "../history/Message.h"
 
+namespace Utils
+{
+    class UrlParser;
+}
+
 namespace Ui
 {
     namespace ComplexMessage
@@ -34,6 +39,7 @@ namespace Ui
                 FileSharingUpload,
                 Sticker,
                 ProfileLink,
+                Pre,
 
                 Max
             };
@@ -70,15 +76,11 @@ namespace Ui
             HistoryControl::FileSharingInfoSptr FsInfo_;
         };
 
-        using FixedUrls = std::vector<common::tools::url_parser::compare_item>;
-
         class ChunkIterator final
         {
         public:
-            explicit ChunkIterator(const QString& _text);
-
-            ChunkIterator(const QString& _text, FixedUrls&& _urls);
-            ChunkIterator(const Data::FString& _text, FixedUrls&& _urls);
+            ChunkIterator(const QString& _text, Utils::UrlParser& _parser);
+            ChunkIterator(const Data::FString& _text, Utils::UrlParser& _parser);
 
             bool hasNext() const;
             TextChunk current(bool _allowSnippet = true, bool _forcePreview = false) const;
@@ -87,6 +89,7 @@ namespace Ui
         private:
             common::tools::message_tokenizer tokenizer_;
             Data::FStringView formattedText_;
+            Utils::UrlParser* parser_;
         };
     }
 }

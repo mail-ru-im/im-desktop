@@ -11,7 +11,9 @@
 #include "controls/GeneralDialog.h"
 #include "main_window/PhoneWidget.h"
 #include "main_window/MainWindow.h"
+#include "main_window/TermsPrivacyWidgetBase.h"
 #include "main_window/TermsPrivacyWidget.h"
+#include "main_window/contact_list/Common.h"
 #include "../common.shared/config/config.h"
 
 namespace
@@ -21,7 +23,7 @@ namespace
 
 namespace Ui
 {
-    std::unique_ptr<my_info> g_my_info;
+    QObjectUniquePtr<my_info> g_my_info;
 
     AttachPhoneInfo::AttachPhoneInfo() = default;
 
@@ -74,7 +76,7 @@ namespace Ui
         opt.rejectable_ = close_;
         attachPhoneDialog = std::make_unique<GeneralDialog>(phoneWidget, Utils::InterConnector::instance().getMainWindow(), opt);
         QObject::connect(phoneWidget, &PhoneWidget::requestClose, attachPhoneDialog.get(), &GeneralDialog::acceptDialog);
-        attachPhoneDialog->showInCenter();
+        attachPhoneDialog->execute();
 
         auto result = phoneWidget->succeeded();
         attachPhoneDialog.reset();
@@ -167,7 +169,7 @@ namespace Ui
     my_info* MyInfo()
     {
         if (!g_my_info)
-            g_my_info = std::make_unique<my_info>();
+            g_my_info = makeUniqueQObjectPtr<my_info>();
 
         return g_my_info.get();
     }
@@ -188,6 +190,16 @@ namespace Ui
             Logic::GetAvatarStorage()->updateAvatar(aimId());
             Q_EMIT Logic::GetAvatarStorage()->avatarChanged(aimId());
         }
+    }
+
+    void my_info::stopAttachPhoneNotifications()
+    {
+        attachPhoneTimer_.stop();
+    }
+
+    void my_info::resumeAttachPhoneNotifications()
+    {
+        attachPhoneTimer_.start(attachInfo_.timeout_ * 1000);
     }
 
     void my_info::attachPhoneInfo(const AttachPhoneInfo& _info)

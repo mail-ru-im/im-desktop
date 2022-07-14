@@ -3,6 +3,7 @@
 #include "group_inviteblacklist_add.h"
 #include "../../../http_request.h"
 #include "../common.shared/json_helper.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -17,6 +18,11 @@ group_inviteblacklist_add::group_inviteblacklist_add(wim_packet_params _params, 
 std::string_view group_inviteblacklist_add::get_method() const
 {
     return "privacy/groups/inviteBlacklist/add";
+}
+
+int core::wim::group_inviteblacklist_add::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t group_inviteblacklist_add::init_request(const std::shared_ptr<core::http_request_simple>& _request)

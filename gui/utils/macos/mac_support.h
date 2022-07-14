@@ -15,7 +15,8 @@ namespace Ui
 
 namespace Utils
 {
-    void disableCloseButton(QWidget* _w);
+    void enableCloseButton(QWidget* _w, bool _on);
+    void disableZoomButton(QWidget* _w);
     int getTitlebarHeight(QWidget* _w);
 
     // window can be shown in the same space with the full-screen window

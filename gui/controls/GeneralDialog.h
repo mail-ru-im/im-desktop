@@ -4,12 +4,27 @@
 #include "DialogButton.h"
 #include "SimpleListWidget.h"
 
+namespace Styling
+{
+    class StyledWidget;
+}
+
 namespace Ui
 {
     namespace TextRendering
     {
         class TextUnit;
     }
+
+    enum class ButtonsStateFlag
+    {
+        Normal = 0,
+        InitiallyInactive = 1 << 1,
+        RejectionForbidden = 1 << 2,
+        AcceptingForbidden = 1 << 3,
+    };
+    Q_DECLARE_FLAGS(ButtonsStateFlags, ButtonsStateFlag)
+    Q_DECLARE_OPERATORS_FOR_FLAGS(Ui::ButtonsStateFlags)
 
     class qt_gui_settings;
     class SemitransparentWindowAnimated;
@@ -21,10 +36,10 @@ namespace Ui
     Q_SIGNALS:
         void leftButtonClicked();
         void rightButtonClicked();
-        void shown(QWidget *);
-        void hidden(QWidget *);
-        void moved(QWidget *);
-        void resized(QWidget *);
+        void shown(QWidget*);
+        void hidden(QWidget*);
+        void moved(QWidget*);
+        void resized(QWidget*);
 
     public:
         using KeysContainer = std::unordered_set<Qt::Key>;
@@ -63,13 +78,15 @@ namespace Ui
         GeneralDialog(QWidget* _mainWidget, QWidget* _parent, const Options& _options = {});
         ~GeneralDialog();
 
-        bool showInCenter();
+        static GeneralDialog* activeInstance();
+
+        bool execute();
         QWidget* getMainHost();
 
         DialogButton* addAcceptButton(const QString& _buttonText, const bool _isEnabled);
         DialogButton* addCancelButton(const QString& _buttonText, const bool _setActive = false);
         QPair<DialogButton* /* ok (right) button */, DialogButton* /* cancel (left) button */>
-        addButtonsPair(const QString& _buttonTextLeft, const QString& _buttonTextRight, bool _isActive, bool _rejectable = true, bool _acceptable = true, QWidget* _area = nullptr);
+            addButtonsPair(const QString& _buttonTextLeft, const QString& _buttonTextRight, ButtonsStateFlags _flags = ButtonsStateFlag::Normal, QWidget* _area = nullptr);
         void setButtonsAreaMargins(const QMargins& _margins);
 
         DialogButton* getAcceptButton() const noexcept { return nextButton_; };
@@ -81,10 +98,10 @@ namespace Ui
         void addText(const QString& _messageText, int _upperMarginPx, const QFont& _font, const QColor& _color);
         void addError(const QString& _messageText);
 
-        inline void setShadow(bool b) { shadow_ = b; }
+        void setShadow(bool b) { shadow_ = b; }
 
-        inline void setLeftButtonDisableOnClicked(bool v) { leftButtonDisableOnClicked_ = v; }
-        inline void setRightButtonDisableOnClicked(bool v) { rightButtonDisableOnClicked_ = v; }
+        void setLeftButtonDisableOnClicked(bool v) { leftButtonDisableOnClicked_ = v; }
+        void setRightButtonDisableOnClicked(bool v) { rightButtonDisableOnClicked_ = v; }
 
         void updateSize();
 
@@ -92,6 +109,9 @@ namespace Ui
         void setIgnoredKeys(const KeysContainer& _keys);
 
         static bool isActive();
+        static int maximumHeight() noexcept;
+        static int verticalMargin() noexcept;
+        static int shadowWidth() noexcept;
 
         int getHeaderHeight() const;
 
@@ -100,12 +120,13 @@ namespace Ui
         void setTransparentBackground(bool _enable);
 
         QSize sizeHint() const override;
+        void setFocusPolicyButtons(Qt::FocusPolicy _policy);
 
     protected:
-        void showEvent(QShowEvent *) override;
-        void hideEvent(QHideEvent *) override;
-        void moveEvent(QMoveEvent *) override;
-        void resizeEvent(QResizeEvent *) override;
+        void showEvent(QShowEvent*) override;
+        void hideEvent(QHideEvent*) override;
+        void moveEvent(QMoveEvent*) override;
+        void resizeEvent(QResizeEvent*) override;
         void mousePressEvent(QMouseEvent* _e) override;
         void keyPressEvent(QKeyEvent* _e) override;
         bool eventFilter(QObject* _obj, QEvent* _event) override;
@@ -114,7 +135,7 @@ namespace Ui
         QHBoxLayout* getBottomLayout();
         void rejectDialogInternal();
 
-        QWidget* mainHost_;
+        Styling::StyledWidget* mainHost_;
         QWidget* shadowHost_;
         QWidget* mainWidget_;
         int addWidth_;
@@ -133,6 +154,7 @@ namespace Ui
         KeysContainer ignoredKeys_;
         Options options_;
 
+        static std::stack<GeneralDialog*> instances_;
         static bool inExec_;
     };
 
@@ -150,7 +172,7 @@ namespace Ui
         void resizeEvent(QResizeEvent* _event) override;
 
     private:
-        QPixmap icon_;
+        Utils::StyledPixmap icon_;
         TextRendering::TextUnitPtr caption_;
     };
 

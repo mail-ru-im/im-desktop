@@ -4,6 +4,7 @@
 
 #include "../../../../common.shared/json_helper.h"
 #include "../../../http_request.h"
+#include "../log_replace_functor.h"
 
 namespace core::wim
 {
@@ -41,5 +42,10 @@ namespace core::wim
     std::string_view start_bot::get_method() const
     {
         return "startBot";
+    }
+
+    int start_bot::minimal_supported_api_version() const
+    {
+        return core::urls::api_version::instance().minimal_supported();
     }
 }

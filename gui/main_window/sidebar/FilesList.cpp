@@ -15,11 +15,14 @@
 #include "../../my_info.h"
 #include "../GroupChatOperations.h"
 #include "../containers/FriendlyContainer.h"
+#include "../containers/FileSharingMetaContainer.h"
 #include "../contact_list/ContactListModel.h"
 #include "../history_control/FileSizeFormatter.h"
+#include "../history_control/MessageStyle.h"
 #include "utils/stat_utils.h"
 #include "../../styles/ThemeParameters.h"
 #include "previewer/toast.h"
+#include "../../../common.shared/antivirus/antivirus_types.h"
 
 #ifdef __APPLE__
 #   include "../../utils/macos/mac_support.h"
@@ -63,6 +66,11 @@ namespace
         }
 
         static std::unordered_map<Ui::ButtonState, QPixmap> cache;
+
+        static Styling::ThemeChecker checker;
+        if (checker.checkAndUpdateHash())
+            cache.clear();
+
         auto& icon = cache[_state];
         if (icon.isNull())
         {
@@ -86,10 +94,21 @@ namespace
 
         return icon;
     }
-}
+
+    const Utils::FileSharingId& emptyFileSharingId()
+    {
+        static Utils::FileSharingId empty;
+        return empty;
+    }
+} // namespace
 
 namespace Ui
 {
+    const Utils::FileSharingId& BaseFileItem::getFileSharingId() const
+    {
+        return emptyFileSharingId();
+    }
+
     DateFileItem::DateFileItem(time_t _time, qint64 _msg, qint64 _seq)
         : time_(_time)
         , msg_(_msg)
@@ -99,7 +118,7 @@ namespace Ui
         auto date = QLocale().standaloneMonthName(dt.date().month());
 
         date_ = Ui::TextRendering::MakeTextUnit(date.toUpper());
-        date_->init(Fonts::appFontScaled(11, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+        date_->init({ Fonts::appFontScaled(11, Fonts::FontWeight::SemiBold), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY } });
         date_->evaluateDesiredSize();
     }
 
@@ -131,38 +150,35 @@ namespace Ui
         return time_;
     }
 
-    FileItem::FileItem(const QString& _link, const QString& _date, qint64 _msg, qint64 _seq, bool _outgoing, const QString& _sender, time_t _time, int _width)
-        : link_(_link)
-        , height_(0)
+    FileItem::FileItem(const QString& _link, const QString& _date, qint64 _msg, qint64 _seq, bool _outgoing, const QString& _sender, time_t _time, int _width, QWidget* _parent)
+        : BaseFileItem(_parent)
+        , link_(_link)
+        , fileSharingId_ { Ui::ComplexMessage::extractIdFromFileSharingUri(link_) }
         , width_(_width)
         , msg_(_msg)
         , seq_(_seq)
-        , downloading_(false)
-        , transferred_(0)
-        , total_(0)
         , outgoing_(_outgoing)
-        , reqId_(-1)
         , sender_(_sender)
         , time_(_time)
-        , sizet_(0)
-        , lastModified_(0)
-        , status_(FileStatus::NoStatus)
+        , parent_{ _parent }
     {
         height_ = QFontMetrics(Fonts::appFontScaled(16)).height();
         height_ += QFontMetrics(Fonts::appFontScaled(12)).height();
 
+        showInFolder_ = Ui::TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("chat_page", "Show in folder"), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
+        showInFolder_->init({ Fonts::appFontScaled(12), Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_INVERSE } });
+        showInFolder_->evaluateDesiredSize();
+
         date_ = Ui::TextRendering::MakeTextUnit(_date, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        date_->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
+        TextRendering::TextUnit::InitializeParameters params(Fonts::appFontScaled(13), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY });
+        date_->init(params);
         date_->evaluateDesiredSize();
 
         friendly_ = Ui::TextRendering::MakeTextUnit(Logic::GetFriendlyContainer()->getFriendly(sender_), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        friendly_->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY), {}, {}, {}, TextRendering::HorAligment::LEFT, 1);
+        params.maxLinesCount_ = 1;
+        friendly_->init(params);
         friendly_->evaluateDesiredSize();
         elide(friendly_, Utils::scale_value(DATE_LEFT_OFFSET) - date_->getLastLineWidth());
-
-        showInFolder_ = Ui::TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("chat_page", "Show in folder"), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        showInFolder_->init(Fonts::appFontScaled(12), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_INVERSE));
-        showInFolder_->evaluateDesiredSize();
 
         height_ += date_->cachedSize().height();
         height_ += Utils::scale_value(DATE_OFFSET);
@@ -177,7 +193,7 @@ namespace Ui
         _p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
         _p.translate(_rect.topLeft());
 
-        if (localPath_.isEmpty())
+        if (localPath_.isEmpty() && !status_.isVirusInfected())
         {
             const auto QT_ANGLE_MULT = 16;
             const auto baseAngle = (_progress * QT_ANGLE_MULT);
@@ -210,8 +226,8 @@ namespace Ui
                 _p.drawPixmap(Utils::scale_value(HOR_OFFSET), Utils::scale_value(ICON_VER_OFFSET), fileType_);
         }
 
-        if (status_ != FileStatus::NoStatus)
-            _p.drawPixmap(getStatusRect(), getFileStatusIcon(status_, Styling::StyleVariable::BASE_PRIMARY));
+        if (Ui::needShowStatus(status_))
+            _p.drawPixmap(getStatusRect(), getFileStatusIcon(status_.type(), MessageStyle::getFileStatusIconColor(status_.type(), false)));
 
         if (moreState_ != ButtonState::HIDDEN)
             _p.drawPixmap(getMoreButtonRect(), getMoreIcon(moreState_));
@@ -230,7 +246,7 @@ namespace Ui
             size_->setOffsets(Utils::scale_value(HOR_OFFSET + PREVIEW_SIZE + PREVIEW_RIGHT_OFFSET), Utils::scale_value(VER_OFFSET + NAME_OFFSET) + name_->cachedSize().height());
             size_->draw(_p);
 
-            if (!localPath_.isEmpty())
+            if (!localPath_.isEmpty() && isAntivirusAllowed())
             {
                 showInFolder_->setOffsets(Utils::scale_value(HOR_OFFSET + PREVIEW_SIZE + PREVIEW_RIGHT_OFFSET + SHOW_IN_FOLDER_OFFSET) + size_->getLastLineWidth(), Utils::scale_value(VER_OFFSET + NAME_OFFSET) + name_->cachedSize().height());
                 showInFolder_->draw(_p);
@@ -315,10 +331,22 @@ namespace Ui
         return lastModified_;
     }
 
+    const Utils::FileSharingId& FileItem::getFileSharingId() const
+    {
+        return fileSharingId_;
+    }
+
+    bool FileItem::isAntivirusAllowed() const
+    {
+        return status_.isAntivirusAllowedType();
+    }
+
     void FileItem::setFilename(const QString& _name)
     {
         name_ = Ui::TextRendering::MakeTextUnit(_name, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        name_->init(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), {}, {}, {}, TextRendering::HorAligment::LEFT, 1);
+        TextRendering::TextUnit::InitializeParameters params{ Fonts::appFontScaled(16), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } };
+        params.maxLinesCount_ = 1;
+        name_->init(params);
         name_->evaluateDesiredSize();
         elide(name_);
 
@@ -331,7 +359,9 @@ namespace Ui
     {
         sizet_ = _size;
         size_ = Ui::TextRendering::MakeTextUnit(HistoryControl::formatFileSize(_size), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        size_->init(Fonts::appFontScaled(12), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), {}, {}, {}, TextRendering::HorAligment::LEFT, 1);
+        TextRendering::TextUnit::InitializeParameters params{ Fonts::appFontScaled(12), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } };
+        params.maxLinesCount_ = 1;
+        size_->init(params);
         size_->evaluateDesiredSize();
         elide(size_);
     }
@@ -339,6 +369,16 @@ namespace Ui
     void FileItem::setLastModified(qint64 _lastModified)
     {
         lastModified_ = _lastModified;
+    }
+
+    void FileItem::setMetaInfo(const Data::FileSharingMeta& _meta)
+    {
+        FileItem::setFilename(_meta.filenameShort_);
+        FileItem::setFilesize(_meta.size_);
+        FileItem::setLocalPath(_meta.localPath_);
+        FileItem::setLastModified(_meta.lastModified_);
+
+        status_.updateData(_meta.antivirusCheck_, _meta.trustRequired_, Features::isAntivirusCheckEnabled());
     }
 
     bool FileItem::isOverControl(const QPoint& _pos)
@@ -349,12 +389,12 @@ namespace Ui
         return localPath_.isEmpty() && r.contains(_pos);
     }
 
-    bool FileItem::isOverLink(const QPoint& _pos, const QPoint& _pos2)
+    bool FileItem::isOverLink(const QPoint& _pos)
     {
         if (!isDrew())
             return false;
         static const QRegion r(iconRect(), QRegion::RegionType::Ellipse);
-        return !localPath_.isEmpty() && (showInFolder_->contains(_pos) || r.contains(_pos2) || (name_ && name_->contains(_pos)));
+        return !localPath_.isEmpty() && (showInFolder_->contains(_pos) || r.contains(_pos) || (name_ && name_->contains(_pos)));
     }
 
     bool FileItem::isOverIcon(const QPoint& _pos)
@@ -412,11 +452,11 @@ namespace Ui
     void FileItem::setDateState(bool _hover, bool _active)
     {
         if (_hover)
-            date_->setColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER));
+            date_->setColor(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY_HOVER });
         else if (_active)
-            date_->setColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_ACTIVE));
+            date_->setColor(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY_ACTIVE });
         else
-            date_->setColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
+            date_->setColor(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY });
     }
 
     bool FileItem::isOutgoing() const
@@ -452,11 +492,6 @@ namespace Ui
         return QRect(0, name_->offsets().y(), width_, name_->cachedSize().height());
     }
 
-    void FileItem::setFileStatus(FileStatus _status)
-    {
-        status_ = _status;
-    }
-
     void FileItem::elide(const std::unique_ptr<TextRendering::TextUnit>& _unit, int _addedWidth)
     {
         if (_unit)
@@ -467,7 +502,7 @@ namespace Ui
     {
         const auto btnSize = Utils::scale_value(QSize(MORE_BUTTON_SIZE, MORE_BUTTON_SIZE));
         const auto x = width_ - Utils::scale_value(RIGHT_OFFSET) / 2 - btnSize.width() / 2;
-        const auto y = status_ == FileStatus::NoStatus
+        const auto y = !Ui::needShowStatus(status_)
             ? (height_ - btnSize.height()) / 2
             : Utils::scale_value(VER_OFFSET) * 2 + getFileStatusIconSize().height();
         return QRect({ x, y }, btnSize);
@@ -475,22 +510,49 @@ namespace Ui
 
     QRect FileItem::getStatusRect() const
     {
-        if (status_ == FileStatus::NoStatus)
-            return {};
+        if (Ui::needShowStatus(status_))
+        {
+            const auto x = width_ - Utils::scale_value(RIGHT_OFFSET) / 2 - getFileStatusIconSize().width() / 2;
+            const auto y = Utils::scale_value(VER_OFFSET);
+            return { QPoint(x, y), getFileStatusIconSize() };
+        }
+        return {};
+    }
 
-        const auto x = width_ - Utils::scale_value(RIGHT_OFFSET) / 2 - getFileStatusIconSize().width() / 2;
-        const auto y = Utils::scale_value(VER_OFFSET);
-        return { QPoint(x, y), getFileStatusIconSize() };
+    void FileItem::processMetaInfo(const Utils::FileSharingId& /*_fsId*/, const Data::FileSharingMeta& _meta)
+    {
+        FileItem::setMetaInfo(_meta);
+        if (Features::isAntivirusCheckEnabled() && FileItem::getFileStatus().isAntivirusInProgress())
+        {
+            Ui::GetDispatcher()->subscribeFileSharingAntivirus(getFileSharingId());
+            connect(Ui::GetDispatcher(), &Ui::core_dispatcher::antivirusCheckResult, this, &FileItem::onAntivirusCheckResult, Qt::UniqueConnection);
+        }
+
+        if (parent_)
+            parent_->update();
+    }
+
+    void FileItem::onAntivirusCheckResult(const Utils::FileSharingId& _fsId, core::antivirus::check::result _result)
+    {
+        if (auto& status = FileItem::getFileStatus(); !status.isAntivirusInProgress())
+        {
+            disconnect(Ui::GetDispatcher(), &Ui::core_dispatcher::antivirusCheckResult, this, &FileItem::onAntivirusCheckResult);
+            status.setAntivirusCheckResult(_result);
+            if (parent_)
+                parent_->update();
+        }
     }
 
     FilesList::FilesList(QWidget* _parent)
         : MediaContentWidget(MediaContentType::Files, _parent)
         , anim_(new QVariantAnimation(this))
     {
-        connect(Ui::GetDispatcher(), &core_dispatcher::fileSharingFileMetainfoDownloaded, this, &FilesList::fileSharingFileMetainfoDownloaded);
         connect(Ui::GetDispatcher(), &core_dispatcher::fileSharingFileDownloading, this, &FilesList::fileDownloading);
         connect(Ui::GetDispatcher(), &core_dispatcher::fileSharingFileDownloaded, this, &FilesList::fileDownloaded);
         connect(Ui::GetDispatcher(), &core_dispatcher::fileSharingError, this, &FilesList::fileError);
+
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated, this, qOverload<>(&FilesList::update));
+        connect(Ui::GetDispatcher(), &core_dispatcher::externalUrlConfigUpdated, this, qOverload<>(&FilesList::update));
 
         anim_->setStartValue(0.0);
         anim_->setEndValue(360.0);
@@ -505,7 +567,6 @@ namespace Ui
     {
         MediaContentWidget::initFor(_aimId);
         Items_.clear();
-        RequestIds_.clear();
 
         for (auto& [_, timer] : dataTransferTimeoutList_)
         {
@@ -530,21 +591,18 @@ namespace Ui
             Utils::UrlParser parser;
             parser.process(e.url_);
 
-            const auto isFilesharing = parser.hasUrl() && parser.getUrl().is_filesharing();
+            const auto isFilesharing = parser.hasUrl() && parser.isFileSharing();
             if (!isFilesharing)
                 continue;
 
-            const auto reqId = GetDispatcher()->downloadFileSharingMetainfo(e.url_);
-
             const auto time = QDateTime::fromSecsSinceEpoch(e.time_);
-            auto item = std::make_unique<FileItem>(e.url_, formatTimeStr(time), e.msg_id_, e.seq_, e.outgoing_, e.sender_, e.time_, width());
+
+            auto item = std::make_shared<FileItem>(e.url_, formatTimeStr(time), e.msg_id_, e.seq_, e.outgoing_, e.sender_, e.time_, width(), this);
+            Logic::GetFileSharingMetaContainer()->requestFileSharingMetaInfo(Ui::ComplexMessage::extractIdFromFileSharingUri(e.url_), item);
+
             h += item->getHeight();
 
-            RequestIds_.push_back(reqId);
-            item->setReqId(reqId);
-
-            if (blocked)
-                item->setFileStatus(FileStatus::Blocked);
+            item->getFileStatus().setTrustRequired(blocked);
 
             Items_.push_back(std::move(item));
         }
@@ -572,7 +630,7 @@ namespace Ui
             Utils::UrlParser parser;
             parser.process(e.url_);
 
-            const auto isFilesharing = parser.hasUrl() && parser.getUrl().is_filesharing();
+            const auto isFilesharing = parser.hasUrl() && parser.isFileSharing();
             if (!isFilesharing || (e.type_ != u"file" && e.type_ != u"audio"))
                 continue;
 
@@ -596,15 +654,12 @@ namespace Ui
                 break;
             }
 
-            auto reqId = GetDispatcher()->downloadFileSharingMetainfo(e.url_);
-            auto item = std::make_unique<FileItem>(e.url_, formatTimeStr(time), e.msg_id_, e.seq_, e.outgoing_, e.sender_, e.time_, width());
+            auto item = std::make_shared<FileItem>(e.url_, formatTimeStr(time), e.msg_id_, e.seq_, e.outgoing_, e.sender_, e.time_, width(), this);
+            Logic::GetFileSharingMetaContainer()->requestFileSharingMetaInfo(Ui::ComplexMessage::extractIdFromFileSharingUri(e.url_), item);
+
             h += item->getHeight();
 
-            RequestIds_.push_back(reqId);
-            item->setReqId(reqId);
-
-            if (blocked)
-                item->setFileStatus(FileStatus::Blocked);
+            item->getFileStatus().setTrustRequired(blocked);
 
             Items_.insert(iter, std::move(item));
         }
@@ -666,28 +721,34 @@ namespace Ui
     {
         Utils::GalleryMediaActionCont cont(MediaTypeName, aimId_);
 
+        const auto pos = _event->pos();
+
         if (_event->button() == Qt::RightButton)
         {
             cont.happened();
             return MediaContentWidget::mouseReleaseEvent(_event);
         }
 
-        if (Utils::clicked(pos_, _event->pos()))
+        if (Utils::clicked(pos_, pos))
         {
-            const auto downloadAllowed = !Logic::getContactListModel()->isTrustRequired(aimId_) || MyInfo()->isTrusted();
+            const auto trustAllowed = !Logic::getContactListModel()->isTrustRequired(aimId_) || MyInfo()->isTrusted();
 
             auto h = 0, j = 0;
             for (auto& i : Items_)
             {
                 const auto r = QRect(0, h, width(), i->getHeight());
-                const auto posRel = _event->pos() - QPoint(0, h);
-                if (r.contains(_event->pos()))
+                const auto posRel = pos - QPoint(0, h);
+                if (r.contains(pos))
                 {
                     cont.happened();
 
                     if (i->isOverControl(posRel))
                     {
-                        if (i->isDownloading())
+                        if (!i->isAntivirusAllowed())
+                        {
+                            showFileStatusToast(i->getFileStatus().type());
+                        }
+                        else if (i->isDownloading())
                         {
                             stopDataTransferTimeoutTimer(i->reqId());
                             Ui::GetDispatcher()->abortSharedFileDownloading(i->getLink(), i->reqId());
@@ -698,19 +759,19 @@ namespace Ui
 
                             update();
                         }
-                        else if (downloadAllowed)
+                        else if (trustAllowed)
                         {
-                            auto reqId = Ui::GetDispatcher()->downloadSharedFile(aimId_, i->getLink(), false, QString(), true);
+                            const auto reqId = Ui::GetDispatcher()->downloadSharedFile(aimId_, i->getLink(), false, QString(), true);
                             Downloading_.push_back(reqId);
                             i->setReqId(reqId);
                             startDataTransferTimeoutTimer(reqId);
                         }
                         else
                         {
-                            showFileStatusToast(i->getFileStatus());
+                            showFileStatusToast(i->getFileStatus().type());
                         }
                     }
-                    else if (i->isOverLink(_event->pos(), posRel))
+                    else if (i->isOverLink(posRel))
                     {
 #ifdef _WIN32
                         QFileInfo f(i->getLocalPath());
@@ -744,13 +805,13 @@ namespace Ui
                 {
                     cont.happened();
 
-                    if (i->isOverMoreButton(_event->pos(), h))
+                    if (i->isOverMoreButton(pos, h))
                         i->setMoreButtonState(ButtonState::HOVERED);
                     else
                         i->setMoreButtonState(ButtonState::NORMAL);
 
-                    if (Utils::clicked(pos_, _event->pos()))
-                        showContextMenu(ItemData(i->getLink(), i->getMsg(), i->sender(), i->time()), _event->pos(), true);
+                    if (Utils::clicked(pos_, pos))
+                        showContextMenu(ItemData(i->getLink(), i->getMsg(), i->sender(), i->time()), pos, true);
                 }
 
                 h += i->getHeight();
@@ -771,7 +832,7 @@ namespace Ui
             const auto posRel = pos - QPoint(0, h);
             if (r.contains(pos))
             {
-                if (i->isOverControl(posRel) || i->isOverLink(pos, posRel))
+                if (i->isOverControl(posRel) || i->isOverLink(posRel))
                     point = true;
 
                 const auto needTooltip =
@@ -848,27 +909,6 @@ namespace Ui
         return ItemData();
     }
 
-    void FilesList::fileSharingFileMetainfoDownloaded(qint64 _seq, const Data::FileSharingMeta& _meta)
-    {
-        if (std::find(RequestIds_.begin(), RequestIds_.end(),_seq) == RequestIds_.end())
-            return;
-
-        for (auto& i : Items_)
-        {
-            if (i->reqId() == _seq)
-            {
-                i->setFilename(_meta.filenameShort_);
-                i->setFilesize(_meta.size_);
-                i->setLocalPath(_meta.localPath_);
-                i->setLastModified(_meta.lastModified_);
-                i->setFileStatus(_meta.trustRequired_ ? FileStatus::Blocked : FileStatus::NoStatus);
-                break;
-            }
-        }
-
-        update();
-    }
-
     void FilesList::fileDownloading(qint64 _seq, QString /*_rawUri*/, qint64 _bytesTransferred, qint64 _bytesTotal)
     {
         if (std::find(Downloading_.begin(), Downloading_.end(), _seq) == Downloading_.end() || Items_.empty())
@@ -933,7 +973,6 @@ namespace Ui
             if (needUpdate)
                 update();
         }
-
     }
 
     void FilesList::fileError(qint64 _seq, const QString& _rawUri, qint32 _errorCode)
@@ -1012,7 +1051,7 @@ namespace Ui
         setFixedHeight(h);
     }
 
-    void FilesList::updateTooltip(const std::unique_ptr<BaseFileItem>& _item, const QPoint& _p, int _h)
+    void FilesList::updateTooltip(const std::shared_ptr<BaseFileItem>& _item, const QPoint& _p, int _h)
     {
         const auto overName = _item->isOverFilename(_p);
         const auto overStatus = _item->isOverStatus(_p);
@@ -1025,7 +1064,7 @@ namespace Ui
                 const auto isFullyVisible = visibleRegion().boundingRect().y() < ttRect.top();
                 const auto arrowDir = isFullyVisible ? Tooltip::ArrowDirection::Down : Tooltip::ArrowDirection::Up;
                 const auto arrowPos = isFullyVisible ? Tooltip::ArrowPointPos::Top : Tooltip::ArrowPointPos::Bottom;
-                const auto text = overName ? _item->getFilename() : getFileStatusText(_item->getFileStatus());
+                const auto text = overName ? _item->getFilename() : getFileStatusText(_item->getFileStatus().type());
                 showTooltip(text, QRect(mapToGlobal(ttRect.topLeft()), ttRect.size()), arrowDir, arrowPos);
             }
         }
@@ -1069,4 +1108,4 @@ namespace Ui
             dataTransferTimeoutList_.erase(it);
         }
     }
-}
+} // namespace Ui

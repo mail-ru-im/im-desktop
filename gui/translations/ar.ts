@@ -64,6 +64,116 @@
     </message>
 </context>
 <context>
+    <name>RenderViewContextMenuQt</name>
+    <message>
+        <source>Back</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Forward</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Reload</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cut</source>
+        <translation type="unfinished">قص</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation type="unfinished">لصق</translation>
+    </message>
+    <message>
+        <source>Undo</source>
+        <translation type="unfinished">تراجع</translation>
+    </message>
+    <message>
+        <source>Redo</source>
+        <translation type="unfinished">إعادة</translation>
+    </message>
+    <message>
+        <source>Paste and match style</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select all</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open link in new window</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open link in new tab</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy link address</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save link</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy image</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy image address</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save image</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy media address</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show controls</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Loop</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save media</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Inspect</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Exit full screen</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save page</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>View page source</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>Ui::WebPage</name>
+    <message>
+        <source>Select folder to upload</source>
+        <translation type="unfinished">اختر مجلد التنزيل</translation>
+    </message>
+</context>
+<context>
     <name>UpdaterButton</name>
     <message>
         <source>Update %1</source>
@@ -118,6 +228,18 @@ You can leave your feedback or report an error here:</source>
         <source>Server error</source>
         <translation>خطأ في الخادم</translation>
     </message>
+    <message>
+        <source>https://reestr.digital.gov.ru/reestr/307994/</source>
+        <translation>https://reestr.digital.gov.ru/reestr/307994/</translation>
+    </message>
+    <message>
+        <source>registry_copyright</source>
+        <translation>© Mail.Ru Digital Technologies LLC</translation>
+    </message>
+    <message>
+        <source>The product is registered in the Unified Register of Russian Software and Databases</source>
+        <translation>تم تسجيل منتج VK Teams في السجل الموحد للبرامج الروسية لأجهزة الكمبيوتر وقواعد البيانات الإلكترونية تحت اسم Myteam (Майтим)</translation>
+    </message>
 </context>
 <context>
     <name>active_call_plate</name>
@@ -128,6 +250,26 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Active call</source>
         <translation>مكالمة نشطة</translation>
+    </message>
+    <message>
+        <source>participant</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -285,6 +427,14 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Turquoise</source>
         <translation>الفيروز</translation>
+    </message>
+    <message>
+        <source>Sibur</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Dark Sibur</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -482,7 +632,7 @@ You can leave your feedback or report an error here:</source>
     </message>
     <message>
         <source>Jun</source>
-        <translation>يونيو</translation>
+        <translation>يونيه</translation>
     </message>
     <message>
         <source>Jul</source>
@@ -527,10 +677,6 @@ You can leave your feedback or report an error here:</source>
 </context>
 <context>
     <name>call_link</name>
-    <message>
-        <source>Link on call</source>
-        <translation>رابط الاتصال</translation>
-    </message>
     <message>
         <source>Link on webinar</source>
         <translation>رابط إلى الويبينار</translation>
@@ -1068,8 +1214,20 @@ You can leave your feedback or report an error here:</source>
         <translation>%1 انقر فوق &quot;موافق&quot; أو الإجابة ويمكن لـ %2</translation>
     </message>
     <message>
+        <source> %3 call you</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source> %3 add you to groups</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>%1 From now on %2 is able to</source>
         <translation>%1 الآن يستطيع %2</translation>
+    </message>
+    <message>
+        <source> see if you read his messages</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>%1 You have canceled your join request</source>
@@ -1132,12 +1290,44 @@ You can leave your feedback or report an error here:</source>
         <translation>%1 بتغيير الموعد النهائي إلى %2</translation>
     </message>
     <message>
-        <source>%1 changed task assignee to &quot;%2&quot;</source>
-        <translation>%1 بتغيير الفنان إلى &quot;%2&quot;</translation>
+        <source>%1 changed task assignee to %2</source>
+        <translation>%1 بتغيير الفنان إلى %2</translation>
     </message>
     <message>
         <source>Task status changed to &quot;%1&quot;</source>
         <translation>تم تغيير حالة المهمة إلى &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>You</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The administrator</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>have allowed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>have forbidden</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>has allowed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>has forbidden</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 %2 threads creation in this channel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 %2 threads creation in this group</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -1418,6 +1608,26 @@ You can leave your feedback or report an error here:</source>
         <comment>21</comment>
         <translation>تم تحديد %1 من الرسائل</translation>
     </message>
+    <message>
+        <source>%1 subscriber</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 subscribers</source>
+        <comment>2</comment>
+        <translation>%1 مشترك</translation>
+    </message>
+    <message>
+        <source>%1 subscribers</source>
+        <comment>5</comment>
+        <translation>%1 مشترك</translation>
+    </message>
+    <message>
+        <source>%1 subscribers</source>
+        <comment>21</comment>
+        <translation>%1 مشترك</translation>
+    </message>
 </context>
 <context>
     <name>contactus_page</name>
@@ -1617,10 +1827,6 @@ You can leave your feedback or report an error here:</source>
 <context>
     <name>context_menu</name>
     <message>
-        <source>Call</source>
-        <translation>مكالمة</translation>
-    </message>
-    <message>
         <source>Profile</source>
         <translation>حساب</translation>
     </message>
@@ -1671,6 +1877,10 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Reply</source>
         <translation>الرد</translation>
+    </message>
+    <message>
+        <source>Create task</source>
+        <translation>إنشاء مهمة</translation>
     </message>
     <message>
         <source>Copy to clipboard</source>
@@ -1855,6 +2065,22 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Code</source>
         <translation>الرمز</translation>
+    </message>
+    <message>
+        <source>Unsubscribe from thread</source>
+        <translation>إلغاء الاشتراك من موضوع</translation>
+    </message>
+    <message>
+        <source>Subscribe to thread</source>
+        <translation>اشترك في الموضوع</translation>
+    </message>
+    <message>
+        <source>Unblock</source>
+        <translation>رفع الحظر</translation>
+    </message>
+    <message>
+        <source>Compose email</source>
+        <translation>كتابة خطاب</translation>
     </message>
 </context>
 <context>
@@ -3117,10 +3343,18 @@ You can leave your feedback or report an error here:</source>
 Only for private groups
 
 This option cannot be disabled</source>
-        <translation>السماح بالوصول إلى الملفات للأجهزة الموثوقة فقط
-للمجموعات غير العامة فقط
+        <translation>السماح للأجهزة الموثوقة فقط بالوصول إلى الملفات
+فقط للمجموعات غير العامة
 
-من المستحيل تعطيل الإعداد</translation>
+لا يمكن تعطيل الإعداد</translation>
+    </message>
+    <message>
+        <source>Enable thread feeds</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Allow chat members to create threads</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -3165,8 +3399,8 @@ This option cannot be disabled</source>
         <translation>يُظهر Autostatus من المتصل بالمكالمة</translation>
     </message>
     <message>
-        <source>Advantages of calls in Myteam</source>
-        <translation>فوائد الاتصال بـ Myteam</translation>
+        <source>Advantages of calls in %1</source>
+        <translation>فوائد الاتصال بـ %1</translation>
     </message>
     <message>
         <source>Group calls up to %1 participants</source>
@@ -3254,6 +3488,10 @@ This option cannot be disabled</source>
     <message>
         <source>The join request has been sent to administrator</source>
         <translation>تم إرسال طلب الانضمام إلى المسؤول</translation>
+    </message>
+    <message>
+        <source>The user is blocked</source>
+        <translation>المستخدم محظور</translation>
     </message>
     <message>
         <source>Play record</source>
@@ -3505,6 +3743,10 @@ This option cannot be disabled</source>
         <translation>اسم المستخدم أو كلمة المرور غير صالحة</translation>
     </message>
     <message>
+        <source>Wrong Email</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Wrong Email or password</source>
         <translation>البريد الإلكتروني أو كلمة المرور غير صالحة</translation>
     </message>
@@ -3591,6 +3833,10 @@ This option cannot be disabled</source>
     <message>
         <source>Sign in with Mail.ru</source>
         <translation>تسجيل الدخول مع Mail.ru</translation>
+    </message>
+    <message>
+        <source>Enter your corporate email</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -3750,6 +3996,10 @@ This option cannot be disabled</source>
         <source>Report a problem</source>
         <translation>الإبلاغ عن مشكلة</translation>
     </message>
+    <message>
+        <source>Delete Account</source>
+        <translation>حذف الحساب</translation>
+    </message>
 </context>
 <context>
     <name>mentions</name>
@@ -3837,10 +4087,6 @@ This option cannot be disabled</source>
     <message>
         <source>You have been mentioned</source>
         <translation>تمت الإشارة إليك</translation>
-    </message>
-    <message>
-        <source>You have been mentioned in %1</source>
-        <translation>تمت الإشارة لك في %1</translation>
     </message>
 </context>
 <context>
@@ -4026,8 +4272,8 @@ to contact status</source>
         <translation>العثور على زميل عن طريق البريد الإلكتروني والكتابة إليه</translation>
     </message>
     <message>
-        <source>Install Myteam on mobile</source>
-        <translation>تثبيت Myteam على الهاتف المحمول</translation>
+        <source>Install VK Teams on mobile</source>
+        <translation>قم بتثبيت VK Teams على الهاتف المحمول</translation>
     </message>
     <message>
         <source>First name*</source>
@@ -4153,10 +4399,6 @@ to contact status</source>
         <source>%1 poll - %2 votes</source>
         <comment>5</comment>
         <translation>%1استطلاع - %2 صوت</translation>
-    </message>
-    <message>
-        <source>Poll</source>
-        <translation>مقابلة</translation>
     </message>
     <message>
         <source>Poll: %1</source>
@@ -4400,10 +4642,6 @@ to contact status</source>
     <message>
         <source>Report</source>
         <translation>تقديم شكوى</translation>
-    </message>
-    <message>
-        <source>To change the appearance you must restart the application. Continue?</source>
-        <translation>لتغيير التصميم يجب إعادة تشغيل التطبيق. هل تريد المتابعة?</translation>
     </message>
     <message>
         <source>Update url, empty for default</source>
@@ -4670,6 +4908,26 @@ to contact status</source>
         <translation>لأكتب</translation>
     </message>
     <message>
+        <source>contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Cancel request?</source>
         <translation>إلغاء الطلب؟</translation>
     </message>
@@ -4774,6 +5032,26 @@ to contact status</source>
         <translation>منع منشئ الروبوت الإضافة إلى المجموعات</translation>
     </message>
     <message>
+        <source>Cannot add %1 contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot add %1 contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot add %1 contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot add %1 contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Are you sure you want to delete user from list?</source>
         <translation>هل أنت متأكد أنك تريد إزالة المستخدم من القائمة؟</translation>
     </message>
@@ -4788,6 +5066,26 @@ to contact status</source>
     <message>
         <source>You can not join the call. It already has</source>
         <translation>لا يمكنك الاتصال بالمكالمة. فيه بالفعل</translation>
+    </message>
+    <message>
+        <source>participant</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>No</source>
@@ -4930,6 +5228,66 @@ to contact status</source>
         <translation>الدخول محظور</translation>
     </message>
     <message>
+        <source>Cannot remove %1 contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot remove %1 contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot remove %1 contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot remove %1 contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Error removing federation user</source>
         <translation>خطأ في حذف مستخدم الاتحاد</translation>
     </message>
@@ -4977,13 +5335,21 @@ to contact status</source>
         <source>Only channel subscribers can view replies</source>
         <translation>يمكن للمشتركين في القناة فقط عرض الردود</translation>
     </message>
+    <message>
+        <source>Delete Account</source>
+        <translation>حذف الحساب</translation>
+    </message>
+    <message>
+        <source>To delete an account, you must attach a phone number</source>
+        <translation>لحذف حساب ، تحتاج إلى ربط رقم هاتف</translation>
+    </message>
+    <message>
+        <source>Attach</source>
+        <translation>ربط</translation>
+    </message>
 </context>
 <context>
     <name>previewer</name>
-    <message>
-        <source>Unable to download the image</source>
-        <translation>يتعذر تنزيل الصورة</translation>
-    </message>
     <message>
         <source>%1 of %2</source>
         <translation>%1 من %2</translation>
@@ -5043,6 +5409,10 @@ to contact status</source>
     <message>
         <source>Add to favorites</source>
         <translation>اضافة الى المفضلة</translation>
+    </message>
+    <message>
+        <source>File %1 is being downloaded</source>
+        <translation>يتم تحميل الملف %1</translation>
     </message>
 </context>
 <context>
@@ -5117,6 +5487,10 @@ to contact status</source>
     <message>
         <source>A short text about you</source>
         <translation>نص صغير عنك</translation>
+    </message>
+    <message>
+        <source>Middle Name</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -5249,6 +5623,13 @@ to contact status</source>
         <source>OK</source>
         <translation>OK</translation>
     </message>
+    <message>
+        <source> ﻿ ﻿— Reactions
+  — Statuses
+  — New themes
+  — Unreads counter in window title — turn it on in settings :) </source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>report_widget</name>
@@ -5296,12 +5677,20 @@ to contact status</source>
 <context>
     <name>search</name>
     <message>
-        <source>CONTACTS AND GROUPS</source>
-        <translation>جهات الاتصال ومجموعات</translation>
+        <source>Contacts and groups</source>
+        <translation>جهات الاتصال والمجموعات</translation>
     </message>
     <message>
-        <source>MESSAGES</source>
-        <translation>رسائل</translation>
+        <source>Messages</source>
+        <translation>دعامات</translation>
+    </message>
+    <message>
+        <source>Threads</source>
+        <translation type="unfinished">الخيوط</translation>
+    </message>
+    <message>
+        <source>Thread</source>
+        <translation type="unfinished">مسلك</translation>
     </message>
 </context>
 <context>
@@ -5436,6 +5825,10 @@ to contact status</source>
     <message>
         <source>Play sounds</source>
         <translation>تشغيل الأصوات</translation>
+    </message>
+    <message>
+        <source>Notification volume:</source>
+        <translation>حجم الإخطار:</translation>
     </message>
     <message>
         <source>Outgoing messages sound</source>
@@ -5770,10 +6163,6 @@ to contact status</source>
         <translation>المكالمات</translation>
     </message>
     <message>
-        <source>Show calls tab</source>
-        <translation>إظهار علامة تبويب المكالمات</translation>
-    </message>
-    <message>
         <source>Show reactions to messages</source>
         <translation>إظهار ردود الفعل على الرسائل</translation>
     </message>
@@ -5816,6 +6205,30 @@ to contact status</source>
     <message>
         <source>Warn about disabled microphone</source>
         <translation>تحذير بشأن الميكروفون مكتوم الصوت</translation>
+    </message>
+    <message>
+        <source>Hide sender name in notifications</source>
+        <translation>إخفاء مرسل الرسالة في الإخطارات</translation>
+    </message>
+    <message>
+        <source>This setting can&apos;t be changed due to security reasons</source>
+        <translation>لأسباب أمنية ، لا يمكن تعطيل الإعداد.</translation>
+    </message>
+    <message>
+        <source>Delete Account</source>
+        <translation>حذف الحساب</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>أغلق</translation>
+    </message>
+    <message>
+        <source>Your corporate account was created by a domain administrator. To remove, contact with your domain administrator</source>
+        <translation>تم إنشاء حساب شركتك من قبل مسؤول المجال. للحذف ، اتصل بمسؤول المجال</translation>
+    </message>
+    <message>
+        <source>All information associated with your profile will be deleted. It will be impossible to restore your account</source>
+        <translation>سيتم حذف جميع المعلومات المرتبطة بملفك الشخصي. سيكون استرداد الحساب مستحيلا.</translation>
     </message>
 </context>
 <context>
@@ -6016,8 +6429,28 @@ to contact status</source>
         <translation>تعيين الحالة</translation>
     </message>
     <message>
-        <source>Switch microphone state</source>
-        <translation>تغيير حالة الميكروفون</translation>
+        <source>Paste text without formatting</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Switch %1 state</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>microphone</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>video</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>presentation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>sound</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -6141,6 +6574,10 @@ Please edit phone number and try again.</source>
         <translation>مشاركة المجموعة</translation>
     </message>
     <message>
+        <source>Subscribe to all threads</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>All members</source>
         <translation>جميع المشاركين</translation>
     </message>
@@ -6219,6 +6656,10 @@ Please edit phone number and try again.</source>
     <message>
         <source>Common groups</source>
         <translation>مجموعات عامة</translation>
+    </message>
+    <message>
+        <source>My groups and channels</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Who can see my data</source>
@@ -6365,6 +6806,46 @@ Please edit phone number and try again.</source>
         <translation>متابعون</translation>
     </message>
     <message>
+        <source>%1 SUBSCRIBER</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 SUBSCRIBERS</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 SUBSCRIBERS</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 SUBSCRIBERS</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 MEMBER</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 MEMBERS</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 MEMBERS</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 MEMBERS</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>All subscribers</source>
         <translation>كل المشتركين</translation>
     </message>
@@ -6384,6 +6865,14 @@ Please edit phone number and try again.</source>
         <source>Replies</source>
         <translation>الإجابات</translation>
     </message>
+    <message>
+        <source>Subscription to replies</source>
+        <translation>اشترك في الردود</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation type="unfinished">مهمة</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -6402,6 +6891,10 @@ Please edit phone number and try again.</source>
     <message>
         <source>About the group</source>
         <translation>عن المجموعة</translation>
+    </message>
+    <message>
+        <source>Send link to call or invite participants from the contact list</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -6470,6 +6963,86 @@ Please edit phone number and try again.</source>
     <message>
         <source>Custom status</source>
         <translation>حالة المستخدم</translation>
+    </message>
+    <message>
+        <source>second</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>seconds</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>seconds</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>seconds</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>minute</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>minutes</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>minutes</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>minutes</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>hour</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>hours</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>hours</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>hours</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>day</source>
+        <comment>1</comment>
+        <translation type="unfinished">day</translation>
+    </message>
+    <message>
+        <source>days</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>days</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>days</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Show always</source>
@@ -6655,6 +7228,22 @@ Please edit phone number and try again.</source>
         <source>Calendar</source>
         <translation>التقويم</translation>
     </message>
+    <message>
+        <source>Mail</source>
+        <translation>بريد</translation>
+    </message>
+    <message>
+        <source>Cloud</source>
+        <translation>سحاب</translation>
+    </message>
+    <message>
+        <source>News</source>
+        <translation type="unfinished">الإخبارية</translation>
+    </message>
+    <message>
+        <source>Polls</source>
+        <translation type="unfinished">استطلاعات الرأي</translation>
+    </message>
 </context>
 <context>
     <name>tab header</name>
@@ -6706,16 +7295,12 @@ Please edit phone number and try again.</source>
         <translation>ليصنع</translation>
     </message>
     <message>
-        <source>No assignee</source>
-        <translation>بدون عازف</translation>
+        <source>Unassigned</source>
+        <translation type="unfinished">لا فنان</translation>
     </message>
 </context>
 <context>
     <name>task_block</name>
-    <message>
-        <source>Not assigned</source>
-        <translation>غيرمعتمد</translation>
-    </message>
     <message>
         <source>Task</source>
         <translation>مهمة</translation>
@@ -6732,12 +7317,16 @@ Please edit phone number and try again.</source>
         <source>Task edit: an error occured</source>
         <translation>تعديل المهمة: حدث خطأ</translation>
     </message>
+    <message>
+        <source>Unassigned</source>
+        <translation type="unfinished">لا فنان</translation>
+    </message>
 </context>
 <context>
     <name>task_popup</name>
     <message>
         <source>Edit task</source>
-        <translation>تغيير مهمة</translation>
+        <translation>تغيير المهمة</translation>
     </message>
     <message>
         <source>Create task</source>
@@ -6774,8 +7363,8 @@ not found</source>
 الاسم غير موجود</translation>
     </message>
     <message>
-        <source>No deadline</source>
-        <translation>لا يوجد موعد نهائي</translation>
+        <source>Deadline for the task</source>
+        <translation>الموعد النهائي للمهمة</translation>
     </message>
 </context>
 <context>
@@ -6793,20 +7382,20 @@ not found</source>
         <translation>مرحبا بكم في وكيل Mail.ru</translation>
     </message>
     <message>
-        <source>Welcome to Myteam</source>
-        <translation>مرحبا بكم في myteam</translation>
+        <source>Welcome to VK Teams</source>
+        <translation>مرحبًا بك في فرق VK</translation>
     </message>
     <message>
         <source>Welcome to Messenger</source>
         <translation>مرحبا بكم في رسول</translation>
     </message>
     <message>
-        <source>ICQ New - the evolution of communication</source>
+        <source>ICQ - the evolution of communication</source>
         <translation>ICQ جديد - تطور الاتصالات</translation>
     </message>
     <message>
-        <source>Welcome to ICQ New</source>
-        <translation>مرحبًا بك في ICQ جديد</translation>
+        <source>Welcome to ICQ</source>
+        <translation>مرحبًا بك في ICQ</translation>
     </message>
 </context>
 <context>
@@ -6818,6 +7407,46 @@ not found</source>
     <message>
         <source>Threads you subscribed for will be here</source>
         <translation>سيتم عرض المواضيع التي اشتركت فيها هنا.</translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Replies</source>
@@ -6835,8 +7464,8 @@ not found</source>
         <translation>رسول</translation>
     </message>
     <message>
-        <source>Myteam</source>
-        <translation>Myteam</translation>
+        <source>VK Teams</source>
+        <translation>VK Teams</translation>
     </message>
     <message>
         <source>ICQ</source>
@@ -6862,10 +7491,6 @@ not found</source>
         <translation>لا يوجد ملف شخصي أو مجموعة بهذا الاسم</translation>
     </message>
     <message>
-        <source>Copied to clipboard</source>
-        <translation>نسخ إلى الحافظة</translation>
-    </message>
-    <message>
         <source>There are no profiles with this email</source>
         <translation>لا يوجد ملف تعريف مع هذا البريد الإلكتروني</translation>
     </message>
@@ -6886,28 +7511,28 @@ not found</source>
         <translation>وضع مسؤول المجموعة قيودًا على الوصول إلى الملفات</translation>
     </message>
     <message>
-        <source>Awaiting antivirus check, patience</source>
-        <translation>نحن في انتظار فحص مكافحة الفيروسات ، الصبر</translation>
-    </message>
-    <message>
-        <source>Antivirus check in progress, patience</source>
-        <translation>فحص مكافحة الفيروسات قيد التقدم ، والصبر</translation>
-    </message>
-    <message>
         <source>File is blocked by the antivirus</source>
         <translation>تم حظر الملف بواسطة برنامج مكافحة الفيروسات</translation>
     </message>
     <message>
-        <source>Checked</source>
-        <translation>فحصت</translation>
-    </message>
-    <message>
-        <source>No access. You may not have enough rights</source>
-        <translation>ممنوع الدخول. قد لا يكون لديك حقوق كافية</translation>
-    </message>
-    <message>
         <source>File not checked (and never will be). Available to download</source>
         <translation>لم يتم التحقق من الملف (ولن يتم التحقق منه). نأمل أن تستمتع هذا المعرض</translation>
+    </message>
+    <message>
+        <source>No access. Antivirus check in progress</source>
+        <translation>ممنوع الدخول. فحص مكافحة الفيروسات قيد التقدم</translation>
+    </message>
+    <message>
+        <source>No access. File is blocked by the antivirus</source>
+        <translation>ممنوع الدخول. تم حظر الملف بواسطة برنامج مكافحة الفيروسات</translation>
+    </message>
+    <message>
+        <source>The file is available. No viruses found</source>
+        <translation>الملف متاح. لم يتم العثور على فيروسات</translation>
+    </message>
+    <message>
+        <source>App not found</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -6949,10 +7574,6 @@ not found</source>
         <translation>مكالمة صوتية</translation>
     </message>
     <message>
-        <source>Link to call</source>
-        <translation>رابط الاتصال</translation>
-    </message>
-    <message>
         <source>Chat gallery</source>
         <translation>معرض الدردشة</translation>
     </message>
@@ -6964,8 +7585,8 @@ not found</source>
 <context>
     <name>tray_menu</name>
     <message>
-        <source>Quit</source>
-        <translation>إنهاء</translation>
+        <source>Close</source>
+        <translation>أغلق</translation>
     </message>
     <message>
         <source>Open</source>
@@ -6994,6 +7615,36 @@ not found</source>
         <source> new emails</source>
         <comment>21</comment>
         <translation> رسائل بريد جديدة</translation>
+    </message>
+</context>
+<context>
+    <name>user_agreement_widget</name>
+    <message>
+        <source>Accept</source>
+        <translation>تقدم</translation>
+    </message>
+    <message>
+        <source>Agree with %1</source>
+        <translation>Agree with %1</translation>
+    </message>
+    <message>
+        <source>processing confidential data</source>
+        <translation>قيود على معالجة المعلومات السرية</translation>
+    </message>
+    <message>
+        <source>using personal data</source>
+        <translation>معالجة البيانات الشخصية</translation>
+    </message>
+</context>
+<context>
+    <name>video_pages</name>
+    <message>
+        <source>Link</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>View</source>
+        <translation type="unfinished">عرض</translation>
     </message>
 </context>
 <context>
@@ -7078,32 +7729,8 @@ with click</source>
 عن طريق النقر</translation>
     </message>
     <message>
-        <source>VOICE</source>
-        <translation>تصويت</translation>
-    </message>
-    <message>
-        <source>Connecting...</source>
-        <translation>الإتصال ...</translation>
-    </message>
-    <message>
-        <source>Calling</source>
-        <translation>مكالمة</translation>
-    </message>
-    <message>
-        <source>Busy</source>
-        <translation>مشغول</translation>
-    </message>
-    <message>
         <source>Hold Space key for temporary unmute</source>
         <translation>اضغط مع الاستمرار على مفتاح المسافة لإلغاء كتم صوت الميكروفون مؤقتًا</translation>
-    </message>
-    <message>
-        <source>Microphone disabled</source>
-        <translation>الميكروفون متوقف</translation>
-    </message>
-    <message>
-        <source>Microphone enabled</source>
-        <translation>الميكروفون قيد التشغيل</translation>
     </message>
     <message>
         <source>Call members</source>
@@ -7139,6 +7766,26 @@ Press and hold Space key for temporarily unmute</source>
 
 اضغط مع الاستمرار على مفتاح المسافة لإلغاء كتم صوت الميكروفون مؤقتًا</translation>
     </message>
+    <message>
+        <source>Press Esc to exit from fullscreen mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Grid</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Speaker</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Microphone disabled</source>
+        <translation type="unfinished">الميكروفون متوقف</translation>
+    </message>
+    <message>
+        <source>Microphone enabled</source>
+        <translation type="unfinished">الميكروفون قيد التشغيل</translation>
+    </message>
 </context>
 <context>
     <name>voip_video_panel</name>
@@ -7147,16 +7794,8 @@ Press and hold Space key for temporarily unmute</source>
         <translation>عرض</translation>
     </message>
     <message>
-        <source>More</source>
-        <translation>بعد</translation>
-    </message>
-    <message>
         <source>Go to chat</source>
         <translation>الذهاب إلى الدردشة</translation>
-    </message>
-    <message>
-        <source>Open masks</source>
-        <translation>تمكين الأقنعة</translation>
     </message>
     <message>
         <source>Add user</source>
@@ -7179,16 +7818,8 @@ Press and hold Space key for temporarily unmute</source>
         <translation type="unfinished">اطلب إيقاف الفيديو لمشارك آخر. في المكالمات مع أكثر من %1 شخص ، يمكن عرض مقطع فيديو واحد فقط</translation>
     </message>
     <message>
-        <source>Masks aren&apos;t available in calls with more than %1 members</source>
-        <translation>في المكالمات التي تضم أكثر من %1 مشارك ، لا تتوفر الأقنعة</translation>
-    </message>
-    <message>
         <source>Only the creator of the webinar can show the video</source>
         <translation>لا يمكن عرض الفيديو إلا منشئ البرنامج التعليمي على الويب</translation>
-    </message>
-    <message>
-        <source>Only the creator of the webinar can use masks</source>
-        <translation>يمكن فقط لمبتكر الويبينار استخدام الأقنعة</translation>
     </message>
     <message>
         <source>Only the creator of the webinar can use a microphone</source>
@@ -7274,10 +7905,6 @@ Meeting</source>
         <translation>لإكمال</translation>
     </message>
     <message>
-        <source>SHOW ALL</source>
-        <translation>عرض الكل</translation>
-    </message>
-    <message>
         <source>Show
 participants</source>
         <translation>بحث
@@ -7291,44 +7918,48 @@ participants</source>
         <source>Show one</source>
         <translation>تكبير إلى نافذة كاملة</translation>
     </message>
+    <message>
+        <source>Cancel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation type="unfinished">نعم</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to end the meeting?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>End meeting</source>
+        <translation type="unfinished">لإكمال</translation>
+    </message>
+    <message>
+        <source>Go to the chat</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open the profile</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>End call</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Share call link</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Call participants management</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>voip_video_panel_mini</name>
     <message>
         <source>End meeting</source>
         <translation>لإكمال</translation>
-    </message>
-    <message>
-        <source>Mute</source>
-        <translation>كتم صوت الميكروفون</translation>
-    </message>
-    <message>
-        <source>Unmute</source>
-        <translation>قم بتشغيل الميكروفون</translation>
-    </message>
-    <message>
-        <source>Stop video</source>
-        <translation>قم بإيقاف تشغيل الفيديو</translation>
-    </message>
-    <message>
-        <source>Start video</source>
-        <translation>شغل الفيديو</translation>
-    </message>
-    <message>
-        <source>Disable sound</source>
-        <translation>قم بإيقاف تشغيل الصوت</translation>
-    </message>
-    <message>
-        <source>Enable sound</source>
-        <translation>قم بتشغيل الصوت</translation>
-    </message>
-    <message>
-        <source>Stop share</source>
-        <translation>توقف عن الظهور</translation>
-    </message>
-    <message>
-        <source>Start share</source>
-        <translation>شاشة المشاركة</translation>
     </message>
 </context>
 <context>
@@ -7376,6 +8007,29 @@ participants</source>
     <message>
         <source>I miss you too :)</source>
         <translation>انا ايضا اشتقت لك :)</translation>
+    </message>
+</context>
+<context>
+    <name>web_app</name>
+    <message>
+        <source>Page is loading...</source>
+        <translation>تحميل الصفحة ...</translation>
+    </message>
+    <message>
+        <source>Unable to load</source>
+        <translation>غير قادر على التحميل</translation>
+    </message>
+    <message>
+        <source>Retry</source>
+        <translation>لإعادة المحاولة</translation>
+    </message>
+    <message>
+        <source>Print</source>
+        <translation>عجل البحر</translation>
+    </message>
+    <message>
+        <source>The service is not available for your account. Contact technical support</source>
+        <translation>هذه الخدمة ليست متاحة حتى الآن لمكتبك</translation>
     </message>
 </context>
 </TS>

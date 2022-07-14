@@ -5,7 +5,7 @@
 
 #include "../controls/TextUnit.h"
 
-#include "../controls/TooltipWidget.h"
+#include "../controls/TextWidget.h"
 #include "../fonts.h"
 #include "Drawable.h"
 #include "styles/ThemeParameters.h"
@@ -71,13 +71,16 @@ CaptionArea::CaptionArea(QWidget* _parent)
     , anim_(new QVariantAnimation(this))
 {
     textWidget_ = new Ui::TextWidget(this, QString(), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
-    textWidget_->init(Fonts::appFontScaled(15, Fonts::FontWeight::Normal), Qt::white);
+    textWidget_->init({ Fonts::appFontScaled(15, Fonts::FontWeight::Normal), Styling::ColorParameter{ Qt::white } });
 
     textPreview_ = TextRendering::MakeTextUnit(QString(), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-    textPreview_->init(Fonts::appFontScaled(15, Fonts::FontWeight::Normal), Qt::white, QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 2, TextRendering::LineBreakType::PREFER_SPACES);
+    TextRendering::TextUnit::InitializeParameters params{ Fonts::appFontScaled(15, Fonts::FontWeight::Normal), Styling::ColorParameter{ Qt::white } };
+    params.maxLinesCount_ = 2;
+    params.lineBreak_ = TextRendering::LineBreakType::PREFER_SPACES;
+    textPreview_->init(params);
 
     more_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("previewer", "more"));
-    more_->init(Fonts::appFontScaled(15, Fonts::FontWeight::Normal), Qt::white);
+    more_->init({ Fonts::appFontScaled(15, Fonts::FontWeight::Normal), Styling::ColorParameter{ Qt::white } });
     more_->setUnderline(true);
     more_->evaluateDesiredSize();
 
@@ -89,15 +92,7 @@ CaptionArea::CaptionArea(QWidget* _parent)
     setWidgetResizable(true);
     setFocusPolicy(Qt::NoFocus);
     setFrameShape(QFrame::NoFrame);
-    Utils::ApplyStyle(verticalScrollBar(), qsl("\
-            QScrollBar:vertical\
-            {\
-                width: 4dip;\
-                margin-top: 0px;\
-                margin-bottom: 0px;\
-                margin-right: 0px;\
-            }"));
-
+    Utils::ApplyStyle(verticalScrollBar(), Styling::getParameters().getVerticalScrollBarSimpleQss());
 
     setExpanded(false);
     setMouseTracking(true);
@@ -402,7 +397,10 @@ GalleryFrame::GalleryFrame(QWidget *_parent)
 
     const auto counterFont(Fonts::appFontScaled(20, Fonts::FontWeight::Normal));
     auto counterLabelUnit = TextRendering::MakeTextUnit(QString());
-    counterLabelUnit->init(counterFont, Qt::white, QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER, 1);
+    TextRendering::TextUnit::InitializeParameters params(counterFont, Styling::ColorParameter{ Qt::white });
+    params.maxLinesCount_ = 1;
+    params.align_ = TextRendering::HorAligment::CENTER;
+    counterLabelUnit->init(params);
 
     auto counterLabel = std::make_unique<Label>();
     counterLabel->setTextUnit(std::move(counterLabelUnit));
@@ -411,26 +409,29 @@ GalleryFrame::GalleryFrame(QWidget *_parent)
 
     const auto authorFont(Fonts::appFontScaled(14, Fonts::FontWeight::Normal));
     auto authorLabelUnit = TextRendering::MakeTextUnit(QString(), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
-    authorLabelUnit->init(authorFont, Qt::white, QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+    params.setFonts(authorFont);
+    params.align_ = TextRendering::HorAligment::LEFT;
+    authorLabelUnit->init(params);
 
     auto authorLabel = std::make_unique<Label>();
     authorLabel->setTextUnit(std::move(authorLabelUnit));
     authorLabel->setClickable(true);
-    authorLabel->setDefaultColor(Qt::white);
-    authorLabel->setHoveredColor(QColor(255, 255, 255, static_cast<int>(255 * 0.65)));
-    authorLabel->setPressedColor(QColor(255, 255, 255, static_cast<int>(255 * 0.5)));
+    authorLabel->setDefaultColor(Styling::ColorParameter{ Qt::white });
+    authorLabel->setHoveredColor(Styling::ColorParameter{ QColor(255, 255, 255, static_cast<int>(255 * 0.65)) });
+    authorLabel->setPressedColor(Styling::ColorParameter{ QColor(255, 255, 255, static_cast<int>(255 * 0.5)) });
     d->objects_[AuthorLabel] = std::move(authorLabel);
 
     const auto dateFont(Fonts::appFontScaled(13, Fonts::FontWeight::Normal));
     auto dateLabelUnit = TextRendering::MakeTextUnit(QString());
-    dateLabelUnit->init(dateFont, Qt::white, QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+    params.setFonts(dateFont);
+    dateLabelUnit->init(params);
 
     auto dateLabel = std::make_unique<Label>();
     dateLabel->setTextUnit(std::move(dateLabelUnit));
     dateLabel->setClickable(true);
-    dateLabel->setDefaultColor(Qt::white);
-    dateLabel->setHoveredColor(QColor(255, 255, 255, static_cast<int>(255 * 0.65)));
-    dateLabel->setPressedColor(QColor(255, 255, 255, static_cast<int>(255 * 0.5)));
+    dateLabel->setDefaultColor(Styling::ColorParameter{ Qt::white });
+    dateLabel->setHoveredColor(Styling::ColorParameter{ QColor(255, 255, 255, static_cast<int>(255 * 0.65)) });
+    dateLabel->setPressedColor(Styling::ColorParameter{ QColor(255, 255, 255, static_cast<int>(255 * 0.5)) });
     d->objects_[DateLabel] = std::move(dateLabel);
 
     d->caption_ = std::make_unique<CaptionArea>(this);
@@ -838,13 +839,14 @@ class MenuItem : public BDrawable
 {
 public:
     virtual ~MenuItem() = default;
-    void draw(QPainter &_p) override;
+    void draw(QPainter& _p) override;
+    void draw(QPainter& _p, Icon* _checkMark);
 
     Label label_;
     Icon icon_;
 };
 
-void MenuItem::draw(QPainter &_p)
+void MenuItem::draw(QPainter& _p)
 {
     BDrawable::draw(_p);
 
@@ -852,10 +854,19 @@ void MenuItem::draw(QPainter &_p)
     label_.draw(_p);
 }
 
+void MenuItem::draw(QPainter& _p, Icon* _checkMark)
+{
+    MenuItem::draw(_p);
+    if (_checkMark)
+        _checkMark->draw(_p);
+}
+
 class CustomMenu_p
 {
 public:
+    CustomMenu* q;
     QFont font_;
+    Icon checkMark_;
     int itemHeight_;
     QSize arrowSize_;
     bool needUpdate_;
@@ -863,11 +874,15 @@ public:
     QColor hoverColor_;
     QColor pressedColor_;
     QColor backgroundColor_;
+    CustomMenu::Features features_;
 
     using ItemData = std::pair<QAction*, std::unique_ptr<MenuItem>>;
 
     std::vector<ItemData> items_;
 
+    CustomMenu_p(CustomMenu* _q)
+        : q(_q)
+    {}
 
     int updateLabels(int _width)
     {
@@ -895,7 +910,7 @@ public:
             icon.setRect(icon.isNullPixmap() ? QRect() : QRect(0, i * itemHeight_, xOffsetLeft + icon.pixmapSize().width(), itemHeight_));
             label.setRect(QRect(icon.rect().width(), i * itemHeight_, maxTextWidth + xOffsetLeft + xOffsetRight, itemHeight_));
 
-            const auto itemWidth = icon.rect().width() + label.rect().width();
+            const auto itemWidth = std::max(icon.rect().width() + label.rect().width(), q->minimumWidth());
             items_[i].second->setRect(QRect(0, i * itemHeight_, itemWidth, itemHeight_));
             maxTotalWidth = std::max(maxTotalWidth, itemWidth);
         }
@@ -929,16 +944,135 @@ public:
             label->setPressed(false);
         }
     }
+
+    QPoint preferredMenuPoint(const QRect& _r, Qt::Alignment _align) const
+    {
+        const QSize s = q->sizeHint();
+        QPoint p = _r.bottomLeft();
+        for (int i = 1; i < Qt::AlignBaseline; i <<= 1)
+        {
+            if (!(i & _align))
+                continue;
+
+            switch (i)
+            {
+            case Qt::AlignTop:
+                p.ry() = _r.top() - s.height();
+                break;
+            case Qt::AlignBottom:
+                p.ry() = _r.bottom();
+                break;
+            case Qt::AlignLeft:
+                p.rx() = _r.left() - s.width();
+                break;
+            case Qt::AlignRight:
+                p.rx() = _r.right() - s.width();
+                break;
+            case Qt::AlignVCenter:
+                p.ry() = _r.center().y() - s.height() / 2;
+                break;
+            case Qt::AlignHCenter:
+                p.rx() = _r.center().x() - s.width() / 2;
+                break;
+            default:
+                break;
+            }
+        }
+        return p;
+    }
+
+    QPoint screenAdjustment(const QRect& _screenRect, const QRect& _menuRect, const QRect& _targetRect)
+    {
+        int dx = 0, dy = 0;
+        if (_menuRect.left() < _screenRect.left())
+            dx = _screenRect.left() - _menuRect.left();
+        else if (_menuRect.right() >= _screenRect.right())
+            dx = -(_menuRect.right() - _screenRect.right());
+
+        if (_menuRect.top() < _screenRect.top())
+            dy = _screenRect.top() - _menuRect.top() + _targetRect.height();
+        else if (_menuRect.bottom() >= _screenRect.bottom())
+            dy = -(_menuRect.bottom() - _screenRect.bottom() - _targetRect.height());
+
+        return QPoint(dx, dy);
+    }
+
+    QRect adjustedToScreen(const QRect& _screenRect, const QRect& _menuRect, const QRect& _targetRect, Qt::Alignment _align)
+    {
+        if (_screenRect.contains(_menuRect))
+            return _menuRect;
+
+        QRect r = _menuRect;
+
+        const QPoint delta = screenAdjustment(_screenRect, _menuRect, _targetRect);
+        r.translate(delta);
+
+        if ((features_ & CustomMenu::TargetAware))
+        {
+            int x = 0, y = 0;
+            if (r.contains(_targetRect) || _targetRect.contains(r))
+            {
+                if (delta.y() > 0)
+                    y = _targetRect.bottom();
+                else if (delta.y() < 0)
+                    y = _targetRect.top();
+
+                if (delta.x() > 0)
+                    x = _targetRect.right();
+                else if (delta.x() < 0)
+                    x = _targetRect.left();
+            }
+            else if (r.intersects(_targetRect))
+            {
+                if (r.top() >= _targetRect.top() && r.top() <= _targetRect.bottom())
+                {
+                    if (delta.y() > 0)
+                        y = _targetRect.bottom();
+                    else if (delta.y() < 0)
+                        y = _targetRect.top();
+                }
+
+                if (r.left() >= _targetRect.left() && r.top() <= _targetRect.right())
+                {
+                    if (delta.x() > 0)
+                        x = _targetRect.right();
+                    else if (delta.x() < 0)
+                        x = _targetRect.left();
+                }
+            }
+            r.moveTo(x == 0 ? r.left() : x, y == 0 ? r.top() : y);
+        }
+
+        return r;
+    }
+
+    void drawItem(QPainter& _painter, const QAction* _action, const std::unique_ptr<MenuItem>& _item, const QRect& _rect)
+    {
+        const QRect itemRect = _item->rect();
+        if (!itemRect.intersects(_rect))
+            return;
+
+        Icon* checkMark = !checkMark_.isNullPixmap() && _action->isCheckable() && _action->isChecked() ? &checkMark_ : nullptr;
+        if (checkMark)
+        {
+            QRect markRect{ QPoint{}, checkMark->pixmapSize() };
+            markRect.moveCenter(QPoint(itemRect.right() - Utils::scale_value(12) - markRect.width() / 2, itemRect.center().y()));
+            checkMark->setRect(markRect);
+        }
+        _item->draw(_painter, checkMark);
+    }
 };
 
-CustomMenu::CustomMenu()
-    : d(std::make_unique<CustomMenu_p>())
+CustomMenu::CustomMenu(QWidget* _parent)
+    : QMenu(_parent)
+    , d(std::make_unique<CustomMenu_p>(this))
 {
     setWindowFlags(Qt::Popup | Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);
     setAttribute(Qt::WA_DeleteOnClose);
 
     // set defaults
+    d->features_ = NoFeatures;
     d->arrowSize_ = Utils::scale_value(QSize(20, 8));
     d->itemHeight_ = Utils::scale_value(36);
     d->backgroundColor_ = Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE_PERMANENT);
@@ -952,15 +1086,49 @@ CustomMenu::CustomMenu()
 
 CustomMenu::~CustomMenu() = default;
 
+void CustomMenu::setFeatures(CustomMenu::Features _features)
+{
+    d->features_ = _features;
+    if ((d->features_ & TargetAware) && !(d->features_ & ScreenAware))
+        d->features_ |= ScreenAware; // force screen area feature
+}
+
+CustomMenu::Features CustomMenu::features() const
+{
+    return d->features_;
+}
+
+void CustomMenu::setArrowSize(const QSize& _size)
+{
+    if (d->arrowSize_ == _size)
+        return;
+
+    d->arrowSize_ = _size;
+    update();
+}
+
+QSize CustomMenu::arrowSize() const
+{
+    return d->arrowSize_;
+}
+
+void CustomMenu::setCheckMark(const QPixmap& _icon)
+{
+    d->checkMark_.setPixmap(_icon);
+    update();
+}
+
 void CustomMenu::addAction(QAction* _action, const QPixmap& _icon)
 {
     auto item = std::make_unique<MenuItem>();
-    item->background_ = Qt::transparent;
-    item->hoveredBackground_ = d->hoverColor_;
-    item->pressedBackground_ = d->pressedColor_;
+    item->background_ = Styling::ColorContainer{ Styling::ColorParameter{ Qt::transparent } };
+    item->hoveredBackground_ = Styling::ColorContainer{ Styling::ColorParameter{ d->hoverColor_ } };
+    item->pressedBackground_ = Styling::ColorContainer{ Styling::ColorParameter{ d->pressedColor_ } };
 
     auto textUnit = TextRendering::MakeTextUnit(_action->text());
-    textUnit->init(d->font_, d->fontColor_, QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+    TextRendering::TextUnit::InitializeParameters params{ d->font_, Styling::ColorParameter{ d->fontColor_ } };
+    params.maxLinesCount_ = 1;
+    textUnit->init(params);
     item->label_.setTextUnit(std::move(textUnit));
 
     item->icon_.setPixmap(_icon);
@@ -971,10 +1139,17 @@ void CustomMenu::addAction(QAction* _action, const QPixmap& _icon)
     updateHeight();
 }
 
+void CustomMenu::clear()
+{
+    d->items_.clear();
+    d->updateLabels(0);
+    update();
+}
+
 void CustomMenu::showAtPos(const QPoint &_pos)
 {
-    if (d->needUpdate_)
-        setFixedWidth(d->updateLabels(minimumWidth()));
+    updateHeight();
+    setFixedWidth(d->updateLabels(0));
 
     const auto arrowPeak = QPoint(width() / 2,  height() + d->arrowSize_.height());
     move(_pos.x() - arrowPeak.x(), _pos.y() - arrowPeak.y());
@@ -988,10 +1163,107 @@ void CustomMenu::showAtPos(const QPoint &_pos)
 #endif
 }
 
+void CustomMenu::popupMenu(const QPoint& _globalPos, QScreen* _screen, const QRect& _targetRect, Qt::Alignment _align)
+{
+    d->resetLabelsState();
+
+    if (d->features_ & DefaultPopup) // let Qt to decide
+    {
+        QMenu::exec(_globalPos);
+        return;
+    }
+
+    QPoint popupPos = _globalPos;
+    if (d->features_ & ScreenAware)
+    {
+        im_assert(_screen);
+        if (!_screen)
+            _screen = qApp->primaryScreen();
+
+        QRect r = rect();
+        r.moveTo(_globalPos);
+        // Windows and KDE allow menus to cover the taskbar, while GNOME
+        // and macOS don't, but we won't distinguish different Linux distributions.
+        if constexpr (platform::is_windows())
+            r = d->adjustedToScreen(_screen->geometry(), r, _targetRect, _align);
+        else
+            r = d->adjustedToScreen(_screen->availableGeometry(), r, _targetRect, _align);
+
+        popupPos = r.topLeft();
+    }
+
+    Q_EMIT aboutToShow();
+    move(popupPos);
+#ifdef __APPLE__
+    MacSupport::showOverAll(this);
+#else
+    show();
+#endif
+}
+
+void CustomMenu::exec(QWidget* _target, Qt::Alignment _align, const QMargins& _margins)
+{
+    im_assert(_target);
+    if (!_target)
+    {
+        QMenu::exec();
+        return;
+    }
+
+    QRect r;
+    if (_target->parentWidget() == nullptr) // top-level widget
+    {
+        r = _target->geometry().marginsAdded(_margins);
+    }
+    else
+    {
+        r = _target->rect().marginsAdded(_margins);
+        r.moveTo(_target->mapToGlobal(r.topLeft()));
+    }
+    popupMenu(d->preferredMenuPoint(r, _align), _target->screen(), r, _align);
+}
+
+void CustomMenu::exec(QWidget* _target, const QRect& _rect, Qt::Alignment _align)
+{
+    im_assert(_target);
+    if (!_target)
+    {
+        QMenu::exec();
+        return;
+    }
+
+    if (!_target->rect().contains(_rect))
+        return exec(_target, _align);
+
+    QRect r = _rect;
+    r.moveTo(_target->mapToGlobal(r.topLeft()));
+    popupMenu(d->preferredMenuPoint(r, _align), _target->screen(), r, _align);
+}
+
+QSize CustomMenu::sizeHint() const
+{
+    QSize sz(d->updateLabels(0), d->items_.size() * d->itemHeight_ + d->arrowSize_.height());
+    return sz.expandedTo(minimumSize());
+}
+
 void CustomMenu::paintEvent(QPaintEvent *_event)
 {
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing);
+
+    if (d->arrowSize_.isNull())
+    {
+        p.save();
+        p.setPen(Qt::NoPen);
+        p.setBrush(d->backgroundColor_);
+        p.drawRoundedRect(rect(), getMenuBorderRadius(), getMenuBorderRadius());
+        p.restore();
+        p.setCompositionMode(QPainter::CompositionMode_SourceAtop);
+        for (const auto& [action, label] : d->items_)
+            d->drawItem(p, action, label, _event->rect());
+
+        return;
+    }
 
     QPainterPath rectPath;
     rectPath.setFillRule(Qt::WindingFill);
@@ -1020,19 +1292,16 @@ void CustomMenu::paintEvent(QPaintEvent *_event)
     {
         auto & label = d->items_.back().second;
         if (label->pressed() && label->pressedBackground_.isValid())
-            arrowColor = label->pressedBackground_;
+            arrowColor = label->pressedBackground_.cachedColor();
         else if (label->hovered() && label->hoveredBackground_.isValid())
-            arrowColor = label->hoveredBackground_;
+            arrowColor = label->hoveredBackground_.cachedColor();
     }
 
     p.fillPath(arrowPath, arrowColor);
 
     p.setCompositionMode(QPainter::CompositionMode_SourceAtop);
-    for (auto & [action, label] : d->items_)
-    {
-        if (label->rect().intersects(_event->rect()))
-            label->draw(p);
-    }
+    for (const auto& [action, label] : d->items_)
+        d->drawItem(p, action, label, _event->rect());
 }
 
 void CustomMenu::mouseMoveEvent(QMouseEvent *_event)

@@ -379,7 +379,7 @@ namespace core
 
         class local_history : public std::enable_shared_from_this<local_history>
         {
-            archives_map archives_;
+            mutable archives_map archives_;
 
             const std::wstring archive_path_;
 
@@ -389,7 +389,7 @@ namespace core
 
             message_stat_time_v stat_message_times_;
 
-            std::shared_ptr<contact_archive> get_contact_archive(const std::string& _contact);
+            std::shared_ptr<contact_archive> get_contact_archive(const std::string& _contact) const;
 
             const pending_operations& get_pending_operations() const;
             pending_operations& get_pending_operations();
@@ -416,6 +416,7 @@ namespace core
             void optimize_contact_archive(const std::string& _contact);
             void free_dialog(const std::string& _contact);
 
+            int64_t get_last_msgid(const std::string& _contact) const;
             void get_messages_buddies(const std::string& _contact, std::shared_ptr<archive::msgids_list> _ids, /*out*/ std::shared_ptr<history_block> _messages, /*out*/ bool& _first_load, /*out*/ std::shared_ptr<error_vector> _errors);
             bool get_messages(const std::string& _contact, int64_t _from, int64_t _count_early, int64_t _count_later, /*out*/ std::shared_ptr<history_block> _messages, /*out*/ bool& _first_load, /*out*/ std::shared_ptr<error_vector> _errors);
             bool get_history_file(const std::string& _contact, /*out*/ core::tools::binary_stream& _history_archive
@@ -516,6 +517,7 @@ namespace core
             void make_gallery_hole(const std::string& _aimId, int64_t _from, int64_t _till);
             void make_holes(const std::string& _aimId);
             void is_gallery_hole_requested(const std::string& _aimId, bool& _is_hole_requsted);
+            void invalidate_history(const std::string& _aimid);
             void invalidate_message_data(const std::string& _aimId, const std::vector<int64_t>& _ids);
             void invalidate_message_data(const std::string& _aimId, int64_t _from, int64_t _before_count, int64_t _after_count);
             void get_memory_usage(int64_t& _index_size, int64_t& _gallery_size);
@@ -540,6 +542,8 @@ namespace core
             explicit face(const std::wstring& _archive_path);
 
             void free_dialog(const std::string& _contact);
+
+            int64_t get_last_msgid(const std::string& _contact) const;
 
             std::shared_ptr<update_history_handler> update_history(const std::string& _contact, const std::shared_ptr<archive::history_block>& _data, int64_t _from = -1, local_history::has_older_message_id _has_older_msgid = local_history::has_older_message_id::yes);
             std::shared_ptr<async_task_handlers> update_message_data(const std::string& _contact, const history_message& _message);
@@ -639,6 +643,7 @@ namespace core
 
             std::shared_ptr<request_gallery_is_hole_requested> is_gallery_hole_requested(const std::string& _aimid);
 
+            std::shared_ptr<async_task_handlers> invalidate_history(const std::string& _aimid);
             std::shared_ptr<async_task_handlers> invalidate_message_data(const std::string& _aimid, std::vector<int64_t> _ids);
             std::shared_ptr<async_task_handlers> invalidate_message_data(const std::string& _aimid, int64_t _from, int64_t _before_count, int64_t _after_count);
 

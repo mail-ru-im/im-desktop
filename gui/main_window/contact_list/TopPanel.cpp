@@ -19,6 +19,8 @@
 #include "../../gui_settings.h"
 
 #include "styles/ThemeParameters.h"
+#include "styles/StyleSheetContainer.h"
+#include "styles/StyleSheetGenerator.h"
 
 #include "../../controls/ContactAvatarWidget.h"
 
@@ -35,11 +37,6 @@ namespace
         return Utils::scale_value(QSize(24, 24));
     }
 
-    int badgeOffset()
-    {
-        return Utils::scale_value(12);
-    }
-
     int badgeTopOffset()
     {
         return Utils::scale_value(8);
@@ -50,14 +47,47 @@ namespace
         return Fonts::appFontScaled(11, platform::is_apple() ? Fonts::FontWeight::Medium : Fonts::FontWeight::Normal);
     }
 
-    QColor badgeTextColor()
+    auto badgeTextColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_GLOBALWHITE };
     }
 
     int getHeaderHeight()
     {
         return Utils::scale_value(56);
+    }
+
+    std::unique_ptr<Styling::BaseStyleSheetGenerator> deleteButtonStyleSheet()
+    {
+        QString qss = ql1s("QPushButton { color: %1; }"
+                           "QPushButton:hover { color: %2;}"
+                           "QPushButton:press { color: %3;}");
+
+        return std::make_unique<Styling::ArrayStyleSheetGenerator>(qss, std::vector<Styling::ThemeColorKey>{
+            Styling::ThemeColorKey { Styling::StyleVariable::SECONDARY_ATTENTION },
+            Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_ATTENTION_HOVER },
+            Styling::ThemeColorKey { Styling::StyleVariable::SECONDARY_ATTENTION_ACTIVE }
+        });
+    }
+
+    int getButtonsHorMargin() noexcept
+    {
+        return Utils::scale_value(16);
+    }
+
+    int getSpacing() noexcept
+    {
+        return Utils::scale_value(8);
+    }
+
+    int titleTopMargin() noexcept
+    {
+        return Utils::scale_value(8);
+    }
+
+    int getThreadHeaderLeftMargin() noexcept
+    {
+        return Utils::scale_value(8);
     }
 }
 
@@ -126,9 +156,9 @@ namespace Ui
         cancel->setFont(Fonts::appFontScaled(15));
         cancel->setPersistent(true);
 
-        cancel->setNormalTextColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
-        cancel->setHoveredTextColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_HOVER));
-        cancel->setPressedTextColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_ACTIVE));
+        cancel->setNormalTextColor(Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY });
+        cancel->setHoveredTextColor(Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY_HOVER });
+        cancel->setPressedTextColor(Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY_ACTIVE });
         Testing::setAccessibleName(cancel, qsl("AS ResentSearch cancelButton"));
 
         titleBar_->addButtonToRight(cancel);
@@ -167,16 +197,7 @@ namespace Ui
         // FONT NOT FIXED
         delAllBtn_->setFont(Fonts::appFontScaled(15, Fonts::FontWeight::SemiBold));
         Testing::setAccessibleName(delAllBtn_, qsl("AS Unknown closeAllButton"));
-        Utils::ApplyStyle(delAllBtn_,
-            ql1s(
-                "QPushButton { color: %1; }"
-                "QPushButton:hover { color: %2;}"
-                "QPushButton:press { color: %3;}"
-            )
-            .arg(Styling::getParameters().getColorHex(Styling::StyleVariable::SECONDARY_ATTENTION),
-                Styling::getParameters().getColorHex(Styling::StyleVariable::SECONDARY_ATTENTION_HOVER),
-                Styling::getParameters().getColorHex(Styling::StyleVariable::SECONDARY_ATTENTION_ACTIVE))
-        );
+        Styling::setStyleSheet(delAllBtn_, deleteButtonStyleSheet(), Styling::StyleSheetPolicy::UseSetStyleSheet);
 
         layout->addWidget(delAllBtn_);
 
@@ -239,7 +260,7 @@ namespace Ui
 
         pencil_ = new HeaderTitleBarButton(this);
         pencil_->setPersistent(true);
-        pencil_->setDefaultImage(qsl(":/header/pencil"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY), QSize(24, 24));
+        pencil_->setDefaultImage(qsl(":/header/pencil"), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY }, QSize(24, 24));
         pencil_->setCustomToolTip(QT_TRANSLATE_NOOP("tab header", "Write"));
 
         addButtonToRight(pencil_);
@@ -326,7 +347,6 @@ namespace Ui
 
         auto addHeader = [this](auto _header, const QString& _accessibleName)
         {
-            _header->setStyleSheet(ql1s("background: %1; border-style: none;").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
             Testing::setAccessibleName(_header, _accessibleName);
             stackWidget_->addWidget(_header);
 
@@ -350,9 +370,6 @@ namespace Ui
         Testing::setAccessibleName(searchWidget_, qsl("AS Search widget"));
         layout->addWidget(searchWidget_);
 
-        Utils::ApplyStyle(this, ql1s("background-color: %1;")
-                .arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
-
         connect(searchWidget_, &Ui::SearchWidget::activeChanged, this, &TopPanelWidget::searchActiveChanged);
         connect(searchWidget_, &Ui::SearchWidget::escapePressed, this, &TopPanelWidget::searchEscapePressed);
 
@@ -370,6 +387,8 @@ namespace Ui
         setRegime(Regime::Recents);
         setState(LeftPanelState::normal);
         updateGeometry();
+
+        Testing::setAccessibleName(stackWidget_, qsl("AS TopPanelWidget stackWidget"));
     }
 
     void TopPanelWidget::setState(const LeftPanelState _state)
@@ -396,10 +415,7 @@ namespace Ui
     {
         im_assert(_regime != Regime::Invalid);
         if (regime_ == _regime)
-        {
-            updateHeader();
             return;
-        }
 
         if (isSearchRegime(regime_) && !isSearchRegime(_regime))
             Q_EMIT Utils::InterConnector::instance().searchClosed();
@@ -513,7 +529,10 @@ namespace Ui
     {
         setFocusPolicy(Qt::NoFocus);
         badgeTextUnit_ = TextRendering::MakeTextUnit(badgeText_);
-        badgeTextUnit_->init(getBadgeTextFont(), badgeTextColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
+
+        TextRendering::TextUnit::InitializeParameters params{ getBadgeTextFont(), badgeTextColor() };
+        params.align_ = TextRendering::HorAligment::CENTER;
+        badgeTextUnit_->init(params);
         setStyleSheet(qsl("border: none; outline: none;"));
     }
 
@@ -550,16 +569,14 @@ namespace Ui
     void HeaderTitleBarButton::drawBadge(QPainter& _p) const
     {
         Utils::PainterSaver saver(_p);
-        const auto geom = geometry();
-        Utils::Badge::drawBadge(badgeTextUnit_, _p, geom.x() + badgeOffset(), badgeTopOffset(), Utils::Badge::Color::Green);
+        const auto badgeWidth = Utils::Badge::getSize(badgeTextUnit_->getSourceText().size()).width();
+        Utils::Badge::drawBadge(badgeTextUnit_, _p, geometry().right() + badgeWidth / 2, badgeTopOffset(), Utils::Badge::Color::Green);
     }
 
     void HeaderTitleBarButton::setVisibility(bool _value)
     {
         if (visibility_ != _value)
-        {
             visibility_ = _value;
-        }
     }
 
     bool HeaderTitleBarButton::getVisibility() const noexcept
@@ -592,16 +609,16 @@ namespace Ui
         leftSpacer_ = new QSpacerItem(0, 0, QSizePolicy::Preferred);
         rightSpacer_ = new QSpacerItem(0, 0, QSizePolicy::Preferred);
 
-        leftLayout_->setSpacing(Utils::scale_value(8));
-        rightLayout_->setSpacing(Utils::scale_value(8));
+        leftLayout_->setSpacing(getSpacing());
+        rightLayout_->setSpacing(getSpacing());
 
         leftWidget_->setStyleSheet(qsl("background: transparent; border: none;"));
         centerWidget_->setStyleSheet(qsl("background: transparent; border: none;"));
         rightWidget_->setStyleSheet(qsl("background: transparent; border: none;"));
 
-        leftLayout_->setContentsMargins(Utils::scale_value(16), 0, 0, 0);
+        leftLayout_->setContentsMargins(getButtonsHorMargin(), 0, 0, 0);
         centerLayout_->setContentsMargins(Utils::scale_value(6), Utils::scale_value(8), 0, 0);
-        rightLayout_->setContentsMargins(0, 0, Utils::scale_value(16), 0);
+        rightLayout_->setContentsMargins(0, 0, getButtonsHorMargin(), 0);
 
         mainLayout_->addWidget(leftWidget_, 0, 0);
         mainLayout_->addItem(leftSpacer_, 0, 1);
@@ -610,8 +627,10 @@ namespace Ui
         mainLayout_->addWidget(rightWidget_, 0, 4);
 
         titleTextUnit_ = TextRendering::MakeTextUnit(title_);
-        titleTextUnit_->init(Fonts::appFontScaled(16, Fonts::FontWeight::SemiBold),
-                             Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        titleTextUnit_->init({ Fonts::appFontScaled(16, Fonts::FontWeight::SemiBold), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } });
+
+        subtitleTextUnit_ = TextRendering::MakeTextUnit(subtitle_);
+        subtitleTextUnit_->init({ Fonts::appFontScaled(14), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY } });
 
         for (auto w : { leftWidget_, centerWidget_, rightWidget_, (QWidget*)this })
             w->setMouseTracking(true);
@@ -633,25 +652,36 @@ namespace Ui
         refresh();
     }
 
+    void HeaderTitleBar::setSubTitle(const QString& _subtitle)
+    {
+        if (subtitle_ != _subtitle)
+        {
+            subtitle_ = _subtitle;
+            subtitleTextUnit_->setText(subtitle_);
+            update();
+        }
+        refresh();
+    }
+
     void HeaderTitleBar::addButtonToLeft(HeaderTitleBarButton* _button)
     {
         leftLayout_->insertWidget(leftLayout_->count() - 1, _button);
         addButtonImpl(_button);
     }
 
-    void HeaderTitleBar::addButtonToRight(HeaderTitleBarButton * _button)
+    void HeaderTitleBar::addButtonToRight(HeaderTitleBarButton* _button)
     {
         rightLayout_->insertWidget(1, _button);
         addButtonImpl(_button);
     }
 
-    void HeaderTitleBar::addCentralWidget(QWidget *_widget)
+    void HeaderTitleBar::addCentralWidget(QWidget* _widget)
     {
         centerLayout_->insertWidget(1, _widget);
         refresh();
     }
 
-    void HeaderTitleBar::addButtonImpl(HeaderTitleBarButton * _button)
+    void HeaderTitleBar::addButtonImpl(HeaderTitleBarButton* _button)
     {
         Styling::Buttons::setButtonDefaultColors(_button);
         _button->setFixedSize(buttonSize_);
@@ -713,7 +743,7 @@ namespace Ui
         else
         {
             setFixedHeight(getHeaderHeight());
-            rightLayout_->setContentsMargins(0, 0, Utils::scale_value(16), 0);
+            rightLayout_->setContentsMargins(0, 0, getButtonsHorMargin(), 0);
 
             mainLayout_->removeWidget(leftWidget_);
             mainLayout_->removeWidget(centerWidget_);
@@ -750,6 +780,11 @@ namespace Ui
         update();
     }
 
+    void HeaderTitleBar::setTitleLeftOffset(int _offset)
+    {
+        titleLeftOffset_ = _offset;
+    }
+
     /*
     static void debugLayout(QPainter *painter, QLayoutItem *item)
     {
@@ -779,13 +814,24 @@ namespace Ui
 
             if (titleVisible_ && !titleTextUnit_->isEmpty())
             {
-                titleTextUnit_->setOffsets(r.width() / 2 - titleTextUnit_->cachedSize().width() / 2, r.height() / 2);
-                titleTextUnit_->draw(p, TextRendering::VerPosition::MIDDLE);
+                const auto withSubtitle = !subtitleTextUnit_->isEmpty();
+                const auto offsetX = withSubtitle ? titleLeftOffset_ + getSpacing() + getButtonsHorMargin() + getThreadHeaderLeftMargin()
+                                                  : r.width() / 2 - titleTextUnit_->cachedSize().width() / 2;
+                const auto offsetY = withSubtitle ? titleTopMargin() : r.height() / 2;
+                titleTextUnit_->setOffsets(offsetX, offsetY);
+                titleTextUnit_->draw(p, withSubtitle ? TextRendering::VerPosition::TOP : TextRendering::VerPosition::MIDDLE);
+
+                if (!subtitleTextUnit_->isEmpty())
+                {
+                    subtitleTextUnit_->setOffsets(offsetX, r.height() - getSpacing());
+                    subtitleTextUnit_->draw(p, TextRendering::VerPosition::BOTTOM);
+                }
             }
 
             if (arrowVisible_)
             {
-                static auto arrow = Utils::renderSvgScaled(qsl(":/controls/down_icon"), QSize(arrow_size, arrow_size), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
+                static auto source = Utils::StyledPixmap::scaled(qsl(":/controls/down_icon"), QSize(arrow_size, arrow_size), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY });
+                const auto arrow = source.actualPixmap();
                 p.drawPixmap(r.width() / 2 + titleTextUnit_->cachedSize().width() / 2 + Utils::scale_value(arrow_left_margin), r.height() / 2 - arrow.height() / 2 / Utils::scale_bitmap(1) + Utils::scale_value(arrow_top_margin), arrow);
             }
         }
@@ -795,6 +841,19 @@ namespace Ui
     {
         QWidget::resizeEvent(_event);
         overlayWidget_->resize(size());
+
+        int buttonsWidth = 0;
+        for (const auto& b : buttons_)
+        {
+            if (b)
+                buttonsWidth += b->width();
+        }
+
+        if (subtitleTextUnit_)
+        {
+            buttonsWidth += 2 * (getSpacing() + getButtonsHorMargin()) + getThreadHeaderLeftMargin();
+            subtitleTextUnit_->elide(width() - buttonsWidth);
+        }
     }
 
     void HeaderTitleBar::mouseMoveEvent(QMouseEvent* _event)

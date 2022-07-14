@@ -2,6 +2,7 @@
 
 #include "get_dialog_gallery.h"
 #include "http_request.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace core::wim;
@@ -93,6 +94,11 @@ int32_t get_dialog_gallery::parse_results(const rapidjson::Value &_node_results)
 priority_t get_dialog_gallery::get_priority() const
 {
     return priority_protocol();
+}
+
+int core::wim::get_dialog_gallery::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 std::string_view get_dialog_gallery::get_method() const

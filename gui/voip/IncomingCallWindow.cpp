@@ -3,20 +3,18 @@
 #include "DetachedVideoWnd.h"
 #include "VideoWindow.h"
 #include "../core_dispatcher.h"
-#include "../cache/avatars/AvatarStorage.h"
 #include "../main_window/containers/FriendlyContainer.h"
 #include "../utils/utils.h"
 #include "../../core/Voip/VoipManagerDefines.h"
 #include "src/CallStateInternal.h"
 #include "VoipSysPanelHeader.h"
+#include "../utils/InterConnector.h"
+
+#include "WindowController.h"
 
 enum
 {
-#ifdef __linux__
-    kIncomingCallWndDefH = 400,
-#else
     kIncomingCallWndDefH = 300,
-#endif
     kIncomingCallWndDefW = 400,
 };
 // default offset for next incoming window.
@@ -24,83 +22,69 @@ static const float defaultWindowOffset = 0.25f;
 
 QList<Ui::IncomingCallWindow*> Ui::IncomingCallWindow::instances_;
 
+void Ui::IncomingCallWindow::setFrameless()
+{
+    Qt::WindowFlags flags = windowFlags();
+    flags |= Qt::FramelessWindowHint;
+    flags &= ~(Qt::WindowTitleHint | Qt::WindowSystemMenuHint
+               | Qt::WindowMinMaxButtonsHint | Qt::WindowCloseButtonHint);
+    setWindowFlags(flags);
+}
+
 Ui::IncomingCallWindow::IncomingCallWindow(const std::string& call_id, const std::string& _contact, const std::string& call_type)
     : QWidget(nullptr, Qt::Window)
     , contact_(_contact)
     , call_id_(call_id)
     , call_type_(call_type)
-    , header_(new(std::nothrow) VoipSysPanelHeader(this, Utils::scale_value(kIncomingCallWndDefW)))
-    , controls_(new IncomingCallControls(this))
     , transparentPanelOutgoingWidget_(nullptr)
     , shadow_(this)
+    , incomingAlarmTimer_(new QTimer(this))
 {
-#ifndef __linux__
-    setStyleSheet(Utils::LoadStyle(qsl(":/qss/incoming_call")));
+    setWindowFlags(Qt::WindowStaysOnTopHint | Qt::FramelessWindowHint | Qt::Window);
+#ifdef _WIN32
+    setAttribute(Qt::WA_ShowWithoutActivating);
 #else
-    setStyleSheet(Utils::LoadStyle(qsl(":/qss/incoming_call_linux")));
+    setAttribute(Qt::WA_X11DoNotAcceptFocus);
 #endif
+    setAttribute(Qt::WA_NoSystemBackground, true);
+    setAttribute(Qt::WA_TranslucentBackground, true);
+    setFrameless();
+
+    setStyleSheet(Utils::LoadStyle(qsl(":/qss/incoming_call")));
 
     QIcon icon(qsl(":/logo/ico"));
     setWindowIcon(icon);
-
-#ifdef _WIN32
-    setWindowFlags(Qt::WindowStaysOnTopHint | Qt::FramelessWindowHint | Qt::Window);
-    setAttribute(Qt::WA_ShowWithoutActivating);
-#else
-    // We have a problem on Mac with WA_ShowWithoutActivating and WindowDoesNotAcceptFocus.
-    // If video window is showing with these flags, we can not activate ICQ mainwindow
-    // We use Qt::Dialog here, because it works correctly, if main window is in fullscreen mode
-    setWindowFlags(Qt::WindowStaysOnTopHint | Qt::Dialog);
-    //setAttribute(Qt::WA_ShowWithoutActivating);
-    setAttribute(Qt::WA_X11DoNotAcceptFocus);
-#endif
-
-#ifndef __linux__
-    setAttribute(Qt::WA_UpdatesDisabled);
-#endif
 
     QVBoxLayout* rootLayout = Utils::emptyVLayout();
     rootLayout->setAlignment(Qt::AlignVCenter);
     setLayout(rootLayout);
 
-    header_->setWindowFlags(header_->windowFlags() | Qt::WindowStaysOnTopHint);
-    controls_->setWindowFlags(controls_->windowFlags() | Qt::WindowStaysOnTopHint);
-
-    std::vector<QPointer<Ui::BaseVideoPanel>> panels;
-    panels.push_back(header_.get());
-    panels.push_back(controls_.get());
-
-#ifdef _WIN32
-    // Use it for Windows only, because macos Video Widnow resends mouse events to transparent panels.
-    transparentPanelOutgoingWidget_ = std::unique_ptr<TransparentPanel>(new TransparentPanel(this, header_.get()));
-    panels.push_back(transparentPanelOutgoingWidget_.get());
-#endif
-
-#ifdef __linux__
-    rootLayout->addWidget(header_.get());
-#endif
-
 #ifndef STRIP_VOIP
-    rootWidget_ = platform_specific::GraphicsPanel::create(this, panels, false, false);
-    rootWidget_->setContentsMargins(0, 0, 0, 0);
-    rootWidget_->setAttribute(Qt::WA_UpdatesDisabled);
-    rootWidget_->setSizePolicy(QSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding));
-#ifdef __linux__
-    rootLayout->addWidget(rootWidget_, 1);
-#else
-    layout()->addWidget(rootWidget_);
+    rootWidget_ = new OGLRenderWidget(this);
+    rootWidget_->setIncoming(true);
+    rootWidget_->getWidget()->setSizePolicy(QSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding));
+    rootLayout->addWidget(rootWidget_->getWidget());
 #endif
 
-#endif //__linux__
+    const QSize defaultSize(Utils::scale_value(kIncomingCallWndDefW), Utils::scale_value(kIncomingCallWndDefH));
+    QWidget* darkPlate = new QWidget(this);
+    darkPlate->setStyleSheet(qsl("background-color: rgba(0, 0, 0, 24%);"));
+    darkPlate->setFixedSize(defaultSize);
 
-#ifdef __linux__
-    rootLayout->addWidget(controls_.get());
-#endif
+    // create panels after main widget, so it can be visible without raise()
+    header_ = std::unique_ptr<VoipSysPanelHeader>(new(std::nothrow) VoipSysPanelHeader(this, Utils::scale_value(kIncomingCallWndDefW)));
+    controls_ = std::unique_ptr<IncomingCallControls>(new IncomingCallControls(this));
+    if constexpr (platform::is_windows())
+    {
+        // Use it for Windows only, because macos Video Widnow resends mouse events to transparent panels.
+        transparentPanelOutgoingWidget_ = std::unique_ptr<TransparentPanel>(new TransparentPanel(this, header_.get()));
+    }
 
     std::vector<QPointer<BaseVideoPanel>> videoPanels;
     videoPanels.push_back(header_.get());
     videoPanels.push_back(controls_.get());
-    videoPanels.push_back(transparentPanelOutgoingWidget_.get());
+    if constexpr (platform::is_windows())
+        videoPanels.push_back(transparentPanelOutgoingWidget_.get());
 
     eventFilter_ = new ResizeEventFilter(videoPanels, shadow_.getShadowWidget(), this);
     installEventFilter(eventFilter_);
@@ -109,15 +93,9 @@ Ui::IncomingCallWindow::IncomingCallWindow(const std::string& call_id, const std
     connect(controls_.get(), &IncomingCallControls::onVideo, this, &Ui::IncomingCallWindow::onAcceptVideoClicked, Qt::QueuedConnection);
     connect(controls_.get(), &IncomingCallControls::onAudio, this, &Ui::IncomingCallWindow::onAcceptAudioClicked, Qt::QueuedConnection);
 
-    connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipWindowRemoveComplete, this, &Ui::IncomingCallWindow::onVoipWindowRemoveComplete);
-    connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipWindowAddComplete, this, &Ui::IncomingCallWindow::onVoipWindowAddComplete);
     connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipCallNameChanged, this, &Ui::IncomingCallWindow::onVoipCallNameChanged);
-    //connect(&Ui::GetDispatcher()->getVoipController(), SIGNAL(onVoipMediaLocalVideo(bool)), header_.get(), SLOT(setVideoStatus(bool)), Qt::DirectConnection);
-    //connect(&Ui::GetDispatcher()->getVoipController(), SIGNAL(onVoipMediaLocalVideo(bool)), controls_.get(), SLOT(setVideoStatus(bool)), Qt::DirectConnection);
 
-    const QSize defaultSize(Utils::scale_value(kIncomingCallWndDefW), Utils::scale_value(kIncomingCallWndDefH));
-    setMinimumSize(defaultSize);
-    setMaximumSize(defaultSize);
+    setFixedSize(defaultSize);
     resize(defaultSize);
 
     const auto screenRect = Utils::mainWindowScreen()->geometry();
@@ -129,61 +107,38 @@ Ui::IncomingCallWindow::IncomingCallWindow(const std::string& call_id, const std
 
     const QRect rc(windowPosition, wndSize);
     setGeometry(rc);
+
+    connect(incomingAlarmTimer_, &QTimer::timeout, this, []() {Q_EMIT Utils::InterConnector::instance().incomingCallAlert();});
+    incomingAlarmTimer_->setInterval(500);
+    incomingAlarmTimer_->start();
+
+    WindowController* windowController = new WindowController(this);
+    windowController->setOptions(WindowController::Dragging);
+    windowController->setBorderWidth(0);
+    windowController->setWidget(this, this);
 }
 
 Ui::IncomingCallWindow::~IncomingCallWindow()
 {
-#ifndef STRIP_VOIP
-    delete rootWidget_;
-#endif
     removeEventFilter(eventFilter_);
     delete eventFilter_;
 
     instances_.removeAll(this);
 }
 
-void Ui::IncomingCallWindow::onVoipWindowRemoveComplete(quintptr _winId)
-{
-#ifndef STRIP_VOIP
-    if (_winId == rootWidget_->frameId())
-    {
-        rootWidget_->freeNative();
-        hide();
-    }
-#endif
-}
-
-void Ui::IncomingCallWindow::onVoipWindowAddComplete(quintptr _winId)
-{
-#ifndef STRIP_VOIP
-    if (_winId == rootWidget_->frameId())
-    {
-        showNormal();
-    }
-#endif
-}
-
 void Ui::IncomingCallWindow::showFrame()
 {
 #ifndef STRIP_VOIP
-    rootWidget_->initNative();
-    im_assert(rootWidget_->frameId());
-    if (rootWidget_->frameId())
-    {
-        instances_.push_back(this);
-        Ui::GetDispatcher()->getVoipController().setWindowAdd((quintptr)rootWidget_->frameId(), call_id_.c_str(), false, true, 0);
-    }
+    instances_.push_back(this);
 #endif
+    showNormal();
 }
 
 void Ui::IncomingCallWindow::hideFrame()
 {
+    incomingAlarmTimer_->stop();
 #ifndef STRIP_VOIP
-    if (rootWidget_->frameId())
-    {
-        instances_.removeAll(this);
-        Ui::GetDispatcher()->getVoipController().setWindowRemove((quintptr)rootWidget_->frameId());
-    }
+    instances_.removeAll(this);
 #endif
     hide();
 }
@@ -199,7 +154,6 @@ void Ui::IncomingCallWindow::showEvent(QShowEvent* _e)
         transparentPanelOutgoingWidget_->show();
     }
 
-    //shadow_.showShadow();
     QWidget::showEvent(_e);
 }
 
@@ -211,7 +165,6 @@ void Ui::IncomingCallWindow::hideEvent(QHideEvent* _e)
     {
         transparentPanelOutgoingWidget_->hide();
     }
-    //shadow_.hideShadow();
     QWidget::hideEvent(_e);
 }
 
@@ -223,23 +176,20 @@ void Ui::IncomingCallWindow::changeEvent(QEvent* _e)
 void Ui::IncomingCallWindow::onVoipCallNameChanged(const voip_manager::ContactsList& _contacts)
 {
 #ifndef STRIP_VOIP
+    rootWidget_->updatePeers(_contacts);
     if (_contacts.contacts.empty())
         return;
 
-    auto res = std::find(_contacts.windows.begin(), _contacts.windows.end(), (void*)rootWidget_->frameId());
-    if (res != _contacts.windows.end())
-    {
-        contacts_ = _contacts.contacts;
-        std::vector<std::string> users;
-        users.reserve(contacts_.size());
-        for (const auto& c : contacts_)
-            users.push_back(c.contact);
-        vcs_conference_name_ = _contacts.conference_name;
+    contacts_ = _contacts.contacts;
+    std::vector<std::string> users;
+    users.reserve(contacts_.size());
+    for (const auto& c : contacts_)
+        users.push_back(c.contact);
+    vcs_conference_name_ = _contacts.conference_name;
 
-        updateTitle();
+    updateTitle();
 
-        header_->setStatus(QT_TRANSLATE_NOOP("voip_pages", "Incoming call").toUtf8().constData());
-    }
+    header_->setStatus(QT_TRANSLATE_NOOP("voip_pages", "Incoming call").toUtf8().constData());
 #endif //STRIP_VOIP
 }
 
@@ -251,6 +201,7 @@ void Ui::IncomingCallWindow::onAcceptVideoClicked()
     {
         Ui::GetDispatcher()->getVoipController().setAcceptCall(call_id_.c_str(), true);
     }
+    close();
 }
 
 void Ui::IncomingCallWindow::onAcceptAudioClicked()
@@ -261,6 +212,7 @@ void Ui::IncomingCallWindow::onAcceptAudioClicked()
     {
         Ui::GetDispatcher()->getVoipController().setAcceptCall(call_id_.c_str(), false);
     }
+    close();
 }
 
 
@@ -272,6 +224,7 @@ void Ui::IncomingCallWindow::onDeclineButtonClicked()
     {
         Ui::GetDispatcher()->getVoipController().setDecline(call_id_.c_str(), contact_.c_str(), false);
     }
+    close();
 }
 
 void Ui::IncomingCallWindow::updateTitle()
@@ -320,45 +273,3 @@ QPoint Ui::IncomingCallWindow::findBestPosition(const QPoint& _windowPosition, c
     return res;
 }
 
-#ifdef _WIN32
-void Ui::IncomingCallWindow::mousePressEvent(QMouseEvent* _e)
-{
-    posDragBegin_ = _e->pos();
-}
-
-void Ui::IncomingCallWindow::mouseMoveEvent(QMouseEvent* _e)
-{
-    if (_e->buttons() & Qt::LeftButton)
-    {
-        QPoint diff = _e->pos() - posDragBegin_;
-        QPoint newpos = this->pos() + diff;
-        this->move(newpos);
-    }
-}
-#endif
-
-#ifndef _WIN32
-// Resend messages to header to fix drag&drop for transparent panels.
-void Ui::IncomingCallWindow::mouseMoveEvent(QMouseEvent* event)
-{
-    resendMouseEventToPanel(event);
-}
-
-void Ui::IncomingCallWindow::mouseReleaseEvent(QMouseEvent * event)
-{
-    resendMouseEventToPanel(event);
-}
-
-void Ui::IncomingCallWindow::mousePressEvent(QMouseEvent * event)
-{
-    resendMouseEventToPanel(event);
-}
-
-void Ui::IncomingCallWindow::resendMouseEventToPanel(QMouseEvent *event_)
-{
-    if (header_->isVisible() && (header_->rect().contains(event_->pos()) || header_->isGrabMouse()))
-    {
-        QApplication::sendEvent(header_.get(), event_);
-    }
-}
-#endif

@@ -112,7 +112,7 @@ namespace Ui
         , Menu_(nullptr)
         , MessageAlert_(new RecentMessagesAlert(AlertType::alertTypeMessage))
         , MentionAlert_(new RecentMessagesAlert(AlertType::alertTypeMentionMe))
-        , MailAlert_(new  RecentMessagesAlert(AlertType::alertTypeEmail))
+        , MailAlert_(new RecentMessagesAlert(AlertType::alertTypeEmail))
         , MainWindow_(parent)
         , Base_(qsl(":/logo/ico"))
         , Unreads_(qsl(":/logo/ico_unread"))
@@ -149,6 +149,12 @@ namespace Ui
         InitMailStatusTimer_ = new QTimer(this);
         InitMailStatusTimer_->setInterval(init_mail_timeout);
         InitMailStatusTimer_->setSingleShot(true);
+
+        mailStatusReceivedTimer_ = new QTimer(this);
+        mailStatusReceivedTimer_->setInterval(init_mail_timeout);
+        mailStatusReceivedTimer_->setSingleShot(true);
+        mailStatusReceivedTimer_->start();
+        connect(mailStatusReceivedTimer_, &QTimer::timeout, this, [this](){ mailStatusReceived_ = true; });
 
         connect(MessageAlert_, &RecentMessagesAlert::messageClicked, this, &TrayIcon::messageClicked, Qt::QueuedConnection);
         connect(MailAlert_, &RecentMessagesAlert::messageClicked, this, &TrayIcon::messageClicked, Qt::QueuedConnection);
@@ -515,8 +521,6 @@ namespace Ui
     void TrayIcon::dlgStates(const QVector<Data::DlgState>& _states)
     {
         std::set<QString> showedArray;
-        bool playNotification = false;
-
         for (const auto& _state : _states)
         {
             const bool canNotify =
@@ -538,26 +542,11 @@ namespace Ui
 
                 const auto notifType = _state.AimId_ == u"mail" ? NotificationType::email : NotificationType::messages;
                 if (canShowNotifications(notifType))
-                    showMessage(_state, AlertType::alertTypeMessage);
-
-                playNotification = true;
+                    showMessage(_state, _state.AimId_ == u"mail" ? AlertType::alertTypeEmail : AlertType::alertTypeMessage);
             }
 
             if (_state.Visible_)
                 showedArray.insert(_state.AimId_);
-        }
-
-        if (playNotification)
-        {
-            const bool showWithActiveUI = get_gui_settings()->get_value<bool>(settings_notify_new_messages_with_active_ui, settings_notify_new_messages_with_active_ui_default());
-#ifndef STRIP_AV_MEDIA
-#ifdef __APPLE__
-            if (!MainWindow_->isUIActive() || showWithActiveUI || MacSupport::previewIsShown())
-#else
-            if (!MainWindow_->isUIActive() || showWithActiveUI)
-#endif //__APPLE__
-                GetSoundsManager()->playSound(SoundsManager::Sound::IncomingMessage);
-#endif // !STRIP_AV_MEDIA
         }
 
         if (!showedArray.empty())
@@ -586,9 +575,6 @@ namespace Ui
 
             state.SetText(hist::MessageBuilder::formatRecentsText(*_mention).text_);
             showMessage(state, AlertType::alertTypeMentionMe);
-#ifndef STRIP_AV_MEDIA
-            GetSoundsManager()->playSound(SoundsManager::Sound::IncomingMessage);
-#endif // !STRIP_AV_MEDIA
         }
     }
 
@@ -641,10 +627,8 @@ namespace Ui
                 // Hide previous mail notifications
                 clearNotifications(qsl("mail"));
 
-            showMessage(state, AlertType::alertTypeEmail);
-#ifndef STRIP_AV_MEDIA
-            GetSoundsManager()->playSound(SoundsManager::Sound::IncomingMail);
-#endif // !STRIP_AV_MEDIA
+            if (mailStatusReceived_)
+                showMessage(state, AlertType::alertTypeEmail);
         }
 
         showEmailIcon();
@@ -668,6 +652,8 @@ namespace Ui
             InitMailStatusTimer_->start();
             return;
         }
+
+        mailStatusReceived_ = true;
 
         Data::DlgState state;
         state.AimId_ = qsl("mail");
@@ -711,16 +697,19 @@ namespace Ui
             notificationCenterSupported = true;
 #endif //_WIN32
             {
+                const auto hideIfNotSupported = [notificationCenterSupported](RecentMessagesAlert* _alert)
+                {
+                    if (!notificationCenterSupported)
+                    {
+                        _alert->hide();
+                        _alert->markShowed();
+                    }
+                };
                 switch (_alertType)
                 {
                     case AlertType::alertTypeEmail:
                     {
-                        if (!notificationCenterSupported)
-                        {
-                            MailAlert_->hide();
-                            MailAlert_->markShowed();
-                        }
-
+                        hideIfNotSupported(MailAlert_);
                         action = [this, mailId]()
                         {
 
@@ -735,12 +724,7 @@ namespace Ui
                     }
                     case AlertType::alertTypeMessage:
                     {
-                        if (!notificationCenterSupported)
-                        {
-                            MessageAlert_->hide();
-                            MessageAlert_->markShowed();
-                        }
-
+                        hideIfNotSupported(MessageAlert_);
                         action = [_aimId]()
                         {
                             Utils::InterConnector::instance().getMainWindow()->showMessengerPage();
@@ -754,11 +738,7 @@ namespace Ui
                     }
                     case AlertType::alertTypeMentionMe:
                     {
-                        if (!notificationCenterSupported)
-                        {
-                            MentionAlert_->hide();
-                            MentionAlert_->markShowed();
-                        }
+                        hideIfNotSupported(MentionAlert_);
 
                         action = [_aimId, mentionId]()
                         {
@@ -806,33 +786,43 @@ namespace Ui
         }
     }
 
-    void TrayIcon::showMessage(Data::DlgState state, const AlertType _alertType)
+    void TrayIcon::showMessage(Data::DlgState _state, const AlertType _alertType)
     {
-        state.draft_ = {}; // do not show draft alert
+        if (!canShowNotifications(_alertType == AlertType::alertTypeEmail ? NotificationType::email : NotificationType::messages))
+            return;
 
-        Notifications_.push_back(state.AimId_);
+        _state.draft_ = {}; // do not show draft alert
+        Notifications_.push_back(_state.AimId_);
 
-        const auto isMail = (_alertType == AlertType::alertTypeEmail);
+#ifndef STRIP_AV_MEDIA
+        GetSoundsManager()->playSound(_alertType ==  AlertType::alertTypeEmail ? SoundType::IncomingMail : SoundType::IncomingMessage);
+#endif // !STRIP_AV_MEDIA
 
 #if defined (__APPLE__)
-        auto displayName = isMail ? state.Friendly_ : Logic::GetFriendlyContainer()->getFriendly(state.AimId_);
+        bool messageTextVisible = !get_gui_settings()->get_value<bool>(settings_hide_message_notification, false);
+        bool senderNameVisible = !get_gui_settings()->get_value<bool>(settings_hide_sender_notification, false);
 
-        if (_alertType == AlertType::alertTypeMentionMe)
+        if (Features::hideMessageInfoEnabled())
         {
-            displayName = QChar(0xD83D) % QChar(0xDC4B) % ql1c(' ') % QT_TRANSLATE_NOOP("notifications", "You have been mentioned in %1").arg(displayName);
+            messageTextVisible = false;
+            senderNameVisible = false;
         }
 
-        const bool isShowMessage = Features::showNotificationsText() && !Ui::LocalPIN::instance()->locked();
-        const QString messageText = isShowMessage ? state.GetText() : QT_TRANSLATE_NOOP("notifications", "New message");
+        if (Features::hideMessageTextEnabled() || LocalPIN::instance()->locked())
+            messageTextVisible = false;
+
+        QString displayName = formatNotificationTitle(_state, _alertType, senderNameVisible);
+        QString senderNick = formatNotificationSubtitle(_state, _alertType, senderNameVisible);
+        QString messageText = formatNotificationText(_state, _alertType, senderNameVisible, messageTextVisible, false);
 
         NotificationCenterManager_->DisplayNotification(
             alertType2String(_alertType),
-            state.AimId_,
-            Logic::getContactListModel()->isChannel(state.AimId_) ? QString() : state.senderNick_,
+            _state.AimId_,
+            senderNick,
             messageText,
-            state.MailId_,
+            _state.MailId_,
             displayName,
-            QString::number(state.mentionMsgId_));
+            QString::number(_state.mentionMsgId_));
         return;
 #endif //__APPLE__
 
@@ -853,13 +843,14 @@ namespace Ui
             return;
         }
 
-        alert->addAlert(state);
+        alert->addAlert(_state);
 
         TrayPosition pos = getTrayPosition();
         QRect availableGeometry = QDesktopWidget().availableGeometry();
 
         int screenMarginX = Utils::scale_value(20) - Ui::get_gui_settings()->get_shadow_width();
         int screenMarginY = Utils::scale_value(20) - Ui::get_gui_settings()->get_shadow_width();
+        const auto isMail = (_alertType == AlertType::alertTypeEmail);
         if (isMail && MessageAlert_->isVisible())
             screenMarginY += (MessageAlert_->height() - Utils::scale_value(12));
 
@@ -897,7 +888,6 @@ namespace Ui
         {
             alert->show();
         }
-
 
         if (Menu_ && Menu_->isVisible())
             Menu_->raise();
@@ -985,22 +975,45 @@ namespace Ui
         if constexpr (!platform::is_apple())
         {
             Menu_ = new ContextMenu(MainWindow_);
+
             auto parentWindow = qobject_cast<MainWindow*>(parent());
 
             if constexpr (platform::is_linux())
             {
                 Menu_->addActionWithIcon(QIcon(), QT_TRANSLATE_NOOP("tray_menu", "Open"), parentWindow, [parentWindow]()
-                {
-                    parentWindow->activateFromEventLoop();
-                });
+                    {
+                        parentWindow->activateFromEventLoop();
+                    });
             }
 
+            auto onOffNotifications_ = [this](bool _setOn){ return Menu_->addActionWithIcon(
+                platform::is_windows() ? qsl(":/context_menu/mute") + (_setOn ? qsl("") : qsl("_off")) : QString(),
+                QT_TRANSLATE_NOOP("context_menu", ql1s("Turn %1 notifications").arg(_setOn ? qsl("on") : qsl("off")).toStdString().c_str()),
+                get_gui_settings(),
+                [_setOn]()
+                {
+#ifndef STRIP_VOIP
+                    GetDispatcher()->getVoipController().setMuteSounds(_setOn);
+#endif
+                    get_gui_settings()->set_value<bool>(settings_sounds_enabled, _setOn);
+                    get_gui_settings()->set_value<bool>(settings_notify_new_messages, _setOn);
+                    get_gui_settings()->set_value<bool>(settings_notify_new_mail_messages, _setOn);
+                }
+            );};
+
+            disableNotifications_ = onOffNotifications_(false);
+            enableNotifications_ = onOffNotifications_(true);
+
             const auto iconPath = platform::is_windows() ? qsl(":/context_menu/quit") : QString();
-            Menu_->addActionWithIcon(iconPath, QT_TRANSLATE_NOOP("tray_menu", "Quit"), parentWindow, &Ui::MainWindow::exit);
+            Menu_->addActionWithIcon(iconPath, QT_TRANSLATE_NOOP("tray_menu", "Close"), parentWindow, &Ui::MainWindow::exit);
+
             systemTrayIcon_->setContextMenu(Menu_);
         }
 
         connect(systemTrayIcon_, &QSystemTrayIcon::activated, this, &TrayIcon::activated, Qt::QueuedConnection);
+        if constexpr (platform::is_linux())
+            connect(Menu_, &ContextMenu::aboutToShow, this, &TrayIcon::showContextMenu, Qt::QueuedConnection);
+
         systemTrayIcon_->show();
     }
 
@@ -1084,6 +1097,12 @@ namespace Ui
 
         if (validReason)
             MainWindow_->activate();
+
+        if (reason == QSystemTrayIcon::Context)
+        {
+            if constexpr (platform::is_windows())
+                showContextMenu();
+        }
     }
 
     void TrayIcon::loggedIn()
@@ -1126,4 +1145,30 @@ namespace Ui
         */
     }
 #endif //_WIN32
+
+    void TrayIcon::showContextMenu()
+    {
+        const auto notify = get_gui_settings()->get_value<bool>(settings_notify_new_messages, true);
+        disableNotifications_->setVisible(notify);
+        enableNotifications_->setVisible(!notify);
+
+        const QRect geomTrayIcon = systemTrayIcon_->geometry();
+        const QRect geomMenu = Menu_->geometry();
+        switch (getTrayPosition())
+        {
+        case TrayPosition::TOP_RIGHT:
+            Menu_->move(geomTrayIcon.x() + geomTrayIcon.width() - geomMenu.width(), geomTrayIcon.y() + geomTrayIcon.height());
+            break;
+        case TrayPosition::BOTTOM_LEFT:
+            Menu_->move(geomTrayIcon.x(), geomTrayIcon.y() - geomMenu.height());
+            break;
+        case TrayPosition::BOTOOM_RIGHT:
+            Menu_->move(geomTrayIcon.x() + geomTrayIcon.width() - geomMenu.width(), geomTrayIcon.y() - geomMenu.height());
+            break;
+        case TrayPosition::TOP_LEFT:
+        default:
+            Menu_->move(geomTrayIcon.x(), geomTrayIcon.y() + geomTrayIcon.height());
+            break;
+        }    
+    }
 }

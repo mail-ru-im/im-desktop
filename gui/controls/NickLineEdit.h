@@ -1,5 +1,7 @@
 #pragma once
 
+#include "styles/ThemeColor.h"
+
 namespace Ui
 {
     class TextEditEx;
@@ -78,7 +80,7 @@ namespace Ui
         };
 
         void serverCheckNickname(bool _recheck = false);
-        void updateHint(HintTextCode _code, const QColor& _color = QColor());
+        void updateHint(HintTextCode _code, const Styling::ThemeColorKey& _color = {});
         void setServerErrorHint();
         void updateNickLine(bool _isError);
         bool checkForCorrectInput(bool _showHints = false);

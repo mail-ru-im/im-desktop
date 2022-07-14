@@ -24,7 +24,7 @@ namespace Ui
     {
         if (callButton_)
         {
-            callButton_->setDefaultImage(qsl(":/header/call"), QColor(), QSize(24, 24));
+            callButton_->setDefaultImage(qsl(":/header/call"), Styling::ColorParameter{}, QSize(24, 24));
             callButton_->setCustomToolTip(QT_TRANSLATE_NOOP("tab header", "Group call"));
             header_->addButtonToRight(callButton_);
             Testing::setAccessibleName(callButton_, qsl("AS CallsTab callButton"));

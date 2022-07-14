@@ -5,6 +5,7 @@
 #include "../../../tools/system.h"
 
 #include "../../urls_cache.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -59,6 +60,11 @@ int32_t add_buddy::init_request(const std::shared_ptr<core::http_request_simple>
 std::string_view add_buddy::get_method() const
 {
     return "addBuddy";
+}
+
+int core::wim::add_buddy::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t add_buddy::parse_response_data(const rapidjson::Value& /*_data*/)

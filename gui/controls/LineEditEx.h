@@ -1,5 +1,11 @@
 #pragma once
 
+#include "styles/ThemeColor.h"
+
+namespace Styling
+{
+    struct ThemeColorKey;
+}
 
 namespace Ui
 {
@@ -29,8 +35,8 @@ Q_SIGNALS:
         explicit LineEditEx(QWidget* _parent, const Options& _options = Options());
 
         void setCustomPlaceholder(const QString& _text);
-        void setCustomPlaceholderColor(const QColor& _color);
-        void changeTextColor(const QColor& _color);
+        void setCustomPlaceholderColor(const Styling::ThemeColorKey& _color);
+        void changeTextColor(const Styling::ThemeColorKey& _color);
 
         QMenu* contextMenu();
 
@@ -43,6 +49,7 @@ Q_SIGNALS:
         void keyPressEvent(QKeyEvent*) override;
         void contextMenuEvent(QContextMenuEvent *) override;
         void paintEvent(QPaintEvent* _event) override;
+        void showEvent(QShowEvent* _event) override;
         bool eventFilter(QObject* _obj, QEvent* _event) override;
         void wheelEvent(QWheelEvent* _event) override;
 
@@ -56,9 +63,13 @@ Q_SIGNALS:
 
     private:
         QString customPlaceholder_;
-        QColor  customPlaceholderColor_;
+        Styling::ColorContainer customPlaceholderColor_;
         QMenu* contextMenu_ = nullptr;
         Options options_;
         RenderMargins margins_ = RenderMargins::ContentMargin;
+
+    private Q_SLOTS:
+        void updateTextColor();
+        void onThemeChaged();
     };
 }

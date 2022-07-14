@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "CommonUI.h"
+#include "VideoWindow.h"
 #include "utils/features.h"
 #include "../gui_settings.h"
 #include "../core_dispatcher.h"
@@ -12,6 +13,7 @@
 #include "media/permissions/MediaCapturePermissions.h"
 #include "styles/ThemeParameters.h"
 #include "../controls/GeneralDialog.h"
+#include "../previewer/toast.h"
 
 namespace
 {
@@ -61,7 +63,7 @@ bool Ui::ResizeEventFilter::eventFilter(QObject* _obj, QEvent* _e)
             shadow_->resize(rc.width() + 2 * shadowWidth, rc.height() + 2 * shadowWidth);
             shadow_->setActive(bActive);
 #ifdef _WIN32
-            SetWindowPos((HWND)shadow_->winId(), (HWND)parent->winId(), 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOMOVE | SWP_NOSIZE);
+            SetWindowPos((HWND)shadow_->effectiveWinId(), (HWND)parent->effectiveWinId(), 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOMOVE | SWP_NOSIZE);
 #endif
         }
     }
@@ -211,7 +213,6 @@ void Ui::UIEffects::forceFinish()
 Ui::BaseVideoPanel::BaseVideoPanel(QWidget* parent, Qt::WindowFlags f) :
     QWidget(parent, f), grabMouse(false)
 {
-    hide();
 }
 
 void Ui::BaseVideoPanel::fadeIn(unsigned int duration)
@@ -219,11 +220,7 @@ void Ui::BaseVideoPanel::fadeIn(unsigned int duration)
     if (!effect_)
         effect_ = std::unique_ptr<UIEffects>(new(std::nothrow) UIEffects(*this, true, false));
     if (effect_)
-    {
-#ifndef __linux__
         effect_->fadeIn(duration);
-#endif
-    }
 }
 
 void Ui::BaseVideoPanel::fadeOut(unsigned int duration)
@@ -231,11 +228,7 @@ void Ui::BaseVideoPanel::fadeOut(unsigned int duration)
     if (!effect_)
         effect_ = std::unique_ptr<UIEffects>(new(std::nothrow) UIEffects(*this, true, false));
     if (effect_)
-    {
-#ifndef __linux__
         effect_->fadeOut(duration);
-#endif
-    }
 }
 
 bool Ui::BaseVideoPanel::isGrabMouse()
@@ -274,18 +267,9 @@ Ui::BaseTopVideoPanel::BaseTopVideoPanel(QWidget* parent, Qt::WindowFlags f) : B
 
 void Ui::BaseTopVideoPanel::updatePosition(const QWidget& parent)
 {
-    if (platform::is_linux())
-    {
-        auto rc = parentWidget()->geometry();
-        move(0, 0);
-        setFixedWidth(rc.width());
-    }
-    else
-    {
-        auto rc = parentWidget()->geometry();
-        move(rc.x(), rc.y() + verShift_);
-        setFixedWidth(rc.width());
-    }
+    auto rc = parentWidget()->geometry();
+    move(0, verShift_);
+    setFixedWidth(rc.width());
 }
 
 void Ui::BaseTopVideoPanel::setVerticalShift(int _shift)
@@ -297,23 +281,13 @@ Ui::BaseBottomVideoPanel::BaseBottomVideoPanel(QWidget* parent, Qt::WindowFlags 
 
 void Ui::BaseBottomVideoPanel::updatePosition(const QWidget& parent)
 {
-    if (platform::is_linux())
-    {
-        auto rc = parentWidget()->geometry();
-        move(0, rc.height() - rect().height());
-        setFixedWidth(rc.width());
-    }
-    else
-    {
-        auto rc = parentWidget()->geometry();
-        move(rc.x(), rc.y() + rc.height() - rect().height());
-        setFixedWidth(rc.width());
-    }
+    auto rc = parentWidget()->geometry();
+    move(0, rc.height() - rect().height());
+    setFixedWidth(rc.width());
 }
 
 Ui::PanelBackground::PanelBackground(QWidget* parent) : QWidget(parent)
 {
-    //setStyleSheet("background-color: #640000;");
     videoPanelEffect_ = std::make_unique<UIEffects>(*this);
     videoPanelEffect_->fadeOut(0);
 }
@@ -386,36 +360,19 @@ void Ui::TransparentPanel::resendMouseEventToPanel(QMouseEvent *event)
 }
 
 Ui::FullVideoWindowPanel::FullVideoWindowPanel(QWidget* parent) :
-    Ui::BaseVideoPanel(parent, Qt::Window | Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint)
+    QWidget(parent)
 {
     setAttribute(Qt::WA_NoSystemBackground, true);
     setAttribute(Qt::WA_TranslucentBackground, true);
 }
 
-void Ui::FullVideoWindowPanel::updatePosition(const QWidget& parent)
-{
-    auto rc = parentWidget()->geometry();
-    setFixedSize(rc.width(), rc.height());
-    move(rc.x(), rc.y());
-
-#ifdef __APPLE__
-    // Make round corners for mac.
-    QWindow* window = parent.window() ? parent.window()->windowHandle(): nullptr;
-    if (window && window->visibility() != QWindow::FullScreen)
-    {
-        auto rc = rect();
-        QPainterPath path(QPointF(0, 0));
-        path.addRoundedRect(rc.x(), rc.y(), rc.width(), rc.height(), Utils::scale_value(5), Utils::scale_value(5));
-
-        QRegion region(path.toFillPolygon().toPolygon());
-        setMask(region);
-    }
-#endif
-}
-
 void Ui::FullVideoWindowPanel::resizeEvent(QResizeEvent *event)
 {
     Q_EMIT(onResize());
+
+    auto dialog = findChild<GeneralDialog*>();
+    if (dialog)
+        dialog->updateSize();
 }
 
 void showAddUserToVideoConverenceDialog(QObject* _parent, QWidget* _parentWindow,
@@ -538,10 +495,8 @@ Ui::MoveablePanel::MoveablePanel(QWidget* _parent, Qt::WindowFlags f)
     , parent_(_parent)
 {
     dragState_.isDraging = false;
-#ifndef __linux__
     setAttribute(Qt::WA_NoSystemBackground, true);
     setAttribute(Qt::WA_TranslucentBackground, true);
-#endif
 }
 
 Ui::MoveablePanel::MoveablePanel(QWidget* _parent)
@@ -549,17 +504,15 @@ Ui::MoveablePanel::MoveablePanel(QWidget* _parent)
     , parent_(_parent)
 {
     dragState_.isDraging = false;
-#ifndef __linux__
     setAttribute(Qt::WA_NoSystemBackground, true);
     setAttribute(Qt::WA_TranslucentBackground, true);
-#endif
 }
 
 Ui::MoveablePanel::~MoveablePanel()
 {
 }
 
-void Ui::MoveablePanel::mouseReleaseEvent(QMouseEvent* /*e*/)
+void Ui::MoveablePanel::mouseReleaseEvent(QMouseEvent* _e)
 {
     // We check visible flag for drag&drop, because mouse events
     // were be called when window is invisible by VideoWindow.
@@ -568,6 +521,7 @@ void Ui::MoveablePanel::mouseReleaseEvent(QMouseEvent* /*e*/)
         grabMouse = false;
         dragState_.isDraging = false;
     }
+    QWidget::mouseReleaseEvent(_e);
 }
 
 void Ui::MoveablePanel::mousePressEvent(QMouseEvent* _e)
@@ -577,7 +531,9 @@ void Ui::MoveablePanel::mousePressEvent(QMouseEvent* _e)
         grabMouse = true;
         dragState_.isDraging = true;
         dragState_.posDragBegin = QCursor::pos();
+        return;
     }
+    QWidget::mousePressEvent(_e);
 }
 
 void Ui::MoveablePanel::mouseMoveEvent(QMouseEvent* _e)
@@ -588,23 +544,9 @@ void Ui::MoveablePanel::mouseMoveEvent(QMouseEvent* _e)
         dragState_.posDragBegin = QCursor::pos();
         QPoint newpos = parent_->pos() + diff;
         parent_->move(newpos);
+        return;
     }
-}
-
-void Ui::MoveablePanel::changeEvent(QEvent* _e)
-{
-    QWidget::changeEvent(_e);
-    if (_e->type() == QEvent::ActivationChange)
-    {
-        if (isActiveWindow() || uiWidgetIsActive())
-        {
-            if (parent_)
-            {
-                parent_->raise();
-                raise();
-            }
-        }
-    }
+    QWidget::mouseMoveEvent(_e);
 }
 
 void Ui::MoveablePanel::keyReleaseEvent(QKeyEvent* _e)
@@ -615,3 +557,178 @@ void Ui::MoveablePanel::keyReleaseEvent(QKeyEvent* _e)
         Q_EMIT onkeyEscPressed();
     }
 }
+
+
+namespace Ui
+{
+
+
+    AbstractToastProvider::Options::Options()
+        : focusPolicy_(Qt::NoFocus)
+        , alignment_(Qt::AlignCenter)
+        , direction_((int)ToastBase::MoveDirection::BottomToTop)
+        , duration_(4000)
+        , maxLineCount_(1)
+        , isMultiScreen_(false)
+        , animateMove_(false)
+    {
+    }
+
+    ToastBase* AbstractToastProvider::showToast(const Options& _options, QWidget* _parent, const QRect& _rect)
+    {
+        if (_options.isMultiScreen_)
+        {
+            Utils::showMultiScreenToast(_options.text_, _options.maxLineCount_);
+            return nullptr;
+        }
+
+        ToastBase* toast = createToast(_options, _parent);
+        setupOptions(toast, _options);
+        const QPoint pos = position(_rect.marginsRemoved(_options.margins_), _options.alignment_);
+        ToastManager::instance()->showToast(toast, pos);
+        return toast;
+    }
+
+    ToastBase* AbstractToastProvider::showToast(const Options& _options, QWidget* _parent)
+    {
+        return showToast(_options, _parent, _parent ? _parent->rect() : qApp->primaryScreen()->geometry());
+    }
+
+    void AbstractToastProvider::setupOptions(ToastBase* _toast, const Options& _opts) const
+    {
+        for (int i = 0; i < _opts.attributes_.size(); ++i)
+            _toast->setAttribute(_opts.attributes_[i], true);
+
+        _toast->setDirection((ToastBase::MoveDirection)_opts.direction_);
+        _toast->enableMoveAnimation(_opts.animateMove_);
+        _toast->enableMultiScreenShowing(_opts.isMultiScreen_);
+
+        if (_opts.backgroundColor_.isValid())
+            _toast->setBackgroundColor(_opts.backgroundColor_);
+    }
+
+    QPoint AbstractToastProvider::position(const QRect& _rect, Qt::Alignment _align) const
+    {
+        QPoint pos = _rect.topLeft();
+
+        if (_align & Qt::AlignTop)
+            pos.setY(_rect.top());
+        if (_align & Qt::AlignBottom)
+            pos.setY(_rect.bottom());
+
+        if (_align & Qt::AlignLeft)
+            pos.setX(_rect.left());
+        if (_align & Qt::AlignRight)
+            pos.setX(_rect.right());
+
+        if (_align & Qt::AlignVCenter)
+            pos.setY(_rect.y() + _rect.height() / 2);
+        if (_align & Qt::AlignHCenter)
+            pos.setX(_rect.x() + _rect.width() / 2);
+
+        return pos;
+    }
+
+
+    VideoWindowToastProvider& VideoWindowToastProvider::instance()
+    {
+        static VideoWindowToastProvider gInst;
+        return gInst;
+    }
+
+    ToastBase* VideoWindowToastProvider::createToast(const Options& _options, QWidget* _parent) const
+    {
+        return new Toast(_options.text_, _parent, _options.maxLineCount_);
+    }
+
+    void VideoWindowToastProvider::hide()
+    {
+        if (currentToast_)
+            ToastManager::instance()->hideToast();
+    }
+
+    VideoWindowToastProvider::Options VideoWindowToastProvider::defaultOptions() const
+    {
+        Options options;
+        options.attributes_ << Qt::WA_ShowWithoutActivating;
+        options.alignment_ = Qt::AlignBottom | Qt::AlignHCenter;
+        options.margins_.setBottom(getToastVerOffset());
+        options.animateMove_ = true;
+        return options;
+    }
+
+    void VideoWindowToastProvider::show(Type _type, QWidget* _parent, const QRect& _rect)
+    {
+        hide();
+        if (!_parent)
+            return;
+
+        const QString shortcut = QKeySequence(Qt::ControlModifier + Qt::ShiftModifier + Qt::Key_A).toString(QKeySequence::NativeText);
+
+        Options options = defaultOptions();
+        switch(_type)
+        {
+        case Type::CamNotAllowed:
+        case Type::DesktopNotAllowed:
+            if (GetDispatcher()->getVoipController().isWebinar())
+            {
+                options.text_ = QT_TRANSLATE_NOOP("voip_video_panel", "Only the creator of the webinar can show the video");
+            }
+            else
+            {
+                const auto maxUsers = GetDispatcher()->getVoipController().maxUsersWithVideo();
+                options.text_ = QT_TRANSLATE_NOOP("voip_video_panel", "Ask one of the participants to turn off the video. In calls with over %1 people only one video can be shown").arg(maxUsers);
+                options.maxLineCount_ = 2;
+            }
+            break;
+        case Type::MicNotAllowed:
+            options.text_ = QT_TRANSLATE_NOOP("voip_video_panel", "Only the creator of the webinar can use a microphone");
+            break;
+        case Type::LinkCopied:
+            options.text_ = QT_TRANSLATE_NOOP("voip_video_panel", "Link copied");
+            break;
+        case Type::EmptyLink:
+            options.text_ = QT_TRANSLATE_NOOP("voip_video_panel", "Wait for connection");
+            break;
+        case Type::DeviceUnavailable:
+            options.text_ = QT_TRANSLATE_NOOP("voip_video_panel", "No devices found");
+            break;
+        case Type::NotifyMicMuted:
+            options.alignment_ = Qt::AlignCenter;
+            options.maxLineCount_ = 4;
+            options.text_ = QT_TRANSLATE_NOOP("voip_pages", "You are muted now\nPress %1 to unmute your microphone\n\nPress and hold Space key for temporarily unmute").arg(shortcut);
+            options.isMultiScreen_ = !_parent->isActiveWindow();
+            options.animateMove_ = false;
+            break;
+        case Type::NotifyFullScreen:
+            options.alignment_ = Qt::AlignCenter;
+            options.text_ = QT_TRANSLATE_NOOP("voip_pages", "Press Esc to exit from fullscreen mode");
+            options.margins_ = QMargins(0, Utils::scale_value(16), 0, 0);
+            options.animateMove_ = false;
+            break;
+        }
+
+        if (options.isMultiScreen_)
+        {
+            showToast(options, nullptr);
+            return;
+        }
+
+        currentToast_ = createToast(options, _parent);
+        setupOptions(currentToast_, options);
+        const QPoint pos = position(_rect.marginsRemoved(options.margins_), options.alignment_);
+        ToastManager::instance()->showToast(currentToast_, pos);
+    }
+
+    void VideoWindowToastProvider::show(Type _type)
+    {
+        if (auto mainPage = Utils::InterConnector::instance().getMessengerPage())
+            if (auto videoWindow = mainPage->getVideoWindow())
+                show(_type, videoWindow, videoWindow->toastRect());
+    }
+
+    int VideoWindowToastProvider::getToastVerOffset() const noexcept
+    {
+        return Utils::scale_value(100);
+    }
+} // end namespace Ui

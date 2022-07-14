@@ -107,14 +107,17 @@ namespace data
     {
         int offset_ = 0;
         int size_ = 0;
+        int start_index_ = 1;
 
         range() = default;
         range(int _offset, int _size) : offset_(_offset), size_(_size) {}
 
         bool operator==(const range& _other) const { return offset_ == _other.offset_ && size_ == _other.size_; }
+        bool operator!=(const range& _other) const { return !(*this == _other); }
         bool operator<(const range&  _other) const { return offset_ < _other.offset_; }
 
         range intersected(range _other) const;
+        bool contains(range _other) const { return ((offset_ <= _other.offset_) && (_other.end() <= end())); }
         int end() const { return offset_ + size_; }
     };
 
@@ -203,6 +206,8 @@ namespace data
         rapidjson::Value serialize(rapidjson_allocator& _a) const;
 
         void remove_formats(std::function<bool(core::data::format_type)> _pred);
+
+        void add_start_index_to_ordered_list(int _start_index);
 
     protected:
         //! Sorted. To speed up comparison

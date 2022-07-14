@@ -54,8 +54,9 @@ namespace core
 
             const std::string& get_file_url() const;
             const std::string& get_file_id() const;
-            virtual bool is_post() const override { return true; }
-            virtual std::string_view get_method() const override;
+            bool is_post() const override { return true; }
+            std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
         };
     }
 }

@@ -60,13 +60,13 @@ namespace Logic
         void onThreadUpdates(const Data::ThreadUpdates& _updates);
 
     public:
-        explicit RecentsModel(QObject *parent);
+        explicit RecentsModel(QObject* _parent = nullptr);
 
-        int rowCount(const QModelIndex &parent = QModelIndex()) const override;
-        QVariant data(const QModelIndex &index, int role) const override;
+        int rowCount(const QModelIndex& _index = QModelIndex()) const override;
+        QVariant data(const QModelIndex& _index, int _role) const override;
 
         Data::DlgState getDlgState(const QString& _aimId = {}, bool _fromDialog = false);
-        void unknownToRecents(const Data::DlgState&);
+        void unknownToRecents(const Data::DlgState& _dlgState);
 
         void togglePinnedVisible();
         void toggleUnimportantVisible();
@@ -166,6 +166,7 @@ namespace Logic
 
         bool isSpecialAndHidden(const Data::DlgState& _s) const;
 
+        Data::DlgState pinnedServiceFavoriteState_;
         std::vector<Data::DlgState> Dialogs_;
         std::vector<Data::DlgState> HiddenDialogs_;
         std::unordered_map<QString, size_t, Utils::QStringHasher> Indexes_;

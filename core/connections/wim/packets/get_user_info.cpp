@@ -2,6 +2,7 @@
 
 #include "../../../log/log.h"
 #include "../../../http_request.h"
+#include "../log_replace_functor.h"
 
 #include "get_user_info.h"
 
@@ -30,6 +31,11 @@ const std::shared_ptr<core::archive::persons_map>& get_user_info::get_persons() 
 std::string_view get_user_info::get_method() const
 {
     return "getUserInfo";
+}
+
+int get_user_info::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t get_user_info::init_request(const std::shared_ptr<core::http_request_simple>& _request)

@@ -4,6 +4,8 @@
 #include "../contact_list/MentionItemDelegate.h"
 #include "../../controls/TransparentScrollBar.h"
 #include "../../styles/ThemeParameters.h"
+#include "../../styles/StyleSheetContainer.h"
+#include "../../styles/StyleSheetGenerator.h"
 #include "../../utils/utils.h"
 #include "../../utils/InterConnector.h"
 #include "../../utils/graphicsEffects.h"
@@ -52,9 +54,10 @@ namespace Ui
         view_->viewport()->grabGesture(Qt::TapAndHoldGesture);
         view_->viewport()->grabGesture(Qt::TapGesture);
         view_->setListViewGestureHandler(new ListViewGestureHandler(this));
-        Utils::grabTouchWidget(view_->viewport(), true);
-        Utils::ApplyStyle(view_->verticalScrollBar(), Styling::getParameters().getScrollBarQss(4, 0));
         Testing::setAccessibleName(view_, qsl("AS Mention view"));
+        Utils::grabTouchWidget(view_->viewport(), true);
+
+        Styling::setStyleSheet(view_->verticalScrollBar(), Styling::getParameters().getScrollBarQss(4, 0));
 
         view_->setModel(model_);
         view_->setItemDelegate(delegate_);

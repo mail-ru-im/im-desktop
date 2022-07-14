@@ -15,8 +15,8 @@ namespace core
         class mod_chat : public robusto_packet
         {
         private:
-            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
-            virtual int32_t parse_response_data(const rapidjson::Value& _data) override;
+            int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            int32_t parse_response_data(const rapidjson::Value& _data) override;
 
             std::string	aimid_;
             chat_params chat_params_;
@@ -27,7 +27,8 @@ namespace core
 
             chat_params& get_chat_params();
             void set_chat_params(chat_params _chat_params);
-            virtual std::string_view get_method() const override;
+            std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
         };
 
     }

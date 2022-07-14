@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../types/common_phone.h"
+#include "utils/SvgUtils.h"
 
 namespace Ui
 {
@@ -87,7 +88,7 @@ namespace Ui
         std::unique_ptr<TextRendering::TextUnit> logout_;
 
         QPixmap icon_;
-        QPixmap mark_;
+        Utils::StyledPixmap mark_;
 
         DialogButton* next_;
         DialogButton* cancel_;

@@ -1,11 +1,8 @@
 #pragma once
 
 #include "controls/SimpleListWidget.h"
-
-namespace Styling
-{
-    enum class StyleVariable;
-}
+#include "../../styles/StyleVariable.h"
+#include "utils/SvgUtils.h"
 
 namespace Ui
 {
@@ -35,12 +32,12 @@ namespace Ui
         void updateTextColor();
 
     private:
-        bool isSelected_;
-        bool isCompactMode_;
-        const QPixmap normalIcon_;
-        const QPixmap selectedIcon_;
+        Utils::StyledPixmap normalIcon_;
+        Utils::StyledPixmap selectedIcon_;
         QString name_;
         std::unique_ptr<Ui::TextRendering::TextUnit> nameTextUnit_;
         Styling::StyleVariable iconBg_;
+        bool isSelected_;
+        bool isCompactMode_;
     };
 }

@@ -16,7 +16,8 @@ public:
     get_reaction(wim_packet_params _params, const std::string& _chat_id, const msgids_list& _msg_ids);
 
     reactions_vector_sptr get_result() const;
-    virtual std::string_view get_method() const override;
+    std::string_view get_method() const override;
+    int minimal_supported_api_version() const override;
 
 private:
     int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;

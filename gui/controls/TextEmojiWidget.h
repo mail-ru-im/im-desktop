@@ -9,7 +9,6 @@ namespace Ui
 {
     class TewLex;
     struct paint_info;
-    class LabelEx;
 
     typedef std::list<std::shared_ptr<TewLex>> TewTexText;
 
@@ -48,9 +47,9 @@ namespace Ui
 
     protected:
         QFont font_;
-        QColor color_;
-        QColor colorHover_;
-        QColor colorActive_;
+        Styling::ColorContainer color_;
+        Styling::ThemeColorKey colorHover_;
+        Styling::ThemeColorKey colorActive_;
         QString text_;
         TextEmojiAlign align_;
         std::unique_ptr<CompiledText> compiledText_;
@@ -87,19 +86,19 @@ namespace Ui
         void setSize(int, int);
 
     public:
-        TextEmojiWidget(QWidget* _parent, const QFont& _font, const QColor& _color, int _sizeToBaseline = -1);
+        TextEmojiWidget(QWidget* _parent, const QFont& _font, const Styling::ColorContainer& _color, int _sizeToBaseline = -1);
         virtual ~TextEmojiWidget();
 
         int ascent();
         int descent();
 
         void setText(const QString& _text, TextEmojiAlign _align = TextEmojiAlign::allign_left);
-        void setText(const QString& _text, const QColor& _color, TextEmojiAlign _align = TextEmojiAlign::allign_left);
+        void setText(const QString& _text, const Styling::ThemeColorKey& _color, TextEmojiAlign _align = TextEmojiAlign::allign_left);
         inline QString text() const { return text_; }
 
-        void setColor(const QColor& _color);
-        void setHoverColor(const QColor& _color);
-        void setActiveColor(const QColor& _color);
+        void setColor(const Styling::ThemeColorKey& _color);
+        void setHoverColor(const Styling::ThemeColorKey& _color);
+        void setActiveColor(const Styling::ThemeColorKey& _color);
 
         void setFading(bool _v);
         void setEllipsis(bool _v);
@@ -158,7 +157,7 @@ namespace Ui
         TextUnitLabel(QWidget* _parent, Ui::TextRendering::TextUnitPtr _textUnit, Ui::TextRendering::VerPosition _pos, int _maxAvalibleWidth, bool _fitWidth = false);
         ~TextUnitLabel();
 
-        void setText(const QString &_text, const QColor& _color = QColor());
+        void setText(const QString& _text, const Styling::ThemeColorKey& _color = {});
         QSize sizeHint() const override;
 
     protected:
@@ -168,6 +167,5 @@ namespace Ui
 
     private:
         void fitWidth();
-        int correctFontHeight(const QFont& _font) const;
     };
 }

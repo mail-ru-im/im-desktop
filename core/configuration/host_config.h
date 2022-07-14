@@ -16,25 +16,44 @@ namespace config
 
             files_parse,
             stickerpack_share,
+            miniapp_sharing,
             profile,
 
             mail_auth,
-            mail_oauth2,
             mail_redirect,
             mail_win,
             mail_read,
 
             app_update,
 
+            privacy_policy_url,
+            terms_of_use_url,
+
+            oauth_url,
+            token_url,
+            redirect_uri,
+
+            // TODO: remove when deprecated
             di,
             di_dark,
             tasks,
             calendar,
+            mail,
+            tarm_mail,
+            tarm_cloud,
+            tarm_calls,
+        };
+
+        struct dns_entry
+        {
+            std::string ip_;
+            bool ip_mode_ = true;
         };
 
         [[nodiscard]] std::string get_host_url(host_url_type _type);
 
-        std::string format_resolve_host_str(std::string_view _host, unsigned port);
+        std::optional<dns_entry> resolve_host(const std::string& _url);
+        std::string format_resolve_host_str(std::string_view _host, const dns_entry& _dns_entry);
 
         bool is_valid();
         bool load_config();

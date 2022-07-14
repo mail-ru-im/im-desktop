@@ -2,11 +2,12 @@
 
 #include "CustomStatusWidget.h"
 #include "StatusCommonUi.h"
-#include "StatusEmojiPicker.h"
 #include "utils/utils.h"
 #include "utils/InterConnector.h"
 #include "controls/DialogButton.h"
-#include "controls/TooltipWidget.h"
+#include "controls/EmojiButton.h"
+#include "controls/EmojiPickerDialog.h"
+#include "controls/TextWidget.h"
 #include "styles/ThemeParameters.h"
 #include "controls/TextEditEx.h"
 #include "core_dispatcher.h"
@@ -15,16 +16,14 @@
 namespace
 {
 
-constexpr auto animationDuration() noexcept { return std::chrono::milliseconds(150); }
-
 constexpr auto defaultStatusDuration() noexcept { return std::chrono::seconds(24 * 3600); }
 
-int maxWidth()
+int maxWidth() noexcept
 {
     return Utils::scale_value(360);
 }
 
-QSize emojiWidgetSize()
+QSize defaultEmojiWidgetSize() noexcept
 {
     return Utils::scale_value(QSize(52, 52));
 }
@@ -47,12 +46,12 @@ constexpr int maxLimitOverflow() noexcept
     return 99;
 }
 
-int remainedTopMargin()
+int remainedTopMargin() noexcept
 {
     return Utils::scale_value(8);
 }
 
-int textMaxHeight()
+int textMaxHeight() noexcept
 {
     return Utils::scale_value(104);
 }
@@ -62,54 +61,22 @@ QFont descriptionFont()
     return Fonts::appFontScaled(17);
 }
 
-QColor remainedColor()
+Styling::ThemeColorKey remainedColor()
 {
-    return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
+    return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY };
 }
 
-QColor errorColor()
+Styling::ThemeColorKey errorColor()
 {
-    return Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION);
+    return Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_ATTENTION };
 }
 
-int rightMargin()
+int rightMargin() noexcept
 {
     return Utils::scale_value(20);
 }
 
-QSize addEmojiIconSize()
-{
-    return Utils::scale_value(QSize(32, 32));
-}
-
-int emojiSize()
-{
-    return Utils::scale_value(32);
-}
-
-QPoint editIconOffset()
-{
-    return Utils::scale_value(QPoint(32, 32));
-}
-
-const QColor& circleColor()
-{
-    static auto color = []()
-    {
-        auto c = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
-        c.setAlphaF(0.1);
-        return c;
-    }();
-    return color;
-}
-
-const QPixmap& addEmojiIcon()
-{
-    static auto pixmap = Utils::renderSvg(qsl(":/add_emoji_icon"), addEmojiIconSize(), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
-    return pixmap;
-}
-
-int labelBottomMargin()
+int labelBottomMargin() noexcept
 {
     if constexpr (platform::is_apple())
         return Utils::scale_value(12);
@@ -117,7 +84,7 @@ int labelBottomMargin()
     return Utils::scale_value(16);
 }
 
-int labelTopMargin()
+int labelTopMargin() noexcept
 {
     if constexpr (platform::is_apple())
         return Utils::scale_value(18);
@@ -169,7 +136,7 @@ public:
 
     Status status_;
     TextEditEx* description_ = nullptr;
-    CustomStatusEmojiWidget* emojiWidget_ = nullptr;
+    EmojiButton* emojiWidget_ = nullptr;
     TextRendering::TextUnitPtr remainedCount_;
     TextRendering::TextUnitPtr errorUnit_;
     DialogButton* nextButton_ = nullptr;
@@ -190,7 +157,9 @@ CustomStatusWidget::CustomStatusWidget(QWidget* _parent)
     auto layout = Utils::emptyVLayout(this);
 
     auto label = new TextWidget(this, QT_TRANSLATE_NOOP("status_popup", "Choose unique status"));
-    label->init(headerLabelFont(), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
+    TextRendering::TextUnit::InitializeParameters params{ headerLabelFont(), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } };
+    params.align_ = TextRendering::HorAligment::CENTER;
+    label->init(params);
     label->setMaxWidthAndResize(maxWidth());
 
     layout->addSpacing(labelTopMargin());
@@ -199,8 +168,9 @@ CustomStatusWidget::CustomStatusWidget(QWidget* _parent)
 
     auto contentLayout = Utils::emptyHLayout();
 
-    d->emojiWidget_ = new CustomStatusEmojiWidget(this);
+    d->emojiWidget_ = new EmojiButton(this);
     Testing::setAccessibleName(d->emojiWidget_, qsl("AS CustomStatusWidget emojiWidget"));
+    d->emojiWidget_->setFixedSize(defaultEmojiWidgetSize());
 
     auto emojiLayout = Utils::emptyVLayout();
     auto descriptionLayout = Utils::emptyVLayout();
@@ -215,7 +185,7 @@ CustomStatusWidget::CustomStatusWidget(QWidget* _parent)
     contentLayout->addLayout(descriptionLayout);
     contentLayout->addSpacing(rightMargin());
 
-    d->description_ = new TextEditEx(this, descriptionFont(), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), true, false);
+    d->description_ = new TextEditEx(this, descriptionFont(), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID }, true, false);
     d->description_->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     d->description_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     d->description_->setTextInteractionFlags(Qt::TextEditable | Qt::TextEditorInteraction);
@@ -223,8 +193,8 @@ CustomStatusWidget::CustomStatusWidget(QWidget* _parent)
     d->description_->setPlaceholderText(QT_TRANSLATE_NOOP("status_popup", "Enter status text"));
     d->description_->setEnterKeyPolicy(TextEditEx::EnterKeyPolicy::FollowSettingsRules);
     d->description_->setTabChangesFocus(true);
-    d->description_->document()->setDocumentMargin(0);
-    d->description_->addSpace(Utils::scale_value(4));
+    d->description_->setDocumentMargin(0);
+    d->description_->setHeightSupplement(Utils::scale_value(4));
     d->description_->setCursor(Qt::IBeamCursor);
     d->description_->viewport()->setCursor(Qt::IBeamCursor);
     Testing::setAccessibleName(d->description_, qsl("AS CustomStatusWidget descriptionEdit"));
@@ -257,16 +227,22 @@ CustomStatusWidget::CustomStatusWidget(QWidget* _parent)
     connect(d->nextButton_, &DialogButton::clicked, this, &CustomStatusWidget::onNextClicked);
 
     d->remainedCount_ = TextRendering::MakeTextUnit(QString());
-    d->remainedCount_->init(Fonts::adjustedAppFont(15), remainedColor());
+    d->remainedCount_->init({ Fonts::adjustedAppFont(15), remainedColor() });
 
     d->errorUnit_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("status_popup", "Maximum length - %1 symbols").arg(maxDescriptionLength()));
-    d->errorUnit_->init(Fonts::adjustedAppFont(15), errorColor());
+    d->errorUnit_->init({ Fonts::adjustedAppFont(15), errorColor() });
 
-    connect(d->emojiWidget_, &CustomStatusEmojiWidget::clicked, this, [this]()
+    connect(d->emojiWidget_, &EmojiButton::clicked, this, [this]()
     {
-        auto picker = new StatusEmojiPickerDialog(d->emojiWidget_, this);
-        connect(picker, &StatusEmojiPickerDialog::emojiSelected, this, [this](const Emoji::EmojiCode& _code) { d->emojiWidget_->setCurrent(_code); });
-        picker->show();
+        auto picker = new EmojiPickerDialog(nullptr, d->emojiWidget_, this);
+        connect(picker, &EmojiPickerDialog::emojiSelected, this, [this](const Emoji::EmojiCode& _code)
+        {
+            d->emojiWidget_->setCurrent(_code);
+            if (auto picker = qobject_cast<EmojiPickerDialog*>(sender()))
+                picker->close();
+        });
+        picker->popup();
+        d->description_->setFocus();
     });
 
     onTextChanged();
@@ -283,7 +259,7 @@ void CustomStatusWidget::setStatus(const Status& _status)
     if (_status.isEmpty())
         d->emojiWidget_->reset();
     else
-        d->emojiWidget_->setCurrent(Emoji::EmojiCode::fromQString(_status.toString()), CustomStatusEmojiWidget::SkipAnimation::Yes);
+        d->emojiWidget_->setCurrent(Emoji::EmojiCode::fromQString(_status.toString()), EmojiButton::SkipAnimation::Yes);
 }
 
 void CustomStatusWidget::paintEvent(QPaintEvent* _event)
@@ -365,147 +341,6 @@ void CustomStatusWidget::confirmStatus()
     GetDispatcher()->setStatus(d->emojiWidget_->current(), seconds.count(), d->description_->getPlainText().trimmed());
     Q_EMIT Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
     Statuses::showToastWithDuration(seconds);
-}
-
-//////////////////////////////////////////////////////////////////////////
-// CustomStatusEmojiWidget_p
-//////////////////////////////////////////////////////////////////////////
-
-class CustomStatusEmojiWidget_p
-{
-public:
-    CustomStatusEmojiWidget_p(QWidget* _q) : q(_q) {}
-    void drawEmoji(QPainter& _p)
-    {
-        Utils::PainterSaver saver(_p);
-        _p.setOpacity(emojiOpacity_);
-        QPainterPath circle;
-        circle.addEllipse(QRect({0, 0}, emojiWidgetSize()));
-        _p.fillPath(circle, circleColor());
-
-        _p.drawImage(iconRect_, emoji_);
-
-        drawEditIcon(_p, editIconOffset());
-    }
-    void drawIcon(QPainter& _p)
-    {
-        Utils::PainterSaver saver(_p);
-        _p.setOpacity(iconOpacity_);
-        _p.drawPixmap(iconRect_, addEmojiIcon());
-    }
-
-    void initAnimation()
-    {
-        animation_ = new QVariantAnimation(q);
-
-        animation_->setStartValue(0.);
-        animation_->setEndValue(1.);
-        animation_->setEasingCurve(QEasingCurve::InOutSine);
-        animation_->setDuration(animationDuration().count());
-
-        auto onValueChanged = [this](const QVariant& value)
-        {
-            emojiOpacity_ = value.toDouble();
-            iconOpacity_ = 1 - emojiOpacity_;
-            q->update();
-        };
-        QObject::connect(animation_, &QVariantAnimation::valueChanged, q, onValueChanged);
-        QObject::connect(animation_, &QVariantAnimation::finished, q, [this]()
-        {
-            if (animation_->direction() == QVariantAnimation::Backward)
-                emoji_ = QImage();
-        });
-    }
-
-    void showEmojiAnimated()
-    {
-        animation_->setDirection(QVariantAnimation::Forward);
-        animation_->start();
-    }
-
-    void showEmoji()
-    {
-        animation_->stop();
-        emojiOpacity_ = 1;
-        iconOpacity_ = 0;
-        q->update();
-    }
-
-    void hideEmoji()
-    {
-        emoji_ = QImage();
-        code_.clear();
-        emojiOpacity_ = 0;
-        iconOpacity_ = 1;
-        q->update();
-    }
-
-    QRect iconRect_;
-    QRect editIconRect_;
-    QVariantAnimation* animation_ = nullptr;
-    double emojiOpacity_ = 0;
-    double iconOpacity_ = 1;
-    QString code_;
-    QImage emoji_;
-    QWidget* q;
-};
-
-//////////////////////////////////////////////////////////////////////////
-// CustomStatusEmojiWidget
-//////////////////////////////////////////////////////////////////////////
-
-CustomStatusEmojiWidget::CustomStatusEmojiWidget(QWidget* _parent)
-    : QWidget(_parent)
-    , d(std::make_unique<CustomStatusEmojiWidget_p>(this))
-{
-    setFixedSize(emojiWidgetSize());
-    setCursor(Qt::PointingHandCursor);
-
-    const auto offset = (emojiWidgetSize() - addEmojiIconSize()) / 2;
-    d->iconRect_ = QRect({offset.width(), offset.height()}, addEmojiIconSize());
-
-    d->initAnimation();
-}
-
-CustomStatusEmojiWidget::~CustomStatusEmojiWidget() = default;
-
-void CustomStatusEmojiWidget::setCurrent(const Emoji::EmojiCode& _code, SkipAnimation _skipAnimation)
-{
-    const auto animate = d->emoji_.isNull() && _skipAnimation != SkipAnimation::Yes;
-    d->emoji_ = Emoji::GetEmoji(_code, Utils::scale_bitmap(emojiSize()));
-    d->code_ = Emoji::EmojiCode::toQString(_code);
-
-    if (animate)
-        d->showEmojiAnimated();
-    else
-        d->showEmoji();
-}
-
-const QString& CustomStatusEmojiWidget::current() const
-{
-    return d->code_;
-}
-
-void CustomStatusEmojiWidget::reset()
-{
-    d->hideEmoji();
-}
-
-void CustomStatusEmojiWidget::paintEvent(QPaintEvent* _event)
-{
-    QPainter p(this);
-    p.setRenderHint(QPainter::Antialiasing);
-
-    d->drawEmoji(p);
-    d->drawIcon(p);
-}
-
-void CustomStatusEmojiWidget::mouseReleaseEvent(QMouseEvent* _event)
-{
-    if (rect().contains(_event->pos()))
-        Q_EMIT clicked(QPrivateSignal());
-
-    QWidget::mouseReleaseEvent(_event);
 }
 
 }

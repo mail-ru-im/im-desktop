@@ -39,8 +39,8 @@ namespace core
             const int64_t seq_;
             const bool is_context_request_;
 
-            get_history_batch_params(const std::string_view _aimid, std::vector<int64_t>&& _ids, const std::string_view _patch_version);
-            get_history_batch_params(const std::string_view _aimid, const std::string_view _patch_version, const int64_t _id, const int32_t _count_early, const int32_t _count_after, int64_t _seq = 0);
+            get_history_batch_params(std::string_view _aimid, std::vector<int64_t>&& _ids, std::string_view _patch_version);
+            get_history_batch_params(std::string_view _aimid, std::string_view _patch_version, const int64_t _id, const int32_t _count_early, const int32_t _count_after, int64_t _seq = 0);
 
             bool is_message_context_params() const noexcept { return is_context_request_; }
         };
@@ -58,9 +58,9 @@ namespace core
             bool unpinned_;
             std::shared_ptr<core::archive::persons_map> persons_;
 
-            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
 
-            virtual int32_t parse_results(const rapidjson::Value& _node_results) override;
+            int32_t parse_results(const rapidjson::Value& _node_results) override;
 
         public:
             get_history_batch(
@@ -77,8 +77,9 @@ namespace core
             const get_history_batch_params& get_hist_params() const { return hist_params_; }
             const std::shared_ptr<core::archive::persons_map>& get_persons() const override { return persons_; }
 
-            virtual priority_t get_priority() const override;
-            virtual std::string_view get_method() const override;
+            priority_t get_priority() const override;
+            std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
         };
     }
 }

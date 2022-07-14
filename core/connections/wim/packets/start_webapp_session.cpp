@@ -4,6 +4,7 @@
 
 #include "../common.shared/json_helper.h"
 #include "http_request.h"
+#include "../log_replace_functor.h"
 
 namespace core::wim
 {
@@ -17,6 +18,11 @@ namespace core::wim
     std::string_view start_webapp_session::get_method() const
     {
         return "webapp/session/start";
+    }
+
+    int start_webapp_session::minimal_supported_api_version() const
+    {
+        return core::urls::api_version::instance().minimal_supported();
     }
 
     int32_t start_webapp_session::init_request(const std::shared_ptr<core::http_request_simple>& _request)
@@ -45,5 +51,13 @@ namespace core::wim
         if (!tools::unserialize_value(_node_results, "aimsid", aimsid_))
             return wpie_error_parse_response;
         return 0;
+    }
+
+    int32_t start_webapp_session::on_response_error_code()
+    {
+        if (status_code_ == 40300)
+            return wpie_error_miniapp_unavailable;
+
+        return robusto_packet::on_response_error_code();
     }
 }

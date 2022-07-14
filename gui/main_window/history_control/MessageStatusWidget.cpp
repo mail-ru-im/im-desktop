@@ -129,7 +129,6 @@ namespace Ui
             return;
 
         isSelected_ = _selected;
-        updateStyle();
     }
 
     bool MessageTimeWidget::isSelected() const noexcept
@@ -165,12 +164,12 @@ namespace Ui
             return;
 
         text_ = TextRendering::MakeTextUnit(TimeText_);
-        text_->init(withUnderlay_ ? getTimeFontLarge() : getTimeFont(), getTimeColor());
+        text_->init({ withUnderlay_ ? getTimeFontLarge() : getTimeFont(), getTimeColor() });
 
         if (isEdited_ && !hideEdit_)
         {
             auto ed = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("chat_page", "edited") % ql1c(' '));
-            ed->init(getTimeFontLarge(), getTimeColor());
+            ed->init({ getTimeFontLarge(), getTimeColor() });
 
             ed->append(std::move(text_));
             text_ = std::move(ed);
@@ -185,16 +184,7 @@ namespace Ui
         update();
     }
 
-    void MessageTimeWidget::updateStyle()
-    {
-        if (text_)
-        {
-            text_->setColor(getTimeColor());
-            update();
-        }
-    }
-
-    QColor MessageTimeWidget::getTimeColor() const
+    Styling::ThemeColorKey MessageTimeWidget::getTimeColor() const
     {
         im_assert(!aimId_.isEmpty());
 
@@ -204,6 +194,6 @@ namespace Ui
         else if (isOutgoing())
             var = Styling::StyleVariable::PRIMARY_PASTEL;
 
-        return Styling::getParameters(aimId_).getColor(var);
+        return Styling::ThemeColorKey{ var, aimId_ };
     }
 }

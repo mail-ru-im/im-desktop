@@ -20,8 +20,10 @@ namespace Ui
         void updateAvatar();
 
         const QString& getAimId() const noexcept { return aimId_; }
-        const QString& getChatId() const noexcept { return chatId_; }
-        qint64 getMsgId() const noexcept { return msgId_; }
+        const QString& getSourceChatId() const noexcept { return sourceChatId_; }
+        const QString& getCurrentChatId() const noexcept { return currentChatId_; }
+        qint64 getCurrentMsgId() const noexcept { return currentMsgId_; }
+        qint64 getSourceMsgId() const noexcept { return sourceMsgId_; }
 
         void setUnderMouse(const bool _value) { underMouse_ = _value; }
         bool isUnderMouse() const noexcept { return underMouse_; }
@@ -31,10 +33,12 @@ namespace Ui
 
     private:
         bool underMouse_ = false;
-        qint64 msgId_ = -1;
-
+        qint64 sourceMsgId_ = -1;
         QString aimId_;
-        QString chatId_;
+
+        QString sourceChatId_;
+        QString currentChatId_;
+        qint64 currentMsgId_ = -1;
         QPixmap avatar_;
         TextRendering::TextUnitPtr textUnit_;
     };

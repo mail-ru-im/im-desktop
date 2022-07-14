@@ -102,23 +102,22 @@ namespace
 
     auto getHintColorNormal()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY };
     }
 
     auto getHintColorBad()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_ATTENTION };
     }
 
-    auto getDescriptionColor()
+    auto getDescriptionColorKey()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID };
     }
 }
 
 namespace Ui
 {
-
     EditDescriptionWidget::EditDescriptionWidget(QWidget *_parent, const FormData& _initData)
         : QWidget(_parent)
         , okButton_(nullptr)
@@ -135,17 +134,17 @@ namespace Ui
         globalLayout->setContentsMargins(getLeftMargin(), getTopMargin(), getRightMargin(), 0);
 
         headerUnit_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("profile_edit_dialogs", "Edit description"));
-        headerUnit_->init(getHeaderFont(), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        headerUnit_->init({ getHeaderFont(), Styling::ThemeColorKey{Styling::StyleVariable::TEXT_SOLID} });
         headerUnit_->evaluateDesiredSize();
         headerUnit_->setOffsets(getHeaderHorOffset(), getHeaderVerOffset());
 
         const auto descriptionWidth = getWidgetWidth() - getLeftMargin() - getRightMargin();
-        description_ = new TextEditEx(this, getDescriptionFont(), getDescriptionColor(), true, false);
+        description_ = new TextEditEx(this, getDescriptionFont(), getDescriptionColorKey(), true, false);
         QSizePolicy sp(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Preferred);
         sp.setVerticalStretch(1);
         description_->setSizePolicy(sp);
         description_->setFixedWidth(descriptionWidth);
-        description_->document()->setDocumentMargin(0);
+        description_->setDocumentMargin(0);
         description_->document()->setTextWidth(descriptionWidth);
         description_->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         description_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -159,11 +158,11 @@ namespace Ui
         Testing::setAccessibleName(description_, qsl("AS ProfilePage aboutMeEdit"));
 
         hintUnit_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("profile_edit_dialogs", "A short text about you"));
-        hintUnit_->init(getHintFont(), getHintColorNormal());
+        hintUnit_->init({ getHintFont(), getHintColorNormal() });
         hintUnit_->evaluateDesiredSize();
 
         counterUnit_ = TextRendering::MakeTextUnit(QString::number(getMaxDescriptionLength() - _initData.description_.length()));
-        counterUnit_->init(getDescriptionFont(), getHintColorNormal());
+        counterUnit_->init({ getDescriptionFont(), getHintColorNormal() });
         counterUnit_->evaluateDesiredSize();
 
         connect(description_, &TextEditEx::textChanged, this, &EditDescriptionWidget::onFormChanged);

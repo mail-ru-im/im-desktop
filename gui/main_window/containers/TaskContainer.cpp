@@ -6,6 +6,7 @@
 #include "utils/features.h"
 #include "../../previewer/toast.h"
 #include "../contact_list/ContactListModel.h"
+#include "../contact_list/Common.h"
 #include "ThreadSubContainer.h"
 
 namespace Logic
@@ -78,7 +79,8 @@ namespace Logic
         im_assert(!id.isEmpty());
         if (id.isEmpty())
             return;
-        Logic::getContactListModel()->markAsThread(_task.params_.threadId_, {});
+
+        Logic::getContactListModel()->markAsThread(_task.threadUpdate_.get(), true);
         if (!contains(id))
         {
             tasks_[id] = _task; // just add, subscribe only on task show in chat
@@ -99,13 +101,13 @@ namespace Logic
             onTaskUpdate(task);
     }
 
-    static std::unique_ptr<TaskContainer> g_TaskContainer;
+    static QObjectUniquePtr<TaskContainer> g_TaskContainer;
 
     TaskContainer* GetTaskContainer()
     {
         Utils::ensureMainThread();
         if (!g_TaskContainer)
-            g_TaskContainer = std::make_unique<TaskContainer>(nullptr);
+            g_TaskContainer = makeUniqueQObjectPtr<TaskContainer>();
 
         return g_TaskContainer.get();
     }
@@ -115,4 +117,4 @@ namespace Logic
         Utils::ensureMainThread();
         g_TaskContainer.reset();
     }
-}
+} // namespace Logic

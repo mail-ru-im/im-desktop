@@ -73,7 +73,6 @@ namespace Ui
 
         void selectByPos(const QPoint& _from, const QPoint& _to, const QPoint& _areaFrom, const QPoint& _areaTo) override;
 
-        void updateStyle() override;
         void updateFonts() override;
 
         void updateWith(VoipEventItem& _messageItem);
@@ -144,7 +143,7 @@ namespace Ui
         TextRendering::TextUnitPtr text_;
         TextRendering::TextUnitPtr duration_;
         CallButton* callButton_;
-        MessageTimeWidget *timeWidget_;
+        MessageTimeWidget* timeWidget_;
     };
 
 }

@@ -234,6 +234,11 @@ namespace core
         multi_handler_->resolve_host(_host, std::move(_callback));
     }
 
+    void curl_handler::set_multi_max_parallel_packets_count(size_t _count)
+    {
+        multi_handler_->set_max_parallel_packets_count(_count);
+    }
+
     void curl_handler::raise_task(int64_t _id)
     {
         easy_handler_->raise_task(_id);

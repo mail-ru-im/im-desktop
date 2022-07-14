@@ -2,8 +2,10 @@
 #include "Store.h"
 
 #include "../../styles/ThemeParameters.h"
+#include "../../styles/ThemesContainer.h"
 #include "../../controls/TransparentScrollBar.h"
 #include "../../controls/TextEmojiWidget.h"
+#include "../../controls/TextWidget.h"
 
 #include "../../controls/CustomButton.h"
 #include "../../controls/ClickWidget.h"
@@ -27,6 +29,15 @@
 
 using namespace Ui;
 using namespace Stickers;
+
+namespace Ui
+{
+    enum class IsPurchased
+    {
+        no,
+        yes,
+    };
+}
 
 namespace
 {
@@ -229,9 +240,9 @@ namespace
         return Utils::scale_value(8);
     }
 
-    int badgeLeftOffset()
+    int badgeRightOffset()
     {
-        return Utils::scale_value(28);
+        return Utils::scale_value(4);
     }
 
     void loadSetIcon(Ui::Stickers::PackInfoObject* _infoObject, int _size)
@@ -268,12 +279,6 @@ namespace
         }
     }
 
-    enum class IsPurchased
-    {
-        no,
-        yes,
-    };
-
     void addPacks(PacksViewBase* _view, const setsIdsArray& _sets, IsPurchased _purshased, bool _replaceLines = false)
     {
         bool purchased = (_purshased == IsPurchased::yes);
@@ -297,11 +302,37 @@ namespace
         }
     }
 
+    bool isSame(std::vector<PackItemBase*> _items, const setsIdsArray& _sets, IsPurchased _purshased)
+    {
+        bool purchased = (_purshased == IsPurchased::yes);
+        const auto lottieAllowed = Features::isAnimatedStickersInPickerAllowed();
+
+        size_t i = 0;
+        for (const auto _setId : _sets)
+        {
+            if (const auto s = Stickers::getStoreSet(_setId); s && s->isPurchased() == purchased)
+            {
+                if (lottieAllowed || !s->containsLottieSticker())
+                    if (i >= _items.size() || _items[i++]->getId() != _setId)
+                        return false;
+            }
+        }
+        return i == _items.size();
+    }
+
     void initView(PacksViewBase* _view, const setsIdsArray& _sets, IsPurchased _purshased, bool _replaceLines = false)
     {
+        if (_view->isEqual(_sets, _purshased))
+            return;
+
         _view->clear();
         addPacks(_view, _sets, _purshased, _replaceLines);
         _view->onPacksAdded();
+    }
+
+    QPixmap noResultsPixmap()
+    {
+        return Utils::renderSvgScaled(qsl(":/placeholders/empty_search"), QSize(84, 84), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
     }
 }
 
@@ -353,13 +384,11 @@ TopPackItem::TopPackItem(QWidget* _parent, std::unique_ptr<PackInfoObject> _info
     if (!info_->name_.isEmpty())
     {
         name_ = TextRendering::MakeTextUnit(info_->name_, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-        name_->init(
-            getNameFont(),
-            Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID),
-            QColor(), QColor(), QColor(),
-            TextRendering::HorAligment::CENTER,
-            2,
-            TextRendering::LineBreakType::PREFER_SPACES);
+        TextRendering::TextUnit::InitializeParameters params{ getNameFont(), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } };
+        params.align_ = TextRendering::HorAligment::CENTER;
+        params.maxLinesCount_ = 2;
+        params.lineBreak_ = TextRendering::LineBreakType::PREFER_SPACES;
+        name_->init(params);
         name_->getHeight(getPackIconSize());
         name_->setOffsets(0, getPacksViewHeight() - getPackNameHeight() - getPackNameMargin() - getPackDescHeight());
     }
@@ -444,6 +473,7 @@ void TopPacksView::onSetIcon(const int32_t _setId)
 void TopPacksView::addPack(std::unique_ptr<PackInfoObject> _pack)
 {
     auto item = new TopPackItem(this, std::move(_pack));
+    items_.emplace_back(item);
     Testing::setAccessibleName(item, u"AS TopPackItem" % QString::number(item->getId()));
     layout_->addWidget(item);
 }
@@ -531,7 +561,13 @@ void TopPacksView::clear()
             delete w;
         delete i;
     }
+    items_.clear();
     updateSize();
+}
+
+bool TopPacksView::isEqual(const setsIdsArray& _sets, IsPurchased _purshased) const
+{
+    return isSame(items_, _sets, _purshased);
 }
 
 void TopPacksView::connectNativeScrollbar(QScrollBar* _sb)
@@ -550,20 +586,19 @@ TopPacksWidget::TopPacksWidget(QWidget* _parent)
 
     setFixedHeight(getPacksViewHeight() + getHeaderHeight() + getHScrollbarHeight() + Utils::scale_value(8));
 
-    QVBoxLayout* rootLayout = new QVBoxLayout(this);
+    auto rootLayout = new QVBoxLayout(this);
     rootLayout->setContentsMargins(0, 0, 0, 0);
     rootLayout->setAlignment(Qt::AlignTop);
-    setLayout(rootLayout);
 
-    QHBoxLayout* headerLayout = new QHBoxLayout(nullptr);
-    headerLayout->setContentsMargins(getMarginLeft(), 0, 0, 0);
-    auto header = new QLabel(this);
+    auto header = new QWidget;
     header->setFixedHeight(getHeaderHeight());
-    header->setText(QT_TRANSLATE_NOOP("stickers", "TRENDING"));
-    header->setFont(Fonts::appFontScaled(14, Fonts::FontWeight::SemiBold));
-    header->setStyleSheet(ql1s("QLabel{background-color: transparent; color: %1}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::TEXT_SOLID)));
-    headerLayout->addWidget(header);
-    rootLayout->addLayout(headerLayout);
+    auto headerLayout = new QHBoxLayout(header);
+    headerLayout->setContentsMargins(getMarginLeft(), 0, 0, 0);
+    auto title = new TextWidget(this, QT_TRANSLATE_NOOP("stickers", "TRENDING"), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
+    title->init({ Fonts::appFontScaled(14, Fonts::FontWeight::SemiBold), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } });
+    headerLayout->addWidget(title, Qt::AlignVCenter);
+    headerLayout->addStretch();
+    rootLayout->addWidget(header);
 
     packs_ = new TopPacksView(this);
     rootLayout->addWidget(packs_);
@@ -597,7 +632,7 @@ PackItem::PackItem(QWidget* _parent, std::unique_ptr<PackInfoObject> _info)
     if (!info_->name_.isEmpty())
     {
         name_ = TextRendering::MakeTextUnit(info_->name_, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-        name_->init(getNameFont(), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        name_->init({ getNameFont(), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } });
         name_->setOffsets(getMyPackIconSize() + getMyPackTextLeftMargin() + getMarginLeft(), getMyPackTextTopMargin());
         name_->evaluateDesiredSize();
     }
@@ -863,7 +898,7 @@ void PacksView::addPack(std::unique_ptr<PackInfoObject> _pack)
     item->show();
 
     Testing::setAccessibleName(item, u"AS PackItem" % QString::number(item->getId()));
-    items_.push_back(item);
+    items_.emplace_back(item);
 }
 
 void PacksView::updateSize()
@@ -954,6 +989,11 @@ void PacksView::onPacksAdded()
     updateItemsVisibility();
 }
 
+bool PacksView::isEqual(const setsIdsArray& _sets, IsPurchased _purshased) const
+{
+    return isSame(items_, _sets, _purshased);
+}
+
 void PacksView::arrangePacks()
 {
     int i = 0;
@@ -1028,7 +1068,7 @@ void PacksView::updateItemsVisibility()
     for (auto item : items_)
     {
         const auto r = getStickerRect(i++);
-        if (!item->isDragging())
+        if (!static_cast<PackItem*>(item)->isDragging())
             item->onVisibilityChanged(visibleRect.intersects(r));
     }
 }
@@ -1135,7 +1175,7 @@ void PacksView::startDrag()
         dragPack_ = items_[pos]->getId();
 
         for (int i = 0; i < int(items_.size()); ++i)
-            items_[i]->setHoverable(i == pos);
+            static_cast<PackItem*>(items_[i])->setHoverable(i == pos);
 
         arrangePacks();
     }
@@ -1152,7 +1192,7 @@ void PacksView::stopDrag()
     orderChanged_ = false;
 
     for (auto item : items_)
-        item->setHoverable(true);
+        static_cast<PackItem*>(item)->setHoverable(true);
 
     arrangePacks();
     Q_EMIT stopScroll();
@@ -1200,11 +1240,11 @@ MyPacksHeader::MyPacksHeader(QWidget* _parent)
     setFixedHeight(getMyHeaderHeight());
 
     createStickerPack_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("stickers", "Add your stickers"));
-    createStickerPack_->init(Fonts::appFontScaled(16, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+    createStickerPack_->init({ Fonts::appFontScaled(16, Fonts::FontWeight::SemiBold), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY } });
     createStickerPack_->evaluateDesiredSize();
 
     myText_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("stickers", "MY"));
-    myText_->init(Fonts::appFontScaled(14, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+    myText_->init({ Fonts::appFontScaled(14, Fonts::FontWeight::SemiBold), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } });
     myText_->evaluateDesiredSize();
 
     buttonAdd_ = new ClickableWidget(this);
@@ -1215,7 +1255,7 @@ void MyPacksHeader::paintEvent(QPaintEvent* _e)
 {
     QPainter p(this);
 
-    static QPixmap addPackButtonImage(Utils::renderSvgScaled(qsl(":/controls/add_icon"), getAddButtonSize(), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY)));
+    static auto addPackButtonImage = Utils::StyledPixmap::scaled(qsl(":/controls/add_icon"), getAddButtonSize(), Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY });
 
     myText_->setOffsets(getMarginLeft(), height() / 2);
     myText_->draw(p, TextRendering::VerPosition::MIDDLE);
@@ -1228,7 +1268,7 @@ void MyPacksHeader::paintEvent(QPaintEvent* _e)
 
     QRect addPackRect(textX - buttonWidth_ - marginText_, offsetY, buttonWidth_, buttonWidth_);
 
-    p.drawPixmap(addPackRect, addPackButtonImage);
+    p.drawPixmap(addPackRect, addPackButtonImage.actualPixmap());
 }
 
 void MyPacksHeader::resizeEvent(QResizeEvent* _e)
@@ -1370,18 +1410,24 @@ void MyPacksWidget::createPackButtonClicked()
 {
     const auto bot = Utils::getStickerBotAimId();
 
+    const auto openBot = [](const QString& _botId)
+    {
+        Utils::updateAppsPageReopenPage(_botId);
+        Utils::InterConnector::instance().openDialog(_botId);
+    };
+
     if (Logic::getContactListModel()->contains(bot))
     {
-        Utils::InterConnector::instance().openDialog(bot);
+        openBot(bot);
     }
     else
     {
-        Logic::getContactListModel()->addContactToCL(bot, [weak_this = QPointer(this), bot](bool _res)
+        Logic::getContactListModel()->addContactToCL(bot, [weak_this = QPointer(this), bot, openBot](bool _res)
         {
             if (!weak_this)
                 return;
 
-            Utils::InterConnector::instance().openDialog(bot);
+            openBot(bot);
         });
     }
 
@@ -1402,6 +1448,7 @@ Store::Store(QWidget* _parent)
     headerWidget_ = new StickersPageHeader(this);
     connect(headerWidget_, &StickersPageHeader::backClicked, this, &Store::back);
     rootLayout->addWidget(headerWidget_);
+    Testing::setAccessibleName(headerWidget_, qsl("AS StickersPage header"));
 
     connect(headerWidget_, &StickersPageHeader::searchRequested, this, &Store::onSearchRequested);
     connect(headerWidget_, &StickersPageHeader::searchCancelled, this, &Store::onSearchCancelled);
@@ -1618,9 +1665,13 @@ BackToChatsHeader::BackToChatsHeader(QWidget *_parent)
     , badgeVisible_(true)
 {
     setPalette(Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
-    textUnit_->init(Fonts::appFontScaled(16, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
+    TextRendering::TextUnit::InitializeParameters params{ Fonts::appFontScaled(16, Fonts::FontWeight::SemiBold), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } };
+    params.align_ = TextRendering::HorAligment::CENTER;
+    textUnit_->init(params);
     textUnit_->evaluateDesiredSize();
-    textBadgeUnit_->init(Fonts::appFontScaled(11), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
+    params.setFonts(Fonts::appFontScaled(11));
+    params.color_ = Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID_PERMANENT };
+    textBadgeUnit_->init(params);
     textBadgeUnit_->evaluateDesiredSize();
 
     for (auto button : { backButton_, searchButton_ })
@@ -1689,7 +1740,7 @@ void BackToChatsHeader::paintEvent(QPaintEvent* _event)
     }
 
     if (badgeVisible_ && textBadgeUnit_ && !textBadgeUnit_->getSourceText().isEmpty())
-        Utils::Badge::drawBadge(textBadgeUnit_, p, badgeLeftOffset(), badgeTopOffset(), Utils::Badge::Color::Green);
+        Utils::Badge::drawBadge(textBadgeUnit_, p, width() - badgeRightOffset(), badgeTopOffset(), Utils::Badge::Color::Green);
 }
 
 
@@ -1707,7 +1758,6 @@ StickersPageHeader::StickersPageHeader(QWidget *_parent)
     backToChatsHeader_->setText(QT_TRANSLATE_NOOP("stickers", "Stickers"));
 
     searchHeader_ = new QWidget(this);
-    Utils::setDefaultBackground(searchHeader_);
 
     auto searchLayout = Utils::emptyHLayout(searchHeader_);
     searchLayout->addSpacing(Utils::scale_value(20) - 2); // qlineedit has a built in 2px left padding
@@ -1715,11 +1765,11 @@ StickersPageHeader::StickersPageHeader(QWidget *_parent)
     searchInput_ = new LineEditEx(this);
     searchInput_->setFrame(false);
     searchInput_->setFont(Fonts::appFontScaled(14, Fonts::FontWeight::SemiBold));
-    searchInput_->setCustomPlaceholderColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
-    Utils::ApplyStyle(searchInput_, Styling::getParameters().getLineEditCustomQss(Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE)));
+    searchInput_->setCustomPlaceholderColor(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY });
     searchInput_->setCustomPlaceholder(QT_TRANSLATE_NOOP("stickers", "Search"));
     searchInput_->setAttribute(Qt::WA_MacShowFocusRect, false);
     searchInput_->installEventFilter(this);
+    searchInput_->setStyleSheet(qsl("background-color: transparent"));
     searchLayout->addWidget(searchInput_);
     searchLayout->addSpacing(Utils::scale_value(back_spacing));
 
@@ -1837,6 +1887,10 @@ bool StickersPageHeader::eventFilter(QObject *_o, QEvent *_e)
 //////////////////////////////////////////////////////////////////////////
 SearchPacksWidget::SearchPacksWidget(QWidget *_parent)
     : QWidget(_parent)
+    , packs_{ new PacksView(PackViewMode::search, this) }
+    , noResultsWidget_{ new QWidget(this) }
+    , noResultsPlaceholder_{ new QLabel(noResultsWidget_) }
+    , noResultsLabel_{ new QLabel(noResultsWidget_) }
     , syncedWithServer_(false)
 {
     auto rootLayout = new QVBoxLayout(this);
@@ -1845,32 +1899,24 @@ SearchPacksWidget::SearchPacksWidget(QWidget *_parent)
     rootLayout->setAlignment(Qt::AlignTop);
 
     rootLayout->addSpacing(getSearchPacksOffset());
-    packs_ = new PacksView(PackViewMode::search, this);
 
-    noResultsWidget_ = new QWidget(this);
     noResultsWidget_->setSizePolicy(QSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding));
     auto noResultsLayout = Utils::emptyVLayout(noResultsWidget_);
 
-    auto noResultsPlaceholder = new QLabel(noResultsWidget_);
-    noResultsPlaceholder->setPixmap(Utils::renderSvgScaled(qsl(":/placeholders/empty_search"), QSize(84, 84), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY)));
+    updateStyle();
 
-    auto noResultsLabel = new QLabel(noResultsWidget_);
-    noResultsLabel->setText(getNoSearchResultsText());
-
-    QPalette noResultsTextPalette;
-    noResultsTextPalette.setColor(QPalette::Foreground, Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
-    noResultsLabel->setPalette(noResultsTextPalette);
-    noResultsLabel->setFont(Fonts::appFontScaled(14, Fonts::FontWeight::SemiBold));
-    noResultsLabel->setAlignment(Qt::AlignHCenter);
+    noResultsLabel_->setText(getNoSearchResultsText());
+    noResultsLabel_->setFont(Fonts::appFontScaled(14, Fonts::FontWeight::SemiBold));
+    noResultsLabel_->setAlignment(Qt::AlignHCenter);
     rootLayout->setAlignment(noResultsWidget_, Qt::AlignCenter);
 
     noResultsLayout->addStretch();
-    noResultsLayout->addWidget(noResultsPlaceholder);
+    noResultsLayout->addWidget(noResultsPlaceholder_);
     noResultsLayout->addSpacing(Utils::scale_value(30));
-    noResultsLayout->addWidget(noResultsLabel);
+    noResultsLayout->addWidget(noResultsLabel_);
     noResultsLayout->addStretch();
-    noResultsLayout->setAlignment(noResultsPlaceholder, Qt::AlignHCenter);
-    noResultsLayout->setAlignment(noResultsLabel, Qt::AlignHCenter);
+    noResultsLayout->setAlignment(noResultsPlaceholder_, Qt::AlignHCenter);
+    noResultsLayout->setAlignment(noResultsLabel_, Qt::AlignHCenter);
 
     noResultsWidget_->hide();
 
@@ -1880,6 +1926,8 @@ SearchPacksWidget::SearchPacksWidget(QWidget *_parent)
     setLayout(rootLayout);
 
     init(PacksViewBase::InitFrom::local);
+
+    connect(&Styling::getThemesContainer(), &Styling::ThemesContainer::globalThemeChanged, this, &SearchPacksWidget::updateStyle);
 }
 
 void SearchPacksWidget::init(PacksViewBase::InitFrom _init)
@@ -1940,6 +1988,14 @@ void SearchPacksWidget::connectNativeScrollbar(QScrollBar* _scrollBar)
 void SearchPacksWidget::touchSearchRequested()
 {
     searchRequested_ = true;
+}
+
+void Ui::Stickers::SearchPacksWidget::updateStyle()
+{
+    noResultsPlaceholder_->setPixmap(noResultsPixmap());
+    QPalette noResultsTextPalette;
+    noResultsTextPalette.setColor(QPalette::Foreground, Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+    noResultsLabel_->setPalette(noResultsTextPalette);
 }
 
 void SearchPacksWidget::onSetIcon(const int32_t _setId)

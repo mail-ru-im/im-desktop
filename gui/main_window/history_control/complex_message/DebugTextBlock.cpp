@@ -7,6 +7,7 @@ DebugTextBlock::DebugTextBlock(ComplexMessageItem* _parent, qint64 _id, Subtype 
       subtype_(_subtype)
 {
     setMessageId(_id);
+    Testing::setAccessibleName(this, u"AS HistoryPage debugMessageText " % QString::number(_id));
 }
 
 DebugTextBlock::~DebugTextBlock() = default;

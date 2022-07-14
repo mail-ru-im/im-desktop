@@ -145,7 +145,17 @@ SnippetBlock::SnippetBlock(ComplexMessageItem* _parent, Data::FStringView _link,
 }
 
 SnippetBlock::SnippetBlock(ComplexMessageItem* _parent, const QString& _link, const bool _hasLinkInMessage, EstimatedType _estimatedType)
-    : SnippetBlock(_parent, Data::FString(_link), _hasLinkInMessage, _estimatedType) { }
+    : GenericBlock(_parent, _link, MenuFlagLinkCopyable, false)
+    , link_(_link)
+    , hasLinkInMessage_(_hasLinkInMessage)
+    , visible_(false)
+    , estimatedType_(_estimatedType)
+    , seq_(-1)
+{
+    Testing::setAccessibleName(this, u"AS HistoryPage messageSnippet " % QString::number(_parent->getId()));
+
+    setMouseTracking(true);
+}
 
 IItemBlockLayout* SnippetBlock::getBlockLayout() const
 {
@@ -397,6 +407,13 @@ const QPixmap& SnippetBlock::getPreviewImage() const
     return empty;
 }
 
+QStringList SnippetBlock::messageLinks() const
+{
+    QStringList results;
+    results += getLink();
+    return results;
+}
+
 void SnippetBlock::drawBlock(QPainter& _p, const QRect& _rect, const QColor& _quoteColor)
 {
     if (content_)
@@ -526,15 +543,10 @@ void SnippetBlock::onContentLoaded()
     getParentComplexMessage()->updateTimeWidgetUnderlay();
 }
 
-void SnippetBlock::updateStyle()
+void SnippetBlock::updateFonts()
 {
     if (content_)
         content_->updateStyle();
-}
-
-void SnippetBlock::updateFonts()
-{
-    updateStyle();
 }
 
 void SnippetBlock::initWithMeta(const Data::LinkMetadata& _meta)
@@ -958,23 +970,40 @@ void ArticleContent::initTextUnits()
 {
     const auto titleLines = (snippetBlock_->isInsideQuote() || isHorizontalMode() ? 1 : 3);
 
-    titleUnit_->init(MessageStyle::Snippet::getTitleFont(), MessageStyle::Snippet::getTitleColor(), MessageStyle::Snippet::getTitleColor(),
-                     MessageStyle::getSelectionColor(), MessageStyle::getHighlightColor(), TextRendering::HorAligment::LEFT, titleLines, TextRendering::LineBreakType::PREFER_SPACES);
+    TextRendering::TextUnit::InitializeParameters params{ MessageStyle::Snippet::getTitleFont(), MessageStyle::Snippet::getTitleColorKey() };
+    params.linkColor_ = MessageStyle::Snippet::getTitleColorKey();
+    params.selectionColor_ = MessageStyle::getSelectionColorKey();
+    params.highlightColor_ = MessageStyle::getHighlightColorKey();
+    params.maxLinesCount_ = titleLines;
+    params.lineBreak_ = TextRendering::LineBreakType::PREFER_SPACES;
+    titleUnit_->init(params);
 
     titleUnit_->setLineSpacing(titleLineSpacing());
 
-    descriptionUnit_->init(MessageStyle::Snippet::getDescriptionFont(), MessageStyle::Snippet::getDescriptionColor(), MessageStyle::Snippet::getDescriptionColor(),
-                           QColor(), MessageStyle::getHighlightColor(), TextRendering::HorAligment::LEFT, 5, TextRendering::LineBreakType::PREFER_SPACES);
+    params.setFonts(MessageStyle::Snippet::getDescriptionFont());
+    params.color_ = MessageStyle::Snippet::getDescriptionColorKey();
+    params.linkColor_ = MessageStyle::Snippet::getDescriptionColorKey();
+    params.selectionColor_ = {};
+    params.highlightColor_ = MessageStyle::getHighlightColorKey();
+    params.maxLinesCount_ = 5;
+
+    descriptionUnit_->init(params);
 
     descriptionUnit_->setLineSpacing(descriptionLineSpacing());
 
     const auto outgoing = snippetBlock_->isOutgoing();
-    linkUnit_->init(MessageStyle::Snippet::getLinkFont(), MessageStyle::Snippet::getLinkColor(outgoing), MessageStyle::Snippet::getLinkColor(outgoing),
-                    QColor(), MessageStyle::getHighlightColor(), TextRendering::HorAligment::LEFT, 1, TextRendering::LineBreakType::PREFER_SPACES);
 
-    titleUnit_->setHighlightedTextColor(MessageStyle::getHighlightTextColor());
-    descriptionUnit_->setHighlightedTextColor(MessageStyle::getHighlightTextColor());
-    linkUnit_->setHighlightedTextColor(MessageStyle::getHighlightTextColor());
+    params.setFonts(MessageStyle::Snippet::getLinkFont());
+    params.color_ = MessageStyle::Snippet::getLinkColorKey(outgoing);
+    params.linkColor_ = MessageStyle::Snippet::getLinkColorKey(outgoing);
+    params.selectionColor_ = {};
+    params.highlightColor_ =  MessageStyle::getHighlightColorKey();
+    params.maxLinesCount_ = 1;
+    linkUnit_->init(params);
+
+    titleUnit_->setHighlightedTextColor(MessageStyle::getHighlightTextColorKey());
+    descriptionUnit_->setHighlightedTextColor(MessageStyle::getHighlightTextColorKey());
+    linkUnit_->setHighlightedTextColor(MessageStyle::getHighlightTextColorKey());
 }
 
 // horizontal mode is a mode when preview is drawn on the left of the text units,
@@ -1690,15 +1719,26 @@ QRect FileContent::tooltipRect() const
 
 void FileContent::initTextUnits()
 {
-    fileNameUnit_->init(MessageStyle::Snippet::getTitleFont(), MessageStyle::Snippet::getTitleColor(), MessageStyle::Snippet::getTitleColor(),
-                     MessageStyle::getSelectionColor(), MessageStyle::getHighlightColor(), TextRendering::HorAligment::LEFT, 1, TextRendering::LineBreakType::PREFER_SPACES);
+    TextRendering::TextUnit::InitializeParameters params{ MessageStyle::Snippet::getTitleFont(), MessageStyle::Snippet::getTitleColorKey() };
+    params.linkColor_ = MessageStyle::Snippet::getTitleColorKey();
+    params.selectionColor_ = MessageStyle::getSelectionColorKey();
+    params.highlightColor_ = MessageStyle::getHighlightColorKey();
+    params.maxLinesCount_ = 1;
+    params.lineBreak_ = TextRendering::LineBreakType::PREFER_SPACES;
+    fileNameUnit_->init(params);
 
     const auto outgoing = snippetBlock_->isOutgoing();
-    linkUnit_->init(MessageStyle::Snippet::getLinkFont(), MessageStyle::Snippet::getLinkColor(outgoing), MessageStyle::Snippet::getLinkColor(outgoing),
-                    QColor(), MessageStyle::getHighlightColor(), TextRendering::HorAligment::LEFT, 1, TextRendering::LineBreakType::PREFER_SPACES);
 
-    fileNameUnit_->setHighlightedTextColor(MessageStyle::getHighlightTextColor());
-    linkUnit_->setHighlightedTextColor(MessageStyle::getHighlightTextColor());
+    params.setFonts(MessageStyle::Snippet::getLinkFont());
+    params.color_ = MessageStyle::Snippet::getLinkColorKey(outgoing);
+    params.linkColor_ = MessageStyle::Snippet::getLinkColorKey(outgoing);
+    params.selectionColor_ = {};
+    params.highlightColor_ = MessageStyle::getHighlightColorKey();
+    params.maxLinesCount_ = 1;
+    linkUnit_->init(params);
+
+    fileNameUnit_->setHighlightedTextColor(MessageStyle::getHighlightTextColorKey());
+    linkUnit_->setHighlightedTextColor(MessageStyle::getHighlightTextColorKey());
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1839,8 +1879,13 @@ bool LocationContent::isTimeInTitle() const
 
 void LocationContent::initTextUnits()
 {
-    titleUnit_->init(MessageStyle::Snippet::getTitleFont(), MessageStyle::Snippet::getTitleColor(), MessageStyle::Snippet::getTitleColor(),
-                     MessageStyle::getSelectionColor(), MessageStyle::getHighlightColor(), TextRendering::HorAligment::LEFT, 1, TextRendering::LineBreakType::PREFER_SPACES);
+    TextRendering::TextUnit::InitializeParameters params{ MessageStyle::Snippet::getTitleFont(), MessageStyle::Snippet::getTitleColorKey() };
+    params.linkColor_ = MessageStyle::Snippet::getTitleColorKey();
+    params.selectionColor_ = MessageStyle::getSelectionColorKey();
+    params.highlightColor_ = MessageStyle::getHighlightColorKey();
+    params.maxLinesCount_ = 1;
+    params.lineBreak_ = TextRendering::LineBreakType::PREFER_SPACES;
+    titleUnit_->init(params);
 }
 
 //////////////////////////////////////////////////////////////////////////

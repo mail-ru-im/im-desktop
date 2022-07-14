@@ -83,6 +83,10 @@ namespace core::tasks
 
     void task_storage::update_last_used(const std::string& _task_id)
     {
+        im_assert(!_task_id.empty());
+        if (_task_id.empty())
+            return;
+
         const auto task_iter = tasks_.find(_task_id);
         if (task_iter == tasks_.end())
             return;

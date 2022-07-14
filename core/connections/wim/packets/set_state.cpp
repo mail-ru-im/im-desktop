@@ -5,6 +5,7 @@
 #include "../../../corelib/enumerations.h"
 #include "../../../tools/system.h"
 #include "../../urls_cache.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -69,4 +70,9 @@ priority_t set_state::get_priority() const
 std::string_view set_state::get_method() const
 {
     return "presenceSetState";
+}
+
+int core::wim::set_state::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }

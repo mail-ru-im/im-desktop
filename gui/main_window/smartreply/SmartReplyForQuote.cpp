@@ -21,7 +21,7 @@ namespace Ui
         : QWidget(_parent)
         , widget_(new SmartReplyWidget(this, false))
     {
-        tooltip_ = new TooltipWidget(_parent, widget_, Utils::scale_value(44), getContentMargins(), true, true, true);
+        tooltip_ = new TooltipWidget(_parent, widget_, Utils::scale_value(44), getContentMargins(), TooltipCompopent::All);
         tooltip_->setCursor(Qt::PointingHandCursor);
 
         connect(widget_, &SmartReplyWidget::needHide, this, &SmartReplyForQuote::hideAnimated);

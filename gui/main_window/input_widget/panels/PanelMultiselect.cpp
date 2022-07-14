@@ -27,6 +27,11 @@ namespace
         return Utils::scale_value(600);
     }
 
+    int minimumPanelWidthInThread() noexcept
+    {
+        return Utils::scale_value(450);
+    }
+
     constexpr int deleteIconSize() noexcept
     {
         return 24;
@@ -97,9 +102,8 @@ namespace Ui
     {
         const auto role = Logic::getContactListModel()->getYourRole(aimid_);
         const auto notAMember = Logic::getContactListModel()->areYouNotAMember(aimid_);
-        const auto isDisabled = role == u"notamember" || role == u"readonly" || notAMember;
         const auto isThread = Logic::getContactListModel()->isThread(aimid_);
-        reply_->setVisible(!isDisabled);
+        reply_->setVisible(!isDisabled());
         delete_->setVisible(!notAMember && !isThread);
         favorites_->setVisible(!Favorites::isFavorites(aimid_) && !isThread);
         forward_->setVisible(!isThread);
@@ -111,7 +115,8 @@ namespace Ui
 
     void InputPanelMultiselect::resizeEvent(QResizeEvent* _event)
     {
-        const auto isWide = width() > minimumPanelWidth();
+        const auto minWidth = Logic::getContactListModel()->isThread(aimid_) ? minimumPanelWidthInThread() : minimumPanelWidth();
+        const auto isWide = width() > minWidth;
 
         copy_->setText(isWide ? QT_TRANSLATE_NOOP("context_menu", "Copy") : QString());
         reply_->setText(isWide ? QT_TRANSLATE_NOOP("context_menu", "Reply") : QString());
@@ -135,35 +140,43 @@ namespace Ui
         forward_->forceHover(Utils::InterConnector::instance().currentMultiselectElement() == Utils::MultiselectCurrentElement::Forward);
     }
 
-    void InputPanelMultiselect::selectedCount(const QString& _aimId, int _totalCount, int _unsupported, int _plainFiles)
+    bool InputPanelMultiselect::isDisabled() const
+    {
+        const auto role = Logic::getContactListModel()->getYourRole(aimid_);
+        const auto notAMember = Logic::getContactListModel()->areYouNotAMember(aimid_);
+        const auto isDeletedUser = Logic::getContactListModel()->isDeleted(aimid_);
+        return (role == u"notamember" || role == u"readonly" || notAMember || isDeletedUser);
+    }
+
+    void InputPanelMultiselect::selectedCount(const QString& _aimId, int _totalCount, int _unsupported, int _plainFiles, bool _deleteEnabled)
     {
         if (aimid_ != _aimId)
             return;
 
-        const auto bgNormal = Styling::getParameters().getColor(Styling::StyleVariable::CHAT_PRIMARY);
-        const auto bgHover = Styling::getParameters().getColor(Styling::StyleVariable::CHAT_PRIMARY_HOVER);
-        const auto bgActive = Styling::getParameters().getColor(Styling::StyleVariable::CHAT_PRIMARY_ACTIVE);
+        const auto bgNormal = Styling::ThemeColorKey{ Styling::StyleVariable::CHAT_PRIMARY };
+        const auto bgHover = Styling::ThemeColorKey{ Styling::StyleVariable::CHAT_PRIMARY_HOVER };
+        const auto bgActive = Styling::ThemeColorKey{ Styling::StyleVariable::CHAT_PRIMARY_ACTIVE };
 
-        const auto textNormal = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY);
-        const auto textDisabled = Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY);
+        const auto textNormal = Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY };
+        const auto textDisabled = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY };
 
         const bool enabled = _totalCount > 0;
-        const bool enabledReplyForward = (_totalCount - _unsupported) > 0;
+        const bool enabledReplyForward = (_unsupported == 0);
         const auto cursor = enabled ? Qt::PointingHandCursor : Qt::ArrowCursor;
-
-        const auto plainFilesOnly = (_totalCount - _plainFiles) <= 0;
-        const auto delReplyOnly = plainFilesOnly && Logic::getContactListModel()->isTrustRequired(aimid_);
 
         for (auto btn : { delete_, favorites_, copy_, reply_, forward_ })
         {
-            bool enbl = enabled;
-            if (btn == reply_ || btn == forward_)
-                enbl = enabled && enabledReplyForward;
+            bool visible = enabled;
+            if (btn == reply_ || btn == copy_)
+                visible = enabledReplyForward;
+            else if (btn == favorites_ || btn == forward_)
+                visible = enabledReplyForward;
+            else
+                visible = _deleteEnabled;
 
             btn->setCursor(cursor);
-            btn->setEnabled(enbl);
 
-            if (enbl)
+            if (enabled)
             {
                 btn->setColors(bgNormal, bgHover, bgActive);
                 btn->setTextColor(textNormal);
@@ -174,11 +187,15 @@ namespace Ui
                 btn->setTextColor(textDisabled);
             }
 
-            btn->setVisible(!delReplyOnly || (delReplyOnly && (btn == delete_ || btn == reply_)));
+            if (btn == reply_ && isDisabled())
+              continue;
+
+            btn->setVisible(visible);
+            btn->setEnabled(enabled);
         }
 
         if (enabled)
-            delete_->setTextColor(Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION));
+            delete_->setTextColor(Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_ATTENTION });
 
         delete_->setIcon(getDeleteIcon(), deleteIconSize());
         favorites_->setIcon(getFavoritesIcon(), iconSize());

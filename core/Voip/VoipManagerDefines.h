@@ -34,21 +34,6 @@ enum StaticImageIdEnum {
     Img_Max
 };
 
-enum ViewArea {
-    ViewArea_Primary,
-    ViewArea_Detached,
-    ViewArea_Tray,
-    ViewArea_Default,
-    ViewArea_Background,
-};
-
-enum MouseTapEnum {
-    MouseTap_Single,
-    MouseTap_Double,
-    MouseTap_Long,
-    MouseTap_Over,
-};
-
 enum TerminateReason {
     TR_HANGUP = 0,          // Use Call_Terminate(TR_HANGUP) to hangup active call (after it was accepted).
                             // OnCallTerminated(TR_HANGUP) signaled when remote/local side hang up the call.
@@ -101,7 +86,6 @@ struct VoipDesc
     std::string aPlaybackDevice;
     std::string aRecordingDevice;
     std::string vCaptureDevice;
-    std::string vCurrentMask;
 };
 
 namespace voip_manager
@@ -111,14 +95,11 @@ namespace voip_manager
         kNotificationType_Undefined = 0,
 
         kNotificationType_CallCreated,
-        kNotificationType_CallOutAccepted,
         kNotificationType_CallInAccepted,
         kNotificationType_CallConnected,
         kNotificationType_CallDisconnected,
         kNotificationType_CallDestroyed,
         kNotificationType_CallPeerListChanged,
-
-        kNotificationType_QualityChanged,
 
         kNotificationType_MediaLocParamsChanged,
         kNotificationType_MediaRemVideoChanged,
@@ -128,22 +109,14 @@ namespace voip_manager
         kNotificationType_DeviceStarted,
         kNotificationType_DeviceVolChanged,
 
-        kNotificationType_MouseTap,
-        kNotificationType_LayoutChanged,
-
         kNotificationType_ShowVideoWindow,
-        //kNotificationType_FrameSizeChanged,
         kNotificationType_VoipResetComplete,
         kNotificationType_VoipWindowRemoveComplete,
         kNotificationType_VoipWindowAddComplete,
-        //kNotificationType_CipherStateChanged,
 
-        //kNotificationType_MinimalBandwidthChanged,
-        kNotificationType_MaskEngineEnable,
         kNotificationType_VoiceDetect,
+        kNotificationType_VoiceVadInfo,
 
-        //kNotificationType_ConnectionDestroyed,
-        kNotificationType_MainVideoLayoutChanged,
         kNotificationType_ConfPeerDisconnected,
 
         kNotificationType_HideControlsWhenRemDesktopSharing,
@@ -205,17 +178,6 @@ namespace voip_manager
         bool       interrupt;
     };
 
-    struct MouseTap
-    {
-        std::string call_id;
-        std::string contact;
-
-        void* hwnd;
-
-        MouseTapEnum tap;
-        ViewArea area;
-    };
-
     struct MissedCall
     {
         std::string account;
@@ -224,23 +186,14 @@ namespace voip_manager
         unsigned   ts;
     };
 
-    struct LayoutChanged
-    {
-        bool  tray;
-        std::string layout_type;
-        void* hwnd;
-    };
-
-    struct FrameSize
-    {
-        intptr_t hwnd;
-        float    aspect_ratio;
-    };
-
     struct Contact
     {
         std::string call_id;
         std::string contact;
+        bool remote_cam_enabled = false;
+        bool remote_mic_enabled = false;
+        bool remote_sending_desktop = false;
+        bool connected_state = false;
 
         Contact()
         {
@@ -497,13 +450,13 @@ namespace voip_manager
         virtual void call_accept (const std::string &call_id, const std::string &account, bool video) = 0;
         virtual void call_decline (const Contact& contact, bool busy, bool conference) = 0;
         virtual unsigned call_get_count () = 0;
-        virtual bool call_have_call (const Contact& contact) = 0;
 
         virtual void mute_incoming_call_sounds(bool mute) = 0;
 
         virtual bool has_created_call() = 0;
 
         virtual void call_report_user_rating(const UserRatingReport &_ratingReport) = 0;
+        virtual void peer_resolution_changed(const std::string &contact, int width, int height) = 0;
 
         // DeviceManager
         virtual unsigned get_devices_number (DeviceType device_type) = 0;
@@ -521,17 +474,7 @@ namespace voip_manager
         // WindowManager
         virtual void window_add (voip_manager::WindowParams& windowParams) = 0;
         virtual void window_remove (void* hwnd) = 0;
-
-        virtual void window_set_bitmap (const WindowBitmap& bmp) = 0;
         virtual void window_set_bitmap (const UserBitmap& bmp) = 0;
-
-        virtual void window_set_conference_layout(void* hwnd, voip_manager::VideoLayout layout) = 0;
-        virtual void window_switch_aspect(const std::string& contact, void* hwnd) = 0;
-
-        virtual void window_set_offsets (void* hwnd, unsigned l, unsigned t, unsigned r, unsigned b) = 0;
-        virtual void window_set_primary(void* hwnd, const std::string& contact) = 0;
-        virtual void window_set_hover(void* hwnd, bool hover) = 0;
-        virtual void window_set_large(void* hwnd, bool large) = 0;
 
         // ConnectionManager
         virtual void ProcessVoipMsg(const std::string& account_uid, int voipIncomingMsg, const char *data, unsigned len) = 0;
@@ -544,15 +487,11 @@ namespace voip_manager
         virtual bool local_video_enabled () = 0;
         virtual bool local_audio_enabled () = 0;
 
-        // MaskManager
-        virtual void load_mask(const std::string& path) = 0;
-        virtual unsigned version() = 0;
-        virtual void set_model_path(const std::string& path, bool force_reload) = 0;
-        virtual void init_mask_engine() = 0;
-        virtual void unload_mask_engine() = 0;
-
         // VoipManager
         virtual void reset() = 0;
         virtual int64_t get_voip_initialization_memory() const = 0;
+
+        // Statistics
+        virtual void voip_statistics_enable() = 0;
     };
 }

@@ -623,7 +623,7 @@ void core::wim::contactlist::search(const std::vector<std::vector<std::string>>&
     auto iter = tmp_cache_.cbegin();
     while (g_core->is_valid_cl_search() && iter != tmp_cache_.cend())
     {
-        if (iter->second->presence_->deleted_ || is_ignored(iter->first) || iter->second->presence_->usertype_ == "sms")
+        if (is_ignored(iter->first) || iter->second->presence_->usertype_ == "sms")
         {
             ++iter;
             continue;
@@ -809,7 +809,7 @@ void core::wim::contactlist::search(const std::string_view search_pattern, bool 
         auto iter = tmp_cache_.cbegin();
         while (g_core->is_valid_cl_search() && iter != tmp_cache_.cend())
         {
-            if (iter->second->presence_->deleted_ || is_ignored(iter->first) || iter->second->presence_->usertype_ == "sms")
+            if (is_ignored(iter->first) || iter->second->presence_->usertype_ == "sms")
             {
                 ++iter;
                 continue;

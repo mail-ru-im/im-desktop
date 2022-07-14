@@ -131,14 +131,13 @@ bool archive_index::serialize_from(int64_t _from, int64_t _count_early, int64_t 
 
     return true;
 }
-
 void archive_index::insert_block(archive::headers_list& _inserted_headers)
 {
     const auto prev_outgoing_count = get_outgoing_count();
 
     const auto now = std::chrono::seconds(std::time(nullptr));
 
-    for (auto &header : _inserted_headers)
+    for (auto& header : _inserted_headers)
         insert_header(header, now);
 
     if (get_outgoing_count() != prev_outgoing_count)
@@ -160,7 +159,7 @@ void archive_index::insert_header(archive::message_header& header, const std::ch
         headers_index_.emplace_hint(
             headers_index_.end(),
             std::make_pair(msg_id, std::cref(header))
-            );
+        );
 
         return;
     }
@@ -178,7 +177,6 @@ void archive_index::insert_header(archive::message_header& header, const std::ch
         if (next != headers_index_.end() && next->second.get_prev_msgid() == existing_header.get_prev_msgid())
             next->second.set_prev_msgid(existing_header.get_id());
     }
-
 
     existing_header.merge_with(header);
     if (!existing_header.is_deleted() && !existing_header.is_modified())
@@ -479,9 +477,9 @@ int32_t archive_index::get_outgoing_count() const
     return outgoing_count_;
 }
 
-bool archive_index::is_outgoing_header(message_header& header, const std::chrono::seconds _current_time) const
+bool archive_index::is_outgoing_header(const message_header& _header, const std::chrono::seconds _current_time) const
 {
-    return header.is_outgoing() && _current_time - std::chrono::seconds(header.get_time()) <= outgoing_count_time_span;
+    return _header.is_outgoing() && _current_time - std::chrono::seconds(_header.get_time()) <= outgoing_count_time_span;
 }
 
 void archive_index::drop_outdated_headers(const std::chrono::seconds _current_time)
@@ -764,6 +762,20 @@ void archive_index::make_holes()
         if (cnt == 0)
             headers_index_.erase(iter_erase);
     }
+}
+
+void archive_index::invalidate()
+{
+    if (headers_index_.empty())
+        return;
+
+    message_header hdr_last = headers_index_.crbegin()->second;
+    hdr_last.set_prev_msgid(hdr_last.get_prev_msgid());
+    hdr_last.set_id(INT64_MAX);
+
+    headers_list headers;
+    headers.emplace_back(hdr_last);
+    insert_block(headers);
 }
 
 void archive_index::invalidate_message_data(int64_t _msgid, mark_as_updated _mark_as_updated)

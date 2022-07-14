@@ -8,7 +8,7 @@
 
 namespace System
 {
-    void launchApplication(const QString& _path)
+    void launchApplication(const QString& _path, const QStringList&)
     {
         NSString * pathString = CFBridgingRelease(_path.toCFString());
         NSDictionary *conf = [NSDictionary dictionaryWithObject:[NSArray array] forKey:NSWorkspaceLaunchConfigurationArguments];

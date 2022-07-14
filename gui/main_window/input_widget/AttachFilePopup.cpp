@@ -50,9 +50,9 @@ namespace
         return iconOffset() + iconWidth() + Ui::getHorSpacer();
     }
 
-    QColor captionColor()
+    Styling::ThemeColorKey captionColorKey()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID };
     }
 
     QColor hoveredBackgroundColor()
@@ -79,21 +79,25 @@ namespace
     constexpr std::chrono::milliseconds leaveHideDelay() noexcept { return std::chrono::milliseconds(500); }
 
     static QPointer<Ui::AttachFilePopup> shownInstance;
+
+    Styling::ThemeColorKey addBackgroundAlpha(Styling::ThemeColorKey _key)
+    {
+        _key.setAlpha(0.05);
+        return _key;
+    }
 }
 
 namespace Ui
 {
-    AttachFileMenuItem::AttachFileMenuItem(QWidget* _parent, const QString& _icon, const QString& _caption, const QColor& _iconBgColor)
+    AttachFileMenuItem::AttachFileMenuItem(QWidget* _parent, const QString& _iconPath, const QString& _caption, const Styling::ThemeColorKey& _iconBgColor)
         : SimpleListItem(_parent)
-        , iconBgColor_(_iconBgColor)
-        , icon_(Utils::renderSvg(_icon, { pixmapWidth(), pixmapWidth() }, _iconBgColor))
+        , iconBgColor_(addBackgroundAlpha(_iconBgColor))
+        , icon_(Utils::StyledPixmap(_iconPath, { pixmapWidth(), pixmapWidth() }, _iconBgColor))
     {
         caption_ = TextRendering::MakeTextUnit(_caption);
-        caption_->init(Fonts::appFontScaled(15), captionColor());
+        caption_->init({ Fonts::appFontScaled(15), captionColorKey() });
         caption_->setOffsets(textOffset(), itemHeight() / 2);
         caption_->evaluateDesiredSize();
-
-        iconBgColor_.setAlphaF(0.05);
 
         setFixedHeight(itemHeight());
         setMinimumWidth(caption_->horOffset() + caption_->desiredWidth() + Utils::scale_value(24));
@@ -130,12 +134,12 @@ namespace Ui
         const auto iconY = (height() - iconW) / 2;
 
         p.setPen(Qt::NoPen);
-        p.setBrush(iconBgColor_);
+        p.setBrush(iconBgColor_.actualColor());
         p.drawEllipse(iconX, iconY, iconW, iconW);
 
         const auto pmX = iconX + (iconW - pixmapWidth()) / 2;
         const auto pmY = iconY + (iconW - pixmapWidth()) / 2;
-        p.drawPixmap(pmX, pmY, icon_);
+        p.drawPixmap(pmX, pmY, icon_.actualPixmap());
 
         caption_->draw(p, TextRendering::VerPosition::MIDDLE);
     }
@@ -223,9 +227,9 @@ namespace Ui
         items_.clear();
         listWidget_->clear();
 
-        const auto addItem = [this](const auto& _icon, const auto& _capt, const auto _iconBg, const auto _id, QStringView _testingName)
+        const auto addItem = [this](const auto& _icon, const auto& _capt, const Styling::StyleVariable _iconBg, const auto _id, QStringView _testingName)
         {
-            auto item = new AttachFileMenuItem(listWidget_, _icon, _capt, Styling::getParameters().getColor(_iconBg));
+            auto item = new AttachFileMenuItem(listWidget_, _icon, _capt, Styling::ThemeColorKey{ _iconBg });
             Testing::setAccessibleName(item, u"AS AttachPopup " % _testingName);
             const auto idx = listWidget_->addItem(item);
             connect(item, &AttachFileMenuItem::hoverChanged, this, [this, idx](const bool _hovered)

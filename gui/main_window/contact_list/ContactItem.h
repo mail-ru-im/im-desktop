@@ -50,6 +50,7 @@ namespace Logic
 
         bool is_channel() const;
         bool is_readonly() const;
+        bool is_deleted() const;
 
     private:
 
@@ -57,11 +58,13 @@ namespace Logic
 
 
         bool            visible_;
-        QString         chat_role_;
-        QString         default_role_;
+        QString         chat_role_ = qsl("member");
+        QString         default_role_ = qsl("notamember");
         QString         stamp_;
     };
 
     static_assert(std::is_move_assignable<ContactItem>::value, "ContactItem must be move assignable");
     static_assert(std::is_move_constructible<ContactItem>::value, "ContactItem must be move constructible");
 }
+
+Q_DECLARE_METATYPE(Logic::ContactItem*);

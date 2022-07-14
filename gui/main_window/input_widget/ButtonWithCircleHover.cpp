@@ -15,7 +15,7 @@ namespace
 
 namespace Ui
 {
-    ButtonWithCircleHover::ButtonWithCircleHover(QWidget* _parent, const QString& _svgName, const QSize& _iconSize, const QColor& _defaultColor)
+    ButtonWithCircleHover::ButtonWithCircleHover(QWidget* _parent, const QString& _svgName, const QSize& _iconSize, const Styling::ColorParameter& _defaultColor)
         : CustomButton(_parent, _svgName, _iconSize, _defaultColor)
     {
         tooltipTimer_.setSingleShot(true);
@@ -41,7 +41,7 @@ namespace Ui
         {
             enableCircleHover_ = _val;
             updateHoverCircle(containsCursorUnder() && !underLongPress_);
-            setFocusColor(enableCircleHover_ ? Qt::transparent : focusColorPrimary());
+            setFocusColor(enableCircleHover_ ? Styling::ColorParameter{ Qt::transparent } : focusColorPrimaryKey());
         }
     }
 

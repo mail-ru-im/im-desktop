@@ -3,6 +3,7 @@
 
 #include "../../../http_request.h"
 #include "../../../../common.shared/json_helper.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -22,6 +23,11 @@ suggest_group_nick::~suggest_group_nick() = default;
 std::string_view suggest_group_nick::get_method() const
 {
     return public_ ? "suggestPublicGroupStamp" : "suggestPrivateGroupStamp";
+}
+
+int core::wim::suggest_group_nick::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t suggest_group_nick::init_request(const std::shared_ptr<core::http_request_simple>& _request)

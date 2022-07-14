@@ -26,11 +26,11 @@
 
 namespace Logic
 {
-    const MessageKey MessageKey::MAX(std::numeric_limits<qint64>::max(), std::numeric_limits<qint64>::max() - 1, QString(), -1, 0, core::message_type::base, false, control_type::ct_message, QDate());
-    const MessageKey MessageKey::MIN(2, 1, QString(), -1, 0, core::message_type::base, false, control_type::ct_message, QDate());
+    const MessageKey MessageKey::MAX(std::numeric_limits<qint64>::max(), std::numeric_limits<qint64>::max() - 1, QString(), -1, 0, core::message_type::base, false, ControlType::Message, QDate());
+    const MessageKey MessageKey::MIN(2, 1, QString(), -1, 0, core::message_type::base, false, ControlType::Message, QDate());
 
     MessageKey::MessageKey()
-        : MessageKey(-1, control_type::ct_message)
+        : MessageKey(-1, ControlType::Message)
     {
     }
 
@@ -43,13 +43,13 @@ namespace Logic
             -1,
             core::message_type::base,
             false,
-            control_type::ct_message,
+            ControlType::Message,
             QDate())
     {
 
     }
 
-    MessageKey::MessageKey(const qint64 _id, const control_type _control_type)
+    MessageKey::MessageKey(const qint64 _id, const ControlType _control_type)
         : MessageKey(
             _id,
             -1,
@@ -71,7 +71,7 @@ namespace Logic
         const qint32 _time,
         const core::message_type _type,
         const bool _outgoing,
-        const control_type _control_type,
+        const ControlType _control_type,
         const QDate _date)
         : id_(_id)
         , prev_(_prev)
@@ -148,7 +148,7 @@ namespace Logic
         }
     }
 
-    void MessageKey::setControlType(const control_type _controlType) noexcept
+    void MessageKey::setControlType(const ControlType _controlType) noexcept
     {
         controlType_ = _controlType;
     }
@@ -176,17 +176,12 @@ namespace Logic
 
     bool MessageKey::isDate() const noexcept
     {
-        return controlType_ == control_type::ct_date;
+        return controlType_ == ControlType::Date;
     }
 
     bool MessageKey::isNewMessagesPlate() const noexcept
     {
-        return controlType_ == control_type::ct_new_messages;
-    }
-
-    bool MessageKey::iNewPlate() const noexcept
-    {
-        return controlType_ == control_type::ct_new_messages;
+        return controlType_ == ControlType::NewMessages;
     }
 
     bool MessageKey::isSticker() const noexcept
@@ -197,7 +192,7 @@ namespace Logic
         return (type_ == core::message_type::sticker);
     }
 
-    control_type MessageKey::getControlType() const noexcept
+    ControlType MessageKey::getControlType() const noexcept
     {
         return controlType_;
     }
@@ -260,7 +255,7 @@ namespace Logic
                 return false;
 
             // without check for control_type::ct_date new message plate will be broken
-            if (controlType_ != _rhs.controlType_ && _rhs.controlType_ == control_type::ct_date)
+            if (controlType_ != _rhs.controlType_ && _rhs.controlType_ == ControlType::Date)
                 return controlType_ < _rhs.controlType_;
 
 
@@ -273,7 +268,7 @@ namespace Logic
                 return true;
 
             // without check for control_type::ct_date new message plate will be broken
-            if (controlType_ != _rhs.controlType_ && controlType_ == control_type::ct_date)
+            if (controlType_ != _rhs.controlType_ && controlType_ == ControlType::Date)
                 return controlType_ < _rhs.controlType_;
 
             return time_ == _rhs.time_ ? true : time_ < _rhs.time_;

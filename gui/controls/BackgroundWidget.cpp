@@ -5,6 +5,7 @@
 #include "../utils/InterConnector.h"
 #include "../main_window/MainPage.h"
 #include "../styles/ThemeParameters.h"
+#include "main_window/contact_list/ContactListModel.h"
 
 Q_LOGGING_CATEGORY(bgWidget, "bgWidget")
 
@@ -48,9 +49,9 @@ namespace Ui
             }
         }
 
-        if (isMultiselectEnabled_)
+        if (isMultiselectEnabled_ && Utils::InterConnector::instance().isMultiselect(aimId_))
         {
-            double current = Utils::InterConnector::instance().multiselectAnimationCurrent() / 100.0;
+            const double current = Utils::InterConnector::instance().multiselectAnimationCurrent();
             const auto color = Styling::getParameters().getColor(Styling::StyleVariable::CHAT_ENVIRONMENT, 0.85 * current);
             p.fillRect(rect(), color);
         }
@@ -89,9 +90,9 @@ namespace Ui
         update();
     }
 
-    void BackgroundWidget::updateWallpaper(const QString& _aimId)
+    void BackgroundWidget::updateWallpaper(const QString& _aimId, bool _isThread)
     {
-        const auto p = Styling::getParameters(_aimId);
+        const auto p = Styling::getParameters(_isThread ? Logic::getContactListModel()->getThreadParent(_aimId).value_or(QString()) : _aimId);
         if (p.isChatWallpaperPlainColor())
         {
             setColor(p.getChatWallpaperPlainColor());

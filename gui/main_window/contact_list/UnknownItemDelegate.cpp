@@ -113,6 +113,14 @@ namespace Logic
         return it != items_.end() && it->second && it->second->needsTooltip(_posCursor);
     }
 
+    QRect UnknownItemDelegate::getDraftIconRectWrapper(const QString& _aimId, const QModelIndex& _index, QPoint _posCursor) const
+    {
+        const auto it = items_.find(_aimId);
+        if (it != items_.end() && it->second)
+            return it->second->getDraftIconRectWrapper();
+        return {};
+    }
+
     void UnknownItemDelegate::dlgStateChanged(const Data::DlgState& _dlgState)
     {
         auto iter = items_.find(_dlgState.AimId_);

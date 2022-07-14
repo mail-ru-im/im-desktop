@@ -30,8 +30,12 @@ namespace Ui
 {
     class AppsPage;
     class MainPage;
+#if HAS_WEB_ENGINE
+    class WebAppPage;
+#endif
     class LoginPage;
     class TermsPrivacyWidget;
+    class UserAgreementWidget;
     class TrayIcon;
     class DialogPlayer;
     class MainWindow;
@@ -39,6 +43,7 @@ namespace Ui
     class CallQualityStatsMgr;
     class ConnectionStateWatcher;
     class LocalPINWidget;
+    class InputWidget;
 
     void memberAddFailed(const int _error);
 
@@ -128,6 +133,7 @@ namespace Ui
         void showAppsPage();
         void showMessengerPage();
         void showGDPRPage();
+        void showUserAgreementPage(const QString& _termsOfUseUrl, const QString& _privacyPolicyUrl);
         void checkForUpdates();
         void checkForUpdatesInBackground();
         void installUpdates();
@@ -178,12 +184,15 @@ namespace Ui
 
         void openStatusPicker();
         void omicronUpdated();
+        void onMiniAppsUpdated();
+        void setLastPttInput(InputWidget* _input){ lastPttInput_ = _input; };
 
     public:
         MainWindow(QApplication* _app, const bool _hasValidLogin, const bool _locked, const QString& _validOrFirstLogin);
         ~MainWindow();
 
         void init(bool _needToShow);
+        void onDestroy();
 
         void openGallery(const Utils::GalleryData& _data);
         void showHideGallery();
@@ -200,6 +209,7 @@ namespace Ui
         bool isMessengerPage() const;
         bool isMessengerPageContactDialog() const;
         bool isWebAppTasksPage() const;
+        bool isFeedAppPage() const;
 
         int getScreen() const;
         QRect screenGeometry() const;
@@ -216,6 +226,9 @@ namespace Ui
         void closePopups(const Utils::CloseWindowInfo&);
 
         MainPage* getMessengerPage() const;
+#if HAS_WEB_ENGINE
+        WebAppPage* getTasksPage() const;
+#endif
         AppsPage* getAppsPage() const;
         QLabel* getWindowLogo() const;
 
@@ -239,6 +252,8 @@ namespace Ui
         QPointer<QAction> getFormatAction(core::data::format_type _type) const { return formatActions_.at(_type); }
         std::unordered_map<core::data::format_type, QPointer<QAction>> getFormatActions() const { return formatActions_; }
 
+        LoginPage* loginPage() const { return loginPage_; }
+
     private:
         void placeRectOnDesktopEntirely(QRect& _rect, QMargins _margin = QMargins());
         void initSizes(bool _needShow);
@@ -257,6 +272,15 @@ namespace Ui
 
         void onEscPressed(const QString& _aimId, const bool _autorepeat);
 
+        void initAppsPage();
+
+        void updateFormatActions();
+        void updateTitlePalette();
+
+        QString getCurrentAimId(bool _checkSearchFocus = false) const;
+        bool isSearchInDialog(QKeyEvent* _event) const;
+        void activateIfNeeded();
+
     protected:
         bool nativeEventFilter(const QByteArray&, void* _message, long* _result) override;
         bool eventFilter(QObject* _obj, QEvent* _event) override;
@@ -270,6 +294,7 @@ namespace Ui
         void keyPressEvent(QKeyEvent* _event) override;
         void mouseReleaseEvent(QMouseEvent* _event) override;
         void showEvent(QShowEvent* _event) override;
+
         void hideTaskbarIcon();
         void showTaskbarIcon();
         void clear_global_objects();
@@ -306,6 +331,7 @@ namespace Ui
         ConnectionStateWatcher* connStateWatcher_;
         QPointer<QWidget> previousFocusedWidget_;
         std::unordered_map<core::data::format_type, QPointer<QAction>> formatActions_;
+        InputWidget* lastPttInput_ = nullptr;
 
         bool SkipRead_;
         bool TaskBarIconHidden_;

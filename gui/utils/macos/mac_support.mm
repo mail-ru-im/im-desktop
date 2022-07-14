@@ -977,9 +977,6 @@ void MacSupport::createMenuBar(bool simple)
         menu->addSeparator();
         menuItems_.insert({window_switchMainWindow, createAction(menu, Utils::getAppTitle(), QString(), mainWindow_, &Ui::MainWindow::activate)});
 
-        if (const auto& mainPage = mainWindow_->getMessengerPage())
-            menuItems_[window_switchVoipWindow] = createAction(menu, Utils::Translations::Get(qsl("ICQ VOIP")), QString(), mainPage, &Ui::MainPage::showVideoWindow);
-
         windowMenu_ = menu;
         extendedMenus_.push_back(menu);
         QObject::connect(menu, &QMenu::aboutToShow, menu, []() { Q_EMIT Utils::InterConnector::instance().closeAnyPopupMenu(); });
@@ -1004,13 +1001,10 @@ void MacSupport::createMenuBar(bool simple)
 
         mainWindow_->setMenuBar(mainMenu_);
     }
-    else
+    if (windowMenu_ && menuItems_.find(window_switchVoipWindow) == menuItems_.end())
     {
-        if (windowMenu_)
-        {
-            if (const auto& mainPage = mainWindow_->getMessengerPage())
-                menuItems_[window_switchVoipWindow] = createAction((QMenu*)windowMenu_, Utils::Translations::Get(qsl("ICQ VOIP")), QString(), mainPage, &Ui::MainPage::showVideoWindow);
-        }
+        if(const auto& mainPage = mainWindow_->getMessengerPage())
+            menuItems_[window_switchVoipWindow] = createAction((QMenu*)windowMenu_, Utils::Translations::Get(qsl("ICQ VOIP")), QString(), mainPage, &Ui::MainPage::showVideoWindow);
     }
 
     for (auto menu : extendedMenus_)
@@ -1137,6 +1131,10 @@ void MacSupport::updateMainMenu()
             else
                 fullScreen->setText(Utils::Translations::Get(qsl("Enter Full Screen")));
         }
+
+        menuItems_[edit_cut]->setEnabled(mainWindow_->isMessengerPage());
+        menuItems_[edit_copy]->setEnabled(mainWindow_->isMessengerPage());
+        menuItems_[edit_paste]->setEnabled(mainWindow_->isMessengerPage());
     }
 
     if (nextChat)
@@ -1466,7 +1464,8 @@ bool MacSupport::nativeEventFilter(const QByteArray &data, void *message, long *
 
     if ([e type] == NSKeyDown && ([e modifierFlags] & (NSControlKeyMask | NSCommandKeyMask)))
     {
-        if ([e modifierFlags] & NSCommandKeyMask)
+        const auto modifiers = e.modifierFlags & NSEventModifierFlagDeviceIndependentFlagsMask;
+        if (modifiers == NSEventModifierFlagControl || modifiers == NSEventModifierFlagCommand)
         {
             if (e.keyCode == kVK_ANSI_Q && mainWindow_)
             {
@@ -1478,7 +1477,6 @@ bool MacSupport::nativeEventFilter(const QByteArray &data, void *message, long *
             {
                 kVK_ANSI_Comma,
                 kVK_ANSI_N,
-                kVK_ANSI_I,
                 kVK_ANSI_F,
                 kVK_ANSI_LeftBracket,
                 kVK_ANSI_RightBracket,
@@ -1605,8 +1603,8 @@ void MacSupport::saveFileName(const QString &caption, const QString &qdir, const
 bool MacSupport::isDoNotDisturbOn()
 {
     bool isDnd = false;
-    
-#ifdef BUILD_FOR_STORE    
+
+#ifdef BUILD_FOR_STORE
     const auto checkNcPrefs = false;
 #else
     const auto checkNcPrefs = isBigSurOrGreater();
@@ -1811,10 +1809,17 @@ void MacMenuBlocker::unblock()
     isBlocked_ = false;
 }
 
-void Utils::disableCloseButton(QWidget *_w)
+void Utils::enableCloseButton(QWidget* _w, bool _on)
 {
     NSWindow *wnd = [reinterpret_cast<NSView *>(_w->winId()) window];
     NSButton *closeButton = [wnd standardWindowButton:NSWindowCloseButton];
+    [closeButton setEnabled: _on ? YES : NO];
+}
+
+void Utils::disableZoomButton(QWidget *_w)
+{
+    NSWindow *wnd = [reinterpret_cast<NSView *>(_w->winId()) window];
+    NSButton *closeButton = [wnd standardWindowButton:NSWindowZoomButton];
     [closeButton setEnabled:NO];
 }
 

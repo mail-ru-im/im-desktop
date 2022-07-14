@@ -15,7 +15,7 @@ namespace
     QString getCaption(Ui::ConferenceType _type)
     {
         return _type == Ui::ConferenceType::Call
-                ? QT_TRANSLATE_NOOP("call_link", "Link on call")
+                ? QT_TRANSLATE_NOOP("input_widget", "Call link")
                 : QT_TRANSLATE_NOOP("call_link", "Link on webinar");
     }
 
@@ -57,7 +57,7 @@ CallLinkWidget::CallLinkWidget(QWidget* _parent, Utils::CallLinkFrom _from, cons
     linkLabel_->setMargins(Utils::scale_value(20), Utils::scale_value(16), Utils::scale_value(20), Utils::scale_value(16));
     linkLabel_->showButtons();
     linkLabel_->allowOnlyCopy();
-    linkLabel_->setText(url_, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+    linkLabel_->setText(url_, Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY });
     linkLabel_->setBackgroundColor(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY, 0.05));
     linkLabel_->setIconColors(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY),
                         Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_HOVER),
@@ -73,7 +73,7 @@ CallLinkWidget::CallLinkWidget(QWidget* _parent, Utils::CallLinkFrom _from, cons
     mainDialog_ = std::make_unique<Ui::GeneralDialog>(mainWidget_, Utils::InterConnector::instance().getMainWindow(), opt);
     mainDialog_->addLabel(getCaption(_type), Qt::AlignVCenter | Qt::AlignLeft);
     mainDialog_->addText(getDescription(_type, _from, _aimId), Utils::scale_value(12), Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
-    mainDialog_->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "Send"), true);
+    mainDialog_->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "Send"));
     Testing::setAccessibleName(mainDialog_.get(), ql1s("AS CallLinkWidget %1").arg((_type == ConferenceType::Call) ? ql1s("call") : ql1s("webinar")));
 }
 
@@ -87,5 +87,5 @@ void CallLinkWidget::copyLink() const
 
 bool CallLinkWidget::show()
 {
-    return mainDialog_->showInCenter();
+    return mainDialog_->execute();
 }

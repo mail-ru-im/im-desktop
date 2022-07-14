@@ -17,7 +17,7 @@ void GeneralSettingsWidget::Creator::initVoiceVideo(QWidget* _parent, VoiceAndVi
 
     auto scrollArea = CreateScrollAreaAndSetTrScrollBarV(_parent);
     scrollArea->setWidgetResizable(true);
-    scrollArea->setStyleSheet(qsl("QWidget{border: none; background-color: %1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
+    scrollArea->setStyleSheet(qsl("QWidget{border: none; background-color: transparent;}"));
     Utils::grabTouchWidget(scrollArea->viewport(), true);
 
     auto mainWidget = new QWidget(scrollArea);

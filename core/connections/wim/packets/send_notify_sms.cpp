@@ -2,6 +2,7 @@
 
 #include "../../../http_request.h"
 #include "../../../../common.shared/json_helper.h"
+#include "../log_replace_functor.h"
 
 #include "send_notify_sms.h"
 
@@ -18,6 +19,11 @@ send_notify_sms::send_notify_sms(wim_packet_params _params, std::string_view _sm
 std::string_view send_notify_sms::get_method() const
 {
     return "sendNotifySms";
+}
+
+int send_notify_sms::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t send_notify_sms::init_request(const std::shared_ptr<http_request_simple>& _request)

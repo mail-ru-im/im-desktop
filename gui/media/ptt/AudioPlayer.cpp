@@ -66,7 +66,7 @@ namespace ptt
 
         void setSampleOffset(size_t _offset)
         {
-            if (id() != -1)
+            if (id() != Ui::SoundType::Unknown)
             {
                 if (Ui::GetSoundsManager()->setSampleOffset(id(), _offset) && !Ui::GetSoundsManager()->isPaused(id()))
                     pendingOptions_.sampleOffset = 0;
@@ -81,14 +81,14 @@ namespace ptt
 
         size_t getCurrentSampleOffset() const
         {
-            if (id() != -1)
+            if (id() != Ui::SoundType::Unknown)
                 return Ui::GetSoundsManager()->sampleOffset(id());
             return pendingOptions_.sampleOffset;
         }
 
-        int id() const noexcept { return id_; }
+        Ui::SoundType id() const noexcept { return id_; }
 
-        void clearId() noexcept { id_ = -1; }
+        void clearId() noexcept { id_ = Ui::SoundType::Unknown; }
 
         bool hasPendingOptions() const noexcept { return !pendingOptions_.isEmpty(); }
 
@@ -120,7 +120,7 @@ namespace ptt
             bool isEmpty() const noexcept { return waintingBufferForPlay || sampleOffset > 0; }
         } pendingOptions_;
 
-        int id_ = -1;
+        Ui::SoundType id_ = Ui::SoundType::Unknown;
     };
 
     constexpr static std::chrono::milliseconds positionTimeout() noexcept { return std::chrono::milliseconds(100); }
@@ -131,7 +131,7 @@ namespace ptt
     {
         impl_ = std::make_unique<AudioPlayerImpl>([this](State s) { Q_EMIT stateChanged(s, QPrivateSignal()); });
 
-        QObject::connect(Ui::GetSoundsManager(), &Ui::SoundsManager::pttFinished, this, [this](int _id, bool _ended)
+        QObject::connect(Ui::GetSoundsManager(), &Ui::SoundsManager::pttFinished, this, [this](Ui::SoundType _id, bool _ended)
         {
             if (_id == impl_->id())
             {
@@ -142,7 +142,7 @@ namespace ptt
             }
         });
 
-        QObject::connect(Ui::GetSoundsManager(), &Ui::SoundsManager::pttPaused, this, [this](int _id, int sampleOffset)
+        QObject::connect(Ui::GetSoundsManager(), &Ui::SoundsManager::pttPaused, this, [this](Ui::SoundType _id, int sampleOffset)
         {
             if (_id == impl_->id())
             {

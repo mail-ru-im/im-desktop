@@ -11,6 +11,7 @@ namespace Ui
     class HistoryControlPage;
 
     enum class FrameCountMode;
+    enum class PageOpenedAs;
 
     class ContactDialog : public BackgroundWidget, public IEscapeCancellable
     {
@@ -43,5 +44,10 @@ namespace Ui
         FrameCountMode getFrameCountMode() const;
 
         const QString& currentAimId() const;
+
+        void setPageOpenedAs(PageOpenedAs _openedAs);
+
+    private Q_SLOTS:
+        void onGlobalThemeChanged();
     };
 }

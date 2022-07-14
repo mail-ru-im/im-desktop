@@ -42,7 +42,7 @@ QSize QuoteBlockLayout::setBlockGeometryInternal(const QRect &widgetGeometry)
             currentTopLeft_ = contentLtr.topLeft();
         }
 
-        if (!block.Blocks_.empty() && block.Blocks_.front()->getContentType() != IItemBlock::ContentType::Text)
+        if (!block.Blocks_.empty() && (block.Blocks_.front()->getContentType() != IItemBlock::ContentType::Text))
             senderBotMargin = MessageStyle::getSenderBottomMarginLarge();
     }
 

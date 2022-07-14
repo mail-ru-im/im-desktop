@@ -29,6 +29,7 @@ public:
     get_threads_feed(wim_packet_params _params, const std::string& _cursor);
 
     std::string_view get_method() const override;
+    int minimal_supported_api_version() const override;
     bool auto_resend_on_fail() const override { return true; }
     const std::vector<thread_feed_data>& get_data() const;
     const std::string& get_cursor() const;

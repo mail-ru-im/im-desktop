@@ -39,11 +39,15 @@ namespace
         {
             Logic::getRecentsModel()->moveToTop(_aimId);
 
-            if (const auto& selected = Logic::getContactListModel()->selectedContact(); selected != _aimId)
-                Q_EMIT Utils::InterConnector::instance().addPageToDialogHistory(selected);
-            Utils::InterConnector::instance().openDialog(_aimId);
+            auto& interConnector = Utils::InterConnector::instance();
+            const auto isFeedPage = interConnector.getMainWindow()->isFeedAppPage();
+            if (const auto& selected = Logic::getContactListModel()->selectedContact(); !isFeedPage && selected != _aimId)
+                Q_EMIT interConnector.addPageToDialogHistory(selected);
 
-            Q_EMIT Utils::InterConnector::instance().messageSent(_aimId);
+            Utils::updateAppsPageReopenPage(_aimId);
+            interConnector.openDialog(_aimId);
+
+            Q_EMIT interConnector.messageSent(_aimId);
         };
 
         if (Logic::getRecentsModel()->contains(_contact))
@@ -123,7 +127,7 @@ namespace Ui
             Testing::setAccessibleName(photo_, qsl("AS GroupAndChannelCreation avatar"));
             subLayout->addWidget(photo_);
 
-            chatName_ = new TextEditEx(subContent, Fonts::appFontScaled(18), MessageStyle::getTextColor(), true, true);
+            chatName_ = new TextEditEx(subContent, Fonts::appFontScaled(18), MessageStyle::getTextColorKey(), true, true);
             Utils::ApplyStyle(chatName_, Styling::getParameters().getTextEditCommonQss(true));
             chatName_->setWordWrapMode(QTextOption::NoWrap);//WrapAnywhere);
             chatName_->setObjectName(qsl("chat_name"));
@@ -136,8 +140,8 @@ namespace Ui
             chatName_->setTextInteractionFlags(Qt::TextEditorInteraction);
             chatName_->setEnterKeyPolicy(TextEditEx::EnterKeyPolicy::CatchEnter);
             chatName_->setMinimumWidth(Utils::scale_value(200));
-            chatName_->document()->setDocumentMargin(0);
-            chatName_->addSpace(Utils::scale_value(4));
+            chatName_->setDocumentMargin(0);
+            chatName_->setHeightSupplement(Utils::scale_value(4));
             Testing::setAccessibleName(chatName_, qsl("AS GroupAndChannelCreation nameInput"));
             subLayout->addWidget(chatName_);
         }
@@ -155,11 +159,11 @@ namespace Ui
                 auto textpartlayout = Utils::emptyVLayout(textpart);
                 textpart->setSizePolicy(QSizePolicy::Policy::Preferred, QSizePolicy::Policy::Expanding);
                 textpartlayout->setAlignment(Qt::AlignTop);
-                Utils::ApplyStyle(textpart, qsl("background-color: transparent; border: none;"));
+                textpart->setStyleSheet(qsl("background-color: transparent; border: none;"));
                 {
                     {
                         auto textUnit = Ui::TextRendering::MakeTextUnit(topic, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
-                        textUnit->init(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+                        textUnit->init({ Fonts::appFontScaled(16), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } });
 
                         auto label = new Ui::TextUnitLabel(textpart, std::move(textUnit), Ui::TextRendering::VerPosition::TOP, textpart->width(), true);
                         label->setObjectName(qsl("topic"));
@@ -169,7 +173,7 @@ namespace Ui
                     }
                     {
                         auto textUnit = Ui::TextRendering::MakeTextUnit(text, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
-                        textUnit->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+                        textUnit->init({ Fonts::appFontScaled(13), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY } });
 
                         auto label = new Ui::TextUnitLabel(textpart, std::move(textUnit), Ui::TextRendering::VerPosition::TOP, textpart->width(), true);
                         label->setObjectName(qsl("text"));
@@ -185,7 +189,7 @@ namespace Ui
                 auto switchpartlayout = Utils::emptyVLayout(switchpart);
                 switchpart->setSizePolicy(QSizePolicy::Policy::Preferred, QSizePolicy::Policy::Expanding);
                 switchpartlayout->setAlignment(Qt::AlignTop);
-                Utils::ApplyStyle(switchpart, qsl("background-color: transparent;"));
+                Utils::transparentBackgroundStylesheet(switchpart);
                 {
                     switcher = new SwitcherCheckbox(switchpart);
                     switcher->setChecked(false);
@@ -215,7 +219,7 @@ namespace Ui
         if (channel_)
         {
             auto text = Ui::TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("groupchats", "Channels are public by default, but you can change it after in settings"), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
-            text->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+            text->init({ Fonts::appFontScaled(13), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY } });
 
             const QMargins margins = layout->contentsMargins();
             const int maxWidth = content_->width() - (margins.left() + margins.right());
@@ -239,7 +243,7 @@ namespace Ui
         dialog_ = std::make_unique<Ui::GeneralDialog>(content_, Utils::InterConnector::instance().getMainWindow());
         dialog_->setObjectName(qsl("chat.creation.settings"));
         dialog_->addLabel(headerText);
-        dialog_->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), buttonText, true);
+        dialog_->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), buttonText);
         if (channel_)
             dialog_->setButtonActive(false);
 
@@ -256,7 +260,7 @@ namespace Ui
         auto hollow = new QWidget(dialog_->parentWidget());
         hollow->setObjectName(qsl("hollow"));
         hollow->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
-        Utils::ApplyStyle(hollow, qsl("background-color: transparent; margin: 0; padding: 0; border: none;"));
+        hollow->setStyleSheet(qsl("background-color: transparent; margin: 0; padding: 0; border: none;"));
         {
             auto hollowlayout = Utils::emptyVLayout(hollow);
             hollowlayout->setAlignment(Qt::AlignLeft);
@@ -264,7 +268,7 @@ namespace Ui
             auto editor = new QWidget(hollow);
             editor->setObjectName(qsl("editor"));
             editor->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-            Utils::ApplyStyle(editor, qsl("background-color: #ffffff; margin: 0; padding: 0dip; border: none;"));
+            editor->setStyleSheet(qsl("background-color: #ffffff; margin: 0; padding: 0dip; border: none;"));
             {
                 auto effect = new QGraphicsOpacityEffect(editor);
                 effect->setOpacity(.0);
@@ -325,7 +329,7 @@ namespace Ui
         if (!dialog_)
             return false;
 
-        auto result = dialog_->showInCenter();
+        auto result = dialog_->execute();
         if (!chatName_->getPlainText().isEmpty())
             chatData_.name = chatName_->getPlainText();
         return result;

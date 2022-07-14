@@ -5,7 +5,6 @@
 
 namespace Ui
 {
-    class TextBrowserEx;
     class LineEditEx;
     class PhoneLineEdit;
 
@@ -53,13 +52,13 @@ namespace Ui
 
         QString getPhoneNumber() const;
         void cleanHint();
-        void updateHint(const QString& _hint, const QColor& _color = QColor());
-        void updatePhoneNumberLine(const QColor& _lineColor);
+        void updateHint(const QString& _hint, const Styling::ThemeColorKey& _color = {});
+        void updatePhoneNumberLine(const Styling::StyleVariable& _lineColor);
         void setIsPhoneCorrect(bool _correct);
 
         void connectToLineEdit(LineEditEx *_lineEdit, LineEditEx *_onUp, LineEditEx *_onDown) const;
 
-        QColor getPhoneNumberTextColor() const;
+        Styling::ThemeColorKey getPhoneNumberTextColor() const;
 
     private:
         QVBoxLayout* globalLayout_;

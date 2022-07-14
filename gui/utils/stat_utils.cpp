@@ -23,6 +23,9 @@ std::string chatTypeByAimId(const QString& _aimid)
     if (Logic::getContactListModel()->isChat(_aimid))
         return "group";
 
+    if (Logic::getContactListModel()->isThread(_aimid))
+        return "thread";
+
     return "chat";
 }
 

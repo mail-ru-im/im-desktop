@@ -64,7 +64,7 @@ namespace
             const auto x = _itemRect.width();
             const auto y = _itemRect.height();
             auto stickerData = std::get_if<Utils::FileSharingId>(&_suggest.getData());
-            const QString text = (_suggest.isStickerType() && stickerData ? (stickerData->fileId % (stickerData->sourceId ? *stickerData->sourceId : QString())) : QString()) % QChar::LineFeed % QString::number(_suggest.getMsgId());
+            const QString text = (_suggest.isStickerType() && stickerData ? (stickerData->fileId_ % (stickerData->sourceId_ ? *stickerData->sourceId_ : QString())) : QString()) % QChar::LineFeed % QString::number(_suggest.getMsgId());
             Utils::drawText(_p, QPointF(x, y), Qt::AlignRight | Qt::AlignBottom, text);
         }
     }
@@ -179,8 +179,8 @@ namespace Ui
             const auto x = width() - (width() - stickerSize()) / 2 - size.width() - Utils::scale_value(1);
             const auto y = height() - (height() - stickerSize()) / 2 - size.height() - Utils::scale_value(1);
 
-            static const QPixmap icon = Utils::renderSvg(qsl(":/smiles_menu/gif_label_small"), gifLabelSize());
-            p.drawPixmap(x, y, icon);
+            static auto icon = Utils::StyledPixmap(qsl(":/smiles_menu/gif_label_small"), gifLabelSize());
+            p.drawPixmap(x, y, icon.actualPixmap());
         }
     }
 
@@ -293,7 +293,11 @@ namespace Ui
         im_assert(text && !text->isEmpty());
 
         textUnit_ = TextRendering::MakeTextUnit(text ? *text : QString(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS, TextRendering::EmojiSizeType::SMARTREPLY);
-        textUnit_->init(getTextItemFont(), getTextColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1, TextRendering::LineBreakType::PREFER_SPACES, TextRendering::EmojiSizeType::SMARTREPLY);
+        TextRendering::TextUnit::InitializeParameters params{ getTextItemFont(), getTextColor() };
+        params.maxLinesCount_ = 1;
+        params.lineBreak_ = TextRendering::LineBreakType::PREFER_SPACES;
+        params.emojiSizeType_ = TextRendering::EmojiSizeType::SMARTREPLY;
+        textUnit_->init(params);
         textUnit_->evaluateDesiredSize();
 
         recalcSize();
@@ -328,17 +332,17 @@ namespace Ui
         paintDebugInfo(p, rect(), getSuggest());
     }
 
-    QColor SmartReplyText::getTextColor() const
+    Styling::ThemeColorKey SmartReplyText::getTextColor() const
     {
         if (isEnabled())
         {
             if (isPressed())
-                return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY_ACTIVE);
+                return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY_ACTIVE };
             else if (isHovered())
-                return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY_HOVER);
+                return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY_HOVER };
         }
 
-        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY };
     }
 
     QColor SmartReplyText::getBubbleColor() const

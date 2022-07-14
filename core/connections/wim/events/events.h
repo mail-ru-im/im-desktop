@@ -31,3 +31,6 @@
 #include "fetch_event_draft.h"
 #include "fetch_event_task.h"
 #include "fetch_event_trust_status.h"
+#include "fetch_event_antivirus.h"
+#include "fetch_event_mails_count.h"
+#include "fetch_event_tasks_count.h"

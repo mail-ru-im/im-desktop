@@ -74,37 +74,6 @@ namespace core
             return common::get_dev_id();
         }
 
-        std::wstring get_product_data_path(std::wstring_view relative)
-        {
-#ifdef __linux__
-            return su::wconcat(core::tools::system::get_user_profile(), L"/.config/", relative);
-#elif _WIN32
-            return su::wconcat(::common::get_user_profile(), L'/', relative);
-#else
-            return su::wconcat(core::tools::system::get_user_profile(), L'/', relative);
-#endif //__linux__
-        }
-
-        std::wstring get_local_product_data_path(std::wstring_view relative)
-        {
-#ifdef _WIN32
-            return su::wconcat(::common::get_local_user_profile(), L'/', relative);
-#else
-            return get_product_data_path(relative);
-#endif
-        }
-        std::wstring get_product_data_path()
-        {
-            constexpr auto v = platform::is_apple() ? config::values::product_path_mac : config::values::product_path;
-            return get_product_data_path(tools::from_utf8(config::get().string(v)));
-        }
-
-        std::wstring get_local_product_data_path()
-        {
-            constexpr auto v = platform::is_apple() ? config::values::product_path_mac : config::values::product_path;
-            return get_local_product_data_path(tools::from_utf8(config::get().string(v)));
-        }
-
         std::string get_product_name()
         {
             return "icq.desktop";

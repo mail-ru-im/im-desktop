@@ -6,7 +6,7 @@
 #include "my_info.h"
 #include "utils/utils.h"
 #include "utils/features.h"
-#include "controls/TooltipWidget.h"
+#include "controls/TextWidget.h"
 #include "controls/CustomButton.h"
 #include "styles/ThemeParameters.h"
 #include "core_dispatcher.h"
@@ -17,34 +17,34 @@ namespace
 {
     constexpr auto animationDuration() noexcept { return std::chrono::milliseconds(150); }
 
-    QSize avatarSize()
+    QSize avatarSize() noexcept
     {
         return Utils::scale_value(QSize(68, 68));
     }
 
-    int statusCircleOffset()
+    int statusCircleOffset() noexcept
     {
         return Utils::scale_value(20);
     }
 
-    int listWidth()
+    int listWidth() noexcept
     {
         return Utils::scale_value(360);
     }
 
-    int32_t statusContentSideMargin()
+    int32_t statusContentSideMargin() noexcept
     {
         return Utils::scale_value(20);
     }
 
-    int32_t statusContentWidth()
+    int32_t statusContentWidth() noexcept
     {
         return listWidth() - 2 * statusContentSideMargin();
     }
 
-    QColor descriptionFontColor()
+    Styling::ThemeColorKey descriptionFontColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID };
     }
 
     constexpr int maxDescriptionLength() noexcept
@@ -67,37 +67,37 @@ namespace
         return Fonts::appFontScaled(17);
     }
 
-    QSize deleteButtonSizeUnscaled()
+    QSize deleteButtonSizeUnscaled() noexcept
     {
         return QSize(18, 18);
     }
 
-    QSize deleteButtonSize()
+    QSize deleteButtonSize() noexcept
     {
         return Utils::scale_value(deleteButtonSizeUnscaled());
     }
 
-    int borderXMargin()
+    int borderXMargin() noexcept
     {
         return Utils::scale_value(12);
     }
 
-    int borderWidth()
+    int borderWidth() noexcept
     {
         return Utils::scale_value(1);
     }
 
-    int borderRadius()
+    int borderRadius() noexcept
     {
         return Utils::scale_value(8);
     }
 
-    int durationIconHMargin()
+    int durationIconHMargin() noexcept
     {
         return Utils::scale_value(4);
     }
 
-    int durationIconVMargin()
+    int durationIconVMargin() noexcept
     {
         if constexpr (platform::is_apple())
             return Utils::scale_value(-1);
@@ -105,94 +105,82 @@ namespace
         return Utils::scale_value(2);
     }
 
-    int durationButtonHeight()
+    int durationButtonHeight() noexcept
     {
         return Utils::scale_value(20);
     }
 
-    QPoint emojiOffset()
+    QPoint emojiOffset() noexcept
     {
         return Utils::scale_value(QPoint(62, 14));
     }
 
-    QSize emojiSize()
+    QSize emojiSize() noexcept
     {
         return Utils::scale_value(QSize(40, 40));
     }
 
-    QPoint editIconOffset()
+    QPoint editIconOffset() noexcept
     {
         return Utils::scale_value(QPoint(48, 48));
     }
 
-    const QColor& circleColor()
+    QColor circleColor()
     {
-        static auto color = Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT);
-        return color;
+        static Styling::ColorContainer color = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_BRIGHT };
+        return color.actualColor();
     }
 
-    const QColor& borderColor()
+    QColor borderColor()
     {
-        static auto color = []()
-        {
-            auto c = Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT);
-            c.setAlphaF(0.8);
-            return c;
-        }();
-        return color;
+        static Styling::ColorContainer color = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_BRIGHT, 0.8 };
+        return color.actualColor();
     }
 
-    const QColor& durationColor(bool _hovered, bool _pressed)
+    Styling::ThemeColorKey durationColor(bool _hovered, bool _pressed)
     {
         if (_pressed)
-        {
-            static auto color = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_ACTIVE);
-            return color;
-        }
+            return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY_ACTIVE };
         else if (_hovered)
-        {
-            static auto color = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_HOVER);
-            return color;
-        }
+            return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY_HOVER };
 
-        static auto color = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY);
-        return color;
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY };
     }
 
-    QSize editIconSize()
+    QSize editIconSize() noexcept
     {
         return Utils::scale_value(QSize(16, 16));
     }
 
-    int topSpacerHeight()
+    int topSpacerHeight() noexcept
     {
         return Utils::scale_value(8);
     }
 
-    int avatarTopSpacerHeight()
+    int avatarTopSpacerHeight() noexcept
     {
         return Utils::scale_value(8);
     }
 
-    const QPixmap& editIcon(bool _hovered, bool _pressed)
+    QPixmap editIcon(bool _hovered, bool _pressed)
     {
-        auto icon = [](const QColor& _color){ return Utils::renderSvg(qsl(":/edit_icon"), editIconSize(), _color); };
+        auto icon = [](const Styling::ThemeColorKey& _color){ return Utils::StyledPixmap(qsl(":/edit_icon"), editIconSize(), _color); };
         if (_pressed)
         {
             static auto pixmap = icon(durationColor(false, true));
-            return pixmap;
+            return pixmap.actualPixmap();
         }
         else if (_hovered)
         {
             static auto pixmap = icon(durationColor(true, false));
-            return pixmap;
+            return pixmap.actualPixmap();
         }
 
         static auto pixmap = icon(durationColor(false, false));
-        return pixmap;
+        return pixmap.actualPixmap();
     }
 
-    int durationBottomMargin()
+    int durationBottomMargin() noexcept
     {
         if constexpr (platform::is_apple())
             return Utils::scale_value(0);
@@ -216,7 +204,6 @@ class SelectedStatusWidget_p
 public:
     AvatarWithStatus* avatar_;
     TextWidget* description_ = nullptr;
-    QGraphicsOpacityEffect* statusContentOpacity_ = nullptr;
     StatusDurationButton* duration_ = nullptr;
     QWidget* statusContent_ = nullptr;
     QWidget* buttonSpacer_ = nullptr;
@@ -266,7 +253,9 @@ SelectedStatusWidget::SelectedStatusWidget(QWidget* _parent)
     d->description_ = new TextWidget(this, QString(), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
 
     Testing::setAccessibleName(d->description_, qsl("AS SelectStatusWidget statusDescription"));
-    d->description_->init(statusDescriptionFont(), descriptionFontColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
+    TextRendering::TextUnit::InitializeParameters params{ statusDescriptionFont(), descriptionFontColor() };
+    params.align_ = TextRendering::HorAligment::CENTER;
+    d->description_->init(params);
     d->description_->setMaxWidthAndResize(statusContentWidth());
     d->duration_ = new StatusDurationButton(this);
     Testing::setAccessibleName(d->duration_, qsl("AS SelectStatusWidget statusDuration"));
@@ -441,7 +430,7 @@ void AvatarWithStatus::paintEvent(QPaintEvent* _event)
     {
         p.setOpacity(d->statusOpacity_);
         QPainterPath circle;
-        auto circleRect = QRect({avatarSize().width() - statusCircleOffset(), 0}, avatarSize());
+        const auto circleRect = QRect({avatarSize().width() - statusCircleOffset(), 0}, avatarSize());
         circle.addEllipse(circleRect);
         p.fillPath(circle, circleColor());
         p.drawImage(QRect(emojiOffset(), emojiSize()), d->emoji_);
@@ -499,7 +488,7 @@ StatusDurationButton::StatusDurationButton(QWidget* _parent)
     setFixedHeight(durationButtonHeight());
 
     d->duration_ = TextRendering::MakeTextUnit(QString());
-    d->duration_->init(Fonts::appFontScaled(13), durationColor(false, false));
+    d->duration_->init({ Fonts::appFontScaled(13), durationColor(false, false) });
 
     connect(this, &StatusDurationButton::hoverChanged, this, [this](bool _hovered)
     {

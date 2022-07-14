@@ -100,10 +100,11 @@ public:
 };
 
 ScreenFrame::ScreenFrame(QScreen* _screen, QWidget* _parent)
-    : QFrame(nullptr, preferredWindowFlags())
+    : ShapedWidget(nullptr, preferredWindowFlags())
     , d(std::make_unique<ScreenFramePrivate>(_screen, _parent))
 {
     d->init(this);
+    setOptions(TrackChildren);
 }
 
 ScreenFrame::ScreenFrame(QWidget* _parent)
@@ -248,32 +249,6 @@ void ScreenFrame::closeEvent(QCloseEvent* _event)
         fadeOut();
 
     _event->ignore();
-}
-
-void ScreenFrame::resizeEvent(QResizeEvent* _event)
-{
-    QFrame::resizeEvent(_event);
-    updateMask();
-}
-
-void ScreenFrame::moveEvent(QMoveEvent* _event)
-{
-    QFrame::moveEvent(_event);
-    updateMask();
-}
-
-void ScreenFrame::updateMask()
-{
-    QRegion mask = rect();
-    int w = frameWidth();
-    mask -= rect().adjusted(w, w, -w, -w);
-    const auto children = findChildren<QWidget*>();
-    for (auto child : children)
-        if (child->isVisible())
-            mask |= child->geometry();
-
-    setMask(mask);
-    repaint();
 }
 
 class SharingScreenFramePrivate

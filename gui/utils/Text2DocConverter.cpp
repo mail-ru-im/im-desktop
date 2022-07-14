@@ -1,7 +1,5 @@
 #include "stdafx.h"
 
-#include "../../common.shared/url_parser/url_parser.h"
-
 #include "Text2DocConverter.h"
 #include "fonts.h"
 #include "../cache/emoji/Emoji.h"
@@ -9,8 +7,10 @@
 #include "../controls/TextEditEx.h"
 #include "../controls/textrendering/FormattedTextRendering.h"
 #include "../utils/log/log.h"
+#include "../utils/UrlParser.h"
 #include "../utils/SChar.h"
 #include "../url_config.h"
+#include "../types/message.h"
 
 namespace
 {
@@ -87,7 +87,7 @@ namespace
         int ReplaceEmoji(const Emoji::EmojiCode& _code, const Emoji::EmojiSizePx _emojiSize, const QTextCharFormat::VerticalAlignment _alignment);
         QTextImageFormat handleEmoji(const Emoji::EmojiCode& _code, const Emoji::EmojiSizePx _emojiSize, const QTextCharFormat::VerticalAlignment _alignment);
 
-        void SaveAsHtml(const QString& _text, const common::tools::url& _url, bool isWordWrapEnabled);
+        void SaveAsHtml(const QString& _text, const QString& _url, bool _isEmail, bool _isWordWrapEnabled);
 
         void ConvertMention(QStringView _sn, const QString& _friendly);
 
@@ -116,7 +116,7 @@ namespace
 
         bool MakeUniqResources_;
 
-        common::tools::url_parser parser_;
+        Utils::UrlParser parser_;
 
         ReplacementsInfo replacements_;
     };
@@ -158,7 +158,7 @@ namespace Logic
     void setMonospaceStyle(QTextCharFormat& _format, bool _isOn)
     {
         _format.setProperty(textFormatLogicalMonospaceProperty, _isOn);
-        setMonospaceFont(_format, _isOn);
+        _format.setFontFamily(_isOn ? Fonts::getInputMonospaceTextFont().family() : Fonts::getInputTextFont().family());
     }
 
     void setMonospaceFont(QTextCharFormat& _charFormat, bool _isOn)
@@ -526,7 +526,6 @@ namespace
     Text2DocConverter::Text2DocConverter()
         : HtmlMode_(Text2DocHtmlMode::Pass)
         , MakeUniqResources_(false)
-        , parser_(Ui::getUrlConfig().getUrlFilesParser().toStdString())
     {
         // allow downsizing without reallocation
         const auto DEFAULT_SIZE = 1024;
@@ -719,43 +718,18 @@ namespace
         auto onUrlFound = [isWordWrapEnabled, this]()
         {
             PopInputCursor();
-            const auto& url = parser_.get_url();
-            const auto urlAsString = QString::fromUtf8(url.original_.c_str(), url.original_.size());
-            const auto charsProcessed = urlAsString.size();
+            const auto url = parser_.rawUrlString();
+            const auto charsProcessed = url.size();
             if (!Input_.seek(Input_.pos() + charsProcessed))
                 Input_.readAll(); // end of stream
-            SaveAsHtml(urlAsString, url, isWordWrapEnabled);
-        };
-
-        auto getChar = [this]()
-        {
-            QString buf;
-
-            QChar c1;
-            Input_ >> c1;
-            buf.append(c1);
-
-            if (c1.isHighSurrogate())
-            {
-                im_assert(!Input_.atEnd());
-                if (!Input_.atEnd())
-                {
-                    QChar c2;
-                    Input_ >> c2;
-                    buf.append(c2);
-                }
-            }
-
-            return buf;
+            SaveAsHtml(url, parser_.formattedUrl(), parser_.isEmail(), isWordWrapEnabled);
         };
 
         while (true)
         {
             if (Input_.atEnd())
             {
-                parser_.finish();
-
-                if (parser_.has_url())
+                if (parser_.hasUrl())
                 {
                     onUrlFound();
                     return true;
@@ -767,24 +741,23 @@ namespace
                 }
             }
 
-            const auto charAsStr = getChar();
-            const auto utf8 = charAsStr.toUtf8();
-            for (char c : utf8)
-                parser_.process(c);
+            QString s;
+            Input_ >> s;
 
-            if (parser_.skipping_chars())
+            parser_(s);
+
+            if (parser_.hasUrl())
+            {
+                onUrlFound();
+                return true;
+            }
+            else
             {
                 PopInputCursor();
                 return false;
             }
 
-            if (parser_.has_url())
-            {
-                onUrlFound();
-                return true;
-            }
-
-            buf += charAsStr;
+            buf += s;
         }
     }
 
@@ -1084,16 +1057,16 @@ namespace
         return 1; // size of QChar
     }
 
-    void Text2DocConverter::SaveAsHtml(const QString& _text, const common::tools::url& _url, bool isWordWrapEnabled)
+    void Text2DocConverter::SaveAsHtml(const QString& _text, const QString& _url, bool _isEmail, bool _isWordWrapEnabled)
     {
         QString displayText;
-        ReplaceUrlSpec(_text, displayText, isWordWrapEnabled);
+        ReplaceUrlSpec(_text, displayText, _isWordWrapEnabled);
 
         const auto bufferPos1 = Buffer_.length();
 
-        const QStringView prefix = _url.is_email() ? u"<a type=\"email\" href=\"mailto:" : u"<a href=\"";
+        const QStringView prefix = _isEmail ? u"<a type=\"email\" href=\"mailto:" : u"<a href=\"";
 
-        Buffer_ += prefix % QString::fromUtf8(_url.url_.c_str()) % u"\">" % displayText % u"</a>";
+        Buffer_ += prefix % _url % u"\">" % displayText % u"</a>";
 
         const auto bufferPos2 = Buffer_.length();
 

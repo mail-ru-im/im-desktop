@@ -64,6 +64,116 @@
     </message>
 </context>
 <context>
+    <name>RenderViewContextMenuQt</name>
+    <message>
+        <source>Back</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Forward</source>
+        <translation type="unfinished">Переслати</translation>
+    </message>
+    <message>
+        <source>Reload</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cut</source>
+        <translation type="unfinished">Вирізати</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation type="unfinished">Вставити</translation>
+    </message>
+    <message>
+        <source>Undo</source>
+        <translation type="unfinished">Скасувати</translation>
+    </message>
+    <message>
+        <source>Redo</source>
+        <translation type="unfinished">Повторити</translation>
+    </message>
+    <message>
+        <source>Paste and match style</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select all</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open link in new window</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open link in new tab</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy link address</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save link</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy image</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy image address</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save image</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy media address</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show controls</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Loop</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save media</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Inspect</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Exit full screen</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save page</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>View page source</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>Ui::WebPage</name>
+    <message>
+        <source>Select folder to upload</source>
+        <translation type="unfinished">Виберіть папку для завантаження</translation>
+    </message>
+</context>
+<context>
     <name>UpdaterButton</name>
     <message>
         <source>Update %1</source>
@@ -117,6 +227,18 @@ You can leave your feedback or report an error here:</source>
         <source>Server error</source>
         <translation>серверна помилка</translation>
     </message>
+    <message>
+        <source>https://reestr.digital.gov.ru/reestr/307994/</source>
+        <translation>https://reestr.digital.gov.ru/reestr/307994/</translation>
+    </message>
+    <message>
+        <source>registry_copyright</source>
+        <translation>© ТОВ &quot;Мейл.Ру Цифрові Технології&quot;</translation>
+    </message>
+    <message>
+        <source>The product is registered in the Unified Register of Russian Software and Databases</source>
+        <translation>Продукт VK Teams зареєстрований в Єдиному реєстрі російських програм для електронних обчислювальних машин та баз даних під назвою Myteam (Майтим)</translation>
+    </message>
 </context>
 <context>
     <name>active_call_plate</name>
@@ -127,6 +249,26 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Active call</source>
         <translation>активний дзвінок</translation>
+    </message>
+    <message>
+        <source>participant</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -284,6 +426,14 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Turquoise</source>
         <translation>бірюзова</translation>
+    </message>
+    <message>
+        <source>Sibur</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Dark Sibur</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -481,7 +631,7 @@ You can leave your feedback or report an error here:</source>
     </message>
     <message>
         <source>Jun</source>
-        <translation>червень</translation>
+        <translation>червня</translation>
     </message>
     <message>
         <source>Jul</source>
@@ -526,10 +676,6 @@ You can leave your feedback or report an error here:</source>
 </context>
 <context>
     <name>call_link</name>
-    <message>
-        <source>Link on call</source>
-        <translation>Посилання на дзвінок</translation>
-    </message>
     <message>
         <source>Link on webinar</source>
         <translation>Посилання на вебінар</translation>
@@ -1067,8 +1213,20 @@ You can leave your feedback or report an error here:</source>
         <translation>%1 Натисніть «OK» або дайте відповідь, і %2 зможе</translation>
     </message>
     <message>
+        <source> %3 call you</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source> %3 add you to groups</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>%1 From now on %2 is able to</source>
         <translation>%1 Тепер %2 може</translation>
+    </message>
+    <message>
+        <source> see if you read his messages</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>%1 You have canceled your join request</source>
@@ -1131,12 +1289,44 @@ You can leave your feedback or report an error here:</source>
         <translation>%1 змінив (-ла) дедлайн на %2</translation>
     </message>
     <message>
-        <source>%1 changed task assignee to &quot;%2&quot;</source>
-        <translation>%1 змінив (-ла) виконавця на &quot;%2&quot;</translation>
+        <source>%1 changed task assignee to %2</source>
+        <translation>%1 змінив(-ла) виконавця на %2</translation>
     </message>
     <message>
         <source>Task status changed to &quot;%1&quot;</source>
         <translation>Статус завдання змінений на &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>You</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The administrator</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>have allowed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>have forbidden</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>has allowed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>has forbidden</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 %2 threads creation in this channel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 %2 threads creation in this group</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -1417,6 +1607,26 @@ You can leave your feedback or report an error here:</source>
         <comment>21</comment>
         <translation>Обрано %1 повідомлення</translation>
     </message>
+    <message>
+        <source>%1 subscriber</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 subscribers</source>
+        <comment>2</comment>
+        <translation>%1 передплатника</translation>
+    </message>
+    <message>
+        <source>%1 subscribers</source>
+        <comment>5</comment>
+        <translation>%1 передплатників</translation>
+    </message>
+    <message>
+        <source>%1 subscribers</source>
+        <comment>21</comment>
+        <translation>%1 передплатник</translation>
+    </message>
 </context>
 <context>
     <name>contactus_page</name>
@@ -1616,10 +1826,6 @@ You can leave your feedback or report an error here:</source>
 <context>
     <name>context_menu</name>
     <message>
-        <source>Call</source>
-        <translation>Подзвонити</translation>
-    </message>
-    <message>
         <source>Profile</source>
         <translation>Профіль</translation>
     </message>
@@ -1670,6 +1876,10 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Reply</source>
         <translation>Відповісти</translation>
+    </message>
+    <message>
+        <source>Create task</source>
+        <translation>Створити завдання</translation>
     </message>
     <message>
         <source>Copy to clipboard</source>
@@ -1854,6 +2064,22 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Code</source>
         <translation>Код</translation>
+    </message>
+    <message>
+        <source>Unsubscribe from thread</source>
+        <translation>Відписатися від треду</translation>
+    </message>
+    <message>
+        <source>Subscribe to thread</source>
+        <translation>Підписатися на тред</translation>
+    </message>
+    <message>
+        <source>Unblock</source>
+        <translation>Розблокувати</translation>
+    </message>
+    <message>
+        <source>Compose email</source>
+        <translation>Написати лист</translation>
     </message>
 </context>
 <context>
@@ -3125,6 +3351,14 @@ This option cannot be disabled</source>
 
 Відключити установку неможливо</translation>
     </message>
+    <message>
+        <source>Enable thread feeds</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Allow chat members to create threads</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>head</name>
@@ -3142,7 +3376,7 @@ This option cannot be disabled</source>
     </message>
     <message>
         <source>Calls</source>
-        <translation>дзвінки</translation>
+        <translation>Дзвінки</translation>
     </message>
     <message>
         <source>Chats</source>
@@ -3168,8 +3402,8 @@ This option cannot be disabled</source>
         <translation>Автостатус показує, хто в дзвінку</translation>
     </message>
     <message>
-        <source>Advantages of calls in Myteam</source>
-        <translation>Переваги дзвінків в Myteam</translation>
+        <source>Advantages of calls in %1</source>
+        <translation>Переваги дзвінків у %1</translation>
     </message>
     <message>
         <source>Group calls up to %1 participants</source>
@@ -3257,6 +3491,10 @@ This option cannot be disabled</source>
     <message>
         <source>The join request has been sent to administrator</source>
         <translation>Запит на вступ відправлений адміністратору</translation>
+    </message>
+    <message>
+        <source>The user is blocked</source>
+        <translation>Користувач заблоковано</translation>
     </message>
     <message>
         <source>Play record</source>
@@ -3508,6 +3746,10 @@ This option cannot be disabled</source>
         <translation>Неправильний логін або пароль</translation>
     </message>
     <message>
+        <source>Wrong Email</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Wrong Email or password</source>
         <translation>Неправильний Email або пароль</translation>
     </message>
@@ -3594,6 +3836,10 @@ This option cannot be disabled</source>
     <message>
         <source>Sign in with Mail.ru</source>
         <translation>Ввійти через Mail.ru</translation>
+    </message>
+    <message>
+        <source>Enter your corporate email</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -3753,6 +3999,10 @@ This option cannot be disabled</source>
         <source>Report a problem</source>
         <translation>Повідомити про проблему</translation>
     </message>
+    <message>
+        <source>Delete Account</source>
+        <translation>Видалення акаунту</translation>
+    </message>
 </context>
 <context>
     <name>mentions</name>
@@ -3840,10 +4090,6 @@ This option cannot be disabled</source>
     <message>
         <source>You have been mentioned</source>
         <translation>Вас було згадано</translation>
-    </message>
-    <message>
-        <source>You have been mentioned in %1</source>
-        <translation>Вас було згадано в чаті %1</translation>
     </message>
 </context>
 <context>
@@ -4029,8 +4275,8 @@ to contact status</source>
         <translation>Знайдіть колегу по email і напишіть йому</translation>
     </message>
     <message>
-        <source>Install Myteam on mobile</source>
-        <translation>Інсталювати Myteam на мобільний пристрій</translation>
+        <source>Install VK Teams on mobile</source>
+        <translation>Встановіть VK Teams на мобільний</translation>
     </message>
     <message>
         <source>First name*</source>
@@ -4156,10 +4402,6 @@ to contact status</source>
         <source>%1 poll - %2 votes</source>
         <comment>5</comment>
         <translation>%1 опитування - %2 голосів</translation>
-    </message>
-    <message>
-        <source>Poll</source>
-        <translation>Опитування</translation>
     </message>
     <message>
         <source>Poll: %1</source>
@@ -4403,10 +4645,6 @@ to contact status</source>
     <message>
         <source>Report</source>
         <translation>Поскаржитись</translation>
-    </message>
-    <message>
-        <source>To change the appearance you must restart the application. Continue?</source>
-        <translation>Щоб змінити оформлення, слід перезапустити застосунок. Продовжити?</translation>
     </message>
     <message>
         <source>Update url, empty for default</source>
@@ -4673,6 +4911,26 @@ to contact status</source>
         <translation>Написати</translation>
     </message>
     <message>
+        <source>contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Cancel request?</source>
         <translation>Скасувати запит?</translation>
     </message>
@@ -4777,6 +5035,26 @@ to contact status</source>
         <translation>Творець бота заборонив додавати в групи</translation>
     </message>
     <message>
+        <source>Cannot add %1 contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot add %1 contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot add %1 contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot add %1 contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Are you sure you want to delete user from list?</source>
         <translation>Ви впевнені, що хочете видалити користувача зі списку?</translation>
     </message>
@@ -4791,6 +5069,26 @@ to contact status</source>
     <message>
         <source>You can not join the call. It already has</source>
         <translation>Ви не можете підключитися до дзвінка. У ньому вже</translation>
+    </message>
+    <message>
+        <source>participant</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>No</source>
@@ -4933,6 +5231,66 @@ to contact status</source>
         <translation>Доступ заборонено</translation>
     </message>
     <message>
+        <source>Cannot remove %1 contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot remove %1 contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot remove %1 contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot remove %1 contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Error removing federation user</source>
         <translation>Помилка при видаленні користувача федерації</translation>
     </message>
@@ -4980,13 +5338,21 @@ to contact status</source>
         <source>Only channel subscribers can view replies</source>
         <translation>Переглядати відповіді можуть тільки передплатники каналу</translation>
     </message>
+    <message>
+        <source>Delete Account</source>
+        <translation>Видалення акаунту</translation>
+    </message>
+    <message>
+        <source>To delete an account, you must attach a phone number</source>
+        <translation>Для видалення облікового запису необхідно прив&apos;язати номер телефону</translation>
+    </message>
+    <message>
+        <source>Attach</source>
+        <translation>Прив&apos;язати</translation>
+    </message>
 </context>
 <context>
     <name>previewer</name>
-    <message>
-        <source>Unable to download the image</source>
-        <translation>Неможливо завантажити зображення</translation>
-    </message>
     <message>
         <source>%1 of %2</source>
         <translation>%1 із %2</translation>
@@ -5046,6 +5412,10 @@ to contact status</source>
     <message>
         <source>Add to favorites</source>
         <translation>У обране</translation>
+    </message>
+    <message>
+        <source>File %1 is being downloaded</source>
+        <translation>Файл %1 завантажується</translation>
     </message>
 </context>
 <context>
@@ -5120,6 +5490,10 @@ to contact status</source>
     <message>
         <source>A short text about you</source>
         <translation>Невеликий текст про вас</translation>
+    </message>
+    <message>
+        <source>Middle Name</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -5252,6 +5626,13 @@ to contact status</source>
         <source>OK</source>
         <translation>OK</translation>
     </message>
+    <message>
+        <source> ﻿ ﻿— Reactions
+  — Statuses
+  — New themes
+  — Unreads counter in window title — turn it on in settings :) </source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>report_widget</name>
@@ -5299,12 +5680,20 @@ to contact status</source>
 <context>
     <name>search</name>
     <message>
-        <source>CONTACTS AND GROUPS</source>
-        <translation>КОНТАКТИ ТА ГРУПИ</translation>
+        <source>Contacts and groups</source>
+        <translation>Контакти та групи</translation>
     </message>
     <message>
-        <source>MESSAGES</source>
-        <translation>ПОВІДОМЛЕННЯ</translation>
+        <source>Messages</source>
+        <translation>Повідомлення</translation>
+    </message>
+    <message>
+        <source>Threads</source>
+        <translation type="unfinished">Треди</translation>
+    </message>
+    <message>
+        <source>Thread</source>
+        <translation type="unfinished">Тред</translation>
     </message>
 </context>
 <context>
@@ -5439,6 +5828,10 @@ to contact status</source>
     <message>
         <source>Play sounds</source>
         <translation>Увімкнути звуки</translation>
+    </message>
+    <message>
+        <source>Notification volume:</source>
+        <translation>Гучність повідомлень:</translation>
     </message>
     <message>
         <source>Outgoing messages sound</source>
@@ -5773,10 +6166,6 @@ to contact status</source>
         <translation>дзвінки</translation>
     </message>
     <message>
-        <source>Show calls tab</source>
-        <translation>Показувати вкладку &quot;Дзвінки&quot;</translation>
-    </message>
-    <message>
         <source>Show reactions to messages</source>
         <translation>Показувати реакції на повідомлення</translation>
     </message>
@@ -5819,6 +6208,30 @@ to contact status</source>
     <message>
         <source>Warn about disabled microphone</source>
         <translation>Попереджати про відключений мікрофон</translation>
+    </message>
+    <message>
+        <source>Hide sender name in notifications</source>
+        <translation>Приховувати відправника повідомлення у нотифікаціях</translation>
+    </message>
+    <message>
+        <source>This setting can&apos;t be changed due to security reasons</source>
+        <translation>З метою безпеки вимкнути налаштування неможливо</translation>
+    </message>
+    <message>
+        <source>Delete Account</source>
+        <translation>Видалити акаунт</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Закрити</translation>
+    </message>
+    <message>
+        <source>Your corporate account was created by a domain administrator. To remove, contact with your domain administrator</source>
+        <translation>Ваш корпоративний обліковий запис був створений адміністратором домену. Щоб видалити, зверніться до адміністратора домену</translation>
+    </message>
+    <message>
+        <source>All information associated with your profile will be deleted. It will be impossible to restore your account</source>
+        <translation>Буде видалено всю інформацію, пов&apos;язану з вашим профілем. Відновити обліковий запис буде неможливо</translation>
     </message>
 </context>
 <context>
@@ -6019,8 +6432,28 @@ to contact status</source>
         <translation>встановити статус</translation>
     </message>
     <message>
-        <source>Switch microphone state</source>
-        <translation>Змінити стан мікрофона</translation>
+        <source>Paste text without formatting</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Switch %1 state</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>microphone</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>video</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>presentation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>sound</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -6144,6 +6577,10 @@ Please edit phone number and try again.</source>
         <translation>Поділитися групою</translation>
     </message>
     <message>
+        <source>Subscribe to all threads</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>All members</source>
         <translation>Всі учасники</translation>
     </message>
@@ -6222,6 +6659,10 @@ Please edit phone number and try again.</source>
     <message>
         <source>Common groups</source>
         <translation>Загальні групи</translation>
+    </message>
+    <message>
+        <source>My groups and channels</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Who can see my data</source>
@@ -6368,8 +6809,48 @@ Please edit phone number and try again.</source>
         <translation>передплатники</translation>
     </message>
     <message>
+        <source>%1 SUBSCRIBER</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 SUBSCRIBERS</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 SUBSCRIBERS</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 SUBSCRIBERS</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 MEMBER</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 MEMBERS</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 MEMBERS</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 MEMBERS</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>All subscribers</source>
-        <translation>всі передплатники</translation>
+        <translation>Всі передплатники</translation>
     </message>
     <message>
         <source>Back</source>
@@ -6386,6 +6867,14 @@ Please edit phone number and try again.</source>
     <message>
         <source>Replies</source>
         <translation>Відповіді</translation>
+    </message>
+    <message>
+        <source>Subscription to replies</source>
+        <translation>Підписка на відповіді</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation type="unfinished">Завдання</translation>
     </message>
 </context>
 <context>
@@ -6405,6 +6894,10 @@ Please edit phone number and try again.</source>
     <message>
         <source>About the group</source>
         <translation>Про групу</translation>
+    </message>
+    <message>
+        <source>Send link to call or invite participants from the contact list</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -6473,6 +6966,86 @@ Please edit phone number and try again.</source>
     <message>
         <source>Custom status</source>
         <translation>статус користувача</translation>
+    </message>
+    <message>
+        <source>second</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>seconds</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>seconds</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>seconds</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>minute</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>minutes</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>minutes</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>minutes</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>hour</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>hours</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>hours</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>hours</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>day</source>
+        <comment>1</comment>
+        <translation type="unfinished">day</translation>
+    </message>
+    <message>
+        <source>days</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>days</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>days</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Show always</source>
@@ -6658,6 +7231,22 @@ Please edit phone number and try again.</source>
         <source>Calendar</source>
         <translation>Календар</translation>
     </message>
+    <message>
+        <source>Mail</source>
+        <translation>Пошта</translation>
+    </message>
+    <message>
+        <source>Cloud</source>
+        <translation>хмара</translation>
+    </message>
+    <message>
+        <source>News</source>
+        <translation type="unfinished">Новини</translation>
+    </message>
+    <message>
+        <source>Polls</source>
+        <translation type="unfinished">Опитування</translation>
+    </message>
 </context>
 <context>
     <name>tab header</name>
@@ -6709,16 +7298,12 @@ Please edit phone number and try again.</source>
         <translation>зробити</translation>
     </message>
     <message>
-        <source>No assignee</source>
-        <translation>без виконавця</translation>
+        <source>Unassigned</source>
+        <translation type="unfinished">Без виконавця</translation>
     </message>
 </context>
 <context>
     <name>task_block</name>
-    <message>
-        <source>Not assigned</source>
-        <translation>Чи не призначений</translation>
-    </message>
     <message>
         <source>Task</source>
         <translation>Завдання</translation>
@@ -6735,12 +7320,16 @@ Please edit phone number and try again.</source>
         <source>Task edit: an error occured</source>
         <translation>Зміна завдання: сталася помилка</translation>
     </message>
+    <message>
+        <source>Unassigned</source>
+        <translation type="unfinished">Без виконавця</translation>
+    </message>
 </context>
 <context>
     <name>task_popup</name>
     <message>
         <source>Edit task</source>
-        <translation>Зміна завдання</translation>
+        <translation>Змінити завдання</translation>
     </message>
     <message>
         <source>Create task</source>
@@ -6777,8 +7366,8 @@ not found</source>
 ім&apos;ям не знайдений</translation>
     </message>
     <message>
-        <source>No deadline</source>
-        <translation>без дедлайну</translation>
+        <source>Deadline for the task</source>
+        <translation>Дедлайн для завдання</translation>
     </message>
 </context>
 <context>
@@ -6796,20 +7385,20 @@ not found</source>
         <translation>Ласкаво просимо в Mail.ru Agent</translation>
     </message>
     <message>
-        <source>Welcome to Myteam</source>
-        <translation>Ласкаво просимо в Myteam</translation>
+        <source>Welcome to VK Teams</source>
+        <translation>Ласкаво просимо до VK Teams</translation>
     </message>
     <message>
         <source>Welcome to Messenger</source>
         <translation>Ласкаво просимо в Messenger</translation>
     </message>
     <message>
-        <source>ICQ New - the evolution of communication</source>
-        <translation>ICQ New — еволюція спілкування</translation>
+        <source>ICQ - the evolution of communication</source>
+        <translation>ICQ — еволюція спілкування</translation>
     </message>
     <message>
-        <source>Welcome to ICQ New</source>
-        <translation>Ласкаво просимо в ICQ New</translation>
+        <source>Welcome to ICQ</source>
+        <translation>Ласкаво просимо в ICQ</translation>
     </message>
 </context>
 <context>
@@ -6821,6 +7410,46 @@ not found</source>
     <message>
         <source>Threads you subscribed for will be here</source>
         <translation>Тут будуть відображатися треди, на які ви підписані</translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Replies</source>
@@ -6838,8 +7467,8 @@ not found</source>
         <translation>Messenger</translation>
     </message>
     <message>
-        <source>Myteam</source>
-        <translation>Myteam</translation>
+        <source>VK Teams</source>
+        <translation>VK Teams</translation>
     </message>
     <message>
         <source>ICQ</source>
@@ -6865,10 +7494,6 @@ not found</source>
         <translation>Немає профілю чи групи з таким нікнеймом</translation>
     </message>
     <message>
-        <source>Copied to clipboard</source>
-        <translation>Скопійовано в буфер</translation>
-    </message>
-    <message>
         <source>There are no profiles with this email</source>
         <translation>Немає профілю з таким email</translation>
     </message>
@@ -6889,28 +7514,28 @@ not found</source>
         <translation>Адміністратор групи встановив(-а) обмеження на доступ до файлів</translation>
     </message>
     <message>
-        <source>Awaiting antivirus check, patience</source>
-        <translation>Чекаємо перевірки антивірусом, терпіння</translation>
-    </message>
-    <message>
-        <source>Antivirus check in progress, patience</source>
-        <translation>Йде перевірка антивірусом, терпіння</translation>
-    </message>
-    <message>
         <source>File is blocked by the antivirus</source>
         <translation>Файл заблокований антивірусом</translation>
     </message>
     <message>
-        <source>Checked</source>
-        <translation>перевірено</translation>
-    </message>
-    <message>
-        <source>No access. You may not have enough rights</source>
-        <translation>Немає доступу. Можливо, у вас недостатньо прав</translation>
-    </message>
-    <message>
         <source>File not checked (and never will be). Available to download</source>
         <translation>Файл не підтверджена (і не буде перевірений). Доступний для скачування</translation>
+    </message>
+    <message>
+        <source>No access. Antivirus check in progress</source>
+        <translation>Немає доступу. Йде перевірка антивірусом</translation>
+    </message>
+    <message>
+        <source>No access. File is blocked by the antivirus</source>
+        <translation>Немає доступу. Файл заблокований антивірусом</translation>
+    </message>
+    <message>
+        <source>The file is available. No viruses found</source>
+        <translation>Файл доступний. Вірусів не знайдено</translation>
+    </message>
+    <message>
+        <source>App not found</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -6952,10 +7577,6 @@ not found</source>
         <translation>Аудіозвонок</translation>
     </message>
     <message>
-        <source>Link to call</source>
-        <translation>Посилання на дзвінок</translation>
-    </message>
-    <message>
         <source>Chat gallery</source>
         <translation>Галерея чату</translation>
     </message>
@@ -6967,8 +7588,8 @@ not found</source>
 <context>
     <name>tray_menu</name>
     <message>
-        <source>Quit</source>
-        <translation>Вихід</translation>
+        <source>Close</source>
+        <translation>Закрити</translation>
     </message>
     <message>
         <source>Open</source>
@@ -6997,6 +7618,36 @@ not found</source>
         <source> new emails</source>
         <comment>21</comment>
         <translation> нове повідомлення</translation>
+    </message>
+</context>
+<context>
+    <name>user_agreement_widget</name>
+    <message>
+        <source>Accept</source>
+        <translation>Продовжити</translation>
+    </message>
+    <message>
+        <source>Agree with %1</source>
+        <translation>З повідомленням про %1 ознайомлений(-а)</translation>
+    </message>
+    <message>
+        <source>processing confidential data</source>
+        <translation>обмеження на обробку конфіденційних відомостей</translation>
+    </message>
+    <message>
+        <source>using personal data</source>
+        <translation>обробці персональних даних</translation>
+    </message>
+</context>
+<context>
+    <name>video_pages</name>
+    <message>
+        <source>Link</source>
+        <translation type="unfinished">Посилання</translation>
+    </message>
+    <message>
+        <source>View</source>
+        <translation type="unfinished">Перегляд</translation>
     </message>
 </context>
 <context>
@@ -7081,32 +7732,8 @@ with click</source>
 кліком</translation>
     </message>
     <message>
-        <source>VOICE</source>
-        <translation>ГОЛОС</translation>
-    </message>
-    <message>
-        <source>Connecting...</source>
-        <translation>Підключення...</translation>
-    </message>
-    <message>
-        <source>Calling</source>
-        <translation>Виклик</translation>
-    </message>
-    <message>
-        <source>Busy</source>
-        <translation>зайнято</translation>
-    </message>
-    <message>
         <source>Hold Space key for temporary unmute</source>
         <translation>Утримуйте клавішу Пропуск для тимчасового включення мікрофона</translation>
-    </message>
-    <message>
-        <source>Microphone disabled</source>
-        <translation>мікрофон вимкнений</translation>
-    </message>
-    <message>
-        <source>Microphone enabled</source>
-        <translation>мікрофон включений</translation>
     </message>
     <message>
         <source>Call members</source>
@@ -7142,6 +7769,26 @@ Press and hold Space key for temporarily unmute</source>
 
 Натисніть і утримуйте клавішу Пропуск для тимчасового включення мікрофона</translation>
     </message>
+    <message>
+        <source>Press Esc to exit from fullscreen mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Grid</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Speaker</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Microphone disabled</source>
+        <translation type="unfinished">мікрофон вимкнений</translation>
+    </message>
+    <message>
+        <source>Microphone enabled</source>
+        <translation type="unfinished">мікрофон включений</translation>
+    </message>
 </context>
 <context>
     <name>voip_video_panel</name>
@@ -7150,16 +7797,8 @@ Press and hold Space key for temporarily unmute</source>
         <translation>екран</translation>
     </message>
     <message>
-        <source>More</source>
-        <translation>Ще</translation>
-    </message>
-    <message>
         <source>Go to chat</source>
         <translation>Перейти в чат</translation>
-    </message>
-    <message>
-        <source>Open masks</source>
-        <translation>Включити маски</translation>
     </message>
     <message>
         <source>Add user</source>
@@ -7182,16 +7821,8 @@ Press and hold Space key for temporarily unmute</source>
         <translation>Попросіть вимкнути відео іншого учасника. У дзвінках з більш %1 людьми відео може показувати тільки один</translation>
     </message>
     <message>
-        <source>Masks aren&apos;t available in calls with more than %1 members</source>
-        <translation>У дзвінках з більш %1 учасниками маски недоступні</translation>
-    </message>
-    <message>
         <source>Only the creator of the webinar can show the video</source>
         <translation>Тільки творець вебінару може показати відео</translation>
-    </message>
-    <message>
-        <source>Only the creator of the webinar can use masks</source>
-        <translation>Тільки творець вебінару може використовувати маски</translation>
     </message>
     <message>
         <source>Only the creator of the webinar can use a microphone</source>
@@ -7277,10 +7908,6 @@ Meeting</source>
         <translation>завершити</translation>
     </message>
     <message>
-        <source>SHOW ALL</source>
-        <translation>ПОКАЗАТИ ВСІХ</translation>
-    </message>
-    <message>
         <source>Show
 participants</source>
         <translation>Подивитися
@@ -7294,44 +7921,48 @@ participants</source>
         <source>Show one</source>
         <translation>Збільшити на все вікно</translation>
     </message>
+    <message>
+        <source>Cancel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation type="unfinished">Так</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to end the meeting?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>End meeting</source>
+        <translation type="unfinished">завершити</translation>
+    </message>
+    <message>
+        <source>Go to the chat</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open the profile</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>End call</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Share call link</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Call participants management</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>voip_video_panel_mini</name>
     <message>
         <source>End meeting</source>
         <translation>завершити</translation>
-    </message>
-    <message>
-        <source>Mute</source>
-        <translation>Вимкнути мікрофон</translation>
-    </message>
-    <message>
-        <source>Unmute</source>
-        <translation>Увімкнути мікрофон</translation>
-    </message>
-    <message>
-        <source>Stop video</source>
-        <translation>Вимкнути відео</translation>
-    </message>
-    <message>
-        <source>Start video</source>
-        <translation>Перегляд відео</translation>
-    </message>
-    <message>
-        <source>Disable sound</source>
-        <translation>Вимкнути звук</translation>
-    </message>
-    <message>
-        <source>Enable sound</source>
-        <translation>включити звук</translation>
-    </message>
-    <message>
-        <source>Stop share</source>
-        <translation>зупинити показ</translation>
-    </message>
-    <message>
-        <source>Start share</source>
-        <translation>Поділитися екраном</translation>
     </message>
 </context>
 <context>
@@ -7379,6 +8010,29 @@ participants</source>
     <message>
         <source>I miss you too :)</source>
         <translation>Я теж за тобою скучила :)</translation>
+    </message>
+</context>
+<context>
+    <name>web_app</name>
+    <message>
+        <source>Page is loading...</source>
+        <translation>Триває завантаження сторінки ...</translation>
+    </message>
+    <message>
+        <source>Unable to load</source>
+        <translation>Неможливо завантажити</translation>
+    </message>
+    <message>
+        <source>Retry</source>
+        <translation>Повторити спробу</translation>
+    </message>
+    <message>
+        <source>Print</source>
+        <translation>Печатка</translation>
+    </message>
+    <message>
+        <source>The service is not available for your account. Contact technical support</source>
+        <translation>Даний сервіс поки недоступний для вашого Відомства</translation>
     </message>
 </context>
 </TS>

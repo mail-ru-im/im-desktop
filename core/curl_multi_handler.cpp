@@ -214,7 +214,6 @@ namespace
     std::atomic_bool clear_sockets = false;
     std::atomic_bool network_is_down = false;
 
-    constexpr size_t max_easy_count = 10;
     constexpr int max_timeouts = 3;
     constexpr int max_bad_writes = 1000;
 
@@ -638,11 +637,16 @@ namespace core
         };
     }
 
+    void curl_multi_handler::set_max_parallel_packets_count(size_t _count)
+    {
+        max_parallel_tasks_count_ = _count;
+    }
+
     void curl_multi_handler::add_task()
     {
         {
             std::lock_guard<std::mutex> guard(tasks_queue_mutex);
-            while (!tasks_queue.empty() && (tasks.size() < max_easy_count || tasks_queue.front()->get_priority() <= core::priority_protocol()))
+            while (!tasks_queue.empty() && (tasks.size() < max_parallel_tasks_count_ || tasks_queue.front()->get_priority() <= core::priority_protocol()))
             {
                 auto task = std::move(tasks_queue.front());
                 tasks_queue.pop_front();

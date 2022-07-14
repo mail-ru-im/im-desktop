@@ -12,6 +12,9 @@ namespace core::wim
             _coll.set_value_as_string("sn", sn_);
             _coll.set_value_as_string("name", name_);
             _coll.set_value_as_string("description", description_);
+            _coll.set_value_as_string("first_name", first_name_);
+            _coll.set_value_as_string("middle_name", middle_name_);
+            _coll.set_value_as_string("last_name", last_name_);
         };
 
         if (type_ == id_type::user)
@@ -44,6 +47,9 @@ namespace core::wim
                 tools::unserialize_value(user->value, "friendly", name_);
                 tools::unserialize_value(user->value, "nick", nick_);
                 tools::unserialize_value(user->value, "bot", bot_);
+                tools::unserialize_value(user->value, "firstName", first_name_);
+                tools::unserialize_value(user->value, "middleName", middle_name_);
+                tools::unserialize_value(user->value, "lastName", last_name_);
 
                 type_ = id_info_response::id_type::user;
             }

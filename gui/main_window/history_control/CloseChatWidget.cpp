@@ -34,7 +34,7 @@ namespace Ui
         options_ = new CheckboxList(
             this,
             Fonts::appFontScaled(16),
-            Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY),
+            Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY },
             Utils::scale_value(HOR_OFFSET),
             Utils::scale_value(REASON_HEIGHT));
 
@@ -42,7 +42,7 @@ namespace Ui
         options_->addItem(reportItem, QT_TRANSLATE_NOOP("popup_window", "Report"));
 
         title_ = TextRendering::MakeTextUnit(Logic::GetFriendlyContainer()->getFriendly(aimId_));
-        title_->init(Fonts::appFontScaled(12), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+        title_->init({ Fonts::appFontScaled(12), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY } });
         title_->evaluateDesiredSize();
         title_->setOffsets(Utils::scale_value(HOR_OFFSET), 0);
 
@@ -86,8 +86,8 @@ namespace Ui
         auto w = new ReportWidget(nullptr, Logic::GetFriendlyContainer()->getFriendly(_aimId));
         auto generalDialog = std::make_unique<GeneralDialog>(w, Utils::InterConnector::instance().getMainWindow());
         generalDialog->addLabel(QT_TRANSLATE_NOOP("report_widget", "Report"));
-        generalDialog->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Back"), QT_TRANSLATE_NOOP("popup_window", "OK"), true);
-        auto result = generalDialog->showInCenter();
+        generalDialog->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Back"), QT_TRANSLATE_NOOP("popup_window", "OK"));
+        auto result = generalDialog->execute();
         if (result)
             _reason = w->getReason();
         return result;
@@ -98,13 +98,13 @@ namespace Ui
         auto w = new CloseChatWidget(nullptr, _aimId);
         auto generalDialog = std::make_unique<GeneralDialog>(w, Utils::InterConnector::instance().getMainWindow());
         generalDialog->addLabel(QT_TRANSLATE_NOOP("auth_widget", "Close chat"));
-        generalDialog->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "OK"), true);
+        generalDialog->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "OK"));
 
         Reasons reportReason = Reasons::SPAM;
         while (true)
         {
             generalDialog->setFocus();
-            const auto res = generalDialog->showInCenter();
+            const auto res = generalDialog->execute();
             if (!res)
                 return;
 

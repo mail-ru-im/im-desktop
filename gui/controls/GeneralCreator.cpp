@@ -9,17 +9,47 @@
 #include "../utils/utils.h"
 #include "textrendering/TextRenderingUtils.h"
 #include "../styles/ThemeParameters.h"
+#include "../styles/StyleSheetContainer.h"
+#include "../styles/StyleSheetGenerator.h"
 #include "main_window/sidebar/SidebarUtils.h"
+
+namespace
+{
+    auto sliderHandleWidth() noexcept
+    {
+        return Utils::scale_value(8);
+    }
+
+    auto sliderHandleHeight() noexcept
+    {
+        return Utils::scale_value(24);
+    }
+
+    QSize sliderHandleSize() noexcept
+    {
+        return { sliderHandleWidth(), sliderHandleHeight() };
+    }
+
+    QString sliderHandleIconPath()
+    {
+        return qsl(":/controls/selectbar");
+    }
+
+}
 
 class SliderProxyStyle : public QProxyStyle
 {
 public:
-    int pixelMetric(PixelMetric metric, const QStyleOption * option = 0, const QWidget * widget = 0) const override
+    int pixelMetric(PixelMetric metric, const QStyleOption* option = 0, const QWidget* widget = 0) const override
     {
-        switch (metric) {
-        case PM_SliderLength: return Utils::scale_value(8);
-        case PM_SliderThickness: return Utils::scale_value(24);
-        default: return (QProxyStyle::pixelMetric(metric, option, widget));
+        switch (metric)
+        {
+        case PM_SliderLength:
+            return sliderHandleWidth();
+        case PM_SliderThickness:
+            return sliderHandleHeight();
+        default:
+            return (QProxyStyle::pixelMetric(metric, option, widget));
         }
     }
 };
@@ -49,7 +79,7 @@ namespace Ui
         auto title = new TextEmojiWidget(
             _parent,
             Fonts::appFontScaled(17, Fonts::FontWeight::SemiBold),
-            Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+            Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
 
         title->setText(_text);
         Testing::setAccessibleName(title, u"AS GeneralCreator" % _text);
@@ -66,8 +96,8 @@ namespace Ui
         infoLayout->setContentsMargins(0, 0, 0, 0);
         infoLayout->setSpacing(Utils::scale_value(12));
 
-        auto textName = new TextEmojiWidget(infoWidget, Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
-        auto textKeys = new TextEmojiWidget(infoWidget, Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+        auto textName = new TextEmojiWidget(infoWidget, Fonts::appFontScaled(15), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
+        auto textKeys = new TextEmojiWidget(infoWidget, Fonts::appFontScaled(15), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY });
 
         textName->setText(_name);
         textName->setMultiline(true);
@@ -119,7 +149,7 @@ namespace Ui
 
         Utils::grabTouchWidget(mainWidget);
 
-        auto info = new TextEmojiWidget(mainWidget, Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        auto info = new TextEmojiWidget(mainWidget, Fonts::appFontScaled(15), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
         Utils::grabTouchWidget(info);
         info->setSizePolicy(QSizePolicy::Policy::Preferred, info->sizePolicy().verticalPolicy());
         info->setText(_info);
@@ -133,14 +163,14 @@ namespace Ui
         valueLayout->setAlignment(Qt::AlignBottom);
         valueLayout->setContentsMargins(0, 0, 0, 0);
 
-        auto value = new TextEmojiWidget(valueWidget, Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+        auto value = new TextEmojiWidget(valueWidget, Fonts::appFontScaled(15), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY });
         {
             Utils::grabTouchWidget(value);
             value->setCursor(Qt::PointingHandCursor);
             value->setText(_value);
             value->setEllipsis(true);
-            value->setHoverColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_HOVER));
-            value->setActiveColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_ACTIVE));
+            value->setHoverColor(Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY_HOVER });
+            value->setActiveColor(Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY_ACTIVE });
             QObject::connect(value, &TextEmojiWidget::clicked, value, [value, slot = std::move(_slot)]()
             {
                 if (slot)
@@ -157,7 +187,7 @@ namespace Ui
         return value;
     }
 
-    GeneralCreator::DropperInfo GeneralCreator::addDropper(QWidget* _parent, QLayout* _layout, const QString& _info, bool _is_header, const std::vector< QString >& _values, int _selected, int _width, std::function< void(const QString&, int, TextEmojiWidget*) > _slot)
+    GeneralCreator::DropperInfo GeneralCreator::addDropper(QWidget* _parent, QLayout* _layout, const QString& _info, bool _isHeader, const std::vector< QString >& _values, int _selected, int _width, std::function< void(const QString&, int, TextEmojiWidget*) > _slot)
     {
         TextEmojiWidget* title = nullptr;
         TextEmojiWidget* aw1 = nullptr;
@@ -167,20 +197,16 @@ namespace Ui
         titleWidget->setSizePolicy(QSizePolicy::Policy::Preferred, QSizePolicy::Policy::Preferred);
         titleLayout->setAlignment(Qt::AlignLeft);
         {
-            QFont font;
-            if (!_is_header)
-                font = Fonts::appFontScaled(15);
-            else
-                font = Fonts::appFontScaled(17, Fonts::FontWeight::SemiBold);
+            const QFont font = _isHeader ? Fonts::appFontScaled(17, Fonts::FontWeight::SemiBold) : Fonts::appFontScaled(15);
 
-            title = new TextEmojiWidget(titleWidget, font, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+            title = new TextEmojiWidget(titleWidget, font, Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
             Utils::grabTouchWidget(title);
             title->setSizePolicy(QSizePolicy::Policy::Preferred, title->sizePolicy().verticalPolicy());
             title->setText(_info);
             Testing::setAccessibleName(title, qsl("AS GeneralCreator title"));
             titleLayout->addWidget(title);
 
-            aw1 = new TextEmojiWidget(titleWidget, Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+            aw1 = new TextEmojiWidget(titleWidget, Fonts::appFontScaled(15), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
             Utils::grabTouchWidget(aw1);
             aw1->setSizePolicy(QSizePolicy::Policy::Preferred, aw1->sizePolicy().verticalPolicy());
             aw1->setText(TextRendering::spaceAsString());
@@ -210,7 +236,7 @@ namespace Ui
             selectedItemButton->setCursor(Qt::CursorShape::PointingHandCursor);
             selectedItemButton->setStyleSheet(qsl("border: none; outline: none;"));
             {
-                auto selectedItem = new TextEmojiWidget(selectedItemButton, Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), Utils::scale_value(24));
+                auto selectedItem = new TextEmojiWidget(selectedItemButton, Fonts::appFontScaled(15), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY }, Utils::scale_value(24));
                 Utils::grabTouchWidget(selectedItem);
 
                 auto selectedItemText = _selected < int(_values.size()) ? _values[_selected] : TextRendering::spaceAsString();
@@ -276,13 +302,13 @@ namespace Ui
         return di;
     }
 
-    void GeneralCreator::addProgresser(
+    GeneralCreator::ProgresserDescriptor GeneralCreator::addProgresser(
         QWidget* _parent,
         QLayout* _layout,
-        const std::vector< QString >& _values,
+        int _markCount,
         int _selected,
-        std::function< void(TextEmojiWidget*, TextEmojiWidget*, int) > _slot_finish,
-        std::function< void(TextEmojiWidget*, TextEmojiWidget*, int) > _slot_progress)
+        std::function< void(TextEmojiWidget*, TextEmojiWidget*, int) > _slotFinish,
+        std::function< void(TextEmojiWidget*, TextEmojiWidget*, int) > _slotProgress)
     {
         TextEmojiWidget* w = nullptr;
         TextEmojiWidget* aw = nullptr;
@@ -294,21 +320,21 @@ namespace Ui
         mainLayout->setAlignment(Qt::AlignLeft);
         mainLayout->setSpacing(Utils::scale_value(4));
         {
-            w = new TextEmojiWidget(mainWidget, Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+            w = new TextEmojiWidget(mainWidget, Fonts::appFontScaled(15), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
             Utils::grabTouchWidget(w);
             w->setSizePolicy(QSizePolicy::Policy::Preferred, w->sizePolicy().verticalPolicy());
             w->setText(TextRendering::spaceAsString());
             Testing::setAccessibleName(w, qsl("AS GeneralCreator w"));
             mainLayout->addWidget(w);
 
-            aw = new TextEmojiWidget(mainWidget, Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+            aw = new TextEmojiWidget(mainWidget, Fonts::appFontScaled(15), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
             Utils::grabTouchWidget(aw);
             aw->setSizePolicy(QSizePolicy::Policy::Preferred, aw->sizePolicy().verticalPolicy());
             aw->setText(TextRendering::spaceAsString());
             Testing::setAccessibleName(aw, qsl("AS GeneralCreator aw"));
             mainLayout->addWidget(aw);
 
-            _slot_finish(w, aw, _selected);
+            _slotFinish(w, aw, _selected);
         }
         Testing::setAccessibleName(mainWidget, qsl("AS GeneralCreator mainWidget"));
         _layout->addWidget(mainWidget);
@@ -327,22 +353,22 @@ namespace Ui
             slider->setFixedWidth(Utils::scale_value(280));
             slider->setFixedHeight(Utils::scale_value(24));
             slider->setMinimum(0);
-            slider->setMaximum((int)_values.size() - 1);
+            slider->setMaximum(_markCount);
             slider->setValue(_selected);
             slider->setCursor(QCursor(Qt::CursorShape::PointingHandCursor));
 
-            QObject::connect(slider, &QSlider::sliderReleased, [w, aw, _slot_finish, slider]()
+            QObject::connect(slider, &QSlider::sliderReleased, [w, aw, _slotFinish, slider]()
             {
 
-                _slot_finish(w, aw, slider->value());
+                _slotFinish(w, aw, slider->value());
                 w->update();
                 aw->update();
             });
 
-            QObject::connect(slider, &QSlider::valueChanged, [w, aw, _slot_progress, slider]()
+            QObject::connect(slider, &QSlider::valueChanged, [w, aw, _slotProgress, slider]()
             {
 
-                _slot_progress(w, aw, slider->value());
+                _slotProgress(w, aw, slider->value());
                 w->update();
                 aw->update();
             });
@@ -352,6 +378,8 @@ namespace Ui
         }
         Testing::setAccessibleName(sliderWidget, qsl("AS GeneralCreator sliderWidget"));
         _layout->addWidget(sliderWidget);
+
+        return { mainWidget, sliderWidget };
     }
 
     void GeneralCreator::addBackButton(QWidget* _parent, QLayout* _layout, std::function<void()> _onButtonClick)
@@ -377,7 +405,7 @@ namespace Ui
             QObject::connect(backButton, &QPushButton::clicked, _onButtonClick);
     }
 
-    QComboBox* GeneralCreator::addComboBox(QWidget * _parent, QLayout * _layout, const QString & _info, bool _is_header, const std::vector<QString>& _values, int _selected, int _width, std::function<void(const QString&, int)> _slot)
+    QComboBox* GeneralCreator::addComboBox(QWidget * _parent, QLayout * _layout, const QString & _info, bool _isHeader, const std::vector<QString>& _values, int _selected, int _width, std::function<void(const QString&, int)> _slot)
     {
         if (!_info.isEmpty())
         {
@@ -389,12 +417,12 @@ namespace Ui
             titleLayout->setAlignment(Qt::AlignLeft);
 
             QFont font;
-            if (!_is_header)
+            if (!_isHeader)
                 font = Fonts::appFontScaled(15);
             else
                 font = Fonts::appFontScaled(17, Fonts::FontWeight::SemiBold);
 
-            title = new TextEmojiWidget(titleWidget, font, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+            title = new TextEmojiWidget(titleWidget, font, Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
             Utils::grabTouchWidget(title);
             title->setSizePolicy(QSizePolicy::Policy::Preferred, title->sizePolicy().verticalPolicy());
             title->setText(_info);
@@ -407,7 +435,7 @@ namespace Ui
 
         auto cmbBox = new QComboBox(_parent);
         Utils::SetProxyStyle(cmbBox, new ComboboxProxyStyle());
-        Utils::ApplyStyle(cmbBox, Styling::getParameters().getComboBoxQss());
+        Styling::setStyleSheet(cmbBox, Styling::getParameters().getComboBoxQss());
         cmbBox->setFont(Fonts::appFontScaled(16));
         cmbBox->setMaxVisibleItems(6);
         cmbBox->setCursor(Qt::PointingHandCursor);
@@ -441,23 +469,20 @@ namespace Ui
 
     SettingsSlider::SettingsSlider(Qt::Orientation _orientation, QWidget* _parent)
         : QSlider(_orientation, _parent)
+        , handleNormal_ { Utils::StyledPixmap(sliderHandleIconPath(), sliderHandleSize(), Styling::ThemeColorKey { Styling::StyleVariable::PRIMARY }) }
+        , handleHovered_ { Utils::StyledPixmap(sliderHandleIconPath(), sliderHandleSize(), Styling::ThemeColorKey { Styling::StyleVariable::PRIMARY_HOVER }) }
+        , handlePressed_ { Utils::StyledPixmap(sliderHandleIconPath(), sliderHandleSize(), Styling::ThemeColorKey { Styling::StyleVariable::PRIMARY_ACTIVE }) }
+        , handleDisabled_ { Utils::StyledPixmap(sliderHandleIconPath(), sliderHandleSize(), Styling::ThemeColorKey { Styling::StyleVariable::BASE_SECONDARY }) }
         , hovered_(false)
         , pressed_(false)
     {
-        const auto icon = qsl(":/controls/selectbar");
-        handleNormal_ = Utils::renderSvg(icon, QSize(Utils::scale_value(8), Utils::scale_value(24)), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
-        handleHovered_ = Utils::renderSvg(icon, QSize(Utils::scale_value(8), Utils::scale_value(24)), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_HOVER));
-        handlePressed_ = Utils::renderSvg(icon, QSize(Utils::scale_value(8), Utils::scale_value(24)), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_ACTIVE));
-
         Utils::SetProxyStyle(this, new SliderProxyStyle());
     }
 
     SettingsSlider::~SettingsSlider() = default;
 
-    void SettingsSlider::mousePressEvent(QMouseEvent * _event)
+    bool SettingsSlider::setPosition(QMouseEvent* _event)
     {
-        QSlider::mousePressEvent(_event);
-#ifndef __APPLE__
         if (_event->button() == Qt::LeftButton)
         {
             setValue(QStyle::sliderValueFromPosition(minimum(), maximum(),
@@ -465,25 +490,24 @@ namespace Ui
                 (orientation() == Qt::Vertical) ? height() : width()));
 
             _event->accept();
+
+            return true;
         }
-#endif // __APPLE__
+        return false;
+    }
+
+    void SettingsSlider::mousePressEvent(QMouseEvent * _event)
+    {
+        QSlider::mousePressEvent(_event);
+        setPosition(_event);
     }
 
     void SettingsSlider::mouseReleaseEvent(QMouseEvent* _event)
     {
-        QSlider::mousePressEvent(_event);
-#ifndef __APPLE__
-        if (_event->button() == Qt::LeftButton)
-        {
-            setValue(QStyle::sliderValueFromPosition(minimum(), maximum(),
-                (orientation() == Qt::Vertical) ? _event->y() : _event->x(),
-                (orientation() == Qt::Vertical) ? height() : width()));
+        QSlider::mouseReleaseEvent(_event);
 
+        if (setPosition(_event))
             Q_EMIT sliderReleased();
-
-            _event->accept();
-        }
-#endif // __APPLE__
     }
 
     void SettingsSlider::enterEvent(QEvent * _event)
@@ -522,7 +546,9 @@ namespace Ui
         grooveRect.moveCenter(grooveOrigRect.center());
 
         painter.fillRect(grooveRect, Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
-
-        painter.drawPixmap(handleRect, hovered_ ? handleHovered_ : (pressed_ ? handlePressed_ : handleNormal_));
+        if (isEnabled())
+            painter.drawPixmap(handleRect, hovered_ ? handleHovered_.actualPixmap() : (pressed_ ? handlePressed_.actualPixmap() : handleNormal_.actualPixmap()));
+        else
+            painter.drawPixmap(handleRect, handleDisabled_.actualPixmap());
     }
 }

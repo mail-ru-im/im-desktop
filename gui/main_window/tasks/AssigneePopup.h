@@ -7,7 +7,7 @@ namespace Ui
     {
         class TextUnit;
         using TextUnitPtr = std::unique_ptr<TextUnit>;
-    }
+    } // namespace TextRendering
 
     class AssigneeEdit;
     class AssigneePopupContent;
@@ -22,9 +22,10 @@ namespace Ui
     protected:
         void mousePressEvent(QMouseEvent* _event) override;
         void resizeEvent(QResizeEvent* _event) override;
+        void showEvent(QShowEvent* _event) override;
 
     private Q_SLOTS:
-        void onWindowResized();
+        void updatePosition();
         void onSearchPatternChanged(const QString& _searchPattern);
         void selectContact(const QString& _aimId);
         void onSearchResult();
@@ -34,4 +35,4 @@ namespace Ui
         AssigneeEdit* assigneeEdit_ = nullptr;
         AssigneePopupContent* content_ = nullptr;
     };
-}
+} // namespace Ui

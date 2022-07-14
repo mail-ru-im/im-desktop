@@ -35,6 +35,8 @@ namespace Ui
         void cleanSelection();
         void setCompactMode(bool isCompact, bool force = false);
 
+        static QString getContactUsText();
+
     private:
         void settingsProfileClicked();
         void settingsFavoritesClicked();

@@ -7,15 +7,16 @@
 #include "utils/utils.h"
 #include "utils/InterConnector.h"
 #include "styles/ThemeParameters.h"
+#include "styles/ThemesContainer.h"
 
 namespace
 {
-    QSize iconSize()
+    QSize iconSize() noexcept
     {
         return Utils::scale_value(QSize(16, 16));
     }
 
-    QSize searchIconSize()
+    QSize searchIconSize() noexcept
     {
         return Utils::scale_value(QSize(14, 14));
     }
@@ -28,9 +29,7 @@ namespace Ui
         , drawPlaceholderAnyway_(false)
     {
         placeholderTextUnit_ = TextRendering::MakeTextUnit(QString());
-        placeholderTextUnit_->init(font(),
-                                   Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY),
-                                   QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT);
+        placeholderTextUnit_->init({ font(), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY } });
 
         setFocusPolicy(Qt::ClickFocus);
     }
@@ -61,7 +60,9 @@ namespace Ui
         {
             if (const auto f = font(); f != placeholderTextUnit_->getFont())
             {
-                placeholderTextUnit_->init(f, Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+                TextRendering::TextUnit::InitializeParameters params{ f, Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY } };
+                params.maxLinesCount_ = 1;
+                placeholderTextUnit_->init(params);
                 placeholderTextUnit_->evaluateDesiredSize();
             }
             const auto r = rect();
@@ -121,7 +122,7 @@ namespace Ui
         clearIcon_ = new Ui::CustomButton(this, qsl(":/controls/reset_edit_icon"), QSize(14, 14));
         Styling::Buttons::setButtonDefaultColors(clearIcon_);
         clearIcon_->setAutoFillBackground(true);
-        clearIcon_->setDisabledColor(Qt::red);
+        clearIcon_->setDisabledColor(Styling::ColorParameter{ Qt::red });
         clearIcon_->setContentsMargins(Utils::scale_value(8), 0, 0, 0);
         clearIcon_->setFixedSize(iconSize());
         clearIcon_->setStyleSheet(qsl("border: none;"));
@@ -146,6 +147,8 @@ namespace Ui
 
         connect(clearIcon_, &QPushButton::clicked, this, &SearchWidget::clearInput);
         connect(clearIcon_, &QPushButton::clicked, this, &SearchWidget::inputCleared);
+
+        connect(&Styling::getThemesContainer(), &Styling::ThemesContainer::globalThemeChanged, this, &SearchWidget::updateStyle);
 
         setDefaultPlaceholder();
 
@@ -176,6 +179,11 @@ namespace Ui
         searchEdit_->clearFocus();
         setActive(false);
         updateStyle();
+    }
+
+    bool SearchWidget::hasFocus() const
+    {
+        return QWidget::hasFocus() || searchEdit_->hasFocus();
     }
 
     bool SearchWidget::isActive() const
@@ -304,26 +312,24 @@ namespace Ui
     {
         const auto makeIcon = [](const auto _var)
         {
-            return Utils::renderSvg(qsl(":/search_input"), searchIconSize(), Styling::getParameters().getColor(_var));
+            return Utils::StyledPixmap(qsl(":/search_input"), searchIconSize(), Styling::ThemeColorKey{ _var });
         };
 
         const auto getBackground = [](const bool _active, const bool _hover)
         {
             auto bgVar = Styling::StyleVariable::BASE_BRIGHT_INVERSE;
-            if (_active)
-                bgVar = Styling::StyleVariable::BASE_BRIGHT_INVERSE;
-            else if (_hover)
+            if (_hover && !_active)
                 bgVar = Styling::StyleVariable::BASE_BRIGHT_INVERSE_HOVER;
 
             return Styling::getParameters().getColor(bgVar);
         };
 
-        static const auto normalSearchIcon = makeIcon(Styling::StyleVariable::BASE_PRIMARY);
-        static const auto hoverSearchIcon = makeIcon(Styling::StyleVariable::BASE_SECONDARY);
-        static const auto activeSearchIcon = makeIcon(Styling::StyleVariable::BASE_PRIMARY);
+        static auto normalSearchIcon = makeIcon(Styling::StyleVariable::BASE_PRIMARY);
+        static auto hoverSearchIcon = makeIcon(Styling::StyleVariable::BASE_SECONDARY);
+        static auto activeSearchIcon = makeIcon(Styling::StyleVariable::BASE_PRIMARY);
 
         const auto hover = searchWidget_->underMouse();
-        searchIcon_->setPixmap(active_ ? activeSearchIcon : (hover ? hoverSearchIcon : normalSearchIcon));
+        searchIcon_->setPixmap((active_ ? activeSearchIcon : (hover ? hoverSearchIcon : normalSearchIcon)).actualPixmap());
 
         const auto focused = hasFocus() && !active_;
         const auto bg = focused? Styling::getParameters().getPrimaryTabFocusColor() : getBackground(active_, hover);

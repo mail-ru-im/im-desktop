@@ -37,12 +37,12 @@ namespace Ui
 
         textUnit_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("add_new_contact_dialogs", "New contact"));
 
-        textUnit_->init(Fonts::appFontScaled(23), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        textUnit_->init({ Fonts::appFontScaled(23), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } });
         textUnit_->evaluateDesiredSize();
         textUnit_->setOffsets(Utils::scale_value(16), Utils::scale_value(16));
 
         hintUnit_ = TextRendering::MakeTextUnit(QString());
-        hintUnit_->init(Fonts::appFontScaled(14), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
+        hintUnit_->init({ Fonts::appFontScaled(14), Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY } });
         hintUnit_->evaluateDesiredSize();
         hintUnit_->setOffsets(Utils::scale_value(HINT_HORIZONTAL_OFFSET), Utils::scale_value(271));
 
@@ -186,8 +186,8 @@ namespace Ui
 
         if (_fullPhone.isEmpty() || _fullPhone.size() < 3)
         {
-            updatePhoneNumberLine(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
-            updateHint(QString(), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
+            updatePhoneNumberLine(Styling::StyleVariable::PRIMARY);
+            updateHint(QString(), Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY });
             return;
         }
 
@@ -247,8 +247,8 @@ namespace Ui
             .arg(std::abs(remaining));
 
         const auto color = remaining > 0 ? Styling::StyleVariable::PRIMARY : Styling::StyleVariable::SECONDARY_ATTENTION;
-        updatePhoneNumberLine(Styling::getParameters().getColor(color));
-        updateHint(text, Styling::getParameters().getColor(color));
+        updatePhoneNumberLine(color);
+        updateHint(text, Styling::ThemeColorKey{ color });
     }
 
     void AddNewContactWidget::paintEvent(QPaintEvent *_event)
@@ -299,7 +299,7 @@ namespace Ui
 
     void AddNewContactWidget::cleanHint()
     {
-        updateHint(QString(), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
+        updateHint(QString(), Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY });
         Utils::ApplyStyle(phoneInput_->getPhoneNumberWidget(), Styling::getParameters().getLineEditCommonQss());
 
         phoneInput_->getPhoneNumberWidget()->changeTextColor(getPhoneNumberTextColor());
@@ -309,16 +309,16 @@ namespace Ui
         update();
     }
 
-    void AddNewContactWidget::updateHint(const QString& _hint, const QColor& _color)
+    void AddNewContactWidget::updateHint(const QString& _hint, const Styling::ThemeColorKey& _color)
     {
         hintUnit_->setText(_hint, _color);
         hintUnit_->getHeight(Utils::scale_value(WIDGET_WIDTH - HINT_HORIZONTAL_OFFSET - 46 /* Right offset */));
         update();
     }
 
-    void AddNewContactWidget::updatePhoneNumberLine(const QColor& _lineColor)
+    void AddNewContactWidget::updatePhoneNumberLine(const Styling::StyleVariable& _lineColor)
     {
-        Utils::ApplyStyle(phoneInput_->getPhoneNumberWidget(), Styling::getParameters().getLineEditCustomQss(_lineColor, Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT)));
+        Utils::ApplyStyle(phoneInput_->getPhoneNumberWidget(), Styling::getParameters().getLineEditCustomQss(_lineColor, Styling::StyleVariable::BASE_BRIGHT));
         phoneInput_->getPhoneNumberWidget()->changeTextColor(getPhoneNumberTextColor());
     }
 
@@ -345,9 +345,9 @@ namespace Ui
         }
     }
 
-    QColor AddNewContactWidget::getPhoneNumberTextColor() const
+    Styling::ThemeColorKey AddNewContactWidget::getPhoneNumberTextColor() const
     {
         const auto var = phoneInput_->getPhoneNumberWidget()->text().isEmpty() ? Styling::StyleVariable::BASE_PRIMARY : Styling::StyleVariable::TEXT_SOLID;
-        return Styling::getParameters().getColor(var);
+        return Styling::ThemeColorKey{ var };
     }
 }

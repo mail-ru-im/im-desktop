@@ -2,14 +2,21 @@
 
 namespace Styling
 {
-    struct WallpaperId
+    class WallpaperId
     {
         QString id_;
+        size_t idHash_ = 0;
 
+    public:
         WallpaperId() = default;
-        WallpaperId(const int _id) : id_(QString::number(_id)) {}
-        WallpaperId(const QString& _id) : id_(_id) {}
-        WallpaperId(QString&& _id) : id_(std::move(_id)) {}
+        WallpaperId(const int _id) : id_(QString::number(_id)), idHash_{ qHash(id_) } {}
+        WallpaperId(const QString& _id) : id_(_id), idHash_{ qHash(id_) } {}
+        WallpaperId(QString&& _id) : id_(std::move(_id)), idHash_{ qHash(id_) } {}
+
+        QString id() const { return id_; }
+        size_t idHash() const { return idHash_; }
+
+        void setId(const QString& _id) { id_ = _id; idHash_ = qHash(id_); }
 
         bool operator==(const WallpaperId& _other) const { return id_ == _other.id_; }
         bool operator!=(const WallpaperId& _other) const { return !(*this == _other); }

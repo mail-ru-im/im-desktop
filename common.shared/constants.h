@@ -1,8 +1,6 @@
 #pragma once
 
 #define auth_file_name "value.au"
-#define oauth2_login_path "/login"
-#define oauth2_token_path "/token"
 #define settings_export_file_name "exported_ui.json"
 #define core_settings_export_file_name "exported_core.json"
 #define fetch_url_file_name "fetch"
@@ -28,6 +26,7 @@
 #define settings_pinned_chats_visible "pinned_chats_visible"
 #define settings_unimportant_visible "unimportant_visible"
 #define settings_splitter_state "splitter_state"
+#define settings_splitter_webpage_state "splitter_webpage_state"
 #define settings_splitter_state_scale "splitter_state_scale"
 #define settings_recents_mini_mode "recents_mini_mode"
 
@@ -36,6 +35,7 @@
 #define settings_show_in_taskbar "show_in_taskbar"
 #define settings_show_in_menubar "show_in_menubar"
 #define settings_sounds_enabled "sounds_enabled"
+#define settings_notification_volume "notification_volume"
 #define settings_outgoing_message_sound_enabled "outgoing_message_sound_enabled"
 #define settings_download_files_automatically "download_files_automatically"
 #define settings_key1_to_send_message "key1_to_send_message"
@@ -64,11 +64,12 @@
 #define settings_fast_drop_search_results "fast_drop_search_results"
 #define settings_exec_files_without_warning "exec_files_without_warning"
 #define settings_open_external_link_without_warning "open_external_link_without_warning"
-#define settings_show_calls_tab "settings_show_calls_tab"
 #define settings_show_reactions "settings_show_reactions"
 #define settings_warn_about_disabled_microphone "settings_warn_about_disabled_microphone"
 
 #define settings_allow_statuses "settings_allow_statuses"
+
+#define startup_set_additional_theme "startup_set_additional_theme"
 
 constexpr bool settings_allow_big_emoji_default() noexcept { return true; }
 constexpr bool settings_autoreplace_emoji_default() noexcept { return true; }
@@ -82,7 +83,8 @@ constexpr bool settings_keep_logged_in_default() noexcept { return true; }
 constexpr bool settings_show_reactions_default() noexcept { return true; }
 constexpr bool settings_allow_statuses_default() noexcept { return true; }
 constexpr bool show_microphone_request_default() noexcept { return true; }
-
+constexpr double settings_notification_volume_default() noexcept { return 1.; }
+constexpr bool settings_outgoing_message_sound_enabled_default() noexcept { return false; }
 constexpr bool settings_notify_new_messages_with_active_ui_default() noexcept { return false; }
 
 #define settings_microphone "microphone"
@@ -98,6 +100,7 @@ constexpr bool settings_notify_new_messages_with_active_ui_default() noexcept { 
 #define settings_notify_new_messages_with_active_ui "notify_new_messages_with_active_ui"
 #define settings_notify_new_mail_messages "notify_new_mail_messages"
 #define settings_hide_message_notification "hide_message_notification"
+#define settings_hide_sender_notification "hide_sender_notification"
 #define settings_alert_tray_icon "alert_tray_icon"
 #define settings_show_unreads_in_title "show_unreads_in_title"
 
@@ -134,6 +137,8 @@ constexpr bool settings_notify_new_messages_with_active_ui_default() noexcept { 
 #define status_duration "status_duration"
 
 #define show_microphone_request "show_microphone_request"
+
+#define settings_user_agent "user_agent"
 
 constexpr const char* get_global_wp_id_setting_field() noexcept
 {

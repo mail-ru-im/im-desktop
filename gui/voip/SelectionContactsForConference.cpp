@@ -42,19 +42,19 @@ namespace
             return Fonts::appFontScaled(13, Fonts::FontFamily::SOURCE_SANS_PRO, Fonts::FontWeight::Normal);
     }
 
-    QColor membersVisibilityLabelFontColor()
+    Styling::ThemeColorKey membersVisibilityLabelFontColorKey()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY };
     }
 
-    QColor membersVisibilityLabelFontColorHovered()
+    Styling::ThemeColorKey membersVisibilityLabelHoveredFontColorKey()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_HOVER);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY_HOVER };
     }
 
-    QColor membersVisibilityLabelFontColorPressed()
+    Styling::ThemeColorKey membersVisibilityLabelPressedFontColorKey()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_ACTIVE);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY_ACTIVE };
     }
 
     auto membersLabelFont()
@@ -91,18 +91,18 @@ namespace Ui
 
         memberShowAll_ = new CustomButton(membersLabelHost_);
         memberShowAll_->setFont(membersVisibilityLabelFont());
-        memberShowAll_->setNormalTextColor(membersVisibilityLabelFontColor());
-        memberShowAll_->setHoveredTextColor(membersVisibilityLabelFontColorHovered());
-        memberShowAll_->setPressedTextColor(membersVisibilityLabelFontColorPressed());
+        memberShowAll_->setNormalTextColor(membersVisibilityLabelFontColorKey());
+        memberShowAll_->setHoveredTextColor(membersVisibilityLabelHoveredFontColorKey());
+        memberShowAll_->setPressedTextColor(membersVisibilityLabelPressedFontColorKey());
         memberShowAll_->setText(QT_TRANSLATE_NOOP("voip_pages", "SHOW ALL"));
         memberShowAll_->setFixedWidth(QFontMetrics(membersVisibilityLabelFont()).horizontalAdvance(memberShowAll_->text()));
         Testing::setAccessibleName(memberShowAll_, qsl("AS SelectionContactsForConference memberShowAll"));
 
         memberHide_ = new CustomButton(membersLabelHost_);
         memberHide_->setFont(membersVisibilityLabelFont());
-        memberHide_->setNormalTextColor(membersVisibilityLabelFontColor());
-        memberHide_->setHoveredTextColor(membersVisibilityLabelFontColorHovered());
-        memberHide_->setPressedTextColor(membersVisibilityLabelFontColorPressed());
+        memberHide_->setNormalTextColor(membersVisibilityLabelFontColorKey());
+        memberHide_->setHoveredTextColor(membersVisibilityLabelHoveredFontColorKey());
+        memberHide_->setPressedTextColor(membersVisibilityLabelPressedFontColorKey());
         memberHide_->setText(QT_TRANSLATE_NOOP("voip_pages", "HIDE"));
         memberHide_->setFixedWidth(QFontMetrics(membersVisibilityLabelFont()).horizontalAdvance(memberHide_->text()));
         Testing::setAccessibleName(memberHide_, qsl("AS SelectionContactsForConference memberHide"));
@@ -272,7 +272,7 @@ namespace Ui
             model->setSearchPattern(QString());
         }
 
-        auto buttonPair = mainDialog_->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "Add"), true);
+        auto buttonPair = mainDialog_->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "Add"));
         acceptButton_ = buttonPair.first;
         cancelButton_ = buttonPair.second;
         focusWidget_[acceptButton_] = FocusPosition::Accept;
@@ -352,6 +352,18 @@ namespace Ui
         {
             SelectContactsWidget::setMaximumSelectedCount(videoConferenceMaxUsers_);
         }
+    }
+
+    void SelectionContactsForConference::copyCallLink()
+    {
+        auto toastType = VideoWindowToastProvider::Type::EmptyLink;
+        const auto url = GetDispatcher()->getVoipController().getConferenceUrl();
+        if (!url.isEmpty())
+        {
+            QApplication::clipboard()->setText(url);
+            toastType = VideoWindowToastProvider::Type::LinkCopied;
+        }
+        VideoWindowToastProvider::instance().show(toastType);
     }
 
     void SelectionContactsForConference::updateSize()
@@ -434,7 +446,13 @@ namespace Ui
             Utils::PainterSaver ps(*_painter);
             _painter->setRenderHints(QPainter::SmoothPixmapTransform | QPainter::Antialiasing | QPainter::TextAntialiasing);
             _painter->translate(topLeft);
-            Utils::drawAvatarWithBadge(*_painter, pos, avatar, isOfficial, Utils::getStatusBadge(aimId, avatar.width()), isMuted, false, isOnline, true, needRemoveCross);
+
+            Utils::StatusBadgeFlags statusFlags { Utils::StatusBadgeFlag::SmallOnline | Utils::StatusBadgeFlag::Small };
+            statusFlags.setFlag(Utils::StatusBadgeFlag::Official, isOfficial);
+            statusFlags.setFlag(Utils::StatusBadgeFlag::Muted, isMuted);
+            statusFlags.setFlag(Utils::StatusBadgeFlag::Online, isOnline);
+            statusFlags.setFlag(Utils::StatusBadgeFlag::WithOverlay, needRemoveCross);
+            Utils::drawAvatarWithBadge(*_painter, pos, avatar, Utils::getStatusBadge(aimId, avatar.width()), statusFlags);
         }
         if (needRemoveCross)
         {

@@ -1,7 +1,7 @@
 #include "stdafx.h"
 
 #include "CheckForUpdateButton.h"
-#include "controls/TooltipWidget.h"
+#include "controls/ClickWidget.h"
 #include "controls/CustomButton.h"
 #include "previewer/toast.h"
 #include "../ConnectionWidget.h"
@@ -19,9 +19,9 @@ namespace
         return QSize(32, 32);
     }
 
-    auto getIconsColor()
+    auto getIconsColorKey()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY };
     }
 
     auto getSpinnerPenWidth()
@@ -48,7 +48,7 @@ namespace Ui
         layout->setContentsMargins({});
 
         icon_ = new CustomButton(this);
-        icon_->setDefaultImage(qsl(":/controls/reload"), getIconsColor(), getIconsSize());
+        icon_->setDefaultImage(qsl(":/controls/reload"), getIconsColorKey(), getIconsSize());
         icon_->setFixedSize(Utils::scale_value(getIconsSize()));
         icon_->setAttribute(Qt::WA_TransparentForMouseEvents, true);
         icon_->setCursor(Qt::ArrowCursor);
@@ -64,11 +64,10 @@ namespace Ui
         layout->addSpacing(Utils::scale_value(4));
 
         const auto str = QT_TRANSLATE_NOOP("about_us", "Check for updates");
-        text_ = new TextWidget(this, str);
+        text_ = new ClickableTextWidget(this, Fonts::appFontScaled(15), Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY });
+        text_->setText(str);
         text_ ->setFixedHeight(Utils::scale_value(getIconsSize()).height());
-        text_->init(Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
-        text_->applyLinks({ { str, str } });
-        QObject::connect(text_, &TextWidget::linkActivated, this, &CheckForUpdateButton::onClick);
+        QObject::connect(text_, &ClickableTextWidget::clicked, this, &CheckForUpdateButton::onClick);
         layout->addWidget(text_);
         layout->addSpacerItem(new QSpacerItem(1, 1, QSizePolicy::Policy::Expanding));
 
@@ -129,7 +128,7 @@ namespace Ui
     void CheckForUpdateButton::startAnimation()
     {
         icon_->hide();
-        animation_->setProgressPenColor(getIconsColor());
+        animation_->setProgressPenColorKey(getIconsColorKey());
         animation_->setProgressPenWidth(getSpinnerPenWidth());
         animation_->start();
         animation_->show();

@@ -3,6 +3,7 @@
 
 #include "../../../http_request.h"
 #include "../common.shared/json_helper.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -26,6 +27,11 @@ block_chat_member::~block_chat_member() = default;
 std::string_view block_chat_member::get_method() const
 {
     return block_ ? "blockChatMembers" : "unblockChatMembers";
+}
+
+int core::wim::block_chat_member::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t block_chat_member::init_request(const std::shared_ptr<core::http_request_simple>& _request)

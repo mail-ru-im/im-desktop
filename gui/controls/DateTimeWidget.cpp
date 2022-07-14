@@ -13,14 +13,19 @@
 
 namespace
 {
-    auto lineEditHeight() noexcept
+    constexpr auto lineEditHeightNonScalable() noexcept
     {
-        return Utils::scale_value(32);
+        return 32; // must be non-scaled
     }
 
-    QString dateFormat()
+    constexpr auto lineEditWidthTimeNonScalable() noexcept
     {
-        return qsl("d.M.yyyy");
+        return 32; // must be non-scaled
+    }
+
+    auto lineEditHeightScaled() noexcept
+    {
+        return Utils::scale_value(lineEditHeightNonScalable());
     }
 
     auto lineEditFont()
@@ -50,48 +55,81 @@ namespace
         return (_month >= 1 && _month <= months.size()) ? months[_month - 1] : fallbackString;
     }
 
-    void applyStyle(Ui::LineEditEx* _edit, bool _isError)
+    constexpr double alphaChannelDisableFields() noexcept
     {
-        Utils::ApplyStyle(_edit, Styling::getParameters().getLineEditCommonQss(_isError, lineEditHeight()));
+        return 0.4;
+    }
+
+    const auto lineEditBottomPadding() noexcept
+    {
+        return Utils::scale_value(8);
+    }
+
+    void applyStyleLineEdit(Ui::LineEditEx* _edit, bool _isActive = false, bool _isError = false)
+    {
+        if (_edit->isEnabled())
+        {
+            if (_isActive)
+            {
+                Utils::ApplyStyle(_edit, Styling::getParameters().getLineEditCommonQss(
+                        _isError,
+                        lineEditHeightNonScalable(),
+                        Styling::StyleVariable::PRIMARY));
+                _edit->changeTextColor(Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
+            }
+            else
+            {
+                Utils::ApplyStyle(_edit, Styling::getParameters().getLineEditCommonQss(
+                        _isError,
+                        lineEditHeightNonScalable(),
+                        Styling::StyleVariable::BASE_SECONDARY));
+                _edit->changeTextColor(Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
+            }
+        }
+        else
+        {
+            Utils::ApplyStyle(_edit, Styling::getParameters().getLineEditDisabledQss(
+                    lineEditHeightNonScalable(),
+                    Styling::StyleVariable::BASE_SECONDARY,
+                    alphaChannelDisableFields()));
+            _edit->changeTextColor(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_TERTIARY, alphaChannelDisableFields() });
+        }
         _edit->update();
     }
 
-    //////////////////////////////////////////////////////////////////////////
-    // DateValidator
-    //////////////////////////////////////////////////////////////////////////
-
-    class DateValidator : public QValidator
+    const auto lineEditWidthTime() noexcept
     {
-    public:
-        DateValidator(QObject* _parent) : QValidator(_parent)
-        {
-            re.setPattern(qsl("\\A(?:(([0-2]{0,1}\\d{1})|([3][0,1]{1}))\\.(([0]{0,1}\\d{1})|([1]{1}[0-2]{1}))\\.([2]{1}[0]{1}[2-9]{1}\\d{1}))\\z"));
-        }
-        QValidator::State validate(QString& input, int&) const override
-        {
-            const auto match = re.match(input, 0, QRegularExpression::PartialPreferCompleteMatch);
-            if (match.hasPartialMatch() || input.isEmpty())
-                return QValidator::Intermediate;
+        return Utils::scale_value(lineEditWidthTimeNonScalable());
+    }
 
-            if (!match.hasMatch())
-                return QValidator::Invalid;
+    const auto lineEditWidthDate(bool _showSeconds, bool _statusDate) noexcept
+    {
+        const auto maxWidth = 320;
+        double reducingFactor = 3;
 
-            const auto date = QDate::fromString(input, dateFormat());
-            if (!date.isValid() || QDate::currentDate() > date)
-                return QValidator::Invalid;
+        if (_showSeconds && _statusDate)
+            reducingFactor = 6;
 
-            return QValidator::Acceptable;
-        }
-    private:
-        QRegularExpression re;
-    };
+        else if (_statusDate)
+            reducingFactor = 4.5;
 
+        else if (_showSeconds)
+            reducingFactor = 4;
+
+        return Utils::scale_value(maxWidth - static_cast<int>(reducingFactor * lineEditWidthTimeNonScalable()));
+    }
+
+    void setTextLineEditBottomMargins(Ui::LineEditEx* _edit)
+    {
+        auto textLineEditMargins = _edit->textMargins();
+        textLineEditMargins.setBottom(lineEditBottomPadding());
+        _edit->setTextMargins(textLineEditMargins);
+    }
 }
-
 
 namespace Ui
 {
-    DateTimePicker::DateTimePicker(QWidget* _parent, bool _showSeconds)
+    DateTimePicker::DateTimePicker(QWidget* _parent, bool _showSeconds, bool _statusDate)
         : QWidget(_parent)
     {
         static const LineEditEx::Options options{ {Qt::Key_Enter, Qt::Key_Return} };
@@ -101,22 +139,24 @@ namespace Ui
             auto text = new LabelEx(this);
             text->setText(qsl(":"));
             text->setFont(lineEditFont());
-            text->setColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_TERTIARY));
             text->setAlignment(Qt::AlignCenter);
-            text->setFixedHeight(lineEditHeight());
-            text->setContentsMargins(Utils::scale_value(QMargins(0, 0, 0, 2)));
+            text->setFixedHeight(lineEditHeightScaled());
+            text->setContentsMargins(Utils::scale_value(QMargins(0, 0, 0, lineEditBottomPadding() + 2)));
             _layout->addSpacing(Utils::scale_value(3));
             _layout->addWidget(text, 0, Qt::AlignRight);
             _layout->addSpacing(Utils::scale_value(3));
+
+            return text;
         };
 
         auto createTimeDigitsWidget = [this](auto _scrollCallback)
         {
             auto result = new LineEditEx(this, options);
             result->setFont(lineEditFont());
-            result->setFixedWidth(Utils::scale_value(32));
+            result->setFixedWidth(lineEditWidthTime());
             result->setAlignment(Qt::AlignHCenter);
-            applyStyle(result, false);
+            setTextLineEditBottomMargins(result);
+
             connect(result, &LineEditEx::enter, this, &DateTimePicker::enter);
             connect(result, &LineEditEx::textChanged, this, &DateTimePicker::onTimeChangedByUser);
             connect(result, &LineEditEx::scrolled, this, std::forward<decltype(_scrollCallback)>(_scrollCallback));
@@ -127,18 +167,20 @@ namespace Ui
                     result->selectAll();
                 });
             });
+
             return result;
         };
 
-        auto createDateWidget = [this]()
+        auto createDateWidget = [this, _showSeconds, _statusDate]()
         {
             auto dateEdit = new LineEditEx(this, options);
             dateEdit->setFont(lineEditFont());
-            dateEdit->setFixedWidth(Utils::scale_value(120));
+            dateEdit->setFixedWidth(lineEditWidthDate(_showSeconds, _statusDate));
             dateEdit->setContextMenuPolicy(Qt::ContextMenuPolicy::NoContextMenu);
-            Utils::ApplyStyle(dateEdit, Styling::getParameters().getLineEditCommonQss(false, lineEditHeight()));
             dateEdit->setReadOnly(true);
             dateEdit->setCursor(Qt::PointingHandCursor);
+            dateEdit->setFocusPolicy(Qt::NoFocus);
+            setTextLineEditBottomMargins(dateEdit);
 
             connect(dateEdit, &LineEditEx::clicked, this, [this](Qt::MouseButton _button)
             {
@@ -152,8 +194,12 @@ namespace Ui
         dateEdit_ = createDateWidget();
         hoursEdit_ = createTimeDigitsWidget(&DateTimePicker::onHoursScroll);
         hoursEdit_->setValidator(new QRegExpValidator(QRegExp(qsl("^[0-9]|0[0-9]|1[0-9]|2[0-3]$"))));
-        minutesEdit_ = createTimeDigitsWidget(&DateTimePicker::onMunutesScroll);
+        connect(hoursEdit_, &LineEditEx::focusOut, this, &DateTimePicker::validateHours);
+
+        minutesEdit_ = createTimeDigitsWidget(&DateTimePicker::onMinutesScroll);
         minutesEdit_->setValidator(new QRegExpValidator(QRegExp(qsl("^[0-5][0-9]$"))));
+        connect(minutesEdit_, &LineEditEx::focusOut, this, &DateTimePicker::validateMinutes);
+
         if (_showSeconds)
         {
             secondsEdit_ = createTimeDigitsWidget(&DateTimePicker::onSecondsScroll);
@@ -162,7 +208,7 @@ namespace Ui
 
         auto timeLayout = Utils::emptyHLayout();
         timeLayout->addWidget(hoursEdit_, 0, Qt::AlignRight);
-        addTimeSeparator(timeLayout);
+        separatorTime_ = addTimeSeparator(timeLayout);
         timeLayout->addWidget(minutesEdit_, 0, Qt::AlignRight);
         if (_showSeconds)
         {
@@ -223,29 +269,35 @@ namespace Ui
             Testing::setAccessibleName(secondsEdit_, u"AS " % _prefix % u" timeSecondsEdit");
     }
 
-    bool DateTimePicker::isTimeEmpty() const
-    {
-        return hoursEdit_->text().isEmpty() && minutesEdit_->text().isEmpty() && (!secondsEdit_ || secondsEdit_->text().isEmpty());
-    }
-
     void DateTimePicker::showCalendar()
     {
         calendar_ = new CalendarWidget(this);
         calendar_->selectDay(date_);
 
+        isCalendarVisible_ = true;
+
         connect(calendar_, &CalendarWidget::dateSelected, this, &DateTimePicker::setDate);
         connect(calendar_, &CalendarWidget::hidden, calendar_, &CalendarWidget::deleteLater, Qt::QueuedConnection);
+        connect(calendar_, &CalendarWidget::hidden, this, &DateTimePicker::onCalendarHide);
 
         const auto screen = Utils::InterConnector::instance().getMainWindow()->getScreen();
         const auto boundaryGeometry = QGuiApplication::screens()[screen]->geometry();
 
         auto offset = QPoint((width() - calendar_->width()) / 2,
-            dateEdit_->geometry().bottom() + dateEdit_->height() / 2);
+        dateEdit_->geometry().bottom() + dateEdit_->height() / 2);
         offset = mapToGlobal(offset);
         offset.ry() -= qMax(0, offset.y() + calendar_->height() - boundaryGeometry.bottom());
         calendar_->move(offset);
 
+        applyStyleLineEdit(dateEdit_, true);
+
         calendar_->show();
+    }
+
+    void DateTimePicker::onCalendarHide()
+    {
+        isCalendarVisible_ = false;
+        applyStyleLineEdit(dateEdit_, false);
     }
 
     void DateTimePicker::validate()
@@ -259,14 +311,26 @@ namespace Ui
         timeValidity_.minutes_ = !isToday || t.hour() != now.hour() || t.minute() > now.minute() || (secondsEdit_ && t.minute() == now.minute());
         if (secondsEdit_)
             timeValidity_.seconds_ = !isToday || t.hour() != now.hour() || t.minute() != now.minute() || t.second() >= now.second();
-        applyStyle(dateEdit_, !timeValidity_.date_);
-        applyStyle(hoursEdit_, !timeValidity_.hours_);
-        applyStyle(minutesEdit_, !timeValidity_.minutes_);
+        applyStyleLineEdit(dateEdit_,  isCalendarVisible_, !timeValidity_.date_);
+        applyStyleLineEdit(hoursEdit_, false, !timeValidity_.hours_);
+        applyStyleLineEdit(minutesEdit_, false, !timeValidity_.minutes_);
         if (secondsEdit_)
-            applyStyle(secondsEdit_, !timeValidity_.seconds_);
+            applyStyleLineEdit(secondsEdit_, false, !timeValidity_.seconds_);
 
         if (const auto isValid = timeValidity_.all(); isValid != wasDateTimeValid)
             Q_EMIT dateTimeValidityChanged();
+    }
+
+    void DateTimePicker::validateHours()
+    {
+        if (hoursEdit_ && hoursEdit_->text().size() == 1)
+            hoursEdit_->setText(ql1c('0') % hoursEdit_->text());
+    }
+
+    void DateTimePicker::validateMinutes()
+    {
+        if (minutesEdit_ && minutesEdit_->text().size() == 1)
+            minutesEdit_->setText(ql1c('0') % minutesEdit_->text());
     }
 
     void DateTimePicker::maybeMoveFocusAfterUserInput()
@@ -277,6 +341,7 @@ namespace Ui
         LineEditEx* edit = hoursEdit_->hasFocus() && timeValidity_.hours_
             ? hoursEdit_
             : (minutesEdit_->hasFocus() && timeValidity_.minutes_ ? minutesEdit_ : nullptr);
+
         if (edit && edit->text().size() == 2)
         {
             if (auto next = qobject_cast<LineEditEx*>(edit->nextInFocusChain()))
@@ -298,14 +363,14 @@ namespace Ui
         }
     }
 
-    void DateTimePicker::onMunutesScroll(int _step)
+    void DateTimePicker::onMinutesScroll(int _step)
     {
         updateTimeOnScroll(minutesEdit_, _step, [this](int _s) { onHoursScroll(_s); });
     }
 
     void DateTimePicker::onSecondsScroll(int _step)
     {
-        updateTimeOnScroll(secondsEdit_, _step, [this](int _s) { onMunutesScroll(_s); });
+        updateTimeOnScroll(secondsEdit_, _step, [this](int _s) { onMinutesScroll(_s); });
     }
 
     void DateTimePicker::updateTimeOnScroll(LineEditEx* _edit, int _step, std::function<void(int)> _nextUpdate)
@@ -344,4 +409,26 @@ namespace Ui
         };
     }
 
+    void DateTimePicker::setEnabledDate(bool _isEnabled)
+    {
+        dateEdit_->setEnabled(_isEnabled);
+        applyStyleLineEdit(dateEdit_, isCalendarVisible_);
+    }
+
+    void DateTimePicker::setEnabledTime(bool _isEnabled)
+    {
+        hoursEdit_->setEnabled(_isEnabled);
+        minutesEdit_->setEnabled(_isEnabled);
+        applyStyleLineEdit(hoursEdit_);
+        applyStyleLineEdit(minutesEdit_);
+        separatorTime_->setColor(_isEnabled ?
+            Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } :
+            Styling::ThemeColorKey{ Styling::StyleVariable::BASE_TERTIARY, alphaChannelDisableFields() });
+
+        if (secondsEdit_)
+        {
+            secondsEdit_->setEnabled(_isEnabled);
+            applyStyleLineEdit(secondsEdit_);
+        }
+    }
 }

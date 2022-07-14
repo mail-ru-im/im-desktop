@@ -12,6 +12,7 @@ namespace core::wim
 	public:
 		create_task(wim_packet_params _params, const core::tasks::task_data& _task);
 		std::string_view get_method() const override;
+		int minimal_supported_api_version() const override;
 		bool auto_resend_on_fail() const override { return true; }
 
 	private:

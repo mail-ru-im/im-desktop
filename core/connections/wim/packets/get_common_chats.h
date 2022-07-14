@@ -18,8 +18,8 @@ namespace core
     {
         class get_common_chats: public robusto_packet
         {
-            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
-            virtual int32_t parse_results(const rapidjson::Value& _node_results) override;
+            int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            int32_t parse_results(const rapidjson::Value& _node_results) override;
             std::string sn_;
 
         public:
@@ -29,7 +29,8 @@ namespace core
 
             virtual ~get_common_chats();
 
-            virtual std::string_view get_method() const override;
+            std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
         };
 
     }

@@ -1,7 +1,12 @@
 #include "stdafx.h"
 
 #include "curl.h"
+#include "core.h"
+#include "tools/scope.h"
+#include "tools/strings.h"
 #include "../corelib/collection_helper.h"
+#include "../common.shared/string_utils.h"
+#include "../common.shared/uri_matcher/uri_matcher.h"
 
 #include "core_settings.h"
 
@@ -42,16 +47,12 @@ namespace core
         settings_[auto_settings] = proxy_settings::auto_proxy();                // then we apply default (auto) settings
 #ifdef _WIN32
         settings_[system_settings] = load_from_registry();                      // and only on Windows we apply system settings at the end
+        const auto& s = settings_[system_settings];
+        g_core->write_string_to_network_log(su::concat("System proxy: ", s.use_proxy_ ? s.to_string() : std::string { "disabled" }, "\r\n"));
 #endif
 
         if (settings_[user_settings].proxy_type_ == static_cast<int32_t>(core::proxy_type::auto_proxy))
-        {
             current_settings_ = auto_settings;
-        }
-    }
-
-    proxy_settings_manager::~proxy_settings_manager()
-    {
     }
 
     proxy_settings proxy_settings_manager::get_current_settings() const
@@ -70,7 +71,7 @@ namespace core
             }
             else
             {
-                settings_[0] = _settings;
+                settings_[user_settings] = _settings;
                 current_settings_ = user_settings;
             }
         }
@@ -98,42 +99,49 @@ namespace core
     proxy_settings proxy_settings_manager::load_from_registry()
     {
         proxy_settings settings;
+        settings.is_system_ = true;
 
-        settings.use_proxy_ = false;
         CRegKey key;
-        if (key.Open(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Internet Settings") == ERROR_SUCCESS)
+        if (key.Open(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Internet Settings") != ERROR_SUCCESS)
+            return settings;
+
+        DWORD proxy_used = 0;
+        if ((key.QueryDWORDValue(L"ProxyEnable", proxy_used) != ERROR_SUCCESS) || (proxy_used == 0))
+            return settings;
+
         {
-            DWORD proxy_used = 0;
-            if (key.QueryDWORDValue(L"ProxyEnable", proxy_used) == ERROR_SUCCESS)
+            wchar_t buffer[MAX_PATH];
+            unsigned long len = MAX_PATH;
+            if (key.QueryStringValue(L"ProxyServer", buffer, &len) == ERROR_SUCCESS)
             {
-                if (proxy_used == 0)
+                std::wstring_view server{ buffer };
+                if (!settings.parse_servers_list(core::tools::from_utf16(server)))
                     return settings;
+            }
+            else
+            {
+                return settings;
+            }
+        }
+        {
+            wchar_t buffer[MAX_PATH];
+            unsigned long len = MAX_PATH;
+            if (key.QueryStringValue(L"ProxyOverride", buffer, &len) == ERROR_SUCCESS)
+                settings.ignore_list_.parse_hosts(core::tools::from_utf16(buffer));
+        }
+        {
+            wchar_t buffer[MAX_PATH];
+            unsigned long len = MAX_PATH;
+            if (key.QueryStringValue(L"ProxyUser", buffer, &len) == ERROR_SUCCESS)
+            {
+                settings.login_ = core::tools::from_utf16(buffer);
+                if (settings.login_.empty())
+                    return settings;
+                std::string user_info = settings.login_;
+                settings.need_auth_ = true;
 
-                wchar_t buffer[MAX_PATH];
-                unsigned long len = MAX_PATH;
-                if (key.QueryStringValue(L"ProxyServer", buffer, &len) == ERROR_SUCCESS)
-                {
-                    settings.proxy_server_ = std::wstring(buffer);
-                    if (settings.proxy_server_.empty())
-                        return settings;
-
-                    settings.use_proxy_ = true;
-                    settings.proxy_type_ = CURLPROXY_HTTP;
-
-                    if (key.QueryStringValue(L"ProxyUser", buffer, &len) == ERROR_SUCCESS)
-                    {
-                        settings.login_ = std::wstring(buffer);
-                        if (settings.login_.empty())
-                            return settings;
-
-                        settings.need_auth_ = true;
-
-                        if (key.QueryStringValue(L"ProxyPass", buffer, &len) == ERROR_SUCCESS)
-                        {
-                            settings.password_ = std::wstring(buffer);
-                        }
-                    }
-                }
+                if (key.QueryStringValue(L"ProxyPass", buffer, &len) == ERROR_SUCCESS)
+                    settings.password_ = core::tools::from_utf16(buffer);
             }
         }
 
@@ -171,10 +179,10 @@ namespace core
             || !tlv_need_auth)
             return false;
 
-        proxy_server_ = tools::from_utf8(tlv_proxy_server->get_value<std::string>(""));
+        proxy_server_ = tlv_proxy_server->get_value<std::string>("");
         proxy_port_ = tlv_proxy_port->get_value<int32_t>(proxy_settings::default_proxy_port);
-        login_ = tools::from_utf8(tlv_login->get_value<std::string>(""));
-        password_ = tools::from_utf8(tlv_password->get_value<std::string>(""));
+        login_ = tlv_login->get_value<std::string>("");
+        password_ = tlv_password->get_value<std::string>("");
         proxy_type_ = tlv_proxy_type->get_value<int32_t>(static_cast<int32_t>(core::proxy_type::auto_proxy));
 
         need_auth_ = tlv_need_auth->get_value<bool>(false);
@@ -192,10 +200,10 @@ namespace core
         core::tools::binary_stream temp_stream;
 
         pack.push_child(tools::tlv(proxy_settings_values::proxy_settings_proxy_type, proxy_type_));
-        pack.push_child(tools::tlv(proxy_settings_values::proxy_settings_proxy_server, tools::from_utf16(proxy_server_)));
+        pack.push_child(tools::tlv(proxy_settings_values::proxy_settings_proxy_server, proxy_server_));
         pack.push_child(tools::tlv(proxy_settings_values::proxy_settings_proxy_port, proxy_port_));
-        pack.push_child(tools::tlv(proxy_settings_values::proxy_settings_proxy_login, tools::from_utf16(login_)));
-        pack.push_child(tools::tlv(proxy_settings_values::proxy_settings_proxy_password, tools::from_utf16(password_)));
+        pack.push_child(tools::tlv(proxy_settings_values::proxy_settings_proxy_login, login_));
+        pack.push_child(tools::tlv(proxy_settings_values::proxy_settings_proxy_password, password_));
         pack.push_child(tools::tlv(proxy_settings_values::proxy_settings_proxy_need_auth, need_auth_));
         pack.push_child(tools::tlv(proxy_settings_values::proxy_settings_proxy_auth_type, static_cast<int32_t>(auth_type_)));
 
@@ -210,11 +218,167 @@ namespace core
     void proxy_settings::serialize(core::coll_helper _collection) const
     {
         _collection.set_value_as_int("settings_proxy_type", proxy_type_);
-        _collection.set_value_as_string("settings_proxy_server", core::tools::from_utf16(proxy_server_));
+        _collection.set_value_as_string("settings_proxy_server", proxy_server_);
         _collection.set_value_as_int("settings_proxy_port", proxy_port_);
-        _collection.set_value_as_string("settings_proxy_username", core::tools::from_utf16(login_));
-        _collection.set_value_as_string("settings_proxy_password", core::tools::from_utf16(password_));
+        _collection.set_value_as_string("settings_proxy_username", login_);
+        _collection.set_value_as_string("settings_proxy_password", password_);
         _collection.set_value_as_bool("settings_proxy_need_auth", need_auth_);
         _collection.set_value_as_enum<core::proxy_auth>("settings_proxy_auth_type", auth_type_);
+        _collection.set_value_as_bool("is_system", is_system_);
+    }
+
+    bool proxy_settings::need_use_proxy(std::string_view _url, std::string_view _ip_address)
+    {
+        return use_proxy_ && !ignore_list_.need_ignore(_url, _ip_address);
+    }
+
+    bool proxy_settings::parse_servers_list(std::string_view _hosts)
+    {
+        for (auto index = _hosts.find(L';'); index != _hosts.npos; index = _hosts.find(L';')) // https=127.0.0.1;http=127.0.0.1
+        {
+            if (parse_server(_hosts.substr(0, index)))
+                return true;
+            _hosts.remove_prefix(index + 1);
+        }
+        return parse_server(_hosts);
+    }
+
+    std::string proxy_settings::to_string() const
+    {
+        if (!use_proxy_)
+            return {};
+        std::string result;
+
+        if (need_auth_)
+        {
+            result += login_;
+            if (!password_.empty())
+                result += su::concat(':', password_);
+            result += '@';
+        }
+
+        result += proxy_server_;
+        if (proxy_port_ != default_proxy_port)
+            result += su::concat(':', std::to_string(proxy_port_));
+        result += "; ignore list: ";
+        result += ignore_list_.to_string();
+
+        return result;
+    }
+
+    bool proxy_settings::parse_server(std::string_view _server)
+    {
+        if (const auto space_index = _server.find_first_not_of(' '); (space_index != _server.npos) && (space_index != 0))
+            _server.remove_prefix(space_index);
+        if (const auto space_index = _server.find(' '); space_index != _server.npos)
+            _server.remove_suffix(_server.size() - space_index);
+        if (_server.empty())
+            return false;
+
+        using namespace std::literals;
+        if (const auto pos = _server.find(L'='); pos != _server.npos)
+        {
+            if (auto proxy_type = _server.substr(0, pos); proxy_type != "http"sv && proxy_type != "https"sv) // support only http[s] proxy
+                return false;
+            _server.remove_prefix(pos + 1); // remove proxy type
+        }
+
+        if (const auto pos = _server.find("://"sv); pos != _server.npos)
+            _server.remove_prefix(pos + 3); // remove scheme
+
+        if (const auto pos = _server.find(L':'); pos != _server.npos)
+        {
+            std::string_view port{ _server.substr(pos + 1) };
+            _server.remove_suffix(_server.size() - pos);
+
+            const char* ptr = port.data();
+            char* end_ptr;
+            const long result = std::strtol(ptr, &end_ptr, 10);
+            if (ptr != end_ptr)
+                proxy_port_ = result;
+        }
+
+        proxy_server_ = _server;
+        use_proxy_ = true;
+        proxy_type_ = CURLPROXY_HTTP;
+
+        return true;
+    }
+}
+
+namespace core::proxy_detail
+{
+    void ignore_list::parse_hosts(std::string_view _hosts)
+    {
+        for (auto index = _hosts.find(L';'); index != _hosts.npos; index = _hosts.find(L';'))
+        {
+            add_host(_hosts.substr(0, index));
+            _hosts.remove_prefix(index + 1);
+        }
+        add_host(_hosts);
+    }
+
+    bool proxy_detail::ignore_list::need_ignore(std::string_view _url, std::string_view _ip_address)
+    {
+        basic_uri_view uri_view{ _url };
+        const auto host = uri_view.host();
+        if (std::find(host_list_.cbegin(), host_list_.cend(), host) != host_list_.cend())
+            return true;
+        if (std::find(ip_list_.cbegin(), ip_list_.cend(), _ip_address) != ip_list_.cend())
+            return true;
+
+        auto ip_predicate = [_ip_address](std::string_view _ip_mask)
+        {
+            return su::starts_with(_ip_address, _ip_mask);
+        };
+        if (std::find_if(ip_mask_list_.cbegin(), ip_mask_list_.cend(), ip_predicate) != ip_mask_list_.cend())
+            return true;
+
+        auto host_predicate = [host](std::string_view _host_mask)
+        {
+            return su::ends_with(host, _host_mask);
+        };
+        if (std::find_if(host_mask_list_.cbegin(), host_mask_list_.cend(), host_predicate) != host_mask_list_.cend())
+            return true;
+
+        return false;
+    }
+
+    std::string ignore_list::to_string() const
+    {
+        std::string result { "[ " };
+        for (const auto& host : host_list_)
+            result += su::concat(host, ' ');
+        for (const auto& host : host_mask_list_)
+            result += su::concat('*', host, ' ');
+        for (const auto& ip : ip_list_)
+            result += su::concat(ip, ' ');
+        for (const auto& ip: ip_mask_list_)
+            result += su::concat(ip, ' ');
+        result += "]";
+        return result;
+    }
+
+    void ignore_list::add_host(std::string_view _host)
+    {
+        if (const auto space_index = _host.find_first_not_of(' '); (space_index != _host.npos) && (space_index != 0))
+            _host.remove_prefix(space_index);
+        if (const auto space_index = _host.find(' '); space_index != _host.npos)
+            _host.remove_suffix(_host.size() - space_index);
+        if (_host.empty())
+            return;
+
+        using namespace std::string_view_literals;
+        using uri_matcher = basic_uri_matcher<std::string_view::value_type>;
+        if (su::starts_with(_host, L"*."sv))
+            host_mask_list_.emplace_back(_host.substr(1));
+        else if (uri_matcher::has_domain(_host.cbegin(), _host.cend()))
+            host_list_.emplace_back(_host);
+        else if (uri_matcher::has_ipaddr(_host.cbegin(), _host.cend()))
+            ip_list_.emplace_back(_host);
+        else if (uri_matcher::has_ipaddr_mask(_host.cbegin(), _host.cend()))
+            ip_mask_list_.emplace_back(_host);
+        else
+            im_assert(!"Address did not added");
     }
 }

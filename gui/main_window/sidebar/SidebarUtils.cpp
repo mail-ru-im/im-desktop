@@ -9,19 +9,18 @@
 #include "../../controls/SwitcherCheckbox.h"
 #include "../../controls/CheckboxList.h"
 #include "controls/TransparentScrollBar.h"
-#include "../../fonts.h"
 #include "../../app_config.h"
-#include "../../utils/utils.h"
 #include "../../utils/InterConnector.h"
 #include "../../utils/features.h"
 #include "../../utils/stat_utils.h"
 #include "../contact_list/ContactListModel.h"
 #include "../contact_list/FavoritesUtils.h"
 #include "../../styles/ThemesContainer.h"
+#include "../../styles/StyleSheetGenerator.h"
+#include "../../styles/StyleSheetContainer.h"
 #include "../../cache/avatars/AvatarStorage.h"
 #include "../../main_window/containers/FriendlyContainer.h"
 #include "../../main_window/containers/LastseenContainer.h"
-#include "../../main_window/containers/StatusContainer.h"
 #include "../../main_window/MainWindow.h"
 #include "../../main_window/GroupChatOperations.h"
 #include "../../main_window/contact_list/ChatMembersModel.h"
@@ -29,15 +28,13 @@
 #include "../../main_window/contact_list/ContactListUtils.h"
 #include "../../main_window/history_control/MessageStyle.h"
 #include "../../controls/TextEditEx.h"
-#include "../../controls/ContactAvatarWidget.h"
 #include "../../controls/GeneralDialog.h"
 #include "../../controls/TooltipWidget.h"
+#include "../../controls/TextWidget.h"
 #include "controls/BigEmojiWidget.h"
 #include "statuses/StatusTooltip.h"
 
 #include "../../utils/animations/WidgetFader.h"
-#include "../../utils/Text2DocConverter.h"
-#include "../../styles/ThemeParameters.h"
 #include "previewer/toast.h"
 #include "types/chat.h"
 
@@ -177,6 +174,13 @@ namespace
     {
         return QColor(0, 0, 0, 255 * 0.3);
     }
+
+    std::unique_ptr<Styling::ArrayStyleSheetGenerator> getSpacerQss()
+    {
+        return std::make_unique<Styling::ArrayStyleSheetGenerator>(
+            ql1s("background: %1;"),
+            std::vector<Styling::ThemeColorKey> { Styling::ThemeColorKey { Styling::StyleVariable::BASE_BRIGHT_INVERSE } });
+    }
 }
 
 namespace Ui
@@ -211,15 +215,17 @@ namespace Ui
         update();
     }
 
-    void SidebarButton::setIcon(const QPixmap& _icon)
+    void SidebarButton::setIcon(const Utils::StyledPixmap& _icon)
     {
         icon_ = _icon;
         update();
     }
 
-    void SidebarButton::initText(const QFont& _font, const QColor& _textColor, const QColor& _disabledColor)
+    void SidebarButton::initText(const QFont& _font, const Styling::ThemeColorKey& _textColor, const Styling::ThemeColorKey& _disabledColor)
     {
-        text_->init(_font, _textColor, QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+        TextRendering::TextUnit::InitializeParameters params{ _font, _textColor };
+        params.maxLinesCount_ = 1;
+        text_->init(params);
 
         textColor_ = _textColor;
         disabledColor_ = _disabledColor;
@@ -235,9 +241,9 @@ namespace Ui
         update();
     }
 
-    void SidebarButton::initCounter(const QFont& _font, const QColor& _textColor)
+    void SidebarButton::initCounter(const QFont& _font, const Styling::ThemeColorKey& _textColor)
     {
-        counter_->init(_font, _textColor);
+        counter_->init({ _font, _textColor });
     }
 
     void SidebarButton::setCounter(int _count, bool _autoHide)
@@ -252,10 +258,9 @@ namespace Ui
         update();
     }
 
-    void SidebarButton::setColors(const QColor& _hover, const QColor& _active_)
+    void SidebarButton::setColors(const Styling::ThemeColorKey& _hover)
     {
         hover_ = _hover;
-        active_ = _active_;
         update();
     }
 
@@ -283,16 +288,15 @@ namespace Ui
 
         if (isEnabled_)
         {
-            if (isActive() && active_.isValid())
-                p.fillRect(rect(), active_);
-            else if (isHovered() && hover_.isValid())
-                p.fillRect(rect(), hover_);
+            if (isHovered() && hover_.isValid())
+                p.fillRect(rect(), hover_.actualColor());
         }
 
-        if (!icon_.isNull())
-            p.drawPixmap(margins_.left(), height() / 2 - icon_.height() / 2 / Utils::scale_bitmap(1), icon_);
+        const auto pixmap = icon_.actualPixmap();
+        if (!pixmap.isNull())
+            p.drawPixmap(margins_.left(), height() / 2 - pixmap.height() / 2 / Utils::scale_bitmap(1), pixmap);
 
-        text_->setOffsets(margins_.left() + icon_.width() / Utils::scale_bitmap(1) + textOffset_, height() / 2);
+        text_->setOffsets(margins_.left() + pixmap.width() / Utils::scale_bitmap(1) + textOffset_, height() / 2);
         text_->draw(p, TextRendering::VerPosition::MIDDLE);
 
         counter_->setOffsets(width() - margins_.right() - counter_->cachedSize().width(), height() / 2);
@@ -301,7 +305,7 @@ namespace Ui
 
     void SidebarButton::resizeEvent(QResizeEvent* _event)
     {
-        text_->getHeight(width() - margins_.left() - margins_.right() - icon_.width() - textOffset_ - counter_->cachedSize().width());
+        text_->getHeight(width() - margins_.left() - margins_.right() - icon_.cachedPixmap().width() - textOffset_ - counter_->cachedSize().width());
         QWidget::resizeEvent(_event);
     }
 
@@ -435,23 +439,72 @@ namespace Ui
         , textOffset_(0)
         , animStep_(0)
         , avatarSize_(0)
+        , verticalLayout_(new QVBoxLayout())
+        , label_(new QLabel(this))
+        , name_(new TextLabel(this, -1, false))
+        , info_(new TextLabel(this))
         , defaultAvatar_(false)
         , clickable_(false)
         , hovered_(false)
         , nameOnly_(false)
-        , statusPlate_(new StatusPlate(this))
-        , tooltipTimer_(nullptr)
-        , tooltipActivated_(false)
+        , fromNames_(false)
     {
-        name_ = TextRendering::MakeTextUnit(QString(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        info_ = TextRendering::MakeTextUnit(QString(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
+        initializeWidget();
 
         connect(Logic::GetAvatarStorage(), &Logic::AvatarStorage::avatarChanged, this, &AvatarNameInfo::avatarChanged);
         connect(Logic::GetFriendlyContainer(), &Logic::FriendlyContainer::friendlyChanged, this, &AvatarNameInfo::friendlyChanged);
         connect(Logic::GetStatusContainer(), &Logic::StatusContainer::statusChanged, this, &AvatarNameInfo::statusChanged);
         connect(statusPlate_, &StatusPlate::update, this, qOverload<>(&AvatarNameInfo::update));
+        connect(name_, &TextLabel::menuAction, this, &AvatarNameInfo::onMenuAction);
+    }
 
-        setMouseTracking(true);
+    void AvatarNameInfo::initializeWidget()
+    {
+        auto horizontalLayout = Utils::emptyHLayout(this);
+
+        auto labelHorizontalLayout = new QHBoxLayout();
+        labelHorizontalLayout->setSpacing(0);
+
+        label_->setCursor(Qt::PointingHandCursor);
+        QSizePolicy labelSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
+        labelSizePolicy.setHorizontalStretch(0);
+        labelSizePolicy.setVerticalStretch(0);
+        labelSizePolicy.setHeightForWidth(label_->sizePolicy().hasHeightForWidth());
+        label_->setSizePolicy(labelSizePolicy);
+
+        labelHorizontalLayout->addWidget(label_);
+
+        horizontalLayout->addLayout(labelHorizontalLayout);
+
+        verticalLayout_->setSpacing(Utils::scale_value(2));
+        const auto spacerDimension = 1;
+        const auto topSpacer = new QSpacerItem(spacerDimension, spacerDimension, QSizePolicy::Minimum, QSizePolicy::Expanding);
+        verticalLayout_->addItem(topSpacer);
+
+        name_->makeTextField();
+        name_->showByWidth();
+        QSizePolicy textSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
+        textSizePolicy.setHorizontalStretch(0);
+        textSizePolicy.setVerticalStretch(0);
+        textSizePolicy.setHeightForWidth(name_->sizePolicy().hasHeightForWidth());
+        name_->setSizePolicy(textSizePolicy);
+
+        verticalLayout_->addWidget(name_);
+
+        textSizePolicy.setHeightForWidth(info_->sizePolicy().hasHeightForWidth());
+        info_->setSizePolicy(textSizePolicy);
+        verticalLayout_->addWidget(info_);
+
+        statusPlate_ = new StatusPlate(this);
+        statusPlate_->setMouseTracking(true);
+        textSizePolicy.setHeightForWidth(statusPlate_->sizePolicy().hasHeightForWidth());
+        statusPlate_->setSizePolicy(textSizePolicy);
+        verticalLayout_->addWidget(statusPlate_);
+
+        const auto bottomSpacer = new QSpacerItem(spacerDimension, spacerDimension, QSizePolicy::Minimum, QSizePolicy::Expanding);
+        verticalLayout_->addItem(bottomSpacer);
+
+        horizontalLayout->addLayout(verticalLayout_);
 
         setMinimumHeight(Utils::scale_value(AVATAR_INFO_HEIGHT));
         setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
@@ -462,6 +515,7 @@ namespace Ui
         if (margins_ == _margins)
             return;
         margins_ = _margins;
+        setContentsMargins(margins_);
         update();
     }
 
@@ -471,15 +525,19 @@ namespace Ui
             return;
 
         textOffset_ = _textOffset;
+        auto textMargins = verticalLayout_->contentsMargins();
+        textMargins.setLeft(textMargins.left() + _textOffset);
+        textMargins.setBottom(1);
+        verticalLayout_->setContentsMargins(textMargins);
         update();
     }
 
-    void AvatarNameInfo::initName(const QFont& _font, const QColor& _color)
+    void AvatarNameInfo::initName(const QFont& _font, const Styling::ThemeColorKey& _color)
     {
         name_->init(_font, _color);
     }
 
-    void AvatarNameInfo::initInfo(const QFont& _font, const QColor& _color)
+    void AvatarNameInfo::initInfo(const QFont& _font, const Styling::ThemeColorKey& _color)
     {
         info_->init(_font, _color);
     }
@@ -494,7 +552,6 @@ namespace Ui
         avatarSize_ = _size;
         friendlyName_ = friendlyName;
         name_->setText(friendlyName_);
-        name_->elide(width() - margins_.left() - margins_.right() - avatarSize_ - textOffset_ - (clickable_ ? Utils::scale_value(ICON_SIZE + ICON_OFFSET) : 0));
         statusPlate_->setContactId(aimId_);
         setBadgeRect();
         loadAvatar();
@@ -511,22 +568,44 @@ namespace Ui
         avatarSize_ = _size;
         friendlyName_ = _friendly;
         name_->setText(friendlyName_);
-        name_->elide(width() - margins_.left() - margins_.right() - avatarSize_ - textOffset_ - (clickable_ ? Utils::scale_value(ICON_SIZE + ICON_OFFSET) : 0));
 
-        avatar_ = Logic::GetAvatarStorage()->GetRounded(aimId_, friendlyName_, Utils::scale_bitmap(avatarSize_), defaultAvatar_, false, false);
-        Utils::check_pixel_ratio(avatar_);
         setBadgeRect();
+        loadAvatar();
         update();
     }
 
-    void AvatarNameInfo::setInfo(const QString& _info, const QColor& _color)
+    void AvatarNameInfo::setInfo(const QString& _info, const Styling::ThemeColorKey& _color)
     {
-        if (info_->getColor() == _color && info_->getText() == _info)
+        if (info_->getColorKey() == _color && info_->getText() == _info)
             return;
 
-        info_->setText(_info, _color);
-        name_->elide(width() - margins_.left() - margins_.right() - avatarSize_ - textOffset_ - (clickable_ ? Utils::scale_value(ICON_SIZE + ICON_OFFSET) : 0));
+        if (Logic::GetLastseenContainer()->isBot(aimId_))
+            verticalLayout_->setSpacing(0);
+        else
+            info_->setText(_info, _color);
+
+        drawAvatar();
         updateSize();
+        update();
+    }
+
+    void AvatarNameInfo::setNames(const QString& _first, const QString& _middle, const QString& _last)
+    {
+        fromNames_ = true;
+
+        QStringList names;
+        if (Features::leadingLastName())
+            names << _last << _first << _middle;
+        else
+            names << _first << _middle << _last;
+        names.removeAll({});
+
+        friendlyName_ = names.join(QChar::Space);
+
+        if (!_middle.isEmpty())
+            name_->enlargeToLinesCount(2);
+
+        name_->setText(friendlyName_);
         update();
     }
 
@@ -550,23 +629,47 @@ namespace Ui
     void AvatarNameInfo::stateChanged()
     {
         static constexpr std::chrono::milliseconds animationDuration = std::chrono::milliseconds(52);
-        if (!isEnabled())
+        const auto enabled = isEnabled();
+        if (!enabled)
             timer_.start(int(animationDuration.count()), this);
         else
             timer_.stop();
+
+        name_->setVisible(enabled);
+        info_->setVisible(enabled);
+        statusPlate_->setVisible(enabled);
+        label_->setVisible(enabled);
     }
 
-    QSize AvatarNameInfo::sizeHint() const
+    void AvatarNameInfo::onMenuAction(QAction* _action)
     {
-        const auto statusTopLeft = statusPos();
-        const auto statusBottom = statusTopLeft.y() + statusPlate_->height() + statusBottomMargin();
-        const auto avatarHeight = Utils::scale_value(AVATAR_INFO_HEIGHT);
-        return QSize(width(), std::max(statusBottom, avatarHeight));
+        const auto params = _action->data().toMap();
+        const auto command = params[qsl("command")].toString();
+
+        if (command == u"copy")
+        {
+            auto text = getSelectedText();
+            if (text.isEmpty())
+                text = name_->getSourceText();
+            QApplication::clipboard()->setText(text);
+            Utils::showCopiedToast();
+        }
     }
 
     QSize AvatarNameInfo::minimumSizeHint() const
     {
         return QSize(Utils::scale_value(AVATAR_INFO_HEIGHT), Utils::scale_value(AVATAR_INFO_HEIGHT));
+    }
+
+    QString AvatarNameInfo::getSelectedText() const
+    {
+        const auto selectedText = name_->getSelectedText();
+        return selectedText == name_->getText() ? name_->getSourceText() : selectedText;
+    }
+
+    void AvatarNameInfo::tryClearSelection(const QPoint& _pos)
+    {
+        name_->tryClearSelection(_pos);
     }
 
     void AvatarNameInfo::paintEnabled(QPainter& p)
@@ -577,41 +680,13 @@ namespace Ui
             if (hovered_)
                 p.fillRect(QRect(rect().x(), Utils::scale_value(CLICKABLE_AVATAR_INFO_OFFSET), width(), height() - Utils::scale_value(CLICKABLE_AVATAR_INFO_OFFSET) * 2), Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
 
-            static auto pixmap = Utils::mirrorPixmapHor(Utils::renderSvgScaled(qsl(":/controls/back_icon"), QSize(ICON_SIZE, ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY)));
+            static QPixmap pixmap;
+
+            static Styling::ThemeChecker checker;
+            if (checker.checkAndUpdateHash() || pixmap.isNull())
+                pixmap = Utils::mirrorPixmapHor(Utils::renderSvgScaled(qsl(":/controls/back_icon"), QSize(ICON_SIZE, ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY)));
             p.drawPixmap(width() - Utils::scale_value(ICON_SIZE) - margins_.right(), height() / 2 - Utils::scale_value(ICON_SIZE) / 2, pixmap);
         }
-
-        if (!avatar_.isNull())
-            Utils::drawAvatarWithBadge(p, avatarTopLeft(), avatar_, aimId_, false, Utils::StatusBadgeState::BadgeOnly, false, false);
-
-        const auto isBot = Logic::GetLastseenContainer()->isBot(aimId_);
-
-        if (nameOnly_)
-        {
-            name_->setOffsets(margins_.left() + avatarSize_ + textOffset_, height() / 2);
-        }
-        if (!statusPlate_->isEmpty() && !isBot)
-        {
-            name_->setOffsets(margins_.left() + avatarSize_ + textOffset_, nameOffsetTop());
-        }
-        else
-        {
-            name_->setOffsets(margins_.left() + avatarSize_ + textOffset_, height() / 2 - name_->cachedSize().height() - Utils::scale_value(NAME_OFFSET) / 2);
-        }
-
-        name_->draw(p, nameOnly_ ? TextRendering::VerPosition::MIDDLE : TextRendering::VerPosition::TOP);
-
-        if (!nameOnly_ && !isBot)
-        {
-            if (statusPlate_->isEmpty())
-                info_->setOffsets(margins_.left() + avatarSize_ + textOffset_, height() / 2 + Utils::scale_value(NAME_OFFSET) / 2);
-            else
-                info_->setOffsets(margins_.left() + avatarSize_ + textOffset_, nameOffsetTop() + name_->cachedSize().height());
-
-            info_->draw(p);
-        }
-
-        statusPlate_->draw(p);
 
         if (Q_UNLIKELY(Ui::GetAppConfig().IsShowMsgIdsEnabled()))
         {
@@ -681,11 +756,8 @@ namespace Ui
 
     void AvatarNameInfo::resizeEvent(QResizeEvent* _event)
     {
-        name_->elide(width() - margins_.left() - margins_.right() - avatarSize_ - textOffset_ - (clickable_ ? Utils::scale_value(ICON_SIZE + ICON_OFFSET): 0));
-        info_->elide(width() - margins_.left() - margins_.right() - avatarSize_ - textOffset_);
-
         const auto pos = statusPos();
-        statusPlate_->updateGeometry(pos, _event->size().width() -  pos.x() - Utils::scale_value(16));
+        statusPlate_->updateGeometry(pos, _event->size().width() - pos.x() - Utils::scale_value(16));
         updateGeometry();
         QWidget::resizeEvent(_event);
     }
@@ -693,7 +765,6 @@ namespace Ui
     void AvatarNameInfo::mousePressEvent(QMouseEvent* _event)
     {
         clicked_ = _event->pos();
-        statusPlate_->onMousePress(_event->pos());
 
         QWidget::mousePressEvent(_event);
     }
@@ -717,31 +788,17 @@ namespace Ui
             }
         }
 
-        statusPlate_->onMouseRelease(_event->pos());
-
         QWidget::mouseReleaseEvent(_event);
     }
 
     void AvatarNameInfo::mouseMoveEvent(QMouseEvent* _event)
     {
         QRect r(margins_.left(), height() / 2 - avatarSize_ / 2, avatarSize_, avatarSize_);
-        if (r.contains(_event->pos()) && !defaultAvatar_ || (statusPlate_->rect().contains(_event->pos()) && !Logic::GetLastseenContainer()->isBot(aimId_)))
+
+        if (r.contains(_event->pos()) && !defaultAvatar_)
             setCursor(Qt::PointingHandCursor);
         else
             setCursor(Qt::ArrowCursor);
-
-        const auto nameRect = getNameRect();
-        if (Features::longPathTooltipsAllowed() && nameRect.contains(mapToGlobal(_event->pos())) && name_->isElided())
-        {
-            if (!isTooltipActivated())
-                showTooltip();
-        }
-        else
-        {
-            hideTooltip();
-        }
-
-        statusPlate_->onMouseMove(_event->pos());
 
         QWidget::mouseMoveEvent(_event);
     }
@@ -749,20 +806,15 @@ namespace Ui
     void AvatarNameInfo::enterEvent(QEvent* _event)
     {
         hovered_ = true;
-        update();
-
         QWidget::enterEvent(_event);
+        update();
     }
 
     void AvatarNameInfo::leaveEvent(QEvent* _event)
     {
         hovered_ = false;
-        statusPlate_->onMouseLeave();
-
-        hideTooltip();
-        update();
-
         QWidget::leaveEvent(_event);
+        update();
     }
 
     void AvatarNameInfo::avatarChanged(const QString& aimId)
@@ -775,12 +827,11 @@ namespace Ui
 
     void AvatarNameInfo::friendlyChanged(const QString& _aimId, const QString& _friendlyName)
     {
-        if (aimId_ != _aimId)
+        if (aimId_ != _aimId || fromNames_)
             return;
 
         friendlyName_ = _friendlyName;
         name_->setText(friendlyName_);
-        name_->elide(width() - margins_.left() - margins_.right() - avatarSize_ - textOffset_ - (clickable_ ? Utils::scale_value(ICON_SIZE + ICON_OFFSET) : 0));
         update();
     }
 
@@ -797,6 +848,19 @@ namespace Ui
     {
         avatar_ = Logic::GetAvatarStorage()->GetRounded(aimId_, friendlyName_, Utils::scale_bitmap(avatarSize_), defaultAvatar_, false, false);
         Utils::check_pixel_ratio(avatar_);
+    }
+
+    void AvatarNameInfo::drawAvatar()
+    {
+        if (avatar_.isNull())
+            return;
+
+        QPixmap canvas(avatar_.size());
+        canvas.setDevicePixelRatio(Utils::scale_bitmap_ratio());
+        canvas.fill(Qt::transparent);
+        QPainter p(&canvas);
+        Utils::drawAvatarWithBadge(p, QPoint(0, 0), avatar_, aimId_, Utils::StatusBadgeState::BadgeOnly);
+        label_->setPixmap(canvas);
         update();
     }
 
@@ -812,72 +876,27 @@ namespace Ui
     void AvatarNameInfo::updateSize()
     {
         const auto statusTopLeft = statusPos();
-        const auto statusBottom = statusTopLeft.y() + statusPlate_->height() + statusBottomMargin();
+        const auto statusBottom = statusTopLeft.y() + statusPlate_->minimumHeight() + statusBottomMargin();
         const auto avatarHeight = Utils::scale_value(AVATAR_INFO_HEIGHT);
 
         setMinimumHeight(std::max(statusBottom, avatarHeight));
-
-        statusPlate_->updateGeometry(statusTopLeft, width() -  statusTopLeft.x() - Utils::scale_value(16));
+        statusPlate_->updateGeometry(statusTopLeft, width() - statusTopLeft.x() - Utils::scale_value(16));
     }
 
     QPoint AvatarNameInfo::statusPos() const
     {
         const auto isBot = Logic::GetLastseenContainer()->isBot(aimId_);
-        auto nameHeight = name_->cachedSize().height();
-        auto infoHeight = info_->cachedSize().height();
-        return { margins_.left() + avatarSize_ + textOffset_, nameOffsetTop() + nameHeight + (isBot ? botStatusTopOffset() : infoHeight + statusTopOffset()) };
+        const auto nameHeight = name_->height();
+        return { margins_.left() + avatarSize_ + textOffset_, nameOffsetTop() + nameHeight + (isBot ? botStatusTopOffset() : statusTopOffset()) };
     }
 
-    QPoint AvatarNameInfo::avatarTopLeft() const
-    {
-        return QPoint(margins_.left(), height() / 2 - avatarSize_ / 2);
-    }
-
-    QRect AvatarNameInfo::getNameRect() const
-    {
-        const auto nameWidth = width() - margins_.left() - margins_.right() - avatarSize_ - textOffset_ - (clickable_ ? Utils::scale_value(ICON_SIZE + ICON_OFFSET) : 0);
-        return QRect(mapToGlobal(mapFromParent(name_->offsets())), QSize(nameWidth, name_->cachedSize().height()));
-    }
-
-    bool AvatarNameInfo::isTooltipActivated() const
-    {
-        return tooltipActivated_;
-    }
-
-    void AvatarNameInfo::showTooltip()
-    {
-        if (!tooltipTimer_)
-        {
-            tooltipTimer_ = new QTimer(this);
-            tooltipTimer_->setInterval(Tooltip::getDefaultShowDelay());
-            tooltipTimer_->setSingleShot(true);
-            connect(tooltipTimer_, &QTimer::timeout, this, [this]()
-            {
-                if (name_)
-                    Tooltip::show(name_->getSourceText().string(), getNameRect(), {}, Tooltip::ArrowDirection::Auto, Tooltip::ArrowPointPos::Top, {}, Tooltip::TooltipMode::Multiline);
-            });
-        }
-
-        tooltipTimer_->start();
-
-        tooltipActivated_ = true;
-    }
-
-    void AvatarNameInfo::hideTooltip()
-    {
-        if (tooltipTimer_)
-            tooltipTimer_->stop();
-
-        Tooltip::hide();
-
-        tooltipActivated_ = false;
-    }
-
-    StatusPlate::StatusPlate(QObject* _parent)
-        : QObject(_parent)
+    StatusPlate::StatusPlate(QWidget* _parent)
+        : QWidget(_parent)
     {
         text_ = TextRendering::MakeTextUnit(QString(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-        text_->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+        TextRendering::TextUnit::InitializeParameters params{ Fonts::appFontScaled(13), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY } };
+        params.maxLinesCount_ = 1;
+        text_->init(params);
         connect(Logic::GetStatusContainer(), &Logic::StatusContainer::statusChanged, this, &StatusPlate::onStatusChanged);
     }
 
@@ -893,7 +912,7 @@ namespace Ui
         if (!Logic::GetLastseenContainer()->isBot(contactId_))
             status_ = Logic::GetStatusContainer()->getStatus(contactId_);
         else
-            status_ = Statuses::Status(Emoji::EmojiCode::toQString(Emoji::EmojiCode(0x1F916)), QT_TRANSLATE_NOOP("status_plate", "Bot"));
+            status_ = Statuses::getBotStatus();
 
         text_->setText(status_.getDescription());
         hoverEnabled_ = !Logic::GetLastseenContainer()->isBot(contactId_);
@@ -912,11 +931,6 @@ namespace Ui
         text_->draw(_p, TextRendering::VerPosition::MIDDLE);
     }
 
-    int StatusPlate::height() const
-    {
-        return status_.isEmpty() ? 0 : Utils::scale_value(20);
-    }
-
     QRect StatusPlate::rect() const
     {
         return rect_;
@@ -925,52 +939,6 @@ namespace Ui
     bool StatusPlate::isEmpty() const
     {
         return status_.isEmpty();
-    }
-
-    void StatusPlate::onMouseMove(const QPoint& _pos)
-    {
-        if (!hoverEnabled_)
-            return;
-
-        auto mouseOver = rect_.contains(_pos);
-        if (mouseOver != std::exchange(hovered_, mouseOver))
-            Q_EMIT update(QPrivateSignal());
-    }
-
-    void StatusPlate::onMousePress(const QPoint& _pos)
-    {
-        if (!hoverEnabled_)
-            return;
-
-        pressed_ = rect_.contains(_pos);
-        Q_EMIT update(QPrivateSignal());
-    }
-
-    void StatusPlate::onMouseRelease(const QPoint& _pos)
-    {
-        if (pressed_ && hoverEnabled_ && rect_.contains(_pos))
-        {
-            GeneralDialog::Options opt;
-            opt.fixedSize_ = false;
-            GeneralDialog d(new StatusPopup(status_, nullptr), Utils::InterConnector::instance().getMainWindow(), opt);
-            d.setTransparentBackground(true);
-            d.setShadow(false);
-
-            if (d.showInCenter())
-            {
-                if (auto mainWindow = Utils::InterConnector::instance().getMainWindow())
-                    mainWindow->openStatusPicker();
-            }
-        }
-
-        pressed_ = false;
-        Q_EMIT update(QPrivateSignal());
-    }
-
-    void StatusPlate::onMouseLeave()
-    {
-        hovered_ = false;
-        Q_EMIT update(QPrivateSignal());
     }
 
     void StatusPlate::onStatusChanged(const QString& _contactId)
@@ -984,6 +952,70 @@ namespace Ui
         updateGeometry(rect_.topLeft(), cachedAvailableWidth_);
     }
 
+    void StatusPlate::paintEvent(QPaintEvent* _event)
+    {
+        QPainter p(this);
+        draw(p);
+    }
+
+    void StatusPlate::leaveEvent(QEvent* _event)
+    {
+        hovered_ = false;
+        Q_EMIT update(QPrivateSignal());
+        QWidget::leaveEvent(_event);
+    }
+
+    void StatusPlate::mouseMoveEvent(QMouseEvent* _event)
+    {
+        if (!hoverEnabled_)
+            return;
+
+        const auto mouseOver = rect_.contains(_event->pos());
+
+        if (mouseOver && !Logic::GetLastseenContainer()->isBot(contactId_))
+            setCursor(Qt::PointingHandCursor);
+        else
+            setCursor(Qt::ArrowCursor);
+
+        if (mouseOver != std::exchange(hovered_, mouseOver))
+            Q_EMIT update(QPrivateSignal());
+
+        QWidget::mouseMoveEvent(_event);
+    }
+
+    void StatusPlate::mousePressEvent(QMouseEvent* _event)
+    {
+        if (!hoverEnabled_)
+            return;
+
+        pressed_ = rect_.contains(_event->pos());
+        Q_EMIT update(QPrivateSignal());
+
+        QWidget::mousePressEvent(_event);
+    }
+
+    void StatusPlate::mouseReleaseEvent(QMouseEvent* _event)
+    {
+        if (pressed_ && hoverEnabled_ && rect_.contains(_event->pos()))
+        {
+            GeneralDialog::Options opt;
+            opt.fixedSize_ = false;
+            GeneralDialog d(new StatusPopup(status_, nullptr), Utils::InterConnector::instance().getMainWindow(), opt);
+            d.setTransparentBackground(true);
+            d.setShadow(false);
+
+            if (d.execute())
+            {
+                if (auto mainWindow = Utils::InterConnector::instance().getMainWindow())
+                    mainWindow->openStatusPicker();
+            }
+        }
+
+        pressed_ = false;
+        Q_EMIT update(QPrivateSignal());
+        QWidget::mouseReleaseEvent(_event);
+    }
+
     int StatusPlate::availableForText(int _availableWidth) const
     {
         return _availableWidth - statusImageSize() - 2 * statusSideMargin() - statusImageSideMargin();
@@ -995,19 +1027,26 @@ namespace Ui
         text_->setOffsets(rect_.left() + statusImageSize() + statusImageSideMargin() + statusSideMargin(), rect_.center().y());
     }
 
-    void StatusPlate::updateGeometry(const QPoint& _topLeft, int _availableWidth)
+    void StatusPlate::updateGeometry(const QPoint& /*_topLeft*/, int _availableWidth)
     {
+        if (_availableWidth < 0)
+            _availableWidth = 0;
         cachedAvailableWidth_ = _availableWidth;
+        auto offset = 0;
         if (!status_.isEmpty())
         {
-            rect_ = QRect(_topLeft, QSize(statusImageSize() + std::min(availableForText(_availableWidth),
-                                                           text_->desiredWidth()) + 2 * statusSideMargin() + statusImageSideMargin(), Utils::scale_value(20)));
+            offset = Utils::scale_value(2);
+            rect_ = QRect(QPoint(0, offset), QSize(statusImageSize() + std::min(availableForText(_availableWidth),
+                          text_->desiredWidth()) + 2 * statusSideMargin() + statusImageSideMargin(), Utils::scale_value(20)));
         }
         else
         {
             rect_ = QRect();
         }
         updateTextGeometry(_availableWidth);
+        auto plateSize = rect_.size();
+        plateSize.setHeight(plateSize.height() + offset);
+        setMinimumSize(plateSize);
     }
 
     StatusPopup::StatusPopup(const Statuses::Status& _status, QWidget* _parent)
@@ -1035,9 +1074,13 @@ namespace Ui
         scrollAreaContentLayout->addSpacing(statusPopupElapsedTextTopMargin());
         scrollAreaContentLayout->addWidget(duration_, 0, Qt::AlignHCenter);
 
-        text_->init(Fonts::appFontScaled(23), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
+        TextRendering::TextUnit::InitializeParameters params{ Fonts::appFontScaled(23), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } };
+        params.align_ = TextRendering::HorAligment::CENTER;
+        text_->init(params);
         text_->setMaxWidthAndResize(statusPopupTextMaxWidth());
-        duration_->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
+        params.setFonts(Fonts::appFontScaled(13));
+        params.color_ = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY };
+        duration_->init(params);
         duration_->setMaxWidthAndResize(statusPopupTextMaxWidth());
 
         scrollArea_->setWidget(scrollAreaContent);
@@ -1093,7 +1136,7 @@ namespace Ui
         p.fillPath(path, Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
     }
 
-    TextLabel::TextLabel(QWidget* _parent, int _maxLinesCount)
+    TextLabel::TextLabel(QWidget* _parent, int _maxLinesCount, bool _showLinks)
         : QWidget(_parent)
         , maxLinesCount_(_maxLinesCount)
         , collapsed_(false)
@@ -1104,14 +1147,17 @@ namespace Ui
         , isTextField_(false)
         , menu_(nullptr)
     {
-        text_ = TextRendering::MakeTextUnit(QString(), Data::MentionMap());
-        collapsedText_ = TextRendering::MakeTextUnit(QString(), Data::MentionMap(), TextRendering::LinksVisible::SHOW_LINKS);
-        readMore_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("sidebar", "Read more"));
+        using namespace TextRendering;
+        text_ = MakeTextUnit(QString(), Data::MentionMap(), _showLinks ? LinksVisible::SHOW_LINKS : LinksVisible::DONT_SHOW_LINKS);
+        collapsedText_ = MakeTextUnit(QString(), Data::MentionMap(), LinksVisible::SHOW_LINKS);
+        readMore_ = MakeTextUnit(QT_TRANSLATE_NOOP("sidebar", "Read more"));
 
         iconNormalColor_ = Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY);
         iconHoverColor_ = Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER);
         iconPressedColor_ = Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_ACTIVE);
         setMouseTracking(true);
+
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::clearSelection, this, &TextLabel::clearSelection);
 
         if (QApplication::clipboard()->supportsSelection())
         {
@@ -1131,11 +1177,17 @@ namespace Ui
         update();
     }
 
-    void TextLabel::init(const QFont& _font, const QColor& _color, const QColor& _linkColor)
+    void TextLabel::init(const QFont& _font, const Styling::ThemeColorKey& _color, const Styling::ThemeColorKey& _linkColor)
     {
-        text_->init(_font, _color, _linkColor, MessageStyle::getTextSelectionColor(), QColor(), textAlign_, -1, TextRendering::LineBreakType::PREFER_SPACES);
-        collapsedText_->init(_font, _color, _linkColor, MessageStyle::getTextSelectionColor(), QColor(), textAlign_, maxLinesCount_, TextRendering::LineBreakType::PREFER_SPACES);
-        readMore_->init(_font, _linkColor);
+        TextRendering::TextUnit::InitializeParameters params{ _font, _color };
+        params.linkColor_ = _linkColor;
+        params.selectionColor_ = MessageStyle::getTextSelectionColorKey();
+        params.align_ = textAlign_;
+        params.lineBreak_ = TextRendering::LineBreakType::PREFER_SPACES;
+        text_->init(params);
+        params.maxLinesCount_ = maxLinesCount_;
+        collapsedText_->init(params);
+        readMore_->init({ _font, _linkColor });
         readMore_->evaluateDesiredSize();
 
         update();
@@ -1152,6 +1204,7 @@ namespace Ui
                 collapsedText_->select(from, to);
             else
                 text_->select(from, to);
+
             Q_EMIT selectionChanged(QPrivateSignal());
         }
         update();
@@ -1179,15 +1232,16 @@ namespace Ui
             setFixedHeight(collapsedHeight + readMore_->cachedSize().height() + margins_.top() + margins_.bottom());
     }
 
-    void TextLabel::setText(const QString& _text, const QColor& _color)
+    void TextLabel::setText(const QString& _text, const Styling::ThemeColorKey& _color)
     {
-        if (text_->getText() == _text && text_->getColor() == _color)
+        if (text_->getText() == _text && text_->getColorKey() == _color)
             return;
 
         text_->setText(_text, _color);
         collapsedText_->setText(_text, _color);
-
-        updateSize(true);
+        if (build::is_testing())
+            updateLinkMap();
+        updateSize(!isShowByWidth_);
         update();
     }
 
@@ -1203,16 +1257,21 @@ namespace Ui
         update();
     }
 
-    void TextLabel::setColor(const QColor& _color)
+    void TextLabel::setColor(const Styling::ThemeColorKey& _color)
     {
-        if (text_->getColor() == _color)
+        if (text_->getColorKey() == _color)
             return;
 
         text_->setColor(_color);
         update();
     }
 
-    void TextLabel::setLinkColor(const QColor& _color)
+    Styling::ThemeColorKey TextLabel::getColorKey() const
+    {
+        return text_->getColorKey();
+    }
+
+    void TextLabel::setLinkColor(const Styling::ThemeColorKey& _color)
     {
         text_->setLinkColor(_color);
         update();
@@ -1256,9 +1315,16 @@ namespace Ui
         isTextField_ = true;
     }
 
+    void TextLabel::showByWidth()
+    {
+        isShowByWidth_ = true;
+        buttonsVisible_ = false;
+    }
+
     void TextLabel::showButtons()
     {
         buttonsVisible_ = true;
+        isShowByWidth_ = false;
         updateSize();
         update();
     }
@@ -1266,6 +1332,24 @@ namespace Ui
     void TextLabel::allowOnlyCopy()
     {
         onlyCopyButton_ = true;
+        updateSize();
+        update();
+    }
+
+    void TextLabel::enlargeToLinesCount(int _linesCount)
+    {
+        if (!isShowByWidth_)
+            return;
+
+        isShowByWidth_ = false;
+        TextRendering::TextUnit::InitializeParameters params{ text_->getFont(), text_->getColorKey() };
+        params.linkColor_ = text_->getLinkColorKey();
+        params.selectionColor_ = MessageStyle::getTextSelectionColorKey();
+        params.align_ = text_->getAlign();
+        params.maxLinesCount_ = _linesCount;
+        params.lineBreak_ = TextRendering::LineBreakType::PREFER_SPACES;
+        text_->init(params);
+
         updateSize();
         update();
     }
@@ -1281,7 +1365,7 @@ namespace Ui
         if (bgColor_.isValid())
             p.fillRect(rect(), bgColor_);
 
-        if (buttonsVisible_)
+        if (buttonsVisible_ && !isShowByWidth_)
         {
             auto w = width() - margins_.left() - margins_.right();
             if (rect().contains(mapFromGlobal(QCursor::pos())))
@@ -1354,6 +1438,12 @@ namespace Ui
 
     void TextLabel::resizeEvent(QResizeEvent* _event)
     {
+        if (isShowByWidth_)
+        {
+            const auto w = width() - margins_.left() - margins_.right();
+            text_->elide(w);
+        }
+
         updateSize();
         QWidget::resizeEvent(_event);
     }
@@ -1362,6 +1452,8 @@ namespace Ui
     {
         if (_event->button() == Qt::LeftButton)
         {
+            Q_EMIT Utils::InterConnector::instance().clearSelection();
+
             if (TripleClickTimer_ && TripleClickTimer_->isActive())
             {
                 TripleClickTimer_->stop();
@@ -1422,7 +1514,7 @@ namespace Ui
                             Q_EMIT shareClicked(QPrivateSignal());
                     }
 
-                    if (!buttonWasClicked && (text_->contains(pos) || collapsedText_->contains(pos)))
+                    if (!buttonWasClicked && !isShowByWidth_ && (text_->contains(pos) || collapsedText_->contains(pos)))
                     {
                         const auto isTextOverLink = !text_->isSelected() && text_->isOverLink(pos);
                         const auto isCollapsedOverLink = collapsed_ && !collapsedText_->isSelected() && collapsedText_->isOverLink(pos);
@@ -1464,7 +1556,9 @@ namespace Ui
 
                 QMap<QString, QVariant> data;
                 data[qsl("command")] = qsl("copy");
-                data[qsl("text")] = isTextField_ && text_->isSelected() ? text_->getSelectedText().string() : text_->getText();
+
+                const auto& textUnit = collapsed_ ? collapsedText_ : text_;
+                data[qsl("text")] = isTextField_ && textUnit->isSelected() ? textUnit->getSelectedText().string() : text_->getText();
 
                 menu->addActionWithIcon(qsl(":/copy_icon"), QT_TRANSLATE_NOOP("sidebar", "Copy"), data);
 
@@ -1483,21 +1577,30 @@ namespace Ui
         update();
 
         QWidget::mouseReleaseEvent(_event);
+
+        Q_EMIT Utils::InterConnector::instance().setFocusOnInput();
     }
 
     void TextLabel::mouseMoveEvent(QMouseEvent* _event)
     {
         auto copyRect = QRect(width() - Utils::scale_value(ICON_SIZE) * (onlyCopyButton_ ? 2 :4), margins_.top(), Utils::scale_value(ICON_SIZE), Utils::scale_value(ICON_SIZE));
         auto shareRect = QRect(width() - Utils::scale_value(ICON_SIZE) * 2, margins_.top(), Utils::scale_value(ICON_SIZE), Utils::scale_value(ICON_SIZE));
-        const auto pos = _event->pos();
+        const auto textWidth = width() - margins_.left() - margins_.right();
+        const auto textRect = QRect(text_->offsets(), QSize(textWidth, text_->cachedSize().height()));
 
-        if (buttonsVisible_ && (copyRect.contains(_event->pos()) || shareRect.contains(pos)))
+        const auto pos = _event->pos();
+        if (buttonsVisible_ && !isShowByWidth_ && (copyRect.contains(_event->pos()) || shareRect.contains(pos)))
         {
             setCursor(Qt::PointingHandCursor);
             if (copyRect.contains(_event->pos()))
                 Tooltip::show(QT_TRANSLATE_NOOP("sidebar", "Copy"), QRect(mapToGlobal(copyRect.topLeft()), mapToGlobal(copyRect.bottomRight())));
             else
                 Tooltip::show(QT_TRANSLATE_NOOP("sidebar", "Share"), QRect(mapToGlobal(shareRect.topLeft()), mapToGlobal(shareRect.bottomRight())));
+        }
+        else if (!buttonsVisible_ && isShowByWidth_ && (textRect.contains(_event->pos())) && selectFrom_.isNull())
+        {
+            if (text_->isElided())
+                showTooltip();
         }
         else
         {
@@ -1512,12 +1615,38 @@ namespace Ui
                 selectText(selectFrom_, selectTo_);
             }
             setCursor((isOnText && selectFrom_.isNull()) ? Qt::PointingHandCursor : Qt::ArrowCursor);
-            Tooltip::hide();
+            hideTooltip();
         }
 
         update();
 
         QWidget::mouseMoveEvent(_event);
+    }
+
+    void TextLabel::showTooltip()
+    {
+        if (!tooltipTimer_)
+        {
+            tooltipTimer_ = new QTimer(this);
+            tooltipTimer_->setInterval(Tooltip::getDefaultShowDelay());
+            tooltipTimer_->setSingleShot(true);
+
+            connect(tooltipTimer_, &QTimer::timeout, this, [this]()
+                {
+                    const auto textWidth = width() - margins_.left() - margins_.right();
+                    const auto textRect = QRect(text_->offsets(), QSize(textWidth, text_->cachedSize().height()));
+                    Tooltip::show(text_->getSourceText(), QRect(mapToGlobal(textRect.topLeft()), mapToGlobal(textRect.bottomRight())));
+                });
+        }
+        tooltipTimer_->start();
+    }
+
+    void TextLabel::hideTooltip()
+    {
+        if (tooltipTimer_)
+            tooltipTimer_->stop();
+
+        Tooltip::hide();
     }
 
     void TextLabel::mouseDoubleClickEvent(QMouseEvent* _event)
@@ -1560,7 +1689,7 @@ namespace Ui
 
     void TextLabel::leaveEvent(QEvent* _event)
     {
-        Tooltip::hide();
+        hideTooltip();
         update();
         QWidget::leaveEvent(_event);
     }
@@ -1579,10 +1708,25 @@ namespace Ui
         return text_->getSelectedText().string();
     }
 
+    QString TextLabel::getSourceText() const
+    {
+        if (collapsed_)
+            return collapsedText_->getSourceText().string();
+        return text_->getSourceText().string();
+    }
+
     void TextLabel::tryClearSelection(const QPoint& _pos)
     {
         if (!geometry().contains(_pos))
             clearSelection();
+    }
+
+    QStringList TextLabel::linkList() const
+    {
+        QStringList result;
+        for (const auto& link : linkWordMap_)
+            result += link->getText();
+        return result;
     }
 
     void TextLabel::clearSelection()
@@ -1594,6 +1738,15 @@ namespace Ui
         selectFrom_ = QPoint();
         selectTo_ = QPoint();
         update();
+    }
+
+    void TextLabel::updateLinkMap()
+    {
+        linkWordMap_.clear();
+        if (!text_)
+            return;
+
+        TextRendering::ExtractLinkWords(text_, linkWordMap_);
     }
 
     void InfoBlock::hide()
@@ -1614,23 +1767,23 @@ namespace Ui
         text_->setVisible(_value);
     }
 
-    void InfoBlock::setHeaderText(const QString& _text, const QColor& _color)
+    void InfoBlock::setHeaderText(const QString& _text, const Styling::ThemeColorKey& _color)
     {
         if (header_->getText() != _text)
             header_->setText(_text, _color);
     }
 
-    void InfoBlock::setText(const QString& _text, const QColor& _color)
+    void InfoBlock::setText(const QString& _text, const Styling::ThemeColorKey& _color)
     {
         text_->setText(_text, _color);
     }
 
-    void InfoBlock::setTextLinkColor(const QColor& _color)
+    void InfoBlock::setTextLinkColor(const Styling::ThemeColorKey& _color)
     {
         text_->setLinkColor(_color);
     }
 
-    void InfoBlock::setHeaderLinkColor(const QColor& _color)
+    void InfoBlock::setHeaderLinkColor(const Styling::ThemeColorKey& _color)
     {
         header_->setLinkColor(_color);
     }
@@ -1715,9 +1868,16 @@ namespace Ui
         {
             if (_event->button() == Qt::LeftButton)
             {
-                Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profilescr_chatgallery_action, { { "category", "ChatInfo" }, { "chat_type", Utils::chatTypeByAimId(aimId_) } });
-                Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::fullmediascr_view, { { "chat_type", Utils::chatTypeByAimId(aimId_) }, { "from", "profile_carousel" }, { "media_type", item_->isVideo() ? "video" : (item_->isGif() ? "gif" : "photo") } });
-                Utils::InterConnector::instance().openGallery(Utils::GalleryData(aimId_, item_->getLink(), item_->getMsg(), item_->sender(), item_->time()));
+                if (!item_->isVirusInfected() || !Features::isAntivirusCheckEnabled())
+                {
+                    Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profilescr_chatgallery_action, { { "category", "ChatInfo" }, { "chat_type", Utils::chatTypeByAimId(aimId_) } });
+                    Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::fullmediascr_view, { { "chat_type", Utils::chatTypeByAimId(aimId_) }, { "from", "profile_carousel" }, { "media_type", item_->isVideo() ? "video" : (item_->isGif() ? "gif" : "photo") } });
+                    Utils::InterConnector::instance().openGallery(Utils::GalleryData(aimId_, item_->getLink(), item_->getMsg(), item_->sender(), item_->time()));
+                }
+                else
+                {
+                    Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("toast", "File is blocked by the antivirus"), Utils::defaultToastVerOffset());
+                }
             }
             else if (_event->button() == Qt::RightButton)
             {
@@ -1872,6 +2032,7 @@ namespace Ui
                 break;
 
             auto w = new GalleryPreviewItem(this, e.url_, e.msg_id_, e.seq_, aimId_, e.sender_, e.outgoing_, e.time_, previewSize_);
+            Testing::setAccessibleName(w, qsl("AS GalleryPreviewItem ") + e.url_);
             layout_->addWidget(w);
             w->show();
         }
@@ -1914,7 +2075,9 @@ namespace Ui
 
                     if (e.action_ == u"add")
                     {
-                        layout_->insertWidget(i, new GalleryPreviewItem(this, e.url_, e.msg_id_, e.seq_, aimId_, e.sender_, e.outgoing_, e.time_, previewSize_));
+                        auto newItem = new GalleryPreviewItem(this, e.url_, e.msg_id_, e.seq_, aimId_, e.sender_, e.outgoing_, e.time_, previewSize_);
+                        Testing::setAccessibleName(newItem, qsl("AS GalleryPreviewItem ") + e.url_);
+                        layout_->insertWidget(i, newItem);
                         if (layout_->count() >= previewCount_ + 2)
                         {
                             auto t = layout_->takeAt(previewCount_);
@@ -1957,11 +2120,13 @@ namespace Ui
             requestGallery();
     }
 
-    MembersPlate::MembersPlate(QWidget* _parent)
+    MembersPlate::MembersPlate(QWidget* _parent, SearchField _searchVisibility)
         : QWidget(_parent)
     {
         members_ = TextRendering::MakeTextUnit(QString(), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        search_ = TextRendering::MakeTextUnit(QString(), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
+
+        if(_searchVisibility == SearchField::shown)
+            search_ = TextRendering::MakeTextUnit(QString(), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
 
         setMouseTracking(true);
     }
@@ -1976,6 +2141,7 @@ namespace Ui
 
     void MembersPlate::setMembersCount(int _count, bool _isChannel)
     {
+        count_ = _count;
         QString text;
         if (_isChannel)
         {
@@ -2002,15 +2168,23 @@ namespace Ui
         update();
     }
 
-    void MembersPlate::initMembersLabel(const QFont& _font, const QColor& _color)
+    int MembersPlate::getMembersCount() const
     {
-        members_->init(_font, _color);
+        return count_;
     }
 
-    void MembersPlate::initSearchLabel(const QFont& _font, const QColor& _color)
+    void MembersPlate::initMembersLabel(const QFont& _font, const Styling::ThemeColorKey& _color)
     {
-        search_->init(_font, _color);
-        search_->setText(QT_TRANSLATE_NOOP("sidebar", "Search"));
+        members_->init({ _font, _color });
+    }
+
+    void MembersPlate::initSearchLabel(const QFont& _font, const Styling::ThemeColorKey& _color)
+    {
+        if (search_)
+        {
+            search_->init({ _font, _color });
+            search_->setText(QT_TRANSLATE_NOOP("sidebar", "Search"));
+        }
     }
 
     void MembersPlate::paintEvent(QPaintEvent* _event)
@@ -2020,13 +2194,18 @@ namespace Ui
         members_->setOffsets(margins_.left(), margins_.top());
         members_->draw(p);
 
-        search_->setOffsets(width() - margins_.right() - search_->cachedSize().width(), margins_.top());
-        search_->draw(p);
+        if (search_)
+        {
+            search_->setOffsets(width() - margins_.right() - search_->cachedSize().width(), margins_.top());
+            search_->draw(p);
+        }
     }
 
     void MembersPlate::mouseMoveEvent(QMouseEvent* _event)
     {
-        setCursor(search_->contains(_event->pos()) ? Qt::PointingHandCursor : Qt::ArrowCursor);
+        if (search_)
+            setCursor(search_->contains(_event->pos()) ? Qt::PointingHandCursor : Qt::ArrowCursor);
+
         QWidget::mouseMoveEvent(_event);
     }
 
@@ -2039,7 +2218,7 @@ namespace Ui
     void MembersPlate::mouseReleaseEvent(QMouseEvent* _event)
     {
         auto pos = _event->pos();
-        if (Utils::clicked(clicked_, pos) && search_->contains(pos))
+        if (search_ && Utils::clicked(clicked_, pos) && search_->contains(pos))
             Q_EMIT searchClicked(QPrivateSignal());
 
         QWidget::mousePressEvent(_event);
@@ -2054,13 +2233,13 @@ namespace Ui
         , memberCount_(0)
         , hovered_(-1)
         , scrollArea_(nullptr)
-        , tooltipTimer_(nullptr)
+        , personTooltip_(new Utils::PersonTooltip(this))
     {
+        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
         delegate_->setRenderRole(true);
         updateSize();
         connect(model_, &Logic::ChatMembersModel::dataChanged, this, &MembersWidget::dataChanged);
         setMouseTracking(true);
-        setCursor(Qt::PointingHandCursor);
 
         connect(Logic::GetLastseenContainer(), &Logic::LastseenContainer::lastseenChanged, this, &Ui::MembersWidget::lastseenChanged);
     }
@@ -2077,6 +2256,7 @@ namespace Ui
 
     void MembersWidget::dataChanged(const QModelIndex&, const QModelIndex&, const QVector<int>&)
     {
+        setCursor(model_->rowCount() > 0 ? Qt::PointingHandCursor : Qt::ArrowCursor);
         updateSize();
         update();
     }
@@ -2093,37 +2273,10 @@ namespace Ui
         setFixedHeight(params_.itemHeight() * memberCount_ + Utils::scale_value(MEMBERS_WIDGET_BOTTOM_OFFSET));
     }
 
-    void MembersWidget::showTooltip(QString _text, QRect _rect, Tooltip::ArrowDirection _arrowDir, Tooltip::ArrowPointPos _arrowPos)
-    {
-        Tooltip::hide();
-
-        if (!tooltipTimer_)
-        {
-            tooltipTimer_ = new QTimer(this);
-            tooltipTimer_->setInterval(Tooltip::getDefaultShowDelay());
-            tooltipTimer_->setSingleShot(true);
-        }
-        else
-        {
-            tooltipTimer_->stop();
-            tooltipTimer_->disconnect(this);
-        }
-
-        connect(tooltipTimer_, &QTimer::timeout, this, [text = std::move(_text), _rect, _arrowDir, _arrowPos]()
-        {
-            Tooltip::show(text, _rect, {}, _arrowDir, _arrowPos, {}, Tooltip::TooltipMode::Multiline);
-        });
-        tooltipTimer_->start();
-    }
-
     void MembersWidget::hideTooltip()
     {
         tooltipIndex_ = {};
-
-        if (tooltipTimer_)
-            tooltipTimer_->stop();
-
-        Tooltip::hide();
+        personTooltip_->hide();
     }
 
     void MembersWidget::paintEvent(QPaintEvent* _event)
@@ -2152,6 +2305,7 @@ namespace Ui
     {
         hovered_ = -1;
         QRect hoveredRect;
+        bool showMemberTooltip = false;
         for (int i = 0; i < memberCount_; ++i)
         {
             const auto itemRect = QRect(0, i * params_.itemHeight(), width(), params_.itemHeight());
@@ -2163,19 +2317,17 @@ namespace Ui
             }
         }
 
-        if (Statuses::isStatusEnabled() && hovered_ != -1)
+        if (hovered_ != -1)
         {
             auto& params = GetContactListParams();
             const auto avatarRect = QRect(hoveredRect.topLeft() + QPoint(params.getAvatarX(), params.getAvatarY()), QSize(params.getAvatarSize(), params.getAvatarSize()));
             const auto aimId = model_->index(hovered_).data().value<Data::AbstractSearchResultSptr>()->getAimId();
-            const auto muted = Logic::getContactListModel()->isMuted(aimId);
 
-            if (!muted && avatarRect.contains(_event->pos()))
+            if (avatarRect.contains(_event->pos()))
             {
-                StatusTooltip::instance()->objectHovered([this, avatarRect]()
-                {
-                    return QRect(mapToGlobal(avatarRect.topLeft()), avatarRect.size());
-                }, aimId, this);
+                const auto linkGlobalRect = QRect(mapToGlobal(avatarRect.topLeft()), avatarRect.size());
+                personTooltip_->show(Utils::PersonTooltipType::Person, aimId, linkGlobalRect, Tooltip::ArrowDirection::Down, Tooltip::ArrowPointPos::Top);
+                showMemberTooltip = true;
             }
         }
 
@@ -2195,10 +2347,10 @@ namespace Ui
                     const auto needBottom = verticalPosition < 0;
                     auto direction = needBottom ? Tooltip::ArrowDirection::Up : Tooltip::ArrowDirection::Down;
                     auto arrowPosition = needBottom ? Tooltip::ArrowPointPos::Bottom : Tooltip::ArrowPointPos::Top;
-                    showTooltip(std::move(name), ttRect, direction, arrowPosition);
+                    personTooltip_->show(Utils::PersonTooltipType::Text, std::move(name), ttRect, direction, arrowPosition);
                 }
             }
-            else
+            else if(!showMemberTooltip)
             {
                 hideTooltip();
             }
@@ -2270,8 +2422,6 @@ namespace Ui
 
     ColoredButton::ColoredButton(QWidget* _parent)
         : QWidget(_parent)
-        , isHovered_(false)
-        , isActive_(false)
         , height_(Utils::scale_value(COLORED_BUTTON_HEIGHT))
         , textOffset_(0)
     {
@@ -2301,7 +2451,7 @@ namespace Ui
 
     void ColoredButton::updateTextOffset()
     {
-        const auto iconWidth = icon_.width() / Utils::scale_bitmap_ratio();
+        const auto iconWidth = icon_.cachedPixmap().width() / Utils::scale_bitmap_ratio();
         auto offset = Utils::scale_value(COLORED_BUTTON_TEXT_OFFSET);
         if (iconWidth != Utils::scale_value(BUTTON_ICON_SIZE))
             offset -= (iconWidth - BUTTON_ICON_SIZE) / 2;
@@ -2318,23 +2468,23 @@ namespace Ui
         updateGeometry();
     }
 
-    void ColoredButton::initColors(const QColor& _base, const QColor& _hover, const QColor& _active)
+    void ColoredButton::initColors(const Styling::ThemeColorKey& _base, const Styling::ThemeColorKey& _hover, const Styling::ThemeColorKey& _active)
     {
         base_ = _base;
         hover_ = _hover;
         active_ = _active;
     }
 
-    void ColoredButton::setIcon(const QPixmap& _icon)
+    void ColoredButton::setIcon(const Utils::StyledPixmap& _icon)
     {
         icon_ = _icon;
         updateTextOffset();
         update();
     }
 
-    void ColoredButton::initText(const QFont& _font, const QColor& _color)
+    void ColoredButton::initText(const QFont& _font, const Styling::ThemeColorKey& _color)
     {
-        text_->init(_font, _color);
+        text_->init({ _font, _color });
     }
 
     void ColoredButton::setText(const QString& _text)
@@ -2378,20 +2528,21 @@ namespace Ui
         p.setPen(Qt::NoPen);
 
         if (isActive_)
-            p.setBrush(active_);
+            p.setBrush(active_.actualColor());
         else if (isHovered_)
-            p.setBrush(hover_);
+            p.setBrush(hover_.actualColor());
         else
-            p.setBrush(base_);
+            p.setBrush(base_.actualColor());
 
         const auto btnRect = rect().marginsRemoved(margins_);
         const auto radius = height_ / 2;
-        const auto iconSize = icon_.size() / Utils::scale_bitmap_ratio();
+        const auto icon = icon_.actualPixmap();
+        const auto iconSize = icon.size() / Utils::scale_bitmap_ratio();
         p.drawRoundedRect(btnRect, radius, radius);
 
         if (text_->isEmpty())
         {
-            p.drawPixmap(btnRect.left() + (btnRect.width() - iconSize.width()) / 2, btnRect.top() + (btnRect.height() - iconSize.height()) / 2, icon_);
+            p.drawPixmap(btnRect.left() + (btnRect.width() - iconSize.width()) / 2, btnRect.top() + (btnRect.height() - iconSize.height()) / 2, icon);
         }
         else
         {
@@ -2399,7 +2550,7 @@ namespace Ui
             text_->setOffsets(btnRect.left() + (btnRect.width() - totalWidth) / 2 + iconSize.width() + textOffset_, btnRect.top() + btnRect.height() / 2);
             text_->draw(p, TextRendering::VerPosition::MIDDLE);
 
-            p.drawPixmap(btnRect.left() + (btnRect.width() - totalWidth) / 2, btnRect.top() + (btnRect.height() - iconSize.height()) / 2, icon_);
+            p.drawPixmap(btnRect.left() + (btnRect.width() - totalWidth) / 2, btnRect.top() + (btnRect.height() - iconSize.height()) / 2, icon);
         }
     }
 
@@ -2479,15 +2630,15 @@ namespace Ui
             Utils::transparentBackgroundStylesheet(widget);
             auto hLayout = Utils::emptyHLayout(widget);
             hLayout->setAlignment(Qt::AlignHCenter);
-            name_ = new Ui::TextEditEx(this, Fonts::appFontScaled(EDIT_FONT_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), true, true);
+            name_ = new Ui::TextEditEx(this, Fonts::appFontScaled(EDIT_FONT_SIZE), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID }, true, true);
             Testing::setAccessibleName(name_, qsl("AS EditWidget nickName"));
             Utils::ApplyStyle(name_, Styling::getParameters().getTextEditCommonQss(true));
             name_->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
             name_->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
             name_->setTextInteractionFlags(Qt::TextEditable | Qt::TextEditorInteraction);
             name_->setFrameStyle(QFrame::NoFrame);
-            name_->document()->setDocumentMargin(0);
-            name_->addSpace(Utils::scale_value(4));
+            name_->setDocumentMargin(0);
+            name_->setHeightSupplement(Utils::scale_value(4));
             name_->setMaxHeight(Utils::scale_value(EDIT_MAX_ENTER_HEIGHT));
             Logic::Text4Edit(_name, *name_, Logic::Text2DocHtmlMode::Pass, false);
             name_->setPlaceholderText(QT_TRANSLATE_NOOP("sidebar", "Name"));
@@ -2509,7 +2660,7 @@ namespace Ui
             Utils::transparentBackgroundStylesheet(widget);
             auto hLayout = Utils::emptyHLayout(widget);
             hLayout->setAlignment(Qt::AlignHCenter);
-            description_ = new Ui::TextEditEx(this, Fonts::appFontScaled(EDIT_FONT_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), true, true);
+            description_ = new Ui::TextEditEx(this, Fonts::appFontScaled(EDIT_FONT_SIZE), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID }, true, true);
             Testing::setAccessibleName(description_, qsl("AS EditWidget description"));
             Utils::ApplyStyle(description_, Styling::getParameters().getTextEditCommonQss(true));
             description_->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
@@ -2517,8 +2668,8 @@ namespace Ui
             description_->setTextInteractionFlags(Qt::TextEditable | Qt::TextEditorInteraction);
             description_->setEnterKeyPolicy(TextEditEx::EnterKeyPolicy::CatchNewLine);
             description_->setFrameStyle(QFrame::NoFrame);
-            description_->document()->setDocumentMargin(0);
-            description_->addSpace(Utils::scale_value(4));
+            description_->setDocumentMargin(0);
+            description_->setHeightSupplement(Utils::scale_value(4));
             description_->setMaxHeight(Utils::scale_value(EDIT_MAX_ENTER_HEIGHT));
             Logic::Text4Edit(_description, *description_, Logic::Text2DocHtmlMode::Pass, false);
             description_->setPlaceholderText(QT_TRANSLATE_NOOP("sidebar", "Description"));
@@ -2539,7 +2690,7 @@ namespace Ui
             Utils::transparentBackgroundStylesheet(widget);
             auto hLayout = Utils::emptyHLayout(widget);
             hLayout->setAlignment(Qt::AlignHCenter);
-            rules_ = new Ui::TextEditEx(this, Fonts::appFontScaled(EDIT_FONT_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), true, true);
+            rules_ = new Ui::TextEditEx(this, Fonts::appFontScaled(EDIT_FONT_SIZE), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID }, true, true);
             Testing::setAccessibleName(rules_, qsl("AS EditWidget rules"));
             Utils::ApplyStyle(rules_, Styling::getParameters().getTextEditCommonQss(true));
             rules_->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
@@ -2547,8 +2698,8 @@ namespace Ui
             rules_->setTextInteractionFlags(Qt::TextEditable | Qt::TextEditorInteraction);
             rules_->setEnterKeyPolicy(TextEditEx::EnterKeyPolicy::CatchNewLine);
             rules_->setFrameStyle(QFrame::NoFrame);
-            rules_->document()->setDocumentMargin(0);
-            rules_->addSpace(Utils::scale_value(4));
+            rules_->setDocumentMargin(0);
+            rules_->setHeightSupplement(Utils::scale_value(4));
             rules_->setMaxHeight(Utils::scale_value(EDIT_MAX_ENTER_HEIGHT));
             Logic::Text4Edit(_rules, *rules_, Logic::Text2DocHtmlMode::Pass, false);
             rules_->setPlaceholderText(QT_TRANSLATE_NOOP("sidebar", "Rules"));
@@ -2621,8 +2772,8 @@ namespace Ui
         w->init(_aimid, _name, _description, _rules);
 
         auto generalDialog = std::make_unique<GeneralDialog>(w, Utils::InterConnector::instance().getMainWindow());
-        generalDialog->addButtonsPair(QT_TRANSLATE_NOOP("report_widget", "Cancel"), QT_TRANSLATE_NOOP("report_widget", "OK"), true);
-        if (generalDialog->showInCenter())
+        generalDialog->addButtonsPair(QT_TRANSLATE_NOOP("report_widget", "Cancel"), QT_TRANSLATE_NOOP("report_widget", "OK"));
+        if (generalDialog->execute())
         {
             _name = w->name();
             _description = w->desription();
@@ -2642,8 +2793,8 @@ namespace Ui
 
         auto generalDialog = std::make_unique<GeneralDialog>(w, Utils::InterConnector::instance().getMainWindow());
         generalDialog->addLabel(QT_TRANSLATE_NOOP("sidebar", "Contact name"));
-        generalDialog->addButtonsPair(QT_TRANSLATE_NOOP("report_widget", "Cancel"), QT_TRANSLATE_NOOP("report_widget", "OK"), true);
-        if (generalDialog->showInCenter())
+        generalDialog->addButtonsPair(QT_TRANSLATE_NOOP("report_widget", "Cancel"), QT_TRANSLATE_NOOP("report_widget", "OK"));
+        if (generalDialog->execute())
             return w->name();
 
         return QString();
@@ -2698,8 +2849,8 @@ namespace Ui
         auto w = new AvatarNameInfo(_parent);
         w->setMargins(Utils::scale_value(HOR_OFFSET), 0, Utils::scale_value(HOR_OFFSET), 0);
         w->setTextOffset(Utils::scale_value(AVATAR_NAME_OFFSET));
-        w->initName(Fonts::appFontScaled(16, platform::is_apple() ? Fonts::FontWeight::Medium : Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
-        w->initInfo(Fonts::appFontScaled(14), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+        w->initName(Fonts::appFontScaled(16, platform::is_apple() ? Fonts::FontWeight::Medium : Fonts::FontWeight::Normal), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
+        w->initInfo(Fonts::appFontScaled(14), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY });
         w->setMinimumHeight(Utils::scale_value(AVATAR_INFO_HEIGHT));
 
         if (_layout)
@@ -2716,7 +2867,7 @@ namespace Ui
 
         label->setMargins(Utils::scale_value(HOR_OFFSET) + _addLeftOffset, 0, Utils::scale_value(HOR_OFFSET), 0);
         label->setTextAlign(_align);
-        label->init(Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+        label->init(Fonts::appFontScaled(15), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY });
         label->setText(_text);
         if (_layout)
             _layout->addWidget(label);
@@ -2731,7 +2882,7 @@ namespace Ui
             setWidgetFading(label);
 
         label->setMargins(Utils::scale_value(HOR_OFFSET) + _addLeftOffset, 0, Utils::scale_value(HOR_OFFSET), 0);
-        label->init(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+        label->init(Fonts::appFontScaled(16), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID }, Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY });
         label->setText(_text);
         if (_layout)
             _layout->addWidget(label);
@@ -2758,10 +2909,10 @@ namespace Ui
     QWidget* addSpacer(QWidget* _parent, QLayout* _layout, int _height)
     {
         auto w = new QWidget(_parent);
-        w->setStyleSheet(qsl("background: transparent"));
+        Utils::transparentBackgroundStylesheet(w);
         auto l = Utils::emptyVLayout(w);
         auto spacer = new QWidget(w);
-        spacer->setStyleSheet(ql1s("background: %1").arg(Styling::getParameters().getColor(Styling::StyleVariable::BASE_LIGHT).name()));
+        Styling::setStyleSheet(spacer, getSpacerQss(), Styling::StyleSheetPolicy::UseSetStyleSheet);
         spacer->setFixedHeight(_height == -1 ? Utils::scale_value(SPACER_HEIGHT) : _height);
         l->addWidget(spacer);
         w->setFixedHeight(Utils::scale_value(SPACER_HEIGHT) + Utils::scale_value(SPACER_MARGIN) * 2);
@@ -2777,11 +2928,11 @@ namespace Ui
         w->setFixedHeight(Utils::scale_value(BUTTON_HEIGHT));
         w->setMargins(Utils::scale_value(BUTTON_HOR_OFFSET), 0, Utils::scale_value(HOR_OFFSET), 0);
         w->setTextOffset(Utils::scale_value(HOR_OFFSET));
-        w->setIcon(Utils::renderSvgScaled(_icon, QSize(BUTTON_ICON_SIZE, BUTTON_ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY)));
-        w->initText(Fonts::appFontScaledFixed(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+        w->setIcon(Utils::StyledPixmap::scaled(_icon, QSize(BUTTON_ICON_SIZE, BUTTON_ICON_SIZE), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY }));
+        w->initText(Fonts::appFontScaledFixed(15), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID }, Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY });
         w->setText(_text);
-        w->initCounter(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
-        w->setColors(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
+        w->initCounter(Fonts::appFontScaled(16), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY });
+        w->setColors(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_BRIGHT_INVERSE });
 
         if (Testing::isEnabled() && !_accName.isEmpty())
             Testing::setAccessibleName(w, _accName);
@@ -2803,13 +2954,13 @@ namespace Ui
         if (!_icon.isEmpty())
         {
             w->setTextOffset(Utils::scale_value(HOR_OFFSET));
-            w->setIcon(Utils::renderSvgScaled(_icon, QSize(BUTTON_ICON_SIZE, BUTTON_ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY)));
+            w->setIcon(Utils::StyledPixmap::scaled(_icon, QSize(BUTTON_ICON_SIZE, BUTTON_ICON_SIZE), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY }));
         }
 
-        w->initText(Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+        w->initText(Fonts::appFontScaled(15), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID }, Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY });
         w->setText(_text);
-        w->initCounter(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
-        w->setColors(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
+        w->initCounter(Fonts::appFontScaled(16), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY });
+        w->setColors(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_BRIGHT_INVERSE });
 
         if (_layout)
             _layout->addWidget(w);
@@ -2829,12 +2980,12 @@ namespace Ui
         return w;
     }
 
-    MembersPlate* addMembersPlate(QWidget* _parent, QLayout* _layout)
+    MembersPlate* addMembersPlate(QWidget* _parent, QLayout* _layout, MembersPlate::SearchField _searchVisibility)
     {
-        auto w = new MembersPlate(_parent);
+        auto w = new MembersPlate(_parent, _searchVisibility);
         w->setMargins(Utils::scale_value(MEMBERS_LEFT_MARGIN), Utils::scale_value(MEMBERS_TOP_MARGIN), Utils::scale_value(MEMBERS_RIGHT_MARGIN), Utils::scale_value(MEMBERS_BOTTOM_MARGIN));
-        w->initMembersLabel(Fonts::appFontScaledFixed(12, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
-        w->initSearchLabel(Fonts::appFontScaledFixed(12, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+        w->initMembersLabel(Fonts::appFontScaledFixed(12, Fonts::FontWeight::SemiBold), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY });
+        w->initSearchLabel(Fonts::appFontScaledFixed(12, Fonts::FontWeight::SemiBold), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY });
         if (_layout)
             _layout->addWidget(w);
 
@@ -2861,11 +3012,11 @@ namespace Ui
         if (!_icon.isEmpty())
         {
             const auto size = _iconSize.isValid() ? _iconSize : QSize(BUTTON_ICON_SIZE, BUTTON_ICON_SIZE);
-            w->setIcon(Utils::renderSvgScaled(_icon, size, Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE)));
+            w->setIcon(Utils::StyledPixmap::scaled(_icon, size, Styling::ThemeColorKey{ Styling::StyleVariable::BASE_GLOBALWHITE }));
         }
 
-        w->initColors(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_HOVER), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_ACTIVE));
-        w->initText(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
+        w->initColors(Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY }, Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_HOVER }, Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_ACTIVE });
+        w->initText(Fonts::appFontScaled(16), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_GLOBALWHITE });
         w->setText(_text);
 
         const auto diff = _iconSize.isValid() ? (_iconSize.width() - BUTTON_ICON_SIZE) / 2 : 0;
@@ -2960,7 +3111,7 @@ namespace Ui
 
         label_ = Ui::TextRendering::MakeTextUnit(isChannel ? QT_TRANSLATE_NOOP("block_and_delete", "This member won't be able to join the channel again. You could also delete his messages")
             : QT_TRANSLATE_NOOP("block_and_delete", "This member won't be able to join the group again. You could also delete his messages"));
-        label_->init(Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+        label_->init({ Fonts::appFontScaled(15), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY } });
     }
 
     void BlockAndDeleteWidget::paintEvent(QPaintEvent* _event)

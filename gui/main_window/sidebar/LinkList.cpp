@@ -73,6 +73,31 @@ namespace
 
         return p.copy((p.width() - _size) / 2, (p.height() - _size) / 2, _size, _size);
     }
+
+    QPixmap preparePreview(const QPixmap& _source)
+    {
+        auto preview = rounded(scaled(_source, Utils::scale_value(PREVIEW_WIDTH) * Utils::scale_bitmap(1)));
+        Utils::check_pixel_ratio(preview);
+        return preview;
+    }
+
+    QPixmap defaultLinkPreview()
+    {
+        static auto icon = Utils::LayeredPixmap(qsl(":/gallery/placeholder_link"),
+            {
+                { qsl("bg"), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_BRIGHT } },
+                { qsl("icon"), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY } },
+            },
+            Utils::scale_value(QSize(PREVIEW_WIDTH, PREVIEW_WIDTH)));
+        static QPixmap preview;
+        if (icon.canUpdate() || preview.isNull())
+        {
+            preview = icon.actualPixmap();
+            preview.setDevicePixelRatio(1);
+            preview = preparePreview(preview);
+        }
+        return preview;
+    }
 }
 
 namespace Ui
@@ -85,7 +110,7 @@ namespace Ui
         const auto date = QLocale().standaloneMonthName(QDateTime::fromSecsSinceEpoch(_time).date().month()).toUpper();
 
         date_ = Ui::TextRendering::MakeTextUnit(date);
-        date_->init(Fonts::appFontScaled(11, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+        date_->init({ Fonts::appFontScaled(11, Fonts::FontWeight::SemiBold), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY } });
         date_->evaluateDesiredSize();
     }
 
@@ -131,21 +156,29 @@ namespace Ui
         , loaded_(false)
     {
         title_ = Ui::TextRendering::MakeTextUnit(QString(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-        title_->init(Fonts::appFontScaled(14, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+        TextRendering::TextUnit::InitializeParameters params{ Fonts::appFontScaled(14, Fonts::FontWeight::SemiBold), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } };
+        params.maxLinesCount_ = 1;
+        title_->init(params);
 
         desc_ = Ui::TextRendering::MakeTextUnit(QString(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-        desc_->init(Fonts::appFontScaled(14), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 3);
+        params.setFonts(Fonts::appFontScaled(14));
+        params.maxLinesCount_ = 3;
+        desc_->init(params);
 
         link_ = Ui::TextRendering::MakeTextUnit(url_, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        link_->init(Fonts::appFontScaled(14), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+        params.color_ = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY };
+        params.maxLinesCount_ = 1;
+        link_->init(params);
         height_ = link_->getHeight(_width - Utils::scale_value(HOR_OFFSET + RIGHT_OFFSET) - Utils::scale_value(PREVIEW_WIDTH) - Utils::scale_value(PREVIEW_RIGHT_OFFSET));
 
         date_ = Ui::TextRendering::MakeTextUnit(_date, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        date_->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
+        params.setFonts(Fonts::appFontScaled(13));
+        params.color_ = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY };
+        date_->init(params);
         date_->evaluateDesiredSize();
 
         friendly_ = Ui::TextRendering::MakeTextUnit(Logic::GetFriendlyContainer()->getFriendly(sender_), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        friendly_->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
+        friendly_->init(params);
         friendly_->evaluateDesiredSize();
 
         height_ += date_->cachedSize().height();
@@ -154,22 +187,12 @@ namespace Ui
 
         height_ = std::max(height_, Utils::scale_value(PREVIEW_HEIGHT + VER_OFFSET * 2));
 
-        static auto icon = Utils::renderSvgLayered(qsl(":/gallery/placeholder_link"),
-                                {
-                                    { qsl("bg"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT) },
-                                    { qsl("icon"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY) },
-                                },
-                                Utils::scale_value(QSize(PREVIEW_WIDTH, PREVIEW_WIDTH)));
-        icon.setDevicePixelRatio(1);
-        preview_ = rounded(scaled(icon, Utils::scale_value(PREVIEW_WIDTH) * Utils::scale_bitmap(1)));
-        Utils::check_pixel_ratio(preview_);
-
         setMoreButtonState(ButtonState::HIDDEN);
     }
 
     void LinkItem::draw(QPainter& _p, const QRect& _rect)
     {
-        _p.drawPixmap(Utils::scale_value(HOR_OFFSET), Utils::scale_value(VER_OFFSET) + _rect.y(), preview_);
+        _p.drawPixmap(Utils::scale_value(HOR_OFFSET), Utils::scale_value(VER_OFFSET) + _rect.y(), preview_.isNull() ? defaultLinkPreview() : preview_);
         if (!more_.isNull())
             _p.drawPixmap(width_ - Utils::scale_value(RIGHT_OFFSET) / 2 - Utils::scale_value(MORE_BUTTON_SIZE) / 2, height_ / 2 - Utils::scale_value(MORE_BUTTON_SIZE) / 2 + _rect.y(), more_);
         auto offset = Utils::scale_value(VER_OFFSET) - Utils::scale_value(2);
@@ -271,8 +294,7 @@ namespace Ui
 
     void LinkItem::setPreview(const QPixmap& _preview)
     {
-        preview_ = rounded(scaled(_preview, Utils::scale_value(PREVIEW_WIDTH) * Utils::scale_bitmap(1)));
-        Utils::check_pixel_ratio(preview_);
+        preview_ = preparePreview(_preview);
     }
 
     bool LinkItem::isOverLink(const QPoint& _pos, int _totalHeight) const
@@ -305,11 +327,11 @@ namespace Ui
     void LinkItem::setDateState(bool _hover, bool _active)
     {
         if (_hover)
-            date_->setColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER));
-        else if(_active)
-            date_->setColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_ACTIVE));
+            date_->setColor(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY_HOVER });
+        else if (_active)
+            date_->setColor(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY_ACTIVE });
         else
-            date_->setColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
+            date_->setColor(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY });
     }
 
     void LinkItem::setTitle(const QString& _title)
@@ -582,11 +604,11 @@ namespace Ui
                     parser.process(i->getLink());
                     if (parser.hasUrl())
                     {
-                        auto url = parser.getUrl();
-                        if (url.is_email())
-                            return Utils::openUrl(QString(u"mailto:" % QString::fromStdString(url.url_)));
+                        auto url = parser.formattedUrl();
+                        if (parser.isEmail())
+                            return Utils::openUrl(QString(u"mailto:" % url));
 
-                        Utils::openUrl(QString::fromStdString(url.url_));
+                        Utils::openUrl(url);
                         return;
                     }
                 }

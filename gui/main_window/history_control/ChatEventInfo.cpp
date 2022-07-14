@@ -59,7 +59,7 @@ namespace
     {
         return qsl("hh:mm");
     }
-}
+} // namespace
 
 namespace HistoryControl
 {
@@ -169,6 +169,12 @@ namespace HistoryControl
             return eventInfo;
         }
 
+        if (type == chat_event_type::chat_threads_enabled_modified)
+        {
+            eventInfo->setNewThreadsEnabled(_info.get<bool>("chat/new_threads_enabled"));
+            return eventInfo;
+        }
+
         if (isMemberEvent(type))
         {
             if (_info.is_value_exist("mchat/members_aimids"))
@@ -211,106 +217,109 @@ namespace HistoryControl
     {
         switch (type_)
         {
-            case chat_event_type::added_to_buddy_list:
-                return formatAddedToBuddyListText();
+        case chat_event_type::added_to_buddy_list:
+            return formatAddedToBuddyListText();
 
-            case chat_event_type::avatar_modified:
-                return formatAvatarModifiedText();
+        case chat_event_type::avatar_modified:
+            return formatAvatarModifiedText();
 
-            case chat_event_type::birthday:
-                return formatBirthdayText();
+        case chat_event_type::birthday:
+            return formatBirthdayText();
 
-            case chat_event_type::buddy_reg:
-                return formatBuddyReg();
+        case chat_event_type::buddy_reg:
+            return formatBuddyReg();
 
-            case chat_event_type::buddy_found:
-                return formatBuddyFound();
+        case chat_event_type::buddy_found:
+            return formatBuddyFound();
 
-            case chat_event_type::chat_name_modified:
-                return formatChatNameModifiedText();
+        case chat_event_type::chat_name_modified:
+            return formatChatNameModifiedText();
 
-            case chat_event_type::generic:
-                return formatGenericText();
+        case chat_event_type::generic:
+            return formatGenericText();
 
-            case chat_event_type::mchat_add_members:
-                return formatMchatAddMembersText();
+        case chat_event_type::mchat_add_members:
+            return formatMchatAddMembersText();
 
-            case chat_event_type::mchat_adm_granted:
-                return formatMchatAdmGrantedText();
+        case chat_event_type::mchat_adm_granted:
+            return formatMchatAdmGrantedText();
 
-            case chat_event_type::mchat_adm_revoked:
-                return formatMchatAdmRevokedText();
+        case chat_event_type::mchat_adm_revoked:
+            return formatMchatAdmRevokedText();
 
-            case chat_event_type::mchat_allowed_to_write:
-                return formatMchatAllowedToWrite();
+        case chat_event_type::mchat_allowed_to_write:
+            return formatMchatAllowedToWrite();
 
-            case chat_event_type::mchat_disallowed_to_write:
-                return formatMchatDisallowedToWrite();
+        case chat_event_type::mchat_disallowed_to_write:
+            return formatMchatDisallowedToWrite();
 
-            case chat_event_type::mchat_invite:
-                return formatMchatInviteText();
+        case chat_event_type::mchat_invite:
+            return formatMchatInviteText();
 
-            case chat_event_type::mchat_leave:
-                return formatMchatLeaveText();
+        case chat_event_type::mchat_leave:
+            return formatMchatLeaveText();
 
-            case chat_event_type::mchat_del_members:
-                return formatMchatDelMembersText();
+        case chat_event_type::mchat_del_members:
+            return formatMchatDelMembersText();
 
-            case chat_event_type::mchat_waiting_for_approve:
-                return formatMchatWaitingForApprove();
+        case chat_event_type::mchat_waiting_for_approve:
+            return formatMchatWaitingForApprove();
 
-            case chat_event_type::mchat_joining_approved:
-                return formatMchatJoiningApproved();
+        case chat_event_type::mchat_joining_approved:
+            return formatMchatJoiningApproved();
 
-            case chat_event_type::mchat_joining_rejected:
-                return formatMchatJoiningRejected();
+        case chat_event_type::mchat_joining_rejected:
+            return formatMchatJoiningRejected();
 
-            case chat_event_type::mchat_joining_canceled:
-                return formatMchatJoiningCanceled();
+        case chat_event_type::mchat_joining_canceled:
+            return formatMchatJoiningCanceled();
 
-            case chat_event_type::chat_description_modified:
-                return formatChatDescriptionModified();
+        case chat_event_type::chat_description_modified:
+            return formatChatDescriptionModified();
 
-            case chat_event_type::mchat_kicked:
-                return formatMchatKickedText();
+        case chat_event_type::mchat_kicked:
+            return formatMchatKickedText();
 
-            case chat_event_type::message_deleted:
-                return formatMessageDeletedText();
+        case chat_event_type::message_deleted:
+            return formatMessageDeletedText();
 
-            case chat_event_type::chat_rules_modified:
-                return formatChatRulesModified();
+        case chat_event_type::chat_rules_modified:
+            return formatChatRulesModified();
 
-            case chat_event_type::chat_stamp_modified:
-                return formatChatStampModified();
+        case chat_event_type::chat_stamp_modified:
+            return formatChatStampModified();
 
-            case chat_event_type::chat_join_moderation_modified:
-                return formatJoinModerationModified();
+        case chat_event_type::chat_join_moderation_modified:
+            return formatJoinModerationModified();
 
-            case chat_event_type::chat_public_modified:
-                return formatPublicModified();
+        case chat_event_type::chat_public_modified:
+            return formatPublicModified();
 
-            case chat_event_type::chat_trust_requied_modified:
-                return formatTrustRequiredModified();
+        case chat_event_type::chat_trust_requied_modified:
+            return formatTrustRequiredModified();
 
-            case chat_event_type::warn_about_stranger:
-                return formatWarnAboutStranger();
+        case chat_event_type::chat_threads_enabled_modified:
+            return formatThreadsEnabledModified();
 
-            case chat_event_type::no_longer_stranger:
-                return formatNoLongerStranger();
+        case chat_event_type::warn_about_stranger:
+            return formatWarnAboutStranger();
 
-            case chat_event_type::status_reply:
-            case chat_event_type::custom_status_reply:
-                return formatStatusReply();
+        case chat_event_type::no_longer_stranger:
+            return formatNoLongerStranger();
 
-            case chat_event_type::task_changed:
-                return formatTask();
+        case chat_event_type::status_reply:
+        case chat_event_type::custom_status_reply:
+            return formatStatusReply();
 
-            default:
-                break;
+        case chat_event_type::task_changed:
+            return formatTask();
+
+        default:
+            break;
         }
 
         im_assert(!"unexpected chat event type");
-        return QString();
+        return {};
     }
 
     QString ChatEventInfo::formatAddedToBuddyListText() const
@@ -556,7 +565,22 @@ namespace HistoryControl
     QString ChatEventInfo::formatTrustRequiredModified() const
     {
         im_assert(type_ == chat_event_type::chat_trust_requied_modified);
-        return Ui::getFileStatusText(Ui::FileStatus::Blocked);
+        return Ui::getFileStatusText(Ui::FileStatusType::TrustRequired);
+    }
+
+    QString ChatEventInfo::formatThreadsEnabledModified() const
+    {
+        im_assert(type_ == chat_event_type::chat_threads_enabled_modified);
+        const bool outgoing = isOutgoing();
+        const QString senderName = outgoing ? QT_TRANSLATE_NOOP("chat_event", "You") : QT_TRANSLATE_NOOP("chat_event", "The administrator");
+        QString actionName;
+        if (outgoing)
+            actionName = chat_.newThreadsEnabled_ ? QT_TRANSLATE_NOOP("chat_event", "have allowed") : QT_TRANSLATE_NOOP("chat_event", "have forbidden");
+        else
+            actionName = chat_.newThreadsEnabled_ ? QT_TRANSLATE_NOOP("chat_event", "has allowed") : QT_TRANSLATE_NOOP("chat_event", "has forbidden");
+        return isChannel() ?
+                QT_TRANSLATE_NOOP("chat_event", "%1 %2 threads creation in this channel").arg(senderName, actionName) :
+                QT_TRANSLATE_NOOP("chat_event", "%1 %2 threads creation in this group").arg(senderName, actionName);
     }
 
     QString ChatEventInfo::formatMchatInviteText() const
@@ -1048,11 +1072,13 @@ namespace HistoryControl
             return QT_TRANSLATE_NOOP("chat_event", "%1 changed task title to \"%2\"").arg(editor, *title);
         if (const auto assignee = task_.change_.assignee_)
         {
-            const auto assigneeFriendly = assignee->isEmpty() ? QT_TRANSLATE_NOOP("task_block", "Not assigned") : Logic::GetFriendlyContainer()->getFriendly(*assignee);
-            return QT_TRANSLATE_NOOP("chat_event", "%1 changed task assignee to \"%2\"").arg(editor, assigneeFriendly);
+            const auto assigneeFriendly = assignee->isEmpty() ? (u'\"' % QT_TRANSLATE_NOOP("task_block", "Unassigned") % u'\"') : Logic::GetFriendlyContainer()->getFriendly(*assignee);
+            return QT_TRANSLATE_NOOP("chat_event", "%1 changed task assignee to %2").arg(editor, assigneeFriendly);
         }
         if (const auto dateTime = task_.change_.date_)
         {
+            if (dateTime->isNull())
+                return QT_TRANSLATE_NOOP("chat_event", "%1 changed task deadline to %2").arg(editor, u'\"' % QT_TRANSLATE_NOOP("task_block", "Not set") % u'\"');
             const auto date = dateTime->date();
             const auto time = dateTime->time();
             const auto current = QDateTime::currentDateTime();
@@ -1130,6 +1156,11 @@ namespace HistoryControl
     void ChatEventInfo::setNewTrustRequired(bool _newTrustRequired)
     {
         chat_.newTrustRequired_ = _newTrustRequired;
+    }
+
+    void ChatEventInfo::setNewThreadsEnabled(bool _newThreadsEnabled)
+    {
+        chat_.newThreadsEnabled_ = _newThreadsEnabled;
     }
 
     void ChatEventInfo::setSender(QString _aimid)
@@ -1223,4 +1254,4 @@ namespace HistoryControl
         task_.editor_ = _editor;
         task_.change_ = _taskChange;
     }
-}
+} // namespace HistoryControl

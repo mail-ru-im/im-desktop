@@ -5,6 +5,7 @@
 #include "../../../http_request.h"
 #include "../../../tools/system.h"
 #include "../../../../common.shared/json_helper.h"
+#include "../log_replace_functor.h"
 
 namespace
 {
@@ -64,4 +65,9 @@ int32_t set_status::init_request(const std::shared_ptr<core::http_request_simple
 std::string_view set_status::get_method() const
 {
     return "status/set";
+}
+
+int core::wim::set_status::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }

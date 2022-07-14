@@ -6,7 +6,6 @@
 #include "../fonts.h"
 #include "../gui_settings.h"
 #include "../controls/ConnectionSettingsWidget.h"
-#include "../controls/CountrySearchCombobox.h"
 
 #include "../controls/TransparentScrollBar.h"
 #include "../controls/LabelEx.h"
@@ -17,7 +16,7 @@
 #include "../controls/CustomButton.h"
 #include "../controls/DialogButton.h"
 #include "../controls/CheckboxList.h"
-#include "../controls/TooltipWidget.h"
+#include "../controls/TextWidget.h"
 #include "../controls/ContextMenu.h"
 #include "../utils/gui_coll_helper.h"
 #include "../utils/utils.h"
@@ -25,9 +24,12 @@
 #include "../omicron/omicron_helper.h"
 #include "../utils/features.h"
 #include "TermsPrivacyWidget.h"
+#include "UserAgreementWidget.h"
 #include "MainWindow.h"
 #include "app_config.h"
 #include "../styles/ThemeParameters.h"
+#include "styles/StyleSheetContainer.h"
+#include "styles/StyleSheetGenerator.h"
 #include "../common.shared/config/config.h"
 #include "sidebar/SidebarUtils.h"
 #include "../cache/emoji/Emoji.h"
@@ -47,6 +49,7 @@ namespace
     {
         LOGIN,
         GDPR,
+        USER_AGREEMENT
     };
 
     qint64 phoneInfoLastRequestSpecialId_ = 0; // using for settings only (last entered uin/phone)
@@ -67,15 +70,18 @@ namespace
         return Utils::scale_value(300);
     }
 
-    QString getResendButtonStyle()
+    auto getResendButtonStyle()
     {
-        return qsl(
-            "QPushButton:disabled { font-size: 16dip; background-color: %3; min-height: 30dip; max-height: 30dip; min-width: 30dip; max-width: %4dip; color: %1; border-style: none; outline: none; } "
-            "QPushButton:enabled { font-size: 16dip; background-color:%3; min-height: 30dip; max-height: 30dip; min-width: 30dip; max-width: %4dip; color: %2; border-style: none; outline: none; } ")
-            .arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_PRIMARY),
-                Styling::getParameters().getColorHex(Styling::StyleVariable::PRIMARY),
-                Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE),
-                QString::number(Utils::unscale_value(controlsWidth())));
+        const auto style =
+            qsl("QPushButton:disabled { font-size: 16dip; background-color: %4; min-height: 30dip; max-height: 30dip; min-width: 30dip; max-width: %1dip; color: %2; border-style: none; outline: none; } "
+                "QPushButton:enabled { font-size: 16dip; background-color:%4; min-height: 30dip; max-height: 30dip; min-width: 30dip; max-width: %1dip; color: %3; border-style: none; outline: none; } ")
+                .arg(QString::number(Utils::unscale_value(controlsWidth())));
+        return std::make_unique<Styling::ArrayStyleSheetGenerator>(
+            style,
+            std::vector<Styling::ThemeColorKey> {
+                                                  Styling::ThemeColorKey { Styling::StyleVariable::BASE_PRIMARY },
+                                                  Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY},
+                                                  Styling::ThemeColorKey { Styling::StyleVariable::BASE_GLOBALWHITE } });
     }
 
     QString getPasswordLink()
@@ -90,6 +96,7 @@ namespace
         EnterPhone,
         EnterSMSCode,
         EnterPhoneCode,
+        EnterEmailOAuth2,
         EnterOTPEmail,
         EnterOTPPassword,
         LoginByPhoneCall
@@ -111,9 +118,11 @@ namespace
             return QT_TRANSLATE_NOOP("login_page", "Check the country code and enter your phone number for registration and authorization");
         case HintType::EnterSMSCode:
             return QT_TRANSLATE_NOOP("login_page", "Verification code was sent to number");
+        case HintType::EnterEmailOAuth2:
+            return QT_TRANSLATE_NOOP("login_page", "Enter your corporate email");
         case HintType::EnterOTPEmail:
             return QT_TRANSLATE_NOOP("login_page", "Enter your corporate email, a password will be sent to it");
-            case HintType::EnterOTPPassword:
+        case HintType::EnterOTPPassword:
             return QT_TRANSLATE_NOOP("login_page", "Enter one-time password sent to email");
         case HintType::EnterPhoneCode:
         case HintType::LoginByPhoneCall:
@@ -137,6 +146,7 @@ namespace
             return QT_TRANSLATE_NOOP("login_page", "SMS code");
         case HintType::EnterPhoneCode:
             return QT_TRANSLATE_NOOP("login_page", "Phone code");
+        case HintType::EnterEmailOAuth2:
         case HintType::EnterOTPEmail:
             return QT_TRANSLATE_NOOP("login_page", "Enter email");
         case HintType::EnterOTPPassword:
@@ -218,10 +228,11 @@ namespace Ui
         , codeLength_(6)
         , phoneChangedAuto_(false)
         , gdprAccepted_(false)
+        , userAgreementAccepted_(false)
         , loggedIn_(false)
         , smsCodeSendCount_(0)
     {
-        Utils::ApplyStyle(this, Styling::getParameters().getLoginPageQss());
+        Styling::setStyleSheet(this, Styling::getParameters().getLoginPageQss());
         auto loginPageLayout = Utils::emptyHLayout(this);
 
         mainStakedWidget_ = new QStackedWidget();
@@ -237,7 +248,7 @@ namespace Ui
         auto topButtonWidget = new QWidget(this);
         Testing::setAccessibleName(topButtonWidget, qsl("AS LoginPage topButtonWidget"));
         auto topButtonLayout = Utils::emptyHLayout(topButtonWidget);
-        Utils::ApplyStyle(topButtonWidget, qsl("border: none; background-color: transparent;"));
+        topButtonWidget->setStyleSheet(qsl("border: none; background-color: transparent;"));
         topButtonWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
         topButtonWidget->setFixedHeight(topButtonWidgetHeight());
         topButtonLayout->setContentsMargins(Utils::scale_value(20), Utils::scale_value(12), Utils::scale_value(12), 0);
@@ -307,7 +318,7 @@ namespace Ui
         auto hintsLayout = Utils::emptyVLayout(hintsWidget_);
 
         titleLabel_ = new TextWidget(hintsWidget_, getTitleText(HintType::EnterEmailOrUin));
-        titleLabel_->init(Fonts::appFontScaled(titleFontSize, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        titleLabel_->init({ Fonts::appFontScaled(titleFontSize, Fonts::FontWeight::SemiBold), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } });
         titleLabel_->setObjectName(qsl("hint"));
         titleLabel_->setAlignment(TextRendering::HorAligment::CENTER);
         titleLabel_->setFixedWidth(controlsWidth());
@@ -370,7 +381,7 @@ namespace Ui
         errorLabel_->setTextInteractionFlags(Qt::LinksAccessibleByMouse);
         errorLabel_->setOpenExternalLinks(true);
         errorLabel_->setFont(Fonts::appFontScaled(15));
-        errorLabel_->setColor(Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION));
+        errorLabel_->setColor(Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_ATTENTION });
 
         Testing::setAccessibleName(errorLabel_, qsl("AS LoginPage errorLabel"));
         errorLayout->addWidget(errorLabel_);
@@ -378,7 +389,7 @@ namespace Ui
         buttonsLayout->addItem(new QSpacerItem(0, Utils::scale_value(12), QSizePolicy::Minimum, QSizePolicy::Fixed));
 
         resendButton_ = new QPushButton(buttonsWidget_);
-        Utils::ApplyStyle(resendButton_, getResendButtonStyle());
+        Styling::setStyleSheet(resendButton_, getResendButtonStyle());
         resendButton_->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
         resendButton_->setCursor(Qt::PointingHandCursor);
 
@@ -433,9 +444,9 @@ namespace Ui
         forgotPasswordLabel_ = new LabelEx(forgotPasswordWidget_);
         forgotPasswordLabel_->setText(QT_TRANSLATE_NOOP("login_page", "Forgot password?"));
         forgotPasswordLabel_->setFont(Fonts::appFontScaled(fontSize));
-        forgotPasswordLabel_->setColors(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY),
-            Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_HOVER),
-            Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_ACTIVE));
+        forgotPasswordLabel_->setColors(Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY },
+            Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY_HOVER },
+            Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY_ACTIVE });
         forgotPasswordLabel_->setCursor(Qt::PointingHandCursor);
 
         Testing::setAccessibleName(forgotPasswordLabel_, qsl("AS LoginPage forgotPasswordLabel"));
@@ -513,21 +524,20 @@ namespace Ui
         loginButton_->setTextLeftOffset(Utils::scale_value(8));
         loginButton_->setShape(ButtonShape::ROUNDED_RECTANGLE);
         loginButton_->setAttribute(Qt::WA_Hover);
-        loginButton_->setTextColor(kOAuthButtonTextColor);
-        loginButton_->setNormalTextColor(kOAuthButtonTextColor);
-        loginButton_->setHoveredTextColor(kOAuthButtonTextColor);
-        loginButton_->setPressedTextColor(kOAuthButtonTextColor);
+        loginButton_->setNormalTextColor(Styling::ColorParameter{ kOAuthButtonTextColor });
+        loginButton_->setHoveredTextColor(Styling::ColorParameter{ kOAuthButtonTextColor });
+        loginButton_->setPressedTextColor(Styling::ColorParameter{ kOAuthButtonTextColor });
 
-        loginButton_->setDefaultColor(kOAuthButtonLogoColor);
-        loginButton_->setActiveColor(kOAuthButtonLogoColor);
-        loginButton_->setDisabledColor(kOAuthButtonLogoColor);
-        loginButton_->setHoverColor(kOAuthButtonLogoColor);
-        loginButton_->setPressedColor(kOAuthButtonLogoColor);
+        loginButton_->setDefaultColor(Styling::ColorParameter{ kOAuthButtonLogoColor });
+        loginButton_->setActiveColor(Styling::ColorParameter{ kOAuthButtonLogoColor });
+        loginButton_->setDisabledColor(Styling::ColorParameter{ kOAuthButtonLogoColor });
+        loginButton_->setHoverColor(Styling::ColorParameter{ kOAuthButtonLogoColor });
+        loginButton_->setPressedColor(Styling::ColorParameter{ kOAuthButtonLogoColor });
 
-        loginButton_->setBackgroundHovered(kOAuthButtonHoverColor);
-        loginButton_->setBackgroundNormal(kOAuthButtonBackColor);
-        loginButton_->setBackgroundPressed(kOAuthButtonBackColor);
-        loginButton_->setBackgroundDisabled(kOAuthButtonBackColor);
+        loginButton_->setBackgroundHovered(Styling::ColorParameter{ kOAuthButtonHoverColor });
+        loginButton_->setBackgroundNormal(Styling::ColorParameter{ kOAuthButtonBackColor });
+        loginButton_->setBackgroundPressed(Styling::ColorParameter{ kOAuthButtonBackColor });
+        loginButton_->setBackgroundDisabled(Styling::ColorParameter{ kOAuthButtonBackColor });
 
         loginButton_->setText(QT_TRANSLATE_NOOP("login_page", "Sign in with Mail.ru"));
         loginButton_->setCursor(Qt::PointingHandCursor);
@@ -583,7 +593,6 @@ namespace Ui
         Testing::setAccessibleName(loginWidget, qsl("AS LoginPage loginWidget"));
         mainStakedWidget_->addWidget(loginWidget);
 
-        if (needGDPRPage())
         {
             QWidget* gdprWidget = new QWidget(this);
             auto gdprLayout = Utils::emptyHLayout(gdprWidget);
@@ -600,9 +609,12 @@ namespace Ui
                     "and <a href=\"%2\">Privacy Policy</a>")
                 .arg(legalTermsUrl(), privacyPolicyUrl()),
                 options);
-
-            Testing::setAccessibleName(termsWidget_, qsl("AS GDPR termsWidget"));
-            gdprLayout->addWidget(termsWidget_);
+            if (termsWidget_)
+            {
+                termsWidget_->init();
+                Testing::setAccessibleName(termsWidget_, qsl("AS GDPR termsWidget"));
+                gdprLayout->addWidget(termsWidget_);
+            }
             Testing::setAccessibleName(gdprWidget, qsl("AS GDPR gdprWidget"));
             mainStakedWidget_->addWidget(gdprWidget);
             mainStakedWidget_->layout()->setAlignment(gdprWidget, Qt::AlignHCenter);
@@ -682,6 +694,7 @@ namespace Ui
         }, Qt::DirectConnection);
 
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::getSmsResult, this, &LoginPage::getSmsResult, Qt::DirectConnection);
+        connect(Ui::GetDispatcher(), &Ui::core_dispatcher::oauthRequired, this, &LoginPage::oauthRequired, Qt::DirectConnection);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::loginResult, this, &LoginPage::loginResult, Qt::DirectConnection);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::loginResultAttachPhone, this, &LoginPage::loginResultAttachPhone, Qt::DirectConnection);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::phoneInfoResult, this, &LoginPage::phoneInfoResult, Qt::DirectConnection);
@@ -716,7 +729,11 @@ namespace Ui
             lastPage_ = LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX;
 
         if (Features::loginMethod() == Features::LoginMethod::OTPViaEmail)
+        {
             otpState_ = OTPAuthState::Email;
+            if (Features::isOAuth2LoginAllowed())
+                lastPage_ = LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX;
+        }
 
         initLoginSubPage(lastPage_);
 
@@ -770,7 +787,6 @@ namespace Ui
         if (_index == LoginSubpage::SUBPAGE_PHONE_LOGIN_INDEX || _index == LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX || _index == LoginSubpage::SUBPAGE_OAUTH2_LOGIN_INDEX)
             lastPage_ = _index;
 
-        loginStakedWidget_->setEnabled(true);
         changePageButton_->setVisible((config::get().is_on(config::features::login_by_phone_allowed) && _index != LoginSubpage::SUBPAGE_PHONE_CONF_INDEX) || _index == LoginSubpage::SUBPAGE_REPORT);
         proxySettingsButton_->setVisible(_index == LoginSubpage::SUBPAGE_PHONE_LOGIN_INDEX || _index == LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX || _index == LoginSubpage::SUBPAGE_OAUTH2_LOGIN_INDEX);
         reportButton_->setVisible(!Features::isContactUsViaBackend() && (_index == LoginSubpage::SUBPAGE_PHONE_LOGIN_INDEX || _index == LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX || _index == LoginSubpage::SUBPAGE_OAUTH2_LOGIN_INDEX));
@@ -855,8 +871,11 @@ namespace Ui
         }
 
         const auto idx = (int)_index;
-        loginStakedWidget_->widget(idx)->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-        loginStakedWidget_->widget(idx)->updateGeometry();
+        if (loginStakedWidget_->widget(idx))
+        {
+            loginStakedWidget_->widget(idx)->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+            loginStakedWidget_->widget(idx)->updateGeometry();
+        }
         titleLabel_->setMaxWidthAndResize(controlsWidth());
         hintsWidget_->updateGeometry();
         if (_index == LoginSubpage::SUBPAGE_PHONE_CONF_INDEX || _index == LoginSubpage::SUBPAGE_REPORT)
@@ -864,9 +883,48 @@ namespace Ui
             controlsWidget_->updateGeometry();
             resizeSpacers();
         }
+        loginStakedWidget_->setEnabled(true);
         loginStakedWidget_->setCurrentIndex(idx);
         updateButtonsWidgetHeight();
         updatePage();
+    }
+
+    bool LoginPage::needUserAgreementPage() const
+    {
+        return (config::get().is_on(config::features::external_user_agreement) &&
+                config::get().is_on(config::features::user_agreement_enabled) &&
+                !userAgreementAcceptedThisSession());
+    }
+
+    void LoginPage::openUserAgreement(const QString& _confidentialLink, const QString& _pdLink)
+    {
+        if (!userAgreementWidget_)
+        {
+            QWidget* userAgreementWidget = new QWidget(this);
+            if (userAgreementWidget)
+            {
+                auto userAgreementLayout = Utils::emptyHLayout(userAgreementWidget);
+                userAgreementLayout->setAlignment(Qt::AlignCenter);
+
+                userAgreementWidget_ = new UserAgreementWidget(_confidentialLink, _pdLink);
+                if (userAgreementWidget_)
+                {
+                    userAgreementWidget_->init();
+                    Testing::setAccessibleName(userAgreementWidget_, qsl("AS UserAgreement userAgreementWidgetLocal"));
+                    userAgreementLayout->addWidget(userAgreementWidget_);
+
+                    connect(userAgreementWidget_, &UserAgreementWidget::userAgreementAccepted, this,
+                            &LoginPage::loginAfterUserAgreementAccept);
+                }
+                connect(&Utils::InterConnector::instance(), &Utils::InterConnector::logout, this,
+                        &LoginPage::onLogout);
+
+                Testing::setAccessibleName(userAgreementWidget, qsl("AS UserAgreement userAgreementWidget"));
+                mainStakedWidget_->addWidget(userAgreementWidget);
+                mainStakedWidget_->layout()->setAlignment(userAgreementWidget, Qt::AlignHCenter);
+            }
+        }
+        userAgreementSwitchPages(true);
     }
 
     void LoginPage::initGDPR()
@@ -940,14 +998,68 @@ namespace Ui
         });
     }
 
-    void LoginPage::setGDPRacceptedThisSession(bool _accepted)
+    void LoginPage::userAgreementSwitchPages(bool _needEnable)
     {
-        gdprAccepted_ = _accepted;
+        bool needUserAgreement = needUserAgreementPage();
+
+        const auto idx = needUserAgreement ? Pages::USER_AGREEMENT : Pages::LOGIN;
+        const auto otherIdx = needUserAgreement ? Pages::LOGIN : Pages::USER_AGREEMENT;
+
+        mainStakedWidget_->widget(otherIdx)->setEnabled(!_needEnable);
+        mainStakedWidget_->widget(idx)->setEnabled(_needEnable);
+        mainStakedWidget_->widget(idx)->updateGeometry();
+        mainStakedWidget_->setCurrentIndex(idx);
     }
 
-    bool LoginPage::gdprAcceptedThisSession() const
+    void LoginPage::enableLoginPage(bool _needInitSubPage)
     {
-        return gdprAccepted_;
+        mainStakedWidget_->setCurrentIndex(Pages::LOGIN);
+        mainStakedWidget_->widget(Pages::LOGIN)->setEnabled(true);
+
+        if (_needInitSubPage)
+        {
+            if (!Features::isOAuth2LoginAllowed() && lastPage_ == LoginSubpage::SUBPAGE_OAUTH2_LOGIN_INDEX)
+                lastPage_ = LoginSubpage::SUBPAGE_PHONE_LOGIN_INDEX;
+            initLoginSubPage(lastPage_);
+        }
+    }
+
+    void LoginPage::logoutAfterUserAgreementAccept()
+    {
+        setUserAgreementAcceptedThisSession(false);
+        enableLoginPage();
+        if (userAgreementWidget_)
+            userAgreementWidget_->resetChecks();
+        loggedIn_ = false;
+    }
+
+    void LoginPage::loginAfterUserAgreementAccept()
+    {
+        setUserAgreementAcceptedThisSession(true);
+        doLogin();
+    }
+
+    void LoginPage::doLogin()
+    {
+        gui_coll_helper collection(GetDispatcher()->create_collection(), true);
+        collection.set_value_as_qstring("login", uinInput_->text().trimmed());
+        collection.set_value_as_qstring("password", passwordInput_->text());
+        collection.set_value_as_bool("save_auth_data", keepLogged_->isChecked());
+        collection.set_value_as_bool("user_agreement_accepted", userAgreementAcceptedThisSession());
+
+        uinInput_->setEnabled(true);
+
+        if (!otpState_)
+            passwordInput_->setEnabled(true);
+
+        if (otpState_ && otpState_ == OTPAuthState::Email)
+            collection.set_value_as_enum("token_type", core::token_type::otp_via_email);
+
+        collection.set_value_as_bool("not_log", true);
+        sendSeq_ = GetDispatcher()->post_message_to_core("login_by_password", collection.get());
+
+        if (config::get().is_on(config::features::external_url_config))
+            nextButton_->setEnabled(false);
     }
 
     void LoginPage::nextPage()
@@ -1019,24 +1131,7 @@ namespace Ui
         }
         else if (currentPage() == LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX)
         {
-            uinInput_->setEnabled(true);
-
-            if (!otpState_)
-                passwordInput_->setEnabled(true);
-
-            gui_coll_helper collection(GetDispatcher()->create_collection(), true);
-            collection.set_value_as_qstring("login", uinInput_->text().trimmed());
-            collection.set_value_as_qstring("password", passwordInput_->text());
-            collection.set_value_as_bool("save_auth_data", keepLogged_->isChecked());
-
-            if (otpState_ && otpState_ == OTPAuthState::Email)
-                collection.set_value_as_enum("token_type", core::token_type::otp_via_email);
-
-            collection.set_value_as_bool("not_log", true);
-            sendSeq_ = GetDispatcher()->post_message_to_core("login_by_password", collection.get());
-
-            if (config::get().is_on(config::features::external_url_config))
-                nextButton_->setEnabled(false);
+            doLogin();
         }
     }
 
@@ -1056,6 +1151,10 @@ namespace Ui
         auto nextPage = (Features::isOAuth2LoginAllowed() ? LoginSubpage::SUBPAGE_OAUTH2_LOGIN_INDEX : LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX);
         if (otpState_ && curPage == LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX)
         {
+            setUserAgreementAcceptedThisSession(false);
+            if(userAgreementWidget_)
+                userAgreementWidget_->resetChecks();
+
             updateOTPState(OTPAuthState::Email);
             return;
         }
@@ -1318,14 +1417,14 @@ namespace Ui
             }
             changePageButton_->clearIcon();
             changePageButton_->setText(buttonText);
-            changePageButton_->setNormalTextColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
-            changePageButton_->setHoveredTextColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY_HOVER));
-            changePageButton_->setPressedTextColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY_ACTIVE));
+            changePageButton_->setNormalTextColor(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY });
+            changePageButton_->setHoveredTextColor(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY_HOVER });
+            changePageButton_->setPressedTextColor(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY_ACTIVE });
         }
         else
         {
             changePageButton_->setText(QString());
-            changePageButton_->setDefaultImage(qsl(":/controls/back_icon_thin"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY), QSize(backIconSize, backIconSize));
+            changePageButton_->setDefaultImage(qsl(":/controls/back_icon_thin"), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY }, QSize(backIconSize, backIconSize));
             Styling::Buttons::setButtonDefaultColors(changePageButton_);
         }
 
@@ -1403,8 +1502,16 @@ namespace Ui
         passwordInput_->clear();
         keepLoggedWidget_->setVisible(!isPassPage);
 
-        titleLabel_->setText(getTitleText(isPassPage ? HintType::EnterOTPPassword : HintType::EnterOTPEmail));
-        entryHint_->setText(hintLabelText(isPassPage ? HintType::EnterOTPPassword : HintType::EnterOTPEmail));
+        if (!Features::isOAuth2LoginAllowed())
+        {
+            titleLabel_->setText(getTitleText(isPassPage ? HintType::EnterOTPPassword : HintType::EnterOTPEmail));
+            entryHint_->setText(hintLabelText(isPassPage ? HintType::EnterOTPPassword : HintType::EnterOTPEmail));
+        }
+        else
+        {
+            titleLabel_->setText(getTitleText(HintType::EnterEmailOAuth2));
+            entryHint_->setText(hintLabelText(HintType::EnterEmailOAuth2));
+        }
 
         if (!isPassPage && config::get().is_on(config::features::explained_forgot_password))
             entryHint_->appendLink(QT_TRANSLATE_NOOP("login_page", "Mail.ru for business"), getPasswordLink());
@@ -1450,7 +1557,11 @@ namespace Ui
             get_gui_settings()->set_value<bool>(login_page_need_fill_profile, needFillProfile);
             if (otpState_ && otpState_ == OTPAuthState::Email)
             {
-                updateOTPState(OTPAuthState::Password);
+                enableLoginPage();
+                if (Features::isOAuth2LoginAllowed() && !needFillProfile)
+                    login();
+                else
+                    updateOTPState(OTPAuthState::Password);
                 return;
             }
 
@@ -1467,12 +1578,35 @@ namespace Ui
             if (!needFillProfile)
                 login();
         }
-
-        if (otpState_ && otpState_ == OTPAuthState::Password)
+        else if (otpState_)
         {
-            updateOTPState(OTPAuthState::Password);
-            setErrorText(QT_TRANSLATE_NOOP("login_page", "Wrong password"));
+            switch (*otpState_)
+            {
+            case OTPAuthState::Password:
+                updateOTPState(OTPAuthState::Password);
+                setErrorText(QT_TRANSLATE_NOOP("login_page", "Wrong password"));
+                break;
+            case OTPAuthState::Email:
+                updateOTPState(OTPAuthState::Email);
+                setErrorText(QT_TRANSLATE_NOOP("login_page", "Wrong Email"));
+                break;
+            default:
+                updateOTPState(OTPAuthState::Email);
+                setErrorText(QT_TRANSLATE_NOOP("login_page", "Wrong Email or password"));
+                const auto idx = needGDPRPage() ? Pages::GDPR : Pages::LOGIN;
+                mainStakedWidget_->widget(Pages::LOGIN)->setEnabled(!needGDPRPage());
+                mainStakedWidget_->widget(idx)->updateGeometry();
+                mainStakedWidget_->setCurrentIndex(idx);
+                loggedIn_ = false;
+                break;
+            }
         }
+    }
+
+    void LoginPage::oauthRequired()
+    {
+        if (Features::isOAuth2LoginAllowed())
+            openOAuth2Dialog();
     }
 
     void LoginPage::authError(const int _result)
@@ -1531,8 +1665,8 @@ namespace Ui
 
         auto edit = new LineEditEx(host);
         edit->setCustomPlaceholder(QT_TRANSLATE_NOOP("login_page", "Enter hostname"));
-        edit->changeTextColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
-        edit->setCustomPlaceholderColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+        edit->changeTextColor(Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
+        edit->setCustomPlaceholderColor(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY });
 
         if (const auto suggested = config::get().string(config::values::external_config_preset_url); !suggested.empty())
             edit->setText(QString::fromUtf8(suggested.data(), suggested.size()));
@@ -1548,11 +1682,11 @@ namespace Ui
         GeneralDialog dialog(host, Utils::InterConnector::instance().getMainWindow(), opt);
         dialog.addLabel(QT_TRANSLATE_NOOP("login_page", "Configuration error"));
         dialog.addText(QT_TRANSLATE_NOOP("login_page", "Invalid server configuration hostname. Contact system administrator"), Utils::scale_value(12));
-        dialog.addButtonsPair(QT_TRANSLATE_NOOP("login_page", "Cancel"), QT_TRANSLATE_NOOP("login_page", "OK"), true);
+        dialog.addButtonsPair(QT_TRANSLATE_NOOP("login_page", "Cancel"), QT_TRANSLATE_NOOP("login_page", "OK"));
 
         connect(edit, &LineEditEx::enter, &dialog, &GeneralDialog::accept);
 
-        if (dialog.showInCenter())
+        if (dialog.execute())
         {
             if (const auto host = edit->text().trimmed(); !host.isEmpty())
             {
@@ -1765,16 +1899,19 @@ namespace Ui
 
         loginButton_->setSpinning(true);
 
-        const auto client_id = config::get().string(config::values::client_id);
-        const auto auth_url = su::concat("https://", config::get().url(config::urls::oauth2_mail_ru), oauth2_login_path);
+        auto redirectUrl = getUrlConfig().getRedirectUri();
+        if (Features::getOAuthType() == ql1s("oauth2_mail"))
+            redirectUrl.replace(ql1s("https"), ql1s("http"));
 
         auto dialog = new OAuth2Dialog(this);
         dialog->setAttribute(Qt::WidgetAttribute::WA_DeleteOnClose);
         dialog->setWindowModality(Qt::WindowModality::NonModal);
 
         dialog->setWindowTitle(qsl(" "));
-        dialog->setAuthUrl(QString::fromUtf8(auth_url.data(), auth_url.size()));
-        dialog->setClientId(QString::fromUtf8(client_id.data(), client_id.size()));
+        dialog->setAuthUrl(getUrlConfig().getAuthUrl());
+        dialog->setClientId(Features::getClientId());
+        dialog->setRedirectUrl(redirectUrl);
+        dialog->setScope(Features::getOAuthScope());
 
         connect(dialog, &OAuth2Dialog::authCodeReceived, this, &LoginPage::onAuthCodeReceived);
         connect(dialog, &OAuth2Dialog::errorOccured, this, &LoginPage::updateErrors);
@@ -1789,6 +1926,8 @@ namespace Ui
 
         dialog->start();
         dialog->show();
+
+        nextButton_->setEnabled(false);
 #endif// HAS_OAUTH2
     }
 
@@ -1802,6 +1941,39 @@ namespace Ui
     void Ui::LoginPage::onAuthDialogResult(int _result)
     {
         loginButton_->setSpinning(_result == QDialog::Accepted);
+        nextButton_->setEnabled(true);
+    }
+
+    void Ui::LoginPage::onLogout()
+    {
+        // reset everything
+        errorLabel_->hide();
+        phone_->setFocus();
+
+        initGDPR();
+
+        initLoginSubPage(LoginSubpage::SUBPAGE_OAUTH2_LOGIN_INDEX);
+
+        const auto lastLoginPage = (int)LoginSubpage::SUBPAGE_PHONE_LOGIN_INDEX;
+        lastPage_ = (LoginSubpage)lastLoginPage;
+        if (!Features::isOAuth2LoginAllowed() && lastPage_ == LoginSubpage::SUBPAGE_OAUTH2_LOGIN_INDEX)
+            lastPage_ = LoginSubpage::SUBPAGE_PHONE_LOGIN_INDEX;
+        if (Features::isOAuth2LoginAllowed())
+            lastPage_ = LoginSubpage::SUBPAGE_OAUTH2_LOGIN_INDEX;
+        else if (config::get().is_on(config::features::login_by_mail_default))
+            lastPage_ = LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX;
+
+        if (Features::loginMethod() == Features::LoginMethod::OTPViaEmail)
+            otpState_ = OTPAuthState::Email;
+
+        initLoginSubPage(lastPage_);
+
+        prepareLoginByPhone();
+        logoutAfterUserAgreementAccept();
+
+        mainStakedWidget_->widget(Pages::LOGIN)->setEnabled(true);
+        setEnabled(true);
+        nextButton_->setEnabled(true);
     }
 
     void LoginPage::resizeSpacers()
@@ -1864,11 +2036,10 @@ namespace Ui
             : _initialText;
 
         textUnit_ = TextRendering::MakeTextUnit(text, {});
-        textUnit_->init(getHintFont(),
-            Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID),
-            Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY),
-            QColor(), QColor(),
-            TextRendering::HorAligment::CENTER);
+        TextRendering::TextUnit::InitializeParameters params{ getHintFont(), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } };
+        params.linkColor_ = Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY };
+        params.align_ = TextRendering::HorAligment::CENTER;
+        textUnit_->init(params);
         textUnit_->setLineSpacing(Utils::scale_value(7));
 
         if (explained_)
@@ -1900,11 +2071,11 @@ namespace Ui
 
         TextRendering::TextUnitPtr link = TextRendering::MakeTextUnit(text, {}, showLinks);
 
-        link->init(getHintFont(),
-            _forceShowLink ? Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY) : Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID),
-            Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY),
-            QColor(), QColor(),
-            TextRendering::HorAligment::CENTER);
+        TextRendering::TextUnit::InitializeParameters params{ getHintFont(), _forceShowLink ? Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY } : Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } };
+        params.linkColor_ = Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY };
+        params.align_ = TextRendering::HorAligment::CENTER;
+
+        link->init(params);
         textUnit_->setLineSpacing(getLineSpacing());
 
         textUnit_->append(std::move(link));

@@ -8,11 +8,10 @@
 #include "../core/tools/binary_stream.h"
 #include "../core/tools/system.h"
 #include "../core/utils.h"
-#include "../common.h"
-
 #include <boost/filesystem.hpp>
 
 #endif // SUPPORT_EXTERNAL_CONFIG
+#include "../environment.h"
 
 #include "../json_unserialize_helpers.h"
 #include "config_data.h"
@@ -58,7 +57,9 @@ namespace config
                 std::pair(urls::profile, get_string(it->value, "profile")),
                 std::pair(urls::profile_agent, get_string(it->value, "profile_agent")),
                 std::pair(urls::auth_mail_ru, get_string(it->value, "auth_mail_ru")),
-                std::pair(urls::oauth2_mail_ru, get_string(it->value, "oauth2_mail_ru")),
+                std::pair(urls::oauth_url, get_string(it->value, "oauth_url")),
+                std::pair(urls::token_url, get_string(it->value, "token_url")),
+                std::pair(urls::redirect_uri, get_string(it->value, "redirect_uri")),
                 std::pair(urls::r_mail_ru, get_string(it->value, "r_mail_ru")),
                 std::pair(urls::win_mail_ru, get_string(it->value, "win_mail_ru")),
                 std::pair(urls::read_msg, get_string(it->value, "read_msg")),
@@ -91,6 +92,10 @@ namespace config
                 std::pair(urls::vcs_room, get_string(it->value, "vcs_room")),
                 std::pair(urls::dns_cache, get_string(it->value, "dns_cache")),
                 std::pair(urls::external_emoji, get_string(it->value, "external_emoji")),
+                std::pair(urls::privacy_policy_url, get_string(it->value, "privacy_policy_url")),
+                std::pair(urls::terms_of_use_url, get_string(it->value, "terms_of_use_url")),
+                std::pair(urls::delete_account_url, get_string(it->value, "delete_account_url")),
+                std::pair(urls::delete_account_url_email, get_string(it->value, "delete_account_url_email"))
             };
 
             if (std::is_sorted(std::cbegin(res), std::cend(res), is_less_by_first))
@@ -152,8 +157,10 @@ namespace config
                 std::pair(features::unknown_contacts, get_bool(it->value, "unknown_contacts")),
                 std::pair(features::stranger_contacts, get_bool(it->value, "stranger_contacts")),
                 std::pair(features::otp_login, get_bool(it->value, "otp_login")),
-                std::pair(features::show_notification_text, get_bool(it->value, "show_notification_text")),
+                std::pair(features::hiding_message_text_enabled, get_bool(it->value, "hiding_message_text_enabled")),
+                std::pair(features::hiding_message_info_enabled, get_bool(it->value, "hiding_message_info_enabled")),
                 std::pair(features::changeable_name, get_bool(it->value, "changeable_name")),
+                std::pair(features::allow_contacts_rename, get_bool(it->value, "allow_contacts_rename")),
                 std::pair(features::avatar_change_allowed, get_bool(it->value, "avatar_change_allowed")),
                 std::pair(features::beta_update, get_bool(it->value, "beta_update")),
                 std::pair(features::ssl_verify, get_bool(it->value, "ssl_verify")),
@@ -172,6 +179,7 @@ namespace config
                 std::pair(features::spell_check, get_bool(it->value, "spell_check")),
                 std::pair(features::favorites_message_onpremise, get_bool(it->value, "favorites_message_onpremise")),
                 std::pair(features::info_change_allowed, get_bool(it->value, "info_change_allowed")),
+                std::pair(features::call_link_v2_enabled, get_bool(it->value, "call_link_v2_enabled")),
                 std::pair(features::vcs_call_by_link_enabled, get_bool(it->value, "vcs_call_by_link_enabled")),
                 std::pair(features::vcs_webinar_enabled, get_bool(it->value, "vcs_webinar_enabled")),
                 std::pair(features::statuses_enabled, get_bool(it->value, "statuses_enabled")),
@@ -182,7 +190,6 @@ namespace config
                 std::pair(features::statistics_mytracker, get_bool(it->value, "statistics_mytracker")),
                 std::pair(features::force_update_check_allowed, get_bool(it->value, "force_update_check_allowed")),
                 std::pair(features::call_room_info_enabled, get_bool(it->value, "call_room_info_enabled")),
-                std::pair(features::external_config_use_preset_url, get_bool(it->value, "external_config_use_preset_url")),
                 std::pair(features::store_version, get_bool(it->value, "store_version")),
                 std::pair(features::otp_login_open_mail_link, get_bool(it->value, "otp_login_open_mail_link")),
                 std::pair(features::dns_workaround, get_bool(it->value, "dns_workaround_enabled")),
@@ -207,8 +214,6 @@ namespace config
                 std::pair(features::reminders_enabled, get_bool(it->value, "reminders_enabled")),
                 std::pair(features::support_shared_federation_stickerpacks, get_bool(it->value, "support_shared_federation_stickerpacks")),
                 std::pair(features::url_ftp_protocols_allowed, get_bool(it->value, "url_ftp_protocols_allowed")),
-                std::pair(features::organization_structure_enabled, get_bool(it->value, "organization_structure_enabled")),
-                std::pair(features::tasks_enabled, get_bool(it->value, "tasks_enabled")),
                 std::pair(features::draft_enabled, get_bool(it->value, "draft_enabled")),
                 std::pair(features::message_corner_menu, get_bool(it->value, "message_corner_menu")),
                 std::pair(features::task_creation_in_chat_enabled, get_bool(it->value, "task_creation_in_chat_enabled")),
@@ -221,7 +226,25 @@ namespace config
                 std::pair(features::restricted_files_enabled, get_bool(it->value, "restricted_files_enabled")),
                 std::pair(features::antivirus_check_enabled, get_bool(it->value, "antivirus_check_enabled")),
                 std::pair(features::antivirus_check_progress_visible, get_bool(it->value, "antivirus_check_progress_visible")),
+                std::pair(features::external_user_agreement, get_bool(it->value, "external_user_agreement")),
+                std::pair(features::user_agreement_enabled, get_bool(it->value, "user_agreement_enabled")),
+                std::pair(features::delete_account_enabled, get_bool(it->value, "delete_account_enabled")),
+                std::pair(features::delete_account_via_admin, get_bool(it->value, "delete_account_via_admin")),
+                std::pair(features::has_registry_about, get_bool(it->value, "has_registry_about")),
+                // TODO: remove when deprecated
+                std::pair(features::organization_structure_enabled, get_bool(it->value, "organization_structure_enabled")),
+                std::pair(features::tasks_enabled, get_bool(it->value, "tasks_enabled")),
                 std::pair(features::calendar_enabled, get_bool(it->value, "calendar_enabled")),
+                std::pair(features::tarm_mail, get_bool(it->value, "tarm_mail")),
+                std::pair(features::tarm_cloud, get_bool(it->value, "tarm_cloud")),
+                std::pair(features::tarm_calls, get_bool(it->value, "tarm_calls")),
+                std::pair(features::calendar_self_auth, get_bool(it->value, "calendar_self_auth")),
+                std::pair(features::mail_enabled, get_bool(it->value, "mail_enabled")),
+                std::pair(features::mail_self_auth, get_bool(it->value, "mail_self_auth")),
+                std::pair(features::cloud_self_auth, get_bool(it->value, "cloud_self_auth")),
+                std::pair(features::digital_assistant_search_positioning, get_bool(it->value, "digital_assistant_search_positioning")),
+                std::pair(features::leading_last_name, get_bool(it->value, "leading_last_name")),
+                std::pair(features::report_messages_enabled, get_bool(it->value, "report_messages_enabled")),
             };
 
             if (std::is_sorted(std::cbegin(res), std::cend(res), is_less_by_first))
@@ -246,6 +269,8 @@ namespace config
                 std::pair(values::client_b64, get_string(it->value, "client_b64")),
                 std::pair(values::client_id, get_string(it->value, "client_id")),
                 std::pair(values::client_rapi, get_string(it->value, "client_rapi")),
+                std::pair(values::oauth_type, get_string(it->value, "oauth_type")),
+                std::pair(values::oauth_scope, get_string(it->value, "oauth_scope")),
                 std::pair(values::product_name, get_string(it->value, "product_name")),
                 std::pair(values::product_name_short, get_string(it->value, "product_name_short")),
                 std::pair(values::product_name_full, get_string(it->value, "product_name_full")),
@@ -279,8 +304,10 @@ namespace config
                 std::pair(values::voip_call_user_limit, get_int64(it->value, "voip_call_user_limit")),
                 std::pair(values::voip_video_user_limit, get_int64(it->value, "voip_video_user_limit")),
                 std::pair(values::voip_big_conference_boundary, get_int64(it->value, "voip_big_conference_boundary")),
+                std::pair(values::maximum_history_file_size, get_int64(it->value, "maximum_history_file_size")),
                 std::pair(values::external_config_preset_url, get_string(it->value, "external_config_preset_url")),
-                std::pair(values::server_api_version, get_int64(it->value, "server_api_version")),
+                std::pair(values::client_api_version, get_int64(it->value, "client_api_version")),
+                std::pair(values::server_api_version, get_int64(it->value, "client_api_version")), // client_api_version is correct
                 std::pair(values::server_mention_timeout, get_int64(it->value, "server_mention_timeout")),
                 std::pair(values::support_uin, get_string(it->value, "support_uin")),
                 std::pair(values::mytracker_app_id_win, get_string(it->value, "mytracker_app_id_win")),
@@ -292,11 +319,26 @@ namespace config
                 std::pair(values::smartreply_suggests_click_hide_timeout, get_int64(it->value, "smartreply_suggests_click_hide_timeout")),
                 std::pair(values::smartreply_suggests_msgid_cache_size, get_int64(it->value, "smartreply_suggests_msgid_cache_size")),
                 std::pair(values::base_retry_interval_sec, get_int64(it->value, "base_retry_interval_sec")),
+                std::pair(values::product_path_old, get_string(it->value, "product_path_old")),
+                std::pair(values::product_name_old, get_string(it->value, "product_name_old")),
+                std::pair(values::crossprocess_pipe_old, get_string(it->value, "crossprocess_pipe_old")),
+                std::pair(values::main_instance_mutex_win_old, get_string(it->value, "main_instance_mutex_win_old")),
+                std::pair(values::bots_commands_disabled, get_string(it->value, "bots_commands_disabled")),
+                std::pair(values::service_apps_order, std::string{}), // must be empty
+                std::pair(values::service_apps_config, get_string(it->value, "service-apps-config")),
+                std::pair(values::service_apps_desktop, get_string(it->value, "service-apps-desktop")),
+                std::pair(values::custom_miniapps, get_string(it->value, "custom-miniapps")),
+                std::pair(values::wim_parallel_packets_count, get_int64(it->value, "wim_parallel_packets_count")),
+                std::pair(values::digital_assistant_bot_aimid, get_int64(it->value, "digital_assistant_bot_aimid")),
+                std::pair(values::additional_theme, get_int64(it->value, "additional_theme")),
+                std::pair(values::max_delete_files, get_int64(it->value, "max_delete_files")),
+                std::pair(values::delete_files_older_sec, get_int64(it->value, "delete_files_older_sec")),
+                std::pair(values::cleanup_period_sec, get_int64(it->value, "cleanup_period_sec")),
             };
 
             if (std::is_sorted(std::cbegin(res), std::cend(res), is_less_by_first))
                 return std::make_optional(std::move(res));
-            assert(false);
+            assert(!"Product config not sorted");
         }
         return {};
     }
@@ -334,8 +376,6 @@ namespace config
         }
     }
 
-    configuration::configuration() = default;
-
     bool configuration::is_external_config_enabled() const noexcept
     {
         return c_.features[static_cast<size_t>(config::features::external_url_config)].second;
@@ -347,13 +387,19 @@ namespace config
         return e_;
     }
 
-    void configuration::set_external(std::shared_ptr<external_configuration> _e)
+    void configuration::set_external(std::shared_ptr<external_configuration> _e, bool _is_develop)
     {
         std::scoped_lock lock(*spin_lock_);
         e_ = std::move(_e);
+        is_develop_ = _is_develop;
     }
 
     configuration::~configuration() = default;
+
+    void configuration::set_develop_command_line_flag(bool _flag)
+    {
+        has_develop_command_line_flag_ = _flag;
+    }
 
     bool configuration::is_valid() const noexcept
     {
@@ -416,12 +462,22 @@ namespace config
         return is_debug_;
     }
 
+    bool configuration::is_develop() const noexcept
+    {
+        return is_develop_;
+    }
+
+    bool configuration::has_develop_cli_flag() const noexcept
+    {
+        return environment::is_develop() && has_develop_command_line_flag_;
+    }
+
     bool configuration::is_overridden(features _v) const noexcept
     {
         if (!is_external_config_enabled() || config::features::external_url_config == _v)
             return false;
 
-        if (const auto external = get_external(); external)
+        if (const auto external = get_external())
         {
             const auto& features = external->features;
             return std::any_of(features.begin(), features.end(), [_v](auto x) { return x.first == _v; });
@@ -443,64 +499,87 @@ namespace config
         return false;
     }
 
-    static configuration make_config()
+    void configuration::set_profile_link(const std::wstring& _profile)
     {
-        auto local_config = configuration(config_json(), false);
+        current_profile_link_ = _profile;
+    }
 
+    std::wstring configuration::get_profile_link(bool _secure) const
+    {
+        if (_secure)
+            return L"https://" + current_profile_link_ + L'/';
+        else
+            return L"http://" + current_profile_link_ + L'/';
+    }
+
+    static std::unique_ptr<configuration> g_config;
+
+    static configuration& get_impl()
+    {
+        if (!g_config)
+            g_config = std::make_unique<configuration>(config_json(), false);
+        return *g_config;
+    }
+
+    const configuration& get()
+    {
+        return get_impl();
+    }
+
+    configuration& get_mutable()
+    {
+        return get_impl();
+    }
+
+    bool try_replace_with_develop_config()
+    {
 #ifdef SUPPORT_EXTERNAL_CONFIG
-        if (!environment::is_release())
+        if constexpr (!environment::is_release())
         {
-            if (const auto v = local_config.value(platform::is_apple() ? values::product_path_mac : values::product_path); const auto path = std::get_if<std::string>(&v))
+            const auto debug_config_path = core::utils::get_product_data_path();
+            boost::system::error_code error_code;
+            const auto extrenal_config_file_name = boost::filesystem::canonical(debug_config_path, Out error_code) / L"config.json";
+
+            if (boost::system::errc::success == error_code)
             {
-                const auto debug_config_path = core::utils::get_product_data_path(core::tools::from_utf8(*path));
-
-                boost::system::error_code error_code;
-                const auto extrenal_config_file_name = boost::filesystem::canonical(debug_config_path, Out error_code) / L"config.json";
-
-                if (boost::system::errc::success == error_code)
+                if (core::tools::binary_stream bstream; bstream.load_from_file(extrenal_config_file_name.wstring()))
                 {
-                    if (core::tools::binary_stream bstream; bstream.load_from_file(extrenal_config_file_name.wstring()))
+                    const auto size = bstream.available();
+                    if (auto external_config = std::make_unique<configuration>(std::string_view(bstream.read(size), size_t(size)), true); external_config->is_valid())
                     {
-                        const auto size = bstream.available();
-                        if (auto extrernal_config = configuration(std::string_view(bstream.read(size), size_t(size)), true); extrernal_config.is_valid())
-                            return extrernal_config;
+                        external_config->set_develop_command_line_flag(get().has_develop_cli_flag());
+                        g_config = std::move(external_config);
+                        return true;
                     }
                 }
             }
         }
 #endif // SUPPORT_EXTERNAL_CONFIG
-
-        return local_config;
+        return false;
     }
-}
 
-static config::configuration& get_impl()
-{
-    static auto c = config::make_config();
-    return c;
-}
+    bool is_overridden(features _v)
+    {
+        return get().is_overridden(_v);
+    }
 
-const config::configuration& config::get()
-{
-    return get_impl();
-}
+    bool is_overridden(values _v)
+    {
+        return get().is_overridden(_v);
+    }
 
-bool config::is_overridden(features _v)
-{
-    return config::get().is_overridden(_v);
-}
+    void reset_external()
+    {
+        set_external({}, false);
+    }
 
-bool config::is_overridden(values _v)
-{
-    return config::get().is_overridden(_v);
-}
+    void reset_config()
+    {
+        g_config.reset();
+    }
 
-void config::reset_external()
-{
-    set_external({});
-}
-
-void config::set_external(std::shared_ptr<external_configuration> _f)
-{
-    get_impl().set_external(std::move(_f));
+    void set_external(std::shared_ptr<external_configuration> _f, bool _is_develop)
+    {
+        get_impl().set_external(std::move(_f), _is_develop);
+    }
 }

@@ -217,6 +217,8 @@ namespace Ui
 
             bool isKeyboardActive() const;
 
+            void updateTheme();
+
         protected:
             void resizeEvent(QResizeEvent* _event) override;
 
@@ -554,6 +556,7 @@ namespace Ui
             void stickerEvent(const qint32 _error, const qint32 _setId, const Utils::FileSharingId& _stickerId);
             void onScroll(int _value);
             void hideStickerPreview();
+            void updateTheme();
 
         public:
             SmilesMenu(QWidget* _parent, const QString& _aimId = {});
@@ -584,6 +587,7 @@ namespace Ui
         private:
             Toolbar* topToolbar_ = nullptr;
             Toolbar* bottomToolbar_ = nullptr;
+            TabButton* recentsButton_ = nullptr;
 
             QScrollArea* viewArea_ = nullptr;
             QBoxLayout* viewAreaLayout_ = nullptr;

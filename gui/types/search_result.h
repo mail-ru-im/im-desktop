@@ -4,6 +4,7 @@
 #include "message.h"
 #include "cache/countries.h"
 #include "../statuses/StatusUtils.h"
+#include "thread.h"
 
 namespace Logic
 {
@@ -94,6 +95,7 @@ namespace Data
         qint64 getMessageId() const override;
 
         MessageBuddySptr message_;
+        std::shared_ptr<MessageParentTopic> parentTopic_;
 
         QString dialogAimId_;
         QString dialogCursor_;

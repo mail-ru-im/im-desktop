@@ -164,15 +164,43 @@ namespace Previewer
 
     class CustomMenu_p;
 
-    class CustomMenu : public QWidget
+    class CustomMenu : public QMenu
     {
         Q_OBJECT
     public:
-        CustomMenu();
+        enum Feature
+        {
+            NoFeatures = 0x0,
+            ScreenAware = 0x1,
+            TargetAware = 0x2,
+            DefaultPopup = 0x4
+        };
+        Q_DECLARE_FLAGS(Features, Feature)
+
+        explicit CustomMenu(QWidget* _parent = nullptr);
         ~CustomMenu();
 
-        void addAction(QAction* _action, const QPixmap &_icon);
-        void showAtPos(const QPoint& _pos);
+        void setFeatures(Features _features);
+        Features features() const;
+
+        void setArrowSize(const QSize& _size);
+        QSize arrowSize() const;
+
+        void setCheckMark(const QPixmap& _icon);
+
+        void addAction(QAction* _action, const QPixmap& _icon);
+
+        // Deprecated: it's left to keep old source code working
+        // Please do NOT use this method to show the menu
+        // prefer new exec() overloaded methods
+        Q_DECL_DEPRECATED void showAtPos(const QPoint& _pos);
+
+        void exec(QWidget* _target, Qt::Alignment _align, const QMargins& _margins = {});
+        void exec(QWidget* _target, const QRect& _rect, Qt::Alignment _align);
+
+        void clear();
+
+        QSize sizeHint() const override;
 
     protected:
         void paintEvent(QPaintEvent* _event) override;
@@ -182,7 +210,10 @@ namespace Previewer
 
     private:
         void updateHeight();
+        void popupMenu(const QPoint& _globalPos, QScreen* _screen, const QRect& _targetRect, Qt::Alignment _align);
 
         std::unique_ptr<CustomMenu_p> d;
     };
+
+    Q_DECLARE_OPERATORS_FOR_FLAGS(CustomMenu::Features)
 }

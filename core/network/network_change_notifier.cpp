@@ -287,7 +287,7 @@ namespace core
     {
         // g_core don't exist in ~core_dispather() call
         if (g_core)
-            g_core->write_string_to_network_log(su::concat("[network_change_notifier]: ", _text));
+            g_core->write_string_to_network_log(su::concat("[network_change_notifier]: ", _text, "\r\n"));
     }
 
     void network_change_notifier::network_change_calculator::set_initial_connection_type(connection_type _type)

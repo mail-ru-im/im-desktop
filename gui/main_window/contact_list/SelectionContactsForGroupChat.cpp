@@ -32,8 +32,10 @@
 #include "../../styles/ThemeParameters.h"
 #include "../../controls/FlatMenu.h"
 #include "../../statuses/StatusUtils.h"
+#include "../../main_window/sidebar/SidebarUtils.h"
 #ifndef STRIP_VOIP
 #include "voip/SelectionContactsForConference.h"
+#include "voip/CommonUI.h"
 #endif
 
 namespace
@@ -737,11 +739,13 @@ namespace Ui
         setFixedSize(d->getSize());
         setMouseTracking(true);
 
-        const auto textColor = Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
-        const auto nameFont(Fonts::appFontScaled(13, Fonts::FontWeight::Normal));
+        const auto textColor = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY };
+        const auto nameFont = Fonts::appFontScaled(13, Fonts::FontWeight::Normal);
 
         d->checkBoxTextUnit_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("popup_window", "show author"));
-        d->checkBoxTextUnit_->init(nameFont, textColor, QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+        TextRendering::TextUnit::InitializeParameters params{ nameFont, textColor };
+        params.maxLinesCount_ = 1;
+        d->checkBoxTextUnit_->init(params);
 
         d->checked_ = true;
         d->hovered_ = false;
@@ -786,7 +790,7 @@ namespace Ui
     {
         QPainter p(this);
 
-        const auto textColor = Styling::getParameters().getColor(d->checked_ ? Styling::StyleVariable::TEXT_SOLID : Styling::StyleVariable::BASE_PRIMARY);
+        const auto textColor = Styling::ThemeColorKey{ d->checked_ ? Styling::StyleVariable::TEXT_SOLID : Styling::StyleVariable::BASE_PRIMARY };
 
         if (hasFocus() || d->hovered_)
         {
@@ -798,13 +802,17 @@ namespace Ui
         {
             static auto nameFont(Fonts::appFontScaled(13, Fonts::FontWeight::Normal));
             d->chatNameUnit_ = TextRendering::MakeTextUnit(d->chatName_, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-            d->chatNameUnit_->init(nameFont, textColor, QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+            TextRendering::TextUnit::InitializeParameters params{ nameFont, textColor };
+            params.maxLinesCount_ = 1;
+            d->chatNameUnit_->init(params);
         }
         if (!d->authorUnit_)
         {
             static auto authorFont(Fonts::appFontScaled(15, Fonts::FontWeight::SemiBold));
             d->authorUnit_ = TextRendering::MakeTextUnit(d->mode_ == Mode::Channel ? d->chatName_ : d->authors_, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-            d->authorUnit_->init(authorFont, textColor, QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+            TextRendering::TextUnit::InitializeParameters params{ authorFont, textColor };
+            params.maxLinesCount_ = 1;
+            d->authorUnit_->init(params);
         }
 
         d->checkBoxTextUnit_->getHeight(width());
@@ -839,7 +847,7 @@ namespace Ui
         const auto state = d->checked_ ? CheckBox::Activity::ACTIVE : CheckBox::Activity::NORMAL;
         const auto& img = Ui::CheckBox::getCheckBoxIcon(state);
 
-        p.drawPixmap(d->getCheckBoxRect(), img);
+        p.drawPixmap(d->getCheckBoxRect(), img.cachedPixmap());
     }
 
     void AuthorWidget::mousePressEvent(QMouseEvent *_e)
@@ -899,9 +907,10 @@ namespace Ui
     }
 
 
-    SelectContactsWidget::SelectContactsWidget(const QString& _labelText, QWidget* _parent)
+    SelectContactsWidget::SelectContactsWidget(const QString& _labelText, QWidget* _parent, Logic::DrawIcons _needDrawIcons)
         : SelectContactsWidget(nullptr, Logic::MembersWidgetRegim::SHARE, _labelText, QString(), _parent)
     {
+        needDrawIcons_ = _needDrawIcons;
     }
 
     SelectContactsWidget::SelectContactsWidget(
@@ -910,18 +919,44 @@ namespace Ui
         const QString& _labelText,
         const QString& _buttonText,
         QWidget* _parent,
-        SelectContactsWidgetOptions _options)
+        SelectContactsWidgetOptions _options,
+        Logic::DrawIcons _needDrawIcons)
         : QDialog(_parent)
         , regim_(_regim)
         , chatMembersModel_(_chatMembersModel)
         , mainWidget_(new QWidget(this))
         , chatCreation_(_options.chatCreation_)
+        , needDrawIcons_(_needDrawIcons)
     {
         globalLayout_ = Utils::emptyVLayout(mainWidget_);
         mainWidget_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Maximum);
         mainWidget_->setFixedWidth(Utils::scale_value(DIALOG_WIDTH));
         mainWidget_->installEventFilter(this);
+#ifndef STRIP_VOIP
+        if (_regim == Logic::MembersWidgetRegim::VIDEO_CONFERENCE ||
+            _regim == Logic::MembersWidgetRegim::SHARE_VIDEO_CONFERENCE)
+        {
+            const auto url = GetDispatcher()->getVoipController().getConferenceUrl();
+            if (!url.isEmpty())
+            {
+                auto textLabel = addLabel(QT_TRANSLATE_NOOP("siderbar", "Send link to call or invite participants from the contact list"), this, nullptr);
+                textLabel->init(Fonts::appFontScaled(15), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID }, Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY });
+                globalLayout_->insertWidget(0, textLabel);
 
+                auto linkLabel = new TextLabel(this, 1, true);
+                linkLabel->setMargins(Utils::scale_value(QMargins(16, 16, 16, 16)));
+                linkLabel->showButtons();
+                linkLabel->allowOnlyCopy();
+                linkLabel->init(Fonts::appFontScaled(15), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY }, Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY });
+                linkLabel->setText(url);
+                linkLabel->setFixedHeight(Utils::scale_value(54));
+                globalLayout_->insertWidget(1, linkLabel);
+
+                connect(linkLabel, &TextLabel::textClicked, this, &SelectContactsWidget::copyCallLink);
+                connect(linkLabel, &TextLabel::copyClicked, this, &SelectContactsWidget::copyCallLink);
+            }
+        }
+#endif
         if (_options.enableAuthorWidget_)
         {
             authorWidget_ = new AuthorWidget(this);
@@ -954,7 +989,7 @@ namespace Ui
                 lastCroppedImage_ = photo_->croppedImage();
             }, Qt::QueuedConnection);
 
-            chatName_ = new TextEditEx(chatCreationWidget, Fonts::appFontScaled(18), MessageStyle::getTextColor(), true, true);
+            chatName_ = new TextEditEx(chatCreationWidget, Fonts::appFontScaled(18), MessageStyle::getTextColorKey(), true, true);
             Utils::ApplyStyle(chatName_, Styling::getParameters().getTextEditCommonQss(true));
             chatName_->setWordWrapMode(QTextOption::NoWrap);
             chatName_->setPlaceholderText(_options.isChannel_ ? QT_TRANSLATE_NOOP("groupchats", "Channel name") : QT_TRANSLATE_NOOP("groupchats", "Group name"));
@@ -964,8 +999,8 @@ namespace Ui
             chatName_->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
             chatName_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
             chatName_->setTextInteractionFlags(Qt::TextEditable | Qt::TextEditorInteraction);
-            chatName_->document()->setDocumentMargin(0);
-            chatName_->addSpace(Utils::scale_value(4));
+            chatName_->setDocumentMargin(0);
+            chatName_->setHeightSupplement(Utils::scale_value(4));
             chatName_->adjustHeight(Utils::scale_value(NAME_WIDTH));
             Testing::setAccessibleName(chatName_, qsl("AS  AS GroupAndChannelCreation nameInput"));
             chatCreationLayout->addWidget(chatName_);
@@ -983,7 +1018,7 @@ namespace Ui
         globalLayout_->addWidget(searchWidget_);
         focusWidget_[searchWidget_] = FocusPosition::Search;
 
-        contactList_ = new ContactListWidget(this, (Logic::MembersWidgetRegim)regim_, chatMembersModel_, _options.searchModel_);
+        contactList_ = new ContactListWidget(this, (Logic::MembersWidgetRegim)regim_, chatMembersModel_, _options.searchModel_, nullptr, needDrawIcons_);
         Testing::setAccessibleName(contactList_, TestingLocal::getContactListWidgetAccessibleName(regim_));
         contactList_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
         contactList_->setWidthForDelegate(Utils::scale_value(DIALOG_WIDTH));
@@ -1054,12 +1089,9 @@ namespace Ui
         }
         else if ((!Logic::is_members_regim(regim_) && !Logic::is_video_conference_regim(regim_)))
         {
-            auto buttonPair = mainDialog_->addButtonsPair(
-                QT_TRANSLATE_NOOP("popup_window", "Cancel"),
-                _buttonText,
-                regim_ == Logic::MembersWidgetRegim::DISALLOWED_INVITERS,
-                true,
-                true);
+            ButtonsStateFlags flags;
+            flags.setFlag(ButtonsStateFlag::InitiallyInactive, regim_ != Logic::MembersWidgetRegim::DISALLOWED_INVITERS);
+            auto buttonPair = mainDialog_->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), _buttonText, flags);
             acceptButton_ = buttonPair.first;
             cancelButton_ = buttonPair.second;
             focusWidget_[acceptButton_] = FocusPosition::Accept;
@@ -1295,6 +1327,20 @@ namespace Ui
         }
     }
 
+    void SelectContactsWidget::copyCallLink()
+    {
+#ifndef STRIP_VOIP
+        auto toastType = VideoWindowToastProvider::Type::EmptyLink;
+        const auto url = GetDispatcher()->getVoipController().getConferenceUrl();
+        if (!url.isEmpty())
+        {
+            QApplication::clipboard()->setText(url);
+            toastType = VideoWindowToastProvider::Type::LinkCopied;
+        }
+        VideoWindowToastProvider::instance().show(toastType);
+#endif
+    }
+
     bool SelectContactsWidget::show()
     {
         const auto isSelectChatMembersRegim = Logic::is_select_chat_members_regim(regim_);
@@ -1327,7 +1373,7 @@ namespace Ui
         });
 
         updateSize();
-        result = mainDialog_->showInCenter();
+        result = mainDialog_->execute();
         if (!guard)
             return result;
 

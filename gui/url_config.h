@@ -33,9 +33,26 @@ namespace Ui
 
         [[nodiscard]] const QString& getCalendar() const noexcept { return calendar_; }
 
+        [[nodiscard]] const QString& getMail() const noexcept { return mail_; }
+
+        [[nodiscard]] const QString& getMiniappSharing() const noexcept { return miniappSharing_; }
+
+        [[nodiscard]] const QString& getTarmMail() const noexcept { return tarm_mail_; }
+
+        [[nodiscard]] const QString& getTarmCalls() const noexcept { return tarm_calls_; }
+
+        [[nodiscard]] const QString& getTarmCloud() const noexcept { return tarm_cloud_; }
+
         [[nodiscard]] const QString& getConfigHost() const noexcept { return configHost_; }
 
+        [[nodiscard]] const QString& getAvatarsUrl() const noexcept { return avatars_; }
+
+        const QString& getAuthUrl();
+        const QString& getRedirectUri();
+
         const QVector<QString>& getVCSUrls() const noexcept;
+
+        const QVector<QString>& getFsUrls() const noexcept;
 
     	bool isMailConfigPresent() const noexcept;
 
@@ -59,8 +76,20 @@ namespace Ui
 
         QString tasks_;
         QString calendar_;
+        QString mail_;
+
+        QString miniappSharing_;
+
+        QString tarm_mail_;
+        QString tarm_calls_;
+        QString tarm_cloud_;
 
         QString configHost_;
+
+        QString avatars_;
+
+        QString authUrl_;
+        QString redirectUri_;
 
         QVector<QString> vcsUrls_;
     };

@@ -2,7 +2,7 @@
 #include "SidebarUtils.h"
 
 #include "../MainWindow.h"
-#include "../../controls/TooltipWidget.h"
+#include "../../controls/TextWidget.h"
 #include "../../controls/TextEmojiWidget.h"
 #include "../../controls/NickLineEdit.h"
 #include "../../controls/DialogButton.h"
@@ -134,7 +134,7 @@ namespace Ui
         globalLayout->setContentsMargins(margins_);
 
         headerUnit_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("profile_edit_dialogs", "Nickname"));
-        headerUnit_->init(getHeaderFont(), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        headerUnit_->init({ getHeaderFont(), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } });
         headerUnit_->evaluateDesiredSize();
         headerUnit_->setOffsets(getHeaderHorOffset(), getHeaderVerOffset());
 
@@ -144,7 +144,7 @@ namespace Ui
         if (!groupMode_)
         {
             nickLabelText_ = new TextWidget(this, QT_TRANSLATE_NOOP("profile_edit_dialogs", "People who do not have your phone number can search for you by nickname, by specifying"));
-            nickLabelText_->init(getTextFont(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+            nickLabelText_->init({ getTextFont(), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY } });
             nickLabelText_->setMaxWidthAndResize(textMaxWidth);
             Testing::setAccessibleName(nickLabelText_, qsl("AS ProfilePage nickLabelText"));
             globalLayout->addWidget(nickLabelText_);
@@ -157,8 +157,10 @@ namespace Ui
         {
             const QString initNick = _initData.nickName_.isEmpty() ? _initData.nickName_ : Utils::makeNick(_initData.nickName_);
             auto nickUnit = Ui::TextRendering::MakeTextUnit(initNick, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
-            nickUnit->init(getTextFont(), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY), QColor(), QColor(), QColor(),
-                TextRendering::HorAligment::LEFT, 2, Ui::TextRendering::LineBreakType::PREFER_SPACES);
+            TextRendering::TextUnit::InitializeParameters params(getTextFont(), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY });
+            params.maxLinesCount_ = 2;
+            params.lineBreak_ = Ui::TextRendering::LineBreakType::PREFER_SPACES;
+            nickUnit->init(params);
             nickLabel_ = new TextUnitLabel(this, std::move(nickUnit), Ui::TextRendering::VerPosition::TOP, textMaxWidth, true);
             nickLabel_->setCursor(Qt::PointingHandCursor);
             Testing::setAccessibleName(nickLabel_, qsl("AS ProfilePage nickLabel"));
@@ -172,7 +174,7 @@ namespace Ui
         globalLayout->addSpacing(getNickSpacing());
 
         ruleText_ = new TextWidget(this, QT_TRANSLATE_NOOP("profile_edit_dialogs", "Acceptable characters: the Roman alphabet (a-z), digits (0-9), period \".\", underscore \"_\""));
-        ruleText_->init(getTextFont(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+        ruleText_->init({ getTextFont(), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY } });
         ruleText_->setMaxWidthAndResize(textMaxWidth);
         Testing::setAccessibleName(ruleText_, qsl("AS ProfilePage nickRuleText"));
         globalLayout->addWidget(ruleText_);
@@ -183,15 +185,17 @@ namespace Ui
             auto nickWidget = new QWidget();
             auto nickWidgetLayout = Utils::emptyVLayout(nickWidget);
             urlLabelText_ = new TextWidget(this, QT_TRANSLATE_NOOP("profile_edit_dialogs", "This link will open a chat with you in ICQ"));
-            urlLabelText_->init(getTextFont(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+            urlLabelText_->init({ getTextFont(), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY } });
             urlLabelText_->setMaxWidthAndResize(textMaxWidth);
             Testing::setAccessibleName(urlLabelText_, qsl("AS ProfilePage nickUrlLabelText"));
 
             nickWidgetLayout->addWidget(urlLabelText_);
 
             auto urlUnit = Ui::TextRendering::MakeTextUnit(getNickUrl(_initData.nickName_), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
-            urlUnit->init(getTextFont(), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY), QColor(), QColor(), QColor(),
-                TextRendering::HorAligment::LEFT, 2, Ui::TextRendering::LineBreakType::PREFER_SPACES);
+            TextRendering::TextUnit::InitializeParameters params{ getTextFont(), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY } };
+            params.maxLinesCount_ = 2;
+            params.lineBreak_ = TextRendering::LineBreakType::PREFER_SPACES;
+            urlUnit->init(params);
             urlLabel_ = new TextUnitLabel(this, std::move(urlUnit), Ui::TextRendering::VerPosition::TOP, textMaxWidth, true);
             urlLabel_->setCursor(Qt::PointingHandCursor);
             Testing::setAccessibleName(urlLabel_, qsl("AS ProfilePage nickUrlLabel"));
@@ -304,7 +308,7 @@ namespace Ui
 
         if (!groupMode_)
         {
-            nickLabel_->setText(nick, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+            nickLabel_->setText(nick, Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
             nickLabel_->setEnabled(false);
             urlLabel_->setText(QString());
             urlLabel_->setEnabled(false);
@@ -329,8 +333,8 @@ namespace Ui
         const auto nick = nickName_->getText();
         if (!nick.isEmpty() && !groupMode_)
         {
-            nickLabel_->setText(Utils::makeNick(nick), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
-            urlLabel_->setText(getNickUrl(nick), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+            nickLabel_->setText(Utils::makeNick(nick), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
+            urlLabel_->setText(getNickUrl(nick), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
             urlLabelText_->show();
         }
 
@@ -345,7 +349,7 @@ namespace Ui
         if (groupMode_)
             return;
 
-        auto color = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY);
+        auto color = Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY };
         nickLabel_->setText(nickLabel_->text(), color);
         nickLabel_->setEnabled(true);
         urlLabel_->setText(urlLabel_->text(), color);
@@ -505,9 +509,9 @@ namespace Ui
         auto gd = std::make_unique<Ui::GeneralDialog>(_widget, Utils::InterConnector::instance().getMainWindow(), options);
         gd->setIgnoredKeys({ Qt::Key_Return, Qt::Key_Enter });
 
-        auto buttonsPair = gd->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "OK"), true, false, false);
+        auto buttonsPair = gd->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "OK"), ButtonsStateFlag::RejectionForbidden | ButtonsStateFlag::AcceptingForbidden);
         _widget->setButtonsPair(buttonsPair);
         gd->setButtonsAreaMargins(QMargins(0, getButtonsTopMargin(), 0, getButtonsBottomMargin()));
-        gd->showInCenter();
+        gd->execute();
     }
 }

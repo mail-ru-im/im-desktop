@@ -89,11 +89,17 @@ namespace core
         return path;
     }
 
-    void clean_logs(const boost::filesystem::wpath& _logs_directory, int max_size)
+    void clean_logs(const boost::filesystem::wpath& _logs_directory, int _max_size, bool _is_voip)
     {
         using namespace boost::xpressive;
 
-        static auto re = sregex::compile("(?P<index>\\d+)\\.net\\.txt");
+        std::string re_s;
+        if (_is_voip)
+            re_s = "(voip_)(\\d{4}.\\d{2}.\\d{2}_\\d{2}.\\d{2}.\\d{2}).log";
+        else
+            re_s = "(?P<index>\\d+)\\.net\\.txt";
+
+        auto re = sregex::compile(re_s);
 
         std::map<int64_t, std::string> files;
 
@@ -117,8 +123,25 @@ namespace core
                     continue;
                 }
 
-                const auto &index_str = match["index"].str();
-                const auto index = std::stoll(index_str);
+                int64_t index = 0;
+
+                if (_is_voip)
+                {
+                    const auto& index_str = match[2].str();
+                    std::string tmp = index_str;
+                    tmp.erase(std::remove_if(tmp.begin(),
+                                                   tmp.end(),
+                                                   [](unsigned char x) {return (x == '.' || x == '_');}),
+                              tmp.end());
+                    index = std::stoll(tmp);
+
+                }
+                else
+                {
+                    const auto& index_str = match["index"].str();
+                    index = std::stoll(index_str);
+
+                }
 
                 files[index] = filename;
             }
@@ -131,7 +154,7 @@ namespace core
 
                 if (core::tools::system::is_exist(file_path))
                 {
-                    if (size > max_size)
+                    if (size > _max_size)
                     {
                         boost::filesystem::remove(file_path, e);
                     }
@@ -219,7 +242,8 @@ namespace core
                 file_context->file_stream_->close();
                 file_context->file_stream_.reset();
 
-                clean_logs(file_context->logs_directory_, max_size);
+                clean_logs(file_context->logs_directory_, max_size, true);
+                clean_logs(file_context->logs_directory_, max_size, false);
             }
 
             return 0;

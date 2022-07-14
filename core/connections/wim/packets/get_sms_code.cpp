@@ -37,6 +37,11 @@ std::string_view validate_phone::get_method() const
     return "phoneValidation";
 }
 
+int core::wim::validate_phone::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
+}
+
 int32_t validate_phone::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::stringstream ss_url;
@@ -103,4 +108,9 @@ int32_t get_code_by_phone_call::init_request(const std::shared_ptr<core::http_re
 std::string_view get_code_by_phone_call::get_method() const
 {
     return "get_code_by_phone_call";
+}
+
+int core::wim::get_code_by_phone_call::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }

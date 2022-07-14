@@ -37,7 +37,7 @@ namespace Ui
         void startAnimation();
         void stopAnimation();
 
-        QColor getTextColor() const;
-        QColor getAnimColor() const;
+        Styling::ThemeColorKey getTextColor() const;
+        Styling::ThemeColorKey getAnimColor() const;
     };
 }

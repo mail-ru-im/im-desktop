@@ -1,11 +1,7 @@
 #pragma once
 
 #include "TextUnit.h"
-
-namespace Styling
-{
-    enum class StyleVariable;
-}
+#include "../styles/StyleVariable.h"
 
 namespace Ui
 {
@@ -63,6 +59,7 @@ namespace Ui
         void showEvent(QShowEvent* _e) override;
 
         bool focusNextPrevChild(bool _next) override;
+        bool needShowTooltip() const;
 
         virtual void onTooltipTimer();
         virtual bool canShowTooltip();
@@ -95,14 +92,12 @@ namespace Ui
     {
         Q_OBJECT
     public:
-        ClickableTextWidget(QWidget* _parent, const QFont& _font, const QColor& _color, const TextRendering::HorAligment _textAlign = TextRendering::HorAligment::LEFT);
-        ClickableTextWidget(QWidget* _parent, const QFont& _font, const Styling::StyleVariable _color, const TextRendering::HorAligment _textAlign = TextRendering::HorAligment::LEFT);
+        ClickableTextWidget(QWidget* _parent, const QFont& _font, const Styling::ThemeColorKey& _color, const TextRendering::HorAligment _textAlign = TextRendering::HorAligment::LEFT);
 
         void setText(const Data::FString& _text);
         QSize sizeHint() const override;
 
-        void setColor(const QColor& _color);
-        void setColor(const Styling::StyleVariable _color);
+        void setColor(const Styling::ThemeColorKey& _color);
 
         void setFont(const QFont& _font);
         void setLeftPadding(int _x);

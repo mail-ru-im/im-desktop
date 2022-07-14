@@ -5,6 +5,7 @@
 #include "types/filesharing_meta.h"
 #include "types/filesharing_download_result.h"
 #include "../history_control/FileStatus.h"
+#include "../history_control/complex_message/FileSharingUtils.h"
 
 namespace Ui
 {
@@ -18,6 +19,7 @@ namespace Ui
     class BaseFileItem : public SidebarListItem
     {
     public:
+        BaseFileItem(QObject* _parent = nullptr) : SidebarListItem(_parent) {}
         virtual ~BaseFileItem() = default;
 
         virtual void draw(QPainter& _p, const QRect& _rect, double _progress) = 0;
@@ -34,15 +36,18 @@ namespace Ui
         virtual time_t time() const { return 0; }
         virtual qint64 size() const { return 0; }
         virtual qint64 lastModified() const { return 0; }
+        virtual const Utils::FileSharingId& getFileSharingId() const;
+        virtual bool isAntivirusAllowed() const { return true; }
 
-        virtual void setFilename(const QString& _name) { }
-        virtual void setFilesize(qint64 _size) { }
-        virtual void setLastModified(qint64 _lastModified) { }
+        virtual void setFilename(const QString& _name) {}
+        virtual void setFilesize(qint64 _size) {}
+        virtual void setLastModified(qint64 _lastModified) {}
+        virtual void setMetaInfo(const Data::FileSharingMeta& _meta) {}
 
         virtual bool isOverControl(const QPoint& _pos) { return false; }
-        virtual bool isOverLink(const QPoint& _pos, const QPoint& _pos2) { return false; }
-        virtual bool isOverIcon(const QPoint & _pos) { return false; }
-        virtual bool isOverFilename(const QPoint & _pos) const { return false; }
+        virtual bool isOverLink(const QPoint& _pos) { return false; }
+        virtual bool isOverIcon(const QPoint& _pos) { return false; }
+        virtual bool isOverFilename(const QPoint& _pos) const { return false; }
         virtual bool isOverStatus(const QPoint& _pos) const { return false; }
 
         virtual void setDownloading(bool _downloading) {}
@@ -64,8 +69,7 @@ namespace Ui
         virtual bool needsTooltip() const { return false; }
         virtual QRect getTooltipRect() const { return QRect(); }
 
-        virtual void setFileStatus(FileStatus _status) {}
-        virtual FileStatus getFileStatus() const { return FileStatus::NoStatus; }
+        virtual FileStatus& getFileStatus() { static FileStatus fs; return fs; }
 
         virtual QRect getMoreButtonRect() const { return {}; }
         virtual QRect getStatusRect() const { return {}; }
@@ -94,8 +98,9 @@ namespace Ui
 
     class FileItem : public BaseFileItem
     {
+        Q_OBJECT
     public:
-        FileItem(const QString& _link, const QString& _date, qint64 _msg, qint64 _seq, bool _outgoing, const QString& _sender, time_t _time, int _width);
+        FileItem(const QString& _link, const QString& _date, qint64 _msg, qint64 _seq, bool _outgoing, const QString& _sender, time_t _time, int _width, QWidget* _parent);
 
         void draw(QPainter& _p, const QRect& _rect, double _progress) override;
         int getHeight() const override;
@@ -111,14 +116,18 @@ namespace Ui
         time_t time() const override;
         qint64 size() const override;
         qint64 lastModified() const override;
+        const Utils::FileSharingId& getFileSharingId() const override;
+        bool isAntivirusAllowed() const override;
 
         void setFilename(const QString& _name) override;
         void setFilesize(qint64 _size) override;
         void setLastModified(qint64 _lastModified) override;
 
+        void setMetaInfo(const Data::FileSharingMeta& _meta) override;
+
         bool isOverControl(const QPoint& _pos) override;
-        bool isOverLink(const QPoint& _pos, const QPoint& _pos2) override;
-        bool isOverIcon(const QPoint & _pos) override;
+        bool isOverLink(const QPoint& _pos) override;
+        bool isOverIcon(const QPoint& _pos) override;
         bool isOverFilename(const QPoint& _pos) const override;
         bool isOverStatus(const QPoint& _pos) const override;
 
@@ -138,26 +147,31 @@ namespace Ui
 
         bool isDateItem() const override { return false; }
 
-        virtual bool needsTooltip() const override;
-        virtual QRect getTooltipRect() const override;
+        bool needsTooltip() const override;
+        QRect getTooltipRect() const override;
 
-        void setFileStatus(FileStatus _status) override;
-        FileStatus getFileStatus() const override { return status_; }
+        FileStatus& getFileStatus() override { return status_; }
 
         QRect getMoreButtonRect() const override;
         QRect getStatusRect() const override;
+
+        void processMetaInfo(const Utils::FileSharingId& _fsId, const Data::FileSharingMeta& _meta);
+        void processMetaInfoError(const Utils::FileSharingId& _fsId, qint32 _errorCode) {}
+    private Q_SLOTS:
+        void onAntivirusCheckResult(const Utils::FileSharingId& _fsId, core::antivirus::check::result _result);
 
     private:
         void elide(const std::unique_ptr<TextRendering::TextUnit>& _unit, int _addedWidth = 0);
 
     private:
         QString link_;
+        Utils::FileSharingId fileSharingId_;
         std::unique_ptr<TextRendering::TextUnit> name_;
         std::unique_ptr<TextRendering::TextUnit> size_;
         std::unique_ptr<TextRendering::TextUnit> date_;
         std::unique_ptr<TextRendering::TextUnit> friendly_;
         std::unique_ptr<TextRendering::TextUnit> showInFolder_;
-        int height_;
+        int height_ = 0;
         int width_;
         qint64 msg_;
         qint64 seq_;
@@ -166,17 +180,18 @@ namespace Ui
         QString localPath_;
         QString filename_;
         QPoint pos_;
-        bool downloading_;
-        qint64 transferred_;
-        qint64 total_;
+        bool downloading_ = false;
+        qint64 transferred_ = 0;
+        qint64 total_ = 0;
         bool outgoing_;
-        qint64 reqId_;
+        qint64 reqId_ = -1;
         QString sender_;
         time_t time_;
-        qint64 sizet_;
-        qint64 lastModified_;
+        qint64 sizet_ = 0;
+        qint64 lastModified_ = 0;
         ButtonState moreState_;
         FileStatus status_;
+        QPointer<QWidget> parent_;
     };
 
     class FilesList : public MediaContentWidget
@@ -200,23 +215,21 @@ namespace Ui
         ItemData itemAt(const QPoint& _pos) override;
 
     private Q_SLOTS:
-        void fileSharingFileMetainfoDownloaded(qint64, const Data::FileSharingMeta& _meta);
         void fileDownloading(qint64 _seq, QString _rawUri, qint64 _bytesTransferred, qint64 _bytesTotal);
         void fileDownloaded(qint64 _seq, const Data::FileSharingDownloadResult& _result);
         void fileError(qint64 _seq, const QString& _rawUri, qint32 _errorCode);
 
     private:
         void validateDates();
-        void updateTooltip(const std::unique_ptr<BaseFileItem>& _item, const QPoint& _pos, int _h);
+        void updateTooltip(const std::shared_ptr<BaseFileItem>& _item, const QPoint& _pos, int _h);
 
         void startDataTransferTimeoutTimer(qint64 _seq);
         void stopDataTransferTimeoutTimer(qint64 _seq);
 
     private:
-        std::vector<std::unique_ptr<BaseFileItem>> Items_;
-        std::vector<qint64> RequestIds_;
+        std::vector<std::shared_ptr<BaseFileItem>> Items_;
         std::vector<qint64> Downloading_;
         QVariantAnimation* anim_;
         std::vector<std::pair<qint64, QTimer*>> dataTransferTimeoutList_;
     };
-}
+} // namespace Ui

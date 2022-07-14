@@ -10,6 +10,8 @@
 #include "fonts.h"
 
 #include "styles/ThemeParameters.h"
+#include "styles/StyleSheetContainer.h"
+#include "styles/StyleSheetGenerator.h"
 
 namespace
 {
@@ -54,7 +56,7 @@ namespace Ui
         sizedView->setItemDelegate(new CountryCodeItemDelegate(this));
         sizedView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
-        Utils::ApplyStyle(sizedView, Styling::getParameters().getPhoneComboboxQss());
+        Styling::setStyleSheet(sizedView, Styling::getParameters().getPhoneComboboxQss());
 
         completer_ = new QCompleter(this);
         completer_->setCaseSensitivity(Qt::CaseInsensitive);
@@ -75,7 +77,7 @@ namespace Ui
         countryCode_->setValidator(new Utils::PhoneValidator(this, true, true));
         completer_->setCompletionPrefix(countryCode_->text());
         countryCode_->setCompleter(completer_);
-        countryCode_->changeTextColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        countryCode_->changeTextColor(Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
 
         phoneNumber_->setPlaceholderText(QT_TRANSLATE_NOOP("phone_widget", "phone number"));
         phoneNumber_->setFont(Fonts::appFontScaled(18));

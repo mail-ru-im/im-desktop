@@ -29,9 +29,14 @@ namespace
         }
     };
 
-    const QPixmap& getFrame(const QColor _color, const int _frame)
+    const QPixmap& getFrame(const QColor& _color, const int _frame)
     {
         static Utils::ColoredCache<AnimationFrames> cache;
+
+        static Styling::ThemeChecker checker;
+        if (checker.checkAndUpdateHash())
+            cache.clear();
+
         return cache[_color].frames_[_frame % frameCount];
     }
 }
@@ -58,8 +63,7 @@ namespace Ui
     {
         if (textUnit_)
         {
-            textUnit_->setColor(getTextColor());
-            animColor_ = getAnimColor();
+            animColor_ = Styling::getColor(getAnimColor());
             update();
         }
     }
@@ -139,7 +143,9 @@ namespace Ui
         if (!textUnit_)
         {
             textUnit_ = TextRendering::MakeTextUnit(text, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-            textUnit_->init(Fonts::appFontScaled(12), QColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+            TextRendering::TextUnit::InitializeParameters params{ Fonts::appFontScaled(12), getTextColor() };
+            params.maxLinesCount_ = 1;
+            textUnit_->init(params);
             textUnit_->setOffsets(Utils::scale_value(24), Utils::scale_value(20));
             textUnit_->evaluateDesiredSize();
 
@@ -158,7 +164,7 @@ namespace Ui
     {
         if (anim_)
             return;
-            
+
         anim_ = new QVariantAnimation(this);
         anim_->setStartValue(0);
         anim_->setEndValue(frameCount);
@@ -189,13 +195,13 @@ namespace Ui
             anim_->stop();
     }
 
-    QColor TypingWidget::getTextColor() const
+    Styling::ThemeColorKey TypingWidget::getTextColor() const
     {
-        return Styling::getParameters(aimId_).getColor(Styling::StyleVariable::TYPING_TEXT);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TYPING_TEXT, aimId_ };
     }
 
-    QColor TypingWidget::getAnimColor() const
+    Styling::ThemeColorKey TypingWidget::getAnimColor() const
     {
-        return Styling::getParameters(aimId_).getColor(Styling::StyleVariable::TYPING_ANIMATION);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TYPING_ANIMATION, aimId_ };
     }
 }

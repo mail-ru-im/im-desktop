@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "search_dialog_result.h"
 #include "history_message.h"
+#include "thread_parent_topic.h"
 
 #include "../../common.shared/json_helper.h"
 
@@ -21,10 +22,14 @@ namespace core::search
         }
         coll.set_value_as_array("highlights", hl_array.get());
 
+        if (parent_topic_)
+            parent_topic_->serialize(coll);
+
         if (message_)
             message_->serialize(coll.get(), _offset);
 
         _root_coll.set_value_as_collection("message", coll.get());
+
     }
 
     // ------------------------------------------------------------------------------
@@ -95,6 +100,9 @@ namespace core::search
                hl_array->push_back(hl_value.get());
            }
            entry_coll.set_value_as_array("highlights", hl_array.get());
+
+           if (m.parent_topic_)
+               m.parent_topic_->serialize(entry_coll);
 
            entry_coll.set_value_as_string("contact", m.contact_);
            if (m.contact_entry_count_ != -1)

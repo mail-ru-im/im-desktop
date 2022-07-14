@@ -38,6 +38,7 @@ namespace core
             const std::map<chat_member_failure, std::vector<std::string>>& get_failures() const noexcept { return failures_; }
 
             std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
         };
 
     }

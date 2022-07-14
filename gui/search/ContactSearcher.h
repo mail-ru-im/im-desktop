@@ -33,6 +33,7 @@ namespace Logic
 
         QString phoneNumber_;
 
+    private:
         SearchDataSource excludeChats_;
         bool hideReadonly_;
         bool forceAddFavorites_;

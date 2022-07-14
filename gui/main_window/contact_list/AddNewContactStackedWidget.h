@@ -43,7 +43,7 @@ Q_SIGNALS:
 private Q_SLOTS:
     void onOkClicked();
 
-    void onSyncAdressBook(const bool _hasError);
+    void onSyncAdressBook();
 
     void onFormDataIncomplete();
     void onFormDataSufficient();

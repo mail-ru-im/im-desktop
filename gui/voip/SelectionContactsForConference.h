@@ -77,6 +77,7 @@ namespace Ui
         void onCurrentMemberClicked(const QString& _aimid);
         void onVoipCallNameChanged(const voip_manager::ContactsList& _contacts);
         void updateMaxSelectedCount();
+        void copyCallLink();
 
     private:
         QPointer<CurrentConferenceMembers> curMembers_;

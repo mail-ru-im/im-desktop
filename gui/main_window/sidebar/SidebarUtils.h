@@ -2,9 +2,12 @@
 
 #include "../../types/message.h"
 #include "../../controls/TextUnit.h"
+#include "../../styles/ThemeParameters.h"
 #include "../contact_list/Common.h"
 #include "../containers/StatusContainer.h"
+#include "../gui/utils/PersonTooltip.h"
 #include "GalleryList.h"
+#include "utils/SvgUtils.h"
 
 namespace Data
 {
@@ -15,12 +18,6 @@ namespace Logic
 {
     class ChatMembersModel;
     class ContactListItemDelegate;
-}
-
-namespace Tooltip
-{
-    enum class ArrowDirection;
-    enum class ArrowPointPos;
 }
 
 namespace Ui
@@ -62,14 +59,14 @@ namespace Ui
 
         void setTextOffset(int _textOffset);
 
-        void setIcon(const QPixmap& _icon);
+        void setIcon(const Utils::StyledPixmap& _icon);
 
-        void initText(const QFont& _font, const QColor& _textColor, const QColor& _disabledColor);
+        void initText(const QFont& _font, const Styling::ThemeColorKey& _textColor, const Styling::ThemeColorKey& _disabledColor);
         void setText(const QString& _text);
 
-        void initCounter(const QFont& _font, const QColor& _textColor);
+        void initCounter(const QFont& _font, const Styling::ThemeColorKey& _textColor);
         void setCounter(int _count, bool _autoHide = true);
-        void setColors(const QColor& _hover, const QColor& _active_ = QColor());
+        void setColors(const Styling::ThemeColorKey& _hover);
 
         virtual void setEnabled(bool _isEnabled);
 
@@ -92,16 +89,15 @@ namespace Ui
         QString label_;
         int textOffset_;
 
-        QPixmap icon_;
+        Utils::StyledPixmap icon_;
 
         Ui::TextRendering::TextUnitPtr text_;
         Ui::TextRendering::TextUnitPtr counter_;
 
-        QColor hover_;
-        QColor active_;
+        Styling::ColorContainer hover_;
 
-        QColor textColor_;
-        QColor disabledColor_;
+        Styling::ThemeColorKey textColor_;
+        Styling::ThemeColorKey disabledColor_;
 
         QPoint clickedPoint_;
 
@@ -144,6 +140,7 @@ namespace Ui
     };
 
     class StatusPlate;
+    class TextLabel;
 
     class AvatarNameInfo : public QWidget
     {
@@ -164,19 +161,22 @@ namespace Ui
 
         void setTextOffset(int _textOffset);
 
-        void initName(const QFont& _font, const QColor& _color);
-        void initInfo(const QFont& _font, const QColor& _color);
+        void initName(const QFont& _font, const Styling::ThemeColorKey& _color);
+        void initInfo(const QFont& _font, const Styling::ThemeColorKey& _color);
 
         void setAimIdAndSize(const QString& _aimid, int _size, const QString& _friendly = QString());
         void setFrienlyAndSize(const QString& _friendly, int _size);
-        void setInfo(const QString& _info, const QColor& _color = QColor());
+        void setInfo(const QString& _info, const Styling::ThemeColorKey& _color = {});
+        void setNames(const QString& _first, const QString& _middle, const QString& _last);
 
         const QString& getFriendly() const;
         void makeClickable();
         void nameOnly();
 
-        QSize sizeHint() const override;
         QSize minimumSizeHint() const override;
+
+        QString getSelectedText() const;
+        void tryClearSelection(const QPoint& _pos);
 
     protected:
         void timerEvent(QTimerEvent* _event) override;
@@ -194,21 +194,17 @@ namespace Ui
         void friendlyChanged(const QString& _aimId, const QString& _friendlyName);
         void statusChanged(const QString& _aimid);
         void stateChanged();
+        void onMenuAction(QAction* _action);
 
     private:
+        void initializeWidget();
         void loadAvatar();
+        void drawAvatar();
         void setBadgeRect();
         void updateSize();
         QPoint statusPos() const;
         void paintEnabled(QPainter& painter);
         void paintDisabled(QPainter& painter);
-        QPoint avatarTopLeft() const;
-
-        QRect getNameRect() const;
-
-        bool isTooltipActivated() const;
-        void showTooltip();
-        void hideTooltip();
 
     private:
         QBasicTimer timer_;
@@ -221,23 +217,23 @@ namespace Ui
         QPixmap avatar_;
         int avatarSize_;
 
-        Ui::TextRendering::TextUnitPtr name_;
-        Ui::TextRendering::TextUnitPtr info_;
+        QVBoxLayout* verticalLayout_ = nullptr;
+        QLabel* label_ = nullptr;
+        TextLabel* name_ = nullptr;
+        TextLabel* info_ = nullptr;
 
         QPoint clicked_;
         bool defaultAvatar_;
         bool clickable_;
         bool hovered_;
         bool nameOnly_;
+        bool fromNames_;
 
         QRect badgeRect_;
         StatusPlate* statusPlate_;
-
-        QTimer* tooltipTimer_;
-        bool tooltipActivated_;
     };
 
-    class StatusPlate : public QObject
+    class StatusPlate : public QWidget
     {
         Q_OBJECT
 
@@ -245,24 +241,26 @@ namespace Ui
         void update(QPrivateSignal);
 
     public:
-        StatusPlate(QObject* _parent);
+        StatusPlate(QWidget* _parent);
         ~StatusPlate();
         void setContactId(const QString& _id);
-        void draw(QPainter& _p);
-        int height() const;
-        QRect rect() const;
         bool isEmpty() const;
 
-        void onMouseMove(const QPoint& _pos);
-        void onMousePress(const QPoint& _pos);
-        void onMouseRelease(const QPoint& _pos);
-        void onMouseLeave();
         void updateGeometry(const QPoint& _topLeft, int _availableWidth);
 
     private Q_SLOTS:
         void onStatusChanged(const QString& _contactId);
 
     private:
+        void paintEvent(QPaintEvent* _event) override;
+        void leaveEvent(QEvent* _event) override;
+        void mouseMoveEvent(QMouseEvent* _event) override;
+        void mousePressEvent(QMouseEvent* _event) override;
+        void mouseReleaseEvent(QMouseEvent* _event) override;
+
+        void draw(QPainter& _p);
+        QRect rect() const;
+
         int availableForText(int _availableWidth) const;
         void updateTextGeometry(int _availableWidth);
 
@@ -308,7 +306,7 @@ namespace Ui
         void menuAction(QAction*);
 
     public:
-        TextLabel(QWidget* _parent, int _maxLinesCount = -1);
+        TextLabel(QWidget* _parent, int _maxLinesCount = -1, bool _showLinks = true);
 
         void setMargins(const QMargins& _margins);
         inline void setMargins(int _left, int _top, int _right, int _bottom)
@@ -318,12 +316,13 @@ namespace Ui
 
         QMargins getMargins() const noexcept { return margins_; }
 
-        void init(const QFont& _font, const QColor& _color, const QColor& _linkColor = QColor());
-        void setText(const QString& _text, const QColor& _color = QColor());
+        void init(const QFont& _font, const Styling::ThemeColorKey& _color, const Styling::ThemeColorKey& _linkColor = {});
+        void setText(const QString& _text, const Styling::ThemeColorKey& _color = {});
         void setCursorForText();
         void unsetCursorForText();
-        void setColor(const QColor& _color);
-        void setLinkColor(const QColor& _color);
+        void setColor(const Styling::ThemeColorKey& _color);
+        Styling::ThemeColorKey getColorKey() const;
+        void setLinkColor(const Styling::ThemeColorKey& _color);
 
         void disableCommands();
 
@@ -331,15 +330,19 @@ namespace Ui
         void addMenuAction(const QString& _iconPath, const QString& _name, const QVariant& _data);
         void makeCopyable();
         void makeTextField();
+        void showByWidth();
         void showButtons();
         void allowOnlyCopy();
+        void enlargeToLinesCount(int _linesCount);
         QString getText() const;
 
         void setTextAlign(TextRendering::HorAligment _align) { textAlign_ = _align; }
         void setBackgroundColor(QColor _color) { bgColor_ = _color; }
         void setIconColors(QColor _normal, QColor _hover, QColor _pressed);
         QString getSelectedText() const;
+        QString getSourceText() const;
         void tryClearSelection(const QPoint& _pos);
+        QStringList linkList() const;
 
     protected:
         void paintEvent(QPaintEvent* _event) override;
@@ -355,6 +358,10 @@ namespace Ui
         void updateSize(bool _forceCollapsed = false);
         void selectText(const QPoint& _from, const QPoint& _to);
         void clearSelection();
+        void updateLinkMap();
+
+        void showTooltip();
+        void hideTooltip();
 
     private:
         QMargins margins_;
@@ -362,6 +369,7 @@ namespace Ui
         TextRendering::TextUnitPtr collapsedText_;
         TextRendering::TextUnitPtr readMore_;
         TextRendering::HorAligment textAlign_ = TextRendering::HorAligment::LEFT;
+        std::vector<const TextRendering::TextWord*> linkWordMap_;
         QPoint selectFrom_;
         QPoint selectTo_;
         int maxLinesCount_;
@@ -371,12 +379,15 @@ namespace Ui
         bool onlyCopyButton_;
         bool cursorForText_;
         bool isTextField_;
+        bool isShowByWidth_ = false;
         ContextMenu* menu_;
         QColor bgColor_;
         QColor iconNormalColor_;
         QColor iconHoverColor_;
         QColor iconPressedColor_;
         QTimer* TripleClickTimer_ = nullptr;
+
+        QTimer* tooltipTimer_ = nullptr;
     };
 
     class InfoBlock
@@ -385,10 +396,10 @@ namespace Ui
         void hide();
         void show();
         void setVisible(bool _value);
-        void setHeaderText(const QString& _text, const QColor& _color = QColor());
-        void setText(const QString& _text, const QColor& _color = QColor());
-        void setTextLinkColor(const QColor& _color);
-        void setHeaderLinkColor(const QColor& _color);
+        void setHeaderText(const QString& _text, const Styling::ThemeColorKey& _color = {});
+        void setText(const QString& _text, const Styling::ThemeColorKey& _color = {});
+        void setTextLinkColor(const Styling::ThemeColorKey& _color);
+        void setHeaderLinkColor(const Styling::ThemeColorKey& _color);
         void disableCommandsInText();
         bool isVisible() const;
         QString getSelectedText() const;
@@ -462,7 +473,13 @@ namespace Ui
         void searchClicked(QPrivateSignal);
 
     public:
-        MembersPlate(QWidget* _parent);
+        enum class SearchField
+        {
+            hidden,
+            shown
+        };
+
+        MembersPlate(QWidget* _parent, SearchField _searchVisibility = SearchField::shown);
 
         void setMargins(const QMargins& _margins);
         inline void setMargins(int _left, int _top, int _right, int _bottom)
@@ -470,9 +487,10 @@ namespace Ui
             setMargins(QMargins(_left, _top, _right, _bottom));
         }
         void setMembersCount(int _count, bool _isChannel);
+        int getMembersCount() const;
 
-        void initMembersLabel(const QFont& _font, const QColor& _color);
-        void initSearchLabel(const QFont& _font, const QColor& _color);
+        void initMembersLabel(const QFont& _font, const Styling::ThemeColorKey& _color);
+        void initSearchLabel(const QFont& _font, const Styling::ThemeColorKey& _color);
 
     protected:
 
@@ -487,6 +505,7 @@ namespace Ui
 
         QMargins margins_;
         QPoint clicked_;
+        int count_{0};
     };
 
     class MembersWidget : public QWidget
@@ -518,8 +537,6 @@ namespace Ui
 
     private:
         void updateSize();
-
-        void showTooltip(QString _text, QRect _rect, Tooltip::ArrowDirection _arrowDir, Tooltip::ArrowPointPos _arrowPos);
         void hideTooltip();
 
     private:
@@ -532,7 +549,7 @@ namespace Ui
         QPoint clicked_;
         QScrollArea* scrollArea_;
 
-        QTimer* tooltipTimer_;
+        Utils::PersonTooltip* personTooltip_ = nullptr;
         QModelIndex tooltipIndex_;
     };
 
@@ -553,9 +570,9 @@ namespace Ui
         void updateTextOffset();
 
         void setHeight(int _height);
-        void initColors(const QColor& _base, const QColor& _hover, const QColor& _active);
-        void setIcon(const QPixmap& _icon);
-        void initText(const QFont& _font, const QColor& _color);
+        void initColors(const Styling::ThemeColorKey& _base, const Styling::ThemeColorKey& _hover, const Styling::ThemeColorKey& _active);
+        void setIcon(const Utils::StyledPixmap& _icon);
+        void initText(const QFont& _font, const Styling::ThemeColorKey& _color);
         void setText(const QString& _text);
 
         void makeRounded();
@@ -565,22 +582,22 @@ namespace Ui
         QSize minimumSizeHint() const override;
 
     protected:
-        virtual void paintEvent(QPaintEvent* _event) override;
-        virtual void mousePressEvent(QMouseEvent* _event) override;
-        virtual void mouseReleaseEvent(QMouseEvent* _event) override;
-        virtual void enterEvent(QEvent* _event) override;
-        virtual void leaveEvent(QEvent* _event) override;
+        void paintEvent(QPaintEvent* _event) override;
+        void mousePressEvent(QMouseEvent* _event) override;
+        void mouseReleaseEvent(QMouseEvent* _event) override;
+        void enterEvent(QEvent* _event) override;
+        void leaveEvent(QEvent* _event) override;
 
     private:
         Ui::TextRendering::TextUnitPtr text_;
-        QPixmap icon_;
+        Utils::StyledPixmap icon_;
 
-        QColor base_;
-        QColor active_;
-        QColor hover_;
+        Styling::ColorContainer base_;
+        Styling::ColorContainer active_;
+        Styling::ColorContainer hover_;
 
-        bool isHovered_;
-        bool isActive_;
+        bool isHovered_ = false;
+        bool isActive_ = false;
 
         int height_;
         int textOffset_;
@@ -665,7 +682,7 @@ namespace Ui
     SidebarButton* addButton(const QString& _icon, const QString& _text, QWidget* _parent, QLayout* _layout, const QString& _accName = QString());
     SidebarCheckboxButton* addCheckbox(const QString& _icon, const QString& _text, QWidget* _parent, QLayout* _layout, Fading _faded = Fading::Off);
     GalleryPreviewWidget* addGalleryPrevieWidget(QWidget* _parent, QLayout* _layout);
-    MembersPlate* addMembersPlate(QWidget* _parent, QLayout* _layout);
+    MembersPlate* addMembersPlate(QWidget* _parent, QLayout* _layout, MembersPlate::SearchField _searchVisibility = MembersPlate::SearchField::shown);
     MembersWidget* addMembersWidget(Logic::ChatMembersModel* _model, Logic::ContactListItemDelegate* _delegate, int _membersCount, QWidget* _parent, QLayout* _layout);
     ColoredButton* addColoredButton(const QString& _icon, const QString& _text, QWidget* _parent, QLayout* _layout, const QSize& _iconSize = QSize(), Fading _faded = Fading::Off);
 
@@ -686,9 +703,11 @@ namespace Ui
         bool removeMessages_;
     };
 
-    class SidebarListItem
+    class SidebarListItem : public QObject
     {
+        Q_OBJECT
     public:
+        SidebarListItem(QObject* _parent = nullptr) : QObject(_parent) {}
         virtual ~SidebarListItem() = default;
     protected:
         void markDrew() { drew_ = true; }

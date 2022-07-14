@@ -1,6 +1,8 @@
 #pragma once
 
 #include "namespaces.h"
+#include "styles/StyleVariable.h"
+#include "styles/ThemeColor.h"
 
 namespace Ui {
 
@@ -14,16 +16,22 @@ class TextBrowserEx: public QTextBrowser
 public:
     struct Options
     {
-        QColor linkColor_;
-        QColor textColor_;
-        QColor backgroundColor_;
+        enum class LinksUnderline
+        {
+            NoUnderline,
+            AlwaysUnderline,
+            ThemeDependent
+        };
+        Styling::StyleVariable linkColor_;
+        Styling::StyleVariable textColor_;
+        Styling::StyleVariable backgroundColor_;
         QFont font_;
         bool borderless_ = true;
         bool openExternalLinks_ = true;
         qreal documentMargin_ = 0.;
         bool useDocumentMargin_ = false;
         QMargins bodyMargins_;
-        bool noTextDecoration_ = false;
+        LinksUnderline linksUnderline_ = LinksUnderline::AlwaysUnderline;
 
         QMargins getMargins() const;
 
@@ -38,12 +46,19 @@ public:
     TextBrowserEx(const Options& _options, QWidget* _parent =  nullptr);
 
     const Options& getOptions() const;
+    void setLineSpacing(int lineSpacing);
+
+    bool event(QEvent* _event) override;
+
+    void setHtmlSource(const QString& _html);
 
 private:
-    QString generateStyleSheet(const Options& _options);
+    void updateStyle();
 
 private:
     Options options_;
+    Styling::ThemeChecker themeChecker_;
+    QString html_;
 };
 
 namespace TextBrowserExUtils

@@ -73,6 +73,9 @@ namespace Ui
         void unserialize(core::coll_helper* _collection);
         bool haveConnectedEmail() const noexcept { return data_.hasMail_; }
 
+        void stopAttachPhoneNotifications();
+        void resumeAttachPhoneNotifications();
+
         const QString& aimId() const { return data_.aimId_; }
         const QString& nick() const { return data_.nick_; }
         const QString& friendly() const {return data_.friendly_; }

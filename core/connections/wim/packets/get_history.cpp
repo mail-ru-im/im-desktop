@@ -13,6 +13,7 @@
 #include "../../../utils.h"
 #include "../../../tools/system.h"
 #include "../../../../common.shared/json_helper.h"
+#include "../log_replace_functor.h"
 
 #include "openssl/sha.h"
 
@@ -206,4 +207,9 @@ priority_t get_history::get_priority() const
 std::string_view get_history::get_method() const
 {
     return "getHistory";
+}
+
+int core::wim::get_history::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }

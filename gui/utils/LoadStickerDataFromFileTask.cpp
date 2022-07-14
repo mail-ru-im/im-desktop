@@ -16,7 +16,7 @@ namespace Utils
         {
             for (auto& p : loadData_)
             {
-                if (Ui::ComplexMessage::isLottieFileSharingId(p.fsId_.fileId))
+                if (Ui::ComplexMessage::isLottieFileSharingId(p.fsId_.fileId_))
                     p.data_ = Ui::Stickers::StickerData::makeLottieData(p.path_);
                 else
                     p.data_.loadFromFile(p.path_);

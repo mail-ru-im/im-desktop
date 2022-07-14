@@ -16,7 +16,7 @@ namespace Ui
 
         void setTime(const int32_t _timestamp);
         void setContact(const QString& _aimId);
-        QColor getTimeColor() const;
+        Styling::ThemeColorKey getTimeColor() const;
 
         void setUnderlayVisible(const bool _visible);
         bool isUnderlayVisible() const noexcept;
@@ -36,7 +36,6 @@ namespace Ui
         void setSelected(const bool _selected);
         bool isSelected() const noexcept;
 
-        void updateStyle();
         void updateText();
 
     protected:

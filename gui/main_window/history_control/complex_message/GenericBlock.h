@@ -2,16 +2,11 @@
 
 #include "IItemBlock.h"
 #include "../QuoteColorAnimation.h"
+#include "../gui/utils/PersonTooltip.h"
 
 namespace Utils
 {
     enum class OpenAt;
-}
-
-namespace Tooltip
-{
-    enum class ArrowDirection;
-    enum class ArrowPointPos;
 }
 
 UI_NS_BEGIN
@@ -45,6 +40,12 @@ public:
     GenericBlock(
         ComplexMessageItem* parent,
         const Data::FString& _sourceText,
+        const MenuFlags _menuFlags,
+        const bool _isResourcesUnloadingEnabled);
+
+    GenericBlock(
+        ComplexMessageItem* parent,
+        Data::FStringView _sourceText,
         const MenuFlags _menuFlags,
         const bool _isResourcesUnloadingEnabled);
 
@@ -83,6 +84,8 @@ public:
     QString getPlaceholderText() const override;
 
     const QString& getLink() const override;
+
+    QStringList messageLinks() const override;
 
     QString getTextForCopy() const override;
 
@@ -125,8 +128,6 @@ public:
     void hideBlock() final override;
 
     bool isHasLinkInMessage() const override;
-
-    virtual bool isOverLink(const QPoint& _mousePosGlobal) const { return false; }
 
     void shiftHorizontally(const int _shift) override;
 
@@ -224,6 +225,7 @@ protected:
 
     bool isTooltipActivated() const;
     void showTooltip(QString _text, QRect _rect, Tooltip::ArrowDirection _arrowDir, Tooltip::ArrowPointPos _arrowPos);
+    void showMentionTooltip(QString _text, QString _name, QRect _rect, Tooltip::ArrowDirection _arrowDir, Tooltip::ArrowPointPos _arrowPos);
     void hideTooltip();
 
     QPointer<QuoteColorAnimation> QuoteAnimation_;
@@ -235,34 +237,30 @@ private:
 
     void stopResourcesUnloadTimer();
 
-    bool Initialized_;
-
-    bool IsResourcesUnloadingEnabled_;
 
     MenuFlags MenuFlags_;
 
-    ComplexMessageItem *Parent_;
+    ComplexMessageItem* Parent_;
 
-    QTimer *ResourcesUnloadingTimer_;
+    QTimer* ResourcesUnloadingTimer_ = nullptr;
+    QTimer* tooltipTimer_ = nullptr;
+    Utils::PersonTooltip* personTooltip_ = nullptr;
 
     Data::FString SourceText_;
-
-    bool IsBubbleRequired_;
 
     QPoint mousePos_;
 
     QPoint mouseClickPos_;
 
-    qint64 galleryId_;
+    qint64 galleryId_ = -1;
 
-    bool IsInsideQuote_;
-
-    bool IsInsideForward_;
-
-    bool IsSelected_;
-
-    QTimer* tooltipTimer_;
-    bool tooltipActivated_;
+    bool IsBubbleRequired_ = true;
+    bool Initialized_ = false;
+    bool IsResourcesUnloadingEnabled_;
+    bool IsInsideQuote_ = false;
+    bool IsInsideForward_ = false;
+    bool IsSelected_ = false;
+    bool tooltipActivated_ = false;
 
 private Q_SLOTS:
     void onResourceUnloadingTimeout();

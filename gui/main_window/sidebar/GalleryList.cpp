@@ -21,6 +21,7 @@
 #include "../contact_list/ContactListModel.h"
 #include "../contact_list/FavoritesUtils.h"
 #include "previewer/toast.h"
+#include "../MainWindow.h"
 
 namespace
 {
@@ -135,7 +136,8 @@ namespace Ui
 
         if (command == u"go_to")
         {
-            Q_EMIT Logic::getContactListModel()->select(aimId_, msg, Logic::UpdateChatSelection::No);
+            const auto openedAs = Utils::InterConnector::instance().getMainWindow()->isFeedAppPage() ? PageOpenedAs::FeedPage : PageOpenedAs::MainPage;
+            Q_EMIT Logic::getContactListModel()->select(aimId_, msg, Logic::UpdateChatSelection::No, false, openedAs);
             props.emplace_back("Event", "Go_to_message");
 
             Ui::GetDispatcher()->post_stats_to_core(event_by_type(type_), { { "chat_type", Utils::chatTypeByAimId(aimId_) }, { "do", "go_to_message" } });
@@ -197,13 +199,9 @@ namespace Ui
                 return;
 
             if (_event->button() == Qt::LeftButton)
-            {
                 onClicked(item);
-            }
             else
-            {
                 showContextMenu(item, _event->pos());
-            }
         }
     }
 
@@ -243,7 +241,7 @@ namespace Ui
 
         connect(tooltipTimer_, &QTimer::timeout, this, [text = std::move(_text), _rect, _arrowDir, _arrowPos]()
         {
-            Tooltip::show(text, _rect, {}, _arrowDir, _arrowPos, {}, Tooltip::TooltipMode::Multiline);
+            Tooltip::show(text, _rect, {}, _arrowDir, _arrowPos, TextRendering::HorAligment::LEFT, {}, Tooltip::TooltipMode::Multiline);
         });
         tooltipTimer_->start();
 
@@ -305,6 +303,7 @@ namespace Ui
         area_->setWidgetResizable(true);
         area_->setFocusPolicy(Qt::NoFocus);
         area_->setFrameShape(QFrame::NoFrame);
+        Testing::setAccessibleName(area_, qsl("AS GalleryPage scrollArea"));
 
         auto vLayout = Utils::emptyVLayout(this);
         vLayout->addWidget(area_);
@@ -371,26 +370,31 @@ namespace Ui
         case MediaContentType::ImageVideo:
             setTypes({ qsl("image"), qsl("video") });
             setContentWidget(new ImageVideoList(this, MediaContentType::ImageVideo, "Photo+Video"));
+            Testing::setAccessibleName(contentWidget_, qsl("AS GalleryList imageVideoList"));
             break;
 
         case MediaContentType::Video:
             setType(qsl("video"));
             setContentWidget(new ImageVideoList(this, MediaContentType::Video, "Video"));
+            Testing::setAccessibleName(contentWidget_, qsl("AS GalleryList videoList"));
             break;
 
         case MediaContentType::Files:
             setTypes({ qsl("file"), qsl("audio") });
             setContentWidget(new FilesList(this));
+            Testing::setAccessibleName(contentWidget_, qsl("AS GalleryList filesList"));
             break;
 
         case MediaContentType::Links:
             setType(qsl("link"));
             setContentWidget(new LinkList(this));
+            Testing::setAccessibleName(contentWidget_, qsl("AS GalleryList linksList"));
             break;
 
         case MediaContentType::Voice:
             setType(qsl("ptt"));
             setContentWidget(new PttList(this));
+            Testing::setAccessibleName(contentWidget_, qsl("AS GalleryList pttList"));
             break;
 
         default:

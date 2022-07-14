@@ -10,8 +10,15 @@ namespace Logic
 {
     class ContactSearcher;
     class MessageSearcher;
+    class ThreadSearcher;
 
     using SearchPatterns = std::list<QString>;
+
+    enum class SearchFormat
+    {
+        ContactsAndMessages,
+        Threads
+    };
 
     class SearchModel : public AbstractSearchModel
     {
@@ -22,7 +29,9 @@ namespace Logic
 
     public Q_SLOTS:
         void endLocalSearch();
+        void endThreadLocalSearch();
         void requestMore();
+        void onDataChanged(const QString& _aimId);
 
     private Q_SLOTS:
         void avatarLoaded(const QString& _aimId);
@@ -37,6 +46,10 @@ namespace Logic
         void onMessagesServer();
         void onMessagesAll();
 
+        void onThreadsLocal();
+        void onThreadsServer();
+        void onThreadsAll();
+
     public:
         SearchModel(QObject* _parent);
 
@@ -45,6 +58,7 @@ namespace Logic
         QVariant data(const QModelIndex& _index, int _role) const override;
         void setFocus() override;
         bool isServiceItem(const QModelIndex& _index) const override;
+        bool isDropableItem(const QModelIndex& _index) const override;
         bool isClickableItem(const QModelIndex& _index) const override;
         bool isLocalResult(const QModelIndex& _index) const;
 
@@ -76,6 +90,8 @@ namespace Logic
 
         static QString getContactsAndGroupsAimId();
         static QString getMessagesAimId();
+        static QString getThreadsAimId();
+        static QString getSingleThreadAimId();
 
         static const bool simpleSort(const Data::AbstractSearchResultSptr& _first,
                                      const Data::AbstractSearchResultSptr& _second,
@@ -89,6 +105,10 @@ namespace Logic
         void addTemporarySearchData(const QString& _data) override;
         void removeAllTemporarySearchData() override;
 
+        void setSearchFormat(SearchFormat _format);
+        bool isSearchInThreads(bool _checkMessages = false) const;
+        bool hasOnlyThreadResults() const;
+
     protected:
         virtual void modifyResultsBeforeEmit(Data::SearchResultsV& _results) {}
         void refreshComposeResults();
@@ -101,11 +121,19 @@ namespace Logic
         void composeResultsChatsCategorized();
         void composeResultsChatsSimple();
         void composeResultsMessages();
+        void composeResultsThreads();
 
         void composeSuggests();
 
+        void setMessagesSearchFormat();
+        void setThreadsSearchFormat();
+
+        void initThreadSearcher();
+
+    private:
         ContactSearcher* contactSearcher_;
         MessageSearcher* messageSearcher_;
+        ThreadSearcher* threadSearcher_;
 
         bool isCategoriesEnabled_;
         bool isSortByTime_;
@@ -113,19 +141,27 @@ namespace Logic
         bool isSearchInContactsEnabled_;
 
         bool localMsgSearchNoMore_;
+        bool localThreadSearchNoMore_;
 
         QTimer* timerSearch_;
 
-        bool allContactResRcvd_;
-        bool allMessageResRcvd_;
-        bool messageResServerRcvd_;
+        bool allContactResultsReceived_;
+        bool allMessageResultsReceived_;
+        bool messageServerResultsReceived_;
+        bool allThreadsResultsReceived_;
+        bool threadsServerResultsReceived_;
         bool favoritesOnTop_;
+        SearchFormat format_{SearchFormat::ContactsAndMessages};
 
         Data::SearchResultsV contactLocalRes_;
         Data::SearchResultsV contactServerRes_;
         Data::SearchResultsV msgLocalRes_;
         Data::SearchResultsV msgServerRes_;
+        Data::SearchResultsV threadsLocalRes_;
+        Data::SearchResultsV threadsServerRes_;
         Data::SearchResultsV results_;
+        Data::SearchResultsV messagesResults_;
+        Data::SearchResultsV threadsResults_;
 
         Data::SearchResultsV temporaryLocalContacts_;
     };

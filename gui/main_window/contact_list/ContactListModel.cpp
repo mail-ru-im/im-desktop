@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "ContactListModel.h"
+#include "IgnoreMembersModel.h"
 #include "ContactListModelSort.h"
 #include "ServiceContacts.h"
 
@@ -17,13 +18,13 @@
 #include "../../gui_settings.h"
 #include "../../my_info.h"
 #include "../../utils/gui_coll_helper.h"
-#include "../../utils/InterConnector.h"
 #include "../../utils/utils.h"
 #include "../../utils/features.h"
 #include "../../utils/log/log.h"
 #include "../../cache/avatars/AvatarStorage.h"
 #include "Common.h"
 #include "types/idinfo.h"
+#include "Common.h"
 
 Q_LOGGING_CATEGORY(clModel, "clModel")
 
@@ -41,7 +42,7 @@ namespace
 
 namespace Logic
 {
-    std::unique_ptr<ContactListModel> g_contact_list_model;
+    QObjectUniquePtr<ContactListModel> g_contact_list_model;
 
     ContactListModel::ContactListModel(QObject* _parent)
         : CustomAbstractListModel(_parent)
@@ -53,6 +54,7 @@ namespace Logic
         , maxVisibleIndex_(0)
         , isWithCheckedBox_(false)
         , topSortedCount_(0)
+        , botAssistantIndex_(-1)
     {
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::contactList,        this, &ContactListModel::contactList);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::presense,           this, &ContactListModel::presence);
@@ -64,6 +66,7 @@ namespace Logic
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::dialogGalleryState, this, &ContactListModel::dialogGalleryState);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::threadUpdates,      this, &ContactListModel::onThreadUpdates);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::messageBuddies,     this, &ContactListModel::messageBuddies);
+        connect(Ui::GetDispatcher(), &Ui::core_dispatcher::userInfo,           this, &ContactListModel::onUserInfo);
 
         connect(GetAvatarStorage(), &Logic::AvatarStorage::avatarChanged,   this, &ContactListModel::avatarLoaded);
         connect(Logic::GetStatusContainer(), &Logic::StatusContainer::statusChanged, this, [this](const QString& _aimid)
@@ -94,6 +97,18 @@ namespace Logic
         return Ui::get_gui_settings()->get_value<bool>(settings_cl_groups_enabled, false);
     }
 
+    void ContactListModel::updateDeleted(const QString& _aimid, bool _deleted)
+    {
+        const auto prevSize = deletedContacts_.size();
+        if (_deleted)
+            deletedContacts_.insert(_aimid);
+        else
+            deletedContacts_.remove(_aimid);
+
+        if (prevSize != deletedContacts_.size())
+            Q_EMIT deletedUser();
+    }
+
     QModelIndex ContactListModel::contactIndex(const QString& _aimId) const
     {
         const auto orderedIndex = getOrderIndexByAimid(_aimId);
@@ -105,7 +120,7 @@ namespace Logic
 
     QVariant ContactListModel::data(const QModelIndex& _i, int _r) const
     {
-        int cur = _i.row();
+        const int cur = _i.row();
 
         if (!_i.isValid() || (unsigned)cur >= contacts_.size())
             return QVariant();
@@ -166,12 +181,12 @@ namespace Logic
     {
         im_assert(!isThread(_contact->AimId_));
 
+        updateDeleted(_contact->AimId_, _contact->isDeleted_);
         auto item = getContactItem(_contact->AimId_);
         if (item != nullptr)
         {
             if (_contact->isDeleted_)
             {
-                deletedContacts_.insert(_contact->AimId_);
                 _removed.push_back(_contact->AimId_);
             }
             else
@@ -186,10 +201,7 @@ namespace Logic
         else
         {
             if (_contact->isDeleted_)
-            {
-                deletedContacts_.insert(_contact->AimId_);
                 return (int)contacts_.size();
-            }
 
             im_assert(!contains(_contact->AimId_));
             im_assert(std::none_of(contacts_.begin(), contacts_.end(), [&a = _contact->AimId_](const auto& _c){ return a == _c.get_aimid(); }));
@@ -216,12 +228,16 @@ namespace Logic
     void ContactListModel::rebuildIndex()
     {
         int i = 0;
+        botAssistantIndex_ = -1;
 
         indexes_.clear();
         for (const auto order_index : sorted_index_cl_)
         {
             im_assert(std::count_if(contacts_.begin(), contacts_.end(), [&a = contacts_[order_index].get_aimid()](const auto& _c){ return a == _c.get_aimid(); }) == 1);
             im_assert(!indexes_.contains(contacts_[order_index].get_aimid()));
+
+            if (contacts_[order_index].get_aimid() == Features::getDigitalAssistantAimid())
+                botAssistantIndex_ = order_index;
 
             indexes_.insert(contacts_[order_index].get_aimid(), i++);
         }
@@ -397,6 +413,7 @@ namespace Logic
         data.public_ = _info.Public_;
         data.channel_ = _info.isChannel();
         data.trustRequired_ = _info.trustRequired_;
+        data.threadsEnabled_ = _info.ThreadsEnabed_;
         chatsCache_[_info.AimId_] = std::move(data);
 
         if (!_info.YouMember_ || _info.YourRole_.isEmpty())
@@ -439,22 +456,109 @@ namespace Logic
         return !_aimId.isEmpty() && threads_.find(_aimId) != threads_.end();
     }
 
-    void ContactListModel::markAsThread(const QString& _threadId, const QString& _parentChatId)
+    bool ContactListModel::isTaskThread(const QString& _aimId) const
     {
+        const auto iter = threads_.find(_aimId);
+        if (iter == threads_.end())
+            return false;
+
+        return iter->second.isTaskThread_;
+    }
+
+    void ContactListModel::markAsThread(const QString& _threadId, const Data::ParentTopic* _parentTopic, bool _isTask)
+    {
+        if (_threadId.isEmpty())
+            return;
+
         // parent chat can be empty - it's ok
-        if (!_threadId.isEmpty())
+        auto& data = threads_[_threadId];
+        if (const auto chatId = Data::MessageParentTopic::getChat(_parentTopic); !chatId.isEmpty())
         {
-            auto& parentId = threads_[_threadId]; // store thread id
-            if (!_parentChatId.isEmpty())
-                parentId = _parentChatId;
+            data.parentChatId_ = chatId;
+
+            if (const auto parentTopic = dynamic_cast<const Data::MessageParentTopic*>(_parentTopic))
+                data.msgId_ = parentTopic->msgId_;
+
+            if (!(areYouNotAMember(chatId) || areYouBlocked(chatId)))
+                Ui::GetDispatcher()->addChatsThread(chatId, data.msgId_, _threadId);
+            else
+                Ui::GetDispatcher()->removeChatsThread(chatId, data.msgId_, _threadId);
         }
+
+        data.isTaskThread_ |= _isTask;
+    }
+
+    void ContactListModel::markAsThread(const Data::ThreadUpdate* _threadUpdate, bool _isTask)
+    {
+        if (!_threadUpdate || _threadUpdate->threadId_.isEmpty())
+            return;
+
+        const QString& threadId = _threadUpdate->threadId_;
+
+        auto& data = threads_[threadId];
+        data.areYouSubscriber_ = _threadUpdate->isSubscriber_; // update subscriber
+
+        markAsThread(threadId, _threadUpdate->parent_.get(), _isTask);
+    }
+
+    void ContactListModel::markAsThreadWithNoParentChat(const QString& _threadId, bool _isTask)
+    {
+        markAsThread(_threadId, nullptr, _isTask);
     }
 
     std::optional<QString> ContactListModel::getThreadParent(const QString& _threadId) const
     {
-        if (const auto it = threads_.find(_threadId); it != threads_.end() && !it->second.isEmpty())
+        if (const auto it = threads_.find(_threadId); it != threads_.end() && !it->second.parentChatId_.isEmpty())
+            return it->second.parentChatId_;
+        return {};
+    }
+
+    int64_t ContactListModel::getThreadParentMessage(const QString& _threadId) const
+    {
+        if (const auto it = threads_.find(_threadId); it != threads_.end() && !it->second.parentChatId_.isEmpty())
+            return it->second.msgId_;
+        return -1;
+    }
+
+    bool ContactListModel::isFeed(const QString& _aimId) const
+    {
+        return !_aimId.isEmpty() && feeds_.find(_aimId) != feeds_.end();
+    }
+
+    void ContactListModel::markAsFeed(const QString& _aimId, const QString& _stamp, const QString& _type)
+    {
+        if (_aimId.isEmpty() || feeds_.find(_aimId) != feeds_.end())
+            return;
+
+        feeds_.emplace(_aimId, _type);
+        chatsCache_[_aimId].stamp_ = _stamp;
+        Q_EMIT Utils::InterConnector::instance().refreshGroupInfo();
+    }
+
+    void ContactListModel::unmarkAsFeed(const QString& _aimId)
+    {
+        if (_aimId.isEmpty() || feeds_.find(_aimId) == feeds_.end())
+            return;
+
+        feeds_.erase(_aimId);
+        Q_EMIT Utils::InterConnector::instance().refreshGroupInfo();
+    }
+
+    std::optional<QString> ContactListModel::getFeedType(const QString& _aimId) const
+    {
+        if (const auto it = feeds_.find(_aimId); it != feeds_.end())
             return it->second;
         return {};
+    }
+
+    std::optional<QString> ContactListModel::getFeedAimId(const QString& _type) const
+    {
+        if (!_type.isEmpty())
+        {
+            if (const auto it = std::find_if(feeds_.begin(), feeds_.end(), [_type](const auto& _feed) { return _feed.second == _type; }); it != feeds_.end())
+                return it->first;
+        }
+        return std::optional<QString>();
     }
 
     bool ContactListModel::isReadonly(const QString& _aimId) const // no write access to this chat, for channel check use isChannel
@@ -463,9 +567,21 @@ namespace Logic
         return item && item->is_readonly();
     }
 
+    bool ContactListModel::isDeleted(const QString& _aimId) const
+    {
+        return deletedContacts_.contains(_aimId);
+    }
+
     bool ContactListModel::isJoinModeration(const QString& _aimId) const
     {
         return chatsCache_[_aimId].joinModeration_;
+    }
+
+    bool ContactListModel::isThreadsEnabled(const QString& _aimId) const
+    {
+        if (!_aimId.isEmpty() && Features::isThreadsEnabled())
+            return chatsCache_[_aimId].threadsEnabled_;
+        return false;
     }
 
     bool ContactListModel::isTrustRequired(const QString& _aimId) const
@@ -473,8 +589,8 @@ namespace Logic
         if (!_aimId.isEmpty() && Features::isRestrictedFilesEnabled())
         {
             auto id = std::cref(_aimId);
-            if (const auto it = threads_.find(_aimId); it != threads_.end() && !it->second.isEmpty())
-                id = it->second;
+            if (const auto it = threads_.find(_aimId); it != threads_.end() && !it->second.parentChatId_.isEmpty())
+                id = it->second.parentChatId_;
 
             if (const auto it = chatsCache_.find(id); it != chatsCache_.end())
                 return it->trustRequired_;
@@ -536,13 +652,13 @@ namespace Logic
     void ContactListModel::onThreadUpdates(const Data::ThreadUpdates& _updates)
     {
         for (const auto& [_, upd] : _updates.messages_)
-            markAsThread(upd->threadId_, Data::MessageParentTopic::getChat(upd->parent_));
+            markAsThread(upd.get());
     }
 
     void ContactListModel::messageBuddies(const Data::MessageBuddies& _buddies)
     {
         for (const auto& buddy : _buddies)
-            markAsThread(buddy->threadData_.id_, Data::MessageParentTopic::getChat(buddy->threadData_.parentTopic_));
+            markAsThread(buddy->threadData_.id_, buddy->threadData_.parentTopic_.get());
     }
 
     void ContactListModel::avatarLoaded(const QString& _aimId)
@@ -557,6 +673,7 @@ namespace Logic
 
     void ContactListModel::presence(std::shared_ptr<Data::Buddy> _presence)
     {
+        updateDeleted(_presence->AimId_, _presence->isDeleted_);
         auto contact = getContactItem(_presence->AimId_);
         if (contact)
         {
@@ -612,7 +729,7 @@ namespace Logic
         updatedItems_.clear();
     }
 
-    void ContactListModel::setCurrent(const QString& _aimId, qint64 _id, bool _sel, std::function<void(Ui::PageBase*)> _gotPageCallback, bool _ignoreScroll)
+    void ContactListModel::setCurrent(const QString& _aimId, qint64 _id, bool _sel, Ui::PageOpenedAs _openedAs, std::function<void(Ui::PageBase*)> _gotPageCallback, bool _ignoreScroll)
     {
         if (_gotPageCallback)
         {
@@ -629,7 +746,7 @@ namespace Logic
         if (!currentAimId_.isEmpty())
         {
             if (_sel)
-                Q_EMIT select(currentAimId_, _id, Logic::UpdateChatSelection::No, _ignoreScroll);
+                Q_EMIT select(currentAimId_, _id, Logic::UpdateChatSelection::No, _ignoreScroll, _openedAs);
 
             if (!ServiceContacts::isServiceContact(currentAimId_))
                 Ui::GetDispatcher()->contactSwitched(currentAimId_);
@@ -739,6 +856,16 @@ namespace Logic
         {
             return _less(contacts_[a], contacts_[b]);
         });
+
+        if (Features::isDigitalAssistantPinEnabled() && botAssistantIndex_ != -1 && !Logic::getIgnoreModel()->contains(Features::getDigitalAssistantAimid()))
+        {
+            const int botPosition = showPopular ? std::min(static_cast<int>(_list.size()) - 1, topSortedCount_) : 0;
+
+            _list.erase(std::remove(_list.begin(), _list.end(), botAssistantIndex_), _list.end());
+            _list.insert(_list.begin() + botPosition, botAssistantIndex_);
+        }
+
+
     }
 
     bool ContactListModel::contains(const QString& _aimId) const
@@ -891,15 +1018,14 @@ namespace Logic
     ContactListModel* getContactListModel()
     {
         if (!g_contact_list_model)
-            g_contact_list_model = std::make_unique<Logic::ContactListModel>(nullptr);
+            g_contact_list_model = makeUniqueQObjectPtr<Logic::ContactListModel>();
 
         return g_contact_list_model.get();
     }
 
     void ResetContactListModel()
     {
-        if (g_contact_list_model)
-            g_contact_list_model.reset();
+        g_contact_list_model.reset();
     }
 
     void ContactListModel::addContactToCL(const QString& _aimId, std::function<void(bool)> _callBack)
@@ -1016,6 +1142,21 @@ namespace Logic
         return confirm;
     }
 
+    bool ContactListModel::unblockContactWithConfirm(const QString& _aimId)
+    {
+      auto confirm = Utils::GetConfirmationWithTwoButtons(
+          QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+          QT_TRANSLATE_NOOP("popup_window", "Yes"),
+          QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to delete user from ignore list?"),
+          Logic::GetFriendlyContainer()->getFriendly(_aimId),
+          nullptr);
+
+      if (confirm)
+          ignoreContact(_aimId, false);
+
+      return confirm;
+    }
+
     bool ContactListModel::areYouAdmin(const QString& _aimId) const
     {
         const auto role = getYourRole(_aimId);
@@ -1060,13 +1201,37 @@ namespace Logic
         return std::find(youBlockedChats_.begin(), youBlockedChats_.end(), _aimid) != youBlockedChats_.end();
     }
 
-    bool ContactListModel::areYouAllowedToWriteInThreads(const QString& _aimId) const
+    bool ContactListModel::areYouAllowedToWriteInThreads(const QString& _parentChatId) const
     {
-        const auto isReadOnly = isReadonly(_aimId);
-        const auto isThisChannel = isChannel(_aimId);
-        const auto areAMember = !areYouNotAMember(_aimId);
-        const auto areBlocked = areYouBlocked(_aimId);
+        const auto isReadOnly = isReadonly(_parentChatId);
+        const auto isThisChannel = isChannel(_parentChatId);
+        const auto areAMember = !areYouNotAMember(_parentChatId);
+        const auto areBlocked = areYouBlocked(_parentChatId);
         return areAMember && !areBlocked && (!isReadOnly || isThisChannel);
+    }
+
+    bool ContactListModel::areYouSubscribedToThread(const QString& _aimId) const
+    {
+        if (auto it = threads_.find(_aimId); it != threads_.end())
+            return it->second.areYouSubscriber_;
+
+        return false;
+    }
+
+    bool ContactListModel::areYouSubscribedToThreadInChat(const QString& _aimId) const
+    {
+        int res { 0 };
+        for (const auto& it : threads_)
+        {
+            if (it.second.parentChatId_ == _aimId)
+            {
+                if (!it.second.areYouSubscriber_)
+                    return false;
+                else
+                    ++res;
+            }
+        }
+        return res != 0;
     }
 
     std::vector<QString> ContactListModel::getCheckedContacts() const
@@ -1215,5 +1380,12 @@ namespace Logic
         if (const auto item = indexes_.find(_aimId); item != indexes_.end())
             return item.value();
         return -1;
+    }
+
+    void ContactListModel::onUserInfo(const int64_t _seq, const QString &_aimid, Data::UserInfo _info)
+    {
+        // for blocked users who are not in the contact list
+        Q_UNUSED(_seq);
+        updateDeleted(_aimid, _info.lastseen_.isBlocked());
     }
 }

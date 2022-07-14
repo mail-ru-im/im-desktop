@@ -6,6 +6,7 @@
 #include "../../../../common.shared/json_helper.h"
 #include "subscriptions/subscr_types.h"
 #include "subscriptions/subscription.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -21,6 +22,11 @@ event_subscribe::event_subscribe(wim_packet_params _params, subscriptions::subsc
 std::string_view event_subscribe::get_method() const
 {
     return "eventSubscribe";
+}
+
+int core::wim::event_subscribe::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t event_subscribe::init_request(const std::shared_ptr<core::http_request_simple>& _request)

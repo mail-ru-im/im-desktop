@@ -54,47 +54,6 @@ inline void operator<<(DeviceType& _type, const core::coll_helper& _coll)
     }
 }
 
-/*inline void operator>>(const voip2::LayoutType& _type, core::coll_helper& _coll)
-{
-    const char* name = "layout_type";
-    switch (_type)
-    {
-    case voip2::LayoutType_One: _coll.set_value_as_string(name, "square_with_detach_preview"); return;
-    case voip2::LayoutType_Two: _coll.set_value_as_string(name, "square_with_attach_preview"); return;
-    case voip2::LayoutType_Three: _coll.set_value_as_string(name, "primary_with_detach_preview"); return;
-    case voip2::LayoutType_Four: _coll.set_value_as_string(name, "primary_with_attach_preview"); return;
-
-    default: im_assert(false); break;
-    }
-}*/
-
-inline void operator>>(const MouseTapEnum& _type, core::coll_helper& _coll)
-{
-    const char* name = "mouse_tap_type";
-    switch (_type)
-    {
-    case MouseTap_Single: _coll.set_value_as_string(name, "single"); return;
-    case MouseTap_Double: _coll.set_value_as_string(name, "double"); return;
-    case MouseTap_Long: _coll.set_value_as_string(name, "long"); return;
-    case MouseTap_Over: _coll.set_value_as_string(name, "over"); return;
-    default: im_assert(false); break;
-    }
-}
-
-inline void operator>>(const ViewArea& _type, core::coll_helper& _coll)
-{
-    const char* name = "view_area_type";
-    switch (_type)
-    {
-    case ViewArea_Primary:    _coll.set_value_as_string(name, "primary"); return;
-    case ViewArea_Detached:   _coll.set_value_as_string(name, "detached"); return;
-    case ViewArea_Default:    _coll.set_value_as_string(name, "default"); return;
-    case ViewArea_Background: _coll.set_value_as_string(name, "background"); return;
-    case ViewArea_Tray:       _coll.set_value_as_string(name, "tray"); return;
-    default: im_assert(false); break;
-    }
-}
-
 inline void operator>>(const voip_manager::DeviceState& _state, core::coll_helper& _coll)
 {
     _state.type >> _coll;
@@ -183,24 +142,6 @@ inline void operator>>(const voip_manager::device_list& _deviceList, core::coll_
     }
 }
 
-inline void operator>>(const voip_manager::FrameSize& _fs, core::coll_helper& _coll)
-{
-    _coll.set_value_as_int64("wnd", _fs.hwnd);
-    _coll.set_value_as_double("aspect_ratio", _fs.aspect_ratio);
-}
-
-inline void operator>>(const voip_manager::MouseTap& _tap, core::coll_helper& _coll)
-{
-    _coll.set_value_as_string("call_id", _tap.call_id.c_str());
-    _coll.set_value_as_string("contact", _tap.contact.c_str());
-
-    int64_t hwnd = (int64_t)_tap.hwnd;
-    _coll.set_value_as_int64("hwnd", hwnd);
-
-    _tap.tap >> _coll;
-    _tap.area >> _coll;
-}
-
 inline void operator>>(const voip_manager::MissedCall& _missed_call, core::coll_helper& _coll)
 {
     _coll.set_value_as_string("account", _missed_call.account.c_str());
@@ -217,12 +158,20 @@ inline void operator>>(const voip_manager::Contact& _contact, core::coll_helper&
 {
     _coll.set_value_as_string("account", _contact.call_id.c_str());
     _coll.set_value_as_string("contact", _contact.contact.c_str());
+    _coll.set_value_as_bool("connected_state", _contact.connected_state);
+    _coll.set_value_as_bool("remote_cam_enabled", _contact.remote_cam_enabled);
+    _coll.set_value_as_bool("remote_mic_enabled", _contact.remote_mic_enabled);
+    _coll.set_value_as_bool("remote_sending_desktop", _contact.remote_sending_desktop);
 }
 
 inline void operator<<(voip_manager::Contact& _contact, core::coll_helper& _coll)
 {
     _contact.call_id = _coll.get_value_as_string("account");
     _contact.contact = _coll.get_value_as_string("contact");
+    _contact.connected_state = _coll.get_value_as_bool("connected_state");
+    _contact.remote_cam_enabled = _coll.get_value_as_bool("remote_cam_enabled");
+    _contact.remote_mic_enabled = _coll.get_value_as_bool("remote_mic_enabled");
+    _contact.remote_sending_desktop = _coll.get_value_as_bool("remote_sending_desktop");
 
     im_assert(!_contact.call_id.empty());
 }
@@ -259,24 +208,6 @@ inline void operator<<(voip_manager::ContactEx& _contact_ex, core::coll_helper& 
     }
 }
 
-inline void operator<<(voip_manager::FrameSize& _fs, core::coll_helper& _coll)
-{
-    _fs.aspect_ratio = _coll.get_value_as_double("aspect_ratio");
-    _fs.hwnd = _coll.get_value_as_int64("wnd");
-}
-
-/*inline void operator>>(const voip_manager::CipherState& _val, core::coll_helper& _coll)
-{
-    _coll.set_value_as_int("state", int(_val.state));
-    _coll.set_value_as_string("secure_code", _val.secureCode);
-}
-
-inline void operator<<(voip_manager::CipherState& val, core::coll_helper& _coll)
-{
-    val.state = (voip_manager::CipherState::State)_coll.get_value_as_int("state");
-    val.secureCode = _coll.get_value_as_string("secure_code");
-}*/
-
 inline void operator >> (void* _hwnd, core::coll_helper& _coll)
 {
     _coll.set_value_as_int64("hwnd", (int64_t)_hwnd);
@@ -306,6 +237,18 @@ inline void operator<<(voip_manager::ConfPeerInfo& _value, core::coll_helper& _c
 {
     _value.peerId = _coll.get_value_as_string("peerId");
     _value.terminate_reason = _coll.get_value_as_int("terminate_reason");
+}
+
+inline void operator>>(const im::VADInfo& _value, core::coll_helper& _coll)
+{
+    _coll.set_value_as_string("peerId", _value.peerId);
+    _coll.set_value_as_int("level", _value.level);
+}
+
+inline void operator<<(im::VADInfo& _value, core::coll_helper& _coll)
+{
+    _value.peerId = _coll.get_value_as_string("peerId");
+    _value.level = _coll.get_value_as_int("level");
 }
 
 template <typename T> void appendVector (const std::vector<T>& _vector, core::coll_helper& _coll, const std::string& _prefix)
@@ -425,6 +368,16 @@ inline void operator<<(voip_manager::ConfPeerInfoV& _value, core::coll_helper& _
     readVector(_value, _coll, "peers");
 }
 
+inline void operator>>(const std::vector<im::VADInfo>& _value, core::coll_helper& _coll)
+{
+    appendVector(_value, _coll, "peers");
+}
+
+inline void operator<<(std::vector<im::VADInfo>& _value, core::coll_helper& _coll)
+{
+    readVector(_value, _coll, "peers");
+}
+
 inline void operator>>(const voip_manager::eNotificationTypes& _type, core::coll_helper& _coll)
 {
     const char* name = "sig_type";
@@ -434,14 +387,11 @@ inline void operator>>(const voip_manager::eNotificationTypes& _type, core::coll
     {
     case kNotificationType_Undefined:   _coll.set_value_as_string(name, "undefined");    return;
     case kNotificationType_CallCreated: _coll.set_value_as_string(name, "call_created"); return;
-    case kNotificationType_CallOutAccepted: _coll.set_value_as_string(name, "call_out_accepted"); return;
     case kNotificationType_CallInAccepted: _coll.set_value_as_string(name, "call_in_accepted"); return;
     case kNotificationType_CallConnected: _coll.set_value_as_string(name, "call_connected"); return;
     case kNotificationType_CallDisconnected: _coll.set_value_as_string(name, "call_disconnected"); return;
     case kNotificationType_CallDestroyed: _coll.set_value_as_string(name, "call_destroyed"); return;
     case kNotificationType_CallPeerListChanged: _coll.set_value_as_string(name, "call_peer_list_changed"); return;
-
-    case kNotificationType_QualityChanged: _coll.set_value_as_string(name, "quality_changed"); return;
 
     case kNotificationType_MediaLocParamsChanged: _coll.set_value_as_string(name, "media_loc_params_changed"); return;
     case kNotificationType_MediaRemVideoChanged: _coll.set_value_as_string(name, "media_rem_v_changed"); return;
@@ -451,26 +401,14 @@ inline void operator>>(const voip_manager::eNotificationTypes& _type, core::coll
     case kNotificationType_DeviceStarted: _coll.set_value_as_string(name, "device_started"); return;
     case kNotificationType_DeviceVolChanged: _coll.set_value_as_string(name, "device_vol_changed"); return;
 
-    case kNotificationType_MouseTap: _coll.set_value_as_string(name, "mouse_tap"); return;
-    case kNotificationType_LayoutChanged: _coll.set_value_as_string(name, "layout_changed"); return;
-
     case kNotificationType_ShowVideoWindow: _coll.set_value_as_string(name, "video_window_show"); return;
-    //case kNotificationType_FrameSizeChanged: _coll.set_value_as_string(name, "frame_size_changed"); return;
     case kNotificationType_VoipResetComplete: _coll.set_value_as_string(name, "voip_reset_complete"); return;
     case kNotificationType_VoipWindowRemoveComplete: _coll.set_value_as_string(name, "voip_window_remove_complete"); return;
     case kNotificationType_VoipWindowAddComplete: _coll.set_value_as_string(name, "voip_window_add_complete"); return;
 
-    //case kNotificationType_CipherStateChanged:  _coll.set_value_as_string(name, "voip_cipher_state_changed"); return;
-
-    //case kNotificationType_MinimalBandwidthChanged: _coll.set_value_as_string(name, "voip_minimal_bandwidth_state_changed"); return;
-    case kNotificationType_MaskEngineEnable: _coll.set_value_as_string(name, "voip_mask_engine_enable"); return;
     case kNotificationType_VoiceDetect: _coll.set_value_as_string(name, "voice_detect"); return;
-
-    //case kNotificationType_ConnectionDestroyed: /* Nothing to do for now */ return;
-
-    case kNotificationType_MainVideoLayoutChanged: _coll.set_value_as_string(name, "voip_main_video_layout_changed"); return;
+    case kNotificationType_VoiceVadInfo: _coll.set_value_as_string(name, "voice_vad_info"); return;
     case kNotificationType_ConfPeerDisconnected: _coll.set_value_as_string(name, "conf_peer_disconnected"); return;
-
     case kNotificationType_HideControlsWhenRemDesktopSharing: _coll.set_value_as_string(name, "hide_ctrls_when_remote_sharing"); return;
 
     default: im_assert(false); return;

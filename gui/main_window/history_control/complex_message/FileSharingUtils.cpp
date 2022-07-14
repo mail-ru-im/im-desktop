@@ -11,12 +11,12 @@ namespace
 {
     using ReverseIndexMap = std::vector<int32_t>;
 
-    int32_t decodeDuration(QStringView str);
+    int32_t decodeDuration(QStringView _str);
 
-    int32_t decodeSize(QChar qch0, QChar qch1);
+    int32_t decodeSize(QChar _qch0, QChar _qch1);
 
     const ReverseIndexMap& getReverseIndexMap();
-}
+} // namespace
 
 core::file_sharing_content_type extractContentTypeFromFileSharingId(QStringView _id)
 {
@@ -66,44 +66,44 @@ bool isLottieFileSharingId(QStringView _id)
     return extractContentTypeFromFileSharingId(_id).is_lottie();
 }
 
-int32_t extractDurationFromFileSharingId(QStringView id)
+int32_t extractDurationFromFileSharingId(QStringView _id)
 {
-    const auto isValidId = (id.size() >= 5);
+    const auto isValidId = (_id.size() >= 5);
     if (!isValidId)
     {
         im_assert(!"invalid file sharing id");
         return -1;
     }
-    if (const auto type = extractContentTypeFromFileSharingId(id); !type.is_ptt())
+    if (const auto type = extractContentTypeFromFileSharingId(_id); !type.is_ptt())
         return -1;
 
-    return decodeDuration(id.mid(1, 4));
+    return decodeDuration(_id.mid(1, 4));
 }
 
-QSize extractSizeFromFileSharingId(QStringView id)
+QSize extractSizeFromFileSharingId(QStringView _id)
 {
-    const auto isValidId = (id.size() > 5);
+    const auto isValidId = (_id.size() > 5);
     if (!isValidId)
     {
         im_assert(!"invalid id");
         return QSize();
     }
 
-    const auto width = decodeSize(id.at(1), id.at(2));
+    const auto width = decodeSize(_id.at(1), _id.at(2));
     im_assert(width >= 0);
 
-    const auto height = decodeSize(id.at(3), id.at(4));
+    const auto height = decodeSize(_id.at(3), _id.at(4));
     im_assert(height >= 0);
 
     return QSize(width, height);
 }
 
-Utils::FileSharingId extractIdFromFileSharingUri(QStringView uri)
+Utils::FileSharingId extractIdFromFileSharingUri(QStringView _uri)
 {
-    if (uri.isEmpty())
+    if (_uri.isEmpty())
         return {};
 
-    const auto normalizedUri = Utils::normalizeLink(uri);
+    const auto normalizedUri = Utils::normalizeLink(_uri);
     Utils::UrlParser parser;
     parser.process(normalizedUri);
     return parser.getFilesharingId();
@@ -115,15 +115,15 @@ namespace
 
     constexpr auto INDEX_DIVISOR = 62;
 
-    int32_t decodeDuration(QStringView str)
+    int32_t decodeDuration(QStringView _str)
     {
         static constexpr auto arr = QStringView(u"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
         int32_t result = 0;
         auto i = 0;
-        for (auto qch : str)
+        for (auto qch : _str)
         {
             auto value = arr.indexOf(qch);
-            const auto exp = arr.size() * (str.size() - i - 1);
+            const auto exp = arr.size() * (_str.size() - i - 1);
             if (exp > 0)
                 value *= exp;
 
@@ -134,12 +134,12 @@ namespace
         return result;
     }
 
-    int32_t decodeSize(QChar qch0, QChar qch1)
+    int32_t decodeSize(QChar _qch0, QChar _qch1)
     {
-        const auto ch0 = (size_t)qch0.toLatin1();
-        const auto ch1 = (size_t)qch1.toLatin1();
+        const auto ch0 = (size_t)_qch0.toLatin1();
+        const auto ch1 = (size_t)_qch1.toLatin1();
 
-        const auto &map = getReverseIndexMap();
+        const auto& map = getReverseIndexMap();
 
         if (ch0 >= map.size())
         {
@@ -177,15 +177,11 @@ namespace
 
         auto index = 0;
 
-        const auto fillMap =
-            [&index]
-            (const char from, const char to)
-            {
-                for (auto ch = from; ch <= to; ++ch, ++index)
-                {
-                    map[ch] = index;
-                }
-            };
+        const auto fillMap = [&index](const char _from, const char _to)
+        {
+            for (auto ch = _from; ch <= _to; ++ch, ++index)
+                map[ch] = index;
+        };
 
         fillMap('0', '9');
         fillMap('a', 'z');
@@ -193,6 +189,6 @@ namespace
 
         return map;
     }
-}
+} // namespace
 
 UI_COMPLEX_MESSAGE_NS_END

@@ -66,6 +66,7 @@ namespace Ui
         void setTabFocus();
         void setFocus(Qt::FocusReason _reason = Qt::MouseFocusReason);
         void clearFocus();
+        bool hasFocus() const;
 
         bool isActive() const;
 
@@ -86,8 +87,6 @@ namespace Ui
         void keyPressEvent(QKeyEvent* _e) override;
 
     private:
-        void updateStyle();
-
         void searchStarted();
         void searchChanged(const QString&);
         void focusedOut();
@@ -104,7 +103,10 @@ namespace Ui
         };
         void searchCompletedImpl(const SetFocusToInput _setFocus);
 
+    private Q_SLOTS:
+        void updateStyle();
 
+    private:
         SearchEdit* searchEdit_;
         bool active_;
 

@@ -3,7 +3,7 @@
 #include "stdafx.h"
 #include "../controls/GeneralDialog.h"
 
-#include "../controls/TooltipWidget.h"
+#include "../controls/TextWidget.h"
 #include "history_control/MessageStyle.h"
 #include "../utils/utils.h"
 #include "../utils/InterConnector.h"
@@ -63,7 +63,7 @@ ReleaseNotesWidget::ReleaseNotesWidget(QWidget *_parent)
 
     auto titleLayout = Utils::emptyHLayout();
     auto title = new TextWidget(this, QT_TRANSLATE_NOOP("release_notes", "What's new"));
-    title->init(Fonts::appFontScaled(22, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+    title->init({ Fonts::appFontScaled(22, Fonts::FontWeight::SemiBold), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } });
     titleLayout->addSpacing(leftMargin());
     Testing::setAccessibleName(title, qsl("AS ReleaseNots title"));
     titleLayout->addWidget(title);
@@ -74,11 +74,11 @@ ReleaseNotesWidget::ReleaseNotesWidget(QWidget *_parent)
     scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     scrollArea->setFocusPolicy(Qt::NoFocus);
     scrollArea->setWidgetResizable(true);
-    scrollArea->setStyleSheet(ql1s("background-color: %1; border: none").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
+    scrollArea->setStyleSheet(ql1s("background-color: transparent; border: none"));
 
     auto text = new TextWidget(this, releaseNotesText(), Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS);
     text->setMaxWidth(releaseNotesWidth() - leftMargin() - rightMargin());
-    text->init(Fonts::appFontScaled(15, Fonts::FontWeight::Normal), MessageStyle::getTextColor());
+    text->init({ Fonts::appFontScaled(15, Fonts::FontWeight::Normal), MessageStyle::getTextColorKey() });
 
     auto scrollAreaContent = new QWidget(scrollArea);
     auto scrollAreaContentLayout = Utils::emptyVLayout(scrollAreaContent);
@@ -87,7 +87,7 @@ ReleaseNotesWidget::ReleaseNotesWidget(QWidget *_parent)
     textLayout->addWidget(text);
     scrollAreaContentLayout->addLayout(textLayout);
     scrollAreaContentLayout->addStretch();
-    scrollAreaContent->setStyleSheet(ql1s("background-color: %1").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
+    scrollAreaContent->setStyleSheet(ql1s("background-color: transparent"));
 
     scrollArea->setWidget(scrollAreaContent);
 
@@ -102,7 +102,7 @@ void showReleaseNotes()
     opt.fixedSize_ = false;
     GeneralDialog d(new ReleaseNotesWidget(), Utils::InterConnector::instance().getMainWindow(), opt);
     d.addAcceptButton(QT_TRANSLATE_NOOP("release_notes", "OK"), true);
-    d.showInCenter();
+    d.execute();
 }
 
 QString releaseNotesHash()

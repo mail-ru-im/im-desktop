@@ -28,7 +28,7 @@ Q_SIGNALS:
 public:
     MessagesFeedLoader(QObject* _parent) : FeedDataLoader(_parent) {}
 };
-
+class ThreadFeedItem;
 class FeedDataContainer: public QWidget
 {
     Q_OBJECT
@@ -38,6 +38,8 @@ public:
     virtual void setPlaceholder(QWidget* _placeholder) {}
     virtual void onPageOpened() {}
     virtual void onPageLeft() {}
+    virtual void scrollToInput(const QString&) {}
+    virtual void scrollToTop() {}
 };
 
 class FeedPage_p;
@@ -56,6 +58,9 @@ public:
     void setOverlayTopWidgetVisible(bool _visible) override;
     void pageOpen() override;
     void pageLeave() override;
+    void scrollToInput(const QString& _id) override;
+    void scrollToTop() override;
+    void updateWidgetsTheme() override;
 
 protected:
     void resizeEvent(QResizeEvent* _event) override;

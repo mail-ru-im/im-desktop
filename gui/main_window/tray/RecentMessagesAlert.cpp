@@ -1,10 +1,16 @@
 #include "stdafx.h"
 #include "MessageAlertWidget.h"
 #include "RecentMessagesAlert.h"
+#include "my_info.h"
+
+#include "../contact_list/ContactListModel.h"
 #include "../contact_list/RecentItemDelegate.h"
 #include "../contact_list/RecentsTab.h"
 #include "../../utils/InterConnector.h"
 #include "../../utils/utils.h"
+
+#include "../containers/FriendlyContainer.h"
+#include "../proxy/FriendlyContaInerProxy.h"
 
 #include "../../controls/TextEmojiWidget.h"
 #include "../../controls/CustomButton.h"
@@ -12,6 +18,10 @@
 #include "../../gui_settings.h"
 #include "../../main_window/MainWindow.h"
 #include "../../styles/ThemeParameters.h"
+#include "../../styles/StyledWidget.h"
+
+#include "../../../common.shared/config/config.h"
+
 
 namespace
 {
@@ -191,12 +201,12 @@ namespace Ui
 
         QVBoxLayout* topLayout = Utils::emptyVLayout();
 
-        QWidget* topWidget = new QWidget(this);
+        auto topWidget = new Styling::StyledWidget(this);
+        topWidget->setDefaultBackground();
         topWidget->setCursor(Qt::PointingHandCursor);
         setLayout(topLayout);
         topLayout->addWidget(topWidget);
 
-        topWidget->setStyleSheet(ql1s("QWidget{background: %1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
         topWidget->setObjectName(qsl("topWidget"));
         topWidget->setStyle(QApplication::style());
         topWidget->setLayout(layout_);
@@ -264,9 +274,7 @@ namespace Ui
 
     void RecentMessagesAlert::messageAlertClicked(const QString& aimId, const QString& mailId, qint64 mentionId)
     {
-        closeAlert();
-        Utils::InterConnector::instance().getMainWindow()->closePopups({ Utils::CloseWindowInfo::Initiator::Unknown, Utils::CloseWindowInfo::Reason::Keep_Sidebar });
-
+        messageAlertClosed(aimId, mailId, mentionId);
         Q_EMIT messageClicked(aimId, mailId, mentionId, alertType_);
     }
 
@@ -295,96 +303,71 @@ namespace Ui
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::alert_viewall);
     }
 
-    void RecentMessagesAlert::addAlert(const Data::DlgState& state)
+    void RecentMessagesAlert::removeAlert( Ui::MessageAlertWidget* _alert)
     {
-        bool showViewAll = (alertsCount_ == maxAlertCount_ && isMessageAlert());
+        if (!_alert)
+            return;
+        height_ -= getAlertItemHeight();
+        _alert->setWindowOpacity(0.0);
+        layout_->removeWidget(_alert);
+        _alert->deleteLater();
+        --alertsCount_;
+    }
 
-        int i = 0;
-
-        while (QLayoutItem* item = layout_->itemAt(i))
-        {
-            auto alert = qobject_cast<Ui::MessageAlertWidget*>(item->widget());
-            if (alert && alert->id() == state.AimId_)
-            {
-                height_ -= getAlertItemHeight();
-                alert->setWindowOpacity(0.0);
-                layout_->removeWidget(alert);
-                alert->deleteLater();
-                showViewAll = viewAllWidget_->isVisible() && alertsCount_ == maxAlertCount_ && isMessageAlert();
-                --alertsCount_;
-            }
-
-            ++i;
-        }
-
-        if (alertsCount_ == maxAlertCount_)
-        {
-            QLayoutItem* item = layout_->itemAt(alertsCount_ - 1);
-            QWidget* w = item ? item->widget() : nullptr;
-            if (w)
-            {
-                height_ -= getAlertItemHeight();
-                w->setWindowOpacity(0.0);
-                layout_->removeWidget(w);
-                w->deleteLater();
-                --alertsCount_;
-            }
-        }
-
-        MessageAlertWidget* widget = new MessageAlertWidget(state, this);
-        Testing::setAccessibleName(widget, u"AS Notification alert " % state.AimId_ % u' ' % QString::number(state.LastMsgId_));
+    void RecentMessagesAlert::createAlert(const Data::DlgState& _state, int _pos)
+    {
+        MessageAlertWidget* widget = new MessageAlertWidget(_state, alertType_, this);
+        Testing::setAccessibleName(widget, u"AS Notification alert " % _state.AimId_ % u' ' % QString::number(_state.LastMsgId_));
         connect(widget, &MessageAlertWidget::clicked, this, &RecentMessagesAlert::messageAlertClicked, Qt::DirectConnection);
         connect(widget, &MessageAlertWidget::closed, this, &RecentMessagesAlert::messageAlertClosed, Qt::DirectConnection);
         height_ += getAlertItemHeight();
-        layout_->insertWidget(0, widget);
+        layout_->insertWidget(_pos, widget);
         ++alertsCount_;
+    }
 
-        if (showViewAll)
+    void RecentMessagesAlert::addAlert(const Data::DlgState& _state)
+    {
+        int i = 0;
+        bool found = false;
+        bool showViewAll = isAlertsOverflow();
+        while (QLayoutItem* item = layout_->itemAt(i))
         {
-            if (!viewAllWidgetVisible_)
+            auto alert = qobject_cast<Ui::MessageAlertWidget*>(item->widget());
+            if (alert && alert->id() == _state.AimId_)
             {
-                viewAllWidgetVisible_ = true;
-                viewAllWidget_->show();
-                height_ += Utils::scale_value(view_all_widget_height);
+                removeAlert(alert);
+                found = true;
             }
+            else
+                ++i;
         }
-        else
-        {
-            if (viewAllWidgetVisible_)
-            {
-                viewAllWidgetVisible_ = false;
-                viewAllWidget_->hide();
-                height_ -= Utils::scale_value(view_all_widget_height);
-            }
-        }
+
+        if (isAlertsOverflow())
+            removeOldestAlert();
+        createAlert(_state);
+
+        showViewAll = showViewAll && found && viewAllWidget_->isVisible() && (isMessageAlert() || isMailAlert());
+        if (showViewAll != viewAllWidgetVisible_)
+            processViewAllWidgetVisible( showViewAll && !viewAllWidgetVisible_);
 
         setFixedHeight(height_);
         setWindowOpacity(1);
         animation_->stop();
         timer_->start();
-
         closeButton_->raise();
-
         Q_EMIT changed();
     }
 
     void RecentMessagesAlert::removeAlert(const QString& _aimId, qint64 _messageId)
     {
         int i = 0;
-
         while (QLayoutItem* item = layout_->itemAt(i))
         {
             auto alert = qobject_cast<Ui::MessageAlertWidget*>(item->widget());
             if (alert && alert->id() == _aimId && (alert->messageId() == _messageId || alert->mentionId() == _messageId))
-            {
-                height_ -= getAlertItemHeight();
-                alert->setWindowOpacity(0.0);
-                layout_->removeWidget(alert);
-                alert->deleteLater();
-                --alertsCount_;
-            }
-
-            ++i;
+                removeAlert(alert);
+            else
+                ++i;
         }
 
         if (i == 1)
@@ -395,87 +378,125 @@ namespace Ui
 
     void RecentMessagesAlert::markShowed()
     {
-        if (!isMessageAlert())
+        if (!isMessageAlert() && !isMailAlert())
             return;
 
         int i = 0;
         while (QLayoutItem* item = layout_->itemAt(i))
         {
-            auto alert = qobject_cast<Ui::MessageAlertWidget*>(item->widget());
-            if (alert)
-            {
-                height_ -= getAlertItemHeight();
-                alert->setWindowOpacity(0.0);
-                layout_->removeWidget(alert);
-                alert->deleteLater();
-                --alertsCount_;
-            }
+            if (auto alert = qobject_cast<Ui::MessageAlertWidget*>(item->widget()))
+                removeAlert(alert);
             else // there is no need to increment if item was deleted
-            {
                 ++i;
-            }
         }
-
         if (viewAllWidgetVisible_)
-        {
-            viewAllWidgetVisible_ = false;
-            viewAllWidget_->hide();
-            height_ -= Utils::scale_value(view_all_widget_height);
-        }
-
+            processViewAllWidgetVisible(!viewAllWidgetVisible_);
         setFixedHeight(height_);
     }
 
-    bool RecentMessagesAlert::updateMailStatusAlert(const Data::DlgState& state)
+    void RecentMessagesAlert::processViewAllWidgetVisible(bool _viewAllWidgetVisible)
     {
-        bool showViewAll = (alertsCount_ == maxAlertCount_ && isMessageAlert());
-        int i = 0;
+        viewAllWidgetVisible_ = _viewAllWidgetVisible;
+        _viewAllWidgetVisible ?  viewAllWidget_->show() : viewAllWidget_->hide();
+        auto dh = Utils::scale_value(view_all_widget_height);
+        _viewAllWidgetVisible ? height_ += dh : height_ -= dh;
+    }
 
+    bool RecentMessagesAlert::isAlertsOverflow() const
+    {
+        return alertsCount_ == maxAlertCount_;
+    }
+
+    void RecentMessagesAlert::removeOldestAlert()
+    {
+        if (QLayoutItem* item = layout_->itemAt(0))
+            removeAlert(qobject_cast<Ui::MessageAlertWidget*>(item->widget()));
+    }
+
+    bool RecentMessagesAlert::updateMailStatusAlert(const Data::DlgState& _state)
+    {
+        int i = 0;
         bool mailStatusFound = false;
         while (QLayoutItem* item = layout_->itemAt(i))
         {
             auto alert = qobject_cast<Ui::MessageAlertWidget*>(item->widget());
-            if (alert && alert->id() == state.AimId_ && alert->mailId().isEmpty())
+            if (alert && alert->id() == _state.AimId_ && alert->mailId().isEmpty())
             {
-                height_ -= getAlertItemHeight();
-                alert->setWindowOpacity(0.0);
-                layout_->removeWidget(alert);
-                alert->deleteLater();
-                showViewAll = viewAllWidget_->isVisible() && alertsCount_ == maxAlertCount_ && isMessageAlert();
-                --alertsCount_;
+                removeAlert(alert);
                 mailStatusFound = true;
             }
-            ++i;
+            else
+                ++i;
         }
 
         if (!mailStatusFound)
             return false;
 
-        if (alertsCount_ == maxAlertCount_)
+        if (isAlertsOverflow())
+            removeOldestAlert();
+
+        createAlert(_state, 1);
+        setFixedHeight(height_);
+        Q_EMIT changed();
+        return true;
+    }
+
+    QString formatNotificationTitle(const Data::DlgState& _state, AlertType _alertType, bool _senderVisible)
+    {
+        if (!_senderVisible)
         {
-            QLayoutItem* item = layout_->itemAt(alertsCount_);
-            QWidget* w = item ? item->widget() : nullptr;
-            if (w)
+            if constexpr (platform::is_apple())
+                return QString();
+
+            const auto productName = config::get().string(config::values::product_name);
+            return QString::fromUtf8(productName.data(), productName.size());
+        }
+
+        if (_alertType == AlertType::alertTypeEmail)
+            return _state.Friendly_;
+
+        const auto friendly = Logic::getFriendlyContainerProxy(Logic::FriendlyContainerProxy::ReplaceFavorites).getFriendly2(_state.AimId_);
+        return Utils::replaceLine(friendly.name_);
+    }
+
+    QString formatNotificationSubtitle(const Data::DlgState& _state, AlertType _alertType, bool _senderVisible)
+    {
+        const auto clModel = Logic::getContactListModel();
+        const bool isChannel = clModel->isChannel(_state.AimId_);
+        const bool isChat = clModel->isChat(_state.AimId_);
+        QString senderNick;
+        if (_senderVisible)
+        {
+            if (isChat && !isChannel)
+                senderNick = Logic::GetFriendlyContainer()->getFriendly(_state.senderAimId_);
+        }
+        return senderNick;
+    }
+
+    QString formatNotificationText(const Data::DlgState& _state, AlertType _alertType, bool _senderVisible, bool _messageVisible, bool _isDraft)
+    {
+        QString text;
+        QString messageText = _state.GetText();
+        if (_state.mediaType_ == MediaType::mediaTypePoll)
+        {
+            const QString& pollLabel = QT_TRANSLATE_NOOP("poll_block", "Poll: ");
+            QStringView textRef = _state.GetText();
+            int i = textRef.indexOf(pollLabel);
+            if (i != -1)
             {
-                height_ -= getAlertItemHeight();
-                w->setWindowOpacity(0.0);
-                layout_->removeWidget(w);
-                w->deleteLater();
-                --alertsCount_;
+                i += pollLabel.size();
+                messageText = textRef.left(i) % QChar(0xab) % textRef.mid(i) % QChar(0xbb);
             }
         }
 
-        MessageAlertWidget* widget = new MessageAlertWidget(state, this);
-        connect(widget, &MessageAlertWidget::clicked, this, &RecentMessagesAlert::messageAlertClicked, Qt::DirectConnection);
-        connect(widget, &MessageAlertWidget::closed, this, &RecentMessagesAlert::messageAlertClosed, Qt::DirectConnection);
-        height_ += getAlertItemHeight();
-        layout_->insertWidget(1, widget);
-        ++alertsCount_;
+        if (_alertType == AlertType::alertTypeMentionMe)
+            text += QChar(0xD83D) % QChar(0xDC4B) % ql1c(' ');
 
-        setFixedHeight(height_);
+        if (_messageVisible)
+            text += Utils::replaceLine(_isDraft ? _state.draftText_ : messageText);
+        else
+            text += QT_TRANSLATE_NOOP("notifications", "New message");
 
-        Q_EMIT changed();
-
-        return true;
+        return text;
     }
 }

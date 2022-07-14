@@ -91,6 +91,15 @@ namespace
         return Utils::renderSvgScaled(qsl(":/controls/top_icon"), QSize(16, 16), color);
     }
 
+    std::array<std::array<QPixmap, 3>, 2> renderArrows()
+    {
+        return
+        {
+            std::array<QPixmap, 3>{ getArrow(ArrowState::normal), getArrow(ArrowState::hovered), getArrow(ArrowState::pressed) },
+            std::array<QPixmap, 3>{ Utils::mirrorPixmapVer(getArrow(ArrowState::normal)), Utils::mirrorPixmapVer(getArrow(ArrowState::hovered)), Utils::mirrorPixmapVer(getArrow(ArrowState::pressed)) }
+        };
+    };
+
     QRect getCollapseButtonRect(const QRect& _widgetRect)
     {
         const QSize btnSize(Utils::scale_value(QSize(snippetSize.height(), snippetSize.height())));
@@ -166,11 +175,10 @@ namespace Ui
 
     void CollapsableWidget::drawCollapseButton(QPainter& _painter, const ArrowDirection _dir)
     {
-        static const QPixmap arrows[][3] =
-        {
-            { getArrow(ArrowState::normal), getArrow(ArrowState::hovered), getArrow(ArrowState::pressed) },
-            { Utils::mirrorPixmapVer(getArrow(ArrowState::normal)), Utils::mirrorPixmapVer(getArrow(ArrowState::hovered)), Utils::mirrorPixmapVer(getArrow(ArrowState::pressed)) }
-        };
+        static auto arrows = renderArrows();
+        static Styling::ThemeChecker checker;
+        if (checker.checkAndUpdateHash())
+            arrows = renderArrows();
 
         const auto btnRect = getCollapseButtonRect(rect());
         const auto mousePos = mapFromGlobal(QCursor::pos());
@@ -212,22 +220,14 @@ namespace Ui
         setFixedHeight(Utils::scale_value(fullHeight));
 
         sender_ = TextRendering::MakeTextUnit(QString(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-        sender_->init(Fonts::appFontScaled(14, Fonts::FontWeight::SemiBold),
-                      Styling::getParameters().getColor(fullSenderVar),
-                      QColor(),
-                      QColor(),
-                      QColor(),
-                      TextRendering::HorAligment::LEFT,
-                      1);
+        TextRendering::TextUnit::InitializeParameters params{ Fonts::appFontScaled(14, Fonts::FontWeight::SemiBold), Styling::ThemeColorKey{ fullSenderVar } };
+        params.maxLinesCount_ = 1;
+        sender_->init(params);
 
         text_ = TextRendering::MakeTextUnit(QString(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-        text_->init(Fonts::appFontScaled(14, Fonts::FontWeight::Normal),
-                    Styling::getParameters().getColor(fullTextColor),
-                    QColor(),
-                    QColor(),
-                    QColor(),
-                    TextRendering::HorAligment::LEFT,
-                    1);
+        params.setFonts(Fonts::appFontScaled(14, Fonts::FontWeight::Normal));
+        params.color_ = Styling::ThemeColorKey{ fullTextColor };
+        text_->init(params);
     }
 
     bool FullPinnedMessage::setMessage(Data::MessageBuddySptr _msg)
@@ -262,12 +262,12 @@ namespace Ui
             break;
         }
 
-        if (previewType_ == PinPlaceholderType::Sticker && !getStickerId().fileId.isEmpty())
+        if (previewType_ == PinPlaceholderType::Sticker && !getStickerId().fileId_.isEmpty())
         {
             makeStickerPreview();
             connections_.push_back(connect(&Stickers::getCache(), &Stickers::Cache::stickerUpdated, this, [this](int _error, const Utils::FileSharingId& _fsId)
             {
-                if (_error == 0 && !_fsId.fileId.isEmpty() && _fsId == getStickerId())
+                if (_error == 0 && !_fsId.fileId_.isEmpty() && _fsId == getStickerId())
                     makeStickerPreview();
             }));
         }
@@ -367,7 +367,8 @@ namespace Ui
                     }
                 }
 
-                Utils::InterConnector::instance().openDialog(complexMessage_->getChatAimid(), complexMessage_->getId());
+                const auto openAs = Utils::InterConnector::instance().getMainWindow()->isFeedAppPage() ? PageOpenedAs::FeedPageScrollable : PageOpenedAs::MainPage;
+                Utils::InterConnector::instance().openDialog(complexMessage_->getChatAimid(), complexMessage_->getId(), true, openAs);
             }
         }
     }
@@ -427,8 +428,8 @@ namespace Ui
 
     void FullPinnedMessage::drawSimpleSnippet(QPainter& _painter)
     {
-        static const QPixmap pm(Utils::renderSvgScaled(pinPath, QSize(20, 20), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY)));
-
+        static auto pin = Utils::StyledPixmap::scaled(pinPath, QSize(20, 20), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY });
+        const auto pm = pin.actualPixmap();
         const auto ratio = Utils::scale_bitmap_ratio();
         const auto x = Utils::scale_value(simplePinLeftMargin);
         const auto y = (height() - pm.height() / ratio) / 2;
@@ -437,7 +438,7 @@ namespace Ui
 
     void FullPinnedMessage::drawMediaSnippet(QPainter& _painter)
     {
-        if (snippet_.isNull())
+        if (!snippet_)
             return;
 
         const QRect mediaRect(Utils::unscale_bitmap(getMediaRect()));
@@ -450,7 +451,7 @@ namespace Ui
         path.addRoundedRect(mediaRect, radius, radius);
         _painter.setClipPath(path);
 
-        _painter.drawPixmap(mediaRect.topLeft(), snippetHovered_ ? snippetHover_ : snippet_);
+        _painter.drawPixmap(mediaRect.topLeft(), snippetHovered_ ? snippetHover_->actualPixmap() : snippet_->actualPixmap());
 
         if (isPlayable())
         {
@@ -467,16 +468,18 @@ namespace Ui
 
     void FullPinnedMessage::makeEmptyPreviewSnippet(const QString& _placeholder)
     {
-        snippet_ = Utils::renderSvgLayered(_placeholder,
-            {
-                { qsl("bg"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT) },
-                { qsl("icon"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY) },
+        snippet_ = std::make_unique<Utils::LayeredPixmap>(
+            _placeholder,
+            Utils::ColorParameterLayers {
+                { qsl("bg"), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_BRIGHT } },
+                { qsl("icon"), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY } },
             });
 
-        snippetHover_ = Utils::renderSvgLayered(_placeholder,
-            {
-                { qsl("bg"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_HOVER) },
-                { qsl("icon"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY) },
+        snippetHover_ = std::make_unique<Utils::LayeredPixmap>(
+            _placeholder,
+            Utils::ColorParameterLayers {
+                { qsl("bg"), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_BRIGHT_HOVER } },
+                { qsl("icon"), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY } },
             });
     }
 
@@ -510,10 +513,10 @@ namespace Ui
         if (_image.isNull())
             return;
 
-        auto makeSnippet = [&_image, mediaSize = getMediaSnippetSize()](QColor color)
+        auto makeSnippet = [&_image, mediaSize = getMediaSnippetSize()](QColor _color)
         {
             QPixmap res(mediaSize);
-            res.fill(color);
+            res.fill(_color);
 
             QRect imgRect(_image.rect());
             imgRect.moveCenter(res.rect().center());
@@ -525,8 +528,8 @@ namespace Ui
             return res;
         };
 
-        snippet_ = makeSnippet(Qt::transparent);
-        snippetHover_ = makeSnippet(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_HOVER));
+        snippet_ = std::make_unique<Utils::BasePixmap>(makeSnippet(Qt::transparent));
+        snippetHover_ = std::make_unique<Utils::BasePixmap>(makeSnippet(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_HOVER))); // BAD
 
         updateTextOffsets();
         update();
@@ -534,7 +537,7 @@ namespace Ui
 
     bool FullPinnedMessage::isSnippetSimple() const
     {
-        return snippet_.isNull();
+        return !snippet_;
     }
 
     bool FullPinnedMessage::isImage() const
@@ -584,7 +587,7 @@ namespace Ui
             return {};
 
         const auto id = complexMessage_->getFirstStickerId();
-        if (!id.fsId_ || id.fsId_->fileId.isEmpty())
+        if (!id.fsId_ || id.fsId_->fileId_.isEmpty())
             return {};
 
         return *id.fsId_;
@@ -593,7 +596,7 @@ namespace Ui
     void FullPinnedMessage::makeStickerPreview()
     {
         auto id = getStickerId();
-        if (id.fileId.isEmpty())
+        if (id.fileId_.isEmpty())
             return;
 
         const auto& data = Stickers::getStickerData(id, stickerSize);
@@ -623,8 +626,8 @@ namespace Ui
 
     void FullPinnedMessage::clear()
     {
-        snippet_ = QPixmap();
-        snippetHover_ = QPixmap();
+        snippet_.reset();
+        snippetHover_ .reset();
         requestId_ = -1;
         previewType_ = PinPlaceholderType::None;
 
@@ -638,7 +641,7 @@ namespace Ui
 
     void FullPinnedMessage::updateStyle()
     {
-        sender_->setColor(fullSenderVar);
+        sender_->setColor(Styling::ThemeColorKey{ fullSenderVar });
         updateText();
 
         update();
@@ -735,9 +738,9 @@ namespace Ui
         setMouseTracking(true);
 
         const auto iconSize = QSize(close_button_size, close_button_size);
-        close_ = new CustomButton(this, qsl(":/controls/close_icon"), iconSize, Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
-        close_->setHoverColor(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_HOVER));
-        close_->setActiveColor(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_ACTIVE));
+        close_ = new CustomButton(this, qsl(":/controls/close_icon"), iconSize, Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY });
+        close_->setHoverColor(Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_HOVER });
+        close_->setActiveColor(Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_ACTIVE });
         close_->setFixedSize(Utils::scale_value(iconSize));
         Testing::setAccessibleName(close_, qsl("AS Stranger closeButton"));
 
@@ -749,7 +752,7 @@ namespace Ui
             : QT_TRANSLATE_NOOP("pin", "Block");
 
         block_ = TextRendering::MakeTextUnit(text);
-        block_->init(Fonts::appFontScaled(16, Fonts::FontWeight::Normal), Styling::getParameters().getColor(strangerTextDefaultColor));
+        block_->init({ Fonts::appFontScaled(16, Fonts::FontWeight::Normal), Styling::ThemeColorKey{ strangerTextDefaultColor } });
         block_->evaluateDesiredSize();
     }
 
@@ -766,7 +769,7 @@ namespace Ui
         pressPoint_ = _event->pos();
         if (block_->contains(_event->pos()))
         {
-            block_->setColor(strangerTextActiveColor);
+            block_->setColor(Styling::ThemeColorKey{ strangerTextActiveColor });
             update();
         }
         QWidget::mousePressEvent(_event);
@@ -782,7 +785,7 @@ namespace Ui
 
         if (block_->contains(_event->pos()))
         {
-            block_->setColor(strangerTextDefaultColor);
+            block_->setColor(Styling::ThemeColorKey{ strangerTextDefaultColor });
             update();
         }
 
@@ -799,12 +802,12 @@ namespace Ui
         if (block_->contains(_event->pos()))
         {
             setCursor(Qt::PointingHandCursor);
-            block_->setColor(strangerTextHoverColor);
+            block_->setColor(Styling::ThemeColorKey{ strangerTextHoverColor });
         }
         else
         {
             setCursor(Qt::ArrowCursor);
-            block_->setColor(strangerTextDefaultColor);
+            block_->setColor(Styling::ThemeColorKey{ strangerTextDefaultColor });
         }
         update();
         QWidget::mouseMoveEvent(_event);
@@ -813,7 +816,7 @@ namespace Ui
     void StrangerPinnedWidget::leaveEvent(QEvent* _event)
     {
         setCursor(Qt::ArrowCursor);
-        block_->setColor(strangerTextDefaultColor);
+        block_->setColor(Styling::ThemeColorKey{ strangerTextDefaultColor });
         update();
 
         QWidget::leaveEvent(_event);
@@ -834,16 +837,16 @@ namespace Ui
         setFixedHeight(Utils::scale_value(fullHeight));
 
         const auto iconSize = QSize(close_button_size, close_button_size);
-        close_ = new CustomButton(this, qsl(":/controls/close_icon"), iconSize, Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
-        close_->setHoverColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER));
-        close_->setActiveColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_ACTIVE));
+        close_ = new CustomButton(this, qsl(":/controls/close_icon"), iconSize, Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY });
+        close_->setHoverColor(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY_HOVER });
+        close_->setActiveColor(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY_ACTIVE });
         close_->setFixedSize(Utils::scale_value(iconSize));
         Testing::setAccessibleName(close_, qsl("AS Banner closeButton"));
 
         connect(close_, &CustomButton::clicked, this, &StatusBannerWidget::closeClicked);
 
         text_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("pin", "Pay attention\nto contact status"));
-        text_->init(Fonts::appFontScaled(14, Fonts::FontWeight::Medium), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        text_->init({ Fonts::appFontScaled(14, Fonts::FontWeight::Medium), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } });
         text_->evaluateDesiredSize();
     }
 

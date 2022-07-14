@@ -3,6 +3,7 @@
 
 #include "../../../http_request.h"
 #include "../../../../common.shared/json_helper.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -22,6 +23,11 @@ group_inviteblacklist_search::~group_inviteblacklist_search() = default;
 std::string_view group_inviteblacklist_search::get_method() const
 {
     return is_search_request() ? "privacy/groups/inviteBlacklist/search" : "privacy/groups/inviteBlacklist/get";
+}
+
+int core::wim::group_inviteblacklist_search::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t group_inviteblacklist_search::init_request(const std::shared_ptr<core::http_request_simple>& _request)

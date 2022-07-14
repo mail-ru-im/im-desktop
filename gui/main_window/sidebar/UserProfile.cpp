@@ -19,6 +19,7 @@
 #include "../containers/LastseenContainer.h"
 #include "../../previewer/toast.h"
 #include "../../controls/TransparentScrollBar.h"
+#include "../../controls/GeneralDialog.h"
 #include "../../styles/ThemeParameters.h"
 #include "../../utils/utils.h"
 #include "../../utils/InterConnector.h"
@@ -29,6 +30,8 @@
 #include "../../utils/animations/WidgetAnimations.h"
 #include "../../core_dispatcher.h"
 #include "utils/PhoneFormatter.h"
+#include "../mini_apps/MiniAppsUtils.h"
+#include "../mini_apps/MiniAppsContainer.h"
 
 namespace
 {
@@ -86,6 +89,7 @@ namespace Ui
 
     UserProfile::UserProfile(QWidget* _parent, const QString& _phone, const QString& _aimid, const QString& _friendly)
         : SidebarPage(_parent)
+        , area_(nullptr)
         , galleryWidget_(nullptr)
         , report_(nullptr)
         , remove_(nullptr)
@@ -112,7 +116,7 @@ namespace Ui
             info_->nameOnly();
         }
 
-        phone_->setText(PhoneFormatter::formatted(_phone), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+        phone_->setText(PhoneFormatter::formatted(_phone), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY });
         controlsWidget_->setVisible(!_aimid.isEmpty());
         openFavorites_->setVisible(false);
 
@@ -150,6 +154,7 @@ namespace Ui
             Testing::setAccessibleName(info_, qsl("AS Sidebar UserProfile AvatarNameInfo ") + _aimId);
 
             updateMuteState();
+            updateGroupsTitle();
             updatePinButton();
 
             galleryPreview_->setAimId(_aimId);
@@ -210,9 +215,22 @@ namespace Ui
 
     void UserProfile::resizeEvent(QResizeEvent* _event)
     {
-        if (!shortView_)
+        if (!shortView_ && cl_)
         {
             cl_->setWidthForDelegate(width());
+            for (auto w : { controlsWidget_, galleryWidget_, infoContainer_ })
+            {
+                if (w)
+                {
+                    w->layout()->invalidate();
+                    w->setFixedWidth(width());
+                    w->updateGeometry();
+                }
+            }
+            notifications_->setFixedWidth(width());
+            notifications_->update();
+            generalGroups_->setFixedWidth(width());
+            generalGroups_->updateGeometry();
             galleryPopup_->setFixedWidth(std::max(0, width() - GalleryPopup::horOffset() * 2));
         }
 
@@ -235,7 +253,7 @@ namespace Ui
         {
             editButton_ = new HeaderTitleBarButton(this);
             Testing::setAccessibleName(editButton_, qsl("AS Sidebar UserProfile editButton"));
-            editButton_->setDefaultImage(qsl(":/context_menu/edit"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY), headerIconSize());
+            editButton_->setDefaultImage(qsl(":/context_menu/edit"), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY }, headerIconSize());
             editButton_->setCustomToolTip(QT_TRANSLATE_NOOP("context_menu", "Edit"));
             titleBar_->addButtonToRight(editButton_);
             connect(editButton_, &HeaderTitleBarButton::clicked, this, &UserProfile::editButtonClicked);
@@ -261,6 +279,7 @@ namespace Ui
         area_->setFrameStyle(QFrame::NoFrame);
         area_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         Utils::transparentBackgroundStylesheet(area_);
+        Testing::setAccessibleName(stackedWidget_, qsl("AS Sidebar UserProfile scrollArea"));
 
         stackedWidget_->insertWidget(main, area_);
         stackedWidget_->insertWidget(gallery, initGallery(stackedWidget_));
@@ -284,6 +303,11 @@ namespace Ui
         connect(Logic::getContactListModel(), &Logic::ContactListModel::contactChanged, this, &UserProfile::contactChanged);
         connect(Logic::GetLastseenContainer(), &Logic::LastseenContainer::lastseenChanged, this, &UserProfile::lastseenChanged);
         connect(Logic::GetFriendlyContainer(), &Logic::FriendlyContainer::friendlyChanged, this, &UserProfile::friendlyChanged);
+        connect(Logic::getContactListModel(), &Logic::ContactListModel::contactRename, this, [this](const QString& _aimId)
+        {
+            Q_UNUSED(_aimId);
+            loadInfo();
+        }, Qt::QueuedConnection);
     }
 
     void UserProfile::initShort()
@@ -384,6 +408,8 @@ namespace Ui
 
                 email_ = addInfoBlock(QT_TRANSLATE_NOOP("sidebar", "Email"), QString(), widget, infoContainerLayout, 0, Fading::On);
                 email_->text_->showButtons();
+                if (Logic::GetAppsContainer()->isAppEnabled(Utils::MiniApps::getMailId()))
+                    email_->text_->addMenuAction(qsl(":/context_menu/mail"), QT_TRANSLATE_NOOP("context_menu", "Compose email"), makeData(qsl("compose_email")));
                 email_->text_->addMenuAction(qsl(":/context_menu/link"), QT_TRANSLATE_NOOP("context_menu", "Copy email"), makeData(qsl("copy_email")));
                 email_->text_->addMenuAction(qsl(":/context_menu/copy"), QT_TRANSLATE_NOOP("context_menu", "Copy the link to this profile"), makeData(qsl("copy_link")));
                 email_->text_->addMenuAction(qsl(":/context_menu/forward"), QT_TRANSLATE_NOOP("context_menu", "Share profile link"), makeData(qsl("share_link_email")));
@@ -409,7 +435,7 @@ namespace Ui
             {
                 addSpacer(widget, infoContainerLayout, Utils::scale_value(SMALL_SPACER_HEIGHT));
                 auto label = addLabel(QString(), widget, infoContainerLayout, 0, TextRendering::HorAligment::LEFT, Fading::On);
-                label->setText(QT_TRANSLATE_NOOP("sidebar", "Save"), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+                label->setText(QT_TRANSLATE_NOOP("sidebar", "Save"), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY });
                 label->setCursorForText();
                 connect(label, &TextLabel::textClicked, this, [this]() { Q_EMIT saveClicked(QPrivateSignal()); });
             }
@@ -555,17 +581,22 @@ namespace Ui
             tooltipText = QT_TRANSLATE_NOOP("sidebar", "Back");
         }
 
-        closeButton_->setDefaultImage(iconPath, QColor(), headerIconSize());
+        closeButton_->setDefaultImage(iconPath, Styling::ColorParameter{}, headerIconSize());
         closeButton_->setCustomToolTip(tooltipText);
         Styling::Buttons::setButtonDefaultColors(closeButton_);
+    }
+
+    void UserProfile::updateGroupsTitle()
+    {
+        generalGroups_->setText(isFavorites() ? QT_TRANSLATE_NOOP("sidebar", "My groups and channels") : QT_TRANSLATE_NOOP("sidebar", "Common groups"));
     }
 
     void UserProfile::updatePinButton()
     {
         const auto isPinned = Logic::getRecentsModel()->isFavorite(currentAimId_);
-        pin_->setIcon(Utils::renderSvgScaled(isPinned ? qsl(":/unpin_chat_icon") : qsl(":/pin_chat_icon"), QSize(ICON_SIZE, ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY)));
+        pin_->setIcon(Utils::StyledPixmap::scaled(isPinned ? qsl(":/unpin_chat_icon") : qsl(":/pin_chat_icon"), QSize(ICON_SIZE, ICON_SIZE), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY }));
         pin_->setText(isPinned ? QT_TRANSLATE_NOOP("sidebar", "Unpin") : QT_TRANSLATE_NOOP("sidebar", "Pin"));
-        pin_->setVisible(!Logic::getRecentsModel()->isUnimportant(currentAimId_));
+        pin_->setVisible(!Logic::getRecentsModel()->isUnimportant(currentAimId_) && !isFavorites());
     }
 
     void UserProfile::changeTab(int _tab)
@@ -594,7 +625,7 @@ namespace Ui
 
         const auto haveContact = Logic::getContactListModel()->getContactItem(currentAimId_) != nullptr;
         const auto itsMe = (currentAimId_ == Ui::MyInfo()->aimId());
-        const auto canEdit = !itsMe && haveContact && (!Logic::getRecentsModel()->isSuspicious(currentAimId_) && !Logic::getRecentsModel()->isStranger(currentAimId_));
+        const auto canEdit = Features::changeContactNamesAllowed() && !itsMe && haveContact && (!Logic::getRecentsModel()->isSuspicious(currentAimId_) && !Logic::getRecentsModel()->isStranger(currentAimId_));
 
         editButton_->setVisible(_tab == main && canEdit);
         editButton_->setVisibility(_tab == main && canEdit);
@@ -635,12 +666,14 @@ namespace Ui
         const auto itsMe = (currentAimId_ == Ui::MyInfo()->aimId());
         const auto inCL = Logic::getContactListModel()->hasContact(currentAimId_);
         const auto isBot = Logic::GetLastseenContainer()->isBot(currentAimId_);
-        const auto canEdit = !itsMe && inCL && (!Logic::getRecentsModel()->isSuspicious(currentAimId_) && !Logic::getRecentsModel()->isStranger(currentAimId_));
+        const auto canEdit = Features::changeContactNamesAllowed() && !itsMe && inCL && (!Logic::getRecentsModel()->isSuspicious(currentAimId_) && !Logic::getRecentsModel()->isStranger(currentAimId_));
 
         const auto isAuioCallVisible = !isBot && (!selected || frameCountMode_ == FrameCountMode::_1);
         switchMessageOrCallMode((isBot || isAuioCallVisible) ? MessageOrCallMode::Message : MessageOrCallMode::Call);
 
         infoContainer_->setVisible(!isFavorites());
+
+        const auto isDeletedUser = Logic::getContactListModel()->isDeleted(currentAimId_);
 
         if (itsMe)
         {
@@ -651,21 +684,22 @@ namespace Ui
         }
         else
         {
-            messageOrCall_->setVisible(true);
-            audioCall_->setVisible(isAuioCallVisible);
-            videoCall_->setVisible(!isBot);
+            messageOrCall_->setVisible(!isDeletedUser);
+            audioCall_->setVisible(isAuioCallVisible && !isDeletedUser);
+            videoCall_->setVisible(!isBot && !isDeletedUser);
             openFavorites_->setVisible(itsMe && !isFavorites());
         }
         unblock_->setVisible(isIgnored);
-        block_->setVisible(!isIgnored && !itsMe);
-        report_->setVisible(!itsMe && Features::clRemoveContactsAllowed());
+        block_->setVisible(!isIgnored && !itsMe && !isDeletedUser);
+        report_->setVisible(!itsMe && Features::clRemoveContactsAllowed() && Features::isReportMessagesEnabled());
         remove_->setVisible(inCL && Features::clRemoveContactsAllowed() && !itsMe);
         notifications_->setVisible(!isIgnored && !itsMe);
-        createGroup_->setVisible(!itsMe);
+        createGroup_->setVisible(!itsMe && !isDeletedUser);
         editButton_->setVisible(stackedWidget_->currentIndex() == main && canEdit);
         editButton_->setVisibility(stackedWidget_->currentIndex() == main && canEdit);
 
-        pin_->setVisible(!isUnimportant);
+        pin_->setVisible(!isUnimportant && !isFavorites());
+        generalGroups_->setVisible(!isDeletedUser);
 
         setUpdatesEnabled(true);
 
@@ -684,7 +718,7 @@ namespace Ui
             status = seen.getStatusString();
         }
 
-        info_->setInfo(status, Styling::getParameters().getColor(online ? Styling::StyleVariable::TEXT_PRIMARY : Styling::StyleVariable::BASE_PRIMARY));
+        info_->setInfo(status, Styling::ThemeColorKey{ online ? Styling::StyleVariable::TEXT_PRIMARY : Styling::StyleVariable::BASE_PRIMARY });
     }
 
     QString UserProfile::getShareLink() const
@@ -703,7 +737,7 @@ namespace Ui
         {
             Utils::UrlParser p;
             p.process(currentAimId_);
-            if (p.hasUrl() && p.getUrl().is_email())
+            if (p.hasUrl() && p.isEmail())
                 return res % currentAimId_;
         }
 
@@ -721,12 +755,12 @@ namespace Ui
 
         const auto makeIcon = [](const auto& _path)
         {
-            return Utils::renderSvgScaled(_path, getButtonIconSize(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
+            return Utils::StyledPixmap::scaled(_path, getButtonIconSize(), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_GLOBALWHITE });
         };
 
         if (_mode == MessageOrCallMode::Message)
         {
-            messageOrCall_->setIcon(makeIcon(qsl(":/chat_icon")));
+            messageOrCall_->setIcon(makeIcon(qsl(":/chat_icon_small")));
             messageOrCall_->setText(QT_TRANSLATE_NOOP("sidebar", "Message"));
         }
         else
@@ -753,7 +787,7 @@ namespace Ui
             return;
         }
 
-        if (prevAimId_.isEmpty() || prevAimId_ != Logic::getContactListModel()->selectedContact())
+        if (prevAimId_.isEmpty() || (prevAimId_ != Logic::getContactListModel()->selectedContact() && !Logic::getContactListModel()->isThread(prevAimId_)))
             Utils::InterConnector::instance().setSidebarVisible(false);
         else
             Utils::InterConnector::instance().showSidebar(prevAimId_);
@@ -837,6 +871,8 @@ namespace Ui
         changeTab(common_chats);
         commonChatsModel_->load(currentAimId_);
         Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profilescr_groups_action);
+        if (searchWidget_)
+            searchWidget_->setFocus();
     }
 
     void UserProfile::pinClicked()
@@ -962,6 +998,8 @@ namespace Ui
             hideControls();
             return;
         }
+        if (!Features::changeContactNamesAllowed())
+            info_->setNames(_info.firstName_, _info.middleName_, _info.lastName_);
 
         userInfo_ = _info;
         enableFading();
@@ -976,6 +1014,7 @@ namespace Ui
     {
         setInfoPlaceholderVisible(false);
         controlsWidget_->setEnabled(true);
+        info_->tryClearSelection(QPoint(-1, -1));
 
         const auto hasAbout = !userInfo_.about_.isEmpty();
         if (hasAbout)
@@ -989,23 +1028,25 @@ namespace Ui
         {
             nick_->hide();
             email_->show();
-            email_->setText(currentAimId_, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+            email_->setText(currentAimId_, Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY });
         }
         else
         {
             email_->hide();
             nick_->setVisible(!userInfo_.nick_.isEmpty() && Features::isNicksEnabled());
-            nick_->setText(Utils::makeNick(userInfo_.nick_), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+            nick_->setText(Utils::makeNick(userInfo_.nick_), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY });
         }
 
 
         phone_->setVisible(!userInfo_.phoneNormalized_.isEmpty());
-        phone_->setText(userInfo_.phoneNormalized_, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+        phone_->setText(userInfo_.phoneNormalized_, Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY });
         share_->setVisible(!userInfo_.phoneNormalized_.isEmpty());
         const auto isIgnored = Logic::getIgnoreModel()->contains(currentAimId_);
 
         generalGroups_->setVisible(true);
-        generalGroups_->setCounter(userInfo_.commonChats_);
+        if(!isFavorites())//temporarily, see the comment to https://jira.vk.team/browse/IMDESKTOP-18962
+            generalGroups_->setCounter(userInfo_.commonChats_);
+
         theme_->setVisible(true);
         clearHistory_->setVisible(true);
         notifications_->setEnabled(true);
@@ -1040,7 +1081,7 @@ namespace Ui
         {
             const auto text = params[qsl("text")].toString();
             copy(text);
-            Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("toast", "Copied to clipboard"), Utils::defaultToastVerOffset());
+            Utils::showCopiedToast();
         }
         else if (command == u"copy_nick")
         {
@@ -1061,6 +1102,10 @@ namespace Ui
         else if (command == u"copy_email")
         {
             emailClicked();
+        }
+        else if (command == u"compose_email")
+        {
+            Q_EMIT Utils::InterConnector::instance().composeEmail(currentAimId_);
         }
         else if (command == u"share_link_email")
         {
@@ -1127,7 +1172,7 @@ namespace Ui
         if (!nick.isEmpty() && !currentAimId_.contains(u'@'))
         {
             nick_->setVisible(Features::isNicksEnabled());
-            nick_->setText(nick, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+            nick_->setText(nick, Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY });
         }
         else
         {
@@ -1150,9 +1195,13 @@ namespace Ui
 
     void UserProfile::chatSelected(const QString& _aimid)
     {
-        if (const auto& selected = Logic::getContactListModel()->selectedContact(); selected != _aimid)
-            Q_EMIT Utils::InterConnector::instance().addPageToDialogHistory(selected);
-        Utils::InterConnector::instance().openDialog(_aimid);
+        auto& interConnector  = Utils::InterConnector::instance();
+        const auto isFeedPage = interConnector.getMainWindow()->isFeedAppPage();
+        if (const auto& selected = Logic::getContactListModel()->selectedContact(); !isFeedPage && selected != _aimid)
+            Q_EMIT interConnector.addPageToDialogHistory(selected);
+
+        Utils::updateAppsPageReopenPage(_aimid);
+        interConnector.openDialog(_aimid);
     }
 
     void UserProfile::recvPermitDeny(bool)
@@ -1301,6 +1350,27 @@ namespace Ui
 
     QString UserProfile::getSelectedText() const
     {
-        return about_->getSelectedText();
+        return info_->getSelectedText() % about_->getSelectedText();
+    }
+
+    void UserProfile::mousePressEvent(QMouseEvent* _event)
+    {
+        if (!area_)
+            return;
+
+        auto pos = area_->widget()->mapFromParent(_event->pos());
+        pos.ry() -= titleBar_->height();
+        info_->tryClearSelection(pos);
+        about_->text_->tryClearSelection(pos);
+
+        SidebarPage::mousePressEvent(_event);
+    }
+
+    void UserProfile::showEvent(QShowEvent* _event)
+    {
+        if (area_ && searchWidget_ && stackedWidget_ && stackedWidget_->currentIndex() == common_chats && !GeneralDialog::isActive())
+            searchWidget_->setFocus();
+
+        SidebarPage::showEvent(_event);
     }
 }

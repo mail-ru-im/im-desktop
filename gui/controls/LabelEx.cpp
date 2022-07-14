@@ -14,6 +14,9 @@ namespace Ui
 
     void LabelEx::paintEvent(QPaintEvent* _event)
     {
+        if (currentColor_.canUpdateColor())
+            setColor(currentColor_.actualColor());
+
         if (elideMode_ == Qt::ElideNone)
             return QLabel::paintEvent(_event);
 
@@ -66,14 +69,13 @@ namespace Ui
         QLabel::leaveEvent(_event);
     }
 
-    void LabelEx::setColor(const QColor& _color)
+    void LabelEx::setColor(const Styling::ThemeColorKey& _color)
     {
-        QPalette pal;
-        pal.setColor(QPalette::Foreground, _color);
-        setPalette(pal);
+        currentColor_ = _color;
+        setColor(Styling::getColor(_color));
     }
 
-    void LabelEx::setColors(const QColor& _normalColor, const QColor& _hoverColor, const QColor& _activeColor)
+    void LabelEx::setColors(const Styling::ThemeColorKey& _normalColor, const Styling::ThemeColorKey& _hoverColor, const Styling::ThemeColorKey& _activeColor)
     {
         normalColor_ = _normalColor;
         hoverColor_ = _hoverColor;
@@ -94,16 +96,6 @@ namespace Ui
         return elideMode_;
     }
 
-    void LabelEx::updateColor()
-    {
-        if (pressed_ && activeColor_.isValid())
-            setColor(activeColor_);
-        else if (hovered_ && hoverColor_.isValid())
-            setColor(hoverColor_);
-        else if (normalColor_.isValid())
-            setColor(normalColor_);
-    }
-
     void LabelEx::updateCachedTexts()
     {
         const auto txt = text();
@@ -113,5 +105,22 @@ namespace Ui
         cachedText_ = txt;
         const QFontMetrics fm(fontMetrics());
         cachedElidedText_ = fm.elidedText(txt, elideMode_, width(), Qt::TextShowMnemonic);
+    }
+
+    void LabelEx::setColor(const QColor& _color)
+    {
+        QPalette pal;
+        pal.setColor(QPalette::Foreground, _color);
+        setPalette(pal);
+    }
+
+    void LabelEx::updateColor()
+    {
+        if (pressed_ && activeColor_.isValid())
+            setColor(activeColor_);
+        else if (hovered_ && hoverColor_.isValid())
+            setColor(hoverColor_);
+        else if (normalColor_.isValid())
+            setColor(normalColor_);
     }
 }

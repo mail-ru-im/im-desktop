@@ -18,6 +18,7 @@
 #include "utils/InterConnector.h"
 #include "gui_settings.h"
 #include "fonts.h"
+#include "../MainWindow.h"
 
 #include "../../../common.shared/config/config.h"
 
@@ -42,7 +43,7 @@ namespace
 }
 
 
-void GeneralSettingsWidget::Creator::initAppearance(QWidget* _parent)
+void GeneralSettingsWidget::Creator::initAppearance(AppearanceWidget* _parent)
 {
     auto layout = Utils::emptyHLayout(_parent);
 
@@ -63,13 +64,14 @@ void GeneralSettingsWidget::Creator::initAppearance(QWidget* _parent)
 
     const PreviewMessagesVector previewMsgs =
     {
-        { QT_TRANSLATE_NOOP("wallpaper_select", "Hello! How are you?"),     QTime(12, 44), QString(), true },
+        { QT_TRANSLATE_NOOP("wallpaper_select", "Hello! How are you?"), QTime(12, 44), QString(), true },
         { QT_TRANSLATE_NOOP("wallpaper_select", "Hi :)"),  QTime(16, 44), QT_TRANSLATE_NOOP("wallpaper_select", "Alice") },
     };
     auto preview = new WallpaperPreviewWidget(scrollArea, previewMsgs);
     preview->setFixedHeight(getBgHeight());
     preview->updateFor(getPreviewContact());
     scrollAreaLayout->addWidget(preview);
+    Testing::setAccessibleName(preview, qsl("AS AppearancePage WallpaperPreviewWidget"));
     scrollAreaLayout->addSpacing(Utils::scale_value(8));
 
     auto wpSelector = new PageOpenerWidget(scrollArea, QT_TRANSLATE_NOOP("settings", "Chats wallpaper"));
@@ -90,6 +92,7 @@ void GeneralSettingsWidget::Creator::initAppearance(QWidget* _parent)
     };
     auto fontSelector = new FontSizeSelectorWidget(scrollArea, QT_TRANSLATE_NOOP("settings", "Font size"), fontSizes);
     fontSelector->setSelectedSize(Fonts::getFontSizeSetting());
+    Testing::setAccessibleName(fontSelector, qsl("AS AppearancePage fonts"));
     QObject::connect(fontSelector, &FontSizeSelectorWidget::sizeSelected, fontSelector, [](const Fonts::FontSize _size)
     {
         if (Fonts::getFontSizeSetting() != _size)
@@ -156,7 +159,7 @@ void GeneralSettingsWidget::Creator::initAppearance(QWidget* _parent)
         if (fabs(get_gui_settings()->get_value<double>(settings_scale_coefficient, Utils::getBasicScaleCoefficient()) - r) >= 0.25f)
             get_gui_settings()->set_value<double>(settings_scale_coefficient, r);
 
-        w->setText(ql1s("%1 %2%").arg(QT_TRANSLATE_NOOP("settings", "Interface scale:"), sc[i]), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        w->setText(ql1s("%1 %2%").arg(QT_TRANSLATE_NOOP("settings", "Interface scale:"), sc[i]), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
 
         if (fabs(su - r) >= 0.25f)
         {
@@ -181,31 +184,29 @@ void GeneralSettingsWidget::Creator::initAppearance(QWidget* _parent)
                 }
             }
 
-            aw->setText(QT_TRANSLATE_NOOP("settings", "(Application restart required)"), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+            aw->setText(QT_TRANSLATE_NOOP("settings", "(Application restart required)"), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY });
         }
         else if (fabs(Utils::getBasicScaleCoefficient() - r) < 0.05f)
         {
-            aw->setText(QT_TRANSLATE_NOOP("settings", "(Recommended)"), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+            aw->setText(QT_TRANSLATE_NOOP("settings", "(Recommended)"), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
         }
         else
         {
-            aw->setText(TextRendering::spaceAsString(), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+            aw->setText(TextRendering::spaceAsString(), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
         }
     };
 
     int index = 0;
     auto it_idx = std::find(sc_int.begin(), sc_int.end(), currentValuePersentage);
     if (it_idx == sc_int.end())
-    {
         im_assert(false);
-    }
     else
         index = std::distance(sc_int.begin(), it_idx);
 
     GeneralCreator::addProgresser(
         scrollArea,
         gcItemsLayout,
-        sc,
+        static_cast<int>(sc.size() - 1),
         index,
         [on_change_scale](TextEmojiWidget* w, TextEmojiWidget* aw, int i) { on_change_scale(true, w, aw, i); },
         [on_change_scale](TextEmojiWidget* w, TextEmojiWidget* aw, int i) { on_change_scale(false, w, aw, i); }
@@ -213,60 +214,13 @@ void GeneralSettingsWidget::Creator::initAppearance(QWidget* _parent)
 #endif
 
     {
-        static const auto themesList = Styling::getThemesContainer().getAvailableThemes();
-        const auto current = Styling::getThemesContainer().getCurrentThemeId();
-        const auto it = std::find_if(themesList.begin(), themesList.end(), [&current](const auto& _p) { return _p.first == current; });
-        const auto currentIdx = it != themesList.end() ? int(std::distance(themesList.begin(), it)) : std::numeric_limits<int>::max();
-
-        auto list = new SimpleListWidget(Qt::Vertical);
-
-        for (const auto& [id, name] : themesList)
-        {
-            auto row = new RadioTextRow(name);
-            Testing::setAccessibleName(row, u"AS AppearancePage " % id);
-            list->addItem(row);
-        }
-
-        list->setCurrentIndex(currentIdx);
-
-        QObject::connect(list, &SimpleListWidget::clicked, list, [currentIdx, current, list](int idx)
-        {
-            if (idx < 0 && idx >= int(themesList.size()))
-                return;
-
-            list->setCurrentIndex(idx);
-
-            if (themesList[idx].first != current)
-            {
-                const QString text = QT_TRANSLATE_NOOP("popup_window", "To change the appearance you must restart the application. Continue?");
-
-                const auto confirmed = Utils::GetConfirmationWithTwoButtons(
-                    QT_TRANSLATE_NOOP("popup_window", "Cancel"),
-                    QT_TRANSLATE_NOOP("popup_window", "Yes"),
-                    text,
-                    QT_TRANSLATE_NOOP("popup_window", "Restart"),
-                    nullptr
-                );
-
-                if (confirmed)
-                {
-                    Styling::getThemesContainer().setCurrentTheme(themesList[idx].first);
-
-                    Utils::restartApplication();
-                }
-                else
-                {
-                    list->setCurrentIndex(currentIdx);
-                }
-            }
-        }, Qt::UniqueConnection);
-
+        _parent->resetThemesList();
 
         gcItemsLayout->addSpacing(Utils::scale_value(40));
         GeneralCreator::addHeader(scrollArea, gcItemsLayout, QT_TRANSLATE_NOOP("settings", "Themes"), 20);
         gcItemsLayout->addSpacing(Utils::scale_value(12));
 
-        scrollAreaLayout->addWidget(list);
+        scrollAreaLayout->addWidget(_parent->getList());
         scrollAreaLayout->addStretch();
     }
 }

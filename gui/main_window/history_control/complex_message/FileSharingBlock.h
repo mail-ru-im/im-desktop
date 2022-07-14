@@ -39,14 +39,14 @@ class FileSharingBlock final : public FileSharingBlockBase
 
 public:
     FileSharingBlock(
-        ComplexMessageItem *parent,
-        const QString &link,
-        const core::file_sharing_content_type type);
+        ComplexMessageItem* _parent,
+        const QString& _link,
+        const core::file_sharing_content_type _type);
 
     FileSharingBlock(
-        ComplexMessageItem *parent,
-        const HistoryControl::FileSharingInfoSptr& fsInfo,
-        const core::file_sharing_content_type type);
+        ComplexMessageItem* _parent,
+        const HistoryControl::FileSharingInfoSptr& _fsInfo,
+        const core::file_sharing_content_type _type);
 
     virtual ~FileSharingBlock() override;
 
@@ -65,11 +65,11 @@ public:
 
     void onVisibleRectChanged(const QRect& _visibleRect) override;
 
-    void onSelectionStateChanged(const bool isSelected) override;
+    void onSelectionStateChanged(const bool _isSelected) override;
 
     void onDistanceToViewportChanged(const QRect& _widgetAbsGeometry, const QRect& _viewportVisibilityAbsRect) override;
 
-    void setCtrlButtonGeometry(const QRect &rect);
+    void setCtrlButtonGeometry(const QRect& _rect);
 
     void setQuoteSelection() override;
 
@@ -114,10 +114,10 @@ public:
 
     QString getProgressText() const override;
 
-    void updateFileStatus(FileStatus _status) override;
+    void markTrustRequired() override;
 
 protected:
-    void drawBlock(QPainter &p, const QRect& _rect, const QColor& _quoteColor) override;
+    void drawBlock(QPainter& p, const QRect& _rect, const QColor& _quoteColor) override;
 
     void initializeFileSharingBlock() override;
 
@@ -127,11 +127,9 @@ protected:
 
     bool drag() override;
 
-    void resizeEvent(QResizeEvent * _event) override;
+    void resizeEvent(QResizeEvent* _event) override;
 
-    MenuFlags getMenuFlags(QPoint p) const override;
-
-    void setSelected(const bool _isSelected) override;
+    MenuFlags getMenuFlags(QPoint _p) const override;
 
     bool isSmallPreview() const override;
 
@@ -146,19 +144,19 @@ public:
 private:
     void init();
 
-    void applyClippingPath(QPainter &p, const QRect &previewRect);
+    void applyClippingPath(QPainter& _p, const QRect& _previewRect);
 
     void connectImageSignals();
 
-    void drawPlainFileBlock(QPainter &p, const QRect &frameRect, const QColor& quote_color);
-    void drawPlainFileFrame(QPainter &p, const QRect &frameRect);
-    void drawPlainFileName(QPainter &p);
+    void drawPlainFileBlock(QPainter& _p, const QRect& _frameRect, const QColor& _quote_color);
+    void drawPlainFileFrame(QPainter& _p, const QRect& _frameRect);
+    void drawPlainFileName(QPainter& _p);
     void drawPlainFileProgress(QPainter& _p);
-    void drawPlainFileShowInDirLink(QPainter &p);
+    void drawPlainFileShowInDirLink(QPainter& _p);
     void drawPlainFileStatus(QPainter& _p) const;
 
-    void drawPreview(QPainter &p, const QRect &previewRect, const QColor& quote_color);
-    void drawPreviewableBlock(QPainter &p, const QRect &previewRect, const QColor& quote_color);
+    void drawPreview(QPainter& _p, const QRect& _previewRect, const QColor& _quoteColor);
+    void drawPreviewableBlock(QPainter& _p, const QRect& _previewRect, const QColor& _quoteColor);
 
     void initPlainFile();
 
@@ -178,13 +176,13 @@ private:
 
     void onDataTransfer(const int64_t _bytesTransferred, const int64_t _bytesTotal, bool _showBytes = true) override;
 
-    void onDownloadingFailed(const int64_t requestId) override;
+    void onDownloadingFailed(const int64_t _requestId) override;
 
-    void onGifImageVisibilityChanged(const bool isVisible);
+    void onGifImageVisibilityChanged(const bool _isVisible);
 
-    void onLocalCopyInfoReady(const bool isCopyExists) override;
+    void onLocalCopyInfoReady(const bool _isCopyExists) override;
 
-    bool onLeftMouseClick(const QPoint &_pos);
+    bool onLeftMouseClick(const QPoint& _pos);
 
     void onPreviewMetainfoDownloaded() override;
 
@@ -194,7 +192,7 @@ private:
 
     void parseLink();
 
-    void requestPreview(const QString &uri);
+    void requestPreview(const QString& _uri);
 
     void sendGenericMetainfoRequests();
 
@@ -222,7 +220,6 @@ private:
 
     void setPreview(QPixmap _preview, QPixmap _background = QPixmap());
 
-    void updateStyle() override;
     void updateFonts() override;
 
     bool isProgressVisible() const;
@@ -234,7 +231,7 @@ private:
 
     void elidePlainFileName();
     void setPlainFileName(const QString& _name);
-    void updatePlainButtonBlockReason(bool _condition);
+    void updatePlainButtonBlockReason(bool _forcePlaceholder);
     bool isPlaceholder() const;
 
 #ifndef STRIP_AV_MEDIA
@@ -264,24 +261,30 @@ private:
     bool IsInPreloadDistance_ = true;
     bool needInitFromLocal_ = false;
 
+    bool antivirusCheckEnabled_ = false;
+
 private Q_SLOTS:
-    void onImageDownloadError(qint64 seq, QString rawUri);
+    void onImageDownloadError(qint64 _seq, QString _rawUri);
 
-    void onImageDownloaded(int64_t seq, QString uri, QPixmap image);
+    void onImageDownloaded(int64_t _seq, QString _uri, QPixmap _image);
 
-    void onImageDownloadingProgress(qint64 seq, int64_t bytesTotal, int64_t bytesTransferred, int32_t pctTransferred);
+    void onImageDownloadingProgress(qint64 _seq, int64_t _bytesTotal, int64_t _bytesTransferred, int32_t _pctTransferred);
 
-    void onImageMetaDownloaded(int64_t seq, Data::LinkMetadata meta);
+    void onImageMetaDownloaded(int64_t _seq, Data::LinkMetadata _meta);
+
+    void onAntivirusCheckResult(const Utils::FileSharingId& _fileHash, core::antivirus::check::result _result);
 
     void onStartClicked(const QPoint& _globalPos);
     void onStopClicked(const QPoint&);
     void onPlainFileIconClicked();
 
-    void localPreviewLoaded(QPixmap pixmap, const QSize _originalSize);
+    void localPreviewLoaded(QPixmap _pixmap, const QSize _originalSize);
     void localDurationLoaded(qint64 _duration);
     void localGotAudioLoaded(bool _gotAudio);
     void multiselectChanged();
     void prepareBackground(const QPixmap& _result, qint64 _srcCacheKey);
+
+    void onConfigChanged();
 };
 
 UI_COMPLEX_MESSAGE_NS_END

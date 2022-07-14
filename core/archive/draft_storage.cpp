@@ -45,7 +45,7 @@ void draft::serialize(coll_helper& _coll, time_t _time_offset) const
 
     _coll.set_value_as_int("server_timestamp", timestamp_);
 
-    coll_helper message_coll(_coll->create_collection(), false);
+    coll_helper message_coll(_coll->create_collection(), true);
     if (message_)
     {
         message_->serialize(message_coll.get(), 0);

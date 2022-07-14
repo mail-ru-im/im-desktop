@@ -2,6 +2,11 @@
 
 #include "types/reactions.h"
 
+namespace Utils
+{
+    class PersonTooltip;
+}
+
 namespace Ui
 {
     enum class ConnectionState;
@@ -157,6 +162,7 @@ namespace Ui
 
     private:
         std::unique_ptr<ReactionsListContent_p> d;
+        Utils::PersonTooltip* personTooltip_ = nullptr;
     };
 
     class AccessibleReactionsListContent : public QAccessibleWidget

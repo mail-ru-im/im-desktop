@@ -75,10 +75,10 @@ void CallQualityStatsMgr::onShowCallQualityStarsPopup()
     options.preferredWidth_ = Utils::scale_value(380);
 
     auto generalDialog = std::make_unique<GeneralDialog>(w, Utils::InterConnector::instance().getMainWindow(), options);
-    auto okCancelButtons = generalDialog->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "OK"), true);
+    auto okCancelButtons = generalDialog->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "OK"));
     w->setOkCancelButton(okCancelButtons.first, okCancelButtons.second);
 
-    const auto res = generalDialog->showInCenter();
+    const auto res = generalDialog->execute();
     Q_UNUSED(res);
 }
 
@@ -100,10 +100,10 @@ void CallQualityStatsMgr::onRatingConfirmed(int _starsCount)
     options.preferredWidth_ = Utils::scale_value(380);
     auto generalDialog = std::make_unique<GeneralDialog>(w, Utils::InterConnector::instance().getMainWindow(), options);
     auto okCancelButtons = generalDialog->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"),
-                                                         QT_TRANSLATE_NOOP("popup_window", "OK"), true);
+                                                         QT_TRANSLATE_NOOP("popup_window", "OK"));
     Q_UNUSED(okCancelButtons);
 
-    auto res = generalDialog->showInCenter();
+    auto res = generalDialog->execute();
     Q_UNUSED(res);
 
     sendStats(_starsCount, qualityReasonsPopupConfig_.surveyId(),

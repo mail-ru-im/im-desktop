@@ -4,6 +4,7 @@
 
 #include "../../../http_request.h"
 #include "../../../../common.shared/json_helper.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -21,6 +22,11 @@ create_conference::create_conference(wim_packet_params _params, std::string_view
 std::string_view create_conference::get_method() const
 {
     return "conference/create";
+}
+
+int core::wim::create_conference::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t create_conference::init_request(const std::shared_ptr<core::http_request_simple>& _request)

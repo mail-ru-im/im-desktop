@@ -2,6 +2,7 @@
 #include "set_dlg_state.h"
 
 #include "../../../http_request.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -67,6 +68,11 @@ priority_t set_dlg_state::get_priority() const
 std::string_view set_dlg_state::get_method() const
 {
     return "setDlgState";
+}
+
+int core::wim::set_dlg_state::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 bool set_dlg_state::support_self_resending() const

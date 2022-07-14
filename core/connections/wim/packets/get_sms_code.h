@@ -27,9 +27,9 @@ namespace core
             int32_t         code_length_;
             bool			existing_;
 
-            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
-            virtual int32_t on_response_error_code() override;
-            virtual int32_t parse_response_data(const rapidjson::Value& _data) override;
+            int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            int32_t on_response_error_code() override;
+            int32_t parse_response_data(const rapidjson::Value& _data) override;
 
         public:
 
@@ -47,7 +47,8 @@ namespace core
             const std::string& get_ivr_url() const { return ivr_url_; }
             const std::string& get_checks() const { return checks_; }
             bool is_valid() const override { return true; }
-            virtual std::string_view get_method() const override;
+            std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
         };
 
         class get_code_by_phone_call : public wim_packet
@@ -59,7 +60,8 @@ namespace core
             get_code_by_phone_call(wim_packet_params params, const std::string& _ivr_url);
             virtual ~get_code_by_phone_call();
             bool is_valid() const override { return true; }
-            virtual std::string_view get_method() const override;
+            std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
         };
     }
 }

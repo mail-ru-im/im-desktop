@@ -2,6 +2,7 @@
 
 #include "get_id_info.h"
 #include "http_request.h"
+#include "../log_replace_functor.h"
 
 using namespace core::wim;
 
@@ -25,6 +26,11 @@ const std::shared_ptr<core::archive::persons_map>& core::wim::get_id_info::get_p
 std::string_view get_id_info::get_method() const
 {
     return "getIdInfo";
+}
+
+int core::wim::get_id_info::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t get_id_info::init_request(const std::shared_ptr<core::http_request_simple>& _request)
@@ -58,6 +64,9 @@ int32_t get_id_info::parse_results(const rapidjson::Value& _node_results)
         core::archive::person p;
         p.friendly_ = response_.name_;
         p.nick_ = response_.nick_;
+        p.first_name_ = response_.first_name_;
+        p.middle_name_ = response_.middle_name_;
+        p.last_name_ = response_.last_name_;
 
         persons_ = std::make_shared<core::archive::persons_map>();
         persons_->insert({ response_.sn_, std::move(p) });

@@ -3,6 +3,7 @@
 #include "remove_members.h"
 #include "../../../http_request.h"
 #include "../common.shared/json_helper.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -19,6 +20,11 @@ remove_members::remove_members(wim_packet_params _params, std::string _aimid, st
 std::string_view remove_members::get_method() const
 {
     return "group/members/delete";
+}
+
+int core::wim::remove_members::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t remove_members::init_request(const std::shared_ptr<core::http_request_simple>& _request)

@@ -26,7 +26,8 @@ namespace core
             group_invitations_cancel(wim_packet_params _params, std::string _contact, std::string _chat);
             const std::string& get_contact() const noexcept { return contact_; }
             const std::string& get_chat() const noexcept { return chat_; }
-            virtual std::string_view get_method() const override;
+            std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
         };
 
     }

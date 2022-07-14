@@ -11,7 +11,11 @@
 #include "../../utils/features.h"
 #include "../../utils/animations/SlideController.h"
 #include "../../styles/ThemeParameters.h"
+#include "../../styles/ThemesContainer.h"
 #include "../MainWindow.h"
+#ifdef HAS_WEB_ENGINE
+#include "../WebAppPage.h"
+#endif
 #include "core_dispatcher.h"
 
 namespace
@@ -104,6 +108,7 @@ namespace Ui
         QVariantAnimation* animSidebar_;
         Utils::SlideController* slideController_;
         FrameCountMode frameCountMode_;
+        int desiredWidth_ = 0;
         bool needShadow_;
         bool wasVisible_ = false;
 
@@ -158,8 +163,17 @@ namespace Ui
 
             const auto& selectedContact = Logic::getContactListModel()->selectedContact();
             const auto& aimId = _aimId.isEmpty() ? selectedContact : _aimId;
-            const bool isWebAppTasksPage = Utils::InterConnector::instance().getMainWindow()->isWebAppTasksPage();
-            const bool hasChanges = isWebAppTasksPage || _selectionChanged || _aimId == selectedContact || currentAimId_ == _aimId;
+
+            auto showProfileFromTasksPageThreadInfo = false;
+            #ifdef HAS_WEB_ENGINE
+            if (Utils::InterConnector::instance().getMainWindow()->isWebAppTasksPage())
+            {
+                const auto tasksPage = Utils::InterConnector::instance().getTasksPage();
+                showProfileFromTasksPageThreadInfo = tasksPage ? tasksPage->isProfileFromThreadInfo() : true;
+            }
+            #endif
+
+            const bool hasChanges = !showProfileFromTasksPageThreadInfo || _selectionChanged || _aimId == selectedContact || currentAimId_ == _aimId;
             const auto initAimid = prefixIdx != -1 ? _aimId.mid(prefixIdx + Sidebar::getThreadPrefix().size()) : aimId;
 
             SidebarPage* page = pageWidget(qptr_->currentIndex());
@@ -227,7 +241,7 @@ namespace Ui
                 return;
 
             if (qptr_->width() == 0)
-                qptr_->setFixedWidth(qptr_->getDefaultWidth());
+                qptr_->setFixedWidth(qptr_->getCurrentWidth());
             backbuffer_ = qptr_->grab();
         }
 
@@ -247,13 +261,13 @@ namespace Ui
         {
             animSidebar_->setDuration(kSlideDuration.count());
             animSidebar_->setStartValue(0);
-            animSidebar_->setEndValue(Sidebar::getDefaultWidth());
+            animSidebar_->setEndValue(qptr_->getCurrentWidth());
             QObject::connect(animSidebar_, &QVariantAnimation::valueChanged, qptr_, &Sidebar::animate);
             QObject::connect(animSidebar_, &QVariantAnimation::finished, qptr_, &Sidebar::onAnimationFinished);
 
-            auto updateWidth = [anim = animSidebar_]()
+            auto updateWidth = [anim = animSidebar_, q = qptr_]()
             {
-                anim->setEndValue(Sidebar::getDefaultWidth());
+                anim->setEndValue(q->getCurrentWidth());
             };
             QObject::connect(Ui::GetDispatcher(), &Ui::core_dispatcher::externalUrlConfigUpdated, animSidebar_, updateWidth);
             QObject::connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated, animSidebar_, updateWidth);
@@ -287,10 +301,16 @@ namespace Ui
         setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
         setAttribute(Qt::WA_NoMousePropagation);
 
-        Utils::setDefaultBackground(this);
-
-        setWidth(getDefaultWidth());
+        restoreWidth();
         setParent(d->semiWindow_);
+
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::currentPageChanged, this, &Sidebar::changeHeight);
+        connect(d->animSidebar_, &QVariantAnimation::finished, this, [this]()
+        {
+            Q_EMIT visibilityAnimationFinished(isVisible());
+        });
+
+        connect(&Styling::getThemesContainer(), &Styling::ThemesContainer::globalThemeChanged, this, &Sidebar::onThemeChanged);
     }
 
     Sidebar::~Sidebar() = default;
@@ -315,7 +335,7 @@ namespace Ui
         }
 
         d->showPage();
-        setFixedWidth(getDefaultWidth());
+        setFixedWidth(getCurrentWidth());
         d->updatePixmap();
 
         setFixedWidth(0);
@@ -331,6 +351,7 @@ namespace Ui
     {
         if (d->frameCountMode_ == FrameCountMode::_1)
         {
+            d->semiWindow_->hideAnimated();
             hide();
             return;
         }
@@ -350,16 +371,31 @@ namespace Ui
         if (isVisible())
             return;
 
+        if (isNeedShadow() && !d->semiWindow_->isVisible())
+        {
+            d->semiWindow_->raise();
+            d->semiWindow_->showAnimated();
+        }
         d->wasVisible_ = true;
-        setFixedHeight(d->semiWindow_->height());
+        updateSizePrivate();
         QWidget::show();
         d->showPage();
     }
 
     void Sidebar::hide()
     {
+        d->semiWindow_->hideAnimated();
         d->wasVisible_ = false;
         QWidget::hide();
+        Q_EMIT hidden();
+    }
+
+    void Sidebar::updateSizePrivate()
+    {
+        if (isNeedShadow())
+            setFixedHeight(d->semiWindow_->height());
+        else
+            setFixedHeight(d->semiWindow_->height() - Utils::InterConnector::instance().getHeaderHeight());
     }
 
     void Sidebar::moveToWindowEdge()
@@ -421,9 +457,7 @@ namespace Ui
     {
         setCurrentIndex(_index);
         if (d->frameCountMode_ == FrameCountMode::_1)
-            setFixedHeight(d->semiWindow_->height());
-        else
-            setFixedWidth(getDefaultWidth());
+            updateSizePrivate();
 
         d->updatePixmap();
 
@@ -443,18 +477,24 @@ namespace Ui
             page->onPageBecomeVisible();
     }
 
+    void Sidebar::onThemeChanged()
+    {
+        if (auto page = d->pageWidget(currentIndex()))
+            page->updateWidgetsTheme();
+    }
+
     void Sidebar::updateSize()
     {
         d->semiWindow_->updateSize();
         if (d->frameCountMode_ == FrameCountMode::_2)
             moveToWindowEdge();
-        setFixedHeight(d->semiWindow_->height());
+        updateSizePrivate();
     }
 
     void Sidebar::changeHeight()
     {
         d->semiWindow_->updateSize();
-        setFixedHeight(d->semiWindow_->height());
+        updateSizePrivate();
     }
 
     bool Sidebar::isThreadOpen() const
@@ -492,25 +532,44 @@ namespace Ui
             else
                 d->semiWindow_->hideAnimated();
         }
+
+        updateSize();
     }
 
-    int Sidebar::getDefaultWidth()
+    int Sidebar::getDefaultWidth() noexcept
     {
         return Features::isThreadsEnabled() ? Utils::scale_value(380) : Utils::scale_value(328);
+    }
+
+    int Sidebar::getDefaultMaximumWidth() noexcept
+    {
+        return Utils::scale_value(581);
     }
 
     QString Sidebar::getSelectedText() const
     {
         SidebarPage* page = d->pageWidget(currentIndex());
-        return (page != nullptr ? page->getSelectedText() : QString());
+        return (page ? page->getSelectedText() : QString());
+    }
+
+    bool Sidebar::hasInputOrHistoryFocus() const
+    {
+        SidebarPage* page = d->pageWidget(currentIndex());
+        return page && page->hasInputOrHistoryFocus();
+    }
+
+    bool Sidebar::hasSearchFocus() const
+    {
+        SidebarPage* page = d->pageWidget(currentIndex());
+        return page && page->hasSearchFocus();
     }
 
     void Sidebar::paintEvent(QPaintEvent* _event)
     {
-        static const double factor = 1.0 / (double)getDefaultWidth();
         if (d->animSidebar_->state() == QVariantAnimation::Running)
         {
-            double w = d->animSidebar_->currentValue().toInt();
+            const double factor = 1.0 / (double)getCurrentWidth();
+            const double w = d->animSidebar_->currentValue().toInt();
             QPainter painter(this);
             painter.setOpacity(w * factor);
             painter.drawPixmap(0, 0, d->backbuffer_);
@@ -603,6 +662,11 @@ namespace Ui
         return {};
     }
 
+    FrameCountMode Sidebar::getFrameCountMode() const
+    {
+        return d->frameCountMode_;
+    }
+
     void Sidebar::setFrameCountMode(FrameCountMode _mode)
     {
         d->frameCountMode_ = _mode;
@@ -617,5 +681,21 @@ namespace Ui
     {
         if (width() != _width)
             setFixedWidth(_width);
+    }
+
+    void Sidebar::saveWidth()
+    {
+        d->desiredWidth_ = width();
+        d->animSidebar_->setEndValue(getCurrentWidth());
+    }
+
+    void Sidebar::restoreWidth()
+    {
+        setWidth(getCurrentWidth());
+    }
+
+    int Sidebar::getCurrentWidth() const
+    {
+        return std::clamp(d->desiredWidth_, getDefaultWidth(), getDefaultMaximumWidth());
     }
 }

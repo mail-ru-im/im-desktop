@@ -54,7 +54,8 @@ namespace Ui
             MENTION,
             EMOJI,
             NICK,
-            COMMAND
+            COMMAND,
+            HASHTAG
         };
 
         enum class LinksVisible
@@ -172,7 +173,7 @@ namespace Ui
             {
                 if (type_ == _other.type_ && type_ == WordType::EMOJI)
                     return code_ == _other.code_;
-                return view_.string() == view_.string();
+                return view_.string() == _other.view_.string();
             }
 
             WordType getType() const noexcept { return type_; }
@@ -187,6 +188,8 @@ namespace Ui
 
             bool isBotCommand() const noexcept { return type_ == WordType::COMMAND; }
 
+            bool isHashtag() const noexcept { return type_ == WordType::HASHTAG; }
+
             bool isSpaceAfter() const noexcept { return space_ == Space::WITH_SPACE_AFTER; }
 
             QString getText(TextType _text_type = TextType::VISIBLE) const;
@@ -198,7 +201,15 @@ namespace Ui
             Data::FStringView viewNoEndSpace() const;
             QStringView plainVisibleTextNoEndSpace() const;
 
-            void setView(Data::FStringView _view) { view_ = _view; }
+            template<class _Updater>
+            void updateView(_Updater _u)
+            {
+                view_ = _u(view_);
+                for (auto& w : subwords_)
+                    w.updateView(_u);
+            }
+
+            void clearView() { view_ = {}; }
 
             bool equalTo(QStringView _sl) const;
             bool equalTo(QChar _c) const;
@@ -251,7 +262,7 @@ namespace Ui
             void setHighlighted(const int _from, const int _to) noexcept;
             void setHighlighted(const highlightsV& _entries);
 
-            bool isLink() const noexcept { return type_ == WordType::LINK || isNick() || isBotCommand() || isMention() || !originalLink_.isEmpty(); }
+            bool isLink() const noexcept { return type_ == WordType::LINK || isHashtag() || isNick() || isBotCommand() || isMention() || !originalLink_.isEmpty(); }
 
             bool isMention() const noexcept { return type_ == WordType::MENTION; }
 
@@ -491,6 +502,8 @@ namespace Ui
 
             virtual void setHighlightedTextColor(const QColor& _color) = 0;
 
+            virtual void setHighlightColor(const QColor& _color) = 0;
+
             virtual void setColorForAppended(const QColor& _color) = 0;
 
             virtual void appendWords(const std::vector<TextWord>& _words) = 0;
@@ -524,6 +537,8 @@ namespace Ui
             virtual void setShadow(const int _offsetX, const int _offsetY, const QColor& _color) = 0;
 
             virtual void updateWordsView(std::function<Data::FStringView(Data::FStringView)>) = 0;
+
+            virtual int getSelectedStartIndex() const { return 1; }
 
         protected:
             BlockType type_;
@@ -615,6 +630,8 @@ namespace Ui
 
             void setHighlightedTextColor(const QColor& _color) override;
 
+            void setHighlightColor(const QColor& _color) override;
+
             void setColorForAppended(const QColor& _color) override;
 
             void appendWords(const std::vector<TextWord>& _words) override;
@@ -661,6 +678,10 @@ namespace Ui
             bool parseWordNick(const TextWord& _word, std::vector<TextWord>& _words);
             bool parseWordNickImpl(const TextWord& _word, std::vector<TextWord>& _words, QStringView _text);
             bool parseWordNickImpl(const TextWord& _word, std::vector<TextWord>& _words, Data::FStringView _text);
+
+            bool parseWordHashtag(const TextWord& _word, std::vector<TextWord>& _words);
+            bool parseWordHashtagImpl(const TextWord& _word, std::vector<TextWord>& _words, QStringView _text);
+            bool parseWordHashtagImpl(const TextWord& _word, std::vector<TextWord>& _words, Data::FStringView _text);
 
             void correctCommandWord(TextWord _word, std::vector<TextWord>& _words);
 
@@ -778,6 +799,8 @@ namespace Ui
 
             void setHighlightedTextColor(const QColor&) override { };
 
+            void setHighlightColor(const QColor& _color) override { };
+
             void setColorForAppended(const QColor&) override { };
 
             void appendWords(const std::vector<TextWord>&) override { };
@@ -816,7 +839,7 @@ namespace Ui
         class TextDrawingParagraph : public BaseDrawingBlock
         {
         public:
-            TextDrawingParagraph(std::vector<BaseDrawingBlockPtr>&& _blocks, ParagraphType _paragraphType, bool _needsTopMargin);
+            TextDrawingParagraph(std::vector<BaseDrawingBlockPtr>&& _blocks, ParagraphType _paragraphType, bool _needsTopMargin, int _startIndex = 1);
 
             void addBlock(BaseDrawingBlockPtr&& block)
             {
@@ -862,6 +885,7 @@ namespace Ui
             void setLinkColor(const QColor&) override;
             void setSelectionColor(const QColor&) override;
             void setHighlightedTextColor(const QColor&) override;
+            void setHighlightColor(const QColor& _color) override;
             void setColorForAppended(const QColor&) override;
             void appendWords(const std::vector<TextWord>&) override;
             const std::vector<TextWord>& getWords() const override;
@@ -882,6 +906,8 @@ namespace Ui
             ParagraphType paragraphType() const { return paragraphType_; }
             inline int getTopTotalIndentation() const { return topIndent_ + margins_.top(); }
 
+            virtual int getSelectedStartIndex() const override;
+
         protected:
             std::vector<BaseDrawingBlockPtr> blocks_;
             QMargins margins_;
@@ -890,6 +916,7 @@ namespace Ui
             QSize cachedSize_;
             QFont font_;
             QColor textColor_;
+            int startIndex_;
         };
 
         using TextDrawingParagraphPtr = std::unique_ptr<TextDrawingParagraph>;
@@ -929,7 +956,7 @@ namespace Ui
         [[nodiscard]] std::optional<TextWordWithBoundary> getWord(const std::vector<BaseDrawingBlockPtr>& _blocks, QPoint _p);
 
         Data::FString getBlocksSelectedText(const std::vector<BaseDrawingBlockPtr>& _blocks);
-        Data::FStringView getBlocksSelectedView(const std::vector<BaseDrawingBlockPtr>& _blocks);
+        Data::FStringView getBlocksSelectedView(const std::vector<BaseDrawingBlockPtr>& _blocks, int& _startIndex);
         QString getBlocksSelectedPlainText(const std::vector<BaseDrawingBlockPtr>& _blocks, TextType _type);
 
         Data::FString getBlocksTextForInstantEdit(const std::vector<BaseDrawingBlockPtr>& _blocks);
@@ -955,10 +982,10 @@ namespace Ui
         void applyLinksFont(const std::vector<BaseDrawingBlockPtr>& _blocks, const QFont& _font);
 
         void setBlocksColor(const std::vector<BaseDrawingBlockPtr>& _blocks, const QColor& _color);
-
         void setBlocksLinkColor(const std::vector<BaseDrawingBlockPtr>& _blocks, const QColor& _color);
-
         void setBlocksSelectionColor(const std::vector<BaseDrawingBlockPtr>& _blocks, const QColor& _color);
+        void setBlocksHighlightColor(const std::vector<BaseDrawingBlockPtr>& _blocks, const QColor& _color);
+        void setBlocksHighlightedTextColor(const std::vector<BaseDrawingBlockPtr>& _blocks, const QColor& _color);
 
         void setBlocksColorForAppended(const std::vector<BaseDrawingBlockPtr>& _blocks, const QColor& _color, int _appended);
 
@@ -977,8 +1004,6 @@ namespace Ui
         int getBlocksLastLineWidth(const std::vector<BaseDrawingBlockPtr>& _blocks);
 
         int getBlocksMaxLineWidth(const std::vector<BaseDrawingBlockPtr>& _blocks);
-
-        void setBlocksHighlightedTextColor(const std::vector<BaseDrawingBlockPtr>& _blocks, const QColor& _color);
 
         void disableCommandsInBlocks(const std::vector<BaseDrawingBlockPtr>& _blocks);
 

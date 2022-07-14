@@ -4,16 +4,6 @@
 using namespace core;
 using namespace wim;
 
-chat_params::chat_params()
-{
-    //
-}
-
-chat_params::~chat_params()
-{
-    //
-}
-
 void chat_params::set_name(const std::string& _name)
 {
     name_= _name;
@@ -69,6 +59,16 @@ void chat_params::set_trust_required(bool _trust_required)
     trust_required_ = _trust_required;
 }
 
+void core::wim::chat_params::set_threads_enabled(bool _threads_enabled)
+{
+    threads_enabled_ = _threads_enabled;
+}
+
+void chat_params::set_threads_auto_subscribe(bool _threads_auto_subscribe)
+{
+    threads_auto_subscribe_ = _threads_auto_subscribe;
+}
+
 chat_params chat_params::create(const core::coll_helper& _params)
 {
     auto result = chat_params();
@@ -92,6 +92,10 @@ chat_params chat_params::create(const core::coll_helper& _params)
         result.set_isChannel(_params.get_value_as_bool("is_channel"));
     if (_params.is_value_exist("trustRequired"))
         result.set_trust_required(_params.get_value_as_bool("trustRequired"));
+    if (_params.is_value_exist("threadsEnabled"))
+        result.set_threads_enabled(_params.get_value_as_bool("threadsEnabled"));
+    if (_params.is_value_exist("threadsAutoSubscribe"))
+        result.set_threads_auto_subscribe(_params.get_value_as_bool("threadsAutoSubscribe"));
 
     return result;
 }

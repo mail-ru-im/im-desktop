@@ -11,6 +11,8 @@
 #include "ThreadsContainer.h"
 #include "ThreadsFeedLoader.h"
 #include "ThreadsFeedPlaceholder.h"
+#include "ThreadFeedItem.h"
+#include "../../input_widget/InputWidget.h"
 
 namespace Ui
 {
@@ -32,6 +34,7 @@ public:
     FeedDataLoader* loader_ = nullptr;
     DialogHeaderPanel* header_ = nullptr;
     TopWidget* topWidget_ = nullptr;
+    Styling::ThemeChecker themeChecker_;
     QString pageId_;
     bool opened_ = false;
     FeedPage* q;
@@ -87,13 +90,32 @@ void FeedPage::setOverlayTopWidgetVisible(bool _visible)
 void FeedPage::pageOpen()
 {
     if (!std::exchange(d->opened_, true))
+    {
         d->container_->onPageOpened();
+        updateWidgetsTheme();
+    }
 }
 
 void FeedPage::pageLeave()
 {
     if (std::exchange(d->opened_, false))
         d->container_->onPageLeft();
+}
+
+void FeedPage::scrollToInput(const QString& _id)
+{
+    d->container_->scrollToInput(_id);
+}
+
+void FeedPage::scrollToTop()
+{
+    d->container_->scrollToTop();
+}
+
+void FeedPage::updateWidgetsTheme()
+{
+    if (d->themeChecker_.checkAndUpdateHash())
+        d->topWidget_->updateStyle();
 }
 
 void FeedPage::resizeEvent(QResizeEvent* _event)
@@ -104,10 +126,8 @@ void FeedPage::resizeEvent(QResizeEvent* _event)
 
 void FeedPage::paintEvent(QPaintEvent* _event)
 {
-    //! This color is a bit different from the color from figma, but decided it's okay for now https://jira.mail.ru/browse/IMDESKTOP-17303?focusedCommentId=12589705&page=com.atlassian.jira.plugin.system.issuetabpanels%3Acomment-tabpanel#comment-12589705
-    const auto backgroundColor = Styling::getParameters().getColorAlphaBlendedHex(Styling::StyleVariable::CHAT_ENVIRONMENT, Styling::StyleVariable::GHOST_LIGHT_INVERSE);
     QPainter p(this);
-    p.fillRect(rect(), backgroundColor);
+    p.fillRect(rect(), Styling::getParameters().getColor(Styling::StyleVariable::CHAT_THREAD_ENVIRONMENT));
 }
 
 FeedDataLoader* FeedPage::createDataLoader()

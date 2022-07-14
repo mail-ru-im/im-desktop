@@ -2,13 +2,15 @@
 
 #include "StatusTooltip.h"
 #include "controls/BigEmojiWidget.h"
-#include "controls/TooltipWidget.h"
+#include "controls/TextWidget.h"
 #include "styles/ThemeParameters.h"
 #include "main_window/MainWindow.h"
 #include "main_window/containers/StatusContainer.h"
 #include "utils/InterConnector.h"
 #include "utils/utils.h"
 #include "fonts.h"
+#include "main_window/containers/LastseenContainer.h"
+#include "StatusUtils.h"
 
 namespace
 {
@@ -25,14 +27,14 @@ namespace
             return Fonts::appFontScaled(16);
     }
 
-    QColor descriptionFontColor()
+    auto descriptionFontColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID };
     }
 
-    QColor durationFontColor(bool active = false)
+    auto durationFontColor(bool active = false)
     {
-        return Styling::getParameters().getColor(active ? Styling::StyleVariable::PRIMARY : Styling::StyleVariable::BASE_PRIMARY);
+        return Styling::ThemeColorKey{ active ? Styling::StyleVariable::PRIMARY : Styling::StyleVariable::BASE_PRIMARY };
     }
 
     int textSideMargin()
@@ -88,10 +90,10 @@ namespace
         return Utils::scale_value(16);
     }
 
-    const QColor& backgroundColor()
+    QColor backgroundColor()
     {
-        static auto color = Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE_SECONDARY);
-        return color;
+        static Styling::ColorContainer color = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_GLOBALWHITE_SECONDARY };
+        return color.actualColor();
     }
 
     int arrowHeight()
@@ -139,20 +141,20 @@ namespace
         return 120;
     }
 
-    constexpr bool shadowEnabled()
+    constexpr bool shadowEnabled() noexcept
     {
         return !platform::is_windows();
     }
 
-    constexpr bool drawLining()
+    constexpr bool drawLining() noexcept
     {
         return !shadowEnabled();
     }
 
-    const QColor& liningColor()
+    QColor liningColor()
     {
-        static auto color = Styling::getParameters().getColor(Styling::StyleVariable::GHOST_SECONDARY);
-        return color;
+        static Styling::ColorContainer color = Styling::ThemeColorKey{ Styling::StyleVariable::GHOST_SECONDARY };
+        return color.actualColor();
     }
 
     enum class ArrowPosition
@@ -265,9 +267,12 @@ void StatusTooltip::onTimer()
         if (!d->tooltip_ && d->object_ && d->object_->isVisible() && objectRect.contains(QCursor::pos()))
         {
             auto status = Logic::GetStatusContainer()->getStatus(d->contactId_);
-            if (!status.isEmpty())
+            const auto isBot = Logic::GetLastseenContainer()->isBot(d->contactId_);
+            if (!status.isEmpty() || isBot)
             {
-                d->tooltip_ = new StatusTooltipWidget(status, d->object_, d->parent_, d->objectCursorShape_);
+                if (status.isEmpty() && isBot)
+                    status = Statuses::getBotStatus();
+                d->tooltip_ = new StatusTooltipWidget(status, d->object_, d->parent_, d->objectCursorShape_, !isBot);
                 d->tooltip_->setRectCallback(d->rectCallback_);
 
                 d->tooltip_->showAt(objectRect);
@@ -453,7 +458,7 @@ public:
     }
 };
 
-StatusTooltipWidget::StatusTooltipWidget(const Statuses::Status& _status, QWidget* _object, QWidget* _parent, Qt::CursorShape _objectCursorShape)
+StatusTooltipWidget::StatusTooltipWidget(const Statuses::Status& _status, QWidget* _object, QWidget* _parent, Qt::CursorShape _objectCursorShape, bool _showTimeString)
     : QWidget(_parent)
     , d(std::make_unique<StatusTooltipWidget_p>(this))
 {
@@ -485,12 +490,17 @@ StatusTooltipWidget::StatusTooltipWidget(const Statuses::Status& _status, QWidge
     }
 
     d->description_ = new TextWidget(d->content_, description, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
-    d->description_->init(statusDescriptionFont(), descriptionFontColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
+    TextRendering::TextUnit::InitializeParameters params{ statusDescriptionFont(), descriptionFontColor() };
+    params.align_ = TextRendering::HorAligment::CENTER;
+    d->description_->init(params);
     d->description_->setMaxWidthAndResize(std::max(std::min(tooltipTextMaxWidth(), d->description_->getDesiredWidth()), tooltipTextMinWidth()));
 
     d->duration_ = new TextWidget(d->content_, _status.getTimeString());
-    d->duration_->init(Fonts::appFontScaled(14), durationFontColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
+    params.setFonts(Fonts::appFontScaled(14));
+    params.color_ = durationFontColor();
+    d->duration_->init(params);
     d->duration_->setMaxWidthAndResize(std::max(std::min(tooltipTextMaxWidth(), d->duration_->getDesiredWidth()), tooltipTextMinWidth()));
+    d->duration_->setVisible(_showTimeString);
     d->bottomSpacer_ = new QSpacerItem(0, topModeBottomMargin());
 
     d->contentLayout_->addSpacerItem(d->topSpacer_);

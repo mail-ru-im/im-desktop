@@ -7,7 +7,7 @@ namespace Favorites
 {
     QString firstMessageText();
     QPixmap avatar(int32_t _size);
-    QColor nameColor();
+    Styling::ThemeColorKey nameColor();
 
     bool isFavorites(const QString& _aimId);
 

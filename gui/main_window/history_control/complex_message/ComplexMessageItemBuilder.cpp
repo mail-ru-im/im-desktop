@@ -22,6 +22,7 @@
 #include "ProfileBlock.h"
 #include "PollBlock.h"
 #include "TaskBlock.h"
+#include "CodeBlock.h"
 #include "SnippetBlock.h"
 
 #include "ComplexMessageItemBuilder.h"
@@ -31,7 +32,26 @@
 #include "../../../gui_settings.h"
 #include "memory_stats/MessageItemMemMonitor.h"
 #include "main_window/contact_list/RecentsModel.h"
+#include "url_config.h"
 
+namespace
+{
+    bool isMediaType(Ui::ComplexMessage::TextChunk::Type _type)
+    {
+        using Type = Ui::ComplexMessage::TextChunk::Type;
+        constexpr auto types = std::array
+        {
+            Type::ImageLink,
+            Type::FileSharingImage,
+            Type::FileSharingImageSticker,
+            Type::FileSharingGif,
+            Type::FileSharingGifSticker,
+            Type::FileSharingVideo,
+            Type::FileSharingVideoSticker
+        };
+        return std::any_of(types.begin(), types.end(), [_type](Type _mediaType) { return _type == _mediaType; });
+    }
+}
 
 UI_COMPLEX_MESSAGE_NS_BEGIN
 
@@ -67,55 +87,26 @@ core::file_sharing_content_type getFileSharingContentType(const TextChunk::Type 
     return core::file_sharing_content_type();
 }
 
-FixedUrls getFixedUrls()
+void registerFixedUrls(Utils::UrlParser& _parser)
 {
-    common::tools::url_parser::compare_item profileDomain;
-    profileDomain.str = Features::getProfileDomain().toStdString() + '/';
-    profileDomain.ok_state = common::tools::url_parser::states::profile_id;
-    profileDomain.safe_pos = profileDomain.str.length() - 1;
+    const QString profileDomainCommon = Features::getProfileDomain();
+    const QString profileDomainAgent = Features::getProfileDomainAgent();
 
-    common::tools::url_parser::compare_item profileDomainAgent;
-    profileDomainAgent.str = Features::getProfileDomainAgent().toStdString() + '/';
-    profileDomainAgent.ok_state = common::tools::url_parser::states::profile_id;
-    profileDomainAgent.safe_pos = profileDomainAgent.str.length() - 1;
-
-    const auto& additional_fs_urls = Utils::UrlParser::additionalFsUrls();
-
-    auto makeProfileItem = [](std::string&& domain)
-    {
-        common::tools::url_parser::compare_item profileDomain;
-        profileDomain.str = std::move(domain) + '/';
-        profileDomain.ok_state = common::tools::url_parser::states::profile_id;
-        profileDomain.safe_pos = profileDomain.str.size() - 1;
-        return profileDomain;
-    };
-
-    auto makeFsItem = [](std::string_view url)
-    {
-        constexpr std::string_view get = "/get";
-
-        common::tools::url_parser::compare_item profileDomain;
-        profileDomain.str = su::concat(url, '/');
-        profileDomain.ok_state = common::tools::url_parser::states::filesharing_id;
-        profileDomain.safe_pos = url.size() - get.size() - 1;
-        return profileDomain;
-    };
-
-    FixedUrls res;
-    res.reserve(2 + additional_fs_urls.size());
-    res.push_back(makeProfileItem(Features::getProfileDomain().toStdString()));
-    res.push_back(makeProfileItem(Features::getProfileDomainAgent().toStdString()));
-
-    for (const auto& x : additional_fs_urls)
-        res.push_back(makeFsItem(x));
-
-    return res;
+    _parser.registerUrlPattern(Features::getProfileDomain() % ql1c('/'), Utils::UrlParser::UrlCategory::Profile);
+    _parser.registerUrlPattern(Features::getProfileDomainAgent() % ql1c('/'), Utils::UrlParser::UrlCategory::Profile);
+    const auto& extraUrls = Ui::getUrlConfig().getFsUrls();
+    for (const auto& url : extraUrls)
+        _parser.registerUrlPattern(url % ql1c('/'));
 }
 
 QString convertPollQuoteText(const QString& _text) // replace media with placeholders
 {
     QString result;
-    ChunkIterator it(_text, getFixedUrls());
+
+    Utils::UrlParser parser;
+    registerFixedUrls(parser);
+
+    ChunkIterator it(_text, parser);
     while (it.hasNext())
     {
         auto chunk = it.current(true, false);
@@ -187,8 +178,7 @@ SnippetBlock::EstimatedType estimatedTypeFromExtension(QStringView _extension)
 struct ParseResult
 {
     std::list<TextChunk> chunks;
-    TextChunk snippet;
-
+    Data::FString snippetUrl_;
     QString sourceText_;
     int snippetsCount = 0;
     int mediaCount = 0;
@@ -301,13 +291,17 @@ std::vector<QStringView> parseMarkdownForLinksToSkip(const QString& _text)
 ParseResult parseTextCommon(const Data::FString& _text, const bool _allowSnippet, const bool _forcePreview, const std::vector<QStringView>& _linksToSkip)
 {
     ParseResult result;
-    ChunkIterator it(_text, getFixedUrls());
+
+    Utils::UrlParser parser;
+    registerFixedUrls(parser);
+
+    ChunkIterator it(_text, parser);
     while (it.hasNext())
     {
         auto chunk = it.current(_allowSnippet, _forcePreview);
-        if (!_linksToSkip.empty() && chunk.Type_ != TextChunk::Type::Text && chunk.Type_ != TextChunk::Type::FormattedText)
+        if (!_linksToSkip.empty() && chunk.Type_ != TextChunk::Type::Text && chunk.Type_ != TextChunk::Type::FormattedText && chunk.Type_ != TextChunk::Type::Pre)
         {
-            for (const auto& m : std::as_const(_linksToSkip))
+            for (const auto& m : _linksToSkip)
             {
                 if (m.contains(chunk.getPlainText()))
                 {
@@ -321,7 +315,7 @@ ParseResult parseTextCommon(const Data::FString& _text, const bool _allowSnippet
         {
             ++result.snippetsCount;
             if (result.snippetsCount == 1)
-                result.snippet = chunk;
+                result.snippetUrl_ = chunk.getFText();
 
             // append link if either there is more than one snippet, link is not last or message contains media
             it.next();
@@ -338,16 +332,7 @@ ParseResult parseTextCommon(const Data::FString& _text, const bool _allowSnippet
         }
         else
         {
-            const auto isMedia =
-                chunk.Type_ == TextChunk::Type::ImageLink ||
-                chunk.Type_ == TextChunk::Type::FileSharingImage ||
-                chunk.Type_ == TextChunk::Type::FileSharingImageSticker ||
-                chunk.Type_ == TextChunk::Type::FileSharingGif ||
-                chunk.Type_ == TextChunk::Type::FileSharingGifSticker ||
-                chunk.Type_ == TextChunk::Type::FileSharingVideo ||
-                chunk.Type_ == TextChunk::Type::FileSharingVideoSticker;
-
-            if (isMedia)
+            if (isMediaType(chunk.Type_))
                 ++result.mediaCount;
 
             if (chunk.Type_ == TextChunk::Type::ImageLink && !_allowSnippet)
@@ -373,9 +358,14 @@ ParseResult parseText(const Data::FString& _text, const bool _allowSnippet, cons
 void addDescriptionChunk(const Data::FString& _description, std::list<Ui::ComplexMessage::TextChunk>& _chunks)
 {
     if (_description.hasFormatting())
-        _chunks.emplace_back(_description);
+    {
+        auto descriptionMsg = parseText(_description, false, false);
+        std::move(descriptionMsg.chunks.begin(), descriptionMsg.chunks.end(), std::back_inserter(_chunks));
+    }
     else
+    {
         _chunks.emplace_back(TextChunk::Type::Text, _description.string());
+    }
 }
 
 ParseResult parseQuote(const Data::Quote& _quote, const Data::MentionMap& _mentions, const bool _allowSnippet, const bool _forcePreview)
@@ -452,12 +442,16 @@ std::vector<GenericBlock*> createBlocks(const ParseResult& _parseRes, ComplexMes
                 break;
 
             case TextChunk::Type::FormattedText:
-                if (auto text = chunk.getFView(); !text.trimmed().isEmpty())
+                if (auto text = chunk.getFView(); !text.isEmpty())
                     blocks.emplace_back(new TextBlock(_parent, text, emojiSizeType));
+                break;
+            case TextChunk::Type::Pre:
+                if (auto text = chunk.getFView(); !text.isEmpty())
+                    blocks.emplace_back(new CodeBlock(_parent, text));
                 break;
 
             case TextChunk::Type::ImageLink:
-                if (auto block = _parent->addSnippetBlock(chunk.getFText(), _parseRes.linkInsideText, estimatedTypeFromExtension(chunk.ImageType_), _quotesCount + blocks.size(), isQuote || isForward))
+                if (auto block = _parent->addSnippetBlock(chunk.getFView(), _parseRes.linkInsideText, estimatedTypeFromExtension(chunk.ImageType_), _quotesCount + blocks.size(), isQuote || isForward))
                     blocks.push_back(block);
                 break;
 
@@ -499,7 +493,7 @@ std::vector<GenericBlock*> createBlocks(const ParseResult& _parseRes, ComplexMes
     if (_parseRes.snippetsCount == 1 && _parseRes.mediaCount == 0)
     {
         const auto estimatedType = _parseRes.geo_ ? SnippetBlock::EstimatedType::Geo : SnippetBlock::EstimatedType::Article;
-        auto block = _parent->addSnippetBlock(_parseRes.snippet.getFText(), _parseRes.linkInsideText, estimatedType, _quotesCount + blocks.size(), isQuote || isForward);
+        auto block = _parent->addSnippetBlock(_parseRes.snippetUrl_, _parseRes.linkInsideText, estimatedType, _quotesCount + blocks.size(), isQuote || isForward);
         if (block)
             blocks.push_back(block);
     }
@@ -509,9 +503,6 @@ std::vector<GenericBlock*> createBlocks(const ParseResult& _parseRes, ComplexMes
 
     if (_parseRes.poll_)
         blocks.push_back(new PollBlock(_parent, *_parseRes.poll_, convertPollQuoteText(_parseRes.sourceText_)));
-
-    if (_parseRes.task_)
-        blocks.push_back(new TaskBlock(_parent, *_parseRes.task_, convertPollQuoteText(_parseRes.sourceText_)));
 
     return blocks;
 }
@@ -638,9 +629,8 @@ namespace ComplexMessageItemBuilder
         }
         else
         {
-            auto parsedMsg = description.isEmpty()
-                ? parseText(formattedText, allowSnippet, _forcePreview == ForcePreview::Yes)
-                : parseText(_msg.GetUrl(), allowSnippet, _forcePreview == ForcePreview::Yes);
+            const Data::FString textToParse = description.isEmpty() ? formattedText : _msg.GetUrl();
+            auto parsedMsg = parseText(textToParse, allowSnippet, _forcePreview == ForcePreview::Yes);
             if (!description.isEmpty())
                 addDescriptionChunk(description, parsedMsg.chunks);
             messageBlocks = createBlocks(parsedMsg, complexItem.get(), id, prev, quoteBlocks.size());

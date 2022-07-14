@@ -377,11 +377,11 @@ void core::stats::statistics::save_mytracker()
     auto bs_data = std::make_shared<tools::binary_stream>();
     serialize_mytracker(*bs_data);
 
-    g_core->run_async([bs_data, file_name = file_name_mytracker_]
-        {
-            bs_data->save_2_file(file_name);
-            return 0;
-        });
+    stats_thread_->run_async_function([bs_data, file_name = file_name_mytracker_]
+    {
+        bs_data->save_2_file(file_name);
+        return 0;
+    });
 }
 
 void core::stats::statistics::send_mytracker_async(const std::shared_ptr<stats_event>& event)
@@ -491,6 +491,9 @@ std::string core::stats::statistics::dump_events_to_mytracker_json(events_ci beg
 
 std::string core::stats::statistics::get_mytracker_post_data(const stats_event& event)
 {
+    if (!g_core)
+        return {};
+
     std::stringstream stream;
     stream << "{";
     stream << "\"customUserId\":" << "\"" << g_core->get_root_login() << "\"";
@@ -537,11 +540,7 @@ long core::stats::statistics::send_mytracker(const proxy_settings& _user_proxy, 
     request.set_send_im_stats(false);
     request.set_post_data(post_data.data(), post_data.size(), false);
 
-
-    if (configuration::get_app_config().is_full_log_enabled())
-        request.set_need_log(true);
-    else
-        request.set_need_log(false);
+    request.set_need_log(configuration::get_app_config().is_full_log_enabled());
 
     const auto start = std::chrono::steady_clock().now();
     const auto is_sent_ok = request.post() == curl_easy::completion_code::success;

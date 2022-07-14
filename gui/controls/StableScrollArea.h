@@ -16,8 +16,11 @@ public:
     QWidget* anchor() const;
     void ensureWidgetVisible(QWidget* _w);
     void ensureVisible(int _y);
+    void scrollToWidget(QWidget* _w);
     int widgetPosition() const;
     void setScrollLocked(bool _locked);
+
+    bool isInViewport(QWidget* _w) const;
 
 public Q_SLOTS:
     void updateSize();

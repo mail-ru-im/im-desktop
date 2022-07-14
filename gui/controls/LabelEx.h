@@ -1,5 +1,7 @@
 #pragma once
 
+#include "styles/ThemeColor.h"
+
 namespace Ui
 {
     class LabelEx : public QLabel
@@ -10,8 +12,8 @@ Q_SIGNALS:
 
     public:
         LabelEx(QWidget* _parent);
-        void setColor(const QColor& _color);
-        void setColors(const QColor& _normalColor, const QColor& _hoverColor, const QColor& _activeColor);
+        void setColor(const Styling::ThemeColorKey& _color);
+        void setColors(const Styling::ThemeColorKey& _normalColor, const Styling::ThemeColorKey& _hoverColor, const Styling::ThemeColorKey& _activeColor);
 
         void setElideMode(Qt::TextElideMode _mode);
         Qt::TextElideMode elideMode() const;
@@ -25,17 +27,21 @@ Q_SIGNALS:
         void leaveEvent(QEvent *_event) override;
 
     private:
-        void updateColor();
         void updateCachedTexts();
+        void setColor(const QColor& _color);
+
+    private Q_SLOTS:
+        void updateColor();
 
     private:
         Qt::TextElideMode elideMode_;
         QString cachedText_;
         QString cachedElidedText_;
         QPoint pos_;
-        QColor normalColor_;
-        QColor hoverColor_;
-        QColor activeColor_;
+        Styling::ColorContainer currentColor_;
+        Styling::ThemeColorKey normalColor_;
+        Styling::ThemeColorKey hoverColor_;
+        Styling::ThemeColorKey activeColor_;
         bool hovered_;
         bool pressed_;
     };

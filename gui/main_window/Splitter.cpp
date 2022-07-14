@@ -3,6 +3,7 @@
 #include "Splitter.h"
 
 #include "../styles/ThemeParameters.h"
+#include "../styles/ThemesContainer.h"
 #include "../utils/utils.h"
 
 namespace Ui
@@ -33,15 +34,11 @@ namespace Ui
         : QSplitterHandle(_o, _parent)
     {
         setAutoFillBackground(true);
-        setColor(Splitter::defaultHandleColor());
+        updateColor();
+        connect(&Styling::getThemesContainer(), &Styling::ThemesContainer::globalThemeChanged, this, &SplitterHandle::updateColor);
     }
 
     SplitterHandle::~SplitterHandle() = default;
-
-    void SplitterHandle::setColor(QColor _color)
-    {
-        Utils::updateBgColor(this, _color);
-    }
 
     void SplitterHandle::mouseMoveEvent(QMouseEvent* _event)
     {
@@ -72,12 +69,9 @@ namespace Ui
         QSplitterHandle::mousePressEvent(_event);
     }
 
-    void SplitterHandle::paintEvent(QPaintEvent* _event)
+    void SplitterHandle::updateColor()
     {
-        QStyleOption opt;
-        opt.init(this);
-        QPainter p(this);
-        style()->drawPrimitive(QStyle::PE_Widget, &opt, &p, this);
+        Utils::updateBgColor(this, Splitter::defaultHandleColor());
     }
 
     int SplitterHandle::pick(QPoint _point) const noexcept

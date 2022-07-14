@@ -5,6 +5,7 @@
 #include "../../../http_request.h"
 #include "../../../tools/system.h"
 #include "../../urls_cache.h"
+#include "../log_replace_functor.h"
 
 #include "../common.shared/string_utils.h"
 
@@ -68,6 +69,11 @@ priority_t request_avatar::get_priority() const
 std::string_view request_avatar::get_method() const
 {
     return "avatarGet";
+}
+
+int core::wim::request_avatar::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 const std::shared_ptr<core::tools::binary_stream>& core::wim::request_avatar::get_data() const

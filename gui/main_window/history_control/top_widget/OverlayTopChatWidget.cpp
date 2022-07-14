@@ -13,7 +13,9 @@ namespace Ui
         setStyleSheet(qsl("background: transparent; border-style: none;"));
         setAttribute(Qt::WA_TransparentForMouseEvents);
 
-        textUnit_->init(Fonts::appFontScaled(11), Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
+        TextRendering::TextUnit::InitializeParameters params{ Fonts::appFontScaled(11), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_GLOBALWHITE } };
+        params.align_ = TextRendering::HorAligment::CENTER;
+        textUnit_->init(params);
     }
 
     OverlayTopChatWidget::~OverlayTopChatWidget() = default;
@@ -40,7 +42,8 @@ namespace Ui
         if (!text_.isEmpty())
         {
             QPainter p(this);
-            Utils::Badge::drawBadge(textUnit_, p, pos_.x(), pos_.y(), Utils::Badge::Color::Green);
+            const auto badgeWidth = Utils::Badge::getSize(textUnit_->getSourceText().size()).width();
+            Utils::Badge::drawBadge(textUnit_, p, pos_.x() + badgeWidth, pos_.y(), Utils::Badge::Color::Green);
         }
     }
 }

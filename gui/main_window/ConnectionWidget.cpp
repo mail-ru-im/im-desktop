@@ -7,7 +7,7 @@
 #include "../utils/InterConnector.h"
 #include "history_control/MessageStyle.h"
 #include "../utils/gui_metrics.h"
-#include "../styles/ThemeParameters.h"
+#include "controls/TextWidget.h"
 
 using namespace Ui;
 
@@ -33,9 +33,14 @@ namespace
         return Utils::scale_value(2);
     }
 
+    auto progressBarColorKey()
+    {
+        return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY };
+    }
+
     QPen getRotatingProgressBarPen(qreal _width)
     {
-        return QPen(Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY), _width);
+        return QPen(Styling::getColor(progressBarColorKey()), _width);
     }
 
     int getProgressWidth()
@@ -43,9 +48,9 @@ namespace
         return Utils::scale_value(20);
     }
 
-    QColor getTextColor()
+    Styling::ThemeColorKey getTextColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID };
     }
 
     std::string round_interval(const long long _min_val, const long long _value,
@@ -100,10 +105,9 @@ namespace
 ProgressAnimation::ProgressAnimation(QWidget* _parent)
     : QWidget(_parent)
     , animation_(new QVariantAnimation(this))
-    , started_(false)
-    , rate_(0)
-    , progressWidth_(getProgressWidth())
+    , color_{ progressBarColorKey() }
     , pen_(getRotatingProgressBarPen(getProgressPenWidth()))
+    , progressWidth_(getProgressWidth())
 {
     animation_->setStartValue(0.0);
     animation_->setEndValue(360.0);
@@ -161,9 +165,16 @@ void Ui::ProgressAnimation::setProgressPenWidth(qreal _width)
     pen_.setWidthF(_width);
 }
 
-void Ui::ProgressAnimation::setProgressPenColor(QColor _color)
+void Ui::ProgressAnimation::setProgressPenColorKey(const Styling::ThemeColorKey& _color)
 {
-    pen_.setColor(_color);
+    color_ = _color;
+    pen_.setColor(color_.cachedColor());
+}
+
+void Ui::ProgressAnimation::adjust()
+{
+    const auto size = progressWidth_ + pen_.width() * 2;
+    setFixedSize(size, size);
 }
 
 void ProgressAnimation::startAnimation()
@@ -192,6 +203,9 @@ void ProgressAnimation::paintEvent(QPaintEvent*)
 
     progressRect.moveCenter(rect().center());
 
+    if (color_.canUpdateColor())
+        pen_.setColor(color_.actualColor());
+
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing);
     p.setPen(pen_);
@@ -212,9 +226,9 @@ void ProgressAnimation::hideEvent(QHideEvent*)
 }
 
 
-ConnectionWidget::ConnectionWidget(QWidget* _parent, const QColor& _textColor)
+ConnectionWidget::ConnectionWidget(QWidget* _parent, const Styling::ThemeColorKey& _textColor)
     : QWidget(_parent)
-    , stateTextLabel_(new QLabel(this))
+    , stateTextLabel_(new TextWidget(this, QString(), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS))
     , state_(ConnectionState::stateOnline)
     , animationWidget_(nullptr)
     , suspended_(false)
@@ -226,16 +240,10 @@ ConnectionWidget::ConnectionWidget(QWidget* _parent, const QColor& _textColor)
 
     rootLayout->addWidget(animationWidget_);
 
-    auto textLayout = new QHBoxLayout();
-    textLayout->setContentsMargins(0, 0, 0, 0);
-    textLayout->setSpacing(0);
+    stateTextLabel_->init({ Fonts::appFontScaled(16, Fonts::FontWeight::Normal), _textColor.isValid() ? _textColor : getTextColor() });
 
-    setTextColor(_textColor.isValid() ? _textColor : getTextColor());
-
-    stateTextLabel_->setFont(Fonts::appFontScaled(16, Fonts::FontWeight::Normal));
-
-    textLayout->addWidget(stateTextLabel_);
-    rootLayout->addLayout(textLayout);
+    rootLayout->addWidget(stateTextLabel_);
+    rootLayout->addStretch();
 
     QObject::connect(GetDispatcher(), &core_dispatcher::connectionStateChanged, this, &ConnectionWidget::connectionStateChanged);
 
@@ -246,14 +254,6 @@ ConnectionWidget::ConnectionWidget(QWidget* _parent, const QColor& _textColor)
 ConnectionWidget::~ConnectionWidget()
 {
     --ConnectionWidgetsCount;
-}
-
-void ConnectionWidget::setTextColor(const QColor& _color)
-{
-    QPalette pal;
-    pal.setColor(QPalette::Window, Qt::transparent);
-    pal.setColor(QPalette::WindowText, _color);
-    stateTextLabel_->setPalette(pal);
 }
 
 void ConnectionWidget::suspend()

@@ -5,8 +5,7 @@
 #include "../../../network_log.h"
 #include "../../../../common.shared/json_helper.h"
 
-core::wim::file_sharing_meta::file_sharing_meta(std::string && _url)
-    : file_url_(std::move(_url))
+core::wim::file_sharing_meta::file_sharing_meta()
 {
 }
 
@@ -43,11 +42,11 @@ void core::wim::file_sharing_meta::serialize(rapidjson::Value& _node, rapidjson_
     _node.AddMember("result", std::move(node_result), _a);
 }
 
-core::wim::file_sharing_meta_uptr core::wim::file_sharing_meta::parse_json(InOut char* _json, std::string_view _uri)
+core::wim::file_sharing_meta_uptr core::wim::file_sharing_meta::parse_json(InOut char* _json)
 {
     rapidjson::Document doc;
 
-    auto meta = std::make_unique<file_sharing_meta>(std::string(_uri));
+    auto meta = std::make_unique<file_sharing_meta>();
 
     if (doc.ParseInsitu(_json).HasParseError())
         return meta;
@@ -136,6 +135,10 @@ void core::wim::fs_meta_info::serialize(rapidjson::Value& _node, rapidjson_alloc
     _node.AddMember("file_size", file_size_, _a);
     _node.AddMember("md5", md5_, _a);
     _node.AddMember("trustRequired", trust_required_, _a);
+
+    rapidjson::Value node_antivirus(rapidjson::Type::kObjectType);
+    antivirus_check_.serialize(node_antivirus, _a);
+    _node.AddMember("antivirus", std::move(node_antivirus), _a);
 }
 
 void core::wim::fs_meta_info::unserialize(const rapidjson::Value& _node)
@@ -147,6 +150,11 @@ void core::wim::fs_meta_info::unserialize(const rapidjson::Value& _node)
     core::tools::unserialize_value(_node, "file_size", file_size_);
     core::tools::unserialize_value(_node, "md5", md5_);
     core::tools::unserialize_value(_node, "trustRequired", trust_required_);
+
+    if (const auto iter_antivirus = _node.FindMember("antivirus"); iter_antivirus != _node.MemberEnd() && iter_antivirus->value.IsObject())
+        antivirus_check_.unserialize(iter_antivirus->value);
+    else
+        antivirus_check_.result_ = core::antivirus::check::result::unchecked;
 }
 
 void core::wim::fs_meta_ptt::serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const
@@ -229,6 +237,18 @@ void core::wim::fs_extra_meta::unserialize(const rapidjson::Value& _node)
         audio_ = fs_meta_audio{};
         audio_->unserialize(iter_audio->value);
     }
+}
+
+uint64_t core::wim::fs_extra_meta::get_duration() const
+{
+    if (ptt_)
+        return ptt_->duration_;
+    if (video_)
+        return video_->duration_;
+    if (audio_)
+        return audio_->duration_;
+
+    return 0;
 }
 
 void core::wim::fs_meta_previews::serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const

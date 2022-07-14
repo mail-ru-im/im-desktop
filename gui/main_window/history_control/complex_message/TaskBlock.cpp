@@ -63,7 +63,7 @@ namespace
 
     auto noAssigneeText()
     {
-        return QT_TRANSLATE_NOOP("task_block", "Not assigned");
+        return QT_TRANSLATE_NOOP("task_block", "Unassigned");
     }
 
     auto noAssigneeIconSize()
@@ -108,17 +108,20 @@ namespace
         return result;
     }
 
+    auto generateAvatars()
+    {
+        return std::array{ renderNoAssigneeAvatar(MessageType::Incoming), renderNoAssigneeAvatar(MessageType::Outgoing) };
+    }
+
     const QPixmap& noAssigneeAvatar(MessageType _messageType)
     {
-        static const std::unordered_map<MessageType, QPixmap> avatars = []
-        {
-            std::unordered_map<MessageType, QPixmap> internalAvatars;
-            constexpr std::array<MessageType, 2> messageTypes = { MessageType::Incoming, MessageType::Outgoing };
-            for (auto messageType : messageTypes)
-                internalAvatars[messageType] = renderNoAssigneeAvatar(messageType);
-            return internalAvatars;
-        }();
-        return avatars.at(_messageType);
+        static std::array<QPixmap, 2> avatars = generateAvatars();
+
+        static Styling::ThemeChecker checker;
+        if (checker.checkAndUpdateHash())
+            avatars = generateAvatars();
+
+        return avatars.at(MessageType::Incoming == _messageType ? 0 : 1);
     }
 
     enum class HasAssignee
@@ -134,7 +137,7 @@ namespace
 
     auto assigneeTextColor(HasAssignee _hasAssignee, MessageType _messageType)
     {
-        return Styling::getParameters().getColor(HasAssignee::Yes == _hasAssignee ? Styling::StyleVariable::TEXT_SOLID : noAssigneeTextStyle(_messageType));
+        return Styling::ThemeColorKey{ HasAssignee::Yes == _hasAssignee ? Styling::StyleVariable::TEXT_SOLID : noAssigneeTextStyle(_messageType) };
     }
 
     auto taskStatusBubbleHeight() noexcept
@@ -149,7 +152,7 @@ namespace
 
     auto statusTextColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALBLACK_PERMANENT);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_GLOBALBLACK_PERMANENT };
     }
 
     auto statusBackgroundColor(core::tasks::status _status, Ui::ComplexMessage::StatusChipState _state)
@@ -246,9 +249,9 @@ namespace
         return Utils::scale_value(6);
     }
 
-    const QPixmap& statusArrowIcon()
+    Utils::StyledPixmap& statusArrowIcon()
     {
-        static const QPixmap arrow = Utils::renderSvg(qsl(":/task/status_arrow"), { statusArrowIconSize(), statusArrowIconSize() }, statusTextColor());
+        static auto arrow = Utils::StyledPixmap(qsl(":/task/status_arrow"), { statusArrowIconSize(), statusArrowIconSize() }, statusTextColor());
         return arrow;
     }
 
@@ -291,7 +294,7 @@ namespace
     {
         return qsl("hh:mm");
     }
-}
+} // namespace
 
 UI_COMPLEX_MESSAGE_NS_BEGIN
 
@@ -323,7 +326,7 @@ Data::FString TaskBlock::getSelectedText(const bool _isFullSelect, const TextDes
     {
         const auto textType = _dest == IItemBlock::TextDestination::quote ? TextRendering::TextType::SOURCE : TextRendering::TextType::VISIBLE;
         if (textType == TextRendering::TextType::SOURCE && titleTextUnit_->isAllSelected())
-            return GenericBlock::getSourceText();
+            return getSourceText();
 
         return titleTextUnit_->getSelectedText(textType);
     }
@@ -350,7 +353,7 @@ void TaskBlock::updateWith(IItemBlock* _other)
             im_assert(Logic::GetTaskContainer()->contains(otherTask.id_));
             task_ = otherTask;
         }
-        else
+        else if (otherTask.hasId())
         {
             syncronizeTaskFromContainer();
         }
@@ -416,6 +419,42 @@ QString TaskBlock::formatRecentsText() const
     return QT_TRANSLATE_NOOP("task_block", "Task");
 }
 
+Data::Quote TaskBlock::getQuote() const
+{
+    Data::Quote quote;
+    quote.senderId_ = isOutgoing() ? MyInfo()->aimId() : getSenderAimid();
+    quote.chatId_ = getChatAimid();
+    if (Logic::getContactListModel()->isChannel(quote.chatId_))
+        quote.senderId_ = quote.chatId_;
+    quote.chatStamp_ = Logic::getContactListModel()->getChatStamp(quote.chatId_);
+    auto messageItem = getParentComplexMessage();
+    quote.time_ = messageItem->getTime();
+    quote.msgId_ = getId();
+    if (isSelected())
+    {
+        quote.text_ = titleTextUnit_->getSelectedText();
+        return quote;
+    }
+
+    quote.text_ = getSourceText();
+    quote.mediaType_ = getMediaType();
+    quote.task_ = task_;
+
+    quote.mediaType_ = Ui::MediaType::mediaTypeTask;
+
+    if (quote.isEmpty())
+        return {};
+
+    QString senderFriendly = getSenderFriendly();
+    if (senderFriendly.isEmpty())
+        senderFriendly = Logic::GetFriendlyContainer()->getFriendly(quote.senderId_);
+    if (isOutgoing())
+        senderFriendly = MyInfo()->friendly();
+    quote.senderFriendly_ = std::move(senderFriendly);
+
+    return quote;
+}
+
 bool TaskBlock::onMenuItemTriggered(const QVariantMap& _params)
 {
     const auto command = _params[qsl("command")].toString();
@@ -429,7 +468,7 @@ bool TaskBlock::onMenuItemTriggered(const QVariantMap& _params)
         GeneralDialog gd(taskWidget, Utils::InterConnector::instance().getMainWindow(), opt);
         taskWidget->setFocusOnTaskTitleInput();
         gd.addLabel(taskWidget->getHeader(), Qt::AlignCenter);
-        gd.showInCenter();
+        gd.execute();
         return true;
     }
     else if (command == u"dev:copy_task_id")
@@ -498,7 +537,6 @@ QRect TaskBlock::setBlockGeometry(const QRect& _rect)
     setGeometry(contentRect_);
 
     return contentRect_;
-
 }
 
 QRect TaskBlock::getBlockGeometry() const
@@ -544,7 +582,7 @@ void TaskBlock::drawBlock(QPainter& _painter, const QRect&, const QColor&)
             {
                 const auto arrowX = statusRect.x() + statusTextUnit_->cachedSize().width() + statusBubbleHorizontalPadding() + statusArrowLeftMargin();
                 const auto arrowY = statusRect.y() + statusArrowVerticalMargin();
-                _painter.drawPixmap(arrowX, arrowY, statusArrowIcon());
+                _painter.drawPixmap(arrowX, arrowY, statusArrowIcon().actualPixmap());
             }
         }
 
@@ -700,29 +738,28 @@ int TaskBlock::desiredWidth(int _w) const
     return Utils::scale_value(360);
 }
 
-void TaskBlock::updateStyle()
-{
-    reinitTextUnits();
-}
-
 void TaskBlock::updateFonts()
 {
-    updateStyle();
+    reinitTextUnits();
 }
 
 void TaskBlock::initTextUnits()
 {
     titleTextUnit_ = Ui::TextRendering::MakeTextUnit(QString(), getParentComplexMessage()->getMentions(), Ui::TextRendering::LinksVisible::SHOW_LINKS, Ui::TextRendering::ProcessLineFeeds::KEEP_LINE_FEEDS);
-    titleTextUnit_->init(titleTextFont(), MessageStyle::getTextColor(), MessageStyle::getTextMonospaceFont(), MessageStyle::getLinkColor(), MessageStyle::getTextSelectionColor(getChatAimid()), MessageStyle::getHighlightColor());
+    TextRendering::TextUnit::InitializeParameters params{ titleTextFont(), MessageStyle::getTextColorKey() };
+    params.monospaceFont_ = MessageStyle::getTextMonospaceFont();
+    params.linkColor_ = MessageStyle::getLinkColorKey();
+    params.selectionColor_ = MessageStyle::getTextSelectionColorKey(getChatAimid());
+    titleTextUnit_->init(params);
 
     assigneeTextUnit_ = Ui::TextRendering::MakeTextUnit(QString(), {}, Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS, Ui::TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-    assigneeTextUnit_->init(Fonts::adjustedAppFont(14), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+    assigneeTextUnit_->init({ Fonts::adjustedAppFont(14), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } });
 
     statusTextUnit_ = Ui::TextRendering::MakeTextUnit(QString(), {}, Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS, Ui::TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-    statusTextUnit_->init(statusTextFont(), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+    statusTextUnit_->init({ statusTextFont(), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } });
 
     timeTextUnit_ = Ui::TextRendering::MakeTextUnit(QString(), {}, Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS, Ui::TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-    timeTextUnit_->init(Fonts::adjustedAppFont(14), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+    timeTextUnit_->init({ Fonts::adjustedAppFont(14), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } });
 }
 
 void TaskBlock::reinitTextUnits()
@@ -762,12 +799,13 @@ void TaskBlock::updateContent()
 
     if (GetAppConfig().IsShowMsgIdsEnabled())
     {
+        TextRendering::TextUnit::InitializeParameters params{ Fonts::adjustedAppFont(14, Fonts::FontWeight::Normal), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } };
         debugIdTextUnit_ = TextRendering::MakeTextUnit(ql1s("Task Id: %1").arg(task_.id_));
-        debugIdTextUnit_->init(Fonts::adjustedAppFont(14, Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        debugIdTextUnit_->init(params);
         debugCreatorTextUnit_ = TextRendering::MakeTextUnit(ql1s("Creator: %1").arg(task_.params_.creator_.isEmpty() ? QString() : Logic::GetFriendlyContainer()->getFriendly(task_.params_.creator_)));
-        debugCreatorTextUnit_->init(Fonts::adjustedAppFont(14, Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        debugCreatorTextUnit_->init(params);
         debugThreadIdTextUnit_ = TextRendering::MakeTextUnit(ql1s("Thread Id: %1").arg(task_.params_.threadId_));
-        debugThreadIdTextUnit_->init(Fonts::adjustedAppFont(14, Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        debugThreadIdTextUnit_->init(params);
     }
     else
     {
@@ -880,10 +918,18 @@ void TaskBlock::syncronizeTaskFromContainer()
     task_ = Logic::GetTaskContainer()->getTask(task_.id_);
 
     const auto messageItem = getParentComplexMessage();
-    messageItem->buddy().task_ = task_;
-    const auto& threadId = task_.params_.threadId_;
-    if (messageItem->getContact() != threadId)
-        messageItem->applyThreadUpdate(task_.threadUpdate_);
+    if (auto& messageTask = messageItem->buddy().task_)
+    {
+        messageTask = task_;
+        const auto& threadId = task_.params_.threadId_;
+        const auto& chat = messageItem->getContact();
+        // move task thread update to message
+        if (!threadId.isEmpty() && !Logic::getContactListModel()->isThread(chat))
+        {
+            messageItem->applyThreadUpdate(task_.threadUpdate_);
+            GetDispatcher()->addChatsThread(messageItem->getChatAimid(), messageItem->getId(), task_.threadUpdate_->threadId_);
+        }
+    }
 }
 
 void TaskBlock::onTaskUpdated(const QString& _taskId)

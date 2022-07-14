@@ -45,10 +45,17 @@ public:
 
     int widgetPosFromViewport(QWidget* _w)
     {
-        if (!widget_)
+        if (!widget_ || !_w)
             return 0;
 
-        return _w->mapTo(widget_, {0, 0}).y() - viewportTop() + _w->height();
+        try
+        {
+            return _w->mapTo(widget_, { 0, 0 }).y() - viewportTop() + _w->height();
+        }
+        catch(...)
+        {
+            return 0;
+        };
     }
 
     int limitWidgetPos(int _y)
@@ -230,6 +237,15 @@ void StableScrollArea::ensureVisible(int _y)
         d->scrollTo(_y - margin);
 }
 
+void StableScrollArea::scrollToWidget(QWidget* _w)
+{
+    if (!_w->visibleRegion().isEmpty() && _w->visibleRegion().boundingRect().height() >= _w->height())
+        return;
+
+    const auto y = _w->mapTo(d->widget_, { 0, 0 }).y() + _w->height();
+    d->scrollTo(y - height());
+}
+
 int StableScrollArea::widgetPosition() const
 {
     return d->viewportTop();
@@ -238,6 +254,16 @@ int StableScrollArea::widgetPosition() const
 void StableScrollArea::setScrollLocked(bool _locked)
 {
     d->setScrollLocked(_locked);
+}
+
+bool StableScrollArea::isInViewport(QWidget* _w) const
+{
+    const auto mappedPos = _w->mapTo(d->widget_, { 0, 0 });
+    QRect wRect = _w->rect();
+    wRect.moveTo(mappedPos);
+
+    const QRect visibleRect = d->widget_->visibleRegion().boundingRect();
+    return wRect.intersects(visibleRect);
 }
 
 void StableScrollArea::updateSize()

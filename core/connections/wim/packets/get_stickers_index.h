@@ -39,6 +39,7 @@ namespace core
 
             priority_t get_priority() const override;
             std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
             bool support_self_resending() const override { return true; }
         };
     }

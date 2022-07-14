@@ -1,15 +1,14 @@
 #pragma once
 
+#include "../../styles/StyleVariable.h"
+#include "../../styles/ThemeParameters.h"
+
 namespace Ui
 {
     enum class ReactionsPlateType;
-    enum class FileStatus;
-}
+    enum class FileStatusType;
+} // namespace Ui
 
-namespace Styling
-{
-    enum class StyleVariable;
-}
 
 namespace Ui::MessageStyle
 {
@@ -18,14 +17,18 @@ namespace Ui::MessageStyle
     QFont getTextMonospaceFont();
     QFont getImagePreviewLinkFont();
 
+    Styling::ThemeColorKey getTextColorKey();
     QColor getTextColor();
+    Styling::ThemeColorKey getLinkColorKey();
     QColor getLinkColor();
     QColor getSelectionFontColor();
+    Styling::ThemeColorKey getTextSelectionColorKey(const QString& _aimId = QString());
     QColor getTextSelectionColor(const QString& _aimId = QString());
+    Styling::ThemeColorKey getSelectionColorKey();
     QColor getSelectionColor();
 
-    QColor getHighlightColor();
-    QColor getHighlightTextColor();
+    Styling::ThemeColorKey getHighlightColorKey();
+    Styling::ThemeColorKey getHighlightTextColorKey();
 
     QFont getSenderFont();
 
@@ -39,7 +42,8 @@ namespace Ui::MessageStyle
 
     int getBorderWidth() noexcept;
 
-    QBrush getBodyBrush(const bool isOutgoing, const QString& _aimId);
+    QColor getBodyColor(const bool _isOutgoing, const QString& _aimId);
+    QBrush getBodyBrush(const bool _isOutgoing, const QString& _aimId);
 
     int32_t getMinBubbleHeight() noexcept;
 
@@ -49,13 +53,13 @@ namespace Ui::MessageStyle
 
     int32_t getTopMargin(const bool hasTopMargin) noexcept;
 
-    int32_t getRightBubbleMargin(const QString& _aimId);
+    int32_t getRightBubbleMargin(bool _isMutiselected);
 
     int32_t getLeftBubbleMargin() noexcept;
 
     int32_t getLeftMargin(const bool _isOutgoing, const int _width);
 
-    int32_t getRightMargin(const bool _isOutgoing, const int _width, const QString& _aimId);
+    int32_t getRightMargin(const bool _isOutgoing, const int _width, bool _isMultiselected);
 
     int32_t getSenderTopPadding();
     int32_t getSenderBaseline();
@@ -166,13 +170,17 @@ namespace Ui::MessageStyle
     int32_t getHiddenControlsShift();
     std::chrono::milliseconds getHiddenControlsAnimationTime();
 
-    int getMessageMaxWidth();
+    int getMessageMaxWidth() noexcept;
+    int getTextCodeMessageMaxWidth() noexcept;
 
     QColor getBlockedFileIconBackground(bool _isOutgoing);
     QColor getBlockedFileIconColor(bool _isOutgoing);
 
-    QColor getFileStatusIconBackground(FileStatus _status, bool _isOutgoing);
-    Styling::StyleVariable getFileStatusIconColor(FileStatus _status, bool _isOutgoing) noexcept;
+    QColor getInfectedFileIconBackground(bool _isOutgoing);
+    QColor getInfectedFileIconColor(bool _isOutgoing);
+
+    QColor getFileStatusIconBackground(FileStatusType _status, bool _isOutgoing);
+    Styling::StyleVariable getFileStatusIconColor(FileStatusType _status, bool _isOutgoing) noexcept;
 
     namespace Preview
     {
@@ -234,9 +242,9 @@ namespace Ui::MessageStyle
         QFont getTitleFont();
         QFont getDescriptionFont();
         QFont getLinkFont();
-        QColor getTitleColor();
-        QColor getDescriptionColor();
-        QColor getLinkColor(bool _isOutgoing);
+        Styling::ThemeColorKey getTitleColorKey();
+        Styling::ThemeColorKey getDescriptionColorKey();
+        Styling::ThemeColorKey getLinkColorKey(bool _isOutgoing);
 
         int32_t getTitleTopPadding();
         int32_t getDescriptionTopPadding();
@@ -272,7 +280,7 @@ namespace Ui::MessageStyle
 
         int32_t getFileBubbleHeight();
         QFont getFilenameFont();
-        QColor getFileSizeColor(bool _isOutgoing = false);
+        Styling::ThemeColorKey getFileSizeColorKey(bool _isOutgoing = false);
         QFont getFileSizeFont();
         QFont getShowInDirLinkFont();
         int32_t getCtrlIconLeftMargin();

@@ -31,7 +31,7 @@ namespace Data
         _coll.set_value_as_int("type", int(type_));
         // Dont serialize sticker source
         if (const auto fileSharingId = std::get_if<Utils::FileSharingId>(&data_))
-            _coll.set_value_as_qstring("data", fileSharingId->fileId);
+            _coll.set_value_as_qstring("data", fileSharingId->fileId_);
         else if (const auto text = std::get_if<QString>(&data_))
             _coll.set_value_as_qstring("data", *text);
     }

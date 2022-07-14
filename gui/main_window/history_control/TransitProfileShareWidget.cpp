@@ -71,14 +71,14 @@ namespace
         return Fonts::appFontScaled(13);
     }
 
-    QColor primaryTextColor()
+    auto primaryTextColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID };
     }
 
-    QColor secondaryTextColor()
+    auto secondaryTextColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY };
     }
 
     QString getCaption(TransitState _errors)
@@ -161,7 +161,7 @@ TransitProfileSharing::TransitProfileSharing(QWidget* _parent, const QString& _a
     transitProfile_ = new TransitProfileSharingWidget(parentWidget(), _aimId);
     userProfile_ = new GeneralDialog(transitProfile_, Utils::InterConnector::instance().getMainWindow(), getDialogOptions(targetAimId_));
     userProfile_->addLabel(getCaption(TransitState::ON_PROFILE));
-    btnPair_ = userProfile_->addButtonsPair(leftButtonText(), rightButtonText(TransitState::ON_PROFILE), false);
+    btnPair_ = userProfile_->addButtonsPair(leftButtonText(), rightButtonText(TransitState::ON_PROFILE), ButtonsStateFlag::InitiallyInactive);
     userProfile_->installEventFilter(this);
 
     connect(Ui::GetDispatcher(), &Ui::core_dispatcher::userInfo, this, &TransitProfileSharing::onUserInfo);
@@ -231,7 +231,7 @@ void TransitProfileSharing::setState(const TransitState _state)
     {
         userProfile_->setFocus();
 
-        if (userProfile_->showInCenter())
+        if (userProfile_->execute())
         {
             if (state_ == TransitState::EMPTY_PROFILE)
             {
@@ -268,11 +268,11 @@ void TransitProfileSharing::setState(const TransitState _state)
         errorUnchecked_ = new GeneralDialog(new TransitProfileSharingWidget(parentWidget(), TransitState::UNCHECKED),
             Utils::InterConnector::instance().getMainWindow(), getDialogOptions(targetAimId_));
         errorUnchecked_->addLabel(getCaption(TransitState::UNCHECKED));
-        errorUnchecked_->addButtonsPair(leftButtonText(), rightButtonText(TransitState::UNCHECKED), true);
+        errorUnchecked_->addButtonsPair(leftButtonText(), rightButtonText(TransitState::UNCHECKED));
         errorUnchecked_->installEventFilter(this);
 
         errorUnchecked_->setFocus();
-        if (errorUnchecked_->showInCenter())
+        if (errorUnchecked_->execute())
         {
             errorUnchecked_->hide();
             Q_EMIT openChat();
@@ -285,7 +285,7 @@ void TransitProfileSharing::setState(const TransitState _state)
             {
                 userProfile_ = new GeneralDialog(transitProfile_, Utils::InterConnector::instance().getMainWindow(), getDialogOptions(targetAimId_));
                 userProfile_->addLabel(getCaption(TransitState::ON_PROFILE));
-                btnPair_ = userProfile_->addButtonsPair(leftButtonText(), rightButtonText(TransitState::ON_PROFILE), true);
+                btnPair_ = userProfile_->addButtonsPair(leftButtonText(), rightButtonText(TransitState::ON_PROFILE));
                 userProfile_->installEventFilter(this);
             }
             setState(TransitState::ON_PROFILE);
@@ -300,7 +300,7 @@ void TransitProfileSharing::onUserInfo(const int64_t, const QString& _aimId, con
 
     Utils::UrlParser p;
     p.process(_aimId);
-    if (nick_.isEmpty() && p.hasUrl() && p.getUrl().is_email())
+    if (nick_.isEmpty() && p.hasUrl() && p.isEmail())
         nick_ = _aimId;
 
     if (nick_.isEmpty() && phone_.isEmpty())
@@ -350,6 +350,7 @@ TransitProfileSharingWidget::TransitProfileSharingWidget(QWidget* _parent, const
     mainLayout_->addWidget(resizingHost_);
     resizingSpacer_ = new QSpacerItem(0, avatarSize(), QSizePolicy::Fixed, QSizePolicy::Expanding);
     resizingLayout_->addSpacerItem(resizingSpacer_);
+    avatar_->setProfileTooltipEnabled(Features::isAppsNavigationBarVisible());
     avatar_->setStatusTooltipEnabled(true);
     avatar_->setIgnoreClicks(true);
 
@@ -459,6 +460,7 @@ void TransitProfileSharingWidget::mousePressEvent(QMouseEvent* _event)
     update();
     QWidget::mousePressEvent(_event);
 }
+
 void TransitProfileSharingWidget::mouseReleaseEvent(QMouseEvent* _event)
 {
     if (btnRect_.contains(_event->pos()))
@@ -508,7 +510,7 @@ void TransitProfileSharingWidget::init()
     auto nick = info_.nick_;
     Utils::UrlParser p;
     p.process(aimId_);
-    if (nick.isEmpty() && p.hasUrl() && p.getUrl().is_email())
+    if (nick.isEmpty() && p.hasUrl() && p.isEmail())
         nick = aimId_;
 
     if (nick.isEmpty() && info_.phone_.isEmpty())
@@ -516,13 +518,15 @@ void TransitProfileSharingWidget::init()
 
     if (error_ != TransitState::EMPTY_PROFILE)
     {
+        TextRendering::TextUnit::InitializeParameters params{ secondaryTextFont(), secondaryTextColor() };
+        params.maxLinesCount_ = 1;
         if (!nick.isEmpty())
         {
             nicknameVisible_ = true;
             if (!nick.contains(u'@'))
                 nick.prepend(u'@');
             nickTextUnit_ = TextRendering::MakeTextUnit(nick, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-            nickTextUnit_->init(secondaryTextFont(), secondaryTextColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+            nickTextUnit_->init(params);
         }
 
         if (!info_.phone_.isEmpty())
@@ -533,14 +537,14 @@ void TransitProfileSharingWidget::init()
             phoneCaption_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("profilesharing", "Mobile phone"), {},
                 TextRendering::LinksVisible::DONT_SHOW_LINKS,
                 TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-            phoneCaption_->init(secondaryTextFont(), secondaryTextColor(), QColor(), QColor(), QColor(),
-                TextRendering::HorAligment::LEFT, 1);
+            phoneCaption_->init(params);
 
             phone_ = TextRendering::MakeTextUnit(PhoneFormatter::formatted(info_.phone_), {},
                 TextRendering::LinksVisible::DONT_SHOW_LINKS,
                 TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-            phone_->init(primaryTextFont(), primaryTextColor(), QColor(), QColor(), QColor(),
-                TextRendering::HorAligment::LEFT, 1);
+            params.setFonts(primaryTextFont());
+            params.color_ = primaryTextColor();
+            phone_->init(params);
         }
 
         updateSpacer(height() + (phoneExists_ ? Utils::scale_value(164) - (avatarSize() + 2 * avatarPadding()) : 0));
@@ -550,7 +554,9 @@ void TransitProfileSharingWidget::init()
         const auto errorText = getErrorText(error_);
 
         errorTextUnit_ = TextRendering::MakeTextUnit(errorText, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-        errorTextUnit_->init(errorTextFont(), primaryTextColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, -1, TextRendering::LineBreakType::PREFER_SPACES);
+        TextRendering::TextUnit::InitializeParameters params{ errorTextFont(), primaryTextColor() };
+        params.lineBreak_ = TextRendering::LineBreakType::PREFER_SPACES;
+        errorTextUnit_->init(params);
         if constexpr (platform::is_apple())
             errorTextUnit_->setLineSpacing(Utils::scale_value(7));
         const auto errorHeight = errorTextUnit_->getHeight(maxWidth() - 2 * textHorOffset());
@@ -567,7 +573,9 @@ void Ui::TransitProfileSharingWidget::initShort()
     avatar_->move(padding(), avatarPadding());
 
     friendlyTextUnit_ = TextRendering::MakeTextUnit(Logic::GetFriendlyContainer()->getFriendly(aimId_), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-    friendlyTextUnit_->init(primaryTextFont(Fonts::FontWeight::SemiBold), primaryTextColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+    TextRendering::TextUnit::InitializeParameters params{ primaryTextFont(Fonts::FontWeight::SemiBold), primaryTextColor() };
+    params.maxLinesCount_ = 1;
+    friendlyTextUnit_->init(params);
 
     updateSpacer(avatarSize() + 2 * avatarPadding());
 
@@ -581,7 +589,9 @@ void TransitProfileSharingWidget::initError()
     const auto errorText = getErrorText(error_);
 
     errorTextUnit_ = TextRendering::MakeTextUnit(errorText, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-    errorTextUnit_->init(errorTextFont(), primaryTextColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, -1, TextRendering::LineBreakType::PREFER_SPACES);
+    TextRendering::TextUnit::InitializeParameters params{ errorTextFont(), primaryTextColor() };
+    params.lineBreak_ = TextRendering::LineBreakType::PREFER_SPACES;
+    errorTextUnit_->init(params);
     if constexpr (platform::is_apple())
         errorTextUnit_->setLineSpacing(Utils::scale_value(7));
     const auto errorHeight = errorTextUnit_->getHeight(maxWidth() - 2 * textHorOffset());

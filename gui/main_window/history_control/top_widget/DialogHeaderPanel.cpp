@@ -121,7 +121,7 @@ namespace Ui
         setFixedHeight(Utils::getTopPanelHeight());
 
         const auto isServiceContact = ServiceContacts::isServiceContact(aimId_);
-        const auto isThreadsFeedContact = aimId_ == qsl("~threads~");
+        const auto isThreadsFeedContact = aimId_ == ServiceContacts::getThreadsName();
 
         auto topLayout = Utils::emptyHLayout(this);
         topLayout->setContentsMargins(0, 0, rightMargin(), 0);
@@ -140,7 +140,7 @@ namespace Ui
             Styling::Buttons::setButtonDefaultColors(prevChatButton);
             prevChatButton->setFixedSize(Utils::scale_value(getTopButtonsSize()));
             prevChatButton->setFocusPolicy(Qt::TabFocus);
-            prevChatButton->setFocusColor(Styling::getParameters().getPrimaryTabFocusColor());
+            prevChatButton->setFocusColor(Styling::getParameters().getPrimaryTabFocusColorKey());
             connect(prevChatButton, &CustomButton::clicked, this, [this, prevChatButton]()
             {
                 Q_EMIT switchToPrevDialog(prevChatButton->hasFocus(), QPrivateSignal());
@@ -179,7 +179,7 @@ namespace Ui
             auto contactWidgetLayout = Utils::emptyVLayout(contactWidget_);
             const auto nameFont = isThreadsFeedContact ? threadsFeedContactNameFont() : contactNameFont();
 
-            contactName_ = new ClickableTextWidget(contactWidget_, nameFont, Styling::StyleVariable::TEXT_SOLID);
+            contactName_ = new ClickableTextWidget(contactWidget_, nameFont, Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
             contactName_->setFixedHeight(nameHeight());
             contactName_->setCursor(isServiceContact ? Qt::ArrowCursor : Qt::PointingHandCursor);
             contactName_->setContextMenuPolicy(Qt::ContextMenuPolicy::CustomContextMenu);
@@ -195,7 +195,7 @@ namespace Ui
             if (isThreadsFeedContact)
                 contactWidgetLayout->setAlignment(contactName_, Qt::AlignHCenter);
 
-            contactStatus_ = new ClickableTextWidget(this, contactStatusFont(), Styling::StyleVariable::BASE_PRIMARY);
+            contactStatus_ = new ClickableTextWidget(this, contactStatusFont(), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY });
             contactStatus_->setFixedHeight(statusHeight());
             contactStatus_->setVisible(!isServiceContact);
             Testing::setAccessibleName(contactStatus_, qsl("AS HistoryPage dialogStatus"));
@@ -237,7 +237,7 @@ namespace Ui
             connect(searchButton_, &CustomButton::clicked, this, &DialogHeaderPanel::searchButtonClicked);
             connect(&Utils::InterConnector::instance(), &Utils::InterConnector::startSearchInDialog, searchButton_, [this](const QString& _searchedDialog)
             {
-                if (aimId_ == _searchedDialog)
+                if (aimId_ == _searchedDialog && !searchButton_->isActive())
                     searchButton_->setActive(true);
             });
             connect(&Utils::InterConnector::instance(), &Utils::InterConnector::searchClosed, this, &DialogHeaderPanel::deactivateSearchButton);
@@ -247,10 +247,10 @@ namespace Ui
             if (Features::isExpandedGalleryEnabled())
             {
                 galleryButton_ = btn(u":/header/gallery", QT_TRANSLATE_NOOP("tooltips", "Chat gallery"), qsl("AS HistoryPage gallery"));
-                connect(galleryButton_, &CustomButton::clicked, &Utils::InterConnector::instance(), [aimId = aimId_]()
-                {
-                    Q_EMIT Utils::InterConnector::instance().openDialogGallery(aimId);
-                });
+                connect(galleryButton_,
+                    &CustomButton::clicked,
+                    &Utils::InterConnector::instance(),
+                    [aimId = aimId_]() { Q_EMIT Utils::InterConnector::instance().openDialogGallery(aimId); });
                 buttonsLayout->addWidget(galleryButton_, 0, Qt::AlignRight);
             }
 
@@ -274,10 +274,17 @@ namespace Ui
             connect(moreButton, &CustomButton::clicked, this, []() { GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::more_button_click); });
             buttonsLayout->addWidget(moreButton, 0, Qt::AlignRight);
 
-            addMemberButton_->setVisible(Utils::isChat(aimId_));
+            addMemberButton_->setVisible(!isServiceContact && Utils::isChat(aimId_));
             updateCallButtonsVisibility();
 
-            buttonsWidget_->setVisible(!isServiceContact);
+            const auto setButtonVisible = [](CustomButton* _btn, bool _visible)
+            {
+                if (_btn)
+                    _btn->setVisible(_visible);
+            };
+
+            for (auto btn : { galleryButton_, moreButton })
+                setButtonVisible(btn, !isServiceContact);
 
             Testing::setAccessibleName(buttonsWidget_, qsl("AS HistoryPage buttonsWidget"));
             topLayout->addWidget(buttonsWidget_, 0, Qt::AlignRight);
@@ -313,11 +320,7 @@ namespace Ui
             if (_aimId == aimId_)
                 initStatus();
         });
-    }
-
-    void DialogHeaderPanel::updateStyle()
-    {
-        contactName_->setColor(Styling::StyleVariable::TEXT_SOLID);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::changeBackButtonVisibility, this, &DialogHeaderPanel::onChangeBackButtonVisibility);
     }
 
     void DialogHeaderPanel::deactivateSearchButton()
@@ -334,7 +337,9 @@ namespace Ui
             GetDispatcher()->getConnectionState() == ConnectionState::stateOnline
             && !Logic::getContactListModel()->isChannel(aimId_)
             && !Logic::GetLastseenContainer()->isBot(aimId_)
-            && aimId_ != MyInfo()->aimId();
+            && aimId_ != MyInfo()->aimId()
+            && !Logic::getContactListModel()->isDeleted(aimId_)
+            && !ServiceContacts::isServiceContact(aimId_);
 
         if (isVisible && chatMembersCount_ < 2 && Utils::isChat(aimId_))
             isVisible = false;
@@ -342,8 +347,10 @@ namespace Ui
         callButton_->setVisible(isVisible);
     }
 
-    void DialogHeaderPanel::setPrevChatButtonVisible(bool _visible)
+    void DialogHeaderPanel::setPrevChatButtonVisible(bool _visible, bool _saveState)
     {
+        if (_saveState)
+            backButtonWasVisible_ = prevChatButtonWidget_->isVisible() || _visible;
         prevChatButtonWidget_->setVisible(_visible);
         topWidgetLeftPadding_->setVisible(!_visible);
     }
@@ -489,7 +496,7 @@ namespace Ui
             if (!statusText.isEmpty())
             {
                 contactStatus_->setText(statusText);
-                contactStatus_->setColor(lastSeen.isOnline() ? Styling::StyleVariable::TEXT_PRIMARY : Styling::StyleVariable::BASE_PRIMARY);
+                contactStatus_->setColor(Styling::ThemeColorKey{ lastSeen.isOnline() ? Styling::StyleVariable::TEXT_PRIMARY : Styling::StyleVariable::BASE_PRIMARY });
             }
             contactStatus_->setVisible(!statusText.isEmpty());
 
@@ -629,5 +636,15 @@ namespace Ui
     void DialogHeaderPanel::requestDialogGallery()
     {
         GetDispatcher()->getDialogGallery(aimId_, { ql1s("image"), ql1s("video") }, 0, 0, 1, false);
+    }
+
+    void DialogHeaderPanel::onChangeBackButtonVisibility(const QString& _aimId, bool _isVisible)
+    {
+        if (aimId_ == _aimId)
+        {
+            const auto isVisible = _isVisible && backButtonWasVisible_;
+            setPrevChatButtonVisible(isVisible, false);
+            setOverlayTopWidgetVisible(isVisible);
+        }
     }
 }

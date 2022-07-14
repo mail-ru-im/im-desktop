@@ -56,7 +56,7 @@ auto omicron_get_events_max_store_interval()
 
 std::string get_client_stat_url()
 {
-    return su::concat("https://", config::get().url(config::urls::stat_base), core::urls::api_version_prefix(), "/srp/clientStat");
+    return su::concat("https://", config::get().url(config::urls::stat_base), core::urls::api_version::instance().prefix(), "/srp/clientStat");
 }
 
 im_stats::im_stats(std::wstring _file_name)

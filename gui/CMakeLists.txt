@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.19)
 
 project(${APP_PROJECT_NAME})
 
@@ -8,106 +8,6 @@ message(STATUS "[CMAKE] including <gui/CMakeLists.txt>")
 message(STATUS "[CMAKE]")
 
 message(STATUS "[INFO] APP_PROJECT_NAME is ${APP_PROJECT_NAME}")
-
-
-macro(QT5_MAKE_OUTPUT_FILE infile prefix ext outfile )
-    string(LENGTH ${CMAKE_CURRENT_BINARY_DIR} _binlength)
-    string(LENGTH ${infile} _infileLength)
-    set(_checkinfile ${CMAKE_CURRENT_SOURCE_DIR})
-    if(_infileLength GREATER _binlength)
-        string(SUBSTRING "${infile}" 0 ${_binlength} _checkinfile)
-        if(_checkinfile STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
-            file(RELATIVE_PATH rel ${CMAKE_CURRENT_BINARY_DIR} ${infile})
-        else()
-            file(RELATIVE_PATH rel ${CMAKE_CURRENT_SOURCE_DIR} ${infile})
-        endif()
-    else()
-        file(RELATIVE_PATH rel ${CMAKE_CURRENT_SOURCE_DIR} ${infile})
-    endif()
-    if(WIN32 AND rel MATCHES "^([a-zA-Z]):(.*)$") # absolute path
-        set(rel "${CMAKE_MATCH_1}_${CMAKE_MATCH_2}")
-    endif()
-    set(_outfile "${CMAKE_CURRENT_BINARY_DIR}/${rel}")
-    string(REPLACE ".." "__" _outfile ${_outfile})
-    get_filename_component(outpath ${_outfile} PATH)
-    get_filename_component(_outfile ${_outfile} NAME_WE)
-    file(MAKE_DIRECTORY ${outpath})
-    set(${outfile} ${outpath}/${prefix}${_outfile}.${ext})
-endmacro()
-
-function(_QT5_PARSE_QRC_FILE infile _out_depends _rc_depends)
-    get_filename_component(rc_path ${infile} PATH)
-
-    if(EXISTS "${infile}")
-        #  parse file for dependencies
-        #  all files are absolute paths or relative to the location of the qrc file
-        file(READ "${infile}" RC_FILE_CONTENTS)
-        string(REGEX MATCHALL "<file[^<]+" RC_FILES "${RC_FILE_CONTENTS}")
-        foreach(RC_FILE ${RC_FILES})
-            string(REGEX REPLACE "^<file[^>]*>" "" RC_FILE "${RC_FILE}")
-            if(NOT IS_ABSOLUTE "${RC_FILE}")
-                set(RC_FILE "${rc_path}/${RC_FILE}")
-            endif()
-            set(RC_DEPENDS ${RC_DEPENDS} "${RC_FILE}")
-        endforeach()
-        # Since this cmake macro is doing the dependency scanning for these files,
-        # let's make a configured file and add it as a dependency so cmake is run
-        # again when dependencies need to be recomputed.
-        qt5_make_output_file("${infile}" "" "qrc.depends" out_depends)
-        configure_file("${infile}" "${out_depends}" COPYONLY)
-    else()
-        # The .qrc file does not exist (yet). Let's add a dependency and hope
-        # that it will be generated later
-        set(out_depends)
-    endif()
-
-    set(${_out_depends} ${out_depends} PARENT_SCOPE)
-    set(${_rc_depends} ${RC_DEPENDS} PARENT_SCOPE)
-endfunction()
-
-#-----------------------------------------------------------------
-# use qt5_add_big_resources since qt5.12
-
-function(ICQ_ADD_BIG_RESOURCES outfiles )
-    set(options)
-    set(oneValueArgs)
-    set(multiValueArgs OPTIONS)
-
-    cmake_parse_arguments(_RCC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
-    set(rcc_files ${_RCC_UNPARSED_ARGUMENTS})
-    set(rcc_options ${_RCC_OPTIONS})
-
-    if("${rcc_options}" MATCHES "-binary")
-        message(WARNING "Use icq_add_binary_resources for binary option")
-    endif()
-
-    foreach(it ${rcc_files})
-        get_filename_component(outfilename ${it} NAME_WE)
-        get_filename_component(infile ${it} ABSOLUTE)
-        set(tmpoutfile ${CMAKE_CURRENT_BINARY_DIR}/qrc_${outfilename}tmp.cpp)
-        set(outfile ${CMAKE_CURRENT_BINARY_DIR}/qrc_${outfilename}.o)
-
-        _QT5_PARSE_QRC_FILE(${infile} _out_depends _rc_depends)
-        set_source_files_properties(${infile} PROPERTIES SKIP_AUTORCC ON)
-        add_custom_command(OUTPUT ${tmpoutfile}
-                           COMMAND ${IM_QT_BIN_RCC} ${rcc_options} --name ${outfilename} --pass 1 --output ${tmpoutfile} ${infile}
-                           DEPENDS ${infile} ${_rc_depends} "${out_depends}" VERBATIM)
-        set_source_files_properties(${tmpoutfile} PROPERTIES SKIP_AUTOMOC ON)
-        set_source_files_properties(${tmpoutfile} PROPERTIES SKIP_AUTOUIC ON)
-        add_custom_target(big_resources_${outfilename} ALL DEPENDS ${tmpoutfile})
-        add_library(rcc_object_${outfilename} OBJECT ${tmpoutfile})
-        add_dependencies(rcc_object_${outfilename} big_resources_${outfilename})
-        add_custom_command(OUTPUT ${outfile}
-                           COMMAND ${IM_QT_BIN_RCC}
-                           ARGS ${rcc_options} --name ${outfilename} --pass 2 --temp $<TARGET_OBJECTS:rcc_object_${outfilename}> --output ${outfile} ${infile}
-                           DEPENDS rcc_object_${outfilename}
-                           VERBATIM)
-       list(APPEND ${outfiles} ${outfile})
-    endforeach()
-    set(${outfiles} ${${outfiles}} PARENT_SCOPE)
-endfunction()
-
 
 # ---------------------------  paths  ----------------------------
 set(CMAKE_EXECUTABLE_OUTPUT_DIRECTORY_DEBUG ${ICQ_BIN_DIR})
@@ -153,7 +53,7 @@ if(MSVC)
 elseif(APPLE)
     set(ICQ_MAC_ROOT "${ICQ_ROOT}/mac/ICQ")
     message(STATUS "[INFO] ICQ_MAC_ROOT is ${ICQ_MAC_ROOT}")
-    
+
     set(IM_SPARKLE "${pkg_sparkle_location}")
     message(STATUS "[INFO] IM_SPARKLE is ${IM_SPARKLE}")
 
@@ -250,10 +150,10 @@ elseif(APPLE)
     endif()
 
     if(IM_AUTO_TESTING)
-        message(STATUS "[INFO] add XCTest, libQt5Test.a")
+        message(STATUS "[INFO] add XCTest, libQt5Test.dylib")
         message(STATUS "[INFO] 1 linking -weak_framework XCTest")
         set(SYSTEM_LIBRARIES ${SYSTEM_LIBRARIES} ${MAC_XCTEST})
-        set(SYSTEM_LIBRARIES ${SYSTEM_LIBRARIES} ${ICQ_QT_LIB_DIR}/libQt5Test.a)
+        set(SYSTEM_LIBRARIES ${SYSTEM_LIBRARIES} ${ICQ_QT_LIB_DIR}/libQt5Test.dylib)
         set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} -F${ICQ_FRAMEWORKS_BUNDLE_DIR} -weak_framework XCTest")
     endif()
 
@@ -268,7 +168,7 @@ elseif(APPLE)
 
 elseif(LINUX)
     # add_definitions(-include "stdafx.h")
-    message("[INFO] Linux: Set SYSTEM_LIBRARIES")
+    message(STATUS "[INFO] Linux: Set SYSTEM_LIBRARIES")
     set(SYSTEM_LIBRARIES
         corelib
         core
@@ -277,7 +177,7 @@ elseif(LINUX)
         ${VOIP_LIBRARIES}
         -ldl -lstdc++fs -lgpg-error -lfontconfig -lfreetype -luuid
         -lpthread -lm -lrt -lexpat -lz -Wl,-Bstatic -Wl,-Bdynamic
-        -lX11 -lX11-xcb -lxcb -lXrandr -lXcursor -lXext -lXdamage -lXfixes -lXcomposite)
+        -lX11 -lX11-xcb -lxcb -lxcb-ewmh -lXrandr -lXcursor -lXext -lXdamage -lXfixes -lXcomposite)
 
     if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 10.2)
         message(STATUS "WARNING: GCC version is ${CMAKE_CXX_COMPILER_VERSION}")
@@ -292,13 +192,13 @@ elseif(LINUX)
     endif()
 
     if(IM_AUTO_TESTING)
-        message(STATUS "[testing] set ${ICQ_QT_LIB_DIR}/libQt5Test.a to QT_LIBRARIES")
+        message(STATUS "[testing] set ${ICQ_QT_LIB_DIR}/libQt5Test.so to QT_LIBRARIES")
         add_definitions(-DQT_CORE_LIB=1)
         add_definitions(-DQT_GUI_LIB=1)
         add_definitions(-DQT_WIDGETS_LIB=1)
         add_definitions(-DQT_TESTLIB_LIB=1)
         set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} -Wl -fsanitize=address")
-        set(QT_LIBRARIES ${QT_LIBRARIES} ${ICQ_QT_LIB_DIR}/libQt5Test.a)
+        set(QT_LIBRARIES ${QT_LIBRARIES} ${ICQ_QT_LIB_DIR}/libQt5Test.so)
     endif()
 
 endif()
@@ -313,6 +213,8 @@ execute_process(COMMAND
 
 # --------------------------    gui      -------------------------
 set(SUBPROJECT_ROOT "${ICQ_ROOT}/gui")
+
+include(QrcFunctions.cmake)
 
 message(STATUS "[INFO] SUBPROJECT_ROOT = ${SUBPROJECT_ROOT}")
 find_sources(SUBPROJECT_SOURCES "${SUBPROJECT_ROOT}" "cpp")
@@ -394,15 +296,24 @@ if (STRIP_AV_MEDIA)
     list(FILTER SUBPROJECT_SOURCES EXCLUDE REGEX  "${ICQ_ROOT}/gui/main_window/sounds/*")
 endif()
 
-if (NOT (IM_QT_DYNAMIC AND HAS_WEB_ENGINE))
+if (NOT (HAS_WEB_ENGINE))
     list(REMOVE_ITEM SUBPROJECT_HEADERS "${ICQ_ROOT}/gui/controls/WebPage.h")
     list(REMOVE_ITEM SUBPROJECT_SOURCES "${ICQ_ROOT}/gui/controls/WebPage.cpp")
     list(REMOVE_ITEM SUBPROJECT_HEADERS "${ICQ_ROOT}/gui/main_window/WebAppPage.h")
     list(REMOVE_ITEM SUBPROJECT_SOURCES "${ICQ_ROOT}/gui/main_window/WebAppPage.cpp")
+    list(REMOVE_ITEM SUBPROJECT_HEADERS "${ICQ_ROOT}/gui/main_window/WebChannelProxy.h")
+    list(REMOVE_ITEM SUBPROJECT_SOURCES "${ICQ_ROOT}/gui/main_window/WebChannelProxy.cpp")
+    list(FILTER SUBPROJECT_HEADERS EXCLUDE REGEX "^${ICQ_ROOT}/gui/main_window/js_bridge/*")
+    list(FILTER SUBPROJECT_SOURCES EXCLUDE REGEX "^${ICQ_ROOT}/gui/main_window/js_bridge/*")
 endif()
-if (NOT (IM_QT_DYNAMIC AND HAS_OAUTH2))
+if (NOT (HAS_OAUTH2))
     list(REMOVE_ITEM SUBPROJECT_HEADERS "${ICQ_ROOT}/gui/main_window/OAuth2Dialog.h")
     list(REMOVE_ITEM SUBPROJECT_SOURCES "${ICQ_ROOT}/gui/main_window/OAuth2Dialog.cpp")
+endif()
+
+if (NOT (HAS_KEYCHAIN_MANAGER))
+    list(REMOVE_ITEM SUBPROJECT_HEADERS "${ICQ_ROOT}/gui/utils/KeychainManager.h")
+    list(REMOVE_ITEM SUBPROJECT_SOURCES "${ICQ_ROOT}/gui/utils/KeychainManager.cpp")
 endif()
 
 set_source_group("sources" "${SUBPROJECT_ROOT}" ${SUBPROJECT_SOURCES} ${SUBPROJECT_MM_SOURCES} ${SUBPROJECT_HEADERS})
@@ -558,13 +469,25 @@ endif()
 
 set(ICQ_RESOURCES "${SUBPROJECT_ROOT}/resource.qrc")
 set(PRODUCT_RESOURCES "${PRODUCT_SPEC_DIR}/app/resources/product.qrc")
+set(QML_RESOURCES "${SUBPROJECT_ROOT}/qml/resource_qml.qrc")
+
 message(STATUS "[INFO] ICQ_RESOURCES = ${ICQ_RESOURCES}")
 message(STATUS "[INFO] PRODUCT_RESOURCES = ${PRODUCT_RESOURCES}")
+message(STATUS "[INFO] QML_RESOURCES = ${QML_RESOURCES}")
+
+if(APPLE AND NOT ICQ_DEBUG)
+    set(ICQ_RESOURCES_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/qresource.cpp")
+    add_custom_command(OUTPUT ${ICQ_RESOURCES_OUTPUT}
+        COMMAND ${IM_QT_BIN_RCC} ${ICQ_RESOURCES} ${QML_RESOURCES} ${PRODUCT_RESOURCES} -o ${ICQ_RESOURCES_OUTPUT}
+        DEPENDS ${ICQ_QM_FILES} ${ICQ_RESOURCES} ${QML_RESOURCES} ${PRODUCT_RESOURCES} ${ICQ_RESOURCE_FILES})
+
+    source_group("resources" FILES ${ICQ_RESOURCES_OUTPUT})
+else()
+    message(STATUS "Making BIG resources from ${ICQ_RESOURCES}, ${QML_RESOURCES}, and ${PRODUCT_RESOURCES}")
+    im_add_big_resources(RCC_FILES ${ICQ_RESOURCES} ${QML_RESOURCES} ${PRODUCT_RESOURCES})
+endif()
 
 if(MSVC)
-    message(STATUS "Making BIG resources from ${ICQ_RESOURCES}, and ${PRODUCT_RESOURCES}")
-    icq_add_big_resources(RCC_FILES ${ICQ_RESOURCES} ${PRODUCT_RESOURCES})
-
     set(RC_FILE "${SUBPROJECT_ROOT}/Resource.rc")
     set(RC_SOURCE "${PRODUCT_SPEC_DIR}/app/resources/Resource.rc")
     add_custom_command(OUTPUT ${RC_FILE}
@@ -577,14 +500,10 @@ if(MSVC)
         # do not works when open project in msvc
         set(ADDITIONAL_FILES ${ADDITIONAL_FILES} ${RC_FILE})
     endif()
-else()
-    set(ICQ_RESOURCES_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/qresource.cpp")
-    add_custom_command(OUTPUT ${ICQ_RESOURCES_OUTPUT}
-        COMMAND ${IM_QT_BIN_RCC} ${ICQ_RESOURCES} ${PRODUCT_RESOURCES} -o ${ICQ_RESOURCES_OUTPUT}
-        DEPENDS ${ICQ_QM_FILES} ${ICQ_RESOURCES} ${PRODUCT_RESOURCES} ${ICQ_RESOURCE_FILES})
 endif()
+
 source_group("resources" FILES ${ICQ_RESOURCES})
-source_group("resources" FILES ${ICQ_RESOURCES_OUTPUT})
+source_group("resources" FILES ${QML_RESOURCES})
 
 # ----------------------------------------------------------------
 include_directories(${SUBPROJECT_ROOT})
@@ -616,6 +535,7 @@ add_executable(${PROJECT_NAME} MACOSX_BUNDLE WIN32
     ${PCH_BIN}
     ${ICQ_RESOURCE_FILES}
     ${RCC_FILES}
+    ${PROJECT_QML_SOURCES}
     ${MACOSX_BUNDLE_ICON_FILE}
     ${MACOSX_BUNDLE_INFO_PLIST})
 
@@ -892,11 +812,11 @@ if(APPLE)
                     COMMAND cp -f -R ${RESOURCE} ${ICQ_BUNDLE_DIR}/Resources)
             ENDFOREACH()
 
-            if(HAS_WEB_ENGINE)
-                message(STATUS "[INFO] -> copy ${PRODUCT_MAC}/qt.conf to ${ICQ_BUNDLE_DIR}/Resources")
-                add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-                    COMMAND cp -f "${PRODUCT_MAC}/qt.conf" ${ICQ_BUNDLE_DIR}/Resources)
+            message(STATUS "[INFO] -> copy ${PRODUCT_MAC}/qt.conf to ${ICQ_BUNDLE_DIR}/Resources")
+            add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                COMMAND cp -f "${PRODUCT_MAC}/qt.conf" ${ICQ_BUNDLE_DIR}/Resources)
 
+            if(HAS_WEB_ENGINE)
                 set(ICQ_TRANSLATIONS_DIR "${ICQ_BUNDLE_DIR}/Resources/translations")
                 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_TRANSLATIONS_DIR})
@@ -904,6 +824,17 @@ if(APPLE)
                 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
                     COMMAND ${CMAKE_COMMAND} -E copy_directory ${QT_TRANSLATIONS_DIR} ${ICQ_TRANSLATIONS_DIR})
             endif()
+
+            set(QUICK_RESOURCES_FOLDER "${ICQ_BUNDLE_DIR}/Resources/qml")
+            set(QUICK_PLUGINS_FOLDER "${ICQ_BUNDLE_DIR}/PlugIns/quick")
+            set(QUICK_RELATIVE_PLUGINS_FOLDER "../../../../PlugIns/quick")
+            set(QUICK2_RELATIVE_PLUGINS_FOLDER "../../../PlugIns/quick")
+            im_copy_qt_quick_libraries_apple(LIBS ${QT_QUICK_CONTROLS2_LIBRARIES_TO_COPY}  FOLDER ${QUICK_RESOURCES_FOLDER}/QtQuick/Controls.2  PLUGINS_FOLDER ${QUICK_PLUGINS_FOLDER} RELATIVE_PLUGINS_FOLDER ${QUICK_RELATIVE_PLUGINS_FOLDER})
+            im_copy_qt_quick_libraries_apple(LIBS ${QT_QUICK_TEMPLATES2_LIBRARIES_TO_COPY} FOLDER ${QUICK_RESOURCES_FOLDER}/QtQuick/Templates.2 PLUGINS_FOLDER ${QUICK_PLUGINS_FOLDER} RELATIVE_PLUGINS_FOLDER ${QUICK_RELATIVE_PLUGINS_FOLDER})
+            im_copy_qt_quick_libraries_apple(LIBS ${QT_QUICK_DIALOGS_LIBRARIES_TO_COPY}    FOLDER ${QUICK_RESOURCES_FOLDER}/QtQuick/Dialogs     PLUGINS_FOLDER ${QUICK_PLUGINS_FOLDER} RELATIVE_PLUGINS_FOLDER ${QUICK_RELATIVE_PLUGINS_FOLDER})
+            im_copy_qt_quick_libraries_apple(LIBS ${QT_QUICK_EXTRAS_LIBRARIES_TO_COPY}     FOLDER ${QUICK_RESOURCES_FOLDER}/QtQuick/Extras      PLUGINS_FOLDER ${QUICK_PLUGINS_FOLDER} RELATIVE_PLUGINS_FOLDER ${QUICK_RELATIVE_PLUGINS_FOLDER})
+            im_copy_qt_quick_libraries_apple(LIBS ${QT_QUICK_LAYOUTS_LIBRARIES_TO_COPY}    FOLDER ${QUICK_RESOURCES_FOLDER}/QtQuick/Layouts     PLUGINS_FOLDER ${QUICK_PLUGINS_FOLDER} RELATIVE_PLUGINS_FOLDER ${QUICK_RELATIVE_PLUGINS_FOLDER})
+            im_copy_qt_quick_libraries_apple(LIBS ${QT_QUICK2_LIBRARIES_TO_COPY}           FOLDER ${QUICK_RESOURCES_FOLDER}/QtQuick.2           PLUGINS_FOLDER ${QUICK_PLUGINS_FOLDER} RELATIVE_PLUGINS_FOLDER ${QUICK2_RELATIVE_PLUGINS_FOLDER})
 
             add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
                 COMMAND install_name_tool -add_rpath @loader_path/../Frameworks ${ICQ_BUNDLE_DIR}/MacOS/${PROJECT_NAME})
@@ -924,14 +855,15 @@ if(APPLE)
     endif()
 
     # rename bundle
-    if(NOT "${PROJECT_NAME}" STREQUAL "${APP_OUTPUT_NAME}")
-        message(STATUS "[INFO] [rename] Bundle will be renamed from [${PROJECT_NAME}] to [${APP_OUTPUT_NAME}.app]")
+    if(ENABLE_BUILD_INFO)
+        if(NOT "${PROJECT_NAME}" STREQUAL "${APP_OUTPUT_NAME}")
+            message(STATUS "[INFO] [rename] Bundle will be renamed from [${PROJECT_NAME}] to [${APP_OUTPUT_NAME}.app]")
 
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E rename "${ICQ_BUNDLE}/Contents/MacOS/${PROJECT_NAME}" "${ICQ_BUNDLE}/Contents/MacOS/${APP_OUTPUT_NAME}"
-            COMMAND ${CMAKE_COMMAND} -E rename "${ICQ_BUNDLE}" "${ICQ_BIN_DIR}/${APP_OUTPUT_NAME}.app"
-        )
-
+            add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E rename "${ICQ_BUNDLE}/Contents/MacOS/${PROJECT_NAME}" "${ICQ_BUNDLE}/Contents/MacOS/${APP_OUTPUT_NAME}"
+                COMMAND ${CMAKE_COMMAND} -E rename "${ICQ_BUNDLE}" "${ICQ_BIN_DIR}/${APP_OUTPUT_NAME}.app"
+            )
+        endif()
     endif()
 
 
@@ -1016,5 +948,13 @@ if(IM_QT_DYNAMIC)
             add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
                 COMMAND cp -f ${LIBRARY} ${LIB_DIR}/${FILE_NAME})
         ENDFOREACH()
+
+        im_copy_qt_quick_libraries(LIBS ${QT_QUICK_CONTROLS2_LIBRARIES_TO_COPY} FOLDER ${ICQ_BIN_DIR}/QtQuick/Controls.2)
+        im_copy_qt_quick_libraries(LIBS ${QT_QUICK_TEMPLATES2_LIBRARIES_TO_COPY} FOLDER ${ICQ_BIN_DIR}/QtQuick/Templates.2)
+        im_copy_qt_quick_libraries(LIBS ${QT_QUICK_DIALOGS_LIBRARIES_TO_COPY} FOLDER ${ICQ_BIN_DIR}/QtQuick/Dialogs)
+        im_copy_qt_quick_libraries(LIBS ${QT_QUICK_EXTRAS_LIBRARIES_TO_COPY} FOLDER ${ICQ_BIN_DIR}/QtQuick/Extras)
+        im_copy_qt_quick_libraries(LIBS ${QT_QUICK_LAYOUTS_LIBRARIES_TO_COPY} FOLDER ${ICQ_BIN_DIR}/QtQuick/Layouts)
+        im_copy_qt_quick_libraries(LIBS ${QT_QUICK2_LIBRARIES_TO_COPY} FOLDER ${ICQ_BIN_DIR}/QtQuick.2)
+
     endif()
 endif()

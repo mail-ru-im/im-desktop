@@ -4,22 +4,23 @@
 #include "TextEmojiWidget.h"
 #include "TextEditEx.h"
 #include "SemitransparentWindowAnimated.h"
-#include "../fonts.h"
 #include "../gui_settings.h"
 #include "../main_window/MainWindow.h"
-#include "../utils/utils.h"
+#ifndef STRIP_VOIP
+#include "../voip/VideoWindow.h"
+#endif
+#include "core_dispatcher.h"
 #include "../utils/InterConnector.h"
 #include "styles/ThemeParameters.h"
-#include "../controls/DialogButton.h"
-#include "../controls/TextUnit.h"
 #include "main_window/history_control/ThreadPlate.h"
+#include "styles/StyledWidget.h"
 
 namespace
 {
     constexpr std::chrono::milliseconds animationDuration = std::chrono::milliseconds(100);
-    constexpr auto defaultDialogWidth() noexcept
+    auto defaultDialogWidth() noexcept
     {
-        return 360;
+        return Utils::scale_value(360);
     }
 
     int getMargin() noexcept
@@ -50,9 +51,14 @@ namespace
         return Utils::scale_value(44);
     }
 
-    auto dialogMaximumHeight()
+    auto dialogShadowWidth()
     {
-        return Utils::scale_value(660) + 2 * Ui::get_gui_settings()->get_shadow_width();
+        return Ui::get_gui_settings()->get_shadow_width();
+    }
+
+    auto shadowedDialogMaximumHeight()
+    {
+        return Ui::GeneralDialog::maximumHeight() + 2 * Ui::GeneralDialog::shadowWidth();
     }
 
     auto dialogVerticalMargin() noexcept
@@ -64,6 +70,7 @@ namespace
 namespace Ui
 {
     bool GeneralDialog::inExec_ = false;
+    std::stack<GeneralDialog*> GeneralDialog::instances_;
 
     GeneralDialog::GeneralDialog(QWidget* _mainWidget, QWidget* _parent, const Options& _options)
         : QDialog(nullptr)
@@ -78,20 +85,24 @@ namespace Ui
         , options_(_options)
     {
         setParent(semiWindow_);
+#ifndef STRIP_VOIP
+        if (Utils::hasAncestorOf<Ui::VideoWindow*>(this) || Utils::hasAncestorOf<Ui::MainWindow*>(this))
+             connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipWindowRemoveComplete, this, &GeneralDialog::reject);
+#endif
 
         semiWindow_->setCloseWindowInfo({ Utils::CloseWindowInfo::Initiator::Unknown, Utils::CloseWindowInfo::Reason::Keep_Sidebar });
         semiWindow_->hide();
         if (_options.withSemiwindow_)
             qApp->processEvents();
 
-        mainHost_ = new QWidget(this);
-        Utils::setDefaultBackground(mainHost_);
+        mainHost_ = new Styling::StyledWidget(this);
+        mainHost_->setDefaultBackground();
         Testing::setAccessibleName(mainHost_, qsl("AS GeneralPopup"));
 
         if (options_.fixedSize_)
         {
             if (options_.preferredWidth_ <= 0)
-                mainHost_->setFixedWidth(Utils::scale_value(defaultDialogWidth()));
+                mainHost_->setFixedWidth(defaultDialogWidth());
             else
                 mainHost_->setFixedWidth(options_.preferredWidth_);
         }
@@ -137,7 +148,6 @@ namespace Ui
         bottomWidget_ = new QWidget(mainHost_);
         bottomWidget_->setVisible(false);
         bottomWidget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
-        Utils::setDefaultBackground(bottomWidget_);
         Testing::setAccessibleName(bottomWidget_, qsl("AS GeneralPopup bottomWidget"));
         globalLayout->addWidget(bottomWidget_);
 
@@ -160,9 +170,9 @@ namespace Ui
         auto constrainedLayout = Utils::emptyVLayout(this);
         auto constrainedContainer = new QWidget(this);
         constrainedContainer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::MinimumExpanding);
-        constrainedContainer->setMaximumHeight(dialogMaximumHeight());
-        const auto verticalMargin = dialogVerticalMargin();
-        constrainedLayout->setContentsMargins(0, verticalMargin, 0, verticalMargin);
+        constrainedContainer->setMaximumHeight(shadowedDialogMaximumHeight());
+        const auto verMargin = verticalMargin();
+        constrainedLayout->setContentsMargins(0, verMargin, 0, verMargin);
         constrainedLayout->addWidget(constrainedContainer);
 
         shadowHost_ = new QWidget;
@@ -190,6 +200,8 @@ namespace Ui
             });
         }
         setFocus();
+
+        instances_.push(this);
     }
 
     void GeneralDialog::rejectDialog(const Utils::CloseWindowInfo& _info)
@@ -229,8 +241,7 @@ namespace Ui
     {
         if (headerLabelHost_->layout())
         {
-            auto label = headerLabelHost_->findChild<TextUnitLabel*>();
-            if (label)
+            if (auto label = headerLabelHost_->findChild<TextUnitLabel*>())
             {
                 label->setText(_text);
                 return;
@@ -241,7 +252,10 @@ namespace Ui
         auto hostLayout = Utils::emptyHLayout(headerLabelHost_);
 
         auto text = Ui::TextRendering::MakeTextUnit(_text, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        text->init(Fonts::appFontScaled(22), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, _maxLinesNumber, TextRendering::LineBreakType::PREFER_SPACES);
+        TextRendering::TextUnit::InitializeParameters params{ Fonts::appFontScaled(22), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } };
+        params.maxLinesCount_ = _maxLinesNumber;
+        params.lineBreak_ = TextRendering::LineBreakType::PREFER_SPACES;
+        text->init(params);
 
         const auto maxWidth = mainHost_->maximumWidth() - 2 * getMargin();
         auto label = new TextUnitLabel(this, std::move(text), Ui::TextRendering::VerPosition::TOP, maxWidth, true);
@@ -270,7 +284,7 @@ namespace Ui
     void GeneralDialog::addText(const QString& _messageText, int _upperMarginPx, const QFont& _font, const QColor& _color)
     {
         auto text = Ui::TextRendering::MakeTextUnit(_messageText, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        text->init(_font, _color);
+        text->init({ _font, Styling::ColorParameter{ _color } });
 
         const auto maxWidth = mainHost_->maximumWidth() - 2 * getMargin();
         auto label = new TextUnitLabel(textHost_, std::move(text), Ui::TextRendering::VerPosition::TOP, maxWidth);
@@ -288,7 +302,7 @@ namespace Ui
     DialogButton* GeneralDialog::addAcceptButton(const QString& _buttonText, const bool _isEnabled)
     {
         {
-            nextButton_ =  new DialogButton(bottomWidget_, _buttonText, _isEnabled ? DialogButtonRole::CONFIRM : DialogButtonRole::DISABLED);
+            nextButton_ = new DialogButton(bottomWidget_, _buttonText, _isEnabled ? DialogButtonRole::CONFIRM : DialogButtonRole::DISABLED);
             nextButton_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
             nextButton_->adjustSize();
             setButtonActive(_isEnabled);
@@ -327,7 +341,7 @@ namespace Ui
         return nextButton_;
     }
 
-    QPair<DialogButton*, DialogButton*> GeneralDialog::addButtonsPair(const QString& _buttonTextLeft, const QString& _buttonTextRight, bool _isActive, bool _rejectable, bool _acceptable, QWidget* _area)
+    QPair<DialogButton*, DialogButton*> GeneralDialog::addButtonsPair(const QString& _buttonTextLeft, const QString& _buttonTextRight, ButtonsStateFlags _flags, QWidget* _area)
     {
         QPair<DialogButton*, DialogButton*> result;
         {
@@ -335,15 +349,15 @@ namespace Ui
             cancelButton->setObjectName(qsl("left_button"));
             cancelButton->setSizePolicy(QSizePolicy::Policy::Minimum, QSizePolicy::Policy::Preferred);
             connect(cancelButton, &DialogButton::clicked, this, &GeneralDialog::leftButtonClick, Qt::QueuedConnection);
-            if (_rejectable)
+            if (!_flags.testFlag(ButtonsStateFlag::RejectionForbidden))
                 connect(cancelButton, &DialogButton::clicked, this, &GeneralDialog::reject, Qt::QueuedConnection);
             Testing::setAccessibleName(cancelButton, qsl("AS GeneralPopup cancelButton"));
 
             nextButton_ = new DialogButton(bottomWidget_, _buttonTextRight, DialogButtonRole::CONFIRM);
-            setButtonActive(_isActive);
+            setButtonActive(!_flags.testFlag(ButtonsStateFlag::InitiallyInactive));
             nextButton_->setSizePolicy(QSizePolicy::Policy::Minimum, QSizePolicy::Policy::Preferred);
             connect(nextButton_, &DialogButton::clicked, this, &GeneralDialog::rightButtonClick, Qt::QueuedConnection);
-            if (_acceptable)
+            if (!_flags.testFlag(ButtonsStateFlag::AcceptingForbidden))
                 connect(nextButton_, &DialogButton::clicked, this, &GeneralDialog::accept, Qt::QueuedConnection);
             Testing::setAccessibleName(nextButton_, qsl("AS GeneralPopup nextButton"));
 
@@ -392,9 +406,16 @@ namespace Ui
     GeneralDialog::~GeneralDialog()
     {
         semiWindow_->close();
+        im_assert(instances_.top() == this);
+        instances_.pop();
     }
 
-    bool GeneralDialog::showInCenter()
+    GeneralDialog* GeneralDialog::activeInstance()
+    {
+        return instances_.empty() ? nullptr : instances_.top();
+    }
+
+    bool GeneralDialog::execute()
     {
         if (shadow_)
         {
@@ -437,10 +458,8 @@ namespace Ui
 
     void GeneralDialog::setButtonActive(bool _active)
     {
-        if (!nextButton_)
-            return;
-
-        nextButton_->setEnabled(_active);
+        if (nextButton_)
+            nextButton_->setEnabled(_active);
     }
 
     QHBoxLayout* GeneralDialog::getBottomLayout()
@@ -508,9 +527,9 @@ namespace Ui
         return QDialog::eventFilter(_obj, _event);
     }
 
-    void GeneralDialog::showEvent(QShowEvent *event)
+    void GeneralDialog::showEvent(QShowEvent* _event)
     {
-        QDialog::showEvent(event);
+        QDialog::showEvent(_event);
         Q_EMIT shown(this);
     }
 
@@ -536,57 +555,50 @@ namespace Ui
 
     void GeneralDialog::addError(const QString& _messageText)
     {
+        const QString backgroundStyle = qsl("background-color: %1; ").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE));
+        const QString labelStyle = u"QWidget { " % backgroundStyle % u"border: none; padding-left: 16dip; padding-right: 16dip; padding-top: 0dip; padding-bottom: 0dip; }";
+
+        const auto createErrorTextWidget = [this, labelStyle](const QString& _text, const QString& _testAccesibleName)
+        {
+            auto errorWidget = new Ui::TextEditEx(errorHost_,
+                                                  Fonts::appFontScaled(16),
+                                                  Styling::ThemeColorKey { Styling::StyleVariable::SECONDARY_ATTENTION },
+                                                  true,
+                                                  true);
+            errorWidget->setContentsMargins(0, 0, 0, 0);
+            errorWidget->setSizePolicy(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Expanding);
+            errorWidget->setPlaceholderText(QString());
+            errorWidget->setAutoFillBackground(false);
+            errorWidget->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+            errorWidget->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+            Utils::ApplyStyle(errorWidget, labelStyle);
+
+            errorWidget->setText(_text);
+            Testing::setAccessibleName(errorWidget, _testAccesibleName);
+            return errorWidget;
+        };
+
+        const auto createSpacerErrorTextWidget = [backgroundStyle](const QString& _testAccesibleName)
+        {
+            auto spacer = new QLabel();
+            spacer->setFixedHeight(Utils::scale_value(16));
+            Utils::ApplyStyle(spacer, backgroundStyle);
+            Testing::setAccessibleName(spacer, _testAccesibleName);
+            return spacer;
+        };
+
         errorHost_->setVisible(true);
-        errorHost_->setContentsMargins(0, 0, 0, 0);
+        errorHost_->setContentsMargins(0, Utils::scale_value(16), 0, Utils::scale_value(16));
 
         auto textLayout = Utils::emptyVLayout(errorHost_);
 
-        auto upperSpacer = new QSpacerItem(0, Utils::scale_value(16), QSizePolicy::Minimum);
-        textLayout->addSpacerItem(upperSpacer);
+        textLayout->addWidget(createSpacerErrorTextWidget(qsl("AS GeneralPopup upperSpacerRedUp")));
 
-        const QString backgroundStyle = qsl("background-color: #fbdbd9; ");
-        const QString labelStyle = u"QWidget { " % backgroundStyle % u"border: none; padding-left: 16dip; padding-right: 16dip; padding-top: 0dip; padding-bottom: 0dip; }";
+        textLayout->addWidget(createErrorTextWidget(QT_TRANSLATE_NOOP("popup_window", "Unfortunately, an error occurred:"), qsl("AS GeneralPopup errorLabel")));
 
-        auto upperSpacerRedUp = new QLabel();
-        upperSpacerRedUp->setFixedHeight(Utils::scale_value(16));
-        Utils::ApplyStyle(upperSpacerRedUp, backgroundStyle);
-        Testing::setAccessibleName(upperSpacerRedUp, qsl("AS GeneralPopup upperSpacerRedUp"));
-        textLayout->addWidget(upperSpacerRedUp);
+        textLayout->addWidget(createErrorTextWidget(_messageText, qsl("AS GeneralPopup errorText")));
 
-        auto errorLabel = new Ui::TextEditEx(errorHost_, Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION), true, true);
-        errorLabel->setContentsMargins(0, 0, 0, 0);
-        errorLabel->setSizePolicy(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Expanding);
-        errorLabel->setPlaceholderText(QString());
-        errorLabel->setAutoFillBackground(false);
-        errorLabel->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-        errorLabel->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-        Utils::ApplyStyle(errorLabel, labelStyle);
-
-        errorLabel->setText(QT_TRANSLATE_NOOP("popup_window", "Unfortunately, an error occurred:"));
-        Testing::setAccessibleName(errorLabel, qsl("AS GeneralPopup errorLabel"));
-        textLayout->addWidget(errorLabel);
-
-        auto errorText = new Ui::TextEditEx(errorHost_, Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), true, true);
-        errorText->setContentsMargins(0, 0, 0, 0);
-        errorText->setSizePolicy(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Expanding);
-        errorText->setPlaceholderText(QString());
-        errorText->setAutoFillBackground(false);
-        errorText->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-        errorText->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-        Utils::ApplyStyle(errorText, labelStyle);
-
-        errorText->setText(_messageText);
-        Testing::setAccessibleName(errorText, qsl("AS GeneralPopup errorText"));
-        textLayout->addWidget(errorText);
-
-        auto upperSpacerRedBottom = new QLabel();
-        Utils::ApplyStyle(upperSpacerRedBottom, backgroundStyle);
-        upperSpacerRedBottom->setFixedHeight(Utils::scale_value(16));
-        Testing::setAccessibleName(upperSpacerRedBottom, qsl("AS GeneralPopup upperSpacerRedBottom"));
-        textLayout->addWidget(upperSpacerRedBottom);
-
-        auto upperSpacer2 = new QSpacerItem(0, Utils::scale_value(16), QSizePolicy::Minimum);
-        textLayout->addSpacerItem(upperSpacer2);
+        textLayout->addWidget(createSpacerErrorTextWidget(qsl("AS GeneralPopup upperSpacerRedBottom")));
     }
 
     void GeneralDialog::leftButtonClick()
@@ -614,7 +626,7 @@ namespace Ui
             semiWindow_->setForceIgnoreClicks(_ignore);
     }
 
-    void GeneralDialog::setIgnoredKeys(const GeneralDialog::KeysContainer &_keys)
+    void GeneralDialog::setIgnoredKeys(const GeneralDialog::KeysContainer& _keys)
     {
         ignoredKeys_ = _keys;
     }
@@ -622,6 +634,21 @@ namespace Ui
     bool GeneralDialog::isActive()
     {
         return inExec_;
+    }
+
+    int GeneralDialog::maximumHeight() noexcept
+    {
+        return Utils::scale_value(660);
+    }
+
+    int GeneralDialog::verticalMargin() noexcept
+    {
+        return dialogVerticalMargin();
+    }
+
+    int GeneralDialog::shadowWidth() noexcept
+    {
+        return dialogShadowWidth();
     }
 
     int GeneralDialog::getHeaderHeight() const
@@ -634,7 +661,7 @@ namespace Ui
         if (_enable)
             Utils::updateBgColor(mainHost_, Qt::transparent);
         else
-            Utils::setDefaultBackground(mainHost_);
+            mainHost_->setDefaultBackground();
     }
 
     QSize GeneralDialog::sizeHint() const
@@ -642,14 +669,21 @@ namespace Ui
         return layout()->sizeHint();
     }
 
+    void GeneralDialog::setFocusPolicyButtons(Qt::FocusPolicy _policy)
+    {
+        if (auto leftButton = bottomWidget_->findChild<DialogButton*>(qsl("left_button")))
+            leftButton->setFocusPolicy(_policy);
+        nextButton_->setFocusPolicy(_policy);
+    }
+
     OptionWidget::OptionWidget(QWidget* _parent, const QString& _icon, const QString& _caption)
         : SimpleListItem(_parent)
-        , icon_(Utils::renderSvg(_icon, QSize(getIconSize(), getIconSize()), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY)))
+        , icon_{ Utils::StyledPixmap(_icon, QSize(getIconSize(), getIconSize()), Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY }) }
         , caption_(TextRendering::MakeTextUnit(_caption, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS))
     {
         setFixedHeight(getOptionHeight());
 
-        caption_->init(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
+        caption_->init({ Fonts::appFontScaled(16), Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY } });
         caption_->setOffsets(getMargin() * 2 + getIconSize(), height() / 2);
     }
 
@@ -662,7 +696,7 @@ namespace Ui
         if (isHovered())
             p.fillRect(rect(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
 
-        p.drawPixmap(getMargin(), getOptionHeight() / 2 - getIconSize() / 2, icon_);
+        p.drawPixmap(getMargin(), getOptionHeight() / 2 - getIconSize() / 2, icon_.actualPixmap());
         caption_->draw(p, TextRendering::VerPosition::MIDDLE);
     }
 

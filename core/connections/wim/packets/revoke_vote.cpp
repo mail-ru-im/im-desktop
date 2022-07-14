@@ -2,6 +2,7 @@
 
 #include "../../../http_request.h"
 #include "../../../../common.shared/json_helper.h"
+#include "../log_replace_functor.h"
 
 #include "revoke_vote.h"
 
@@ -19,6 +20,11 @@ revoke_vote::revoke_vote(wim_packet_params _params, const std::string &_poll_id)
 std::string_view revoke_vote::get_method() const
 {
     return "poll/revoke";
+}
+
+int revoke_vote::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t revoke_vote::init_request(const std::shared_ptr<core::http_request_simple>& _request)

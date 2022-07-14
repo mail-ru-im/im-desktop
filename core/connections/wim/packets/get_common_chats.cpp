@@ -2,6 +2,7 @@
 #include "get_common_chats.h"
 
 #include "../../../http_request.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -19,6 +20,11 @@ get_common_chats::~get_common_chats() = default;
 std::string_view get_common_chats::get_method() const
 {
     return "getCommonChats";
+}
+
+int core::wim::get_common_chats::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t get_common_chats::init_request(const std::shared_ptr<core::http_request_simple>& _request)

@@ -49,6 +49,8 @@ namespace Ui
 
     protected:
         void resizeEvent(QResizeEvent* _event) override;
+        void mousePressEvent(QMouseEvent* _event) override;
+        void showEvent(QShowEvent* _event) override;
 
     Q_SIGNALS:
         void saveClicked(QPrivateSignal);
@@ -115,6 +117,7 @@ namespace Ui
         QWidget* initGallery(QWidget* _parent);
         QWidget* initCommonChats(QWidget* _parent);
         void updateCloseButton();
+        void updateGroupsTitle();
         void updatePinButton();
         void changeTab(int _tab);
         void changeGalleryPage(MediaContentType _page);
@@ -141,7 +144,7 @@ namespace Ui
 
     private:
         QElapsedTimer elapsedTimer_;
-        QStackedWidget* stackedWidget_;
+        QStackedWidget* stackedWidget_ = nullptr;
         HeaderTitleBar* titleBar_;
         HeaderTitleBarButton* editButton_;
         HeaderTitleBarButton* closeButton_;
@@ -182,7 +185,7 @@ namespace Ui
         SidebarButton* block_;
         SidebarButton* report_;
         SidebarButton* remove_;
-        SearchWidget* searchWidget_;
+        SearchWidget* searchWidget_ = nullptr;
         ContactListWidget* cl_;
         GalleryPopup* galleryPopup_;
 

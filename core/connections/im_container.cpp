@@ -31,6 +31,8 @@
 #include "../common.shared/config/config.h"
 #include "../common.shared/string_utils.h"
 
+#include "tools/features.h"
+
 namespace
 {
     constexpr int VOIP_RATING_STARS_SCORE_COEFFICIENT = 10;
@@ -94,6 +96,7 @@ im_container::im_container(const std::shared_ptr<voip_manager::VoipManager>& voi
     REGISTER_IM_MESSAGE("archive/log/model", on_archive_log_model);
     REGISTER_IM_MESSAGE("messages/context/get", on_get_message_context);
     REGISTER_IM_MESSAGE("archive/make/holes", on_make_archive_holes);
+    REGISTER_IM_MESSAGE("archive/invalidate/history", on_invalidate_history);
     REGISTER_IM_MESSAGE("archive/invalidate/message_data", on_invalidate_archive_data);
 
     REGISTER_IM_MESSAGE("dialogs/search/local", on_dialogs_search_local);
@@ -101,6 +104,11 @@ im_container::im_container(const std::shared_ptr<voip_manager::VoipManager>& voi
     REGISTER_IM_MESSAGE("dialogs/search/server", on_dialogs_search_server);
     REGISTER_IM_MESSAGE("dialogs/search/add_pattern", on_dialogs_search_add_pattern);
     REGISTER_IM_MESSAGE("dialogs/search/remove_pattern", on_dialogs_search_remove_pattern);
+
+    REGISTER_IM_MESSAGE("thread/feed/search/local", on_thread_feed_search_local);
+    REGISTER_IM_MESSAGE("threads/search/local", on_threads_search_local);
+    REGISTER_IM_MESSAGE("threads/search/local/end", on_threads_search_local_ended);
+    REGISTER_IM_MESSAGE("threads/search/server", on_threads_search_server);
 
     REGISTER_IM_MESSAGE("dialogs/add", on_add_opened_dialog);
     REGISTER_IM_MESSAGE("dialogs/remove", on_remove_opened_dialog);
@@ -215,11 +223,6 @@ im_container::im_container(const std::shared_ptr<voip_manager::VoipManager>& voi
     REGISTER_IM_MESSAGE("voip_call", on_voip_call_message);
     REGISTER_IM_MESSAGE("get_voip_calls_quality_popup_conf", on_get_voip_calls_quality_popup_conf);
     REGISTER_IM_MESSAGE("send_voip_calls_quality_report", on_send_voip_calls_quality_report);
-    REGISTER_IM_MESSAGE("masks/get_id_list", on_get_mask_id_list);
-    REGISTER_IM_MESSAGE("masks/preview/get", on_get_mask_preview);
-    REGISTER_IM_MESSAGE("masks/model/get", on_get_mask_model);
-    REGISTER_IM_MESSAGE("masks/get", on_get_mask);
-    REGISTER_IM_MESSAGE("masks/get/existent", on_get_existent_masks);
 #endif
 
     REGISTER_IM_MESSAGE("get_dialog_gallery", on_get_dialog_gallery);
@@ -298,17 +301,33 @@ im_container::im_container(const std::shared_ptr<voip_manager::VoipManager>& voi
     REGISTER_IM_MESSAGE("unsubscribe/status", on_unsubscribe_status);
     REGISTER_IM_MESSAGE("subscribe/call_room_info", on_subscribe_call_room_info);
     REGISTER_IM_MESSAGE("unsubscribe/call_room_info", on_unsubscribe_call_room_info);
-    REGISTER_IM_MESSAGE("subscribe/thread", on_subscribe_thread);
-    REGISTER_IM_MESSAGE("unsubscribe/thread", on_unsubscribe_thread);
+    REGISTER_IM_MESSAGE("subscribe/thread", on_subscribe_thread_events);
+    REGISTER_IM_MESSAGE("unsubscribe/thread", on_unsubscribe_thread_events);
     REGISTER_IM_MESSAGE("subscribe/task", on_subscribe_task);
     REGISTER_IM_MESSAGE("unsubscribe/task", on_unsubscribe_task);
+    REGISTER_IM_MESSAGE("subscribe/filesharing_antivirus", on_subscribe_filesharing_antivirus);
+    REGISTER_IM_MESSAGE("unsubscribe/filesharing_antivirus", on_unsubscribe_filesharing_antivirus);
+    REGISTER_IM_MESSAGE("subscribe/mails_counter", on_subscribe_mails_counter);
+    REGISTER_IM_MESSAGE("unsubscribe/mails_counter", on_unsubscribe_mails_counter);
+    REGISTER_IM_MESSAGE("subscribe/tasks_counter", on_subscribe_tasks_counter);
+    REGISTER_IM_MESSAGE("unsubscribe/tasks_counter", on_unsubscribe_tasks_counter);
 
     REGISTER_IM_MESSAGE("emoji/get", on_get_emoji);
 
     REGISTER_IM_MESSAGE("send_notify_sms", on_send_notify_sms);
 
     REGISTER_IM_MESSAGE("threads/add", on_add_thread);
+    REGISTER_IM_MESSAGE("threads/get", on_get_thread);
     REGISTER_IM_MESSAGE("threads/feed/get", on_threads_feed_get);
+    REGISTER_IM_MESSAGE("threads/subscribe", on_subscribe_thread);
+    REGISTER_IM_MESSAGE("threads/unsubscribe", on_unsubscribe_thread);
+    REGISTER_IM_MESSAGE("threads/subscribers/get", on_threads_subscribers_get);
+    REGISTER_IM_MESSAGE("threads/subscribers/search", on_threads_subscribers_search);
+    REGISTER_IM_MESSAGE("thread/autosubscribe", on_thread_autosubscribe);
+
+    REGISTER_IM_MESSAGE("chats/thread/add", on_chats_thread_add);
+    REGISTER_IM_MESSAGE("chats/thread/remove", on_chats_thread_remove);
+
 
     REGISTER_IM_MESSAGE("draft/set", on_draft_set);
     REGISTER_IM_MESSAGE("draft/get", on_draft_get);
@@ -398,40 +417,6 @@ void core::im_container::on_message_from_gui(std::string_view _message, int64_t 
 }
 
 #ifndef STRIP_VOIP
-
-void core::im_container::fromInternalProxySettings2Voip(const core::proxy_settings& proxySettings, voip_manager::VoipProxySettings& voipProxySettings) {
-    using namespace voip_manager;
-
-    if (!proxySettings.use_proxy_) {
-        voipProxySettings.type = VoipProxySettings::kProxyType_None;
-    }
-    else {
-        switch (proxySettings.proxy_type_) {
-        case 0:
-            voipProxySettings.type = VoipProxySettings::kProxyType_Http;
-            break;
-
-        case 4:
-            voipProxySettings.type = VoipProxySettings::kProxyType_Socks4;
-            break;
-
-        case 5:
-            voipProxySettings.type = VoipProxySettings::kProxyType_Socks5;
-            break;
-
-        case 6:
-            voipProxySettings.type = VoipProxySettings::kProxyType_Socks4a;
-            break;
-
-        default:
-            voipProxySettings.type = VoipProxySettings::kProxyType_None;
-        }
-    }
-
-    voipProxySettings.serverUrl = proxySettings.proxy_server_;
-    voipProxySettings.userName = proxySettings.login_;
-    voipProxySettings.userPassword = proxySettings.password_;
-}
 
 void core::im_container::on_voip_call_message(int64_t _seq, coll_helper& _params)
 {
@@ -563,9 +548,6 @@ void core::im_container::on_voip_call_message(int64_t _seq, coll_helper& _params
     else if (type == "converted_avatar") {
         on_voip_avatar_msg(im, _params);
     }
-    else if (type == "backgroung_update") {
-        on_voip_background_msg(im, _params);
-    }
     else if (type == "voip_call_accept") {
         const std::string_view mode = _params.get_value_as_string("mode");
         std::string call_id = _params.get_value_as_string("call_id");
@@ -592,15 +574,6 @@ void core::im_container::on_voip_call_message(int64_t _seq, coll_helper& _params
     else if (type == "update") {
         im->on_voip_update();
     }
-    else if (type == "voip_set_window_offsets") {
-        void* hwnd = (void*)(uintptr_t)_params.get_value_as_int64("handle");
-        auto l = _params.get_value_as_int("left");
-        auto t = _params.get_value_as_int("top");
-        auto r = _params.get_value_as_int("right");
-        auto b = _params.get_value_as_int("bottom");
-
-        im->on_voip_window_set_offsets(hwnd, l, t, r, b);
-    }
     else if (type == "voip_reset") {
         if (!im) {
 #ifndef STRIP_VOIP
@@ -616,63 +589,16 @@ void core::im_container::on_voip_call_message(int64_t _seq, coll_helper& _params
         const std::string mode = _params.get_value_as_string("mute");
         im->on_voip_set_mute(mode == "on");
     }
-    else if (type == "voip_load_mask")
+    else if (type == "voip_peer_resolution_changed")
     {
-        const std::string maskPath = _params.get_value_as_string("path");
-        im->on_voip_load_mask(maskPath);
-    }
-    else if (type == "window_set_primary")
-    {
-        void* hwnd = (void*)(uintptr_t)_params.get_value_as_int64("handle");
         const std::string contact = _params.get_value_as_string("contact");
-        im->on_voip_window_set_primary(hwnd, contact);
-    }
-    else if (type == "voip_init_mask_engine")
-    {
-        im->on_voip_init_mask_engine();
-    }
-    else if (type == "voip_window_set_conference_layout")
-    {
-        void* hwnd = (void*)(uintptr_t)_params.get_value_as_int64("handle");
-        const int vol = _params.get_value_as_int("layout");
-
-        im->on_voip_window_set_conference_layout(hwnd, (voip_manager::VideoLayout)vol);
-    }
-    else if (type == "voip_window_set_hover")
-    {
-        void* hwnd = (void*)(uintptr_t)_params.get_value_as_int64("handle");
-        const bool hover = _params.get_value_as_bool("hover");
-
-        im->on_voip_window_set_hover(hwnd, hover);
-    }
-    else if (type == "voip_window_large_state")
-    {
-        void* hwnd = (void*)(uintptr_t)_params.get_value_as_int64("handle");
-        const bool large = _params.get_value_as_bool("large");
-
-        im->on_voip_window_set_large(hwnd, large);
+        int width  = _params.get_value_as_int("width");
+        int height = _params.get_value_as_int("height");
+        im->on_voip_peer_resolution_changed(contact, width, height);
     }
     else
     {
         im_assert(false);
-    }
-}
-
-void core::im_container::on_voip_background_msg(std::shared_ptr<base_im> im, coll_helper& _params) {
-    core::istream* stream = _params.get_value_as_stream("background");
-    const auto h = _params.get_value_as_int("background_height");
-    const auto w = _params.get_value_as_int("background_width");
-    void* hwnd = (void*)(uintptr_t)_params.get_value_as_int64("window_handle");
-
-    im_assert(stream);
-    if (stream) {
-        const auto stream_size = stream->size();
-
-        im_assert(stream_size);
-        if (stream_size > 0 && h > 0 && w > 0) {
-            im->on_voip_window_update_background(hwnd, stream->read(stream->size()), stream_size, w, h);
-            stream->reset();
-        }
     }
 }
 
@@ -1106,6 +1032,13 @@ void core::im_container::on_login_by_password(int64_t _seq, coll_helper& _params
         ptr_this->ims_.emplace_back(std::move(im));
     };
 
+    auto login_error = [](ext_url_config_error _err)
+    {
+        coll_helper coll(g_core->create_collection(), true);
+        coll.set_value_as_int("error", int(_err));
+        g_core->post_message_to_gui("external_url_config/error", 0, coll.get());
+    };
+
     if (config::get().is_on(config::features::external_url_config) && info.get_token_type() == token_type::otp_via_email)
     {
         const auto& login_str = info.get_login();
@@ -1114,28 +1047,24 @@ void core::im_container::on_login_by_password(int64_t _seq, coll_helper& _params
         if (const auto at_idx = login.find('@'); at_idx != std::string::npos)
         {
             std::string_view host, login_domain;
+            std::vector<std::string> urls;
 
             if (const auto hash_idx = login.find('#'); hash_idx != std::string::npos && hash_idx > at_idx)
             {
                 const auto domain_pos = at_idx + 1;
                 login_domain = login.substr(domain_pos, hash_idx - domain_pos);
-
-                if (!config::get().is_on(config::features::external_config_use_preset_url))
-                    host = login.substr(hash_idx + 1);
-                else
-                    host = login_domain;
+                host = login.substr(hash_idx + 1);
 
                 info.set_login(login_str.substr(0, hash_idx));
+
+                urls.emplace_back(config::hosts::external_url_config::make_url_auto_preset(login_domain, host, true));
+                urls.emplace_back(config::hosts::external_url_config::make_url_auto_preset(login_domain, su::concat("u.", host), true));
             }
             else
             {
                 login_domain = login.substr(at_idx + 1);
                 host = login_domain;
-            }
 
-            if (!host.empty())
-            {
-                std::vector<std::string> urls;
                 if (auto url = config::hosts::external_url_config::make_url_preset(login_domain); !url.empty())
                 {
                     urls.emplace_back(std::move(url));
@@ -1145,24 +1074,50 @@ void core::im_container::on_login_by_password(int64_t _seq, coll_helper& _params
                     urls.emplace_back(config::hosts::external_url_config::make_url_auto_preset(login_domain, host));
                     urls.emplace_back(config::hosts::external_url_config::make_url_auto_preset(login_domain, su::concat("u.", host)));
                 }
+            }
 
-                config::hosts::load_external_url_config(std::move(urls), [do_login, info = std::move(info)](ext_url_config_error _err, std::string_view _url) mutable
+            if (!host.empty())
+            {
+                config::hosts::load_external_url_config(std::move(urls), [do_login, login_error, isUserAgreementAccepted = _params.get_value_as_bool("user_agreement_accepted"), info = std::move(info)](ext_url_config_error _err, std::string_view _url) mutable
                 {
                     if (_err == ext_url_config_error::ok)
                     {
                         im_assert(!_url.empty());
                         g_core->set_external_config_url(_url);
-                        do_login(std::move(info));
+                        config::hosts::send_config_to_gui();
+
+                        if (features::is_oauth2_login_allowed() && !config::hosts::get_host_url(config::hosts::host_url_type::oauth_url).empty())
+                            info.set_login_type(login_type::lt_oauth2);
+
+                        if (config::get().is_on(config::features::external_user_agreement) && !isUserAgreementAccepted)
+                        {
+                            coll_helper coll(g_core->create_collection(), true);
+                            coll.set_value_as_string("terms_of_use_url", config::hosts::get_host_url(config::hosts::host_url_type::terms_of_use_url));
+                            coll.set_value_as_string("privacy_policy_url", config::hosts::get_host_url(config::hosts::host_url_type::privacy_policy_url));
+                            g_core->post_message_to_gui("need_external_user_agreement", 0, coll.get());
+                        }
+                        else
+                        {
+                            do_login(std::move(info));
+                        }
                     }
                     else
                     {
-                        coll_helper coll(g_core->create_collection(), true);
-                        coll.set_value_as_int("error", int(_err));
-                        g_core->post_message_to_gui("external_url_config/error", 0, coll.get());
+                        login_error(_err);
                     }
                 });
                 return;
             }
+            else
+            {
+                login_error(core::ext_url_config_error::config_host_invalid);
+                return;
+            }
+        }
+        else
+        {
+            login_error(core::ext_url_config_error::config_host_invalid);
+            return;
         }
     }
     else
@@ -1536,18 +1491,21 @@ void im_container::on_dialogs_search_local(int64_t _seq, coll_helper& _params)
         if (_params.is_value_exist("contact"))
             aimids.push_back(_params.get_value_as_string("contact"));
 
-        im->setup_search_dialogs_params(_seq);
+        im->setup_search_dialogs_params(_seq, false);
         im->search_dialogs_local(keyword, aimids);
     }
 }
 
 void im_container::on_dialogs_search_local_ended(int64_t _seq, coll_helper& _params)
 {
-    auto im = get_im(_params);
-    if (!im)
-        return;
+    if (auto im = get_im(_params))
+        im->clear_search_dialogs_params(false);
+}
 
-    im->clear_search_dialogs_params();
+void im_container::on_threads_search_local_ended(int64_t _seq, coll_helper& _params)
+{
+    if (auto im = get_im(_params))
+        im->clear_search_dialogs_params(true);
 }
 
 void im_container::on_dialogs_search_server(int64_t _seq, coll_helper& _params)
@@ -1572,6 +1530,62 @@ void im_container::on_dialogs_search_server(int64_t _seq, coll_helper& _params)
             else
                 im->search_dialogs_all(_seq, keyword);
         }
+    }
+}
+
+void im_container::on_thread_feed_search_local(int64_t _seq, coll_helper& _params)
+{
+    auto im = get_im(_params);
+    if (!im)
+        return;
+
+    const std::string keyword = _params.get_value_as_string("keyword");
+    if (!keyword.empty())
+    {
+        const std::string contact = _params.get_value_as_string("contact", "");
+        if (!contact.empty())
+        {
+            im->setup_search_dialogs_params(_seq, false);
+            im->search_thread_feed_local(keyword, contact);
+        }
+    }
+}
+
+void im_container::on_threads_search_local(int64_t _seq, coll_helper& _params)
+{
+    auto im = get_im(_params);
+    if (!im)
+        return;
+
+    const std::string keyword = _params.get_value_as_string("keyword");
+    if (!keyword.empty())
+    {
+        const std::string contact = _params.get_value_as_string("contact", "");
+        if (!contact.empty())
+        {
+            im->setup_search_dialogs_params(_seq, true);
+            im->search_threads_local(keyword, contact);
+        }
+    }
+}
+
+void im_container::on_threads_search_server(int64_t _seq, coll_helper& _params)
+{
+    auto im = get_im(_params);
+    if (!im)
+        return;
+
+    const std::string contact = _params.get_value_as_string("contact", "");
+    if (_params.is_value_exist("cursor"))
+    {
+        const std::string cursor = _params.get_value_as_string("cursor");
+        im->search_threads_continue(_seq, cursor, contact);
+    }
+    else
+    {
+        const std::string keyword = _params.get_value_as_string("keyword");
+        if (!keyword.empty())
+            im->search_threads(_seq, keyword, contact);
     }
 }
 
@@ -1748,7 +1762,7 @@ void im_container::on_download_file_sharing_metainfo(int64_t _seq, coll_helper& 
 
     im->download_file_sharing_metainfo(
         _seq,
-        _params.get_value_as_string("url"));
+        core::tools::filesharing_id(_params.get_value_as_string("file_id"), _params.get_value_as_string("source_id", "")));
 }
 
 void im_container::on_download_file(int64_t _seq, coll_helper& _params)
@@ -1937,8 +1951,9 @@ void im_container::on_get_sticker(int64_t _seq, coll_helper& _params)
     if (!im)
         return;
 
-    std::string source_id{ _params.get_value_as_string("source_id", "") };
-    core::tools::filesharing_id filesharing_id{ _params.get_value_as_string("file_id", ""), source_id.empty() ? std::nullopt : std::make_optional(std::move(source_id)) };
+    auto file_id = _params.get_value_as_string("file_id", "");
+    auto source_id = _params.get_value_as_string("source_id", "");
+    core::tools::filesharing_id filesharing_id(file_id, source_id);
 
     im->get_sticker(_seq,
         _params.get_value_as_int("set_id", -1),
@@ -1966,9 +1981,9 @@ void im_container::on_get_sticker_cancel(int64_t _seq, coll_helper& _params)
     for (core::iarray::size_type i = 0; i < size; ++i)
     {
         core::coll_helper value(stickers_ids->get_at(i)->get_as_collection(), false);
-        std::string file_id = value.get_value_as_string("file_id", "");
-        std::string source = value.get_value_as_string("source", "");
-        result.push_back({ std::move(file_id), source.empty() ? std::nullopt : std::make_optional(std::move(source)) });
+        auto file_id = value.get_value_as_string("file_id", "");
+        auto source = value.get_value_as_string("source_id", "");
+        result.push_back(core::tools::filesharing_id(file_id, source));
     }
 
     if (result.empty())
@@ -2003,13 +2018,13 @@ void im_container::on_get_stickers_pack_info(int64_t _seq, coll_helper& _params)
     if (!im)
         return;
 
-    std::string file_id = _params.get_value_as_string("file_id", "");
-    std::string source = _params.get_value_as_string("source", "");
+    auto file_id = _params.get_value_as_string("file_id", "");
+    auto source = _params.get_value_as_string("source", "");
 
     im->get_stickers_pack_info(_seq,
         _params.get_value_as_int("set_id"),
         _params.get_value_as_string("store_id"),
-        { std::move(file_id), source.empty() ? std::nullopt : std::make_optional(std::move(source)) });
+        core::tools::filesharing_id(file_id, source));
 }
 
 void im_container::on_add_stickers_pack(int64_t _seq, coll_helper& _params)
@@ -2102,6 +2117,7 @@ void im_container::on_get_chat_info(int64_t _seq, coll_helper& _params)
         return;
 
     std::string aimid, stamp;
+    bool threads_auto_subscribe{ false };
 
     if (_params->is_value_exist("stamp"))
         stamp = _params.get_value_as_string("stamp");
@@ -2109,9 +2125,31 @@ void im_container::on_get_chat_info(int64_t _seq, coll_helper& _params)
     if (_params->is_value_exist("aimid"))
         aimid = _params.get_value_as_string("aimid");
 
+    if (_params.is_value_exist("threadsAutoSubscribe"))
+        threads_auto_subscribe = _params.get_value_as_bool("threadsAutoSubscribe");
+
     im_assert(!stamp.empty() || !aimid.empty());
 
-    im->get_chat_info(_seq, aimid, stamp, _params.get_value_as_int("limit"));
+    im->get_chat_info(_seq, aimid, stamp, _params.get_value_as_int("limit"), threads_auto_subscribe);
+}
+
+
+void core::im_container::on_thread_autosubscribe(const int64_t _seq, coll_helper& _params)
+{
+    auto im = get_im(_params);
+    if (!im)
+        return;
+
+    bool enable{ false };
+    std::string chat_id;
+
+    if (_params.is_value_exist("chat_id"))
+        chat_id = _params.get_value_as_string("chat_id");
+
+    if (_params.is_value_exist("thread_auto_subscribe"))
+        enable = _params.get_value_as_bool("thread_auto_subscribe");
+
+    im->thread_autosubscribe(_seq, chat_id, enable);
 }
 
 void im_container::on_get_chat_home(int64_t _seq, coll_helper& _params)
@@ -2433,10 +2471,10 @@ void core::im_container::on_set_user_proxy(int64_t _seq, coll_helper& _params)
     im_assert(user_proxy.proxy_type_ >= 0 || user_proxy.proxy_type_ == -1);
 
     user_proxy.use_proxy_ = user_proxy.proxy_type_ != -1;
-    user_proxy.proxy_server_ = tools::from_utf8(_params.get_value_as_string("settings_proxy_server"));
+    user_proxy.proxy_server_ = _params.get_value_as_string("settings_proxy_server");
     user_proxy.proxy_port_ = _params.get_value_as_int("settings_proxy_port");
-    user_proxy.login_ = tools::from_utf8(_params.get_value_as_string("settings_proxy_username"));
-    user_proxy.password_ = tools::from_utf8(_params.get_value_as_string("settings_proxy_password"));
+    user_proxy.login_ = _params.get_value_as_string("settings_proxy_username");
+    user_proxy.password_ = _params.get_value_as_string("settings_proxy_password");
     user_proxy.need_auth_ = _params.get_value_as_bool("settings_proxy_need_auth");
     user_proxy.auth_type_ = _params.get_value_as_enum<core::proxy_auth>("settings_proxy_auth_type");
 
@@ -2542,54 +2580,6 @@ void core::im_container::on_set_chat_member_role(int64_t _seq, coll_helper& _par
 
     im->set_chat_member_role(_seq, _params.get_value_as_string("aimid"), _params.get_value_as_string("contact"), _params.get_value_as_string("role"));
 }
-
-#ifndef STRIP_VOIP
-void im_container::on_get_mask_id_list(int64_t _seq, coll_helper& _params)
-{
-
-    auto im = get_im(_params);
-    if (!im)
-        return;
-
-    im->get_mask_id_list(_seq);
-}
-
-void im_container::on_get_mask_preview(int64_t _seq, coll_helper& _params)
-{
-    auto im = get_im(_params);
-    if (!im)
-        return;
-
-    im->get_mask_preview(_seq, _params.get_value_as_string("mask_id"));
-}
-
-void im_container::on_get_mask_model(int64_t _seq, coll_helper& _params)
-{
-    auto im = get_im(_params);
-    if (!im)
-        return;
-
-    im->get_mask_model(_seq);
-}
-
-void im_container::on_get_mask(int64_t _seq, coll_helper& _params)
-{
-    auto im = get_im(_params);
-    if (!im)
-        return;
-
-    im->get_mask(_seq, _params.get_value_as_string("mask_id"));
-}
-
-void im_container::on_get_existent_masks(int64_t _seq, coll_helper &_params)
-{
-    auto im = get_im(_params);
-    if (!im)
-        return;
-
-    im->get_existent_masks(_seq);
-}
-#endif
 
 bool im_container::has_valid_login() const
 {
@@ -2765,6 +2755,15 @@ void im_container::on_make_archive_holes(const int64_t _seq, coll_helper& _param
         return;
 
     im->make_archive_holes(_seq, _params.get_value_as_string("archive"));
+}
+
+void im_container::on_invalidate_history(const int64_t _seq, coll_helper& _params)
+{
+    auto im = get_im(_params);
+    if (!im)
+        return;
+
+    im->invalidate_archive_history(_seq, _params.get_value_as_string("archive"));
 }
 
 void im_container::on_invalidate_archive_data(const int64_t _seq, coll_helper& _params)
@@ -3256,28 +3255,70 @@ void im_container::on_unsubscribe_call_room_info(const int64_t _seq, coll_helper
         im->unsubscribe_call_room_info(_params.get_value_as_string("room_id"));
 }
 
-void im_container::on_subscribe_thread(const int64_t _seq, coll_helper& _params)
+void im_container::on_subscribe_thread_events(const int64_t _seq, coll_helper& _params)
 {
     if (auto im = get_im(_params))
         im->subscribe_thread_updates(to_string_vector(_params, "contacts"));
 }
 
-void im_container::on_unsubscribe_thread(const int64_t _seq, coll_helper& _params)
+void im_container::on_unsubscribe_thread_events(const int64_t _seq, coll_helper& _params)
 {
     if (auto im = get_im(_params))
         im->unsubscribe_thread_updates(to_string_vector(_params, "contacts"));
 }
 
-void core::im_container::on_subscribe_task(const int64_t _seq, coll_helper& _params)
+void im_container::on_subscribe_task(const int64_t _seq, coll_helper& _params)
 {
     if (auto im = get_im(_params))
         im->subscribe_task(_params.get_value_as_string("task_id"));
 }
 
-void core::im_container::on_unsubscribe_task(const int64_t _seq, coll_helper& _params)
+void im_container::on_unsubscribe_task(const int64_t _seq, coll_helper& _params)
 {
     if (auto im = get_im(_params))
         im->unsubscribe_task(_params.get_value_as_string("task_id"));
+}
+
+void im_container::on_subscribe_filesharing_antivirus(const int64_t /*_seq*/, coll_helper& _params)
+{
+    if (auto im = get_im(_params))
+    {
+        core::tools::filesharing_id filesharing_id(_params.get_value_as_string("file_id", ""), _params.get_value_as_string("source_id", ""));
+        im->subscribe_filesharing_antivirus(filesharing_id);
+    }
+}
+
+void im_container::on_unsubscribe_filesharing_antivirus(const int64_t /*_seq*/, coll_helper& _params)
+{
+    if (auto im = get_im(_params))
+    {
+        core::tools::filesharing_id filesharing_id(_params.get_value_as_string("file_id", ""), _params.get_value_as_string("source_id", ""));
+        im->unsubscribe_filesharing_antivirus(filesharing_id);
+    }
+}
+
+void core::im_container::on_subscribe_mails_counter(const int64_t /*_seq*/, coll_helper& _params)
+{
+    if (auto im = get_im(_params))
+        im->subscribe_mails_counter();
+}
+
+void core::im_container::on_unsubscribe_mails_counter(const int64_t /*_seq*/, coll_helper& _params)
+{
+    if (auto im = get_im(_params))
+        im->unsubscribe_mails_counter();
+}
+
+void im_container::on_subscribe_tasks_counter(const int64_t /*_seq*/, coll_helper& _params)
+{
+    if (auto im = get_im(_params))
+        im->subscribe_tasks_counter();
+}
+
+void im_container::on_unsubscribe_tasks_counter(const int64_t /*_seq*/, coll_helper& _params)
+{
+    if (auto im = get_im(_params))
+        im->unsubscribe_tasks_counter();
 }
 
 void im_container::on_get_emoji(const int64_t _seq, coll_helper& _params)
@@ -3302,10 +3343,84 @@ void im_container::on_add_thread(const int64_t _seq, coll_helper& _params)
     }
 }
 
+void im_container::on_get_thread(const int64_t _seq, coll_helper& _params)
+{
+    if (auto im = get_im(_params))
+        im->get_thread_info(_seq, _params.get_value_as_string("thread_id"));
+}
+
 void im_container::on_threads_feed_get(const int64_t _seq, coll_helper& _params)
 {
     if (auto im = get_im(_params))
         im->get_threads_feed(_seq, _params.get_value_as_string("cursor"));
+}
+
+void im_container::on_subscribe_thread(const int64_t _seq, coll_helper& _params)
+{
+    if (auto im = get_im(_params))
+        im->subscribe_thread(_seq, _params.get_value_as_string("thread_id"));
+}
+
+void im_container::on_unsubscribe_thread(const int64_t _seq, coll_helper& _params)
+{
+    if (auto im = get_im(_params))
+        im->unsubscribe_thread(_seq, _params.get_value_as_string("thread_id"));
+}
+
+void im_container::on_threads_subscribers_get(const int64_t _seq, coll_helper& _params)
+{
+    auto im = get_im(_params);
+    if (!im)
+        return;
+
+    const auto thread_id = _params.get_value_as_string("thread_id");
+    const auto page_size = _params.get_value_as_uint("page_size");
+
+    if (_params.is_value_exist("cursor"))
+        im->get_thread_subscribers_next_page(_seq, thread_id, _params.get_value_as_string("cursor"), page_size);
+    else
+        im->get_thread_subscribers_page(_seq, thread_id, _params.get_value_as_string("role"), page_size);
+}
+
+void im_container::on_threads_subscribers_search(const int64_t _seq, coll_helper& _params)
+{
+    auto im = get_im(_params);
+    if (!im)
+        return;
+
+    const auto thread_id = _params.get_value_as_string("thread_id");
+    const auto page_size = _params.get_value_as_uint("page_size");
+
+    if (_params.is_value_exist("cursor"))
+    {
+        im->search_thread_subscribers_next_page(_seq, thread_id, _params.get_value_as_string("cursor"), page_size);
+    }
+    else
+    {
+        const std::string keyword = _params.get_value_as_string("keyword");
+        if (!keyword.empty())
+            im->search_thread_subscribers_page(_seq, thread_id, _params.get_value_as_string("role"), keyword, page_size);
+    }
+}
+
+void im_container::on_chats_thread_add(const int64_t _seq, coll_helper& _params)
+{
+    if (auto im = get_im(_params))
+        im->add_chat_thread(_params.get_value_as_string("chat_id"), _params.get_value_as_int64("msg_id"), _params.get_value_as_string("thread_id"));
+}
+
+void im_container::on_chats_thread_remove(const int64_t _seq, coll_helper& _params)
+{
+    if (auto im = get_im(_params))
+    {
+        if (const std::string chat_id = _params.get_value_as_string("chat_id"); !chat_id.empty())
+        {
+            if (_params.is_value_exist("msg_id"))
+                im->remove_chat_thread(chat_id, _params.get_value_as_int64("msg_id"));
+            else
+                im->remove_chat_thread(chat_id, _params.get_value_as_string("thread_id"));
+        }
+    }
 }
 
 void im_container::on_draft_set(const int64_t _seq, coll_helper& _params)

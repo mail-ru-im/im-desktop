@@ -41,7 +41,7 @@ namespace
 
 namespace Ui
 {
-    CustomButton::CustomButton(QWidget* _parent, const QString& _svgName, const QSize& _iconSize, const QColor& _defaultColor)
+    CustomButton::CustomButton(QWidget* _parent, const QString& _svgName, const QSize& _iconSize, const Styling::ColorParameter& _defaultColor)
         : QAbstractButton(_parent)
         , textAlign_(Qt::AlignCenter)
         , textOffsetLeft_(0)
@@ -59,18 +59,13 @@ namespace Ui
         , animFocus_(new QVariantAnimation(this))
         , spinTimer_(new QTimer(this))
     {
-        backgroundBrushNormal_ = Qt::transparent;
-        backgroundBrushDisabled_ = Qt::transparent;
-        backgroundBrushHovered_ = Qt::transparent;
-        backgroundBrushPressed_ = Qt::transparent;
-
         if (!_svgName.isEmpty())
             setDefaultImage(_svgName, _defaultColor, _iconSize);
 
         if (!_iconSize.isEmpty())
             setMinimumSize(Utils::scale_value(_iconSize));
-        else if (!pixmapDefault_.isNull() && !pixmapDefault_.size().isEmpty())
-            setMinimumSize(Utils::unscale_bitmap(pixmapDefault_.size()));
+        else if (const auto pixmap = pixmapDefault_.cachedPixmap(); !pixmap.isNull() && !pixmap.size().isEmpty())
+            setMinimumSize(Utils::unscale_bitmap(pixmap.size()));
 
         setCursor(Qt::PointingHandCursor);
         setFocusPolicy(Qt::NoFocus);
@@ -99,20 +94,18 @@ namespace Ui
         QPainter p(this);
         p.setRenderHints(QPainter::TextAntialiasing | QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
 
-        QBrush brush;
+        QColor brush = backgroundBrushNormal_.actualColor();
         if (!isEnabled())
-            brush = backgroundBrushDisabled_;
+            brush = backgroundBrushDisabled_.actualColor();
         else if (isPressed())
-            brush = backgroundBrushPressed_;
+            brush = backgroundBrushPressed_.actualColor();
         else if (isHovered())
-            brush = backgroundBrushHovered_;
-        else
-            brush = backgroundBrushNormal_;
+            brush = backgroundBrushHovered_.actualColor();
 
         if (shape_ == ButtonShape::ROUNDED_RECTANGLE)
         {
             p.setBrush(brush);
-            p.setPen(QPen(brush.color(), 0));
+            p.setPen(QPen(brush, 0));
             const auto radius = bgRect_.height() / 2;
             p.drawRoundedRect(bgRect_, radius, radius);
         }
@@ -123,10 +116,10 @@ namespace Ui
 
 
         const auto isAnimRunning = animFocus_->state() == QAbstractAnimation::State::Running;
-        if (focusColor_.isValid() && (isAnimRunning || hasFocus()))
+        if (const auto focusColor = focusColor_.actualColor(); focusColor.isValid() && (isAnimRunning || hasFocus()))
         {
             p.setPen(Qt::NoPen);
-            p.setBrush(focusColor_);
+            p.setBrush(focusColor);
 
             auto r = rect();
             if (isAnimRunning)
@@ -139,30 +132,30 @@ namespace Ui
             p.drawEllipse(r);
         }
 
-        if (textColor_.isValid())
+        if (const auto textColor = textColor_.actualColor(); textColor.isValid())
         {
             if (const auto btnText = text(); !btnText.isEmpty())
             {
-                p.setPen(textColor_);
+                p.setPen(textColor);
                 p.setFont(font());
                 p.drawText(rect().translated(textOffsetLeft_, 0), textAlign_, btnText);
             }
         }
 
-        if (isSpinning() && !pixmapSpinner_.isNull())
-            pixmapToDraw_ = pixmapSpinner_;
+        if (isSpinning() && !pixmapSpinner_.actualPixmap().isNull())
+            pixmapToDraw_ = pixmapSpinner_.cachedPixmap();
         else if (forceHover_)
-            pixmapToDraw_ = pixmapHover_;
-        else if (!isEnabled() && !pixmapDisabled_.isNull())
-            pixmapToDraw_ = pixmapDisabled_;
-        else if (pressed_ && !pixmapPressed_.isNull())
-            pixmapToDraw_ = pixmapPressed_;
-        else if (active_ && !pixmapActive_.isNull())
-            pixmapToDraw_ = pixmapActive_;
-        else if (hovered_ && !pixmapHover_.isNull())
-            pixmapToDraw_ = pixmapHover_;
+            pixmapToDraw_ = pixmapHover_.actualPixmap();
+        else if (!isEnabled() && !pixmapDisabled_.actualPixmap().isNull())
+            pixmapToDraw_ = pixmapDisabled_.cachedPixmap();
+        else if (pressed_ && !pixmapPressed_.actualPixmap().isNull())
+            pixmapToDraw_ = pixmapPressed_.cachedPixmap();
+        else if (active_ && !pixmapActive_.actualPixmap().isNull())
+            pixmapToDraw_ = pixmapActive_.cachedPixmap();
+        else if (hovered_ && !pixmapHover_.actualPixmap().isNull())
+            pixmapToDraw_ = pixmapHover_.cachedPixmap();
         else
-            pixmapToDraw_ = pixmapDefault_;
+            pixmapToDraw_ = pixmapDefault_.actualPixmap();
 
         if (pixmapToDraw_.isNull())
             return;
@@ -206,7 +199,7 @@ namespace Ui
         }
 
         if (!pixmapOverlay_.isNull())
-            p.drawPixmap(overlayCenterPos_ - QPoint(pixmapOverlay_.size().width()/2, pixmapOverlay_.size().height()/2), pixmapOverlay_);
+            p.drawPixmap(overlayCenterPos_ - QPoint(pixmapOverlay_.size().width() / 2, pixmapOverlay_.size().height() / 2), pixmapOverlay_);
     }
 
     void CustomButton::leaveEvent(QEvent* _e)
@@ -217,7 +210,7 @@ namespace Ui
         tooltipTimer_.stop();
         update();
 
-        if (textColor_.isValid())
+        if (textColorNormal_.isValid())
             setTextColor(textColorNormal_);
 
         QAbstractButton::leaveEvent(_e);
@@ -240,7 +233,7 @@ namespace Ui
         QAbstractButton::enterEvent(_e);
     }
 
-    void CustomButton::mousePressEvent(QMouseEvent * _e)
+    void CustomButton::mousePressEvent(QMouseEvent* _e)
     {
         pressed_ = true;
         Q_EMIT changedPress(pressed_);
@@ -254,13 +247,13 @@ namespace Ui
         QAbstractButton::mousePressEvent(_e);
     }
 
-    void CustomButton::mouseReleaseEvent(QMouseEvent * _e)
+    void CustomButton::mouseReleaseEvent(QMouseEvent* _e)
     {
         pressed_ = false;
         Q_EMIT changedPress(pressed_);
         update();
 
-        if (textColor_.isValid())
+        if (textColorNormal_.isValid())
             setTextColor(textColorNormal_);
 
         Q_EMIT clickedWithButtons(_e->button());
@@ -268,7 +261,7 @@ namespace Ui
         QAbstractButton::mouseReleaseEvent(_e);
     }
 
-    void CustomButton::resizeEvent(QResizeEvent * _event)
+    void CustomButton::resizeEvent(QResizeEvent* _event)
     {
         if (shape_ == ButtonShape::CIRCLE)
             setBackgroundRound();
@@ -338,7 +331,7 @@ namespace Ui
     {
         active_ = _isActive;
 
-        if (pixmapActive_.isNull())
+        if (pixmapActive_.cachedPixmap().isNull())
             return;
 
         update();
@@ -359,51 +352,51 @@ namespace Ui
         return pressed_;
     }
 
-    void CustomButton::setBackgroundNormal(const QBrush& _brush)
+    void CustomButton::setBackgroundNormal(const Styling::ColorParameter& _brush)
     {
-        backgroundBrushNormal_ = _brush;
+        backgroundBrushNormal_ = Styling::ColorContainer{ _brush };
         update();
     }
 
-    void CustomButton::setBackgroundDisabled(const QBrush& _brush)
+    void CustomButton::setBackgroundDisabled(const Styling::ColorParameter& _brush)
     {
-        backgroundBrushDisabled_ = _brush;
+        backgroundBrushDisabled_ = Styling::ColorContainer{ _brush };
         update();
     }
 
-    void CustomButton::setBackgroundHovered(const QBrush& _brush)
+    void CustomButton::setBackgroundHovered(const Styling::ColorParameter& _brush)
     {
-        backgroundBrushHovered_ = _brush;
+        backgroundBrushHovered_ = Styling::ColorContainer{ _brush };
         update();
     }
 
-    void CustomButton::setBackgroundPressed(const QBrush& _brush)
+    void CustomButton::setBackgroundPressed(const Styling::ColorParameter& _brush)
     {
-        backgroundBrushPressed_ = _brush;
+        backgroundBrushPressed_ = Styling::ColorContainer{ _brush };
         update();
     }
 
-    void CustomButton::setTextColor(const QColor& _color)
+    void CustomButton::setTextColor(const Styling::ColorParameter& _color)
     {
-        if (_color != textColor_)
+        if (_color.color() != textColor_.actualColor())
         {
-            textColor_ = _color;
+            textColor_ = Styling::ColorContainer{ _color };
             update();
         }
     }
 
-    void CustomButton::setNormalTextColor(const QColor & _color)
+    void CustomButton::setNormalTextColor(const Styling::ColorParameter& _color)
     {
-        textColor_ = _color;
         textColorNormal_ = _color;
+        setTextColor(textColorNormal_);
     }
 
-    void CustomButton::setHoveredTextColor(const QColor& _color)
+    void CustomButton::setHoveredTextColor(const Styling::ColorParameter& _color)
     {
         textColorHovered_ = _color;
     }
 
-    void CustomButton::setPressedTextColor(const QColor & _color)
+    void CustomButton::setPressedTextColor(const Styling::ColorParameter& _color)
     {
         textColorPressed_ = _color;
     }
@@ -418,7 +411,7 @@ namespace Ui
 
     void CustomButton::setBackgroundRound()
     {
-        bgRect_.setWidth(Utils::unscale_bitmap(pixmapDefault_.rect()).width() / std::sqrt(2.5));
+        bgRect_.setWidth(Utils::unscale_bitmap(pixmapDefault_.cachedPixmap().rect()).width() / std::sqrt(2.5));
         bgRect_.setHeight(bgRect_.width());
 
         int x = (width() - bgRect_.width()) / 2;
@@ -461,16 +454,16 @@ namespace Ui
         update();
     }
 
-    void CustomButton::setFocusColor(const QColor& _color)
+    void CustomButton::setFocusColor(const Styling::ColorParameter& _color)
     {
-        focusColor_ = _color;
+        focusColor_ = Styling::ColorContainer{ _color };
         if (hasFocus())
             update();
     }
 
-    QPixmap CustomButton::getPixmap(const QString& _path, const QColor& _color, const QSize& _size) const
+    Utils::StyledPixmap CustomButton::getPixmap(const QString& _path, const Styling::ColorParameter& _color, const QSize& _size) const
     {
-        return Utils::renderSvgScaled(_path, _size.isEmpty() ? svgSize_ : _size, _color);
+        return Utils::StyledPixmap::scaled(_path, _size.isEmpty() ? svgSize_ : _size, _color);
     }
 
     void CustomButton::onTooltipTimer()
@@ -486,7 +479,7 @@ namespace Ui
             if (const auto t = getCustomToolTip(); !t.isEmpty())
             {
                 const auto r = rect();
-                Tooltip::show(t, QRect(mapToGlobal(r.topLeft()), r.size()), {0, 0}, Tooltip::ArrowDirection::Down);
+                Tooltip::show(t, QRect(mapToGlobal(r.topLeft()), r.size()), { 0, 0 }, Tooltip::ArrowDirection::Down);
             }
         }
     }
@@ -517,39 +510,39 @@ namespace Ui
         animFocus_->start();
     }
 
-    void CustomButton::setDefaultColor(const QColor& _color)
+    void CustomButton::setDefaultColor(const Styling::ColorParameter& _color)
     {
         setDefaultImage(svgPath_, _color);
     }
 
-    void CustomButton::setHoverColor(const QColor& _color)
+    void CustomButton::setHoverColor(const Styling::ColorParameter& _color)
     {
         setHoverImage(svgPath_, _color);
     }
 
-    void CustomButton::setActiveColor(const QColor& _color)
+    void CustomButton::setActiveColor(const Styling::ColorParameter& _color)
     {
         setActiveImage(svgPath_, _color);
     }
 
-    void CustomButton::setDisabledColor(const QColor& _color)
+    void CustomButton::setDisabledColor(const Styling::ColorParameter& _color)
     {
         setDisabledImage(svgPath_, _color);
     }
 
-    void CustomButton::setPressedColor(const QColor& _color)
+    void CustomButton::setPressedColor(const Styling::ColorParameter& _color)
     {
         setPressedImage(svgPath_, _color);
     }
 
-    void CustomButton::addOverlayPixmap(const QPixmap &_pixmap, QPoint _pos)
+    void CustomButton::addOverlayPixmap(const QPixmap& _pixmap, QPoint _pos)
     {
         pixmapOverlay_ = _pixmap;
         overlayCenterPos_ = _pos;
         update();
     }
 
-    void CustomButton::setDefaultImage(const QString& _svgPath, const QColor& _color, const QSize& _size)
+    void CustomButton::setDefaultImage(const QString& _svgPath, const Styling::ColorParameter& _color, const QSize& _size)
     {
         svgPath_ = _svgPath;
         if (!_size.isEmpty())
@@ -560,42 +553,42 @@ namespace Ui
         update();
     }
 
-    void CustomButton::setHoverImage(const QString& _svgPath, const QColor& _color, const QSize& _size)
+    void CustomButton::setHoverImage(const QString& _svgPath, const Styling::ColorParameter& _color, const QSize& _size)
     {
         pixmapHover_ = getPixmap(_svgPath, _color, _size);
         update();
     }
 
-    void CustomButton::setActiveImage(const QString& _svgPath, const QColor& _color, const QSize& _size)
+    void CustomButton::setActiveImage(const QString& _svgPath, const Styling::ColorParameter& _color, const QSize& _size)
     {
         pixmapActive_ = getPixmap(_svgPath, _color, _size);
         update();
     }
 
-    void CustomButton::setDisabledImage(const QString& _svgPath, const QColor& _color, const QSize& _size)
+    void CustomButton::setDisabledImage(const QString& _svgPath, const Styling::ColorParameter& _color, const QSize& _size)
     {
         pixmapDisabled_ = getPixmap(_svgPath, _color, _size);
         update();
     }
 
-    void CustomButton::setPressedImage(const QString& _svgPath, const QColor& _color, const QSize& _size)
+    void CustomButton::setPressedImage(const QString& _svgPath, const Styling::ColorParameter& _color, const QSize& _size)
     {
         pixmapPressed_ = getPixmap(_svgPath, _color, _size);
         update();
     }
 
-    void CustomButton::setSpinnerImage(const QString& _svgPath, const QColor& _color, const QSize& _size)
+    void CustomButton::setSpinnerImage(const QString& _svgPath, const Styling::ColorParameter& _color, const QSize& _size)
     {
         pixmapSpinner_ = getPixmap(_svgPath, _color, _size);
     }
 
     void CustomButton::clearIcon()
     {
-        pixmapDefault_ = QPixmap();
-        pixmapActive_ = QPixmap();
-        pixmapDisabled_ = QPixmap();
-        pixmapPressed_ = QPixmap();
-        pixmapHover_ = QPixmap();
+        pixmapDefault_ = Utils::StyledPixmap{};
+        pixmapActive_ = Utils::StyledPixmap{};
+        pixmapDisabled_ = Utils::StyledPixmap{};
+        pixmapPressed_ = Utils::StyledPixmap{};
+        pixmapHover_ = Utils::StyledPixmap{};
         update();
     }
 
@@ -611,14 +604,13 @@ namespace Ui
 
     RoundButton::RoundButton(QWidget* _parent, int _radius)
         : ClickableWidget(_parent)
-        , forceHover_(false)
         , radius_(_radius == 0 ? getBubbleCornerRadius() : _radius)
     {
         connect(this, &RoundButton::hoverChanged, this, qOverload<>(&RoundButton::update));
         connect(this, &RoundButton::pressChanged, this, qOverload<>(&RoundButton::update));
     }
 
-    void RoundButton::setColors(const QColor& _bgNormal, const QColor& _bgHover, const QColor& _bgActive)
+    void RoundButton::setColors(const Styling::ThemeColorKey& _bgNormal, const Styling::ThemeColorKey& _bgHover, const Styling::ThemeColorKey& _bgActive)
     {
         bgNormal_ = _bgNormal;
         bgHover_ = _bgHover;
@@ -626,7 +618,7 @@ namespace Ui
         update();
     }
 
-    void RoundButton::setTextColor(const QColor& _color)
+    void RoundButton::setTextColor(const Styling::ThemeColorKey& _color)
     {
         textColor_ = _color;
 
@@ -645,7 +637,7 @@ namespace Ui
         else
         {
             text_ = TextRendering::MakeTextUnit(_text, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-            text_->init(Fonts::appFontScaled(_size), textColor_);
+            text_->init({ Fonts::appFontScaled(_size), textColor_ });
             text_->evaluateDesiredSize();
         }
 
@@ -654,11 +646,11 @@ namespace Ui
 
     void RoundButton::setIcon(const QString& _iconPath, int _size)
     {
-        icon_ = Utils::renderSvgScaled(_iconPath, _size == 0 ? buttonIconSize() : QSize(_size, _size), textColor_);
+        icon_ = Utils::StyledPixmap::scaled(_iconPath, _size == 0 ? buttonIconSize() : QSize(_size, _size), textColor_);
         update();
     }
 
-    void RoundButton::setIcon(const QPixmap& _icon)
+    void RoundButton::setIcon(const Utils::StyledPixmap& _icon)
     {
         icon_ = _icon;
         update();
@@ -687,22 +679,24 @@ namespace Ui
         if (const auto bg = getBgColor(); bg.isValid())
             drawBubble(p, rect(), bg, getMargin(), getMargin(), radius_);
 
-        const auto hasIcon = !icon_.isNull();
+        const auto pixmap = icon_.actualPixmap();
+
+        const auto hasIcon = !pixmap.isNull();
         const auto hasText = !!text_;
 
         if (!hasIcon && !hasText)
             return;
 
         const auto r = Utils::scale_bitmap_ratio();
-        const auto iconWidth = hasIcon ? icon_.width() / r : 0;
+        const auto iconWidth = hasIcon ? pixmap.width() / r : 0;
         const auto textWidth = hasText ? text_->desiredWidth() : 0;
         const auto fullWidth = iconWidth + textWidth + ((hasText && hasIcon) ? textIconSpacing() : 0);
 
         if (hasIcon)
         {
             const auto x = (width() - fullWidth) / 2;
-            const auto y = (height() - icon_.height() / r) / 2;
-            p.drawPixmap(x, y, icon_);
+            const auto y = (height() - pixmap.height() / r) / 2;
+            p.drawPixmap(x, y, pixmap);
         }
 
         if (hasText)
@@ -721,18 +715,30 @@ namespace Ui
         update();
     }
 
+    QSize RoundButton::getTextSize() const
+    {
+        if (text_)
+            return text_->cachedSize();
+        return {};
+    }
+
+    int RoundButton::getRadius() const
+    {
+        return radius_;
+    }
+
     QColor RoundButton::getBgColor() const
     {
         if (forceHover_)
-            return bgHover_;
+            return bgHover_.actualColor();
 
         QColor bg;
-        if (isPressed() && bgActive_.isValid())
-            bg = bgActive_;
-        else if (isHovered() && bgHover_.isValid())
-            bg = bgHover_;
+        if (const auto active = bgActive_.actualColor(); isPressed() && active.isValid())
+            bg = active;
+        else if (const auto hovered = bgHover_.actualColor(); isHovered() && hovered.isValid())
+            bg = hovered;
         else
-            bg = bgNormal_;
+            bg = bgNormal_.actualColor();
 
         return bg;
     }

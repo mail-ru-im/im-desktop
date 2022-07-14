@@ -22,7 +22,7 @@ void GeneralSettingsWidget::Creator::initShortcuts(ShortcutsSettings* _parent)
 {
     auto scrollArea = CreateScrollAreaAndSetTrScrollBarV(_parent);
     scrollArea->setWidgetResizable(true);
-    scrollArea->setStyleSheet(ql1s("QWidget{border: none; background-color: %1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
+    scrollArea->setStyleSheet(ql1s("QWidget{border: none; background-color: transparent;}"));
 
     Utils::grabTouchWidget(scrollArea->viewport(), true);
 
@@ -464,6 +464,18 @@ void GeneralSettingsWidget::Creator::initShortcuts(ShortcutsSettings* _parent)
             {
                 QString keys;
                 if constexpr (platform::is_apple())
+                    keys = KeySymbols::Mac::shift % KeySymbols::Mac::command % ql1c('V');
+                else
+                    keys = qsl("Ctrl + Shift + V");
+
+                GeneralCreator::addHotkeyInfo(
+                    chatInputW, chatInputL,
+                    QT_TRANSLATE_NOOP("shortcuts", "Paste text without formatting"),
+                    keys);
+            }
+            {
+                QString keys;
+                if constexpr (platform::is_apple())
                     keys = KeySymbols::Mac::shift % KeySymbols::Mac::command % ql1c('Z');
                 else if constexpr (platform::is_windows())
                     keys = qsl("Ctrl + Y");
@@ -704,19 +716,25 @@ void GeneralSettingsWidget::Creator::initShortcuts(ShortcutsSettings* _parent)
             }
         }
         {
-            auto [videoCallWindowW, videoCallWindowL] = shortcutBlock(QT_TRANSLATE_NOOP("settings", "Call window"));
+            auto res = shortcutBlock(QT_TRANSLATE_NOOP("settings", "Call window"));
+            auto addShortcut = [videoCallWindowW = res.first, videoCallWindowL = res.second](const QString _shortcutLetter, const QString& _device)
             {
                 QString keys;
                 if constexpr (platform::is_apple())
-                    keys = KeySymbols::Mac::shift % KeySymbols::Mac::command % u"A";
+                    keys = KeySymbols::Mac::shift % KeySymbols::Mac::command % _shortcutLetter;
                 else
-                    keys = qsl("Ctrl + Shift + A");
+                    keys = qsl("Ctrl + Shift + %1").arg(_shortcutLetter);
 
                 GeneralCreator::addHotkeyInfo(
                     videoCallWindowW, videoCallWindowL,
-                    QT_TRANSLATE_NOOP("shortcuts", "Switch microphone state"),
+                    QT_TRANSLATE_NOOP("shortcuts", "Switch %1 state").arg(_device),
                     keys);
-            }
+            };
+
+            addShortcut(qsl("A"), QT_TRANSLATE_NOOP("shortcuts", "microphone"));
+            addShortcut(qsl("V"), QT_TRANSLATE_NOOP("shortcuts", "video"));
+            addShortcut(qsl("S"), QT_TRANSLATE_NOOP("shortcuts", "presentation"));
+            addShortcut(qsl("D"), QT_TRANSLATE_NOOP("shortcuts", "sound"));
         }
     }
 }
@@ -745,5 +763,8 @@ Cmd+ArrowUp/Ctrl+ArrowUp - Move to the beginning of the paragraph
 Cmd+ArrowDown/Ctrl+ArrowDown - Move to the end of the paragraph
 Option+ArrowLeft/Ctrl+ArrowLeft - Move to the beginning of the word
 Option+ArrowRight/Ctrl+ArrowRight - Move to the end of the word
-Cmd+Shist+A/Ctrl+Shist+A - switch microphone state in call window
+Cmd+Shift+A/Ctrl+Shift+A - switch microphone state in call window
+Cmd+Shift+V/Ctrl+Shift+V - switch video state in call window
+Cmd+Shift+D/Ctrl+Shift+D - switch sound state in call window
+Cmd+Shift+S/Ctrl+Shift+S - switch screen sharing state in call window
 */

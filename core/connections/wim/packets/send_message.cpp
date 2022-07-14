@@ -7,6 +7,7 @@
 #include "../../../../common.shared/smartreply/smartreply_types.h"
 #include "../../urls_cache.h"
 #include "send_message.h"
+#include "../log_replace_functor.h"
 
 #include "../common.shared/string_utils.h"
 
@@ -42,19 +43,27 @@ namespace
         text_params.AddMember("text", _task->params_.title_, _a);
 
         rapidjson::Value task_params(rapidjson::Type::kObjectType);
-        task_params.AddMember("title", _task->params_.title_, _a);
-        task_params.AddMember("endTime", _task->end_time_to_seconds(), _a);
-        task_params.AddMember("assignee", _task->params_.assignee_, _a);
+        if (const auto& id = _task->id_; !id.empty())
+        {
+            task_params.AddMember("taskId", id, _a);
+        }
+        else
+        {
+            task_params.AddMember("title", _task->params_.title_, _a);
+            task_params.AddMember("endTime", _task->end_time_to_seconds(), _a);
+            task_params.AddMember("assignee", _task->params_.assignee_, _a);
+        }
 
         text_params.AddMember("task", task_params, _a);
         return text_params;
     }
-}
+} // namespace
 
 using namespace core;
 using namespace wim;
 
-send_message::send_message(wim_packet_params _params,
+send_message::send_message(
+    wim_packet_params _params,
     const int64_t _updated_id,
     const message_type _type,
     const std::string& _internal_id,
@@ -72,30 +81,29 @@ send_message::send_message(wim_packet_params _params,
     const core::tasks::task& _task,
     const smartreply::marker_opt& _smartreply_marker,
     const std::optional<int64_t>& _draft_delete_time)
-    :
-        wim_packet(std::move(_params)),
-        updated_id_(_updated_id),
-        type_(_type),
-        aimid_(_aimid),
-        message_text_(_message_text),
-        message_format_(_message_format),
-        sms_error_(0),
-        sms_count_(0),
-        internal_id_(_internal_id),
-        hist_msg_id_(-1),
-        before_hist_msg_id(-1),
-        duplicate_(false),
-        quotes_(_quotes),
-        mentions_(_mentions),
-        description_(_description),
-        description_format_(_description_format),
-        url_(_url),
-        shared_contact_(_shared_contact),
-        geo_(_geo),
-        poll_(_poll),
-        task_(_task),
-        smartreply_marker_(_smartreply_marker),
-        draft_delete_time_(_draft_delete_time)
+    : wim_packet(std::move(_params))
+    , updated_id_(_updated_id)
+    , type_(_type)
+    , aimid_(_aimid)
+    , message_text_(_message_text)
+    , message_format_(_message_format)
+    , sms_error_(0)
+    , sms_count_(0)
+    , internal_id_(_internal_id)
+    , hist_msg_id_(-1)
+    , before_hist_msg_id(-1)
+    , duplicate_(false)
+    , quotes_(_quotes)
+    , mentions_(_mentions)
+    , description_(_description)
+    , description_format_(_description_format)
+    , url_(_url)
+    , shared_contact_(_shared_contact)
+    , geo_(_geo)
+    , poll_(_poll)
+    , task_(_task)
+    , smartreply_marker_(_smartreply_marker)
+    , draft_delete_time_(_draft_delete_time)
 {
     im_assert(!internal_id_.empty());
 }
@@ -197,6 +205,8 @@ int32_t send_message::init_request(const std::shared_ptr<core::http_request_simp
         rapidjson::Value text_params(rapidjson::Type::kObjectType);
         text_params.AddMember("mediaType", "text", a);
         text_params.AddMember("text", message_text_, a);
+        if (!message_format_.empty())
+            text_params.AddMember("format", message_format_.serialize(a), a);
 
         text_params.AddMember("poll", create_poll_params(poll_, a), a);
         doc.PushBack(std::move(text_params), a);
@@ -412,4 +422,9 @@ priority_t send_message::get_priority() const
 std::string_view send_message::get_method() const
 {
     return type_ == message_type::sticker && quotes_.empty() ? std::string_view("sendSticker") : std::string_view("sendIM");
+}
+
+int send_message::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }

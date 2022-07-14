@@ -38,8 +38,8 @@ namespace core
             std::string conference_url_;
             int64_t expires_on_;
 
-            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
-            virtual int32_t parse_results(const rapidjson::Value& _data) override;
+            int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            int32_t parse_results(const rapidjson::Value& _data) override;
 
         public:
             create_conference(wim_packet_params _params, std::string_view _name, conference_type _type, std::vector<std::string> _participants, bool _call_participants);
@@ -48,7 +48,8 @@ namespace core
             const std::string& get_conference_url() const { return conference_url_; }
             int64_t get_expires_on_() const { return expires_on_; }
 
-            virtual std::string_view get_method() const override;
+            std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
         };
     }
 }

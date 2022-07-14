@@ -22,6 +22,8 @@ namespace Ui
 
     class WallpaperPreviewWidget : public QWidget
     {
+        Q_OBJECT
+
     public:
         WallpaperPreviewWidget(QWidget* _parent = nullptr, const PreviewMessagesVector& _messages = {});
         void updateFor(const QString& _aimId);
@@ -31,10 +33,14 @@ namespace Ui
         void showEvent(QShowEvent*);
 
     private:
-        void onWallpaperAvailable(const Styling::WallpaperId& _id);
-        void onFontParamsChanged();
         void onResize();
 
+    private Q_SLOTS:
+        void onWallpaperAvailable(const Styling::WallpaperId& _id);
+        void onFontParamsChanged();
+        void onGlobalThemeChanged();
+
+    private:
         BackgroundWidget* bg_;
         QString aimId_;
     };

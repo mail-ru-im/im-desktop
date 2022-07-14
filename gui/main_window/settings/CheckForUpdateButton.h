@@ -4,7 +4,7 @@ namespace Ui
 {
     class ProgressAnimation;
     class CustomButton;
-    class TextWidget;
+    class ClickableTextWidget;
 
     class CheckForUpdateButton : public QWidget
     {
@@ -27,7 +27,7 @@ namespace Ui
     private:
         ProgressAnimation* animation_ = nullptr;
         CustomButton* icon_ = nullptr;
-        TextWidget* text_ = nullptr;
+        ClickableTextWidget* text_ = nullptr;
 
         std::optional<int64_t> seq_;
 

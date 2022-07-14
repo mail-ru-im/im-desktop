@@ -13,7 +13,7 @@ namespace
         }
         QString getFriendlyName() const override
         {
-            return QT_TRANSLATE_NOOP("task", "No assignee");
+            return QT_TRANSLATE_NOOP("task", "Unassigned");
         }
     };
 }

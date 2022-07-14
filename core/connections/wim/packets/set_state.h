@@ -21,8 +21,8 @@ namespace core
     {
         class set_state : public wim_packet
         {
-            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
-            virtual int32_t parse_response_data(const rapidjson::Value& _data) override;
+            int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            int32_t parse_response_data(const rapidjson::Value& _data) override;
 
             const profile_state	state_;
 
@@ -30,9 +30,10 @@ namespace core
             set_state(wim_packet_params _params, const profile_state _state);
             virtual ~set_state();
 
-            virtual priority_t get_priority() const override;
+            priority_t get_priority() const override;
 
-            virtual std::string_view get_method() const override;
+            std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
         };
 
     }

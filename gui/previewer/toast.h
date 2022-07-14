@@ -16,18 +16,24 @@ class ToastBase : public QWidget
 {
     Q_OBJECT
 public:
+    enum class MoveDirection
+    {
+        TopToBottom,
+        BottomToTop
+    };
     explicit ToastBase(QWidget *parent = nullptr);
 
     void showAt(const QPoint& _center, bool _onTop = false);
-    virtual bool keepRows() const { return false;}
-    virtual bool sameSavePath(const ToastBase* _other) const { return true;}
+    virtual bool keepRows() const { return keepRows_;}
+    virtual bool sameSavePath(const ToastBase* _other) const { return false;}
     virtual QString getPath() const { return QString(); }
-
+    void setDirection(MoveDirection _dir);
     void setVisibilityDuration(std::chrono::milliseconds _duration);
     void setUseMainWindowShift(bool _enable);
     void setBackgroundColor(const QColor& _color);
     void enableMoveAnimation(bool _enable);
     void enableMultiScreenShowing(bool _enable);
+    void setKeepRows(bool _keepRows);
 
     bool isMultiScreenShowing() const { return isMultiScreenShowingEnabled_; }
 
@@ -54,6 +60,7 @@ private:
     QTimer hideTimer_;
     QTimer startHideTimer_;
     QColor bgColor_;
+    MoveDirection direction_;
 
     QVariantAnimation* opacityAnimation_;
     QVariantAnimation* moveAnimation_;
@@ -63,6 +70,7 @@ private:
     bool useMainWindowShift_ = false;
     bool isMoveAnimationEnabled_ = true;
     bool isMultiScreenShowingEnabled_ = false;
+    bool keepRows_ = false;
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -105,6 +113,8 @@ class Toast : public ToastBase // simple toast with text
 {
 public:
     Toast(const QString& _text, QWidget* _parent = nullptr, int _maxLineCount = 1);
+
+    void setText(const QString& _text, int _maxLineCount = 1);
 
 protected:
     void drawContent(QPainter& _p) override;
@@ -184,12 +194,14 @@ namespace Utils
     void showToastOverVideoWindow(const QString& _text, int _maxLineCount = 1);
     void hideVideoWindowToast();
 
-    void showToastOverContactDialog(Ui::ToastBase* toast);
+    void showToastOverContactDialog(Ui::ToastBase* _toast);
+    void showToastOverMainWindow(Ui::ToastBase* _toast);
     void showTextToastOverContactDialog(const QString& _text, int _maxLineCount = 1); // show text toast over contactDialog
     void showDownloadToast(const QString& _chatAimId, const Data::FileSharingDownloadResult& _result);
     void showCopiedToast(std::optional<std::chrono::milliseconds> _visibilityDuration = std::nullopt);
 
     void showMultiScreenToast(const QString& _text, int _maxLineCount = 1);
+    void showWebDownloadToast(const QString& _filename, bool _downloaded);
 
     inline constexpr std::chrono::milliseconds defaultCopiedToastDuration() noexcept { return std::chrono::seconds(1); }
 

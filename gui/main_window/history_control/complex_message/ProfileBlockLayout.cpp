@@ -15,20 +15,11 @@ QRect ProfileBlockLayout::getContentRect() const
     return contentRect_;
 }
 
-QSize ProfileBlockLayout::blockSizeForMaxWidth(const int32_t maxWidth)
+QSize ProfileBlockLayout::setBlockGeometryInternal(const QRect& _widgetGeometry)
 {
     auto &block = *blockWidget<ProfileBlockBase>();
-    auto width = std::min(maxWidth, block.desiredWidth());
-
-    return QSize(width, block.getHeightForWidth(width));
-}
-
-QSize ProfileBlockLayout::setBlockGeometryInternal(const QRect& widgetGeometry)
-{
-    auto &block = *blockWidget<ProfileBlockBase>();
-
-    auto width = std::min(widgetGeometry.width(), block.desiredWidth());
-    contentRect_ = QRect(widgetGeometry.topLeft(), QSize(width, block.getHeightForWidth(width)));
+    auto width = _widgetGeometry.width();
+    contentRect_ = QRect(_widgetGeometry.topLeft(), QSize(width, block.updateSizeForWidth(width)));
 
     return contentRect_.size();
 }

@@ -26,8 +26,12 @@ constexpr auto crossprocess_message_execute_url_command() noexcept { return QStr
 constexpr auto url_command_join_livechat() noexcept { return u"chat"; }
 constexpr auto url_command_stickerpack_info() noexcept { return u"s"; }
 constexpr auto url_command_open_profile() noexcept { return u"people"; }
+constexpr auto url_command_open_both_profile_and_chat() noexcept { return u"profile"; }
+constexpr auto url_command_open_app() noexcept { return u"app"; }
+constexpr auto url_command_open_miniapp() noexcept { return u"miniapp"; }
 constexpr auto url_command_service() noexcept { return u"service"; }
 constexpr auto url_command_vcs_call() noexcept { return u"call"; }
+constexpr auto url_command_open_auth_modal_response() noexcept { return u"authmodal"; }
 constexpr auto url_commandpath_service_getlogs() noexcept { return u"getlogs"; }
 constexpr auto url_commandpath_service_getlogs_with_rtp() noexcept { return u"getlogswithrtp"; }
 constexpr auto url_commandpath_agent_profile() noexcept { return u"profile"; }
@@ -35,6 +39,9 @@ constexpr auto url_commandpath_service_clear_avatars() noexcept { return u"clear
 constexpr auto url_commandpath_service_clear_cache() noexcept { return u"clear/cache"; }
 constexpr auto url_commandpath_service_debug() noexcept { return u"debug"; }
 constexpr auto url_commandpath_service_update() noexcept { return u"update"; }
+constexpr auto url_command_create_group() noexcept { return u"newchat"; }
+constexpr auto url_command_create_channel() noexcept { return u"newchannel"; }
+constexpr auto url_command_copy_to_clipboard() noexcept { return u"copy_to_buffer"; }
 
 constexpr auto mimetype_marker() noexcept { return "imdesktop"; }
 

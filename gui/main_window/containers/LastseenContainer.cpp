@@ -3,6 +3,7 @@
 #include "LastseenContainer.h"
 #include "../../core_dispatcher.h"
 #include "main_window/contact_list/ContactListModel.h"
+#include "main_window/contact_list/Common.h"
 
 namespace
 {
@@ -47,6 +48,7 @@ namespace Logic
             return;
 
         seen = _lastSeen;
+        Logic::getContactListModel()->updateDeleted(_aimid, seen.isBlocked());
 
         if (auto subscription = subscriptions_.find(_aimid); subscription != subscriptions_.end())
             emitChanged(_aimid);
@@ -121,6 +123,7 @@ namespace Logic
                     continue;
 
                 seen = lastSeen;
+                Logic::getContactListModel()->updateDeleted(aimid, seen.isBlocked());
                 emitChanged(aimid);
             }
         }
@@ -162,13 +165,13 @@ namespace Logic
         toRequest_.clear();
     }
 
-    static std::unique_ptr<LastseenContainer> g_lastseen_container;
+    static QObjectUniquePtr<LastseenContainer> g_lastseen_container;
 
     LastseenContainer* GetLastseenContainer()
     {
         Utils::ensureMainThread();
         if (!g_lastseen_container)
-            g_lastseen_container = std::make_unique<LastseenContainer>(nullptr);
+            g_lastseen_container = makeUniqueQObjectPtr<LastseenContainer>();
 
         return g_lastseen_container.get();
     }

@@ -4,6 +4,8 @@
 #include "../utils/utils.h"
 #include "../main_window/history_control/complex_message/FileSharingUtils.h"
 
+class QQmlEngine;
+
 namespace core
 {
     enum class add_member_failure;
@@ -15,16 +17,29 @@ namespace Ui
     class HistoryControlPage;
     class ContactDialog;
     class MainPage;
+#if HAS_WEB_ENGINE
+    class WebAppPage;
+#endif
     class AppsPage;
     struct SidebarParams;
     class DialogPlayer;
     class core_dispatcher;
+
+    enum class AppPageType;
 
     enum class FrameCountMode
     {
         _1,
         _2,
         _3
+    };
+
+    enum class PageOpenedAs
+    {
+        MainPage,
+        ReopenedMainPage,
+        FeedPage,
+        FeedPageScrollable
     };
 }
 
@@ -50,6 +65,12 @@ namespace Statuses
     class Status;
 }
 
+namespace Qml
+{
+    class Engine;
+    class RootModel;
+}
+
 namespace Utils
 {
     enum class CommonSettingsType
@@ -72,7 +93,6 @@ namespace Utils
         CommonSettingsType_Stickers,
         CommonSettingsType_Favorites,
         CommonSettingsType_Debug,
-        CommonSettingsType_Sessions,
 
         max
     };
@@ -212,13 +232,19 @@ namespace Utils
         void imageCropDialogMoved(QWidget *);
         void imageCropDialogResized(QWidget *);
 
-        void startSearchInDialog(const QString&);
+        void startSearchInDialog(const QString& _aimId, const QString& _pattern = QString());
+        void startSearchHashtag(const QString&);
         void setSearchFocus();
         void setContactSearchFocus();
 
         void searchEnd();
         void searchClosed();
         void myProfileBack();
+
+        void startSearchInThread(const QString& _aimId);
+        void threadSearchClosed();
+        void threadCloseClicked(bool _searchActive);
+        void threadSearchButtonDeactivate();
 
         void compactModeChanged();
         void mailBoxOpened();
@@ -267,6 +293,7 @@ namespace Utils
         void chatFontParamsChanged();
         void emojiSizeChanged();
 
+        void startPttRecord();
         void stopPttRecord();
 
         void openDialogOrProfileById(const QString& _id, bool _forceDialogOpen = false, std::optional<QString> _botParams = {});
@@ -294,7 +321,7 @@ namespace Utils
 
         void updateSelectedCount(const QString& _aimid);
         void messageSelected(qint64, const QString&);
-        void selectedCount(const QString& _aimId, int _totalCount, int _unsupported, int _plainFiles);
+        void selectedCount(const QString& _aimId, int _totalCount, int _unsupported, int _plainFiles, bool _deleteEnabled);
         void multiselectAnimationUpdate();
         void selectionStateChanged(const QString& _aimid, qint64, const QString&, bool);
 
@@ -356,17 +383,52 @@ namespace Utils
         void openDialogGallery(const QString& _aimid);
 
         void scrollThreadFeedToMsg(const QString& _threadId, int64_t _msgId);
-        void scrollThreadToMsg(const QString& _threadId, int64_t _msgId);
+        void scrollThreadToMsg(const QString& _threadId, int64_t _msgId, const Ui::highlightsV& _highlights = {});
+
+        void botCommandsDisabledChatsUpdated();
+        void composeEmail(const QString& _email);
+
+        void clearSelection();
+
+        void requestApp(const QString& _appId, const QString& _urlQuery = {}, const QString& _urlFragment = {});
+
+        void stopTooltipTimer();
+
+        void updateMiniAppCounter(const QString& _miniAppId, int _counter);
+        void refreshGroupInfo();
+        void changeBackButtonVisibility(const QString& _aimId, bool _isVisible);
+        void scrollToNewsFeedMesssage(const QString& _aimId, int64_t _msgId, const Ui::highlightsV& _highlights);
+        void contactFilterRemoved(const QString& _aimId);
+
+        void createGroupChat();
+        void createChannel();
+
+        void onOpenAuthModalResponse(const QString& _requestId, const QString& _redirectUrlQuery);
+
+        void loginCompleted();
+        void additionalThemesChanged();
+        
+        void incomingCallAlert();
 
     public:
         static InterConnector& instance();
         ~InterConnector();
+
+        InterConnector& operator=(const InterConnector&) = delete;
+        InterConnector(InterConnector&&) = delete;
+        InterConnector(const InterConnector&) = delete;
 
         void clearInternalCaches();
 
         void setMainWindow(Ui::MainWindow* window);
         void startDestroying();
         Ui::MainWindow* getMainWindow(bool _check_destroying = false) const;
+
+        void setQmlEngine(Qml::Engine* _engine);
+        Qml::Engine* qmlEngine() const;
+
+        void setQmlRootModel(Qml::RootModel* _model);
+        Qml::RootModel* qmlRootModel() const;
 
         Ui::HistoryControlPage* getHistoryPage(const QString& _aimId) const;
         Ui::PageBase* getPage(const QString& _aimId) const;
@@ -379,16 +441,23 @@ namespace Utils
         Ui::AppsPage* getAppsPage() const;
         Ui::MainPage* getMessengerPage() const;
 
+#ifdef HAS_WEB_ENGINE
+        Ui::WebAppPage* getTasksPage() const;
+#endif//HAS_WEB_ENGINE
+
+        int getHeaderHeight() const;
         bool isInBackground() const;
 
         void showSidebar(const QString& aimId);
         void showSidebarWithParams(const QString& aimId, Ui::SidebarParams _params);
         void showMembersInSidebar(const QString& aimId);
         void setSidebarVisible(bool _visible);
+        void navigateBackFromThreadInfo(const QString& _aimId);
         bool isSidebarVisible() const;
         void restoreSidebar();
         QString getSidebarAimid() const;
         QString getSidebarSelectedText() const;
+        bool isSidebarWithThreadPage() const;
 
         void setDragOverlay(bool enable);
         bool isDragOverlay() const;
@@ -432,27 +501,37 @@ namespace Utils
         void connectTo(Ui::core_dispatcher*);
 
         std::pair<QUrl, bool> signUrl(const QString& _miniappId, QUrl _url) const;
+        QString aimSid() const;
         bool isAuthParamsValid() const;
-        bool isMiniAppAuthParamsValid(const QString& _miniappId) const;
+        bool isMiniAppAuthParamsValid(const QString& _miniappId, bool _canUseMainAimisid = true) const;
 
-        void openDialog(const QString& _aimId, qint64 _id = -1, bool _select = true, std::function<void(Ui::PageBase*)> _getPageCallback = {}, bool _ignoreScroll = false);
+        void openDialog(const QString& _aimId, qint64 _id = -1, bool _select = true, Ui::PageOpenedAs _openedAs = Ui::PageOpenedAs::MainPage, std::function<void(Ui::PageBase*)> _getPageCallback = {}, bool _ignoreScroll = false);
         void closeDialog();
+        void openThreadSearchResult(const QString& _aimId, const qint64 _messageId, const Ui::highlightsV& _highlights);
+
+        bool areBotCommandsDisabled(const QString& _aimid);
 
         void closeAndHighlightDialog();
+
+        void setLoginComplete(bool _lc);
+        bool getLoginComplete();
+#ifdef HAS_WEB_ENGINE
+        QWebEngineProfile* getLocalProfile();
+#endif//HAS_WEB_ENGINE
 
     private:
         InterConnector();
 
-        InterConnector(InterConnector&&);
-        InterConnector(const InterConnector&);
-        InterConnector& operator=(const InterConnector&);
-
         void onAuthParamsChanged(const Data::AuthParams& _params);
+        void configUpdated();
 
         std::unordered_map<KeyCombination, qint64> keyCombinationPresses_;
         Ui::MainWindow* MainWindow_;
+        Qml::Engine* qmlEngine_ = nullptr;
+        Qml::RootModel* qmlRootModel_ = nullptr;
         bool dragOverlay_;
         bool destroying_;
+        bool loginComplete_;
 
         std::unordered_set<QString> multiselectStates_;
         MultiselectCurrentElement currentElement_;
@@ -464,5 +543,11 @@ namespace Utils
         std::unique_ptr<Data::AuthParams> authParams_;
 
         std::unordered_map<QString, QPointer<Ui::PageBase>> historyPages_;
+
+#ifdef HAS_WEB_ENGINE
+        QWebEngineProfile* localProfile_;
+#endif //HAS_WEB_ENGINE
+
+        QStringList botCommandsDisabledChats_;
     };
 }

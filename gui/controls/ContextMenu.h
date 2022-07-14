@@ -36,6 +36,8 @@ namespace Ui
 
    public:
        static QSize defaultIconSize() { return QSize(20, 20); }
+       static QColor normalIconColor();
+       static QColor disabledIconColor();
 
    public:
        enum class Color
@@ -43,12 +45,12 @@ namespace Ui
            Default,
            Dark
        };
-       explicit ContextMenu(QWidget* parent);
-       ContextMenu(QWidget* parent, Color _color, int _iconSize = 20);
-       ContextMenu(QWidget* parent, int _iconSize);
+       explicit ContextMenu(QWidget* _parent);
+       ContextMenu(QWidget* _parent, Color _color, int _iconSize = 20);
+       ContextMenu(QWidget* _parent, int _iconSize);
 
-       static void applyStyle(QMenu* menu, bool withPadding, int fonSize, int height, Color color, const QSize& _iconSize = defaultIconSize());
-       static void applyStyle(QMenu* menu, bool withPadding, int fonSize, int height, const QSize& _iconSize = defaultIconSize());
+       static void applyStyle(QMenu* _menu, bool _withPadding, int _fonSize, int _height, Color _color, const QSize& _iconSize = defaultIconSize());
+       static void applyStyle(QMenu* _menu, bool _withPadding, int _fonSize, int _height, const QSize& _iconSize = defaultIconSize());
 
        static void updatePosition(QMenu* _menu, QPoint _position, bool _forceShowAtLeft = false);
 
@@ -61,13 +63,13 @@ namespace Ui
        template<class Obj, typename Func1>
        QAction* addActionWithIcon(const QString& _iconPath, const QString& _name, const Obj* _receiver, Func1 _member)
        {
-           return addAction(makeIcon(_iconPath), _name, _receiver, std::move(_member));
+           return addAction(makeIcon(_iconPath, iconSize_), _name, _receiver, std::move(_member));
        }
 
        template<typename Func1>
        QAction* addActionWithIconAndFunc(const QString& _iconPath, const QString& _name, Func1 _func)
        {
-           return addAction(makeIcon(_iconPath), _name, std::move(_func));
+           return addAction(makeIcon(_iconPath, iconSize_), _name, std::move(_func));
        }
 
        QAction* addActionWithIcon(const QString& _iconPath, const QString& _name, const QVariant& _data);
@@ -89,6 +91,7 @@ namespace Ui
 
        void setShowAsync(const bool _byTimeout);
        bool isShowAsync() const;
+       static QIcon makeIcon(const QString& _iconPath, const QSize& _iconSize = defaultIconSize());
 
    Q_SIGNALS:
        void hidden(QPrivateSignal);
@@ -102,10 +105,10 @@ namespace Ui
 
    private:
        std::function<void(QWheelEvent*)> onWheel_;
-       QIcon makeIcon(const QString& _iconPath) const;
        QAction* addActionWithIcon(const QIcon& _icon, const QString& _name, const QVariant& _data);
 
        QAction* findAction(QStringView _command) const;
+       QIcon makeIconForCache(const QString& _iconPath);
 
    private:
        bool needShowAtLeft_ = false;

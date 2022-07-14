@@ -35,7 +35,6 @@ LinkMetadata::LinkMetadata()
 
 LinkMetadata::LinkMetadata(const QString &_title,
     const QString &_description,
-    const QString &_siteName,
     const QString &_contentType,
     const QString& _previewUri,
     const QString& _faviconUri,
@@ -48,7 +47,6 @@ LinkMetadata::LinkMetadata(const QString &_title,
     : title_(_title)
     , description_(_description)
     , downloadUri_(_downloadUri)
-    , siteName_(_siteName)
     , contentTypeStr_(_contentType)
     , previewUri_(_previewUri)
     , faviconUri_(_faviconUri)
@@ -82,11 +80,6 @@ const QString& LinkMetadata::getDescription() const
 const QString& LinkMetadata::getDownloadUri() const
 {
     return downloadUri_;
-}
-
-const QString& LinkMetadata::getSiteName() const
-{
-    return siteName_;
 }
 
 const QString& LinkMetadata::getContentTypeStr() const

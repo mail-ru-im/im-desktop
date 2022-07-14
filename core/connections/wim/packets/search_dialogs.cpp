@@ -5,6 +5,8 @@
 #include "../../../http_request.h"
 
 #include "../../../../common.shared/json_helper.h"
+#include "../log_replace_functor.h"
+#include "search_chat_threads.h"
 
 namespace
 {
@@ -30,7 +32,12 @@ namespace core::wim
 
     std::string_view search_dialogs::get_method() const
     {
-        return is_searching_all_dialogs() ? "searchAllDialogs" : "searchOneDialog";
+        return is_searching_all_dialogs() ? "searchAllDialogs" : (is_search_in_feed() ? "searchThreadsFeed" : "searchOneDialog");
+    }
+
+    int search_dialogs::minimal_supported_api_version() const
+    {
+        return is_search_in_feed() ? core::wim::thread_search_minimal_supported_api_version() : core::urls::api_version::instance().minimal_supported();
     }
 
     void search_dialogs::set_dates_range(const std::string_view _start_date, const std::string_view _end_date)
@@ -56,14 +63,14 @@ namespace core::wim
 
         if (!cursor_.empty())
         {
-            if (is_searching_all_dialogs())
+            if (!is_searching_one_dialog())
                 node_params.AddMember("cursorAll", cursor_, a);
             else
                 node_params.AddMember("cursorOne", cursor_, a);
         }
         else
         {
-            if (!is_searching_all_dialogs())
+            if (is_searching_one_dialog())
                 node_params.AddMember("sn", contact_, a);
 
             rapidjson::Value node_filter(rapidjson::Type::kObjectType);
@@ -112,15 +119,20 @@ namespace core::wim
         tools::unserialize_value(_node_results, "exhausted", no_more_results);
 
         if (!no_more_results)
-            tools::unserialize_value(_node_results, is_searching_all_dialogs() ? "cursorAll" : "cursorOne", results_.cursor_next_);
+            tools::unserialize_value(_node_results, is_searching_one_dialog() ?"cursorOne" : "cursorAll", results_.cursor_next_);
 
-        tools::unserialize_value(_node_results, is_searching_all_dialogs() ? "totalEntryCount" : "entryCount", results_.total_entry_count_);
+        tools::unserialize_value(_node_results, is_searching_one_dialog() ? "entryCount" : "totalEntryCount", results_.total_entry_count_);
 
         results_.keyword_ = keyword_;
         results_.contact_ = contact_;
         results_.unserialize_monthly_histogram(_node_results);
 
-        if (is_searching_all_dialogs())
+        if (is_searching_one_dialog())
+        {
+            if (!parse_entries(_node_results, {}, contact_))
+                return wpie_http_parse_response;
+        }
+        else
         {
             const auto iter_dialogs = _node_results.FindMember("dialogs");
             if (iter_dialogs == _node_results.MemberEnd() || !iter_dialogs->value.IsArray())
@@ -137,14 +149,14 @@ namespace core::wim
                 tools::unserialize_value(*iter, "cursorOne", cursor);
                 tools::unserialize_value(*iter, "peerEntryCount", entry_count);
 
-                if (!parse_entries(*iter, contact, cursor, entry_count))
+                const auto iter_parent_topic = iter->FindMember("parentId");
+                core::archive::thread_parent_topic parent_topic;
+                if (iter_parent_topic != iter->MemberEnd() && iter_parent_topic->value.IsObject())
+                    parent_topic.unserialize(iter_parent_topic->value);
+
+                if (!parse_entries(*iter, parent_topic, contact, cursor, entry_count))
                     return wpie_http_parse_response;
             }
-        }
-        else
-        {
-            if (!parse_entries(_node_results, contact_))
-                return wpie_http_parse_response;
         }
 
         *persons_ = parse_persons(_node_results);
@@ -152,7 +164,7 @@ namespace core::wim
         return 0;
     }
 
-    bool search_dialogs::parse_entries(const rapidjson::Value & _root_node, const std::string_view _contact, const std::string_view _cursor, const int _entry_count)
+    bool search_dialogs::parse_entries(const rapidjson::Value & _root_node, const core::archive::thread_parent_topic& _parent_topic, const std::string_view _contact, const std::string_view _cursor, const int _entry_count)
     {
         const auto iter_entries = _root_node.FindMember("entries");
         if (iter_entries == _root_node.MemberEnd() || !iter_entries->value.IsArray())
@@ -161,14 +173,14 @@ namespace core::wim
         results_.messages_.reserve(iter_entries->value.Size());
         for (auto iter = iter_entries->value.Begin(), iter_end = iter_entries->value.End(); iter != iter_end; ++iter)
         {
-            if (!parse_single_entry(*iter, _contact, _cursor, _entry_count))
+            if (!parse_single_entry(*iter, _parent_topic, _contact, _cursor, _entry_count))
                 return false;
         }
 
         return true;
     }
 
-    bool search_dialogs::parse_single_entry(const rapidjson::Value& _entry_node, const std::string_view _contact, const std::string_view _cursor, const int _entry_count)
+    bool search_dialogs::parse_single_entry(const rapidjson::Value& _entry_node, const core::archive::thread_parent_topic& _parent_topic, const std::string_view _contact, const std::string_view _cursor, const int _entry_count)
     {
         const auto iter_hl = _entry_node.FindMember("highlight");
         if (iter_hl == _entry_node.MemberEnd() || !iter_hl->value.IsArray())
@@ -181,6 +193,9 @@ namespace core::wim
         msg.contact_ = _contact;
         msg.contact_cursor_ = _cursor;
         msg.contact_entry_count_ = _entry_count;
+
+        if (_parent_topic.is_valid())
+            msg.parent_topic_ = std::make_shared<core::archive::thread_parent_topic>(_parent_topic);
 
         msg.highlights_.reserve(iter_hl->value.Size());
         for (auto ithl = iter_hl->value.Begin(), ithl_end = iter_hl->value.End(); ithl != ithl_end; ++ithl)
@@ -204,5 +219,15 @@ namespace core::wim
     bool search_dialogs::is_searching_all_dialogs() const
     {
         return contact_.empty();
+    }
+
+    bool search_dialogs::is_search_in_feed() const
+    {
+        return contact_ == "~threads~";
+    }
+
+    bool search_dialogs::is_searching_one_dialog() const
+    {
+        return !(is_searching_all_dialogs() || is_search_in_feed());
     }
 }

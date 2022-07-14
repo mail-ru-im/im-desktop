@@ -6,6 +6,7 @@
 
 #include "../../urls_cache.h"
 #include "../common.shared/string_utils.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -20,6 +21,11 @@ end_session::~end_session() = default;
 std::string_view end_session::get_method() const
 {
     return "endSession";
+}
+
+int core::wim::end_session::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t end_session::init_request(const std::shared_ptr<core::http_request_simple>& _request)

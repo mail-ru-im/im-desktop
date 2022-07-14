@@ -62,7 +62,7 @@ namespace Ui
         rootLayout->addWidget(shareHost);
 
         shareButton_->setFocusPolicy(Qt::TabFocus);
-        shareButton_->setFocusColor(focusColorPrimary());
+        shareButton_->setFocusColor(focusColorPrimaryKey());
 
         setTabOrder(mainButton_, shareButton_);
 
@@ -88,17 +88,17 @@ namespace Ui
         if (state_ == ReadonlyPanelState::AddToContactList || state_ == ReadonlyPanelState::Start)
         {
             mainButton_->setColors(
-                Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY),
-                Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_HOVER),
-                Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_ACTIVE)
+                Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY },
+                Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_HOVER },
+                Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_ACTIVE }
             );
         }
         else
         {
             mainButton_->setColors(
-                Styling::getParameters().getColor(Styling::StyleVariable::CHAT_PRIMARY),
-                Styling::getParameters().getColor(Styling::StyleVariable::CHAT_PRIMARY_HOVER),
-                Styling::getParameters().getColor(Styling::StyleVariable::CHAT_PRIMARY_ACTIVE)
+                Styling::ThemeColorKey{ Styling::StyleVariable::CHAT_PRIMARY },
+                Styling::ThemeColorKey{ Styling::StyleVariable::CHAT_PRIMARY_HOVER },
+                Styling::ThemeColorKey{ Styling::StyleVariable::CHAT_PRIMARY_ACTIVE }
             );
         }
 
@@ -108,38 +108,38 @@ namespace Ui
         switch (state_)
         {
         case ReadonlyPanelState::AddToContactList:
-            mainButton_->setTextColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
+            mainButton_->setTextColor(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_GLOBALWHITE });
             mainButton_->setIcon(qsl(":/input/add"));
             mainButton_->setText(isChannel_ ? QT_TRANSLATE_NOOP("input_widget", "Subscribe") : QT_TRANSLATE_NOOP("input_widget", "Join"), fontSize);
             break;
         case ReadonlyPanelState::EnableNotifications:
-            mainButton_->setTextColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+            mainButton_->setTextColor(Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY });
             mainButton_->setIcon(qsl(":/input/unmute"));
             mainButton_->setText(QT_TRANSLATE_NOOP("input_widget", "Enable notifications"), fontSize);
             break;
         case ReadonlyPanelState::DisableNotifications:
-            mainButton_->setTextColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+            mainButton_->setTextColor(Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY });
             mainButton_->setIcon(qsl(":/input/mute"));
             mainButton_->setText(QT_TRANSLATE_NOOP("input_widget", "Disable notifications"), fontSize);
             break;
         case ReadonlyPanelState::DeleteAndLeave:
-            mainButton_->setTextColor(Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION));
+            mainButton_->setTextColor(Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_ATTENTION });
             mainButton_->setIcon(qsl(":/input/delete"));
             mainButton_->setText(QT_TRANSLATE_NOOP("input_widget", "Delete and leave"), fontSize);
             break;
         case ReadonlyPanelState::CancelJoin:
-            mainButton_->setTextColor(Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION));
+            mainButton_->setTextColor(Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_ATTENTION });
             mainButton_->setIcon(qsl(":/controls/close_icon"), cancelIconSize());
             mainButton_->setText(QT_TRANSLATE_NOOP("input_widget", "Cancel request"), fontSize);
             break;
         case ReadonlyPanelState::Unblock:
-            mainButton_->setTextColor(Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION));
+            mainButton_->setTextColor(Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_ATTENTION });
             mainButton_->setIcon(qsl(":/input/unlock"));
             mainButton_->setText(QT_TRANSLATE_NOOP("input_widget", "Unblock"), fontSize);
             break;
         case ReadonlyPanelState::Start:
-            mainButton_->setTextColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
-            mainButton_->setIcon(QPixmap());
+            mainButton_->setTextColor(Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID_PERMANENT });
+            mainButton_->setIcon(Utils::StyledPixmap{});
             mainButton_->setText(QT_TRANSLATE_NOOP("input_widget", "Start"), fontSize);
             break;
 
@@ -221,18 +221,10 @@ namespace Ui
 
     void InputPanelReadonly::unblockClicked()
     {
-        const auto confirmed = Utils::GetConfirmationWithTwoButtons(
-            QT_TRANSLATE_NOOP("popup_window", "Cancel"),
-            QT_TRANSLATE_NOOP("popup_window", "Yes"),
-            QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to delete user from ignore list?"),
-            Logic::GetFriendlyContainer()->getFriendly(aimId_),
-            nullptr);
+        const auto confirmed = Logic::getContactListModel()->unblockContactWithConfirm(aimId_);
 
         if (confirmed)
-        {
-            Logic::getContactListModel()->ignoreContact(aimId_, false);
             Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_unblockuser_action, { {"chat_type", getStatsChatTypeReadonly() } });
-        }
     }
 
     void InputPanelReadonly::leaveClicked()

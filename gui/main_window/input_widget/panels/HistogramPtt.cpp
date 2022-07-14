@@ -68,7 +68,7 @@ namespace Ui
         rootLayout->addWidget(histograms_);
 
         durationText_ = TextRendering::MakeTextUnit(Utils::getFormattedTime(std::chrono::seconds::zero()));
-        durationText_->init(Fonts::appFontScaled(16, Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
+        durationText_->init({ Fonts::appFontScaled(16, Fonts::FontWeight::Normal), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_GLOBALWHITE } });
         durationText_->evaluateDesiredSize();
         rootLayout->setContentsMargins(buttonHorMargin, 0, durationText_->desiredWidth() + Utils::scale_value(16) + getHorSpacer(), 0);
 
@@ -245,13 +245,13 @@ namespace Ui
             return Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
         };
 
-        auto getTextColor = [](auto active, auto hasSignal)
+        auto getTextColor = [](auto _active, auto _hasSignal)
         {
-            if (active)
-                return Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
-            if (hasSignal)
-                return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY);
-            return Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
+            if (_active)
+                return Styling::StyleVariable::BASE_GLOBALWHITE;
+            if (_hasSignal)
+                return Styling::StyleVariable::TEXT_PRIMARY;
+            return Styling::StyleVariable::BASE_GLOBALWHITE;
         };
 
         const auto color = getColor(active, hasSignal, pressed_, underMouse_);
@@ -260,7 +260,7 @@ namespace Ui
         drawInputBubble(p, r, color, 0, Utils::getShadowMargin());
 
         static const auto textWidth = durationText_->desiredWidth(); // calc once
-        durationText_->setColor(textColor);
+        durationText_->setColor(Styling::ThemeColorKey{ textColor });
         durationText_->setOffsets(r.width() - textWidth - Utils::scale_value(16), r.height() / 2);
         durationText_->draw(p, TextRendering::VerPosition::MIDDLE);
     }

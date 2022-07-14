@@ -1,9 +1,6 @@
 #pragma once
 #include "../../core/Voip/VoipManagerDefines.h"
 #include <memory>
-#ifdef __APPLE__
-#include "macos/VideoFrameMacos.h"
-#endif
 
 namespace voip_manager
 {
@@ -107,11 +104,11 @@ namespace Ui
     {
         Q_OBJECT
     public:
+        BaseTopVideoPanel(QWidget* parent, Qt::WindowFlags f = Qt::Window | Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint
 #if defined(__linux__)
-        BaseTopVideoPanel(QWidget* parent, Qt::WindowFlags f = Qt::Widget);
-#else
-        BaseTopVideoPanel(QWidget* parent, Qt::WindowFlags f = Qt::Window | Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint);
+            | Qt::Sheet
 #endif
+        );
         void updatePosition(const QWidget& parent) override;
 
         void setVerticalShift(int _shift);
@@ -125,38 +122,28 @@ namespace Ui
     {
         Q_OBJECT
     public:
-        BaseBottomVideoPanel(QWidget* parent,
-#ifndef __linux__
-          Qt::WindowFlags f = Qt::Window | Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint
-#else
-          Qt::WindowFlags f = Qt::Widget
+        BaseBottomVideoPanel(QWidget* parent, Qt::WindowFlags f = Qt::Window | Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint
+#if defined(__linux__)
+            | Qt::Sheet
 #endif
-                );
+        );
 
         void updatePosition(const QWidget& parent) override;
     };
 
     // This panel fill all parent window
-    class FullVideoWindowPanel : public Ui::BaseVideoPanel
+    class FullVideoWindowPanel : public QWidget
     {
         Q_OBJECT
 
     public:
-
-        FullVideoWindowPanel(QWidget* parent);
-
-        virtual void updatePosition(const QWidget& parent) override;
-
-        virtual void fadeIn(unsigned int duration)  override {}
-        virtual void fadeOut(unsigned int duration) override {}
+        explicit FullVideoWindowPanel(QWidget* parent);
 
     Q_SIGNALS:
-
         void onResize();
         void aboutToHide();
 
     protected:
-
         void resizeEvent(QResizeEvent *event) override;
     };
 
@@ -225,7 +212,7 @@ namespace Ui
             bool isDraging;
         } dragState_;
 
-        void changeEvent(QEvent*) override;
+    protected:
         void mousePressEvent(QMouseEvent* _e) override;
         void mouseMoveEvent(QMouseEvent* _e) override;
         void mouseReleaseEvent(QMouseEvent* _e) override;
@@ -240,4 +227,72 @@ namespace Ui
     void showAddUserToVideoConverenceDialogMainWindow(QObject* parent, QWidget* parentWindow);
 
     void showInviteVCSDialogVideoWindow(FullVideoWindowPanel* _parentWindow, const QString& _url);
+
+
+    class ToastBase;
+    class AbstractToastProvider
+    {
+        Q_DISABLE_COPY_MOVE(AbstractToastProvider)
+    public:
+        struct Options
+        {
+            QString text_;
+            QColor backgroundColor_;
+            Qt::FocusPolicy focusPolicy_;
+            Qt::Alignment alignment_;
+            int direction_; // ToastBase::Direction
+            QVarLengthArray<Qt::WidgetAttribute, 4> attributes_;
+            std::chrono::milliseconds duration_;
+            QMargins margins_;
+            int maxLineCount_;
+            bool isMultiScreen_;
+            bool animateMove_;
+
+            Options();
+        };
+
+        virtual ~AbstractToastProvider() = default;
+        virtual ToastBase* showToast(const Options& _options, QWidget* _parent, const QRect& _rect);
+        ToastBase* showToast(const Options& _options, QWidget* _parent);
+
+    protected:
+        AbstractToastProvider() = default;
+        virtual ToastBase* createToast(const Options& _options, QWidget* _parent) const = 0;
+
+        void setupOptions(ToastBase* _toast, const Options& _opts) const;
+
+        QPoint position(const QRect& _r, Qt::Alignment _align) const;
+    };
+
+
+    class VideoWindowToastProvider : public AbstractToastProvider
+    {
+    public:
+        enum class Type
+        {
+            CamNotAllowed,
+            DesktopNotAllowed,
+            MicNotAllowed,
+            LinkCopied,
+            EmptyLink,
+            DeviceUnavailable,
+            NotifyMicMuted,
+            NotifyFullScreen
+        };
+
+        static VideoWindowToastProvider& instance();
+
+        Options defaultOptions() const;
+        void show(Type _type, QWidget* _parent, const QRect& _rect);
+        void show(Type _type);
+        void hide();
+    protected:
+        VideoWindowToastProvider() = default;
+        ToastBase* createToast(const Options& _options, QWidget* _parent) const override;
+
+        int getToastVerOffset() const noexcept;
+
+    private:
+        ToastBase* currentToast_;
+    };
 }

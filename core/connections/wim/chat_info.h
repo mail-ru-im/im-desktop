@@ -3,32 +3,12 @@
 #include "../../../corelib/collection_helper.h"
 #include "persons.h"
 #include "lastseen.h"
+#include "chat_member.h"
 
 namespace core
 {
     namespace wim
     {
-        struct chat_member_info
-        {
-            std::string aimid_;
-            std::string role_;
-            std::string nick_;
-            std::string friendly_;
-            lastseen lastseen_;
-            std::optional<int64_t> can_remove_till_;
-
-            bool friend_ = false;
-            bool no_avatar_ = false;
-        };
-
-        struct chat_member_short_info
-        {
-            std::string aimid_;
-            std::string role_;
-            lastseen lastseen_;
-            std::optional<int64_t> can_remove_till_;
-        };
-
         class chat_info
         {
             std::string aimid_;
@@ -61,6 +41,8 @@ namespace core
             bool controlled_ = false;
             bool joinModeration_ = false;
             bool trust_required_ = false;
+            bool threads_enabled_ = false;
+            bool threads_auto_subscribe_ = false;
 
             std::vector<chat_member_info> members_;
             std::shared_ptr<core::archive::persons_map> persons_;
@@ -73,6 +55,8 @@ namespace core
 
             const auto& get_persons() const noexcept { return persons_; }
             const auto& get_aimid() const noexcept { return aimid_; }
+            bool are_you_member() const noexcept { return you_member_; }
+            bool are_you_blocked() const noexcept { return you_blocked_; }
         };
 
         class common_chat_info

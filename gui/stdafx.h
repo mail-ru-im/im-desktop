@@ -96,6 +96,7 @@
 #include <QXmlStreamReader>
 #include <QBuffer>
 #include <QImage>
+#include <QBitArray>
 #include <QList>
 #include <QString>
 #include <QObject>
@@ -133,7 +134,9 @@
 #include <QDateTime>
 #include <qframe.h>
 #include <QDesktopWidget>
+#include <QTextObject>
 #include <QTextFrame>
+#include <QTextTable>
 #include <QToolTip>
 #include <QScrollArea>
 #include <QStackedWidget>
@@ -191,6 +194,10 @@
 #include <QVariantAnimation>
 #include <QParallelAnimationGroup>
 #include <QScopeGuard>
+#include <QtQuickWidgets/qquickwidget.h>
+#include <QtQuick/qquickpainteditem.h>
+#include <QtQml/qqmlengine.h>
+#include <QtQml/qqmlcontext.h>
 #include <QAccessible>
 #include <QAccessibleObject>
 #include <QAccessibleWidget>
@@ -202,9 +209,16 @@
 #if defined(HAS_WEB_ENGINE)
 #include <QtWebEngineWidgets/QWebEngineView>
 #include <QtWebEngineWidgets/QWebEnginePage>
+#include <QtWebEngineWidgets/QWebEngineHistory>
+#include <QtWebEngineWidgets/QWebEngineScriptCollection>
 #include <QtWebEngineWidgets/QWebEngineProfile>
+#include <QtWebEngineWidgets/QWebEngineSettings>
 #include <QtWebEngineCore/QWebEngineCookieStore>
 #include <QtWebChannel/QWebChannel>
+#include <QtPrintSupport/QPrinter>
+#include <QtPrintSupport/QPrintDialog>
+#include <QJsonArray>
+#include <QJsonDocument>
 #endif
 
 #undef max
@@ -241,6 +255,7 @@
 #include <QtCore/qbuffer.h>
 #include <QtGui/qimage.h>
 #include <QtCore/qlist.h>
+#include <QtCore/qbitarray.h>
 #include <QtCore/qglobal.h>
 #include <QtCore/qstring.h>
 #include <QtCore/qobject.h>
@@ -304,6 +319,7 @@
 #include <QtCore/qpropertyanimation.h>
 #include <QtCore/qparallelanimationgroup.h>
 #include <QtGui/qtextobject.h>
+#include <QtGui/qtexttable.h>
 #include <QtCore/qmimedata.h>
 #include <QtCore/qmimetype.h>
 #include <QtCore/qmimedatabase.h>
@@ -346,6 +362,10 @@
 #include <QtCore/qcache.h>
 #include <QtCore/qscopeguard.h>
 #include <QtDBus/qdbusinterface.h>
+#include <QtQuickWidgets/qquickwidget.h>
+#include <QtQuick/qquickpainteditem.h>
+#include <QtQml/qqmlengine.h>
+#include <QtQml/qqmlcontext.h>
 #include <QtGui/qaccessible.h>
 #include <QtGui/qaccessibleobject.h>
 #include <QtWidgets/qaccessiblewidget.h>
@@ -354,10 +374,17 @@
 
 #if defined(HAS_WEB_ENGINE)
 #include <QtWebEngineWidgets/qwebengineview.h>
+#include <QtWebEngineWidgets/qwebenginescriptcollection.h>
 #include <QtWebEngineWidgets/qwebenginepage.h>
+#include <QtWebEngineWidgets/qwebenginehistory.h>
 #include <QtWebEngineWidgets/qwebengineprofile.h>
+#include <QtWebEngineWidgets/qwebenginesettings.h>
 #include <QtWebEngineCore/qwebenginecookiestore.h>
 #include <QtWebChannel/qwebchannel.h>
+#include <QtPrintSupport/qprinter.h>
+#include <QtPrintSupport/qprintdialog.h>
+#include <QJsonArray>
+#include <QJsonDocument>
 #endif
 
 #else
@@ -387,6 +414,7 @@
 #import <QtCore/qbuffer.h>
 #import <QtGui/qimage.h>
 #import <QtCore/qlist.h>
+#import <QtCore/qbitarray.h>
 #import <QtCore/qglobal.h>
 #import <QtCore/qstring.h>
 #import <QtCore/qobject.h>
@@ -450,6 +478,7 @@
 #import <QtCore/qpropertyanimation.h>
 #import <QtCore/qparallelanimationgroup.h>
 #import <QtGui/qtextobject.h>
+#import <QtGui/qtexttable.h>
 #import <QtCore/qmimedata.h>
 #import <QtCore/qmimetype.h>
 #import <QtCore/qmimedatabase.h>
@@ -500,6 +529,10 @@
 #import <QtCore/qscopedvaluerollback.h>
 #import <QtCore/qcache.h>
 #import <QtCore/qscopeguard.h>
+#import <QtQuickWidgets/qquickwidget.h>
+#import <QtQuick/qquickpainteditem.h>
+#import <QtQml/qqmlengine.h>
+#import <QtQml/qqmlcontext.h>
 #import <QtGui/qaccessible.h>
 #import <QtGui/qaccessibleobject.h>
 #import <QtWidgets/qaccessiblewidget.h>
@@ -508,10 +541,17 @@
 
 #if defined(HAS_WEB_ENGINE)
 #import <QtWebEngineWidgets/qwebengineview.h>
+#import <QtWebEngineWidgets/qwebenginescriptcollection.h>
 #import <QtWebEngineWidgets/qwebenginepage.h>
+#import <QtWebEngineWidgets/qwebenginehistory.h>
 #import <QtWebEngineWidgets/qwebengineprofile.h>
+#import <QtWebEngineWidgets/qwebenginesettings.h>
 #import <QtWebEngineCore/qwebenginecookiestore.h>
 #import <QtWebChannel/qwebchannel.h>
+#import <QtPrintSupport/qprinter.h>
+#import <QtPrintSupport/qprintdialog.h>
+#import <QJsonArray>
+#import <QJsonDocument>
 #endif
 
 #endif // _WIN32

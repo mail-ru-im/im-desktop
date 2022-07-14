@@ -49,6 +49,10 @@ namespace Logic
 
         QPixmap GetRounded(const QPixmap& _avatar, const QString& _aimId, bool mini_icons, bool _isDefault);
 
+    private Q_SLOTS:
+        void onThemeChange();
+
+    private:
         CacheMap AvatarsByAimIdAndSize_;
 
         CacheMap AvatarsByAimId_;

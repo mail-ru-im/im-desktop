@@ -11,7 +11,6 @@ namespace Ui
 {
     class ContextMenu;
     class ScrollAreaWithTrScrollBar;
-
     enum class MediaContentType
     {
         Invalid,
@@ -21,6 +20,15 @@ namespace Ui
         Files,
         Links,
         Voice,
+    };
+
+    inline constexpr auto supportedMediaContentTypes = std::array
+    {
+        MediaContentType::ImageVideo,
+        MediaContentType::Video,
+        MediaContentType::Files,
+        MediaContentType::Links,
+        MediaContentType::Voice
     };
 
     QString getGalleryTitle(MediaContentType _type);
@@ -51,8 +59,9 @@ namespace Ui
             QString sender_;
             time_t time_;
 
-            bool is_video_ = false;
-            bool is_gif_ = false;
+            bool isVideo_ = false;
+            bool isGif_ = false;
+            bool isVirusInfected_ = false;
         };
 
         MediaContentWidget(MediaContentType _type, QWidget* _parent) : QWidget(_parent), type_(_type) {}
@@ -134,3 +143,5 @@ namespace Ui
         bool exhausted_;
     };
 }
+
+Q_DECLARE_METATYPE(Ui::MediaContentType);

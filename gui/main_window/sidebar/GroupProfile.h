@@ -63,6 +63,7 @@ namespace Ui
     private:
         void init();
         QWidget* initContent(QWidget* _parent);
+        QWidget* initThreadInfo(QWidget* _parent);
         QWidget* initSettings(QWidget* _parent);
         QWidget* initContactList(QWidget* _parent);
         QWidget* initGallery(QWidget* _parent);
@@ -70,7 +71,6 @@ namespace Ui
         QString pageTitle(int _pageIndex) const;
 
         void updateCloseIcon();
-        void updatePinButton();
 
         void closeGallery();
 
@@ -102,17 +102,23 @@ namespace Ui
         void disableFading();
         void chatInfo(qint64, const std::shared_ptr<Data::ChatInfo>&, const int _requestMembersLimit);
         void chatInfoFailed(qint64 _seq, core::group_chat_info_errors _errorCode, const QString& _aimId);
+        void threadInfo(qint64, const Data::ThreadInfo& _threadInfo);
         void dialogGalleryState(const QString& _aimId, const Data::DialogGalleryState& _state);
         void favoriteChanged(const QString& _aimid);
         void unimportantChanged(const QString& _aimid);
         void modChatParamsResult(int _error);
         void suggestGroupNickResult(const QString& _nick);
         void loadChatInfo();
+        void loadGroupInfo();
+        void loadThreadInfo(bool _subscription = true);
+        void onThreadAutosubscribe(int _error);
 
         void share();
         void shareClicked();
         void copy(const QString& _text);
         void notificationsChecked(bool _checked);
+        void threadSubscriptionChecked(bool _checked);
+        void threadAllSubscriptionChecked(bool _checked);
         void settingsClicked();
 
         void galleryPhotoClicked();
@@ -170,6 +176,8 @@ namespace Ui
 
         bool validateTrustRequiredCheck(bool _desiredValue);
 
+        void updatePinButton();
+
     private:
         QElapsedTimer elapsedTimer_;
         QStackedWidget* stackedWidget_;
@@ -187,6 +195,7 @@ namespace Ui
         AvatarNameInfo* info_;
         QWidget* infoSpacer_;
         TextLabel* groupStatus_;
+        QWidget* buttonsWidget_;
         ColoredButton* mainActionButton_;
         StartCallButton* callButton_;
         std::unique_ptr<InfoBlock> about_;
@@ -194,6 +203,8 @@ namespace Ui
         std::unique_ptr<InfoBlock> link_;
         SidebarButton* share_;
         SidebarCheckboxButton* notifications_;
+        SidebarCheckboxButton* threadSubscription_;
+        SidebarCheckboxButton* threadsAutoSubscribe_;
         SidebarButton* settings_;
         QWidget* galleryWidget_;
         SidebarButton* galleryPhoto_;
@@ -204,10 +215,12 @@ namespace Ui
         SidebarButton* galleryPtt_;
         QWidget* membersWidget_;
         MembersPlate* members_;
+        MembersPlate* threadMembers_;
         SidebarButton* addToChat_;
         SidebarButton* pendings_;
         SidebarButton* yourInvites_;
         MembersWidget* shortMembersList_;
+        MembersWidget* threadMembersList_;
         SidebarButton* allMembers_;
         SidebarButton* admins_;
         SidebarButton* blockedMembers_;
@@ -218,11 +231,12 @@ namespace Ui
         SidebarButton* block_;
         SidebarButton* report_;
         SidebarButton* leave_;
-        ContactListWidget* cl_;
+        ContactListWidget* cl_ = nullptr;
 
         SidebarCheckboxButton* public_ = nullptr;
         SidebarCheckboxButton* trustRequired_ = nullptr;
         SidebarCheckboxButton* joinModeration_ = nullptr;
+        SidebarCheckboxButton* threadsEnabled_ = nullptr;
         TextLabel* approvalLabel_ = nullptr;
         TextLabel* publicLabel_ = nullptr;
         TextLabel* trustLabel_ = nullptr;
@@ -237,6 +251,7 @@ namespace Ui
 
         SearchWidget* searchWidget_;
         Logic::ContactListItemDelegate* delegate_;
+        Logic::ContactListItemDelegate* threadDelegate_;
         GalleryPopup* galleryPopup_;
 
         FrameCountMode frameCountMode_;
@@ -252,5 +267,6 @@ namespace Ui
         bool galleryIsEmpty_;
         bool invalidNick_;
         bool infoPlaceholderVisible_;
+        bool stateAllThreadsAutoSubscribe_ = false;
     };
 }

@@ -4,6 +4,7 @@
 #include "../../../http_request.h"
 #include "../../../tools/system.h"
 #include "../../urls_cache.h"
+#include "../log_replace_functor.h"
 
 namespace core {
     namespace wim {
@@ -21,6 +22,11 @@ namespace core {
         std::string_view wim_allocate::get_method() const
         {
             return "webrtcAlloc";
+        }
+
+        int wim_allocate::minimal_supported_api_version() const
+        {
+            return core::urls::api_version::instance().minimal_supported();
         }
 
         int32_t wim_allocate::init_request(const std::shared_ptr<core::http_request_simple>& _request) {
@@ -116,6 +122,11 @@ namespace core {
         std::string_view wim_webrtc::get_method() const
         {
             return "webrtcMsg";
+        }
+
+        int wim_webrtc::minimal_supported_api_version() const
+        {
+            return core::urls::api_version::instance().minimal_supported();
         }
 
         int32_t wim_webrtc::init_request(const std::shared_ptr<core::http_request_simple>& _request) {

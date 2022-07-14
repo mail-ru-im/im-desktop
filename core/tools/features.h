@@ -14,6 +14,7 @@ namespace features
     bool smartreply_suggests_text_enabled();
 
     bool is_fetch_hotstart_enabled();
+    bool is_ptt_recognition_enabled();
     bool is_statistics_mytracker_enabled();
     bool is_dns_workaround_enabled();
     bool is_fallback_to_ip_mode_enabled();
@@ -49,4 +50,10 @@ namespace features
     bool is_restricted_files_enabled();
     bool trust_status_default();
     bool is_antivirus_check_enabled();
+    bool is_vcs_call_by_link_v2_enabled();
+
+    size_t maximum_history_file_size();
+
+    size_t wim_parallel_packets_count();
+    void cleanup_cache(const std::wstring& content_cache_dir_);
 }

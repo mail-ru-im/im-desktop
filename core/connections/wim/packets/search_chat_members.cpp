@@ -2,6 +2,7 @@
 #include "search_chat_members.h"
 
 #include "../../../http_request.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -22,6 +23,11 @@ search_chat_members::~search_chat_members() = default;
 std::string_view search_chat_members::get_method() const
 {
     return "searchChatMembers";
+}
+
+int core::wim::search_chat_members::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t search_chat_members::init_request(const std::shared_ptr<core::http_request_simple>& _request)

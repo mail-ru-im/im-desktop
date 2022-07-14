@@ -2,17 +2,24 @@
 
 #include "controls/SimpleListWidget.h"
 #include "../controls/TextUnit.h"
+#include "utils/SvgUtils.h"
+
+namespace Utils
+{
+    namespace Badge
+    {
+        enum class Color;
+    }
+} // namespace Utils
 
 namespace Ui
 {
-    enum class AppPageType;
-
     class BaseBarItem : public SimpleListItem
     {
         Q_OBJECT
 
     public:
-        explicit BaseBarItem(const QString& _iconPath, const QString& _iconActivePath, const QColor& _activeColor, const QColor& _hoveredColor, const QColor& _normalColor, QWidget* _parent = nullptr);
+        explicit BaseBarItem(const QString& _iconPath, const QString& _iconActivePath, QWidget* _parent = nullptr);
         ~BaseBarItem();
 
         void setSelected(bool _value) override;
@@ -20,32 +27,37 @@ namespace Ui
         void setBadgeText(const QString& _text);
         void setBadgeIcon(const QString& _icon);
 
+        void updateItemInfo();
+        void resetItemInfo();
+
         virtual void setName(const QString& _name);
 
-    protected:
+        void setNormalIconPixmap(const Utils::StyledPixmap& _px);
+        void setHoveredIconPixmap(const Utils::StyledPixmap& _px);
+        void setActiveIconPixmap(const Utils::StyledPixmap& _px);
 
-        const QPixmap& activeIconPixmap() const;
-        const QPixmap& hoveredIconPixmap() const;
-        const QPixmap& normalIconPixmap() const;
+    protected:
+        virtual void drawBadge(QPainter& _p, Utils::Badge::Color _color, const QColor& _borderColor = Qt::transparent);
+
+        QPixmap activeIconPixmap();
+        QPixmap hoveredIconPixmap();
+        QPixmap normalIconPixmap();
 
     private:
         void setBadgeFont(const QFont& _font);
 
     protected:
         QString badgeText_;
-        QPixmap badgePixmap_;
+        Utils::LayeredPixmap badgePixmap_;
         std::unique_ptr<TextRendering::TextUnit> badgeTextUnit_;
         QString name_;
 
     private:
         QString badgeIcon_;
 
-        const QString iconPath_;
-        const QString iconActivePath_;
-
-        const QPixmap activeIconPixmap_;
-        const QPixmap hoveredIconPixmap_;
-        const QPixmap normalIconPixmap_;
+        Utils::StyledPixmap activeIconPixmap_;
+        Utils::StyledPixmap hoveredIconPixmap_;
+        Utils::StyledPixmap normalIconPixmap_;
 
         bool isSelected_;
     };
@@ -55,10 +67,10 @@ namespace Ui
         Q_OBJECT
 
     public:
-        explicit AppBarItem(AppPageType _type, const QString& _iconPath, const QString& _iconActivePath, QWidget* _parent = nullptr);
+        explicit AppBarItem(const QString& _type, const QString& _iconPath, const QString& _iconActivePath, QWidget* _parent = nullptr);
         void setName(const QString& _name) override;
 
-        AppPageType getType() const noexcept { return type_; }
+        const QString& getType() const noexcept { return type_; }
 
     protected:
         void paintEvent(QPaintEvent* _event) override;
@@ -74,7 +86,7 @@ namespace Ui
 
     private:
         QTimer* tooltipTimer_;
-        AppPageType type_;
+        QString type_;
         bool tooltipVisible_;
     };
 
@@ -82,7 +94,7 @@ namespace Ui
     {
         Q_OBJECT
     public:
-        explicit CalendarItem(AppPageType _type, const QString& _iconPath, const QString& _iconActivePath, QWidget* _parent = nullptr);
+        explicit CalendarItem(const QString& _type, const QString& _iconPath, const QString& _iconActivePath, QWidget* _parent = nullptr);
         explicit CalendarItem(const QString& _iconPath, const QString& _iconActivePath, QWidget* _parent = nullptr);
 
     protected:

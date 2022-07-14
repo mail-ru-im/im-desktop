@@ -4,6 +4,7 @@
 #include "ContactItem.h"
 #include "types/chat.h"
 #include "types/thread.h"
+#include "../../utils/InterConnector.h"
 
 Q_DECLARE_LOGGING_CATEGORY(clModel)
 
@@ -52,6 +53,8 @@ namespace Logic
         bool public_ = false;
         bool channel_ = false;
         bool trustRequired_ = false;
+        bool threadsEnabled_ = true;
+        bool threadsAutoSubscribe_ = false;
     };
 
     class ContactListModel : public CustomAbstractListModel
@@ -62,7 +65,7 @@ namespace Logic
         void currentDlgStateChanged() const;
         void selectedContactChanged(const QString& _new, const QString& _prev);
         void contactChanged(const QString&, QPrivateSignal) const;
-        void select(const QString&, qint64, Logic::UpdateChatSelection mode = Logic::UpdateChatSelection::No, bool _ignoreScroll = false) const;
+        void select(const QString&, qint64, Logic::UpdateChatSelection mode = Logic::UpdateChatSelection::No, bool _ignoreScroll = false, Ui::PageOpenedAs _openedAs = Ui::PageOpenedAs::MainPage) const;
         void profile_loaded(profile_ptr _profile) const;
         void contact_added(const QString& _contact, bool _result);
         void contact_removed(const QString& _contact);
@@ -75,6 +78,7 @@ namespace Logic
         void yourRoleChanged(const QString&);
         void contactAdd(const QString&);
         void contactRename(const QString&);
+        void deletedUser();
 
     private Q_SLOTS:
         void contactList(std::shared_ptr<Data::ContactList>, const QString&);
@@ -85,6 +89,7 @@ namespace Logic
         void dialogGalleryState(const QString& _aimId, const Data::DialogGalleryState& _state);
         void onThreadUpdates(const Data::ThreadUpdates& _updates);
         void messageBuddies(const Data::MessageBuddies& _buddies);
+        void onUserInfo(const int64_t _seq, const QString& _aimid, Data::UserInfo _info);
 
     public Q_SLOTS:
         void chatInfo(qint64, const std::shared_ptr<Data::ChatInfo>&, const int _requestMembersLimit);
@@ -97,7 +102,7 @@ namespace Logic
         void groupClicked(int);
 
     public:
-        explicit ContactListModel(QObject* _parent);
+        explicit ContactListModel(QObject* _parent = nullptr);
 
         using CustomAbstractListModel::sort;
 
@@ -128,6 +133,7 @@ namespace Logic
         void addContactToCL(const QString& _aimId, std::function<void(bool)> _callBack = {});
         void ignoreContact(const QString& _aimId, bool _ignore);
         bool ignoreContactWithConfirm(const QString& _aimId);
+        bool unblockContactWithConfirm(const QString& _aimId);
         bool areYouAdmin(const QString& _aimId) const;
         QString getYourRole(const QString& _aimId) const;
         void setYourRole(const QString& _aimId, const QString& _role);
@@ -137,7 +143,9 @@ namespace Logic
 
         bool areYouNotAMember(const QString& _aimid) const;
         bool areYouBlocked(const QString& _aimId) const;
-        bool areYouAllowedToWriteInThreads(const QString& _aimId) const;
+        bool areYouAllowedToWriteInThreads(const QString& _parentChatId) const;
+        bool areYouSubscribedToThread(const QString& _aimId) const;
+        bool areYouSubscribedToThreadInChat(const QString& _aimId) const;
 
         void removeContactsFromModel(const QVector<QString>& _vcontacts, bool _emit = true);
         void removeTemporaryContactsFromModel();
@@ -167,6 +175,8 @@ namespace Logic
         bool isReadonly(const QString& _aimId) const; // no write access to this chat, for channel check use isChannel
         bool isJoinModeration(const QString& _aimId) const;
         bool isTrustRequired(const QString& _aimId) const;
+        bool isThreadsEnabled(const QString& _aimId) const;
+        bool isDeleted(const QString& _aimId) const;
 
         enum class RequestIfEmpty
         {
@@ -187,11 +197,23 @@ namespace Logic
         void emitContactChanged(const QString& _aimId) const;
 
         bool isThread(const QString& _aimId) const;
-        void markAsThread(const QString& _threadId, const QString& _parentChatId);
+        bool isTaskThread(const QString& _aimId) const;
+        void markAsThread(const QString& _threadId, const Data::ParentTopic* _parentTopic, bool _isTask = false);
+        void markAsThread(const Data::ThreadUpdate* _threadUpdate, bool _isTask = false);
+        void markAsThreadWithNoParentChat(const QString& _threadId, bool _isTask = false);
         std::optional<QString> getThreadParent(const QString& _threadId) const;
+        int64_t getThreadParentMessage(const QString& _threadId) const;
+
+        bool isFeed(const QString& _aimId) const;
+        void markAsFeed(const QString& _aimId, const QString& _stamp, const QString& _type);
+        void unmarkAsFeed(const QString& _aimId);
+        std::optional<QString> getFeedType(const QString& _aimId) const;
+        std::optional<QString> getFeedAimId(const QString& _type) const;
+
+        void updateDeleted(const QString& _aimid, bool _deleted);
 
     private:
-        void setCurrent(const QString& _aimId, qint64 _id = -1, bool _select = true, std::function<void(Ui::PageBase*)> _getPageCallback = {}, bool _ignoreScroll = false);
+        void setCurrent(const QString& _aimId, qint64 _id = -1, bool _select = true, Ui::PageOpenedAs _openedAs = Ui::PageOpenedAs::MainPage, std::function<void(Ui::PageBase*)> _getPageCallback = {}, bool _ignoreScroll = false);
         void rebuildIndex();
         void rebuildVisibleIndex();
         int addItem(Data::ContactPtr _contact, QVector<QString>& _removed, const bool _updatePlaceholder = true);
@@ -226,6 +248,8 @@ namespace Logic
         bool isWithCheckedBox_;
         int topSortedCount_;
 
+        int botAssistantIndex_;
+
         std::map<QString, Data::DialogGalleryState> galleryStates_;
 
         QSet<QString> deletedContacts_;
@@ -233,7 +257,9 @@ namespace Logic
         QMap<QString, CachedChatData> chatsCache_;
         std::vector<QString> notAMemberChats_;
         std::vector<QString> youBlockedChats_;
-        std::unordered_map<QString, QString> threads_; // threadId, parentChatId
+
+        std::unordered_map<QString, Data::ThreadInfoShort> threads_;
+        std::unordered_map<QString, QString> feeds_;
 
         friend class Utils::InterConnector;
     };

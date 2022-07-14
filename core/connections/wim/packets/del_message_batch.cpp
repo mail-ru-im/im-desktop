@@ -4,6 +4,7 @@
 #include "../../../http_request.h"
 #include "../../../../common.shared/json_helper.h"
 #include "../../../tools/features.h"
+#include "../log_replace_functor.h"
 
 #include "del_message_batch.h"
 
@@ -78,6 +79,11 @@ int32_t del_message_batch::on_response_error_code()
 std::string_view del_message_batch::get_method() const
 {
     return "delMsgBatch";
+}
+
+int del_message_batch::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 CORE_WIM_NS_END

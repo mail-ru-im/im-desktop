@@ -5,8 +5,9 @@
 #include "../types/filesharing_download_result.h"
 #include "../controls/TextUnit.h"
 #include "StringComparator.h"
-
-#include "stdafx.h"
+#include "UrlUtils.h"
+#include "SvgUtils.h"
+#include "../styles/ThemeParameters.h"
 
 class QApplication;
 class QScreen;
@@ -40,10 +41,33 @@ namespace Debug
         Q_UNUSED(_funcName)
 #endif
     }
+
+    template <typename This, typename FuncName, typename Arg>
+    void debugMemberCallImpl1(This _this, FuncName _funcName, Arg _arg)
+    {
+#ifdef _DEBUG
+        qDebug() << typeid(*_this).name() << _funcName << _arg;
+#else
+        Q_UNUSED(_this)
+        Q_UNUSED(_funcName)
+#endif
+    }
+
+    template <typename This, typename FuncName, typename Arg1, typename Arg2>
+    void debugMemberCallImpl2(This _this, FuncName _funcName, Arg1 _arg1, Arg2 _arg2)
+    {
+#ifdef _DEBUG
+        qDebug() << typeid(*_this).name() << _funcName << _arg1 << _arg2;
+#else
+        Q_UNUSED(_this)
+        Q_UNUSED(_funcName)
+#endif
+    }
 }
 
 #define imDebugMemberCall Debug::debugMemberCallImpl(this, __func__)
-
+#define imDebugMemberCall1(x) Debug::debugMemberCallImpl1(this, __func__, x)
+#define imDebugMemberCall2(x, y) Debug::debugMemberCallImpl2(this, __func__, x, y)
 
 namespace Utils
 {
@@ -83,6 +107,8 @@ namespace Utils
         }
     };
 
+    void elideText(QString& _text, int _length);
+
     template <typename T>
     class [[nodiscard]] ScopeExitT
     {
@@ -100,12 +126,28 @@ namespace Utils
         T f;
     };
 
+    // Searches for an ancestor of a particular type
+    template<class T>
+    bool hasAncestorOf(const QObject* _object)
+    {
+        using ObjType = typename std::remove_cv<typename std::remove_pointer<T>::type>::type;
+        bool found = false;
+        const QObject* parent = _object ? _object->parent() : nullptr;
+        while (parent && !found) // walk up in parent-child chain
+        {
+            if (qobject_cast<const ObjType*>(parent))
+                found = true;
+            parent = parent->parent();
+        }
+        return found;
+    }
+
     class ShadowWidgetEventFilter : public QObject
     {
         Q_OBJECT
 
     public:
-        ShadowWidgetEventFilter(int _shadowWidth);
+        ShadowWidgetEventFilter(QObject* _parent, int _shadowWidth, double _radius = 0.0);
 
     protected:
         virtual bool eventFilter(QObject* _obj, QEvent* _event) override;
@@ -115,6 +157,7 @@ namespace Utils
 
     private:
         int ShadowWidth_;
+        int Radius_;
     };
 
     class [[nodiscard]] PainterSaver
@@ -147,11 +190,9 @@ namespace Utils
 
     bool isUin(const QString& _aimId);
 
-    const std::vector<QString>& urlSchemes();
-    bool isInternalScheme(const QString& scheme);
-
     QString getCountryNameByCode(const QString& _iso_code);
     QString getCountryCodeByName(const QString& _name);
+
     QMap<QString, QString> getCountryCodes();
     // Stolen from Formatter in history_control , move it here completely?
     QString formatFileSize(const int64_t size);
@@ -159,6 +200,7 @@ namespace Utils
     QString ScaleStyle(const QString& _style, double _scale);
 
     void SetProxyStyle(QWidget* _widget, QStyle* _style);
+    QString prepareStyle(const QString& _style);
     void ApplyStyle(QWidget* _widget, const QString& _style);
     void ApplyPropertyParameter(QWidget* _widget, const char* _property, QVariant _parameter);
 
@@ -172,7 +214,7 @@ namespace Utils
     QPixmap roundImage(const QPixmap& _img, bool _isDefault, bool _miniIcons);
 
     void addShadowToWidget(QWidget* _target);
-    void addShadowToWindow(QWidget* _target, bool _enabled = true);
+    void addShadowToWindow(QWidget* _target, bool _enabled = true, double _radius = 0.0);
 
     void grabTouchWidget(QWidget* _target, bool _topWidget = false);
 
@@ -216,6 +258,18 @@ namespace Utils
     int getBottomPanelHeight();
     int getTopPanelHeight();
 
+    constexpr int minSide(const QSize& _s) noexcept { return std::min(_s.width(), _s.height()); }
+    constexpr int minSide(const QRect& _r) noexcept { return minSide(_r.size()); }
+
+    constexpr qreal minSide(const QSizeF& _s) noexcept { return std::min(_s.width(), _s.height()); }
+    constexpr qreal minSide(const QRectF& _r) noexcept { return minSide(_r.size()); }
+
+    constexpr int maxSide(const QSize& _s) noexcept { return std::max(_s.width(), _s.height()); }
+    constexpr int maxSide(const QRect& _r) noexcept { return maxSide(_r.size()); }
+
+    constexpr qreal maxSide(const QSizeF& _s) noexcept { return std::max(_s.width(), _s.height()); }
+    constexpr qreal maxSide(const QRectF& _r) noexcept { return maxSide(_r.size()); }
+
     constexpr int text_sy() noexcept // spike for macos drawtext
     {
         return platform::is_apple() ? 2 : 0;
@@ -229,21 +283,7 @@ namespace Utils
 
     QString parse_image_name(const QString& _imageName);
 
-    enum class KeepRatio
-    {
-        no,
-        yes
-    };
 
-    QPixmap renderSvg(const QString& _resourcePath, const QSize& _scaledSize = QSize(), const QColor& _tintColor = QColor(), const KeepRatio _keepRatio = KeepRatio::yes);
-    inline QPixmap renderSvgScaled(const QString& _resourcePath, const QSize& _unscaledSize = QSize(), const QColor& _tintColor = QColor(), const KeepRatio _keepRatio = KeepRatio::yes)
-    {
-        return renderSvg(_resourcePath, Utils::scale_value(_unscaledSize), _tintColor, _keepRatio);
-    }
-
-    using TintedLayer = std::pair<QString, QColor>;
-    using SvgLayers = std::vector<TintedLayer>;
-    QPixmap renderSvgLayered(const QString& _filePath, const SvgLayers& _layers = SvgLayers(), const QSize& _scaledSize = QSize());
 
     bool is_mac_retina() noexcept;
     void set_mac_retina(bool _val) noexcept;
@@ -482,8 +522,6 @@ namespace Utils
 
     bool haveText(const QMimeData *);
 
-    QStringView normalizeLink(QStringView _link);
-
     std::string_view get_crossprocess_mutex_name();
 
     QHBoxLayout* emptyHLayout(QWidget* parent = nullptr);
@@ -495,14 +533,6 @@ namespace Utils
 
     QString getProductName();
     QString getInstallerName();
-
-    void openMailBox(const QString& email, const QString& mrimKey, const QString& mailId);
-    void openAttachUrl(const QString& email, const QString& mrimKey, bool canCancel);
-    void openAgentUrl(
-        const QString& _url,
-        const QString& _fail_url,
-        const QString& _email,
-        const QString& _mrimKey);
 
     QString getUnreadsBadgeStr(const int _unreads);
 
@@ -534,8 +564,11 @@ namespace Utils
             Green,
             Gray
         };
-        int drawBadge(const std::unique_ptr<Ui::TextRendering::TextUnit>& _textUnit, QPainter& _p, int _x, int _y, Color _color);
-        int drawBadgeRight(const std::unique_ptr<Ui::TextRendering::TextUnit>& _textUnit, QPainter& _p, int _x, int _y, Color _color);
+
+        QSize getSize(int _textLength, bool _isTab = false);
+        int drawBadge(const std::unique_ptr<Ui::TextRendering::TextUnit>& _textUnit, QPainter& _p, int _right, int _top, Color _color,
+                      const QColor& _borderColor = Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE), bool _isTab = false);
+        int drawBadgeRight(const std::unique_ptr<Ui::TextRendering::TextUnit>& _textUnit, QPainter& _p, int _right, int _top, Color _color);
     }
 
     QSize getUnreadsSize(const QFont& _font, const bool _withBorder, const int _unreads, const int _balloonSize);
@@ -544,26 +577,6 @@ namespace Utils
 
     QStringView extractAimIdFromMention(QStringView _mention);
 
-    enum class OpenUrlConfirm
-    {
-        No,
-        Yes,
-    };
-    void openUrl(QStringView _url, OpenUrlConfirm _confirm = OpenUrlConfirm::No);
-
-    enum class OpenAt
-    {
-        Folder,
-        Launcher,
-    };
-
-    enum class OpenWithWarning
-    {
-        No,
-        Yes,
-    };
-
-    void openFileOrFolder(const QString& _chatAimId, QStringView _path, OpenAt _openAt, OpenWithWarning _withWarning = OpenWithWarning::Yes);
 
     [[nodiscard]] QString convertMentions(const QString& _source, const Data::MentionMap& _mentions);
     void convertMentions(Data::FString& _source, const Data::MentionMap& _mentions);
@@ -593,14 +606,6 @@ namespace Utils
     [[nodiscard]] QString setFilesPlaceholders(QString _text, const Data::FilesPlaceholderMap& _files);
     [[nodiscard]] Data::FString setFilesPlaceholders(const Data::FString& _text, const Data::FilesPlaceholderMap& _files);
 
-    bool isNick(QStringView _text);
-    QString makeNick(const QString& _text);
-
-    bool isMentionLink(QStringView _url);
-
-    bool doesContainMentionLink(QStringView _url);
-
-    bool isServiceLink(const QString& _url);
     void clearContentCache();
     void clearAvatarsCache();
     void removeOmicronFile();
@@ -620,6 +625,8 @@ namespace Utils
 
     OpenDOPResult openDialogOrProfile(const QString& _contact, const OpenDOPParam _paramType = OpenDOPParam::aimid);
     void openDialogWithContact(const QString& _contact, qint64 _id = -1, bool _sel = true, std::function<void (Ui::PageBase*)> _getPageCallback = nullptr);
+    void openFeedContact(const QString& _contact);
+    void updateAppsPageReopenPage(const QString& _contact);
 
     bool clicked(const QPoint& _prev, const QPoint& _cur, int dragDistance = 0);
 
@@ -659,12 +666,46 @@ namespace Utils
     };
 
     QSize avatarWithBadgeSize(const int _avatarWidthScaled);
-    const StatusBadge& getStatusBadgeParams(const int _avatarWidthScaled);
-    QPixmap getStatusBadge(const QString& _aimid, int _avatarSize);
+    const StatusBadge& getStatusBadgeParams(const int _avatarWidthScaled, bool _small = true);
+    QPixmap getStatusBadge(const QString& _aimid, int _avatarSize, bool _small = true);
     QPixmap getBotDefaultBadge(int _badgeSize);
     QPixmap getEmptyStatusBadge(StatusBadgeState _state, int _avatarSize);
-    void drawAvatarWithBadge(QPainter& _p, const QPoint& _topLeft, const QPixmap& _pm, const bool _isOfficial, const QPixmap& _status, const bool _isMuted, const bool _isSelected, const bool _isOnline, const bool _small_online, bool _withOverlay = false);
-    void drawAvatarWithBadge(QPainter& _p, const QPoint& _topLeft, const QPixmap& _pm, const QString& _aimid, const bool _officialOnly = false, StatusBadgeState _state = StatusBadgeState::CanBeOff, const bool _isSelected = false, const bool _small_online = true);
+    struct AvatarBadge
+    {
+        QSize size_;
+        QPoint offset_;
+        QPixmap officialIcon_;
+        QPixmap muteIcon_;
+        QPixmap smallOnlineIcon_;
+        QPixmap smallSelectedOnlineIcon_;
+        QPixmap onlineIcon_;
+        QPixmap onlineSelectedIcon_;
+        int cutWidth_;
+        int emojiOffsetY_;
+        AvatarBadge(){};
+        AvatarBadge(const int _size, const int _offsetX, const int _offsetY,
+                    const int _cutWidth, const QString& _officialPath,
+                    const QString& _mutedPath, const QString& _smallOnlinePath, const QString& _onlinePath, const QString& _onlineSelectedPath);
+        bool isEmpty() const { return size_ == QSize(0, 0); };
+    };
+    AvatarBadge getBadgeData(int _avatarWidth);
+
+    enum class StatusBadgeFlag
+    {
+        None        = 0,
+        Official    = 1 << 1,
+        Muted       = 1 << 2,
+        Selected    = 1 << 3,
+        Online      = 1 << 4,
+        SmallOnline = 1 << 5,
+        WithOverlay = 1 << 6,
+        Small       = 1 << 7,
+    };
+    Q_DECLARE_FLAGS(StatusBadgeFlags, StatusBadgeFlag)
+    Q_DECLARE_OPERATORS_FOR_FLAGS(Utils::StatusBadgeFlags)
+
+    void drawAvatarWithBadge(QPainter& _p, const QPoint& _topLeft, const QPixmap& _pm, const QPixmap& _status, const StatusBadgeFlags _flags = StatusBadgeFlag::Small);
+    void drawAvatarWithBadge(QPainter& _p, const QPoint& _topLeft, const QPixmap& _pm, const QString& _aimid, StatusBadgeState _state = StatusBadgeState::CanBeOff, const StatusBadgeFlags _flags = StatusBadgeFlag::Small | StatusBadgeFlag::SmallOnline);
     void drawAvatarWithoutBadge(QPainter& _p, const QPoint& _topLeft, const QPixmap& _pm, const QPixmap& _status = QPixmap());
 
     template<typename T>
@@ -712,6 +753,7 @@ namespace Utils
             MacEventFilter,
             ShowLoginPage,
             ShowGDPRPage,
+            ShowUserAgreementPage
         };
 
         Initiator initiator_ = Initiator::Unknown;
@@ -776,7 +818,7 @@ namespace Utils
 
         void setCheckBoxText(const QString& _text);
         void setCheckBoxChecked(bool _value);
-        void setInfoText(const QString& _text, QColor _color = QColor());
+        void setInfoText(const QString& _text, const Styling::ThemeColorKey& _color = {});
 
     protected:
         void paintEvent(QPaintEvent* _event) override;
@@ -794,14 +836,7 @@ namespace Utils
 
     void logMessage(const QString& _message);
 
-    void registerCustomScheme();
-
-    void openFileLocation(const QString& _path);
-
     bool isPanoramic(const QSize& _size);
-    bool isMimeDataWithImageDataURI(const QMimeData* _mimeData);
-    bool isMimeDataWithImage(const QMimeData* _mimeData);
-    QImage getImageFromMimeData(const QMimeData* _mimeData);
 
     void updateBgColor(QWidget* _widget, const QColor& _color);
     void setDefaultBackground(QWidget* _widget);
@@ -814,8 +849,6 @@ namespace Utils
     bool isChat(QStringView _aimid);
     bool isServiceAimId(QStringView _aimId);
 
-    QString getDomainUrl();
-
     QString getStickerBotAimId();
 
     template<typename T, typename V>
@@ -826,8 +859,6 @@ namespace Utils
     }
 
     QString msgIdLogStr(qint64 _msgId);
-
-    bool isUrlVCS(const QString& _url);
 
     bool canShowSmartreplies(const QString& _aimId);
 
@@ -878,6 +909,10 @@ namespace Utils
     QString getMembersString(int _number, bool _isChannel);
 
     QString getFormattedTime(std::chrono::milliseconds _duration);
+
+    constexpr int defaultMouseWheelDelta() noexcept { return 120; }
+
+    bool isLineBreak(QChar _ch);
 }
 
 Q_DECLARE_METATYPE(Utils::CloseWindowInfo)
@@ -890,24 +925,6 @@ namespace Logic
         Recents
     };
     void updatePlaceholders(const std::vector<Placeholder> &_locations = {Placeholder::Contacts, Placeholder::Recents});
-}
-
-namespace MimeData
-{
-    QMimeData* toMimeData(Data::FString&& _text, const Data::MentionMap& _mentions, const Data::FilesPlaceholderMap& _files);
-
-    QString getMentionMimeType();
-    QString getRawMimeType();
-    QString getFileMimeType();
-    QString getTextFormatMimeType();
-
-    [[nodiscard]] QByteArray convertMapToArray(const std::map<QString, QString, Utils::StringComparator>& _map);
-    [[nodiscard]] std::map<QString, QString, Utils::StringComparator> convertArrayToMap(const QByteArray& _array);
-
-    void copyMimeData(const Ui::MessagesScrollArea& _area);
-    [[nodiscard]] QByteArray serializeTextFormatAsJson(const core::data::format& _format);
-
-    const std::vector<QStringView>& getFilesPlaceholderList();
 }
 
 namespace FileSharing

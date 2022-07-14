@@ -37,14 +37,15 @@ namespace core
             bool is_phone_valid_;
 
         private:
-            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& request) override;
-            virtual int32_t parse_response(const std::shared_ptr<core::tools::binary_stream>& response) override;
+            int32_t init_request(const std::shared_ptr<core::http_request_simple>& request) override;
+            int32_t parse_response(const std::shared_ptr<core::tools::binary_stream>& response) override;
 
         public:
             phoneinfo(wim_packet_params params, const std::string &phone, const std::string &gui_locale);
             bool is_valid() const override { return true; }
             virtual ~phoneinfo();
-            virtual std::string_view get_method() const override;
+            std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
         };
 
     }

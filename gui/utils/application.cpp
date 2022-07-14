@@ -35,6 +35,8 @@
 #include "main_window/LocalPIN.h"
 #include "utils/UrlCommand.h"
 
+#include "../qml/helpers/QmlEngine.h"
+
 #include "gui_metrics.h"
 
 #ifdef __linux__
@@ -64,22 +66,20 @@ namespace Utils
 {
 #ifdef _WIN32
     AppGuard::AppGuard()
-        : Mutex_(nullptr)
-        , Exist_(false)
+        : mutex_{ ::CreateSemaphoreA(NULL, 0, 1, std::string(Utils::get_crossprocess_mutex_name()).c_str()) }
+        , exist_{ GetLastError() == ERROR_ALREADY_EXISTS }
     {
-        Mutex_ = ::CreateSemaphoreA(NULL, 0, 1, std::string(Utils::get_crossprocess_mutex_name()).c_str());
-        Exist_ = GetLastError() == ERROR_ALREADY_EXISTS;
     }
 
     AppGuard::~AppGuard()
     {
-        if (Mutex_)
-            CloseHandle(Mutex_);
+        if (mutex_)
+            CloseHandle(mutex_);
     }
 
     bool AppGuard::succeeded() const
     {
-        return !Exist_;
+        return !exist_;
     }
 
     /**
@@ -164,6 +164,9 @@ namespace Utils
 
     Application::~Application()
     {
+        if (mainWindow_)
+            mainWindow_->onDestroy();
+
         mainWindow_.reset();
 
         Emoji::Cleanup();
@@ -200,7 +203,7 @@ namespace Utils
         return res;
     }
 
-    bool Application::init(launch::CommandLineParser& _cmdParser)
+    bool Application::init(const launch::CommandLineParser& _cmdParser)
     {
         Ui::createDispatcher();
         Utils::InterConnector::instance().connectTo(Ui::GetDispatcher());
@@ -232,13 +235,13 @@ namespace Utils
 #if defined _WIN32
         return guard_->succeeded();
 #elif defined __linux__
-        int fd;
-        struct flock fl;
-        const auto lockName = config::get().string(config::values::main_instance_mutex_linux);
-        fd = open(ql1s("/tmp/%1.pid").arg(QString::fromUtf8(lockName.data(), lockName.size())).toStdString().c_str(), O_CREAT | O_RDWR, 0666);
+        const auto lockBaseName = config::get().string(config::values::main_instance_mutex_linux);
+        const std::string lockName = config::get().has_develop_cli_flag() ? std::string{ su::concat(lockBaseName, "_develop") } : std::string{ lockBaseName };
+        int fd = open(ql1s("/tmp/%1.pid").arg(QString::fromUtf8(lockName.data(), lockName.size())).toStdString().c_str(), O_CREAT | O_RDWR, 0666);
         if (fd == -1)
             return true;
 
+        struct flock fl;
         fl.l_type   = F_WRLCK;
         fl.l_whence = SEEK_SET;
         fl.l_start  = 0;
@@ -256,7 +259,7 @@ namespace Utils
 #endif //_WIN32
     }
 
-    int Application::switchInstance(launch::CommandLineParser& _cmdParser)
+    int Application::switchInstance(const launch::CommandLineParser& _cmdParser)
     {
         QTimer::singleShot(0, this, [&_cmdParser, this]()
         {
@@ -357,8 +360,14 @@ namespace Utils
         }
 #endif //_WIN32
 
-        mainWindow_ = std::make_unique<Ui::MainWindow>(app_.get(), _hasValidLogin, _locked, _validOrFirstLogin);
+        if (!mainWindow_)
+            mainWindow_ = std::make_unique<Ui::MainWindow>(app_.get(), _hasValidLogin, _locked, _validOrFirstLogin);
+
         mainWindow_->init(needToShow);
+
+        auto engine = new Qml::Engine(mainWindow_.get());
+        Utils::InterConnector::instance().setQmlEngine(engine);
+        Utils::InterConnector::instance().setQmlRootModel(engine->rootModel());
 
         Ui::GetDispatcher()->updateRecentAvatarsSize();
 

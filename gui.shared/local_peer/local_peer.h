@@ -31,7 +31,7 @@ namespace Utils
             KeepAlive
         };
 
-        LocalConnection(QLocalSocket* _socket, const ConnPolicy _writePolicy = ConnPolicy::DisconnectAfterWrite);
+        LocalConnection(QLocalSocket* _socket, const ConnPolicy _writePolicy = ConnPolicy::DisconnectAfterWrite, bool _useOldPipe = false);
         ~LocalConnection();
 
         void connectToServer();
@@ -53,6 +53,7 @@ namespace Utils
         int bytesToSend_;
 
         bool exitOnDisconnect_;
+        bool useOldPipe_;
         QTimer* timer_;
         ConnPolicy writePolicy_;
     };
@@ -73,7 +74,7 @@ namespace Utils
         void receiveConnection();
 
     public:
-        LocalPeer(QObject* _parent = nullptr, bool _isServer = false);
+        LocalPeer(QObject* _parent = nullptr, bool _isServer = false, bool _useOldPipe = false);
 
         void setMainWindow(QMainWindow* _wnd);
 
@@ -89,6 +90,8 @@ namespace Utils
         QMainWindow* mainWindow_;
 
         QLocalServer* server_;
+
+        bool useOldPipe_;
     };
 }
 

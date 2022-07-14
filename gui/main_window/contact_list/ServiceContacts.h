@@ -10,6 +10,8 @@ namespace ServiceContacts
         None
     };
 
+    [[nodiscard]] const QString& getThreadsName() noexcept;
+    [[nodiscard]] const QString& getTasksName() noexcept;
     bool isServiceContact(const QString& _contactId);
     ContactType contactType(const QString& _contactId);
     const QString& contactId(ContactType _type);

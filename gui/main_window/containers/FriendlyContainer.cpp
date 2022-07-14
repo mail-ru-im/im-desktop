@@ -5,6 +5,7 @@
 #include "../../core_dispatcher.h"
 #include "../../utils/utils.h"
 #include "../../utils/InterConnector.h"
+#include "../contact_list/Common.h"
 
 Q_LOGGING_CATEGORY(friendlyContainer, "friendlyContainer")
 
@@ -72,13 +73,13 @@ namespace Logic
         Q_EMIT friendlyChanged2(_aimid, _friendly, QPrivateSignal());
     }
 
-    static std::unique_ptr<FriendlyContainer> g_friendly_container; // global. TODO/FIXME encapsulate with other global objects like recentsModel, contactModel
+    static QObjectUniquePtr<FriendlyContainer> g_friendly_container; // global. TODO/FIXME encapsulate with other global objects like recentsModel, contactModel
 
     FriendlyContainer* GetFriendlyContainer()
     {
         Utils::ensureMainThread();
         if (!g_friendly_container)
-            g_friendly_container = std::make_unique<FriendlyContainer>(nullptr);
+            g_friendly_container = makeUniqueQObjectPtr<FriendlyContainer>();
 
         return g_friendly_container.get();
     }

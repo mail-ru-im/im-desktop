@@ -12,6 +12,9 @@ namespace core::wim
 
         std::string sn_;
         std::string name_;
+        std::string first_name_;
+        std::string middle_name_;
+        std::string last_name_;
         std::string description_;
 
         // optional user fields

@@ -2,20 +2,23 @@
 
 #include "../HistoryControlPageItem.h"
 #include "../ServiceMessageItem.h"
+#include "../ThreadRepliesItem.h"
 #include "../history/MessageBuilder.h"
-#include "main_window/containers/FriendlyContainer.h"
+#include "../history/DateInserter.h"
 #include "main_window/contact_list/ContactListModel.h"
+#include "main_window/contact_list/Common.h"
 #include "styles/ThemeParameters.h"
-#include "cache/avatars/AvatarStorage.h"
 #include "controls/TextUnit.h"
 #include "controls/TooltipWidget.h"
 #include "utils/utils.h"
 #include "utils/InterConnector.h"
-#include "utils/PainterPath.h"
+#include "utils/PolygonRounder.h"
+#include "utils/MimeDataUtils.h"
 #include "previewer/toast.h"
-#include "fonts.h"
 #include "ThreadFeedItem.h"
+#include "ThreadFeedItemHeader.h"
 #include "MessagesLayout.h"
+#include "main_window/DragOverlayWindow.h"
 #include "main_window/input_widget/InputWidget.h"
 #include "main_window/input_widget/InputWidgetUtils.h"
 #include "main_window/contact_list/ServiceContacts.h"
@@ -25,144 +28,117 @@
 #include "main_window/history_control/complex_message/FileSharingUtils.h"
 #include "core_dispatcher.h"
 #include "main_window/smiles_menu/SmilesMenu.h"
-#include "main_window/smiles_menu/suggests_widget.h"
+#include "main_window/smiles_menu/SuggestsWidget.h"
+#include "main_window/MainWindow.h"
+#include "main_window/GroupChatOperations.h"
+#include "main_window/contact_list/FavoritesUtils.h"
 
 namespace
 {
+    constexpr int headerAvatarSize() { return 32; }
 
-int headerHeight() noexcept
-{
-    return Utils::scale_value(32 + 2*12);
-}
-
-int topMargin() noexcept
-{
-    return Utils::scale_value(4);
-}
-
-int inputBottomMargin() noexcept
-{
-    return Utils::scale_value(2);
-}
-
-int bottomMargin() noexcept
-{
-    return Utils::scale_value(8);
-}
-
-int chatThreadBubbleBorderRadius() noexcept
-{
-    return Utils::scale_value(16);
-}
-
-constexpr int headerAvatarSize()
-{
-    return 32;
-}
-
-int headerAvatarSizeScaled() noexcept
-{
-    return Utils::scale_value(headerAvatarSize());
-}
-
-int headerAvatarRightMargin() noexcept
-{
-    return Utils::scale_value(8);
-}
-
-int headerAvatarLeftMargin() noexcept
-{
-    return Utils::scale_value(16);
-}
-
-int headerLeftMargin() noexcept
-{
-    return Utils::scale_value(8);
-}
-
-int headerRightMargin() noexcept
-{
-    return Utils::scale_value(16);
-}
-
-int newMessagesPlateTopMargin() noexcept
-{
-    return Utils::scale_value(4);
-}
-
-int newMessagesPlateBottomMargin() noexcept
-{
-    return Utils::scale_value(16);
-}
-
-QMargins messagesLayoutMargins() noexcept
-{
-    return Utils::scale_value(QMargins(0, 10, 0, 8));
-}
-
-QColor headerTextColor()
-{
-    return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
-}
-
-const QColor& headerBackgroundColor(bool _hovered, bool _pressed)
-{
-    if (_pressed)
+    int headerHeight() noexcept
     {
-        static const auto c = Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_ACTIVE, 0.15);
-        return c;
+        return Utils::scale_value(headerAvatarSize() + 2 * 12);
     }
 
-    if (_hovered)
+    int topMargin() noexcept
     {
-        static const auto c = Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER, 0.15);
-        return c;
+        return Utils::scale_value(4);
     }
 
-    static const auto c = Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY, 0.15);
-    return c;
-}
-
-int headerTextOffsetV() noexcept
-{
-    return Utils::scale_value(-1);
-}
-    
-std::unique_ptr<Ui::HistoryControlPageItem> createItem(Data::MessageBuddySptr _msg, Ui::ThreadFeedItem* _parent, int _width, int64_t _topicStarter)
-{
-    if (_msg->Id_ == _topicStarter)
-        _msg->SetOutgoing(false);//show topicstarter as incoming message
-
-    std::unique_ptr<Ui::HistoryControlPageItem> item;
-    if (item = hist::MessageBuilder::makePageItem(*_msg, _width, _parent))
+    int bottomMargin() noexcept
     {
-        item->setHasAvatar(true);
-        item->setHasSenderName(true);
-        item->setChainedToNext(false);
-        item->setChainedToPrev(false);
-        item->onActivityChanged(true);
-        item->initSize();
-        QObject::connect(item.get(), &Ui::HistoryControlPageItem::edit, _parent, &Ui::ThreadFeedItem::edit);
-        QObject::connect(item.get(), &Ui::HistoryControlPageItem::quote, _parent, &Ui::ThreadFeedItem::quote);
+        return Utils::scale_value(8);
     }
-    return item;
-}
 
-constexpr int64_t loadMoreMaxCount() noexcept
-{
-    return 50;
-}
+    double chatThreadBubbleBorderRadius() noexcept
+    {
+        return (double)Utils::scale_value(8);
+    }
 
-int64_t loadMoreHeight() noexcept
-{
-    return Utils::scale_value(20);
-}
+    int minimumDragOverlayHeight() noexcept
+    {
+        return 2 * headerHeight() + Utils::scale_value(16);
+    }
 
-int pickerHorMargin() noexcept
-{
-    return Utils::scale_value(16);
-}
+    int newMessagesPlateTopMargin() noexcept
+    {
+        return Utils::scale_value(4);
+    }
 
+    int newMessagesPlateBottomMargin() noexcept
+    {
+        return Utils::scale_value(16);
+    }
+
+    int itemHorizontalMargin() noexcept
+    {
+        return Utils::scale_value(12);
+    }
+
+    QMargins itemMargins() noexcept
+    {
+        return QMargins(itemHorizontalMargin(), 0, itemHorizontalMargin(), 0);
+    }
+
+    QMargins messagesLayoutMargins() noexcept
+    {
+        return QMargins(itemHorizontalMargin(), Utils::scale_value(10), itemHorizontalMargin(), Utils::scale_value(8));
+    }
+
+    QMargins pinnedMessageLayoutMargins() noexcept
+    {
+        return QMargins(itemHorizontalMargin(), 0, itemHorizontalMargin(), Utils::scale_value(6));
+    }
+
+    using ThreadFeedItemUptr = QObjectUniquePtr<Ui::HistoryControlPageItem>;
+
+    ThreadFeedItemUptr createItem(Data::MessageBuddySptr _msg, Ui::ThreadFeedItem* _parent, int _width, int64_t _topicStarter)
+    {
+        ThreadFeedItemUptr item;
+        if (!_msg)
+            return item;
+
+        bool isTS = _msg->Id_ == _topicStarter;
+        if (isTS)
+            _msg->SetOutgoing(false);//show topicstarter as incoming message
+
+        auto pageItem = hist::MessageBuilder::makePageItem(*_msg, _width, _parent);
+        item.reset(pageItem.release());
+        if (item)
+        {
+            item->setHasAvatar(true);
+            item->setHasSenderName(true);
+            item->setChainedToNext(false);
+            item->setChainedToPrev(false);
+            item->onActivityChanged(true);
+            item->initSize();
+            item->setTopicStarter(isTS);
+            item->setMultiselectEnabled(false);
+            QObject::connect(item.get(), &Ui::HistoryControlPageItem::edit, _parent, &Ui::ThreadFeedItem::edit);
+            QObject::connect(item.get(), &Ui::HistoryControlPageItem::quote, _parent, &Ui::ThreadFeedItem::quote);
+            if (const auto msgItem = dynamic_cast<Ui::ComplexMessage::ComplexMessageItem*>(item.get()))
+            {
+                QObject::connect(msgItem, &Ui::ComplexMessage::ComplexMessageItem::copy, _parent, &Ui::ThreadFeedItem::copy, Qt::UniqueConnection);
+                QObject::connect(msgItem, &Ui::ComplexMessage::ComplexMessageItem::forward, _parent, &Ui::ThreadFeedItem::onForward, Qt::UniqueConnection);
+                QObject::connect(msgItem, &Ui::ComplexMessage::ComplexMessageItem::addToFavorites, _parent, &Ui::ThreadFeedItem::addToFavorites, Qt::UniqueConnection);
+            }
+
+            QObject::connect(item.get(), &Ui::HistoryControlPageItem::createTask, _parent, &Ui::ThreadFeedItem::createTask);
+        }
+        return item;
+    }
+
+    constexpr int64_t loadMoreMaxCount() noexcept
+    {
+        return 50;
+    }
+
+    int pickerHorMargin() noexcept
+    {
+        return Utils::scale_value(16);
+    }
 }
 
 namespace Ui
@@ -175,7 +151,10 @@ namespace Ui
 class ThreadFeedItem_p
 {
 public:
-    ThreadFeedItem_p(QWidget* _q) : q(_q) {}
+    ThreadFeedItem_p(QWidget* _q)
+        : q(_q)
+        , dateInserter_(new hist::DateInserter(threadId_, q))
+    {}
 
     void initStickerPicker()
     {
@@ -231,9 +210,176 @@ public:
         newMessagesPlate_->show();
     }
 
-    void addItem(std::unique_ptr<Ui::HistoryControlPageItem>&& _item)
+    void addDateMessage(const Data::MessageBuddySptr& _msg, bool _front = false, bool _withoutCheck = false)
+    {
+        addDateMessage(*(_msg.get()), _front, _withoutCheck);
+    }
+
+    Logic::MessageKey getDateKey(const Data::MessageBuddy& _msg) const
+    {
+        return dateInserter_->makeDateKey(_msg.ToKey());
+    }
+
+    bool isDateItem(const ThreadFeedItemUptr& _item) const
+    {
+        return isDateItem(_item.get());
+    }
+
+    bool isDateMessage(const Data::MessageBuddy& _msg) const
+    {
+        return _msg.GetType() == core::message_type::undefined;
+    }
+
+    bool isDateMessage(std::shared_ptr<Data::MessageBuddy> _msg)
+    {
+        auto msg = _msg.get();
+        return isDateMessage(*msg);
+    }
+
+    bool isDateItem(const Ui::HistoryControlPageItem* _item) const
+    {
+        return _item && isDateMessage(_item->buddy());
+    }
+
+    void insertAndShow(ThreadFeedItemUptr&& _w, const Logic::MessageKey& _key, bool _front = false, bool _needUpdIndex = true,
+                       bool _needUpdLastMsgId = false, bool _needUpdPendings = false)
+    {
+        if (!_w)
+            return;
+
+        auto wPtr = _w.get();
+        messagesLayout_->insertWidget(wPtr, _front ? 0 : -1);
+        _w->show();
+
+        if (_needUpdIndex)
+            index_[_key] = wPtr;
+
+        const auto& msg = _w->buddy();
+        if (_needUpdLastMsgId)
+            lastMsgId_ = std::max(msg.Id_, lastMsgId_);
+        if (_needUpdPendings)
+            pendings_[msg.InternalId_] = wPtr;
+
+        addItem(std::move(_w));
+    }
+
+    void addDateMessage(const Data::MessageBuddy& _msg, bool _front = false, bool _withoutCheck = false)
+    {
+        auto dateKey = getDateKey(_msg);
+        auto noDateItems = (items_.size() > 0 && std::find_if(items_.begin(), items_.end(), [this](const auto& _item){ return isDateItem(_item); }) == items_.end());
+
+        QDate maxDate;
+        for (auto& item : items_)
+        {
+            if (isDateItem(item))
+                if (maxDate < item->buddy().GetDate())
+                    maxDate = item->buddy().GetDate();
+        }
+
+        if (items_.size() == 0 || noDateItems || _withoutCheck || maxDate < _msg.GetDate())
+        {
+            if (auto w = dateInserter_->makeDateItem(dateKey, q->width(), q))
+                insertAndShow(ThreadFeedItemUptr(w.release()), dateKey, _front, false);
+        }
+    }
+
+    void removeFirstDate(const Logic::MessageKey& _dateKey)
+    {
+        for (auto iter = items_.begin(); iter != items_.end(); ++iter)
+        {
+            auto& item = *iter;
+            if (isDateItem(item))
+            {
+                auto itemDateKey = getDateKey(item->buddy());
+                if (_dateKey.getDate() == itemDateKey.getDate())
+                {
+                    index_.erase(itemDateKey);
+                    items_.erase(iter);
+                }
+                break;
+            }
+        }
+    }
+
+    void removeAllDates()
+    {
+        auto newEnd = std::remove_if(items_.begin(), items_.end(), [this](const auto& _item)
+        {
+            bool isDate = isDateItem(_item);
+            if (isDate)
+                index_.erase(getDateKey(_item->buddy()));
+            return isDate;
+        });
+        items_.erase(newEnd, items_.end());
+    }
+
+    bool isSameDateKey(const Data::MessageBuddySptr& _msg, const ThreadFeedItemUptr& _item) const
+    {
+        if (!_msg || !_item)
+            return false;
+        auto dateKey = getDateKey(*_msg.get());
+        return _item ? getDateKey(_item->buddy()).getDate() == _msg->GetDate() : false;
+    }
+
+    void deleteDates(const std::vector<QDate>& _deletedMsgDates)
+    {
+        for (const auto& date : _deletedMsgDates)
+        {
+            auto messagesWithSameDate = (std::find_if(items_.begin(), items_.end(), [this, date](const auto& _item)
+                                             {
+                                                 return !isDateItem(_item) && (date == _item->buddy().GetDate()) && (_item->getId() != pinnedMessageId_);
+                                             }) != items_.end());
+
+            if (!messagesWithSameDate)
+            {
+                items_.erase(std::remove_if(items_.begin(), items_.end(), [this, date](const auto& _item)
+                {
+                    auto needDelete = isDateItem(_item) && (date == _item->buddy().GetDate());
+                    if (needDelete)
+                        index_.erase(getDateKey(_item->buddy()));
+                    return needDelete;
+                }), items_.end());
+            }
+        }
+    }
+
+    void deleteDates(const Data::MessageBuddies& _messages)
+    {
+        for (const auto& msg : _messages)
+        {
+            if (!msg)
+                continue;
+            auto messagesWithSameDate = (std::find_if(items_.begin(), items_.end(), [this, msg](const auto& _item)
+            { return !isDateItem(_item) && isSameDateKey(msg, _item); }) != items_.end());
+            if (!messagesWithSameDate)
+            {
+                items_.erase(std::remove_if(items_.begin(), items_.end(), [this, msg](const auto& _item)
+                { return isDateItem(_item) && isSameDateKey(msg, _item); }), items_.end());
+                index_.erase(getDateKey(*msg.get()));
+            }
+        }
+    }
+
+    bool addMessage(ThreadFeedItemUptr&& _newItem, bool _needUpdIndex = true, bool _needUpdPendings = false, bool _front = false)
+    {
+        if (!_newItem)
+            return false;
+        const auto key = _newItem->buddy().ToKey();
+        if (index_.find(key) != index_.end())
+            return false;
+        insertAndShow(std::move(_newItem), key, _front, _needUpdIndex, _needUpdIndex, _needUpdPendings);
+        return true;
+    }
+
+    void addItem(ThreadFeedItemUptr&& _item)
     {
         items_.push_back(std::move(_item));
+        QObject::connect(items_.back().get(), &Ui::HistoryControlPageItem::sizeUpdated, q, [this]()
+        {
+            layout_->invalidate();
+            messagesLayout_->invalidate();
+            q->updateGeometry();
+        }, Qt::UniqueConnection);
     }
 
     void setInputAllowed(bool _isAllowed)
@@ -247,17 +393,81 @@ public:
         }
     }
 
+    void tryHideEmojiPicker(const QPoint& _pos)
+    {
+        if (stickerPicker_ && !(input_->geometry().contains(_pos) || stickerPicker_->geometry().contains(_pos)))
+            stickerPicker_->hideAnimated();
+    }
+
+    void showDragOverlay()
+    {
+        if (dragOverlayWindow_ && dragOverlayWindow_->isVisible())
+            return;
+
+        if (!dragOverlayWindow_)
+        {
+            dragOverlayWindow_ = new DragOverlayWindow(threadId_, q);
+            dragOverlayWindow_->setAttribute(Qt::WA_TransparentForMouseEvents);
+        }
+
+        updateDragOverlay();
+        dragOverlayWindow_->raise();
+        dragOverlayWindow_->show();
+
+        Utils::InterConnector::instance().setDragOverlay(true);
+    }
+
+    void hideDragOverlay()
+    {
+        if (dragOverlayWindow_)
+            dragOverlayWindow_->hide();
+
+        Utils::InterConnector::instance().setDragOverlay(false);
+    }
+
+    void updateDragOverlay()
+    {
+        Utils::PolygonRounder rounder;
+        const double radius = chatThreadBubbleBorderRadius();
+        const QRect visibleRect = q->visibleRegion().boundingRect().marginsRemoved(itemMargins());
+        const QRect windowRect = q->contentsRect().adjusted(0, headerHeight(), 0, -1);
+        const QRect rect = windowRect.intersected(visibleRect);
+        if (dragOverlayWindow_)
+        {
+            dragOverlayWindow_->setGeometry(rect);
+            dragOverlayWindow_->setClipPath(rounder(dragOverlayWindow_->rect(), { 0.0, 0.0, radius, radius }));
+        }
+    }
+
+    void updateBubblePath()
+    {
+        const double r = chatThreadBubbleBorderRadius();
+
+        Utils::PolygonRounder rounder;
+        const auto bubbleRect = q->contentsRect().adjusted(0, headerHeight(), 0, -1);
+        bubblePath_ = rounder(bubbleRect, { 0, 0, r, r });
+    }
+
+    bool canDragDrop() const
+    {
+        const QRect visibleRect = q->visibleRegion().boundingRect();
+        const QRect windowRect = q->rect().adjusted(0, 0, 0, -1);
+        return (windowRect.intersected(visibleRect).height() >= minimumDragOverlayHeight());
+    }
+
     QString threadId_;
     QBoxLayout* layout_ = nullptr;
     MessagesLayout* messagesLayout_ = nullptr;
     MessagesLayout* pinnedMessageLayout_ = nullptr;
     InputWidget* input_ = nullptr;
+    ThreadFeedItemHeader* header_ = nullptr;
+    QPointer<DragOverlayWindow> dragOverlayWindow_ = nullptr;
     bool isInputEnabled_ = false;
     Stickers::StickersSuggest* suggestsWidget_ = nullptr;
     MentionCompleter* mentionCompleter_ = nullptr;
     std::shared_ptr<Data::MessageParentTopic> parentTopic_;
-    std::vector<std::unique_ptr<Ui::HistoryControlPageItem>> items_;
-    std::unordered_map<int64_t, Ui::HistoryControlPageItem*> index_;
+    std::vector<ThreadFeedItemUptr> items_;
+    std::map<Logic::MessageKey, Ui::HistoryControlPageItem*> index_;
     std::unordered_map<QString, Ui::HistoryControlPageItem*> pendings_;
 
     QTimer* groupSubscribeTimer_ = nullptr;
@@ -265,6 +475,7 @@ public:
     bool firstRequest_ = true;
     bool suggestWidgetShown_ = false;
     bool inputWasVisible_ = false;
+
     qint64 lastMsgId_ = 0;
     int64_t olderMsgId_ = 0;
     int64_t repliesToLoad_ = 0;
@@ -275,13 +486,15 @@ public:
     int lastRequestedCount_ = 0;
     core_dispatcher::GetHistoryParams requestToRepeat_;
     std::unique_ptr<Ui::ServiceMessageItem> newMessagesPlate_;
-    Ui::ServiceMessageItem* repliesPlate_ = nullptr;
+    Ui::ThreadRepliesItem* repliesPlate_ = nullptr;
     Smiles::SmilesMenu* stickerPicker_ = nullptr;
     QWidget* q;
     QWidget* parentForTooltips_ = nullptr;
     int64_t pinnedMessageId_ = -1;
     QPoint selectFrom_;
-    Utils::RenderBubbleFlags renderBubbleFlags_ = Utils::RenderBubbleFlags::AllRounded;
+    QPainterPath bubblePath_;
+    hist::DateInserter* dateInserter_;
+    std::vector<Logic::MessageKey> lastDeletedCache_;
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -289,9 +502,13 @@ public:
 //////////////////////////////////////////////////////////////////////////
 
 ThreadFeedItem::ThreadFeedItem(const Data::ThreadFeedItemData& _data, QWidget* _parent, QWidget* _parentForTooltips)
-    : QWidget(_parent),
-      d(std::make_unique<ThreadFeedItem_p>(this))
+    : QWidget(_parent)
+    , d(std::make_unique<ThreadFeedItem_p>(this))
+
 {
+    setAcceptDrops(true);
+    setContentsMargins(itemHorizontalMargin(), 0, itemHorizontalMargin(), 0);
+
     d->threadId_ = _data.threadId_;
     d->olderMsgId_ = _data.olderMsgId_;
     d->repliesToLoad_ = _data.repliesCount_ - _data.messages_.size();
@@ -299,11 +516,11 @@ ThreadFeedItem::ThreadFeedItem(const Data::ThreadFeedItemData& _data, QWidget* _
     d->parentTopic_ = _data.parent_;
     d->layout_ = Utils::emptyVLayout(this);
 
-    auto header = new ThreadFeedItemHeader(_data.parent_->chat_, this);
-    d->layout_->addWidget(header);
+    d->header_ = new ThreadFeedItemHeader(_data.parent_->chat_, this);
+    d->layout_->addWidget(d->header_);
 
     d->pinnedMessageLayout_ = new MessagesLayout();
-    d->pinnedMessageLayout_->setContentsMargins(0, 0, 0, Utils::scale_value(6));
+    d->pinnedMessageLayout_->setContentsMargins(pinnedMessageLayoutMargins());
 
     if (auto item = createItem(_data.parentMessage_, this, width(), _data.parentMessage_->Id_))
     {
@@ -312,15 +529,14 @@ ThreadFeedItem::ThreadFeedItem(const Data::ThreadFeedItemData& _data, QWidget* _
         d->addItem(std::move(item));
     }
 
-    d->repliesPlate_ = new ServiceMessageItem(this);
-    d->repliesPlate_->setContact(d->threadId_);
+    d->repliesPlate_ = new ThreadRepliesItem(this);
 
     auto buttonLayout = Utils::emptyHLayout();
     buttonLayout->addStretch();
     buttonLayout->addWidget(d->repliesPlate_);
     buttonLayout->addStretch();
 
-    d->messagesLayout_ = new MessagesLayout();
+    d->messagesLayout_ = new MessagesLayout;
     d->messagesLayout_->setContentsMargins(messagesLayoutMargins());
 
     d->layout_->addSpacing(topMargin());
@@ -331,7 +547,7 @@ ThreadFeedItem::ThreadFeedItem(const Data::ThreadFeedItemData& _data, QWidget* _
 
     if (!d->threadId_.isEmpty())
     {
-        Logic::getContactListModel()->markAsThread(d->threadId_, d->parentTopic_->chat_);
+        Logic::getContactListModel()->markAsThread(d->threadId_, d->parentTopic_.get());
         d->input_ = new InputWidget(d->threadId_, this, Ui::defaultInputFeatures() | Ui::InputFeature::LocalState, nullptr);
         d->input_->setThreadFeedItem(this);
         d->input_->setParentForPopup(_parentForTooltips);
@@ -339,8 +555,16 @@ ThreadFeedItem::ThreadFeedItem(const Data::ThreadFeedItemData& _data, QWidget* _
         connect(d->input_, &InputWidget::needSuggets, this, &ThreadFeedItem::onSuggestShow);
         connect(d->input_, &InputWidget::hideSuggets, this, &ThreadFeedItem::onSuggestHide);
         connect(this, &ThreadFeedItem::quote, d->input_, &InputWidget::quote);
+        connect(this, &ThreadFeedItem::createTask, d->input_, &InputWidget::createTask);
         d->layout_->addWidget(d->input_);
         d->layout_->addSpacing(bottomMargin());
+
+        const auto mainWindow = Utils::InterConnector::instance().getMainWindow();
+        connect(
+            d->input_,
+            &InputWidget::startPttRecording,
+            mainWindow,
+            [mainWindow, _inputWidget = d->input_]() { mainWindow->setLastPttInput(_inputWidget); });
 
         GetDispatcher()->setDialogOpen(d->threadId_, true);
         d->groupSubscribeSeq_ = GetDispatcher()->groupSubscribe(d->threadId_);
@@ -364,7 +588,6 @@ ThreadFeedItem::ThreadFeedItem(const Data::ThreadFeedItemData& _data, QWidget* _
 
         connect(d->input_, &InputWidget::sendMessage, this, hideStickersAndSuggests);
         connect(d->input_, &InputWidget::editFocusOut, this, hideStickersAndSuggests);
-        connect(d->input_, &InputWidget::viewChanged, this, hideStickersAndSuggests);
         connect(d->input_, &InputWidget::editFocusOut, this, [this]() { if (d->input_) d->input_->stopPttRecording(); });
     }
 
@@ -375,30 +598,58 @@ ThreadFeedItem::ThreadFeedItem(const Data::ThreadFeedItemData& _data, QWidget* _
     addMessages(_data.messages_);
     d->updateLoadMoreButton();
 
-    connect(d->repliesPlate_, &ServiceMessageItem::clicked, this, &ThreadFeedItem::onLoadMore);
+    connect(d->repliesPlate_, &ThreadRepliesItem::clicked, this, &ThreadFeedItem::onLoadMore);
     connect(d->groupSubscribeTimer_, &QTimer::timeout, this, [this](){ d->groupSubscribeSeq_ = GetDispatcher()->groupSubscribe(d->threadId_); });
-    connect(header, &ThreadFeedItemHeader::clicked, this, &ThreadFeedItem::onHeaderClicked);
+    connect(d->header_, &ThreadFeedItemHeader::clicked, this, &ThreadFeedItem::onHeaderClicked);
 
     connect(d->input_, &InputWidget::editFocusIn, this, &ThreadFeedItem::focusedOnInput);
-    connect(d->input_, &InputWidget::smilesMenuSignal, this, [this]()
+    connect(d->input_, &InputWidget::smilesMenuSignal, this, [this](const bool _fromKeyboard)
     {
         d->initStickerPicker();
         onSuggestHide();
         onHideMentionCompleter();
         d->stickerPicker_->showHideAnimated();
-    });
+    }, Qt::QueuedConnection);
 
     connect(GetDispatcher(), &core_dispatcher::messageBuddies, this, &ThreadFeedItem::onMessageBuddies);
     connect(GetDispatcher(), &core_dispatcher::messagesDeleted, this, &ThreadFeedItem::onMessagesDeleted);
     connect(GetDispatcher(), &core_dispatcher::messageIdsFromServer, this, &ThreadFeedItem::onMessageIdsFromServer);
+    connect(GetDispatcher(), &core_dispatcher::removePending, this, &ThreadFeedItem::onRemovePending);
     connect(GetDispatcher(), &core_dispatcher::subscribeResult, this, &ThreadFeedItem::onGroupSubscribeResult);
+    connect(GetDispatcher(), &core_dispatcher::reactions, this, &ThreadFeedItem::onReactions);
     connect(&Utils::InterConnector::instance(), &Utils::InterConnector::selectionStateChanged, this, &ThreadFeedItem::selectionStateChanged);
+
+    connect(&Utils::InterConnector::instance(), &Utils::InterConnector::clearSelection, this, &ThreadFeedItem::clearSelection);
 }
 
 ThreadFeedItem::~ThreadFeedItem()
 {
     GetDispatcher()->setDialogOpen(d->threadId_, false);
     GetDispatcher()->cancelGroupSubscription(d->threadId_);
+}
+
+void ThreadFeedItem::copy()
+{
+    Utils::showCopiedToast();
+}
+
+void ThreadFeedItem::onForward(const Data::QuotesVec& _q)
+{
+    Q_EMIT Utils::InterConnector::instance().stopPttRecord();
+
+    // disable author setting for single favorites messages which are not forwards
+    const auto disableAuthor = Favorites::isFavorites(d->threadId_) && _q.size() == 1 && Favorites::isFavorites(_q.front().senderId_);
+
+    if (forwardMessage(_q, true, QString(), QString(), !disableAuthor) != 0)
+        Utils::InterConnector::instance().setMultiselect(false, d->threadId_);
+
+    d->input_->setFocusOnInput();
+}
+
+void ThreadFeedItem::addToFavorites(const Data::QuotesVec& _q)
+{
+    Favorites::addToFavorites(_q);
+    Favorites::showSavedToast(_q.size());
 }
 
 void ThreadFeedItem::onLoadMore()
@@ -416,11 +667,30 @@ void ThreadFeedItem::onMessageBuddies(const Data::MessageBuddies& _messages, con
     if (_aimId != d->threadId_)
         return;
 
-    auto replaceItem = [this](std::unique_ptr<Ui::HistoryControlPageItem>& _current, std::unique_ptr<Ui::HistoryControlPageItem>& _new, MessagesLayout* _layout, int _index)
+    if (_messageBuddiesCache._messages == _messages
+        && _messageBuddiesCache._aimId == _aimId
+        && _messageBuddiesCache._type == _type
+        && _messageBuddiesCache._havePending == _havePending
+        && _messageBuddiesCache._seq == _seq
+        && _messageBuddiesCache._lastMsgId == _lastMsgId)
+        return;
+
+    for (auto msg : _messages)
     {
-        auto updateIndex = [this](std::unique_ptr<Ui::HistoryControlPageItem>& _current)
+        _messageBuddiesCache._messages.clear();
+        _messageBuddiesCache._messages.push_back(msg);
+    }
+    _messageBuddiesCache._aimId = _aimId;
+    _messageBuddiesCache._type = _type;
+    _messageBuddiesCache._havePending = _havePending;
+    _messageBuddiesCache._seq = _seq;
+    _messageBuddiesCache._lastMsgId = _lastMsgId;
+
+    auto replaceItem = [this](ThreadFeedItemUptr& _current, ThreadFeedItemUptr& _new, MessagesLayout* _layout, int _index)
+    {
+        auto updateIndex = [this](ThreadFeedItemUptr& _current)
         {
-            d->index_[_current->getId()] = _current.get();
+            d->index_[_current->buddy().ToKey()] = _current.get();
             d->lastMsgId_ = std::max(_current->getId(), d->lastMsgId_);
         };
 
@@ -438,6 +708,7 @@ void ThreadFeedItem::onMessageBuddies(const Data::MessageBuddies& _messages, con
         }
 
         _new->updateGeometry();
+        d->addDateMessage(_new->buddy());
         _layout->replaceWidget(_new.get(), _index);
         _current = std::move(_new);
         updateIndex(_current);
@@ -456,6 +727,7 @@ void ThreadFeedItem::onMessageBuddies(const Data::MessageBuddies& _messages, con
         {
             d->olderMsgId_ = messages.front()->Prev_;
             d->repliesToLoad_ -= messages.size();
+            d->removeFirstDate(d->getDateKey(*messages.back().get()));
             addMessages(messages, true);
         }
 
@@ -480,7 +752,7 @@ void ThreadFeedItem::onMessageBuddies(const Data::MessageBuddies& _messages, con
             {
                 if (auto newItem = createItem(msg, this, width(), d->pinnedMessageId_))
                 {
-                    if (auto itMsg = d->index_.find(msg->Id_); itMsg != d->index_.end())
+                    if (auto itMsg = d->index_.find(msg->ToKey()); itMsg != d->index_.end())
                     {
                         auto existing = itMsg->second;
                         auto index = d->messagesLayout_->indexOf(existing);
@@ -498,15 +770,20 @@ void ThreadFeedItem::onMessageBuddies(const Data::MessageBuddies& _messages, con
                                 replaceItem(item, newItem, d->pinnedMessageLayout_, d->pinnedMessageLayout_->indexOf(item.get()));
                         }
                     }
-                    else if (std::find_if(d->index_.cbegin(), d->index_.cend(), [msg](const auto& i) { return i.second->getInternalId() == msg->InternalId_; }) == d->index_.cend())
+                    else if (d->index_.size() > 0 && std::find_if(d->index_.cbegin(), d->index_.cend(), [msg](const auto& _item)
+                                                         { return _item.second && msg && (_item.second->getInternalId() == msg->InternalId_); }) == d->index_.cend())
                     {
-                        d->messagesLayout_->addWidget(newItem.get());
-                        newItem->show();
-                        d->pendings_[msg->InternalId_] = newItem.get();
-                        d->addItem(std::move(newItem));
+                        if (newItem)
+                        {
+                            d->addDateMessage(newItem->buddy());
+                            d->addMessage(std::move(newItem), true, true);
+                        }
                     }
                 }
             }
+
+            if (msg->IsOutgoing() && msg->IsFileSharing())
+                Q_EMIT activated();
         }
     }
     else if (_type == MessagesBuddiesOpt::MessageStatus || _type == MessagesBuddiesOpt::DlgState)
@@ -518,7 +795,7 @@ void ThreadFeedItem::onMessageBuddies(const Data::MessageBuddies& _messages, con
             if (it != d->pendings_.end())
             {
                 auto pendingItem = it->second;
-                if (auto newItem = createItem(msg, this, width(),d->pinnedMessageId_))
+                if (auto newItem = createItem(msg, this, width(), d->pinnedMessageId_))
                 {
                     auto index = d->messagesLayout_->indexOf(pendingItem);
                     for (auto& item : d->items_)
@@ -532,7 +809,7 @@ void ThreadFeedItem::onMessageBuddies(const Data::MessageBuddies& _messages, con
                     }
                 }
             }
-            else if (auto it = d->index_.find(msg->Id_); it != d->index_.end())
+            else if (auto it = d->index_.find(msg->ToKey()); it != d->index_.end())
             {
                 auto existing = it->second;
                 if (auto newItem = createItem(msg, this, width(), d->pinnedMessageId_))
@@ -546,17 +823,16 @@ void ThreadFeedItem::onMessageBuddies(const Data::MessageBuddies& _messages, con
                     }
                 }
             }
-            else if (d->index_.find(msg->Id_) == d->index_.end() && msg->Id_ > d->lastMsgId_)
+            else if (d->index_.find(msg->ToKey()) == d->index_.end() && msg->Id_ > d->lastMsgId_)
             {
                 if (auto item = createItem(msg, this, width(), d->pinnedMessageId_))
                 {
-                    d->messagesLayout_->addWidget(item.get());
-                    item->show();
-                    d->index_[msg->Id_] = item.get();
-                    d->addItem(std::move(item));
-                    d->lastMsgId_ = msg->Id_;
+                    d->addDateMessage(msg);
+                    d->addMessage(std::move(item));
                 }
             }
+            if (msg->IsOutgoing() && msg->IsFileSharing())
+                Q_EMIT activated();
         }
     }
 
@@ -568,17 +844,60 @@ void ThreadFeedItem::onMessagesDeleted(const QString& _aimid, const Data::Messag
     if (_aimid != d->threadId_)
         return;
 
+    std::vector<Logic::MessageKey> msgKeys;
+    for (auto msg : _messages)
+        msgKeys.push_back(msg->ToKey());
+
+
+    if (msgKeys == d->lastDeletedCache_)
+        return;
+
+    d->lastDeletedCache_.clear();
+    for (auto msg : _messages)
+        d->lastDeletedCache_.push_back(msg->ToKey());
+
+    std::vector<QDate> deletedDates;
     for (auto msg : _messages)
     {
-        if (auto it = d->index_.find(msg->Id_); it != d->index_.end())
+        if (auto it = d->index_.find(msg->ToKey()); it != d->index_.end())
         {
             auto index = d->messagesLayout_->indexOf(it->second);
             auto w = d->messagesLayout_->takeAt(index);
             d->index_.erase(it);
-            d->items_.erase(std::remove_if(d->items_.begin(), d->items_.end(), [w](const auto& i) { return i.get() == w->widget(); }), d->items_.end());
+            d->items_.erase(std::remove_if(d->items_.begin(), d->items_.end(), [&w, &deletedDates](const auto& _item)
+            {
+                auto ret = _item.get() == w->widget();
+                if (ret)
+                    deletedDates.push_back(_item->buddy().GetDate());
+                return ret;
+            }), d->items_.end());
             d->messagesLayout_->invalidate();
         }
     }
+
+    d->deleteDates(deletedDates);
+}
+
+void ThreadFeedItem::onRemovePending(const QString& _aimId, const Logic::MessageKey& _key)
+{
+    d->lastDeletedCache_.push_back(_key);
+
+    std::vector<QDate> deletedDates;
+    if (auto it = d->index_.find(_key); it != d->index_.end())
+    {
+        auto index = d->messagesLayout_->indexOf(it->second);
+        auto w = d->messagesLayout_->takeAt(index);
+        d->index_.erase(it);
+        d->items_.erase(std::remove_if(d->items_.begin(), d->items_.end(), [&w, &deletedDates](const auto& _item)
+        {
+            auto ret = _item.get() == w->widget();
+            if (ret)
+                deletedDates.push_back(_item->buddy().GetDate());
+            return ret;
+        }), d->items_.end());
+        d->messagesLayout_->invalidate();
+    }
+    d->deleteDates(deletedDates);
 }
 
 void ThreadFeedItem::onMessageIdsFromServer(const QVector<qint64>& _ids, const QString& _aimId, qint64 _seq)
@@ -609,49 +928,7 @@ void ThreadFeedItem::onGroupSubscribeResult(const int64_t _seq, int _error, int 
 
 void ThreadFeedItem::onSuggestShow(const QString& _text, const QPoint& _pos)
 {
-    if (!d->suggestsWidget_)
-    {
-        d->suggestsWidget_ = new Stickers::StickersSuggest(d->parentForTooltips_);
-        d->suggestsWidget_->setArrowVisible(true);
-        connect(d->suggestsWidget_, &Stickers::StickersSuggest::stickerSelected, this, &ThreadFeedItem::onSuggestedStickerSelected);
-        connect(d->suggestsWidget_, &Stickers::StickersSuggest::scrolledToLastItem, d->input_, &InputWidget::requestMoreStickerSuggests);
-    }
-    const auto fromInput = d->input_ && QRect(d->input_->mapToGlobal(d->input_->rect().topLeft()), d->input_->size()).contains(_pos);
-    const auto maxSize = QSize(!fromInput ? width() : std::min(width(), Tooltip::getMaxMentionTooltipWidth()), height());
-
-    const auto pt = d->parentForTooltips_->mapFromGlobal(_pos);
-    d->suggestsWidget_->setNeedScrollToTop(!d->input_->hasServerSuggests());
-
-    auto areaRect = rect();
-    if (areaRect.width() > MessageStyle::getHistoryWidgetMaxWidth())
-    {
-        const auto center = areaRect.center();
-        areaRect.setWidth(MessageStyle::getHistoryWidgetMaxWidth());
-
-        if (fromInput)
-        {
-            areaRect.moveCenter(center);
-        }
-        else
-        {
-            if (pt.x() < width() / 3)
-                areaRect.moveLeft(0);
-            else if (pt.x() >= (width() * 2) / 3)
-                areaRect.moveRight(width());
-            else
-                areaRect.moveCenter(center);
-        }
-    }
-
-    if (d->suggestWidgetShown_)
-    {
-        d->suggestsWidget_->updateStickers(_text, pt, maxSize, areaRect);
-    }
-    else
-    {
-        d->suggestsWidget_->showAnimated(_text, pt, maxSize, areaRect);
-        d->suggestWidgetShown_ = !d->suggestsWidget_->getStickers().empty();
-    }
+    showStickersSuggest(_text, _pos);
 }
 
 void ThreadFeedItem::onSuggestHide()
@@ -681,11 +958,26 @@ void ThreadFeedItem::onHideMentionCompleter()
 
 void ThreadFeedItem::selectionStateChanged(const QString& _aimid, qint64, const QString&, bool _selected)
 {
-    if (_aimid == d->threadId_ && _selected)
+    if (_aimid == d->threadId_ && _selected && hasFocus())
     {
         if (d->input_)
             d->input_->setFocusOnInput();
         Q_EMIT selected();
+    }
+}
+
+void ThreadFeedItem::onReactions(const QString& _contact, const std::vector<Data::Reactions> _reactionsData)
+{
+    if (_contact != threadId())
+        return;
+
+    for (const auto& reactions : _reactionsData)
+    {
+        for (auto& item : d->items_)
+        {
+            if (item && item->getId() == reactions.msgId_)
+                item->setReactions(reactions);
+        }
     }
 }
 
@@ -700,32 +992,15 @@ void ThreadFeedItem::onNavigationKeyPressed(int _key, Qt::KeyboardModifiers _mod
 void ThreadFeedItem::edit(const Data::MessageBuddySptr& _msg, MediaType _mediaType)
 {
     if (d->input_)
-        d->input_->edit(_msg, _mediaType);
-}
-
-bool ThreadFeedItem::highlightQuote(int64_t _msgId)
-{
-    auto it = d->index_.find(_msgId);
-    if (it != d->index_.end())
     {
-        it->second->setQuoteSelection();
-        return true;
+        Q_EMIT editing();
+        d->input_->edit(_msg, _mediaType);
     }
-    return false;
 }
 
-bool ThreadFeedItem::containsMessage(int64_t _msgId)
+bool ThreadFeedItem::containsMessage(const Logic::MessageKey& _key)
 {
-    return d->index_.count(_msgId) != 0;
-}
-
-int ThreadFeedItem::messageY(int64_t _msgId)
-{
-    auto it = d->index_.find(_msgId);
-    if (it != d->index_.end())
-        return it->second->geometry().top();
-
-    return -1;
+    return d->index_.count(_key) != 0;
 }
 
 int64_t ThreadFeedItem::parentMsgId() const
@@ -752,6 +1027,8 @@ void ThreadFeedItem::updateVisibleRects()
 {
     for (auto& item : d->items_)
         item->onVisibleRectChanged(item->visibleRegion().boundingRect());
+
+    d->updateDragOverlay();
 }
 
 QRect ThreadFeedItem::inputGeometry() const
@@ -823,19 +1100,20 @@ void ThreadFeedItem::clearSelection()
     }
 }
 
-void ThreadFeedItem::setIsFirstInFeed(bool _isFirstInFeed)
-{
-    d->renderBubbleFlags_ = _isFirstInFeed
-        ? Utils::RenderBubbleFlags::BottomSideRounded
-        : Utils::RenderBubbleFlags::AllRounded;
-}
-
 void ThreadFeedItem::resizeEvent(QResizeEvent* _event)
 {
+    d->updateBubblePath();
+    d->updateDragOverlay();
     if (d->mentionCompleter_ && d->mentionCompleter_->isVisible())
     {
         d->input_->updateGeometry();
         positionMentionCompleter(d->input_->tooltipArrowPosition());
+    }
+    if (d->suggestWidgetShown_)
+    {
+        const auto text = d->input_->getInputText().string();
+        const auto pos = d->input_->suggestPosition();
+        showStickersSuggest(text, pos);
     }
     Q_EMIT sizeUpdated();
     QWidget::resizeEvent(_event);
@@ -845,18 +1123,33 @@ void ThreadFeedItem::mousePressEvent(QMouseEvent* _event)
 {
     if (_event->button() == Qt::LeftButton)
     {
+        Q_EMIT Utils::InterConnector::instance().clearSelection();
         d->messagesLayout_->clearSelection();
         d->pinnedMessageLayout_->clearSelection();
         d->selectFrom_ = _event->pos();
+        if (d->input_)
+            d->input_->setFocusOnInput();
     }
     QWidget::mousePressEvent(_event);
 }
 
+void ThreadFeedItem::mouseReleaseEvent(QMouseEvent* _event)
+{
+    if (Utils::clicked(d->selectFrom_, _event->pos()))
+        d->tryHideEmojiPicker(_event->pos());
+    d->selectFrom_ = {};
+}
+
 void ThreadFeedItem::mouseMoveEvent(QMouseEvent* _event)
 {
-    d->pinnedMessageLayout_->selectByPos(mapToGlobal(d->selectFrom_), mapToGlobal(_event->pos()), mapToGlobal(rect().topLeft()), mapToGlobal(rect().bottomRight()));
-    d->messagesLayout_->selectByPos(mapToGlobal(d->selectFrom_), mapToGlobal(_event->pos()), mapToGlobal(rect().topLeft()), mapToGlobal(rect().bottomRight()));
-
+    if (!d->selectFrom_.isNull())
+    {
+        clearSelection();
+        d->pinnedMessageLayout_->selectByPos(mapToGlobal(d->selectFrom_), mapToGlobal(_event->pos()),
+                                             mapToGlobal(rect().topLeft()), mapToGlobal(rect().bottomRight()));
+        d->messagesLayout_->selectByPos(mapToGlobal(d->selectFrom_), mapToGlobal(_event->pos()),
+                                        mapToGlobal(rect().topLeft()), mapToGlobal(rect().bottomRight()));
+    }
     QWidget::mouseMoveEvent(_event);
 }
 
@@ -887,27 +1180,75 @@ void ThreadFeedItem::paintEvent(QPaintEvent* _event)
     p.setRenderHint(QPainter::Antialiasing);
 
     const auto color = Styling::getParameters().getColor(Styling::StyleVariable::CHAT_ENVIRONMENT);
-    const auto bubbleRect = rect().adjusted(0, 0, 0, -1);
-    const auto bubblePath = Utils::renderMessageBubble(bubbleRect, chatThreadBubbleBorderRadius(), MessageStyle::getBorderRadiusSmall(), d->renderBubbleFlags_);
-    Utils::drawBubbleShadow(p, bubblePath);
-    p.fillPath(bubblePath, color);
+    Utils::drawBubbleShadow(p, d->bubblePath_);
+    p.fillPath(d->bubblePath_, color);
+}
+
+void ThreadFeedItem::dragEnterEvent(QDragEnterEvent* _event)
+{
+    const auto ignoreDrop =
+        !d->isInputEnabled_ ||
+        !(_event->mimeData() && (_event->mimeData()->hasUrls() || _event->mimeData()->hasImage())) ||
+        _event->mimeData()->property(mimetype_marker()).toBool() ||
+        QApplication::activeModalWidget() != nullptr ||
+        Logic::getContactListModel()->isReadonly(d->threadId_) ||
+        Logic::getContactListModel()->isDeleted(d->threadId_);
+
+    if (ignoreDrop || !d->canDragDrop())
+    {
+        _event->setDropAction(Qt::IgnoreAction);
+        return;
+    }
+
+    d->showDragOverlay();
+    d->input_->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    _event->acceptProposedAction();
+}
+
+void ThreadFeedItem::dragLeaveEvent(QDragLeaveEvent* _event)
+{
+    _event->accept();
+    d->hideDragOverlay();
+    d->input_->setAttribute(Qt::WA_TransparentForMouseEvents, false);
+}
+
+void ThreadFeedItem::dropEvent(QDropEvent* _event)
+{
+    const QMimeData* mimeData = _event->mimeData();
+    d->input_->setAttribute(Qt::WA_TransparentForMouseEvents, false);
+    d->dragOverlayWindow_->processMimeData(mimeData);
+    d->hideDragOverlay();
 }
 
 void ThreadFeedItem::addMessages(const Data::MessageBuddies& _messages, bool _front)
 {
-    auto messages = _messages;
-    if (_front)
-        std::reverse(messages.begin(), messages.end());
+    if (_messages.size() == 0)
+        return;
 
+    auto messages = _messages;
+    Data::MessageBuddies messagesWithDates;
+    std::shared_ptr<Data::MessageBuddy> prevMsg = nullptr;
     for (auto& msg : messages)
     {
-        if (auto item = createItem(msg, this, width(), d->pinnedMessageId_))
+        auto dateKey = d->getDateKey(*msg.get());
+        if (!prevMsg || d->dateInserter_->needDate(d->getDateKey(*prevMsg.get()), dateKey))
+            messagesWithDates.push_back(std::make_shared<Data::MessageBuddy>(d->dateInserter_->makeDateMessage(dateKey)));
+        messagesWithDates.push_back(msg);
+        prevMsg = msg;
+    }
+    if (_front)
+        std::reverse(messagesWithDates.begin(), messagesWithDates.end());
+
+    for (auto& msg : messagesWithDates)
+    {
+        if (d->isDateMessage(msg))
         {
-            d->messagesLayout_->insertWidget(item.get(), _front ? 0 : -1);
-            item->show();
-            d->index_[msg->Id_] = item.get();
-            d->addItem(std::move(item));
-            d->lastMsgId_ = std::max(msg->Id_, d->lastMsgId_);
+            d->addDateMessage(msg, _front, true);
+        }
+        else
+        {
+            if (auto item = createItem(msg, this, width(), d->pinnedMessageId_))
+                d->addMessage(std::move(item), true, false, _front);
         }
     }
 
@@ -924,71 +1265,51 @@ void ThreadFeedItem::readLastMessage(bool _force)
         GetDispatcher()->setLastRead(d->threadId_, d->lastMsgId_, core_dispatcher::ReadAll::Yes);
 }
 
-//////////////////////////////////////////////////////////////////////////
-// ThreadFeedItemHeader_p
-//////////////////////////////////////////////////////////////////////////
-
-class ThreadFeedItemHeader_p
+void ThreadFeedItem::showStickersSuggest(const QString& _text, const QPoint& _pos)
 {
-public:
-    void updateContent(int _width)
+    if (!d->suggestsWidget_)
     {
-        if (!chatName_)
-            return;
-
-        const auto availableWidth = _width - headerLeftMargin() - headerAvatarRightMargin() - headerAvatarSizeScaled() - headerRightMargin();
-        const auto h = chatName_->getHeight(availableWidth);
-        chatName_->getLastLineWidth();
-
-        auto x = headerAvatarLeftMargin();
-        avatarRect_ = QRect(x, (headerHeight() - headerAvatarSizeScaled()) / 2, headerAvatarSizeScaled(), headerAvatarSizeScaled());
-        x += headerAvatarSizeScaled() + headerAvatarRightMargin();
-        chatName_->setOffsets(x, headerHeight() / 2 + headerTextOffsetV());
+        d->suggestsWidget_ = new Stickers::StickersSuggest(d->parentForTooltips_);
+        d->suggestsWidget_->setArrowVisible(true);
+        connect(d->suggestsWidget_, &Stickers::StickersSuggest::stickerSelected, this, &ThreadFeedItem::onSuggestedStickerSelected);
+        connect(d->suggestsWidget_, &Stickers::StickersSuggest::scrolledToLastItem, d->input_, &InputWidget::requestMoreStickerSuggests);
     }
-    QString chatId_;
-    QRect avatarRect_;
-    bool pressed_ = false;
-    TextRendering::TextUnitPtr chatName_;
-};
+    const auto fromInput = d->input_ && QRect(d->input_->mapToGlobal(d->input_->rect().topLeft()), d->input_->size()).contains(_pos);
+    const auto maxSize = QSize(!fromInput ? width() : std::min(width(), Tooltip::getMaxMentionTooltipWidth()), height());
 
-//////////////////////////////////////////////////////////////////////////
-// ThreadFeedItemHeader
-//////////////////////////////////////////////////////////////////////////
+    const auto pt = d->parentForTooltips_->mapFromGlobal(_pos);
+    d->suggestsWidget_->setNeedScrollToTop(!d->input_->hasServerSuggests());
 
-ThreadFeedItemHeader::ThreadFeedItemHeader(const QString& _chatId, QWidget* _parent)
-    : ClickableWidget(_parent)
-    , d(std::make_unique<ThreadFeedItemHeader_p>())
-{
-    Testing::setAccessibleName(this, qsl("AS ThreadFeedItemHeader"));
+    auto areaRect = rect();
+    if (areaRect.width() > MessageStyle::getHistoryWidgetMaxWidth())
+    {
+        const auto center = areaRect.center();
+        areaRect.setWidth(MessageStyle::getHistoryWidgetMaxWidth());
 
-    d->chatId_ = _chatId;
-    d->chatName_ = TextRendering::MakeTextUnit(Logic::GetFriendlyContainer()->getFriendly(_chatId), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-    d->chatName_->init(Fonts::adjustedAppFont(16, Fonts::FontWeight::Medium), headerTextColor(), {}, {}, {}, TextRendering::HorAligment::LEFT, 1);
+        if (fromInput)
+        {
+            areaRect.moveCenter(center);
+        }
+        else
+        {
+            if (pt.x() < width() / 3)
+                areaRect.moveLeft(0);
+            else if (pt.x() >= (width() * 2) / 3)
+                areaRect.moveRight(width());
+            else
+                areaRect.moveCenter(center);
+        }
+    }
 
-    setFixedHeight(headerHeight());
-    setCursor(Qt::PointingHandCursor);
-    auto rootLayout = Utils::emptyHLayout(this);
-    rootLayout->addStretch();
-
-    connect(this, &ThreadFeedItemHeader::pressed, this, [this](){ update(); });
-}
-
-ThreadFeedItemHeader::~ThreadFeedItemHeader() = default;
-
-void ThreadFeedItemHeader::paintEvent(QPaintEvent* _event)
-{
-    QPainter p(this);
-    p.setRenderHint(QPainter::Antialiasing);
-
-    bool isDefault;
-    const auto avatarSize = Utils::scale_bitmap(headerAvatarSizeScaled());
-    p.drawPixmap(d->avatarRect_, Logic::GetAvatarStorage()->GetRounded(d->chatId_, Logic::GetFriendlyContainer()->getFriendly(d->chatId_), avatarSize, isDefault, false, false));
-    d->chatName_->draw(p, TextRendering::VerPosition::MIDDLE);
-}
-
-void ThreadFeedItemHeader::resizeEvent(QResizeEvent* _event)
-{
-    d->updateContent(_event->size().width());
+    if (d->suggestWidgetShown_)
+    {
+        d->suggestsWidget_->updateStickers(_text, pt, maxSize, areaRect);
+    }
+    else
+    {
+        d->suggestsWidget_->showAnimated(_text, pt, maxSize, areaRect);
+        d->suggestWidgetShown_ = !d->suggestsWidget_->getStickers().empty();
+    }
 }
 
 }

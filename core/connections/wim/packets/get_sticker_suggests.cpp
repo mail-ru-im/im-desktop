@@ -6,6 +6,7 @@
 #include "../../../smartreply/smartreply_suggest.h"
 #include "../../../../common.shared/smartreply/smartreply_types.h"
 #include "../../../../common.shared/json_helper.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -22,6 +23,11 @@ get_sticker_suggests::get_sticker_suggests(wim_packet_params _params, std::strin
 std::string_view get_sticker_suggests::get_method() const
 {
     return "getSuggests";
+}
+
+int core::wim::get_sticker_suggests::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t get_sticker_suggests::init_request(const std::shared_ptr<core::http_request_simple>& _request)

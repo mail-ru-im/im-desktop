@@ -28,16 +28,20 @@ namespace
         return _isButton ? Utils::scale_value(QSize(76, 40)) : Utils::scale_value(QSize(36, 24));
     }
 
-    auto getColor(Ui::CallButtonType _type, bool _isHovered, bool _isActive)
+    Styling::StyleVariable getColor(Ui::CallButtonType _type, bool _isHovered, bool _isActive)
     {
-        return (_type == Ui::CallButtonType::Button)
-               ? Styling::StyleVariable::BASE_GLOBALWHITE
-               : (_isActive ? Styling::StyleVariable::BASE_SECONDARY_ACTIVE : (_isHovered ? Styling::StyleVariable::BASE_SECONDARY_HOVER : Styling::StyleVariable::BASE_SECONDARY));
+        if (_type == Ui::CallButtonType::Button)
+            return Styling::StyleVariable::BASE_GLOBALWHITE;
+        if (_isActive)
+            return Styling::StyleVariable::BASE_SECONDARY_ACTIVE;
+        if (_isHovered)
+            return Styling::StyleVariable::BASE_SECONDARY_HOVER;
+        return Styling::StyleVariable::BASE_SECONDARY;
     }
 
     QPixmap getPhonePixmap(Ui::CallButtonType _type, bool _isHovered, bool _isActive)
     {
-        auto makeBtn = [&_type](const auto _var)
+        auto makeBtn = [_type](const Styling::StyleVariable _var)
         {
             const auto isButton = _type == Ui::CallButtonType::Button;
             const auto path = isButton ? qsl(":/sidebar_call") : qsl(":/phone_icon");
@@ -49,7 +53,7 @@ namespace
 
     QPixmap getArrowPixmap(Ui::CallButtonType _type, bool _isHovered, bool _isActive)
     {
-        auto makeBtn = [&_type](const auto _var)
+        auto makeBtn = [_type](const Styling::StyleVariable _var)
         {
             const auto isButton = _type == Ui::CallButtonType::Button;
             const auto size = getArrowButtonSize(isButton);
@@ -153,7 +157,7 @@ void StartCallButton::showContextMenu()
             QMetaObject::invokeMethod(this, &StartCallButton::startVideoCall, Qt::QueuedConnection);
         });
         if (Features::isVcsCallByLinkEnabled())
-            menu_->addActionWithIcon(qsl(":/copy_link_icon"), QT_TRANSLATE_NOOP("tooltips", "Link to call"), this, &StartCallButton::createCallLink);
+            menu_->addActionWithIcon(qsl(":/copy_link_icon"), QT_TRANSLATE_NOOP("input_widget", "Call link"), this, &StartCallButton::createCallLink);
         menu_->showAtLeft(true);
 
         rotate(Ui::StartCallButton::RotateDirection::Left);

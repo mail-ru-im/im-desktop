@@ -186,7 +186,7 @@ namespace Ui
             if (a.isNull())
                 return;
             Utils::check_pixel_ratio(a);
-            Utils::drawAvatarWithBadge(p, QPoint(), a, aimId, true);
+            Utils::drawAvatarWithBadge(p, QPoint(), a, aimId, Utils::StatusBadgeState::CanBeOff, Utils::StatusBadgeFlag::Official | Utils::StatusBadgeFlag::SmallOnline | Utils::StatusBadgeFlag::Small);
         }
 
         QByteArray bArray;
@@ -243,7 +243,8 @@ namespace Ui
         notification.userInfo = userInfo;
 
         bool isDefault = false;
-        updateNotificationAvatar(notification, isDefault);
+        if (!displayName.isEmpty())
+            updateNotificationAvatar(notification, isDefault);
 
         userInfo[@"isDefault"] = @(isDefault?YES:NO);
         notification.userInfo = userInfo;

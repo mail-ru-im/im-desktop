@@ -78,7 +78,7 @@ namespace Ui
         void smilesMenuSignal(const bool _fromKeyboard, QPrivateSignal) const;
         void sendMessage(const QString&);
         void editFocusIn();
-        void editFocusOut();
+        void editFocusOut(Qt::FocusReason _reason);
         void inputTyped();
         void needSuggets(const QString _forText, const QPoint _pos, QPrivateSignal) const;
         void hideSuggets();
@@ -86,6 +86,7 @@ namespace Ui
 
         void quotesCountChanged(int _count, QPrivateSignal) const;
         void heightChanged();
+        void startPttRecording();
 
     public:
         void quote(const Data::QuotesVec& _quotes);
@@ -112,6 +113,7 @@ namespace Ui
         void clearInputText();
         void onMultiselectChanged();
         void onDraftVersionCancelled();
+        void createTask(const Data::FString& _text, const Data::MentionMap& _mentions, const QString& _assignee, const bool _isThreadFeedMessage);
 
     private:
         enum class InstantEdit
@@ -201,6 +203,7 @@ namespace Ui
         void dropReply();
 
         QPoint tooltipArrowPosition() const;
+        QPoint suggestPosition() const;
 
         void updateStyle();
 
@@ -234,6 +237,8 @@ namespace Ui
 
         void setActive(bool _active);
         bool isActive() const { return active_; }
+
+        bool isTextEditInFocus() const;
 
     protected:
         void keyPressEvent(QKeyEvent * _e) override;
@@ -365,7 +370,7 @@ namespace Ui
             Yes
         };
 
-        void saveDraft(SyncDraft _sync = SyncDraft::No);
+        void saveDraft(SyncDraft _sync = SyncDraft::No, bool _textChanged = false);
         void clearDraft();
         void applyDraft(const Data::Draft& _draft);
         void startDraftTimer();
@@ -391,6 +396,8 @@ namespace Ui
         void setThreadFeedItemToEdit();
 
         void cancelDraftVersionByEdit();
+
+        void createTaskWidget(const Data::FString& _text, const Data::QuotesVec& _quotes, const Data::MentionMap& _mentions, const QString& _assignee, const bool _isThreadFeedMessage);
 
 
     private:

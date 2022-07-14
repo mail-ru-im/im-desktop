@@ -11,10 +11,16 @@ public:
     ~OAuth2Dialog();
 
     void setClientId(const QString& _clientId);
-    const QString& clientId() const;
+    QString clientId() const;
 
     void setAuthUrl(const QString& _url);
-    const QString& authUrl() const;
+    QString authUrl() const;
+
+    void setRedirectUrl(const QString& _url);
+    QString redirectUrl() const;
+
+    void setScope(const QString& scope);
+    QString scope() const;
 
     void start();
 

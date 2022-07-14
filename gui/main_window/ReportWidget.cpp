@@ -59,7 +59,7 @@ namespace Ui
         reasons_ = new ComboBoxList(
             this,
             Fonts::appFontScaled(16),
-            Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID),
+            Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID },
             Utils::scale_value(HOR_OFFSET),
             Utils::scale_value(REASON_HEIGHT));
 
@@ -70,7 +70,9 @@ namespace Ui
         if (!_title.isEmpty())
         {
             title_ = TextRendering::MakeTextUnit(_title, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-            title_->init(Fonts::appFontScaled(12), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+            TextRendering::TextUnit::InitializeParameters params{ Fonts::appFontScaled(12), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY } };
+            params.maxLinesCount_ = 1;
+            title_->init(params);
             title_->evaluateDesiredSize();
             title_->setOffsets(Utils::scale_value(HOR_OFFSET), 0);
             h += title_->cachedSize().height();
@@ -121,7 +123,7 @@ namespace Ui
         actions_ = new ComboBoxList(
             this,
             Fonts::appFontScaled(16),
-            Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID),
+            Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID },
             Utils::scale_value(HOR_OFFSET),
             Utils::scale_value(REASON_HEIGHT));
 
@@ -132,7 +134,9 @@ namespace Ui
         if (!_title.isEmpty())
         {
             title_ = TextRendering::MakeTextUnit(_title, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-            title_->init(Fonts::appFontScaled(12), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+            TextRendering::TextUnit::InitializeParameters params{ Fonts::appFontScaled(12), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY } };
+            params.maxLinesCount_ = 1;
+            title_->init(params);
             title_->evaluateDesiredSize();
             title_->setOffsets(Utils::scale_value(HOR_OFFSET), 0);
             h += title_->cachedSize().height();
@@ -226,8 +230,8 @@ namespace Ui
         auto w = new ReportWidget(nullptr, _title);
         GeneralDialog generalDialog(w, Utils::InterConnector::instance().getMainWindow());
         generalDialog.addLabel(QT_TRANSLATE_NOOP("report_widget", "Report"));
-        generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("report_widget","Cancel"), QT_TRANSLATE_NOOP("report_widget", "OK"), true);
-        auto result = generalDialog.showInCenter();
+        generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("report_widget","Cancel"), QT_TRANSLATE_NOOP("report_widget", "OK"));
+        auto result = generalDialog.execute();
         if (result)
         {
             Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
@@ -243,19 +247,19 @@ namespace Ui
         auto w = new ReportWidget(nullptr, QString());
         GeneralDialog generalDialog(w, Utils::InterConnector::instance().getMainWindow());
         generalDialog.addLabel(QT_TRANSLATE_NOOP("report_widget", "Report"));
-        generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("report_widget", "Cancel"), QT_TRANSLATE_NOOP("report_widget", "OK"), true);
+        generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("report_widget", "Cancel"), QT_TRANSLATE_NOOP("report_widget", "OK"));
         const bool useFileSharingId = _stickerId.fsId_.has_value();
         if (useFileSharingId)
         {
-            im_assert(!_stickerId.fsId_->sourceId);
-            if (_stickerId.fsId_->sourceId)
+            im_assert(!_stickerId.fsId_->sourceId_);
+            if (_stickerId.fsId_->sourceId_)
                 return false;
         }
-        auto result = generalDialog.showInCenter();
+        auto result = generalDialog.execute();
         if (result)
         {
             Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-            collection.set_value_as_qstring("id", useFileSharingId ? _stickerId.fsId_->fileId : _stickerId.toObsoleteIdString());
+            collection.set_value_as_qstring("id", useFileSharingId ? _stickerId.fsId_->fileId_ : _stickerId.toObsoleteIdString());
             collection.set_value_as_qstring("chatId", _chatId);
             collection.set_value_as_qstring("contact", _aimid);
             collection.set_value_as_qstring("reason", getReasonString(w->getReason()));
@@ -269,8 +273,8 @@ namespace Ui
         auto w = new ReportWidget(nullptr, _title);
         GeneralDialog generalDialog(w, Utils::InterConnector::instance().getMainWindow());
         generalDialog.addLabel(QT_TRANSLATE_NOOP("report_widget", "Report"));
-        generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("report_widget", "Cancel"), QT_TRANSLATE_NOOP("report_widget", "OK"), true);
-        auto result = generalDialog.showInCenter();
+        generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("report_widget", "Cancel"), QT_TRANSLATE_NOOP("report_widget", "OK"));
+        auto result = generalDialog.execute();
         if (result)
         {
             Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
@@ -290,8 +294,8 @@ namespace Ui
                 auto w = new BlockWidget(nullptr, _title);
                 GeneralDialog generalDialog(w, Utils::InterConnector::instance().getMainWindow());
                 generalDialog.addLabel(QT_TRANSLATE_NOOP("report_widget", "Block"));
-                generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("report_widget", "Cancel"), QT_TRANSLATE_NOOP("report_widget", "OK"), true);
-                auto result = generalDialog.showInCenter();
+                generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("report_widget", "Cancel"), QT_TRANSLATE_NOOP("report_widget", "OK"));
+                auto result = generalDialog.execute();
                 if (!result)
                     return BlockAndReportResult::CANCELED;
 
@@ -302,8 +306,8 @@ namespace Ui
                 auto r = new ReportWidget(nullptr, _title);
                 GeneralDialog generalDialog(r, Utils::InterConnector::instance().getMainWindow());
                 generalDialog.addLabel(QT_TRANSLATE_NOOP("report_widget", "Report"));
-                generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("report_widget", "Cancel"), QT_TRANSLATE_NOOP("report_widget", "OK"), true);
-                auto result = generalDialog.showInCenter();
+                generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("report_widget", "Cancel"), QT_TRANSLATE_NOOP("report_widget", "OK"));
+                auto result = generalDialog.execute();
                 if (result)
                 {
                     Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
@@ -323,8 +327,8 @@ namespace Ui
         auto w = new ReportWidget(nullptr, QString());
         GeneralDialog generalDialog(w, Utils::InterConnector::instance().getMainWindow());
         generalDialog.addLabel(QT_TRANSLATE_NOOP("report_widget", "Report"));
-        generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("report_widget", "Cancel"), QT_TRANSLATE_NOOP("report_widget", "OK"), true);
-        auto result = generalDialog.showInCenter();
+        generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("report_widget", "Cancel"), QT_TRANSLATE_NOOP("report_widget", "OK"));
+        auto result = generalDialog.execute();
         if (result)
         {
             Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);

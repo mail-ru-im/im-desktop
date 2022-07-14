@@ -8,6 +8,7 @@ using namespace wim;
 int32_t user_info::unserialize(const rapidjson::Value& _node)
 {
     tools::unserialize_value(_node, "firstName", first_name_);
+    tools::unserialize_value(_node, "middleName", middle_name_);
     tools::unserialize_value(_node, "lastName", last_name_);
     tools::unserialize_value(_node, "friendly", friendly_);
     tools::unserialize_value(_node, "nick", nick_);
@@ -26,6 +27,7 @@ int32_t user_info::unserialize(const rapidjson::Value& _node)
 void user_info::serialize(core::coll_helper _coll)
 {
     _coll.set_value_as_string("firstName", first_name_);
+    _coll.set_value_as_string("middleName", middle_name_);
     _coll.set_value_as_string("lastName", last_name_);
     _coll.set_value_as_string("friendly", friendly_);
     _coll.set_value_as_string("nick", nick_);

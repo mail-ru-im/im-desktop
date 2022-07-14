@@ -14,9 +14,9 @@ namespace core
         class suggest_group_nick : public robusto_packet
         {
         private:
-            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
-            virtual int32_t parse_results(const rapidjson::Value& _node_results) override;
-            virtual int32_t parse_response_data(const rapidjson::Value& _data) override;
+            int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            int32_t parse_results(const rapidjson::Value& _node_results) override;
+            int32_t parse_response_data(const rapidjson::Value& _data) override;
 
             std::string	aimid_;
             std::string nick_;
@@ -27,7 +27,8 @@ namespace core
             virtual ~suggest_group_nick();
 
             const std::string& get_nick() const noexcept { return nick_; }
-            virtual std::string_view get_method() const override;
+            std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
         };
 
     }

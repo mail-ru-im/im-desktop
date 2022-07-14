@@ -7,7 +7,7 @@ namespace Ui
 {
     QColor LineLayoutSeparator::defaultColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT);
+        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE);
     }
 
     LineLayoutSeparator::LineLayoutSeparator(int _width, Direction _direction, QWidget* _parent)

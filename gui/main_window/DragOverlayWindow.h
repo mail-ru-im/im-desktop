@@ -5,7 +5,10 @@ namespace Ui
     class DragOverlayWindow : public QWidget
     {
         Q_OBJECT
-
+    Q_SIGNALS:
+        void sentFilesOpened();
+        void onQuickSent();
+        void onHideDragOverlay();
     public:
 
         enum SendMode
@@ -16,9 +19,12 @@ namespace Ui
 
         explicit DragOverlayWindow(const QString& _aimId, QWidget* _parent);
 
+        void setClipPath(const QPainterPath& clip);
+        QPainterPath clipPath() const;
+
         void setMode(const int _mode);
         void setModeByMimeData(const QMimeData* _mimeData);
-        
+
         void processMimeData(const QMimeData* _mimeData);
 
     protected:
@@ -34,9 +40,11 @@ namespace Ui
         void onTimer();
 
     private:
+        QPainterPath clipPath_;
         QTimer dragMouseoverTimer_;
         bool top_;
         int mode_;
         QString aimId_;
+        double radius_;
     };
 }

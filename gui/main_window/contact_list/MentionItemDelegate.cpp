@@ -164,7 +164,7 @@ namespace Logic
                 ci->itemNick_ = Ui::createHightlightedText(
                     Utils::makeNick(_item.nick_),
                     getFont(),
-                    Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY),
+                    Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY },
                     Ui::getTextHighlightedColor(),
                     1,
                     hlVec);
@@ -177,7 +177,7 @@ namespace Logic
             ci->itemText_ = Ui::createHightlightedText(
                 _item.friendlyName_,
                 getFont(),
-                Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID),
+                Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID },
                 Ui::getTextHighlightedColor(),
                 1,
                 hlVec);

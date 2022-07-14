@@ -20,7 +20,6 @@
 #include "../my_info.h"
 
 #include "Drawable.h"
-#include "DownloadWidget.h"
 #include "GalleryFrame.h"
 #include "ImageViewerWidget.h"
 
@@ -28,6 +27,9 @@
 
 #include "galleryloader.h"
 #include "avatarloader.h"
+
+#include "../utils/features.h"
+#include "../core_dispatcher.h"
 
 #include "GalleryWidget.h"
 
@@ -66,6 +68,7 @@ using namespace Previewer;
 GalleryWidget::GalleryWidget(QWidget* _parent)
     : QWidget(_parent)
     , controlWidgetHeight_(getControlsWidgetHeight())
+    , antivirusCheckEnabled_{ Features::isAntivirusCheckEnabled() }
     , isClosing_(false)
     , fromThreadFeed_(false)
 {
@@ -182,6 +185,9 @@ GalleryWidget::GalleryWidget(QWidget* _parent)
 
     if constexpr (grabKeyboardSwitchEnabled())
         qApp->installEventFilter(this);
+
+    connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated, this, &GalleryWidget::onConfigChanged);
+    connect(Ui::GetDispatcher(), &Ui::core_dispatcher::externalUrlConfigUpdated, this, &GalleryWidget::onConfigChanged);
 }
 
 GalleryWidget::~GalleryWidget()
@@ -230,13 +236,13 @@ void GalleryWidget::closeGallery()
         contentLoader_->cancelCurrentItemLoading();
 
     Q_EMIT Utils::InterConnector::instance().setFocusOnInput();
+    Ui::ToastManager::instance()->hideToast();
 
     imageViewer_->reset();
     showNormal();
     close();
     releaseKeyboard();
 
-    Ui::ToastManager::instance()->hideToast();
     Q_EMIT closed();
 
     // it fixes https://jira.mail.ru/browse/IMDESKTOP-8547, which is most propably caused by https://bugreports.qt.io/browse/QTBUG-49238
@@ -326,7 +332,7 @@ void GalleryWidget::trackMenu(const QPoint& _globalPos, const bool _isAsync)
         addAction(type, menu, this, &GalleryWidget::onCopy, Qt::QueuedConnection);
 
     if (const auto type = GalleryFrame::Action::Forward; actions & type)
-        addAction(type, menu, this, [this]() { onForward(); closeGallery(); }, Qt::QueuedConnection);
+        addAction(type, menu, this, &GalleryWidget::onForward, Qt::QueuedConnection);
 
     if (const auto type = GalleryFrame::Action::SaveAs; actions & type)
         addAction(type, menu, this, &GalleryWidget::onSaveAs, Qt::QueuedConnection);
@@ -496,7 +502,7 @@ bool GalleryWidget::eventFilter(QObject* _object, QEvent* _event)
 void GalleryWidget::updateControls()
 {
     updateNavButtons();
-    if (auto currentItem = contentLoader_->currentItem(); currentItem)
+    if (const auto currentItem = contentLoader_->currentItem())
     {
         GalleryFrame::Actions menuActions = { GalleryFrame::Copy, GalleryFrame::SaveAs };
 
@@ -559,6 +565,9 @@ void GalleryWidget::onSaveAs()
 {
     const auto item = contentLoader_->currentItem();
     if (!item)
+        return;
+
+    if (showVirusToastIfInfected(item))
         return;
 
     if constexpr (platform::is_linux())
@@ -629,12 +638,16 @@ void GalleryWidget::onMediaLoaded()
 
     controlsWidget_->setZoomVisible(imageViewer_->isZoomSupport());
 
-    controlsWidget_->setZoomInEnabled(true);
-    controlsWidget_->setZoomOutEnabled(true);
+    const bool virusInfected = item->isMediaVirusInfected() && Features::isAntivirusCheckEnabled();
+    controlsWidget_->setZoomInEnabled(!virusInfected);
+    controlsWidget_->setZoomOutEnabled(!virusInfected);
 
     controlsWidget_->show();
 
     connectContainerEvents();
+
+    if (virusInfected)
+        Ui::ToastManager::instance()->showToast(new Ui::Toast(QT_TRANSLATE_NOOP("toast", "File is blocked by the antivirus")), getToastPos());
 }
 
 void GalleryWidget::onPreviewLoaded()
@@ -730,9 +743,8 @@ void GalleryWidget::onWheelEvent(const QPoint& _delta)
 void GalleryWidget::onEscapeClick()
 {
     if (!imageViewer_->closeFullscreen())
-    {
         closeGallery();
-    }
+
     Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::fullmediascr_tap_action, { { "chat_type", Utils::chatTypeByAimId(aimId_) },{ "do", "cross_btn" } });
 }
 
@@ -740,6 +752,9 @@ void GalleryWidget::onSave()
 {
     const auto item = contentLoader_->currentItem();
     if (!item)
+        return;
+
+    if (showVirusToastIfInfected(item))
         return;
 
     QDir downloadDir(Ui::getDownloadPath());
@@ -763,6 +778,9 @@ void GalleryWidget::onForward()
 {
     const auto item = contentLoader_->currentItem();
     if (!item)
+        return;
+
+    if (showVirusToastIfInfected(item))
         return;
 
     Data::Quote q;
@@ -802,9 +820,12 @@ void GalleryWidget::onCopy()
     if (!item)
         return;
 
+    if (showVirusToastIfInfected(item))
+        return;
+
     item->copyToClipboard();
 
-    Ui::ToastManager::instance()->showToast(new Ui::Toast(QT_TRANSLATE_NOOP("previewer", "Copied to clipboard")), getToastPos());
+    Utils::showCopiedToast();
 }
 
 void GalleryWidget::onOpenContact()
@@ -892,6 +913,13 @@ void GalleryWidget::onPlayClicked(bool _paused)
     Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::fullmediascr_tap_action, { { "chat_type", Utils::chatTypeByAimId(aimId_) },{ "do", _paused ? "stop" : "play" } });
 }
 
+void GalleryWidget::onConfigChanged()
+{
+    const auto antivirusEnabled = Features::isAntivirusCheckEnabled();
+    if (std::exchange(antivirusCheckEnabled_, antivirusEnabled) != antivirusEnabled)
+        onMediaLoaded();
+}
+
 void GalleryWidget::showProgress()
 {
     delayTimer_->start(delayTimeoutMsec);
@@ -961,7 +989,7 @@ QSize GalleryWidget::getViewSize()
     return QSize(width(), height() - controlWidgetHeight_);
 }
 
-QPoint GalleryWidget::getToastPos()
+QPoint GalleryWidget::getToastPos() const
 {
     auto localPos = QPoint(width() / 2, height() - Utils::scale_value(180));
     return mapToGlobal(localPos);
@@ -1044,6 +1072,14 @@ void GalleryWidget::resumeGrabKeyboard()
 {
     if (keyboardGrabber() != this)
         grabKeyboard();
+}
+
+bool Previewer::GalleryWidget::showVirusToastIfInfected(ContentItem* _item) const
+{
+    const bool virusInfected = _item->isMediaVirusInfected() && Features::isAntivirusCheckEnabled();
+    if (virusInfected)
+        Ui::ToastManager::instance()->showToast(new Ui::Toast(QT_TRANSLATE_NOOP("toast", "File is blocked by the antivirus")), getToastPos());
+    return virusInfected;
 }
 
 NavigationButton::NavigationButton(QWidget *_parent)

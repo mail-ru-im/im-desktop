@@ -124,7 +124,7 @@ namespace core::wim::subscriptions
         : subscription_base(subscriptions::type::call_room_info)
         , room_ids_(std::move(_room_ids))
     {
-
+        im_assert(!room_ids_.empty());
     }
 
     void call_room_info_subscription::serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const
@@ -198,6 +198,7 @@ namespace core::wim::subscriptions
         : subscription_base(subscriptions::type::task)
         , task_ids_(std::move(_task_ids))
     {
+        im_assert(!task_ids_.empty());
     }
 
     void task_subscription::serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const
@@ -221,12 +222,34 @@ namespace core::wim::subscriptions
     subscr_clock_t::duration task_subscription::renew_interval() const
     {
         constexpr std::chrono::seconds def = std::chrono::minutes(1);
-        return std::chrono::seconds(omicronlib::_o(omicron::keys::subscr_renew_interval_task, def.count()));;
+        return std::chrono::seconds(omicronlib::_o(omicron::keys::subscr_renew_interval_task, def.count()));
     }
 
     bool task_subscription::equal(const subscription_base& _other) const
     {
         auto task_other = static_cast<const task_subscription&>(_other);
         return task_ids_ == task_other.task_ids_;
+    }
+
+    tasks_counter_subscription::tasks_counter_subscription()
+        : subscription_base(subscriptions::type::tasks_counter)
+    {
+    }
+
+    subscr_clock_t::duration tasks_counter_subscription::renew_interval() const
+    {
+        constexpr std::chrono::seconds def = std::chrono::minutes(15);
+        return std::chrono::seconds(omicronlib::_o(omicron::keys::subscr_renew_interval_tasks_counter, def.count()));
+    }
+
+    mails_counter_subscription::mails_counter_subscription()
+        : subscription_base(subscriptions::type::mails_counter)
+    {
+    }
+
+    subscr_clock_t::duration mails_counter_subscription::renew_interval() const
+    {
+        constexpr std::chrono::seconds def = std::chrono::minutes(15);
+        return std::chrono::seconds(omicronlib::_o(omicron::keys::subscr_renew_interval_mails_counter, def.count()));
     }
 }

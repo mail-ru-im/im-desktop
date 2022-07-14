@@ -4,19 +4,20 @@ namespace launch
     {
         QString executable_;
 
-        bool isUrlCommand_;
         QString urlCommand_;
 
-        bool isVersionCommand_;
+        bool isVersionCommand_ = false;
+
+        bool developFlag_ = false;
 
     public:
-
         CommandLineParser(int _argc, char* _argv[]);
 
         ~CommandLineParser();
 
         bool isUrlCommand() const;
         bool isVersionCommand() const;
+        bool hasDevelopFlag() const;
 
         const QString& getUrlCommand() const;
 

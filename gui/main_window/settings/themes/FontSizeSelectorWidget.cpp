@@ -2,7 +2,7 @@
 
 #include "FontSizeSelectorWidget.h"
 
-#include "fonts.h"
+#include "../../../fonts.h"
 #include "utils/utils.h"
 #include "utils/InterConnector.h"
 #include "styles/ThemeParameters.h"
@@ -94,7 +94,7 @@ namespace Ui
         setFixedHeight(getWidgetHeight());
 
         caption_ = TextRendering::MakeTextUnit(_caption);
-        caption_->init(Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        caption_->init({ Fonts::appFontScaled(15), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } });
         caption_->evaluateDesiredSize();
 
         variantList_ = new SimpleListWidget(Qt::Horizontal);

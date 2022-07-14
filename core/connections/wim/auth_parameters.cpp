@@ -4,7 +4,7 @@
 #include "../../../corelib/collection_helper.h"
 #include "../../utils.h"
 #include "../../../common.shared/json_helper.h"
-
+#include "log_replace_functor.h"
 
 using namespace core;
 using namespace wim;

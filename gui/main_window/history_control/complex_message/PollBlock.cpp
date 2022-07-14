@@ -73,12 +73,12 @@ namespace
         return Utils::scale_value(1);
     }
 
-    const QColor& resultItemBorderColor(bool _outgoing)
+    QColor resultItemBorderColor(bool _outgoing)
     {
-        static const auto incomingColor = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY, 0.2);
-        static const auto outgoingColor = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_BRIGHT);
+        static Styling::ColorContainer incomingColor = Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY, 0.2 };
+        static Styling::ColorContainer outgoingColor = Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_BRIGHT };
 
-        return (_outgoing ? outgoingColor : incomingColor);
+        return (_outgoing ? outgoingColor : incomingColor).actualColor();
     }
 
     enum class CheckBoxOpacity
@@ -87,32 +87,32 @@ namespace
         _100
     };
 
-    const QColor& checkBoxColor(CheckBoxOpacity _opacity)
+    QColor checkBoxColor(CheckBoxOpacity _opacity)
     {
-        static const auto color50 = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY, 0.5);
-        static const auto color100 = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
+        static Styling::ColorContainer color50 = Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY, 0.5 };
+        static Styling::ColorContainer color100 = Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY };
 
         if (_opacity == CheckBoxOpacity::_50)
-            return color50;
+            return color50.actualColor();
         else
-            return color100;
+            return color100.actualColor();
     }
 
-    const QColor& itemFillColor(bool _hovered, bool _pressed, bool _outgoing)
+    QColor itemFillColor(bool _hovered, bool _pressed, bool _outgoing)
     {
         if (_outgoing)
         {
-            static const auto color = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_BRIGHT);
-            static const auto hoveredColor = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_BRIGHT_HOVER);
-            static const auto pressedColor = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_BRIGHT_ACTIVE);
-            return (_pressed ? pressedColor : (_hovered ? hoveredColor : color));
+            static Styling::ColorContainer color = Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_BRIGHT };
+            static Styling::ColorContainer hoveredColor = Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_BRIGHT_HOVER };
+            static Styling::ColorContainer pressedColor = Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_BRIGHT_ACTIVE };
+            return (_pressed ? pressedColor : (_hovered ? hoveredColor : color)).actualColor();
         }
         else
         {
-            static const auto color = Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT);
-            static const auto hoveredColor = Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_HOVER);
-            static const auto pressedColor = Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_ACTIVE);
-            return (_pressed ? pressedColor : (_hovered ? hoveredColor : color));
+            static Styling::ColorContainer color = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_BRIGHT };
+            static Styling::ColorContainer hoveredColor = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_BRIGHT_HOVER };
+            static Styling::ColorContainer pressedColor = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_BRIGHT_ACTIVE };
+            return (_pressed ? pressedColor : (_hovered ? hoveredColor : color)).actualColor();
         }
     }
 
@@ -146,32 +146,18 @@ namespace
         return 2;
     }
 
-    const QColor& placeholderColor(bool _outgoing)
+    QColor placeholderColor(bool _outgoing)
     {
-        if (_outgoing)
-        {
-            static const auto color = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_BRIGHT);
-            return color;
-        }
-        else
-        {
-            static const auto color = Styling::getParameters().getColor(Styling::StyleVariable::GHOST_ULTRALIGHT_INVERSE);
-            return color;
-        }
+        static Styling::ColorContainer outgoingColor = Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_BRIGHT };
+        static Styling::ColorContainer color = Styling::ThemeColorKey{ Styling::StyleVariable::GHOST_ULTRALIGHT_INVERSE };
+        return (_outgoing? outgoingColor:color).actualColor();
     }
 
-    const QColor& placeholderCheckBoxColor(bool _outgoing)
+    QColor placeholderCheckBoxColor(bool _outgoing)
     {
-        if (_outgoing)
-        {
-            static const auto color = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY, 0.5);
-            return color;
-        }
-        else
-        {
-            static const auto color = Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
-            return color;
-        }
+        static Styling::ColorContainer outgoingColor = Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY, 0.5 };
+        static Styling::ColorContainer color = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY };
+        return (_outgoing? outgoingColor:color).actualColor();
     }
 
     QSize checkMarkSize()
@@ -179,10 +165,10 @@ namespace
         return Utils::scale_value(QSize(20, 20));
     }
 
-    const QPixmap& checkMarkPixmap()
+    QPixmap checkMarkPixmap()
     {
-        static const auto pixmap = Utils::renderSvg(qsl(":/poll/check_mark"), checkMarkSize(), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
-        return pixmap;
+        static auto pixmap = Utils::StyledPixmap(qsl(":/poll/check_mark"), checkMarkSize(), Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY });
+        return pixmap.actualPixmap();
     }
 
     int32_t checkMarkHorizontalMargin()
@@ -190,10 +176,10 @@ namespace
         return Utils::scale_value(8);
     }
 
-    const QColor& votesPercentRectColor()
+    QColor votesPercentRectColor()
     {
-        static const auto color = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY, 0.2);
-        return color;
+        static Styling::ColorContainer color = Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY, 0.2 };
+        return color.actualColor();
     }
 
     QSize quotePollIconSize()
@@ -206,38 +192,45 @@ namespace
         return Utils::scale_value(8);
     }
 
+    QPixmap generateQuotePixmap()
+    {
+        QPixmap result(Utils::scale_bitmap(quotePollIconSize()));
+        Utils::check_pixel_ratio(result);
+        result.fill(Qt::transparent);
+        QPainter p(&result);
+        p.setRenderHint(QPainter::Antialiasing);
+        const auto pollIcon = Utils::renderSvgScaled(qsl(":/poll/poll_icon"), QSize(32, 32), Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_RAINBOW_PURPLE));
+        auto backgroundColor = Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_RAINBOW_PURPLE, 0.05);
+        QPainterPath backgroundPath;
+        backgroundPath.addEllipse(QRect(QPoint(0, 0), quotePollIconSize()));
+        p.fillPath(backgroundPath, backgroundColor);
+        p.drawPixmap(Utils::unscale_bitmap((result.width() - pollIcon.width()) / 2), Utils::unscale_bitmap((result.height() - pollIcon.height()) / 2), pollIcon);
+
+        return result;
+    }
+
     const QPixmap& quotePixmap()
     {
-        static const auto pixmap = [](){
-            QPixmap result(Utils::scale_bitmap(quotePollIconSize()));
-            Utils::check_pixel_ratio(result);
-            result.fill(Qt::transparent);
-            QPainter p(&result);
-            p.setRenderHint(QPainter::Antialiasing);
-            const auto pollIcon = Utils::renderSvgScaled(qsl(":/poll/poll_icon"), QSize(32, 32), Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_RAINBOW_PURPLE));
-            auto backgroundColor = Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_RAINBOW_PURPLE, 0.05);
-            QPainterPath backgroundPath;
-            backgroundPath.addEllipse(QRect(QPoint(0, 0), quotePollIconSize()));
-            p.fillPath(backgroundPath, backgroundColor);
-            p.drawPixmap(Utils::unscale_bitmap((result.width() - pollIcon.width()) / 2), Utils::unscale_bitmap((result.height() - pollIcon.height()) / 2), pollIcon);
+        static auto pixmap = generateQuotePixmap();
 
-            return result;
-        }();
+        static Styling::ThemeChecker checker;
+        if (checker.checkAndUpdateHash())
+            pixmap = generateQuotePixmap();
 
         return pixmap;
     }
 
-    int32_t bottomTextTopMargin()
+    int32_t bottomTextTopMargin() noexcept
     {
         return Utils::scale_value(12);
     }
 
-    const QColor& bottomTextColor(bool _outgoing)
+    Styling::ThemeColorKey bottomTextColor(bool _outgoing)
     {
-        static const auto incomingColor = Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
-        static const auto outgoingColor = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_PASTEL);
+        const auto incomingColor = Styling::StyleVariable::BASE_PRIMARY;
+        const auto outgoingColor = Styling::StyleVariable::PRIMARY_PASTEL;
 
-        return (_outgoing ? outgoingColor : incomingColor);
+        return Styling::ThemeColorKey{ _outgoing ? outgoingColor : incomingColor };
     }
 
     void sendPollStat(const QString& _contact, const std::string_view _action)
@@ -327,15 +320,15 @@ public:
 
     void updatePollData()
     {
-        static const auto commonTextColor = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
-        static const auto loadingTextColor = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID, 0.5);
+        static const auto commonTextColor = Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID };
+        static const auto loadingTextColor = Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID, 0.5 };
 
         if (!isQuote_)
         {
             const auto bottomText = bottomTextStr();
 
             bottomTextUnit_ = TextRendering::MakeTextUnit(bottomText);
-            bottomTextUnit_->init(Fonts::adjustedAppFont(11, Fonts::FontWeight::Normal), bottomTextColor(isOutgoing_));
+            bottomTextUnit_->init({ Fonts::adjustedAppFont(11, Fonts::FontWeight::Normal), bottomTextColor(isOutgoing_) });
 
             items_.clear();
             items_.reserve(poll_.answers_.size());
@@ -352,16 +345,16 @@ public:
                 const auto& textColor = (!loading || localAnswer ? commonTextColor : loadingTextColor);
 
                 data.answerUnit_ = TextRendering::MakeTextUnit(answer->text_, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
-                data.answerUnit_->init(Fonts::adjustedAppFont(14), textColor);
+                data.answerUnit_->init({ Fonts::adjustedAppFont(14), textColor });
 
                 if (currentMode() == Results)
                 {
                     data.percent_ = votesPercent(answer->votes_);
                     data.percentUnit_ = TextRendering::MakeTextUnit(qsl("%1%").arg(std::floor(data.percent_)));
-                    data.percentUnit_->init(Fonts::adjustedAppFont(14), commonTextColor);
+                    data.percentUnit_->init({ Fonts::adjustedAppFont(14), commonTextColor });
 
                     data.votesCountUnit_ = TextRendering::MakeTextUnit(QString::number(answer->votes_));
-                    data.votesCountUnit_->init(Fonts::adjustedAppFont(10), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_PASTEL));
+                    data.votesCountUnit_->init({ Fonts::adjustedAppFont(10), Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_PASTEL } });
                 }
 
                 items_.push_back(std::move(data));
@@ -370,7 +363,9 @@ public:
         else
         {
             quoteQuestionUnit_ = TextRendering::MakeTextUnit(question_, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
-            quoteQuestionUnit_->init(Fonts::adjustedAppFont(14, isQuote_ ? Fonts::FontWeight::Normal : Fonts::FontWeight::Medium), commonTextColor, QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 2);
+            TextRendering::TextUnit::InitializeParameters params{ Fonts::adjustedAppFont(14, isQuote_ ? Fonts::FontWeight::Normal : Fonts::FontWeight::Medium), commonTextColor };
+            params.maxLinesCount_ = 2;
+            quoteQuestionUnit_->init(params);
         }
     }
 
@@ -379,7 +374,7 @@ public:
         if (GetAppConfig().IsShowMsgIdsEnabled())
         {
             debugIdTextUnit_ = TextRendering::MakeTextUnit(ql1s("Poll Id: %1").arg(poll_.id_));
-            debugIdTextUnit_->init(Fonts::adjustedAppFont(14, Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+            debugIdTextUnit_->init({ Fonts::adjustedAppFont(14, Fonts::FontWeight::Normal), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } });
         }
         else
         {
@@ -391,7 +386,7 @@ public:
     {
         Q_UNUSED(_timeWidgetWidth)
 
-        auto questionAvailableWidth = _availableWidth - quotePollIconSize().width() - quoteQuestionLeftMargin();
+        const auto questionAvailableWidth = _availableWidth - quotePollIconSize().width() - quoteQuestionLeftMargin();
         auto height = quotePollIconSize().height();
         if (quoteQuestionUnit_)
         {
@@ -733,7 +728,7 @@ public:
 //////////////////////////////////////////////////////////////////////////
 
 PollBlock::PollBlock(ComplexMessageItem* _parent, const Data::PollData& _poll, const QString& _text)
-    : GenericBlock(_parent, {}, MenuFlags::MenuFlagCopyable, false),
+    : GenericBlock(_parent, Data::FStringView{}, MenuFlags::MenuFlagCopyable, false),
       d(std::make_unique<PollBlock_p>())
 {
     Testing::setAccessibleName(this, u"AS HistoryPage messagePoll " % QString::number(_parent->getId()));
@@ -760,18 +755,13 @@ Data::FString PollBlock::getSelectedText(const bool _isFullSelect, const IItemBl
     Q_UNUSED(_isFullSelect)
     Q_UNUSED(_dest)
 
-    return QT_TRANSLATE_NOOP("poll_block", "Poll");
-}
-
-void PollBlock::updateStyle()
-{
-    d->updateContent();
-    notifyBlockContentsChanged();
+    return {};
 }
 
 void PollBlock::updateFonts()
 {
-    updateStyle();
+    d->updateContent();
+    notifyBlockContentsChanged();
 }
 
 QSize PollBlock::setBlockSize(const QSize& _size)

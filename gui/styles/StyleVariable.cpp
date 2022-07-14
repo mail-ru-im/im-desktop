@@ -32,6 +32,7 @@ namespace Styling
                 { StyleVariable::BASE_ULTRABRIGHT,                 u"base_ultrabright" },
                 { StyleVariable::BASE_ULTRABRIGHT_HOVER,           u"base_ultrabright_hover" },
                 { StyleVariable::CHAT_ENVIRONMENT,                 u"chat_environment" },
+                { StyleVariable::CHAT_THREAD_ENVIRONMENT,          u"chat_thread_environment" },
                 { StyleVariable::CHAT_PRIMARY,                     u"chat_primary" },
                 { StyleVariable::CHAT_PRIMARY_HOVER,               u"chat_primary_hover" },
                 { StyleVariable::CHAT_PRIMARY_ACTIVE,              u"chat_primary_active" },
@@ -55,6 +56,7 @@ namespace Styling
                 { StyleVariable::GHOST_ACCENT_HOVER,               u"ghost_accent_hover" },
                 { StyleVariable::GHOST_ACCENT_ACTIVE,              u"ghost_accent_active" },
                 { StyleVariable::GHOST_OVERLAY,                    u"ghost_overlay" },
+                { StyleVariable::GHOST_BORDER_INVERSE,             u"ghost_border_inverse"},
                 { StyleVariable::GHOST_QUATERNARY,                 u"ghost_quaternary" },
                 { StyleVariable::GHOST_PERCEPTIBLE,                u"ghost_perceptible" },
                 { StyleVariable::LUCENT_TERTIARY,                  u"lucent_tertiary" },
@@ -119,7 +121,9 @@ namespace Styling
                 { StyleVariable::TASK_CHEAPS_READY_ACTIVE,         u"task_cheaps_ready_active"},
                 { StyleVariable::TASK_CHEAPS_CLOSED,               u"task_cheaps_closed"},
                 { StyleVariable::TASK_CHEAPS_CLOSED_HOVER,         u"task_cheaps_closed_hover"},
-                { StyleVariable::TASK_CHEAPS_CLOSED_ACTIVE,        u"task_cheaps_closed_active"}
+                { StyleVariable::TASK_CHEAPS_CLOSED_ACTIVE,        u"task_cheaps_closed_active"},
+
+                { StyleVariable::SECONDARY_SELECTED,               u"secondary_selected" }
             };
 
             if constexpr (build::is_debug())

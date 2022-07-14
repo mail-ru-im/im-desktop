@@ -44,8 +44,8 @@ stickerSptr createSticker(Data::StickerId _id)
 
     if (_id.fsId_)
     {
-        im_assert(!_id.fsId_->fileId.isEmpty());
-        const auto type = ComplexMessage::extractContentTypeFromFileSharingId(_id.fsId_->fileId);
+        im_assert(!_id.fsId_->fileId_.isEmpty());
+        const auto type = ComplexMessage::extractContentTypeFromFileSharingId(_id.fsId_->fileId_);
         im_assert(!type.is_undefined());
 
         if (type.is_lottie())
@@ -307,7 +307,7 @@ void Set::unserialize(const core::coll_helper& _coll)
         if (!sticker)
             continue;
 
-        if (auto id = sticker->getId().fsId_; id && !id->fileId.isEmpty())
+        if (auto id = sticker->getId().fsId_; id && !id->fileId_.isEmpty())
         {
             fsStickersTree_[*id] = sticker;
             stickers_.push_back(*id);
@@ -431,7 +431,7 @@ stickerSptr getSticker(const Utils::FileSharingId& _fsId)
 
 QString getSendUrl(const Utils::FileSharingId& _fsId)
 {
-    return u"https://" % Ui::getUrlConfig().getUrlFilesParser() % u'/' % _fsId.fileId % (_fsId.sourceId ? (u"?source=" % *_fsId.sourceId) : QString());
+    return u"https://" % Ui::getUrlConfig().getUrlFilesParser() % u'/' % _fsId.fileId_ % (_fsId.sourceId_ ? (u"?source=" % *_fsId.sourceId_) : QString());
 }
 
 Cache::Cache(QObject* _parent)
@@ -506,7 +506,7 @@ void Cache::setStickerData(const core::coll_helper& _coll)
                 data.id_ = stickerId;
                 data.setId_ = setId;
 
-                if (ComplexMessage::isLottieFileSharingId(data.fsId_.fileId))
+                if (ComplexMessage::isLottieFileSharingId(data.fsId_.fileId_))
                 {
                     data.data_ = StickerData::makeLottieData(data.path_);
                     onStickersBatchLoaded({ std::move(data) });
@@ -1093,7 +1093,7 @@ void showStickersPackByStoreId(const QString& _store_id, StatContext context)
 
 void showStickersPackByFileId(const Utils::FileSharingId& _filesharingId, StatContext context)
 {
-    if (_filesharingId.sourceId && !Features::isSharedFederationStickerpacksSupported())
+    if (_filesharingId.sourceId_ && !Features::isSharedFederationStickerpacksSupported())
     {
         Utils::showTextToastOverContactDialog(QT_TRANSLATE_NOOP("stickers", "Stickerpack is not available"));
         return;

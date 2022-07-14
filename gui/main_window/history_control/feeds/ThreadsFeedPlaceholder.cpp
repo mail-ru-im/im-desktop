@@ -38,15 +38,15 @@ QSize iconSizeScaled() noexcept
     return Utils::scale_value(iconSize());
 }
 
-const QPixmap& icon()
+QPixmap icon()
 {
-    static auto icon = Utils::renderSvgScaled(qsl(":/thread_icon_filled"), iconSize(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
-    return icon;
+    static auto icon = Utils::StyledPixmap::scaled(qsl(":/thread_icon_filled"), iconSize(), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY });
+    return icon.actualPixmap();
 }
 
-QColor textColor()
+auto textColor()
 {
-    return Styling::getParameters(ServiceContacts::contactId(ServiceContacts::ContactType::ThreadsFeed)).getColor(Styling::StyleVariable::CHATEVENT_TEXT);
+    return Styling::ThemeColorKey{ Styling::StyleVariable::CHATEVENT_TEXT, ServiceContacts::contactId(ServiceContacts::ContactType::ThreadsFeed) };
 }
 
 int textMargin() noexcept
@@ -87,10 +87,15 @@ namespace Ui
           d(std::make_unique<ThreadsFeedPlaceholder_p>())
     {
         d->header_ = Ui::TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("threads_feed", "There is no threads"));
-        d->header_->init(headerFont(), textColor(), QColor(), QColor(), QColor(), Ui::TextRendering::HorAligment::CENTER);
+
+        TextRendering::TextUnit::InitializeParameters params{ headerFont(), textColor() };
+        params.align_ = TextRendering::HorAligment::CENTER;
+        d->header_->init(params);
 
         d->text_ = Ui::TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("threads_feed", "Threads you subscribed for will be here"));
-        d->text_->init(textFont(), textColor(), QColor(), QColor(), QColor(), Ui::TextRendering::HorAligment::CENTER);
+        params.setFonts(textFont());
+        params.color_ = textColor();
+        d->text_->init(params);
     }
 
     ThreadsFeedPlaceholder::~ThreadsFeedPlaceholder() = default;

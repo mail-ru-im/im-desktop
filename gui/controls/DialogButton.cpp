@@ -42,21 +42,10 @@ namespace
 
 namespace Ui
 {
-    DialogButton::DialogButton(QWidget* _parent, const QString _text, const DialogButtonRole _role)
+    DialogButton::DialogButton(QWidget* _parent, const QString& _text, const DialogButtonRole _role)
         : QPushButton(_parent)
-        , hovered_(false)
-        , pressed_(false)
         , text_(_text)
         , initRole_(_role)
-        , bgColor_(Qt::transparent)
-        , bgColorHover_(Qt::transparent)
-        , bgColorPress_(Qt::transparent)
-        , borderColor_(Qt::transparent)
-        , borderColorHover_(Qt::transparent)
-        , borderColorPress_(Qt::transparent)
-        , textColor_(Qt::transparent)
-        , textColorHover_(Qt::transparent)
-        , textColorPress_(Qt::transparent)
     {
         Utils::SetProxyStyle(this, new ProxyStyle());
         setFocusPolicy(Qt::NoFocus);
@@ -80,7 +69,6 @@ namespace Ui
         setBackgroundColor();
         setBorderColor();
         setTextColor();
-        updateTextColor();
         update();
     }
 
@@ -107,13 +95,13 @@ namespace Ui
         const auto borderWidth = Utils::scale_value(1);
         QRect insideRect = rect().adjusted(borderWidth, borderWidth, -borderWidth, -borderWidth);
         p.setRenderHint(QPainter::Antialiasing);
-        p.setPen(hovered_ ? borderColorHover_ : (pressed_ ? borderColorPress_ : borderColor_));
-        p.setBrush(hovered_ ? bgColorHover_ : (pressed_ ? bgColorPress_ : bgColor_));
+        p.setPen((hovered_ ? borderColorHover_ : (pressed_ ? borderColorPress_ : borderColor_)).actualColor());
+        p.setBrush((hovered_ ? bgColorHover_ : (pressed_ ? bgColorPress_ : bgColor_)).actualColor());
 
         const auto radius = height() / 2;
         p.drawRoundedRect(insideRect, radius, radius);
 
-        p.setPen(hovered_ ? textColorHover_ : (pressed_ ? textColorPress_ : textColor_));
+        p.setPen((hovered_ ? textColorHover_ : (pressed_ ? textColorPress_ : textColor_)).actualColor());
         p.drawText(rect(), Qt::AlignCenter, text());
     }
 
@@ -124,7 +112,6 @@ namespace Ui
 
         hovered_ = false;
         update();
-        updateTextColor();
 
         QPushButton::leaveEvent(_e);
     }
@@ -133,7 +120,6 @@ namespace Ui
     {
         hovered_ = true;
         update();
-        updateTextColor();
 
         QPushButton::enterEvent(_e);
     }
@@ -146,7 +132,6 @@ namespace Ui
             return;
 
         update();
-        updateTextColor();
 
         QPushButton::mousePressEvent(_e);
     }
@@ -159,7 +144,6 @@ namespace Ui
             return;
 
         update();
-        updateTextColor();
 
         QPushButton::mouseReleaseEvent(_e);
     }
@@ -172,7 +156,6 @@ namespace Ui
             return;
 
         update();
-        updateTextColor();
 
         QPushButton::focusInEvent(_e);
     }
@@ -185,7 +168,6 @@ namespace Ui
             return;
 
         update();
-        updateTextColor();
 
         QPushButton::focusOutEvent(_e);
     }
@@ -200,7 +182,6 @@ namespace Ui
         {
             pressed_ = true;
             update();
-            updateTextColor();
         }
         else
         {
@@ -217,27 +198,27 @@ namespace Ui
         {
         case DialogButtonRole::CONFIRM:
         case DialogButtonRole::RESTART:
-            borderColor_ = StyleColor(Styling::StyleVariable::PRIMARY);
-            borderColorHover_ = StyleColor(Styling::StyleVariable::PRIMARY_HOVER);
-            borderColorPress_ = StyleColor(Styling::StyleVariable::PRIMARY_ACTIVE);
+            borderColor_ = Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY };
+            borderColorHover_ = Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_HOVER };
+            borderColorPress_ = Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_ACTIVE };
             break;
 
         case DialogButtonRole::CONFIRM_DELETE:
-            borderColor_ = StyleColor(Styling::StyleVariable::SECONDARY_ATTENTION);
-            borderColorHover_ = StyleColor(Styling::StyleVariable::SECONDARY_ATTENTION);
-            borderColorPress_ = StyleColor(Styling::StyleVariable::SECONDARY_ATTENTION);
+            borderColor_ = Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_ATTENTION };
+            borderColorHover_ = Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_ATTENTION };
+            borderColorPress_ = Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_ATTENTION };
             break;
 
         case DialogButtonRole::DISABLED:
-            borderColor_ = StyleColor(Styling::StyleVariable::BASE_SECONDARY);
-            borderColorHover_ = StyleColor(Styling::StyleVariable::BASE_SECONDARY);
-            borderColorPress_ = StyleColor(Styling::StyleVariable::BASE_SECONDARY);
+            borderColor_ = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY };
+            borderColorHover_ = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY };
+            borderColorPress_ = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY };
             break;
 
         case DialogButtonRole::CANCEL:
-            borderColor_ = StyleColor(Styling::StyleVariable::BASE_SECONDARY);
-            borderColorHover_ = StyleColor(Styling::StyleVariable::BASE_SECONDARY_HOVER);
-            borderColorPress_ = StyleColor(Styling::StyleVariable::BASE_SECONDARY_ACTIVE);
+            borderColor_ = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY };
+            borderColorHover_ = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY_HOVER };
+            borderColorPress_ = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY_ACTIVE };
             break;
 
         default:
@@ -250,21 +231,21 @@ namespace Ui
         switch (role_)
         {
         case DialogButtonRole::CONFIRM:
-            bgColor_ = StyleColor(Styling::StyleVariable::PRIMARY);
-            bgColorHover_ = StyleColor(Styling::StyleVariable::PRIMARY_HOVER);
-            bgColorPress_ = StyleColor(Styling::StyleVariable::PRIMARY_ACTIVE);
+            bgColor_ = Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY };
+            bgColorHover_ = Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_HOVER };
+            bgColorPress_ = Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_ACTIVE };
             break;
 
         case DialogButtonRole::CONFIRM_DELETE:
-            bgColor_ = StyleColor(Styling::StyleVariable::SECONDARY_ATTENTION);
-            bgColorHover_ = StyleColor(Styling::StyleVariable::SECONDARY_ATTENTION);
-            bgColorPress_ = StyleColor(Styling::StyleVariable::SECONDARY_ATTENTION);
+            bgColor_ = Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_ATTENTION };
+            bgColorHover_ = Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_ATTENTION };
+            bgColorPress_ = Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_ATTENTION };
             break;
 
         case DialogButtonRole::DISABLED:
-            bgColor_ = StyleColor(Styling::StyleVariable::BASE_SECONDARY);
-            bgColorHover_ = StyleColor(Styling::StyleVariable::BASE_SECONDARY);
-            bgColorPress_ = StyleColor(Styling::StyleVariable::BASE_SECONDARY);
+            bgColor_ = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY };
+            bgColorHover_ = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY };
+            bgColorPress_ = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY };
             break;
 
         case DialogButtonRole::CANCEL:
@@ -283,20 +264,20 @@ namespace Ui
         case DialogButtonRole::CONFIRM:
         case DialogButtonRole::CONFIRM_DELETE:
         case DialogButtonRole::DISABLED:
-            textColor_ = StyleColor(Styling::StyleVariable::BASE_GLOBALWHITE);
-            textColorHover_ = StyleColor(Styling::StyleVariable::BASE_GLOBALWHITE);
-            textColorPress_ = StyleColor(Styling::StyleVariable::BASE_GLOBALWHITE);
+            textColor_ = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_GLOBALWHITE };
+            textColorHover_ = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_GLOBALWHITE };
+            textColorPress_ = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_GLOBALWHITE };
             break;
         case DialogButtonRole::CANCEL:
-            textColor_ = StyleColor(Styling::StyleVariable::BASE_SECONDARY);
-            textColorHover_ = StyleColor(Styling::StyleVariable::BASE_SECONDARY_HOVER);
-            textColorPress_ = StyleColor(Styling::StyleVariable::BASE_SECONDARY_ACTIVE);
+            textColor_ = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY };
+            textColorHover_ = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY_HOVER };
+            textColorPress_ = Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY_ACTIVE };
             break;
 
         case DialogButtonRole::RESTART:
-            textColor_ = StyleColor(Styling::StyleVariable::TEXT_PRIMARY);
-            textColorHover_ = StyleColor(Styling::StyleVariable::TEXT_PRIMARY);
-            textColorPress_ = StyleColor(Styling::StyleVariable::TEXT_PRIMARY);
+            textColor_ = Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY };
+            textColorHover_ = Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY };
+            textColorPress_ = Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY };
             break;
 
         default:
@@ -304,28 +285,21 @@ namespace Ui
         }
     }
 
-    void DialogButton::updateTextColor()
-    {
-        QPalette palette = this->palette();
-        palette.setColor(QPalette::ButtonText, hovered_ ? textColorHover_ : (pressed_ ? textColorPress_ : textColor_));
-        setPalette(palette);
-    }
-
-    void DialogButton::setBackgroundColor(QColor _normal, QColor _hover, QColor _pressed)
+    void DialogButton::setBackgroundColor(const Styling::ThemeColorKey& _normal, const Styling::ThemeColorKey& _hover, const Styling::ThemeColorKey& _pressed)
     {
         bgColor_ = _normal;
         bgColorHover_ = _hover;
         bgColorPress_ = _pressed;
     }
 
-    void DialogButton::setBorderColor(QColor _normal, QColor _hover, QColor _pressed)
+    void DialogButton::setBorderColor(const Styling::ThemeColorKey& _normal, const Styling::ThemeColorKey& _hover, const Styling::ThemeColorKey& _pressed)
     {
         borderColor_ = _normal;
         borderColorHover_ = _hover;
         borderColorPress_ = _pressed;
     }
 
-    void DialogButton::setTextColor(QColor _normal, QColor _hover, QColor _pressed)
+    void DialogButton::setTextColor(const Styling::ThemeColorKey& _normal, const Styling::ThemeColorKey& _hover, const Styling::ThemeColorKey& _pressed)
     {
         textColor_ = _normal;
         textColorHover_ = _hover;

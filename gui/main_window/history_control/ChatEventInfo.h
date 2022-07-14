@@ -7,7 +7,7 @@ namespace core
     struct iarray;
 
     enum class chat_event_type;
-}
+} // namespace core
 
 namespace HistoryControl
 {
@@ -64,6 +64,7 @@ namespace HistoryControl
         QString formatJoinModerationModified() const;
         QString formatPublicModified() const;
         QString formatTrustRequiredModified() const;
+        QString formatThreadsEnabledModified() const;
         QString formatMchatInviteText() const;
         QString formatMchatKickedText() const;
         QString formatMchatLeaveText() const;
@@ -85,6 +86,7 @@ namespace HistoryControl
         void setNewJoinModeration(bool _newJoinModeration);
         void setNewPublic(bool _newPublic);
         void setNewTrustRequired(bool _newTrustRequired);
+        void setNewThreadsEnabled(bool _newThreadsEnabled);
         void setSender(QString _aimid);
         void setMchatMembersAimIds(const core::iarray& _membersAimids);
         void setMchatRequestedBy(const QString& _requestedBy);
@@ -119,6 +121,7 @@ namespace HistoryControl
             bool newJoinModeration_ = false;
             bool newPublic_ = false;
             bool newTrustRequired_ = false;
+            bool newThreadsEnabled_ = false;
         } chat_;
 
         struct
@@ -136,4 +139,4 @@ namespace HistoryControl
         } task_;
     };
 
-}
+} // namespace HistoryControl

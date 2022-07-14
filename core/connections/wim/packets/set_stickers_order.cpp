@@ -7,6 +7,7 @@
 #include "../../../utils.h"
 #include "../../urls_cache.h"
 #include "../common.shared/string_utils.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -96,4 +97,9 @@ priority_t set_stickers_order_packet::get_priority() const
 std::string_view set_stickers_order_packet::get_method() const
 {
     return "stickersStoreOrderSet";
+}
+
+int core::wim::set_stickers_order_packet::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }

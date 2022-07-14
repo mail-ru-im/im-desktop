@@ -13,6 +13,8 @@
 #include "../../../../common.shared/json_helper.h"
 #include "../../../tools/coretime.h"
 #include "../../../common.shared/smartreply/smartreply_types.h"
+#include "../log_replace_functor.h"
+#include "../../urls_cache.h"
 
 #include <time.h>
 
@@ -141,6 +143,11 @@ std::string_view fetch::get_method() const
     return "fetchEvents";
 }
 
+int core::wim::fetch::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
+}
+
 void fetch::on_session_ended(const rapidjson::Value &_data)
 {
     relogin_ = relogin::relogin_with_error;
@@ -260,6 +267,12 @@ int32_t fetch::parse_response_data(const rapidjson::Value& _data)
                         push_event(std::make_shared<fetch_event_task>())->parse(iter_event_data->value);
                     else if (event_type == "trustStatus")
                         push_event(std::make_shared<fetch_event_trust_status>())->parse(iter_event_data->value);
+                    else if (event_type == "antivirus")
+                        push_event(std::make_shared<fetch_event_antivirus>())->parse(iter_event_data->value);
+                    else if (event_type == "unreadEmailsCount")
+                        push_event(std::make_shared<fetch_event_mails_count>())->parse(iter_event_data->value);
+                    else if (event_type == "unreadTasksCount")
+                        push_event(std::make_shared<fetch_event_tasks_count>())->parse(iter_event_data->value);
                 }
             }
         }

@@ -3,6 +3,7 @@
 #include "GenericBlock.h"
 #include "StickerBlockLayout.h"
 #include "../StickerInfo.h"
+#include "utils/SvgUtils.h"
 
 namespace Ui
 {
@@ -77,16 +78,15 @@ private:
 
     void initPlaceholder();
 
-    void updateStyle() override;
-    void updateFonts() override;
+    void updateFonts() override {};
 
     const HistoryControl::StickerInfoSptr Info_;
 
     QImage Sticker_;
 
-    QPixmap Placeholder_;
+    Utils::StyledPixmap Placeholder_;
 
-    StickerBlockLayout *Layout_;
+    StickerBlockLayout* Layout_;
 
     QSize LastSize_;
 

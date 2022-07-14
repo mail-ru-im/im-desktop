@@ -1,7 +1,7 @@
 #pragma once
 
 #include "message.h"
-#include "lastseen.h"
+#include "chat_member.h"
 
 class QPixmap;
 
@@ -12,23 +12,6 @@ namespace core
 
 namespace Data
 {
-    class ChatMemberInfo
-    {
-    public:
-
-        bool operator==(const ChatMemberInfo& other) const
-        {
-            return AimId_ == other.AimId_;
-        }
-
-        QString AimId_;
-        QString Role_;
-        LastSeen Lastseen_;
-        QDateTime canRemoveTill_;
-
-        bool IsCreator_ = false;
-    };
-
     class ChatInfo
     {
     public:
@@ -58,10 +41,12 @@ namespace Data
         bool YouPending_ = false;
         bool Public_ = false;
         bool ApprovedJoin_ = false;
+        bool ThreadsEnabed_ = false;
         bool Live_ = false;
         bool Controlled_ = false;
         bool YouMember_ = false;
         bool trustRequired_ = false;
+        bool threadsAutoSubscribe_ = false;
 
         QVector<ChatMemberInfo> Members_;
 
@@ -152,7 +137,6 @@ namespace Data
     };
 }
 
-Q_DECLARE_METATYPE(Data::ChatMemberInfo*);
 Q_DECLARE_METATYPE(Data::ChatInfo);
 Q_DECLARE_METATYPE(QVector<Data::ChatInfo>);
 Q_DECLARE_METATYPE(QVector<Data::ChatMemberInfo>);

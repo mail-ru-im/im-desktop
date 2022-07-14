@@ -56,6 +56,7 @@ namespace Ui
         void mailBoxOpened();
         void mentionMe(const QString& _contact, Data::MessageBuddySptr _mention);
         void deleteMessage(const Data::PatchedMessage&);
+        void showContextMenu();
 
     private:
         void init();
@@ -107,6 +108,8 @@ namespace Ui
         QHash<QString, qint64> ShowedMessages_;
         QVector<QString> Notifications_;
         MainWindow* MainWindow_;
+        QAction* enableNotifications_ = nullptr;
+        QAction* disableNotifications_ = nullptr;
 
         QIcon Base_;
         QIcon Unreads_;
@@ -116,8 +119,10 @@ namespace Ui
 
         QString Email_;
         QTimer* InitMailStatusTimer_;
+        QTimer* mailStatusReceivedTimer_;
         int UnreadsCount_;
         int MailCount_;
+        bool mailStatusReceived_ = false;
 
 #if defined (_WIN32)
 //        std::unique_ptr<ToastManager> ToastManager_;

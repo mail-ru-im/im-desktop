@@ -74,8 +74,8 @@ namespace Ui
         auto layout = Utils::emptyVLayout(mainWidget);
         layout->setContentsMargins(Utils::scale_value(16), Utils::scale_value(16), Utils::scale_value(16), 0);
 
-        const auto textColor = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
-        auto url = new Ui::TextEditEx(mainWidget, Fonts::appFontScaled(16), textColor, true, true);
+        const auto textColor = Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID };
+        auto url = new TextEditEx(mainWidget, Fonts::appFontScaled(16), textColor, true, true);
         Utils::ApplyStyle(url, Styling::getParameters().getTextEditCommonQss(true));
         Testing::setAccessibleName(url, qsl("AS General urlEdit"));
         url->setPlaceholderText(QT_TRANSLATE_NOOP("popup_window", "Link"));
@@ -87,11 +87,11 @@ namespace Ui
         url->setSizePolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::MinimumExpanding);
         url->setMinimumHeight(QFontMetrics(getUrlFont()).height() + getTextToLineSpacing());
         url->setMinimumWidth(Utils::scale_value(300));
-        url->addSpace(Utils::scale_value(4));
-        url->setEnterKeyPolicy(Ui::TextEditEx::EnterKeyPolicy::CatchEnterAndNewLine);
+        url->setHeightSupplement(Utils::scale_value(4));
+        url->setEnterKeyPolicy(TextEditEx::EnterKeyPolicy::CatchEnterAndNewLine);
         url->setContentsMargins(QMargins());
         url->setAttribute(Qt::WA_MacShowFocusRect, false);
-        url->document()->setDocumentMargin(0);
+        url->setDocumentMargin(0);
         url->setTextInteractionFlags(Qt::TextEditorInteraction);
         url->setUndoRedoEnabled(true);
 
@@ -120,8 +120,7 @@ namespace Ui
         dialog->addText(
             QT_TRANSLATE_NOOP("popup_window", "The link will be displayed as \"%1\"").arg(_linkDisplayName),
             Utils::scale_value(12));
-        auto okButton = dialog->addButtonsPair(
-            QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "Ok"), true).first;
+        auto okButton = dialog->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "Ok")).first;
 
         QObject::connect(url, &QTextEdit::textChanged, dialog.get(), [dialog = dialog.get(), okButton]()
         {

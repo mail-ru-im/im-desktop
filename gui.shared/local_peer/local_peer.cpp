@@ -13,9 +13,9 @@ namespace
     const QString executeCmd = crossprocess_message_execute_url_command() % ql1c(':');
     const QByteArray shutdownResponse = QByteArrayLiteral("icq");
 
-    QString get_crossprocess_pipe_name()
+    QString get_crossprocess_pipe_name(bool _old)
     {
-        const auto name = config::get().string(config::values::crossprocess_pipe);
+        const auto name = config::get().string(_old ? config::values::crossprocess_pipe_old : config::values::crossprocess_pipe);
         return QString::fromUtf8(name.data(), name.size());
     }
 }
@@ -28,13 +28,14 @@ namespace Utils
     // LocalConnection
     //----------------------------------------------------------------------
 
-    LocalConnection::LocalConnection(QLocalSocket* _socket, const ConnPolicy _writePolicy)
+    LocalConnection::LocalConnection(QLocalSocket* _socket, const ConnPolicy _writePolicy, bool _useOldPipe)
         : QObject(nullptr)
         , socket_(nullptr)
         , bytesWritten_(0)
         , bytesToReceive_(-1)
         , bytesToSend_(0)
         , exitOnDisconnect_(false)
+        , useOldPipe_(_useOldPipe)
         , timer_(new QTimer(this))
         , writePolicy_(_writePolicy)
     {
@@ -76,7 +77,7 @@ namespace Utils
     void LocalConnection::connectToServer()
     {
         qCDebug(localPeer) << this << "going to connect";
-        socket_->connectToServer(get_crossprocess_pipe_name());
+        socket_->connectToServer(get_crossprocess_pipe_name(useOldPipe_));
     }
 
     void LocalConnection::disconnectFromServer()
@@ -192,10 +193,11 @@ namespace Utils
     // LocalPeer
     //----------------------------------------------------------------------
 
-    LocalPeer::LocalPeer(QObject* _parent, bool _isServer)
+    LocalPeer::LocalPeer(QObject* _parent, bool _isServer, bool _useOldPipe)
         : QObject(_parent)
         , mainWindow_(nullptr)
         , server_(nullptr)
+        , useOldPipe_(_useOldPipe)
     {
         if (_isServer)
         {
@@ -204,7 +206,7 @@ namespace Utils
 
             connect(server_, &QLocalServer::newConnection, this, &LocalPeer::receiveConnection);
 
-            server_->listen(get_crossprocess_pipe_name());
+            server_->listen(get_crossprocess_pipe_name(useOldPipe_));
         }
     }
 

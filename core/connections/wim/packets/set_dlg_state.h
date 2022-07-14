@@ -78,7 +78,7 @@ namespace core
         {
             set_dlg_state_params params_;
 
-            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
 
         public:
 
@@ -88,11 +88,12 @@ namespace core
 
             virtual ~set_dlg_state();
 
-            virtual priority_t get_priority() const override;
+            priority_t get_priority() const override;
 
-            virtual std::string_view get_method() const override;
+            std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
 
-            virtual bool support_self_resending() const override;
+            bool support_self_resending() const override;
 
             const set_dlg_state_params& get_params() const;
 

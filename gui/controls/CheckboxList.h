@@ -1,6 +1,8 @@
 #pragma once
 
 #include "TextUnit.h"
+#include "utils/SvgUtils.h"
+#include "styles/ThemeColor.h"
 
 namespace Ui
 {
@@ -19,17 +21,21 @@ namespace Ui
         };
         void setState(const Activity _state);
 
-        static QPixmap getCheckBoxIcon(const Activity _state);
-        static QPixmap getRadioButtonIcon(const Activity _state);
+        static Utils::LayeredPixmap getCheckBoxIcon(const Activity _state);
+        static Utils::LayeredPixmap getRadioButtonIcon(const Activity _state);
 
     protected:
         void paintEvent(QPaintEvent* _e) override;
         bool hitButton(const QPoint &pos) const override;
 
     private:
+        void updatePalette();
+
+    private:
         Activity state_;
-        QPixmap button_;
+        Utils::LayeredPixmap button_;
         Qt::Alignment align_;
+        Styling::ThemeChecker themeChecker_;
     };
 
     /* title | checkbox */
@@ -58,7 +64,7 @@ namespace Ui
     public:
         using CheckboxItem = std::pair<QString, QString>; // value, friendlyText
 
-        CheckboxList(QWidget* _parent, const QFont& _textFont, const QColor& _textColor, const int _horPaddings, const int _itemHeight,
+        CheckboxList(QWidget* _parent, const QFont& _textFont, const Styling::ThemeColorKey& _textColor, const int _horPaddings, const int _itemHeight,
                      const Options& _options = Options());
 
         void setItems(std::initializer_list<CheckboxItem> _items);
@@ -102,9 +108,9 @@ namespace Ui
         std::vector<CheckBoxItem_p> items_;
         std::vector<int> separatorsIndexes_;
 
-        QPixmap buttonNormal_;
-        QPixmap buttonHover_;
-        QPixmap buttonActive_;
+        Utils::LayeredPixmap buttonNormal_;
+        Utils::LayeredPixmap buttonHover_;
+        Utils::LayeredPixmap buttonActive_;
 
     protected:
         int itemHeight_;
@@ -112,7 +118,7 @@ namespace Ui
         int horPadding_;
 
         QFont textFont_;
-        QColor textColor_;
+        Styling::ThemeColorKey textColor_;
 
         Options options_;
         int scrollAreaHeight_;
@@ -128,7 +134,7 @@ namespace Ui
         Q_OBJECT
 
     public:
-        ComboBoxList(QWidget* _parent, const QFont& _textFont, const QColor& _textColor, const int _horPaddings, const int _itemHeight);
+        ComboBoxList(QWidget* _parent, const QFont& _textFont, const Styling::ThemeColorKey& _textColor, const int _horPaddings, const int _itemHeight);
 
         QString getSelectedItem() const;
 
@@ -144,7 +150,7 @@ namespace Ui
         Q_OBJECT
 
     public:
-        RCheckboxList(QWidget* _parent, const QFont& _textFont, const QColor& _textColor, const int _horPaddings, const int _itemHeight,
+        RCheckboxList(QWidget* _parent, const QFont& _textFont, const Styling::ThemeColorKey& _textColor, const int _horPaddings, const int _itemHeight,
                       const Options& _options = Options());
 
     protected:

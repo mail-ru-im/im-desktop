@@ -33,8 +33,6 @@ namespace Ui
 
     void InputBgWidget::setOverlayColor(const QColor& _color)
     {
-        im_assert(_color.alpha() != 255);
-        im_assert(_color.isValid());
         overlay_ = _color;
         update();
     }
@@ -71,7 +69,8 @@ namespace Ui
         if (isBgVisible_ && !cachedBg_.isNull())
             p.drawPixmap(rect(), cachedBg_);
 
-        p.fillRect(rect(), overlay_);
+        if (overlay_.isValid())
+            p.fillRect(rect(), overlay_);
     }
 
     void InputBgWidget::resizeEvent(QResizeEvent* _e)

@@ -154,4 +154,9 @@ namespace Logic
         const auto chatRole = get_chat_role();
         return (chatRole.isEmpty() && is_channel()) || chatRole == u"readonly" || chatRole == u"notamember" || chatRole == u"pending";
     }
+
+    bool ContactItem::is_deleted() const
+    {
+        return contact_->isDeleted_;
+    }
 }

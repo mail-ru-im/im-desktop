@@ -2,6 +2,7 @@
 #include "get_chat_info.h"
 
 #include "../../../http_request.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -67,4 +68,9 @@ int32_t get_chat_info::on_response_error_code()
 std::string_view get_chat_info::get_method() const
 {
     return "getChatInfo";
+}
+
+int core::wim::get_chat_info::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }

@@ -37,9 +37,9 @@ namespace
         return Utils::scale_value(36);
     }
 
-    QColor badgeTextColor()
+    Styling::ThemeColorKey badgeTextColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID_PERMANENT };
     }
 
     QColor badgeBalloonColor()
@@ -76,7 +76,9 @@ namespace Ui
             else
             {
                 badgeTextUnit_ = TextRendering::MakeTextUnit(badgeText_);
-                badgeTextUnit_->init(getBadgeTextFont(), badgeTextColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
+                TextRendering::TextUnit::InitializeParameters params{ getBadgeTextFont(), badgeTextColor() };
+                params.align_ = TextRendering::HorAligment::CENTER;
+                badgeTextUnit_->init(params);
             }
             update();
         }
@@ -86,7 +88,7 @@ namespace Ui
     {
         const auto size = iconSize();
         const auto bgColor = Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
-        const static auto pixmap = Utils::renderSvg(qsl(":/tab/expand"), { size, size }, Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
+        static auto pixmap = Utils::StyledPixmap(qsl(":/tab/expand"), { size, size }, Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY });
 
         QPainter p(this);
         p.setRenderHint(QPainter::Antialiasing);
@@ -100,7 +102,7 @@ namespace Ui
             Qt::AlignTop
         );
 
-        p.drawPixmap((r.width() - size) / 2, (r.height() - size) / 2, pixmap);
+        p.drawPixmap((r.width() - size) / 2, (r.height() - size) / 2, pixmap.actualPixmap());
 
         if (!badgeText_.isEmpty()) // duplicate with tabbar.cpp
         {

@@ -2,6 +2,9 @@
 
 #include "ThemeParameters.h"
 #include "ThemesContainer.h"
+#include "ThemeColor.h"
+#include "StyleSheetContainer.h"
+#include "StyleSheetGenerator.h"
 
 #include "fonts.h"
 #include "controls/CustomButton.h"
@@ -18,15 +21,21 @@ namespace
     QString getLineEditQss();
     QString getLineEditFocusQss();
     QString getTextEditQss();
+    QString getTextEditBoxQss();
     QString getBackgroundQss();
 
-    constexpr auto scrollbarBg = Styling::StyleVariable::GHOST_LIGHT_INVERSE;
-    constexpr auto scrollbarBtn = Styling::StyleVariable::GHOST_SECONDARY_INVERSE;
-    constexpr auto scrollbarBtnHover = Styling::StyleVariable::GHOST_SECONDARY_INVERSE_HOVER;
-}
+    const auto scrollbarBg = Styling::ThemeColorKey { Styling::StyleVariable::GHOST_LIGHT_INVERSE };
+    const auto scrollbarBtn = Styling::ThemeColorKey { Styling::StyleVariable::GHOST_SECONDARY_INVERSE };
+    const auto scrollbarBtnHover = Styling::ThemeColorKey { Styling::StyleVariable::GHOST_SECONDARY_INVERSE_HOVER };
+} // namespace
 
 namespace Styling
 {
+    size_t ThemeParameters::idHash() const
+    {
+        return theme_->idHash() ^ wallpaper_->idHash();
+    }
+
     QColor ThemeParameters::getColor(const StyleVariable _var) const
     {
         if (wallpaper_)
@@ -155,69 +164,86 @@ namespace Styling
             getThemesContainer().requestWallpaper(wp);
     }
 
-    QString ThemeParameters::getScrollBarQss(const int _width, const int _margins) const
+    std::unique_ptr<BaseStyleSheetGenerator> ThemeParameters::getScrollBarQss(const int _width, const int _margins) const
     {
         QString qss = ql1s(
             "QScrollBar:vertical{"
-            "background-color: %1;"
-            "width: %5dip;"
-            "margin-top: %4dip;"
-            "margin-bottom: %4dip;"
-            "margin-right: %4dip;}"
+            "background-color: %3;"
+            "width: %2dip;"
+            "margin-top: %1dip;"
+            "margin-bottom: %1dip;"
+            "margin-right: %1dip;}"
             "QScrollBar:horizontal{"
-            "background-color: %1;"
-            "height: %5dip;"
-            "margin-bottom: %4dip;"
-            "margin-right: %4dip;"
-            "margin-left: %4dip; }"
+            "background-color: %3;"
+            "height: %2dip;"
+            "margin-bottom: %1dip;"
+            "margin-right: %1dip;"
+            "margin-left: %1dip; }"
             "QScrollBar:hover:vertical{"
-            "background-color: %1;"
-            "margin-top: %4dip;"
-            "margin-bottom: %4dip;"
-            "margin-right: %4dip; }"
+            "background-color: %3;"
+            "margin-top: %1dip;"
+            "margin-bottom: %1dip;"
+            "margin-right: %1dip; }"
             "QScrollBar:hover:horizontal{"
-            "background-color: %1;"
-            "margin-bottom: %4dip;"
-            "margin-right: %4dip;"
-            "margin-left: %4dip; }"
+            "background-color: %3;"
+            "margin-bottom: %1dip;"
+            "margin-right: %1dip;"
+            "margin-left: %1dip; }"
             "QScrollBar::handle:vertical{"
-            "background-color: %2;"
+            "background-color: %4;"
             "min-height: 50dip; }"
             "QScrollBar::handle:horizontal{"
-            "background-color: %2;"
+            "background-color: %4;"
             "min-width: 50dip; }"
             "QScrollBar::handle:hover:vertical{"
-            "background-color: %3;"
+            "background-color: %5;"
             "min-height: 50dip; }"
             "QScrollBar::handle:hover:horizontal{"
-            "background-color: %3;"
+            "background-color: %5;"
             "min-width: 50dip; }"
             "QScrollBar::add-line, QScrollBar::sub-line{"
             "background-color: transparent; }"
             "QScrollBar::sub-page, QScrollBar::add-page{"
             "background: none; }"
         ).arg(
-            getColorHex(scrollbarBg),
-            getColorHex(scrollbarBtn),
-            getColorHex(scrollbarBtnHover),
             QString::number(_margins),
             QString::number(_width)
         );
 
-        return qss;
+        return std::make_unique<ArrayStyleSheetGenerator>(qss, std::vector<ThemeColorKey> { scrollbarBg, scrollbarBtn, scrollbarBtnHover });
     }
 
-    QString ThemeParameters::getPhoneComboboxQss() const
+    QString ThemeParameters::getVerticalScrollBarSimpleQss() const
     {
-        return  getScrollBarQss() %
-            ql1s("QTreeView { background: %1; color: %2;}").arg(
-                getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE),
-                getColorHex(Styling::StyleVariable::TEXT_SOLID));
+        return qsl("\
+            QScrollBar:vertical\
+            {\
+                width: 4dip;\
+                margin-top: 0px;\
+                margin-bottom: 0px;\
+                margin-right: 0px;\
+            }");
+    }
+
+    std::unique_ptr<BaseStyleSheetGenerator> ThemeParameters::getPhoneComboboxQss() const
+    {
+        std::vector<std::unique_ptr<BaseStyleSheetGenerator>> styleSheets;
+        styleSheets.reserve(2);
+        styleSheets.push_back(getScrollBarQss());
+        styleSheets.push_back(std::make_unique<ArrayStyleSheetGenerator>(
+            ql1s("QTreeView { background: %1; color: %2;}"),
+            std::vector<ThemeColorKey> { ThemeColorKey { StyleVariable::BASE_GLOBALWHITE }, ThemeColorKey { StyleVariable::TEXT_SOLID } }));
+        return std::make_unique<CombinedStyleSheetGenerator>(std::move(styleSheets));
+    }
+
+    Styling::ThemeColorKey ThemeParameters::getPrimaryTabFocusColorKey() const
+    {
+        return Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY, 0.2 };
     }
 
     QColor ThemeParameters::getPrimaryTabFocusColor() const
     {
-        return getColor(Styling::StyleVariable::PRIMARY, 0.2);
+        return Styling::getColor(getPrimaryTabFocusColorKey());
     }
 
     QColor ThemeParameters::getAppTitlebarColor() const
@@ -225,10 +251,14 @@ namespace Styling
         auto var = platform::is_apple() ? Styling::StyleVariable::APP_PRIMARY : Styling::StyleVariable::BASE_BRIGHT_INVERSE;
         if (config::get().is_debug())
             var = Styling::StyleVariable::SECONDARY_RAINBOW_BLUE;
+        else if (config::get().is_develop())
+            var = Styling::StyleVariable::SECONDARY_RAINBOW_GREEN;
         else if (Ui::GetAppConfig().hasCustomDeviceId())
             var = Styling::StyleVariable::SECONDARY_RAINBOW_WARM;
+        else if (config::get().has_develop_cli_flag())
+            var = Styling::StyleVariable::SECONDARY_RAINBOW_PURPLE;
 
-        return getColor(var);
+        return Styling::getParameters().getColor(var);
     }
 
     bool ThemeParameters::isBorderNeeded() const noexcept
@@ -236,12 +266,7 @@ namespace Styling
         return wallpaper_ && wallpaper_->isBorderNeeded();
     }
 
-    QString ThemeParameters::getBackgroundCommonQss() const
-    {
-        return getBackgroundQss().replace(ql1s("%BACKGROUND%"), getColorHex(StyleVariable::BASE_GLOBALWHITE));
-    }
-
-    QString ThemeParameters::getLineEditCommonQss(bool _isError, int _height) const
+    QString ThemeParameters::getLineEditCommonQss(bool _isError, int _height, const StyleVariable _var, const double _alpha) const
     {
         QString qss = getLineEditQss() % getLineEditFocusQss();
 
@@ -252,7 +277,7 @@ namespace Styling
         }
         else
         {
-            qss.replace(ql1s("%BORDER_COLOR%"), getColorHex(StyleVariable::BASE_BRIGHT));
+            qss.replace(ql1s("%BORDER_COLOR%"), getColorHex(_var, _alpha));
             qss.replace(ql1s("%BORDER_COLOR_FOCUS%"), getColorHex(StyleVariable::PRIMARY));
         }
 
@@ -300,27 +325,27 @@ namespace Styling
         return qss;
     }
 
-    QString ThemeParameters::getLineEditDisabledQss(int _height) const
+    QString ThemeParameters::getLineEditDisabledQss(int _height, const StyleVariable _var, const double _alpha) const
     {
         auto qss = getLineEditQss();
         qss.replace(ql1s("%BACKGROUND%"), ql1s("transparent"));
-        qss.replace(ql1s("%BORDER_COLOR%"), getColorHex(StyleVariable::BASE_PRIMARY));
+        qss.replace(ql1s("%BORDER_COLOR%"), getColorHex(_var, _alpha));
         qss.replace(ql1s("%HEIGHT%"), QString::number(_height));
 
         return qss;
     }
 
-    QString ThemeParameters::getLineEditCustomQss(const QColor & _lineFocusColor, const QColor& _lineNoFocusColor, int _height) const
+    QString ThemeParameters::getLineEditCustomQss(StyleVariable _lineFocusColor, StyleVariable _lineNoFocusColor, int _height) const
     {
         QString qss = getLineEditQss() % getLineEditFocusQss();
 
-        if (_lineNoFocusColor.isValid())
-            qss.replace(ql1s("%BORDER_COLOR%"), _lineNoFocusColor.name());
+        if (StyleVariable::INVALID != _lineNoFocusColor)
+            qss.replace(ql1s("%BORDER_COLOR%"), getColorHex(_lineNoFocusColor));
         else
             qss.replace(ql1s("%BORDER_COLOR%"), ql1s("transparent"));
 
-        if (_lineFocusColor.isValid())
-            qss.replace(ql1s("%BORDER_COLOR_FOCUS%"), _lineFocusColor.name());
+        if (StyleVariable::INVALID != _lineFocusColor)
+            qss.replace(ql1s("%BORDER_COLOR_FOCUS%"), getColorHex(_lineFocusColor));
         else
             qss.replace(ql1s("%BORDER_COLOR_FOCUS%"), ql1s("transparent"));
 
@@ -331,11 +356,19 @@ namespace Styling
         return qss;
     }
 
-    QString ThemeParameters::getTextEditCommonQss(bool _hasBorder) const
+    QString ThemeParameters::getTextEditBoxCommonQss() const
+    {
+        QString qss = getTextEditBoxQss();
+        qss.replace(ql1s("%BORDER_COLOR%"), getColorHex(StyleVariable::BASE_BRIGHT));
+        qss.replace(ql1s("%BORDER_FOCUS_COLOR%"), getColorHex(StyleVariable::PRIMARY));
+        return qss;
+    }
+
+    QString ThemeParameters::getTextEditCommonQss(bool _hasBorder, const StyleVariable _var) const
     {
         QString qss = getTextEditQss();
 
-        qss.replace(ql1s("%BORDER_COLOR%"), getColorHex(_hasBorder ? StyleVariable::BASE_BRIGHT : StyleVariable::BASE_GLOBALWHITE));
+        qss.replace(ql1s("%BORDER_COLOR%"), getColorHex(_hasBorder ? _var : StyleVariable::BASE_GLOBALWHITE));
         qss.replace(ql1s("%BORDER_FOCUS_COLOR%"), getColorHex(_hasBorder ? StyleVariable::PRIMARY : StyleVariable::BASE_GLOBALWHITE));
         return qss;
     }
@@ -396,32 +429,34 @@ namespace Styling
         return qss;
     }
 
-    QString ThemeParameters::getContextMenuQss(int _itemHeight, int _paddingLeft, int _paddingRight, int _paddingIcon) const
+    std::unique_ptr<BaseStyleSheetGenerator> ThemeParameters::getContextMenuQss(int _itemHeight, int _paddingLeft, int _paddingRight, int _paddingIcon) const
     {
-        QString qss = getContextMenuCommon(_itemHeight, _paddingLeft, _paddingRight, _paddingIcon);
+        std::vector<std::pair<QString, StyleVariable>> colors;
+        colors.reserve(6);
 
-        qss.replace(ql1s("%BACKGROUND%"), getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE));
-        qss.replace(ql1s("%BACKGROUND_SELECTED%"), getColorHex(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
-        qss.replace(ql1s("%BORDER_COLOR%"), getColorHex(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
-        qss.replace(ql1s("%SEPARATOR%"), getColorHex(Styling::StyleVariable::BASE_BRIGHT));
-        qss.replace(ql1s("%FONT_COLOR%"), getColorHex(Styling::StyleVariable::TEXT_SOLID));
-        qss.replace(ql1s("%FONT_DISABLED_COLOR%"), getColorHex(Styling::StyleVariable::BASE_TERTIARY));
+        colors.emplace_back(ql1s("%BACKGROUND%"), Styling::StyleVariable::BASE_GLOBALWHITE);
+        colors.emplace_back(ql1s("%BACKGROUND_SELECTED%"), Styling::StyleVariable::BASE_BRIGHT_INVERSE);
+        colors.emplace_back(ql1s("%BORDER_COLOR%"), Styling::StyleVariable::BASE_BRIGHT_INVERSE);
+        colors.emplace_back(ql1s("%SEPARATOR%"), Styling::StyleVariable::BASE_BRIGHT);
+        colors.emplace_back(ql1s("%FONT_COLOR%"), Styling::StyleVariable::TEXT_SOLID);
+        colors.emplace_back(ql1s("%FONT_DISABLED_COLOR%"), Styling::StyleVariable::BASE_TERTIARY);
 
-        return qss;
+        return std::make_unique<MapStyleSheetGenerator>(getContextMenuCommon(_itemHeight, _paddingLeft, _paddingRight, _paddingIcon), std::move(colors));
     }
 
-    QString ThemeParameters::getContextMenuDarkQss(int _itemHeight, int _paddingLeft, int _paddingRight, int _paddingIcon) const
+    std::unique_ptr<BaseStyleSheetGenerator> ThemeParameters::getContextMenuDarkQss(int _itemHeight, int _paddingLeft, int _paddingRight, int _paddingIcon) const
     {
-        QString qss = getContextMenuCommon(_itemHeight, _paddingLeft, _paddingRight, _paddingIcon);
+        std::vector<std::pair<QString, StyleVariable>> colors;
+        colors.reserve(6);
 
-        qss.replace(ql1s("%BACKGROUND%"), getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE_PERMANENT));
-        qss.replace(ql1s("%BACKGROUND_SELECTED%"), getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE_PERMANENT_HOVER));
-        qss.replace(ql1s("%BORDER_COLOR%"), getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE_PERMANENT_HOVER));
-        qss.replace(ql1s("%SEPARATOR%"), getColorHex(Styling::StyleVariable::LUCENT_TERTIARY_ACTIVE));
-        qss.replace(ql1s("%FONT_COLOR%"), getColorHex(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
-        qss.replace(ql1s("%FONT_DISABLED_COLOR%"), getColorHex(Styling::StyleVariable::TEXT_SOLID_PERMANENT_ACTIVE));
+        colors.emplace_back(ql1s("%BACKGROUND%"), Styling::StyleVariable::BASE_GLOBALWHITE_PERMANENT);
+        colors.emplace_back(ql1s("%BACKGROUND_SELECTED%"), Styling::StyleVariable::BASE_GLOBALWHITE_PERMANENT_HOVER);
+        colors.emplace_back(ql1s("%BORDER_COLOR%"), Styling::StyleVariable::BASE_GLOBALWHITE_PERMANENT_HOVER);
+        colors.emplace_back(ql1s("%SEPARATOR%"), Styling::StyleVariable::LUCENT_TERTIARY_ACTIVE);
+        colors.emplace_back(ql1s("%FONT_COLOR%"), Styling::StyleVariable::TEXT_SOLID_PERMANENT);
+        colors.emplace_back(ql1s("%FONT_DISABLED_COLOR%"), Styling::StyleVariable::TEXT_SOLID_PERMANENT_ACTIVE);
 
-        return qss;
+        return std::make_unique<MapStyleSheetGenerator>(getContextMenuCommon(_itemHeight, _paddingLeft, _paddingRight, _paddingIcon), std::move(colors));
     }
 
     QString ThemeParameters::getStickersQss() const
@@ -449,7 +484,7 @@ namespace Styling
             "border: none;}"
         ).arg(getColorHex(StyleVariable::BASE_GLOBALWHITE), getColorHex(StyleVariable::BASE_SECONDARY), getColorHex(StyleVariable::BASE_GLOBALWHITE));
 
-        return Fonts::SetFont(qss);
+        return qss;
     }
 
     QString ThemeParameters::getSmilesQss() const
@@ -513,7 +548,6 @@ namespace Styling
             "QWidget[fileWidget=\"true\"]{"
             "background-color: transparent;"
             "border-radius: 8dip;"
-            "border-color: %1;"
             "border-style: none;"
             "padding-left: 15dip;"
             "padding-right: 15dip;"
@@ -522,12 +556,12 @@ namespace Styling
             "QPushButton#successImage{"
             "outline: none;"
             "border-image: url(:/placeholders/good_100);}"
-        ).arg(getColorHex(StyleVariable::BASE_SECONDARY));
+        );
 
         return qss;
     }
 
-    QString ThemeParameters::getComboBoxQss() const
+    std::unique_ptr<BaseStyleSheetGenerator> ThemeParameters::getComboBoxQss() const
     {
         QString menuQss = ql1s(
             "QComboBox{"
@@ -556,14 +590,14 @@ namespace Styling
             "border: 0px;"
             "outline: none;"
             "width: 12dip;"
-            "height: 8dip; }")
-            .arg(getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE),
-                 getColorHex(Styling::StyleVariable::BASE_BRIGHT),
-                 getColorHex(Styling::StyleVariable::BASE_BRIGHT_INVERSE),
-                 getColorHex(Styling::StyleVariable::TEXT_SOLID),
-                 getColorHex(Styling::StyleVariable::BASE_PRIMARY)
-            );
-        return menuQss;
+            "height: 8dip; }");
+        return std::make_unique<Styling::ArrayStyleSheetGenerator>(menuQss,
+            std::vector<ThemeColorKey> {
+                                         ThemeColorKey { StyleVariable::BASE_GLOBALWHITE },
+                                         ThemeColorKey { StyleVariable::BASE_BRIGHT },
+                                         ThemeColorKey { StyleVariable::BASE_BRIGHT_INVERSE },
+                                         ThemeColorKey { StyleVariable::TEXT_SOLID},
+                                         ThemeColorKey { StyleVariable::BASE_PRIMARY } });
     }
 
     QString ThemeParameters::getTitleQss() const
@@ -578,7 +612,7 @@ namespace Styling
         );
     }
 
-    QString ThemeParameters::getLoginPageQss() const
+    std::unique_ptr<BaseStyleSheetGenerator> ThemeParameters::getLoginPageQss() const
     {
         QString qss = ql1s(
             "Ui--LoginPage{"
@@ -590,14 +624,13 @@ namespace Styling
             "background-color: transparent;}"
             "QWidget#errorWidget{"
             "min-height: 30dip;}"
-        ).arg(
-            getColorHex(StyleVariable::BASE_GLOBALWHITE),
-            getColorHex(StyleVariable::TEXT_SOLID)
         );
-        return qss;
+        return std::make_unique<ArrayStyleSheetGenerator>(
+            qss,
+            std::vector<ThemeColorKey> { ThemeColorKey { StyleVariable::BASE_GLOBALWHITE }, ThemeColorKey { StyleVariable::TEXT_SOLID } });
     }
 
-    QString ThemeParameters::getFlatMenuQss(const StyleVariable _borderColor) const
+    std::unique_ptr<BaseStyleSheetGenerator> ThemeParameters::getFlatMenuQss(StyleVariable _borderColor) const
     {
         QString qss = ql1s(
                 "QMenu {"
@@ -612,19 +645,19 @@ namespace Styling
                 "padding-bottom: 4dip;"
                 "color: %4;}"
                 "QMenu::item:selected { background: %3; }"
-            ).arg(
-                getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE),
-                getColorHex(_borderColor),
-                getColorHex(Styling::StyleVariable::BASE_BRIGHT_INVERSE),
-                getColorHex(Styling::StyleVariable::TEXT_SOLID)
             );
 
-        return qss;
+        return std::make_unique<ArrayStyleSheetGenerator>(
+            qss,
+            std::vector<ThemeColorKey> { ThemeColorKey { StyleVariable::BASE_GLOBALWHITE },
+                                         ThemeColorKey { _borderColor },
+                                         ThemeColorKey { StyleVariable::BASE_BRIGHT_INVERSE},
+                                         ThemeColorKey { StyleVariable::TEXT_SOLID } });
     }
 
     ThemeParameters getParameters(const QString& _aimId)
     {
-        ThemeParameters params(getThemesContainer().getCurrentTheme(), _aimId.isEmpty() ? nullptr : getThemesContainer().getContactWallpaper(_aimId));
+        ThemeParameters params(getThemesContainer().getCurrentTheme(), _aimId.isEmpty() ? getThemesContainer().getGlobalWallpaper() : getThemesContainer().getContactWallpaper(_aimId));
         return params;
     }
 
@@ -632,17 +665,17 @@ namespace Styling
     {
         QColor getScrollbarBackgroundColor()
         {
-            return Styling::getParameters().getColor(scrollbarBg);
+            return Styling::getParameters().getColor(scrollbarBg.style());
         }
 
         QColor getScrollbarButtonColor()
         {
-            return Styling::getParameters().getColor(scrollbarBtn);
+            return Styling::getParameters().getColor(scrollbarBtn.style());
         }
 
         QColor getScrollbarButtonHoveredColor()
         {
-            return Styling::getParameters().getColor(scrollbarBtnHover);
+            return Styling::getParameters().getColor(scrollbarBtnHover.style());
         }
     }
 
@@ -653,34 +686,49 @@ namespace Styling
             im_assert(_button);
             if (_button)
             {
-                _button->setDefaultColor(defaultColor());
-                _button->setHoverColor(hoverColor());
-                _button->setPressedColor(pressedColor());
-                _button->setActiveColor(activeColor());
+                _button->setDefaultColor(defaultColorKey());
+                _button->setHoverColor(hoverColorKey());
+                _button->setPressedColor(pressedColorKey());
+                _button->setActiveColor(activeColorKey());
             }
+        }
+
+        Styling::ThemeColorKey defaultColorKey()
+        {
+            return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY };
         }
 
         QColor defaultColor()
         {
-            return Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY);
+            return Styling::getColor(defaultColorKey());
+        }
+
+        Styling::ThemeColorKey hoverColorKey()
+        {
+            return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY_HOVER };
         }
 
         QColor hoverColor()
         {
-            return Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER);
+            return Styling::getColor(hoverColorKey());
+        }
+
+        Styling::ThemeColorKey pressedColorKey()
+        {
+            return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY_ACTIVE };
         }
 
         QColor pressedColor()
         {
-            return Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_ACTIVE);
+            return Styling::getColor(pressedColorKey());
         }
 
-        QColor activeColor()
+        Styling::ThemeColorKey activeColorKey()
         {
-            return Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
+            return Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY };
         }
-    }
-}
+    } // namespace Buttons
+} // namespace Styling
 
 namespace
 {
@@ -769,6 +817,24 @@ namespace
             "border-bottom-width: 1dip;"
             "border-bottom-style: solid;}"
             "QTextBrowser:focus {"
+            "background-color: transparent;"
+            "border-style: none;"
+            "border-bottom-color: %BORDER_FOCUS_COLOR%;"
+            "border-bottom-width: 1dip;"
+            "border-bottom-style: solid; }"
+        );
+    }
+
+    QString getTextEditBoxQss()
+    {
+        return qsl(
+            "Ui--TextEditBox {"
+            "background-color: transparent;"
+            "border-style: none;"
+            "border-bottom-color: %BORDER_COLOR%;"
+            "border-bottom-width: 1dip;"
+            "border-bottom-style: solid;}"
+            "Ui--TextEditBox:focus {"
             "background-color: transparent;"
             "border-style: none;"
             "border-bottom-color: %BORDER_FOCUS_COLOR%;"

@@ -3,6 +3,7 @@
 
 #include "../../../http_request.h"
 #include "../../../tools/system.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -36,6 +37,11 @@ void create_chat::set_chat_params(chat_params _chat_params)
 std::string_view create_chat::get_method() const
 {
     return "createChat";
+}
+
+int core::wim::create_chat::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t create_chat::init_request(const std::shared_ptr<core::http_request_simple>& _request)

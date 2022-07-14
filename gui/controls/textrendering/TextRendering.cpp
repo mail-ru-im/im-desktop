@@ -11,6 +11,9 @@
 #include "utils/InterConnector.h"
 #include "fonts.h"
 
+#include "../common.shared/message_processing/message_tokenizer.h"
+#include "../common.shared/config/config.h"
+
 using ftype = core::data::format_type;
 
 namespace
@@ -49,6 +52,10 @@ namespace
 
     constexpr int maxCommandSize() noexcept { return 32; }
 
+    bool isBrailleSpace(QChar _c) noexcept
+    {
+        return _c == 0x2800;
+    }
 }
 
 namespace Ui::TextRendering
@@ -131,23 +138,16 @@ namespace Ui::TextRendering
         , showLinks_(_showLinks)
         , emojiSizeType_(_emojiSizeType)
     {
-        if (type_ != WordType::LINK && _showLinks == LinksVisible::SHOW_LINKS)
-        {
-            Utils::UrlParser p;
-            p.process(plainViewNoEndSpace());
-            if (p.hasUrl())
-            {
-                type_ = WordType::LINK;
-                originalUrl_ = QString::fromStdString(p.getUrl().original_);
-            }
-        }
         im_assert(type_ != WordType::EMOJI);
+
+        if ((type_ == WordType::LINK || type_ == WordType::HASHTAG) && _showLinks == LinksVisible::SHOW_LINKS)
+            originalUrl_ = _text.toString();
 
         checkSetClickable();
         initFormat();
 
         if (!view_.isEmpty())
-            im_assert(space_ != Space::WITH_SPACE_AFTER || view_.lastChar().isSpace());
+            im_assert(space_ != Space::WITH_SPACE_AFTER || view_.back().isSpace());
     }
 
     TextWord::TextWord(Emoji::EmojiCode _code, Space _space, EmojiSizeType _emojiSizeType)
@@ -197,34 +197,23 @@ namespace Ui::TextRendering
                 cutPositions.push_back(_pos);
         };
 
-        auto isStyleOnEntireWord = [this](const auto& _styleInfo)
-        {
-            return _styleInfo.range_.end() == viewNoEndSpace().size()
-                || _styleInfo.range_.offset_ == view_.size();
-        };
-
         Data::FormatTypes styles;
         const auto textStyles = viewNoEndSpace().getStyles();
         for (const auto& styleInfo : textStyles)
         {
             const auto type = styleInfo.type_;
             const auto& range = styleInfo.range_;
-            if (isStyleOnEntireWord(styleInfo))
+
+            styles.setFlag(type);
+            if (type != ftype::link)
             {
-                const auto& data = styleInfo.data_;
-                styles.setFlag(type);
-                im_assert(type != ftype::link || data);
-                if (type == ftype::link && data)
-                    applyFormattedLink(*data);
+                addCutPosition(range.offset_);
+                addCutPosition(range.offset_ + range.size_);
             }
             else
             {
-                im_assert(type != ftype::link);
-                if (type != ftype::link)
-                {
-                    addCutPosition(range.offset_);
-                    addCutPosition(range.offset_ + range.size_);
-                }
+                if (const auto& data = styleInfo.data_)
+                    applyFormattedLink(*data);
             }
         }
         setStyles(styles);
@@ -274,7 +263,7 @@ namespace Ui::TextRendering
                         continue;
                     }
                 }
-                const auto showLinks = type_ == WordType::LINK ? showLinks_ : LinksVisible::DONT_SHOW_LINKS;
+                const auto showLinks = isLink() ? showLinks_ : LinksVisible::DONT_SHOW_LINKS;
                 emplace_word_back(subwords_, subView, spaceAfter, type_, showLinks, emojiSizeType_);
 
                 if (type_ == WordType::LINK)
@@ -319,7 +308,7 @@ namespace Ui::TextRendering
 
     Data::FStringView TextWord::viewNoEndSpace() const
     {
-        return space_ == Space::WITH_SPACE_AFTER && !view_.isEmpty() && view_.lastChar().isSpace() ? view_.left(view_.size() - 1) : view_;
+        return space_ == Space::WITH_SPACE_AFTER && !view_.isEmpty() && view_.back().isSpace() ? view_.left(view_.size() - 1) : view_;
     }
 
     QStringView TextWord::plainVisibleTextNoEndSpace() const
@@ -351,6 +340,8 @@ namespace Ui::TextRendering
         else if (type_ == WordType::NICK)
             return { plainViewNoEndSpace().toString(), displayText };
         else if (type_ == WordType::COMMAND)
+            return { originalLink_, displayText };
+        else if (type_ == WordType::HASHTAG)
             return { originalLink_, displayText };
         else if (type_ == WordType::EMOJI && !originalUrl_.isEmpty())
             return { originalLink_, displayText };
@@ -438,12 +429,23 @@ namespace Ui::TextRendering
         if (_x >= cachedWidth_)
             return text.size();
 
+        const auto averageWidth = averageCharWidth(font_);
+        const auto letter_space = font_.letterSpacing();
+
         auto currentWidth = 0.0;
         for (int i = 0; i < text.size(); ++i)
         {
             const auto symbolWidth = textWidth(font_, text.at(i));
-            if ((currentWidth + symbolWidth / 2) >= _x)
-                return i;
+            if(symbolWidth < 0.7 * averageWidth)
+            {
+                if (currentWidth + ceil(symbolWidth) >= _x)
+                    return i;
+            }
+            else
+            {
+                if (currentWidth + ceil(symbolWidth / 2) >= _x)
+                    return i;
+            }
 
             currentWidth += symbolWidth;
         }
@@ -483,7 +485,11 @@ namespace Ui::TextRendering
             for (auto& w : subwords_)
             {
                 w.clearSelection();
-                const auto size = w.getVisibleTextView().size();
+                auto size = w.getVisibleTextView().size();
+
+                if (w.type_ == WordType::EMOJI && size > 1)
+                    size = 1;
+
                 if (auto begin = qBound(0, selectedFrom_ - offset, size); begin < size)
                 {
                     w.selectedFrom_ = begin;
@@ -534,6 +540,30 @@ namespace Ui::TextRendering
 
     void TextWord::clicked() const
     {
+        const auto isFormattedLink = styles_.testFlag(core::data::format_type::link);
+        const auto openLink = [this, &isFormattedLink]()
+        {
+            const auto sourceUrl = (originalLink_.isEmpty() ? plainViewNoEndSpace() : originalLink_).trimmed();
+
+            QString url;
+            Utils::UrlParser parser;
+
+            auto isUrlValid = !sourceUrl.contains(u' ');
+            if (isUrlValid)
+            {
+                parser.process(sourceUrl);
+                isUrlValid = parser.hasUrl();
+                if (isUrlValid)
+                    url = parser.formattedUrl();
+            }
+
+            const auto urlString = isUrlValid ? url : qsl("http://%1/").arg(sourceUrl);
+            if (isFormattedLink)
+                Utils::openUrl(urlString, Utils::OpenUrlConfirm::Yes);
+            else if (isUrlValid)
+                Utils::openUrl(urlString);
+        };
+
         if (type_ == WordType::MENTION)
         {
             Utils::openUrl(plainViewNoEndSpace());
@@ -544,7 +574,17 @@ namespace Ui::TextRendering
         }
         else if (type_ == WordType::COMMAND)
         {
-            Q_EMIT Utils::InterConnector::instance().sendBotCommand(originalLink_);
+            if (isFormattedLink)
+                openLink();
+            else if (!originalLink_.isEmpty())
+                Q_EMIT Utils::InterConnector::instance().sendBotCommand(originalLink_);
+        }
+        else if (type_ == WordType::HASHTAG)
+        {
+            if (isFormattedLink)
+                openLink();
+            else if (!originalLink_.isEmpty())
+                Q_EMIT Utils::InterConnector::instance().startSearchHashtag(originalLink_);
         }
         else if (type_ == WordType::LINK || !originalLink_.isEmpty())
         {
@@ -553,33 +593,7 @@ namespace Ui::TextRendering
                 Utils::openUrl(originalLink_);
                 return;
             }
-
-            const auto isFormattedLink = styles_.testFlag(core::data::format_type::link);
-            const auto sourceUrl = (originalLink_.isEmpty() ? plainViewNoEndSpace() : originalLink_).trimmed();
-
-            auto isUrlValid = !sourceUrl.contains(u' ');
-            common::tools::url url;
-            if (isUrlValid)
-            {
-                Utils::UrlParser parser;
-                parser.process(sourceUrl);
-                isUrlValid = parser.hasUrl();
-                if (isUrlValid)
-                    url = parser.getUrl();
-            }
-            const auto urlString = isUrlValid ? QString::fromStdString(url.url_) : qsl("http://%1/").arg(originalUrl_);
-
-            if (isFormattedLink)
-            {
-                Utils::openUrl(urlString, Utils::OpenUrlConfirm::Yes);
-            }
-            else if (isUrlValid)
-            {
-                if (url.is_email())
-                    Utils::openUrl(QString(u"mailto:" % sourceUrl));
-                else
-                    Utils::openUrl(QString(urlString));
-            }
+            openLink();
         }
     }
 
@@ -650,6 +664,7 @@ namespace Ui::TextRendering
         //originalMention_ = std::exchange(text_, _mention.second);
         substitution_ = _mention.second;
         type_ = WordType::MENTION;
+        showLinks_ = LinksVisible::SHOW_LINKS;
         return true;
     }
 
@@ -661,6 +676,7 @@ namespace Ui::TextRendering
         //originalMention_ = std::exchange(text_, {});
         substitution_ = {};
         type_ = WordType::MENTION;
+        showLinks_ = LinksVisible::SHOW_LINKS;
         setSubwords(_mentionWords);
         if (isSpaceAfter() && hasSubwords())
             subwords_.back().setSpace(Space::WITH_SPACE_AFTER);
@@ -684,7 +700,7 @@ namespace Ui::TextRendering
     void TextWord::disableLink()
     {
         linkDisabled_ = true;
-        if (type_ == WordType::LINK || type_ == WordType::NICK || type_ == WordType::COMMAND)
+        if (type_ == WordType::LINK || type_ == WordType::NICK || type_ == WordType::COMMAND || type_ == WordType::HASHTAG)
         {
             type_ = WordType::TEXT;
             originalLink_.clear();
@@ -694,11 +710,13 @@ namespace Ui::TextRendering
 
     QString TextWord::disableCommand()
     {
-        if (type_ == WordType::COMMAND)
+        for (auto& s : subwords_)
+            s.disableCommand();
+
+        if (isBotCommand())
         {
             type_ = WordType::TEXT;
             showLinks_ = LinksVisible::DONT_SHOW_LINKS;
-            originalLink_.clear();
             if (underline())
                 setUnderline(false);
 
@@ -948,7 +966,7 @@ namespace Ui::TextRendering
             for (auto& sw : getSyntaxWords())
             {
                 w.syntaxWords_.clear();
-                if (const auto [offset, size] = subwordRange.intersected(sw); size > 0)
+                if (const auto [offset, size, startIndex] = subwordRange.intersected(sw); size > 0)
                 {
                     w.syntaxWords_.emplace_back(offset - subwordRange.offset_, size, sw.spellError);
                     w.setSpellError(sw.spellError);
@@ -1155,7 +1173,7 @@ namespace Ui::TextRendering
     {
         auto needUnderline = [_linksStyle](const auto& w)
         {
-            return w.getShowLinks() == LinksVisible::SHOW_LINKS && w.isLink()
+            return w.getShowLinks() == LinksVisible::SHOW_LINKS && w.isLink() && w.getType() != WordType::HASHTAG
                 && _linksStyle == LinksStyle::UNDERLINED;
         };
 
@@ -1566,9 +1584,9 @@ namespace Ui::TextRendering
                     const auto selectSpace = bottomToTop || x2 > curWidth;
 
                     if (diff < x1 && curWidth > x1)
-                    {
+                    { // "cachedSize.width() - curWidth < 0" condition for too large lines included in the link
                         w.select(w.getPosByX(x1 - diff),
-                            (x2 >= curWidth)
+                            (x2 >= curWidth) || cachedSize_.width() - curWidth < 0
                                 ? w.getText().size()
                                 : w.getPosByX(x2 - diff),
                             toSelectionType(selectSpace));
@@ -1730,25 +1748,41 @@ namespace Ui::TextRendering
     Data::FStringView TextDrawingBlock::selectedTextView() const
     {
         Data::FStringView result;
+        int offsetMultiLineLinkWithEmoji = 0;
         for (const auto& line : lines_)
         {
             for (const auto& w : line)
             {
                 auto view = w.view();
+                const auto lengthView = view.toString().length();
+                const auto isMultiLineLinkWithEmoji = [&lengthView, &w]() -> bool
+                {
+                    return lengthView > w.getText().length() && w.isLink();
+                };
+                if (!isMultiLineLinkWithEmoji())
+                    offsetMultiLineLinkWithEmoji = 0;
                 if (!w.isSelected() || view.isEmpty())
+                {
+                    if (isMultiLineLinkWithEmoji())
+                        offsetMultiLineLinkWithEmoji += w.getText().length();
                     continue;
+                }
+                int selectFromView = w.selectedFrom();
+                int sizeView = w.selectedTo() - w.selectedFrom();
+                if (isMultiLineLinkWithEmoji())
+                {
+                    selectFromView += offsetMultiLineLinkWithEmoji;
+                    if (w.selectedTo() >= w.getText().length())
+                        sizeView = w.getText().length() - w.selectedFrom();
+                }
 
                 if (!((w.isEmoji() && w.isSelected()) || (w.isFullSelected() && w.isMention())))
-                    view = view.mid(w.selectedFrom(), w.selectedTo() - w.selectedFrom());
+                    view = view.mid(selectFromView, sizeView);
 
-                if (!result.tryToAppend(view))
-                {
-                    if (w.isSpaceSelected())
-                    {
-                        result.tryToAppend(QChar::Space);
-                        result.tryToAppend(view);
-                    }
-                }
+                result.tryToAppend(view);
+
+                if (isMultiLineLinkWithEmoji())
+                    offsetMultiLineLinkWithEmoji += w.getText().length();
             }
         }
 
@@ -1809,10 +1843,8 @@ namespace Ui::TextRendering
         {
             if (!view.tryToAppend(w.view()))
                 im_assert(false);
-
-            if (w.isSpaceAfter())
-                view.tryToAppend(QChar::Space);
         }
+        view.tryToAppend(QChar::Space);
 
         auto result = view.toFString();
         if (!result.isEmpty())
@@ -1873,7 +1905,7 @@ namespace Ui::TextRendering
 
                     if (curWidth > x)
                     {
-                        if (w.isLink())
+                        if (w.isLink() && w.getShowLinks() == Ui::TextRendering::LinksVisible::SHOW_LINKS)
                             return selected;
 
                         w.selectAll(SelectionType::WITHOUT_SPACE_AFTER);
@@ -1932,7 +1964,19 @@ namespace Ui::TextRendering
             if (r.contains(_p))
             {
                 if (const auto it = links_.find(i); it != links_.end())
-                    return { it->second.url_, it->second.displayName_, r };
+                {
+                    if (Utils::isMentionLink(it->second.url_))
+                    {
+                        QString displayName;
+                        for (const auto& link : links_)
+                        {
+                            if (link.second.url_ == it->second.url_)
+                                displayName += link.second.displayName_;
+                        }
+                        return {it->second.url_, displayName.replace(qsl("\n"), qsl(" ")), r};
+                    }
+                    return {it->second.url_, it->second.displayName_, r};
+                }
                 return {};
             }
 
@@ -2021,7 +2065,7 @@ namespace Ui::TextRendering
             for (auto& w : mentionWords)
             {
                 w.setSubstitution(w.viewNoEndSpace());
-                w.setView({});
+                w.clearView();
             }
 
             if (mentionWords.size() == 1 && !mentionWords.front().isEmoji())
@@ -2080,6 +2124,7 @@ namespace Ui::TextRendering
         }
 
         words_ = elideWords(originalWords_, _width, ceilToInt(originalDesiredWidth_), false);
+
         if (words_ != originalWords_)
         {
             elided_ = true;
@@ -2115,14 +2160,16 @@ namespace Ui::TextRendering
                     auto it = std::find_if(links_.begin(), links_.end(), [&cmd](const auto& x) { return x.second.url_ == cmd; });
                     if (it != links_.end())
                     {
-                        if (it->first >= 0 && it->first < int(linkRects_.size()))
-                            linkRects_.erase(std::next(linkRects_.begin(), it->first));
+                        auto rect_idx = it->first;
+                        if (rect_idx >= 0 && rect_idx < int(linkRects_.size()))
+                            linkRects_[rect_idx] = {};
                         links_.erase(it);
                     }
                 }
             }
         }
-
+        if (links_.empty())
+            linkRects_.clear();
     }
 
     std::optional<TextWordWithBoundary> TextDrawingBlock::getWordAt(QPoint _p, WithBoundary _mode) const
@@ -2131,29 +2178,6 @@ namespace Ui::TextRendering
             return TextWordWithBoundary{ res->word.get(), res->syntaxWord };
         return {};
     }
-
-    /*
-    bool TextDrawingBlock::replaceWordAt(const QString& _old, const QString& _new, QPoint _p)
-    {
-        if (auto word = getWordAtImpl(_p, WithBoundary::Yes))
-        {
-            auto text = word->word.get().getText();
-            QStringRef syntaxWord(&text);
-            if (word->syntaxWord)
-                syntaxWord = syntaxWord.mid(word->syntaxWord->offset_, word->syntaxWord->size_);
-
-            if (syntaxWord == _old)
-            {
-                if (syntaxWord.size() == text.size())
-                    word->word.get().setText(_new);
-                else
-                    word->word.get().setText(text.leftRef(word->syntaxWord->offset_) % _new % text.midRef(word->syntaxWord->end()));
-                return true;
-            }
-        }
-        return false;
-    }
-    */
 
     void TextDrawingBlock::setShadow(const int _offsetX, const int _offsetY, const QColor& _color)
     {
@@ -2170,16 +2194,16 @@ namespace Ui::TextRendering
     void TextDrawingBlock::updateWordsView(std::function<Data::FStringView(Data::FStringView)> _updater)
     {
         for (auto& word : words_)
-            word.setView(_updater(word.view()));
+            word.updateView(_updater);
 
         for (auto& line : lines_)
         {
             for (auto& word : line)
-                word.setView(_updater(word.view()));
+                word.updateView(_updater);
         }
 
         for (auto& word : originalWords_)
-            word.setView(_updater(word.view()));
+            word.updateView(_updater);
     }
 
     std::optional<TextDrawingBlock::TextWordWithBoundaryInternal> TextDrawingBlock::getWordAtImpl(QPoint _p, WithBoundary _mode)
@@ -2249,20 +2273,45 @@ namespace Ui::TextRendering
 
     void TextDrawingBlock::parseForWords(Data::FStringView _text, LinksVisible _showLinks, std::vector<TextWord>& _words, WordType _type)
     {
+        const QStringView plainView = _text.string();
 
-        const auto plainView = _text.string();
-        auto skipNextRegularWordUrlParsing = false;
-
-        const auto getLinkRanges = [](Data::FStringView _text)
+        const auto getLinkRanges = [_type](Data::FStringView _text) -> std::vector<core::data::range>
         {
             const auto styles = _text.getStyles();
-            auto result = std::vector<core::data::range>();
+            std::vector<core::data::range> result;
             result.reserve(styles.size());
             for (const auto& s : styles)
             {
                 if (s.type_ == ftype::link)
                     result.emplace_back(s.range_);
             }
+
+            if (_type == WordType::MENTION)
+                return result;
+
+            std::u16string_view sv((const char16_t*)_text.string().utf16(), (size_t)_text.string().size());
+            const QString profile = Features::getProfileDomain();
+            config::get_mutable().set_profile_link(profile.toStdWString());
+            common::tools::message_tokenizer tokenizer(sv, styles);
+            for (; tokenizer.has_token(); tokenizer.next())
+            {
+                const auto& token = tokenizer.current();
+                if (token.type_ == common::tools::message_token::type::url)
+                {
+                    const auto& url = boost::get<common::tools::url_view>(token.data_);
+                    const size_t length = url.text_.size();
+                    const size_t first = token.formatted_source_offset_;
+                    const size_t last = first + length;
+                    if (first > 1 && last != sv.size())
+                    {
+                        if (sv.substr(first - 2, 2) == u"@[" && sv[last] == u']')
+                            continue; // mention/nick - discard and continue
+                    }
+                    result.emplace_back(first, length);
+                }
+            }
+            std::sort(result.begin(), result.end());
+
             im_assert(std::is_sorted(result.cbegin(), result.cend()));
             return result;
         };
@@ -2279,14 +2328,12 @@ namespace Ui::TextRendering
             return _needSpace ? Space::WITH_SPACE_AFTER : Space::WITHOUT_SPACE_AFTER;
         };
 
-        const auto addSpace = [&_words, _text, _type, _showLinks, &skipNextRegularWordUrlParsing](auto _begin)
+        const auto addSpace = [&_words, _text, _type, _showLinks](auto _begin)
         {
             emplace_word_back(_words, _text.mid(_begin, 1), Space::WITHOUT_SPACE_AFTER, _type, _showLinks);
-            skipNextRegularWordUrlParsing = false;
         };
 
-
-        const auto addRegularWord = [_text, &_words, this, _type, _showLinks, &addSpace, &skipNextRegularWordUrlParsing](auto _begin, auto _end, bool _needSpace)
+        const auto addRegularWord = [_text, &_words, this, _type, _showLinks, &addSpace](auto _begin, auto _end, bool _needSpace)
         {
             im_assert(_end > _begin);
             im_assert(_begin >= 0 && _end <= _text.size());
@@ -2299,9 +2346,9 @@ namespace Ui::TextRendering
             const auto needSeparateSpace = isMention
                 || spaceView.isAnyOf({ ftype::underline, ftype::strikethrough });
             const auto spaceParam = (_needSpace && !needSeparateSpace) ? Space::WITH_SPACE_AFTER : Space::WITHOUT_SPACE_AFTER;
-            const auto showLinks = (skipNextRegularWordUrlParsing || wordView.isAnyOf({ ftype::pre })) ? LinksVisible::DONT_SHOW_LINKS : _showLinks;
+            const auto showLinks = wordView.isAnyOf({ ftype::pre }) ? LinksVisible::DONT_SHOW_LINKS : _showLinks;
             auto word = TextWord(needSeparateSpace ? noTralingSpaceView : wordView, spaceParam, _type, showLinks, EmojiSizeType::ALLOW_BIG);
-            if (!parseWordNick(word, _words) && (word.getType() != WordType::LINK || !parseWordLink(word, _words)))
+            if (!parseWordNick(word, _words) && !parseWordHashtag(word, _words) && (word.getType() != WordType::LINK || !parseWordLink(word, _words)))
             {
                 if (word.getType() == WordType::COMMAND)
                     correctCommandWord(std::move(word), _words);
@@ -2310,7 +2357,6 @@ namespace Ui::TextRendering
             }
             if (_needSpace && needSeparateSpace)
                 addSpace(_end);
-            skipNextRegularWordUrlParsing = false;
         };
 
         const auto addEmoji = [_text, &_words, &toSpaceParam](Emoji::EmojiCode&& _emoji, auto _begin, auto _end, bool _needSpace)
@@ -2329,7 +2375,7 @@ namespace Ui::TextRendering
 
         _words.reserve(_text.string().count(QChar::Space));
 
-        const auto links = getLinkRanges(_text);
+        const auto links = LinksVisible::SHOW_LINKS == _showLinks ? getLinkRanges(_text) : std::vector<core::data::range>{};
         auto linksIt = links.cbegin();
         auto wordStart = qsizetype(0);
         auto i = qsizetype(0);
@@ -2339,18 +2385,22 @@ namespace Ui::TextRendering
             if (linksIt != links.cend() && i == linksIt->offset_)
             {
                 if (i > wordStart)
-                {
-                    skipNextRegularWordUrlParsing = true;
                     addRegularWord(wordStart, i, false);
-                }
                 wordStart = i;
                 i += linksIt->size_;
                 const auto needSpace = isSpaceOnTheRight(i);
                 addFormattedLink(wordStart, i, needSpace);
                 i += static_cast<decltype(i)>(needSpace);
                 wordStart = i;
-                skipNextRegularWordUrlParsing = true;
                 ++linksIt;
+            }
+            else if (isBrailleSpace(plainView.at(i)))
+            {
+                if (i > wordStart)
+                    addRegularWord(wordStart, i, false);
+                addSpace(i);
+                ++i;
+                wordStart = i;
             }
             else if (plainView.at(i).isSpace())
             {
@@ -2363,7 +2413,6 @@ namespace Ui::TextRendering
             }
             else if (auto emoji = Emoji::getEmoji(_text.string(), iAfterEmoji = i); !emoji.isNull())
             {
-                skipNextRegularWordUrlParsing = false;
                 if (i > wordStart)
                     addRegularWord(wordStart, i, false);
                 const auto needSpace = isSpaceOnTheRight(iAfterEmoji);
@@ -2420,7 +2469,7 @@ namespace Ui::TextRendering
             if (index == -1 || index == 0)
                 return index;
             const auto prevChar = _text.at(index - 1);
-            if (!prevChar.isLetterOrNumber())
+            if (!prevChar.isLetterOrNumber() && prevChar.isSpace())
                 return index;
             ++index;
         }
@@ -2462,6 +2511,127 @@ namespace Ui::TextRendering
     {
         if (auto view = _word.view(); !view.isEmpty())
             return parseWordNickImpl(_word, _words, view);
+        return false;
+    }
+
+    static int getHashtagStartIndex(QStringView _text)
+    {
+        int index = 0;
+        static const auto tag = u'#';
+        for(;;)
+        {
+            index = _text.indexOf(tag, index);
+
+            if (index == -1)
+                return index;
+
+            QChar nextChar(-1);
+            if (index + 1 < _text.size())
+                nextChar = _text.at(index + 1);
+
+            if (index == 0)
+            {
+                if ((nextChar.isLetterOrNumber() || nextChar == u'_'))
+                {
+                    return index;
+                }
+                else
+                {
+                    if (nextChar == u'@')
+                    {
+                        const auto startMention = _text.indexOf(u"@[", index);
+                        const auto endMention = _text.indexOf(u']', startMention);
+                        if (startMention != -1 && endMention != -1)
+                        {
+                            if (Utils::isHashtag(_text.mid(index + startMention + 2, endMention - startMention - index - 2)))
+                                return index + startMention + 2;
+                        }
+                    }
+                }
+            }
+
+            if (index + 2 >= _text.size())
+                return index;
+
+            if (index == 0)
+            {
+                ++index;
+                nextChar = _text.at(index + 1);
+            }
+
+            if (const auto prevChar = _text.at(index - 1); !prevChar.isLetterOrNumber())
+            {
+                if ((prevChar.isSpace() || prevChar.isPunct())
+                && (index + 1 < _text.size() && !nextChar.isPunct()))
+                {
+                    return index;
+                }
+
+                while(index + 1 < _text.size() && _text.at(index).isPunct())
+                    ++index;
+                return --index;
+            }
+            ++index;
+        }
+
+    }
+
+    bool TextDrawingBlock::parseWordHashtagImpl(const TextWord& _word, std::vector<TextWord>& _words, Data::FStringView _text)
+    {
+        const auto showLinks = _word.getShowLinks();
+        const auto wordSpace = _word.getSpace();
+
+        if (const auto index = getHashtagStartIndex(_text.string()); index >= 0)
+        {
+            auto before = _text.left(index);
+            auto hashtag = _text.mid(index, _text.size() - before.size());
+            while (!hashtag.isEmpty() && !Utils::isHashtag(hashtag.string().toString()))
+                hashtag = _text.mid(index, hashtag.size() - 1);
+
+            if (!hashtag.isEmpty())
+            {
+                auto after = _text.mid(index + hashtag.size(), _text.size() - index - hashtag.size());
+                const auto isTagAfter = after.string().startsWith(u'#');
+                if (isTagAfter && !(after.size() > 1 && after.at(1).isPunct() || after.string().contains(u"##")))
+                    return false;
+
+                if (!before.isEmpty())
+                    _words.emplace_back(before, Space::WITHOUT_SPACE_AFTER, WordType::TEXT, showLinks);
+
+                const auto isText = isTagAfter || before.string().endsWith(u'_') || _word.getStyles().testFlag(core::data::format_type::pre);
+                const auto isSpaceAfter = after.string().startsWith(QChar::Space);
+                if (isSpaceAfter && !after.isEmpty())
+                {
+                    hashtag.tryToAppend(after.front());
+                    after = after.mid(1);
+                }
+                _words.emplace_back(hashtag, after.isEmpty() || isSpaceAfter ? wordSpace : Space::WITHOUT_SPACE_AFTER, isText ? WordType::TEXT : WordType::HASHTAG, showLinks);
+                if (!isText)
+                    _words.back().setOriginalLink(hashtag.trimmed().toString());
+
+                if (!after.isEmpty() && !parseWordHashtagImpl(_word, _words, after))
+                    _words.emplace_back(after, wordSpace, WordType::TEXT, showLinks);
+
+                return true;
+            }
+            else if (const auto tail = _text.mid(index + 1); tail.size() > 1 && tail.string().contains(u'#'))
+            {
+                before = _text.left(index + 1);
+                
+                const auto lastChar = before.lastChar();
+
+                if (!before.isEmpty() && lastChar != u'#' && !lastChar.isPunct() && !lastChar.isSymbol())
+                    _words.emplace_back(before, Space::WITHOUT_SPACE_AFTER, WordType::TEXT, showLinks);
+                return parseWordHashtagImpl(_word, _words, tail);
+            }
+        }
+        return false;
+    }
+
+    bool TextDrawingBlock::parseWordHashtag(const TextWord& _word, std::vector<TextWord>& _words)
+    {
+        if (auto view = _word.view(); !view.isEmpty())
+            return parseWordHashtagImpl(_word, _words, view);
         return false;
     }
 
@@ -2737,6 +2907,11 @@ namespace Ui::TextRendering
     void TextDrawingBlock::setHighlightedTextColor(const QColor& _color)
     {
         highlightTextColor_ = _color;
+    }
+
+    void Ui::TextRendering::TextDrawingBlock::setHighlightColor(const QColor& _color)
+    {
+        highlightColor_ = _color;
     }
 
     void TextDrawingBlock::setColorForAppended(const QColor& _color)
@@ -3201,7 +3376,7 @@ namespace Ui::TextRendering
             case ParagraphType::OrderedList:
             case ParagraphType::Quote:
                 paragraphs.emplace_back(std::make_unique<TextDrawingParagraph>(
-                    parseForBlocks(paragraphText, _mentions, _showLinks), paragraphType, needsTopMargin));
+                    parseForBlocks(paragraphText, _mentions, _showLinks), paragraphType, needsTopMargin, block.range_.start_index_));
                 break;
             case ParagraphType::Pre:
                 paragraphs.emplace_back(std::make_unique<TextDrawingParagraph>(
@@ -3226,11 +3401,12 @@ namespace Ui::TextRendering
         return paragraphs;
     }
 
-    TextDrawingParagraph::TextDrawingParagraph(std::vector<BaseDrawingBlockPtr>&& _blocks, ParagraphType _paragraphType, bool _needsTopMargin)
+    TextDrawingParagraph::TextDrawingParagraph(std::vector<BaseDrawingBlockPtr>&& _blocks, ParagraphType _paragraphType, bool _needsTopMargin, int _startIndex)
         : BaseDrawingBlock(BlockType::Paragraph)
         , blocks_(std::move(_blocks))
         , topIndent_(_needsTopMargin ? getParagraphVMargin() : 0)
         , paragraphType_(_paragraphType)
+        , startIndex_(_startIndex)
     {
         switch (paragraphType_)
         {
@@ -3285,7 +3461,7 @@ namespace Ui::TextRendering
             if (paragraphType_ == ParagraphType::UnorderedList)
                 drawUnorderedListBullet(_p, baselineLeft, margins_.left(), lineHeightFactor * lineHeight, textColor_);
             else if (paragraphType_ == ParagraphType::OrderedList)
-                drawOrderedListBullet(_p, baselineLeft + QPoint(0, descent + 1), margins_.left(), font_, i + 1, textColor_);
+                drawOrderedListBullet(_p, baselineLeft + QPoint(0, descent + 1), margins_.left(), font_, startIndex_ + i, textColor_);
 
             block->draw(_p, textBottomLeft, _pos);
         }
@@ -3394,7 +3570,8 @@ namespace Ui::TextRendering
 
     Data::FStringView TextDrawingParagraph::selectedTextView() const
     {
-        return getBlocksSelectedView(blocks_);
+        int startIndex = 1;
+        return getBlocksSelectedView(blocks_, startIndex);
     }
 
     Data::FString TextDrawingParagraph::textForInstantEdit() const
@@ -3491,6 +3668,20 @@ namespace Ui::TextRendering
             block->updateWordsView(_updater);
     }
 
+    int TextDrawingParagraph::getSelectedStartIndex() const
+    {
+        auto i = 1;
+        for (const auto& block : blocks_)
+        {
+            if (block->isSelected())
+                return i + startIndex_ - 1;
+
+            ++i;
+        }
+
+        return BaseDrawingBlock::getSelectedStartIndex();
+    }
+
     void TextDrawingParagraph::setMaxLinesCount(size_t _count, LineBreakType _lineBreak)
     {
         for (auto& b : blocks_)
@@ -3534,6 +3725,7 @@ namespace Ui::TextRendering
 
     void TextDrawingParagraph::setColor(const QColor& _color)
     {
+        textColor_ = _color;
         for (auto& b : blocks_)
             b->setColor(_color);
     }
@@ -3554,6 +3746,12 @@ namespace Ui::TextRendering
     {
         for (auto& b : blocks_)
             b->setHighlightedTextColor(_color);
+    }
+
+    void Ui::TextRendering::TextDrawingParagraph::setHighlightColor(const QColor& _color)
+    {
+        for (auto& b : blocks_)
+            b->setHighlightColor(_color);
     }
 
     void TextDrawingParagraph::setColorForAppended(const QColor& _color)
@@ -3853,7 +4051,7 @@ namespace Ui::TextRendering
             _str = Data::FStringView(_str, startPos, size).toFString();
     }
 
-    Data::FStringView getBlocksSelectedView(const std::vector<BaseDrawingBlockPtr>& _blocks)
+    Data::FStringView getBlocksSelectedView(const std::vector<BaseDrawingBlockPtr>& _blocks, int& _startIndex)
     {
         Data::FStringView result;
         for (const auto& b : _blocks)
@@ -3861,6 +4059,10 @@ namespace Ui::TextRendering
             const auto text = b->selectedTextView();
             if (text.isEmpty())
                 continue;
+
+            auto startIndex = b->getSelectedStartIndex();
+            if (startIndex != 1 && startIndex != _startIndex)
+                _startIndex = startIndex;
 
             if (b->getType() != BlockType::NewLine)
             {
@@ -3873,7 +4075,9 @@ namespace Ui::TextRendering
 
     Data::FString getBlocksSelectedText(const std::vector<BaseDrawingBlockPtr>& _blocks)
     {
-        auto result = getBlocksSelectedView(_blocks).toFString();
+        int startIndex = 1;
+        auto result = getBlocksSelectedView(_blocks, startIndex).toFString();
+        result.formatting().add_start_index_to_ordered_list(startIndex);
         trimLineFeeds(result);
         return result;
     }
@@ -3999,6 +4203,12 @@ namespace Ui::TextRendering
     {
         for (auto& b : _blocks)
             b->setSelectionColor(_color);
+    }
+
+    void setBlocksHighlightColor(const std::vector<BaseDrawingBlockPtr>& _blocks, const QColor& _color)
+    {
+        for (auto& b : _blocks)
+            b->setHighlightColor(_color);
     }
 
     void setBlocksColorForAppended(const std::vector<BaseDrawingBlockPtr>& _blocks, const QColor& _color, int _appended)

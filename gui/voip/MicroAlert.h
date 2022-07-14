@@ -5,20 +5,6 @@ namespace Ui
     class CustomButton;
     class DialogButton;
     class TextEmojiWidget;
-    class GeneralDialog;
-
-    class ResizeDialogEventFilter : public QObject
-    {
-        Q_OBJECT
-    public:
-        ResizeDialogEventFilter(GeneralDialog* _dialog, QObject* _parent);
-
-    protected:
-        bool eventFilter(QObject* _obj, QEvent* _e) override;
-
-    private:
-        GeneralDialog* dialog_;
-    };
 
     enum class MicroIssue
     {
@@ -27,35 +13,32 @@ namespace Ui
         NotFound
     };
 
-    class MicroAlert : public BaseTopVideoPanel
+    class MicroAlert : public QWidget
     {
         Q_OBJECT
     public:
-        explicit MicroAlert(QWidget* _p);
-        void setIssue(MicroIssue _issue);
-
-        void fadeIn(unsigned int) override {};
-        void fadeOut(unsigned int) override {};
-        void forceFinishFade() override {};
-        void updatePosition(const QWidget&) override;
 
         enum class MicroAlertState
         {
-            Full,
+            Expanded,
             Collapsed,
         };
+
+        explicit MicroAlert(QWidget* _p);
+        void setIssue(MicroIssue _issue);
 
         void setState(MicroAlertState _state);
         bool isCollapsed() const { return state_ == MicroAlertState::Collapsed; }
 
+        static int alertOffset();
+
     protected:
         void paintEvent(QPaintEvent* _e) override;
-        bool eventFilter(QObject* _o, QEvent* _e) override;
-        void changeEvent(QEvent* _e) override;
+        void resizeEvent(QResizeEvent* _e) override;
 
     private:
         void openSettings() const;
-        void updateSize();
+        void updateTextSize();
 
         CustomButton* microButton_;
         TextEmojiWidget* text_;

@@ -4,6 +4,7 @@
 #include "../../../common.shared/json_helper.h"
 #include "archive/history_message.h"
 #include "tools/features.h"
+#include "../log_replace_functor.h"
 
 #include "set_draft.h"
 
@@ -38,6 +39,11 @@ set_draft::set_draft(wim_packet_params _params, std::string_view _contact, const
 std::string_view set_draft::get_method() const
 {
     return "draft/set";
+}
+
+int set_draft::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t set_draft::init_request(const std::shared_ptr<http_request_simple>& _request)

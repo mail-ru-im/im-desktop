@@ -30,7 +30,8 @@ namespace core
             const std::vector<std::string>& get_contacts() const noexcept { return contacts_; }
             const std::string& get_cursor() const noexcept { return cursor_; }
             bool auto_resend_on_fail() const override { return true; }
-            virtual std::string_view get_method() const override;
+            std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
         };
     }
 }

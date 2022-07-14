@@ -57,10 +57,12 @@ namespace omicron
         constexpr auto maximum_undo_size = "maximum_undo_size";
         constexpr auto use_apple_emoji = "use_apple_emoji";
         constexpr auto open_file_on_click = "open_file_on_click";
-        constexpr auto show_notification_text = "show_notification_text";
+        constexpr auto hiding_message_text_enabled = "force-hide-notification-text";
+        constexpr auto hiding_message_info_enabled = "force-hide-notification-all-data";
         constexpr auto avatar_change_allowed = "avatar_change_allowed";
         constexpr auto cl_remove_contacts_allowed = "cl_remove_contacts_allowed";
         constexpr auto changeable_name = "changeable_name";
+        constexpr auto allow_contacts_rename = "allow_contacts_rename";
         constexpr auto fs_id_length = "fs_id_length";
 
         constexpr auto data_visibility_link = "data_visibility_link";
@@ -92,6 +94,7 @@ namespace omicron
         constexpr auto fetch_hotstart_enabled = "fetch_hotstart_enabled";
         constexpr auto fetch_timeout = "fetch_timeout";
 
+        constexpr auto call_link_v2_enabled = "call_link_v2_enabled";
         constexpr auto vcs_call_by_link_enabled = "vcs_call_by_link_enabled";
         constexpr auto vcs_webinar_enabled = "vcs_webinar_enabled";
         constexpr auto vcs_room = "vcs_room";
@@ -104,6 +107,9 @@ namespace omicron
         constexpr auto subscr_renew_interval_call_room_info = "subscr_renew_interval_call_room_info";
         constexpr auto subscr_renew_interval_thread = "subscr_renew_interval_thread";
         constexpr auto subscr_renew_interval_task = "subscr_renew_interval_task";
+        constexpr auto subscr_renew_interval_tasks_counter = "subscr_renew_interval_tasks_counter";
+
+        constexpr auto subscr_renew_interval_mails_counter = "subscr_renew_interval_mails_counter";
 
         constexpr auto statuses_json = "statuses_json";
         constexpr auto statuses_enabled = "statuses_enabled";
@@ -162,7 +168,6 @@ namespace omicron
         constexpr auto oauth2_refresh_interval = "oauth2_refresh_interval";
 
         constexpr auto threads_enabled = "threads_enabled";
-        constexpr auto organization_structure_enabled = "organization_structure_enabled";
 
         constexpr auto url_ftp_protocols_allowed = "url_ftp_protocols_allowed";
 
@@ -170,7 +175,6 @@ namespace omicron
         constexpr auto draft_timeout = "draft_timeout";
         constexpr auto draft_max_len = "draft_max_len";
 
-        constexpr auto tasks_enabled = "tasks_enabled";
         constexpr auto task_creation_in_chat_enabled = "task_creation_in_chat_enabled";
         constexpr auto task_cache_lifetime = "task_cache_lifetime";
 
@@ -179,7 +183,42 @@ namespace omicron
         constexpr auto restricted_files_enabled = "restricted_files_enabled";
         constexpr auto antivirus_check_enabled = "antivirus_check_enabled";
 
-        constexpr auto calendar_enabled = "calendar_enabled";
         constexpr auto base_retry_interval_sec = "base_retry_interval_sec";
+        constexpr auto bots_commands_disabled = "bots_commands_disabled";
+
+        constexpr auto delete_account_enabled = "delete_account_enabled";
+        constexpr auto delete_account_url = "delete_account_url";
+        constexpr auto delete_account_url_email = "delete_account_url_email";
+
+        constexpr auto service_apps_order = "desktop-leftbar-disposition";
+
+        constexpr auto maximum_history_file_size = "maximum_history_file_size";
+
+        constexpr auto wim_parallel_packets_count = "wim_parallel_packets_count";
+
+        constexpr auto max_delete_files = "max_delete_files";
+        constexpr auto delete_files_older_sec = "delete_files_older_sec";
+        constexpr auto cleanup_period_sec = "cleanup_period_sec";
+
+        constexpr auto oauth_url = "oauth_url";
+        constexpr auto oauth_token = "oauth_token";
+        constexpr auto redirect_url = "redirect_url";
+        constexpr auto oauth_type = "oauth_type";
+        constexpr auto oauth_scope = "oauth_scope";
+        constexpr auto client_id = "client_id";
+
+        // TODO: remove when deprecated
+        constexpr auto organization_structure_enabled = "organization_structure_enabled";
+        constexpr auto tasks_enabled = "tasks_enabled";
+        constexpr auto calendar_enabled = "calendar_enabled";
+        constexpr auto mail_enabled = "mail_enabled";
+
+        constexpr auto digital_assistant_bot_aimid = "digital_assistant_bot_aimid";
+        constexpr auto digital_assistant_search_positioning = "digital_assistant_search_positioning";
+
+        constexpr auto additional_theme = "additional_theme";
+        constexpr auto leading_last_name = "leading_last_name";
+        constexpr auto report_messages_enabled = "report_messages_enabled";
+        constexpr auto ptt_recognition_enabled = "ptt_recognition_enabled";
     }
 }

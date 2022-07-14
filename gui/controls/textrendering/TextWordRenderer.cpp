@@ -135,16 +135,19 @@ namespace Ui
         void TextWordRenderer::drawWord(const TextWord& _word, bool _needsSpace, bool _isLast)
         {
             im_assert(!_word.hasSubwords());
+            if (_word.hasSubwords())
+                return;
+
             const auto text = _word.getText();
             const auto useLinkPen = _word.isLink() && _word.getShowLinks() == Ui::TextRendering::LinksVisible::SHOW_LINKS;
-            const auto textColor = useLinkPen ? linkColor_ : _word.getColor();
+            const auto& textColor = useLinkPen ? linkColor_ : _word.getColor();
 
             textParts_.clear();
             textParts_.push_back(TextPart(&text, textColor));
 
             if (_word.hasSpellError())
             {
-                for (auto e : boost::adaptors::reverse(_word.getSyntaxWords()))
+                for (const auto& e : boost::adaptors::reverse(_word.getSyntaxWords()))
                 {
                     if (e.spellError)
                         split(text, e.offset_, e.end(), textColor, {}, SpellError::Yes);
@@ -153,7 +156,7 @@ namespace Ui
 
             if (_word.isHighlighted() && highlightColor_.isValid())
             {
-                const auto highlightedTextColor = hightlightTextColor_.isValid() ? hightlightTextColor_ : textColor;
+                const auto& highlightedTextColor = hightlightTextColor_.isValid() ? hightlightTextColor_ : textColor;
                 if (highlightedTextColor == textColor && textParts_.size() == 1)
                     fill(text, _word.highlightedFrom(), _word.highlightedTo(), highlightColor_);
                 else
@@ -262,7 +265,8 @@ namespace Ui
                     startY += Utils::scale_value(3);
                     Utils::PainterSaver painterSaver(*painter_);
                     painter_->setRenderHint(QPainter::Antialiasing);
-                    const static auto color = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_PASTEL);
+                    static auto colorContainer = Styling::ColorContainer{ Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_PASTEL } };
+                    const auto color = colorContainer.actualColor();
 
                     if constexpr (useDotsViaLine())
                     {

@@ -1,7 +1,9 @@
 #include "TabBar.h"
 
 #include "../utils/utils.h"
+#include "../utils/features.h"
 #include "../utils/InterConnector.h"
+#include "../utils/features.h"
 
 #include "../controls/TooltipWidget.h"
 #include "MainWindow.h"
@@ -10,14 +12,11 @@
 #include "../fonts.h"
 
 #include "styles/ThemeParameters.h"
+#include "mini_apps/MiniAppsUtils.h"
+#include "Common.h"
 
 namespace
 {
-    bool areOnlyDigits(const QString& s)
-    {
-        return std::all_of(s.begin(), s.end(), [](auto c) { return c.isDigit(); });
-    }
-
     int tabIconSize() noexcept
     {
         return Utils::scale_value(28);
@@ -25,12 +24,12 @@ namespace
 
     int itemPadding() noexcept
     {
-        return Utils::scale_value(4);
+        return Utils::scale_value(Features::isStatusInAppsNavigationBar() ? 8 : 4);
     }
 
     int badgeTopOffset() noexcept
     {
-        return Utils::scale_value(2);
+        return Utils::scale_value(Features::isStatusInAppsNavigationBar() ? 3 : 2);
     }
 
     int badgeHeight() noexcept
@@ -43,42 +42,50 @@ namespace
         return Utils::scale_value(16);
     }
 
+    int badgeRightOffset() noexcept
+    {
+        return Utils::scale_value(4);
+    }
+
     QFont getNameTextFont()
     {
         const auto static f = Fonts::appFontScaled(12, platform::is_apple() ? Fonts::FontWeight::Medium : Fonts::FontWeight::Normal);
         return f;
     }
 
-    QFont getBadgeTextFont()
-    {
-        const auto static f = Fonts::appFontScaled(9);
-        return f;
-    }
-
     QFont getBadgeTextForNumbersFont()
     {
-        const auto static f = Fonts::appFontScaled(11, platform::is_apple() ? Fonts::FontWeight::Medium : Fonts::FontWeight::Normal);
+        const auto isNavigationBar = Features::isStatusInAppsNavigationBar();
+        static const auto fontWeight = isNavigationBar ? (platform::is_apple() ? Fonts::FontWeight::Bold : Fonts::FontWeight::SemiBold)
+                                       : (platform::is_apple() ? Fonts::FontWeight::Medium : Fonts::FontWeight::Normal);
+        static const auto f = Fonts::appFontScaled(isNavigationBar ? 13 : 11, fontWeight);
         return f;
     }
 
-    QColor hoveredColor()
+    QFont getCalendarFont()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER);
+        const auto static f = Fonts::appFontScaled(14, Fonts::FontWeight::Medium);
+        return f;
     }
 
-    QColor normalColor()
+    Styling::ThemeColorKey hoveredColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY_HOVER };
     }
 
-    QColor activeColor()
+    Styling::ThemeColorKey normalColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY };
     }
 
-    QColor badgeTextColor()
+    Styling::ThemeColorKey activeColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY };
+    }
+
+    Styling::ThemeColorKey badgeTextColor()
+    {
+        return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_GLOBALWHITE };
     }
 
     QColor badgeBalloonColor()
@@ -88,7 +95,7 @@ namespace
 
     auto tabBarDefaultHeight() noexcept
     {
-        return Utils::scale_value(52);
+        return Utils::scale_value(Features::isStatusInAppsNavigationBar() ? 48 : 52);
     }
 
     auto appBarContentMargin() noexcept
@@ -98,7 +105,7 @@ namespace
 
     auto appBarItemSize() noexcept
     {
-        return Utils::scale_value(60);
+        return Utils::scale_value(Features::isStatusInAppsNavigationBar() ? 56 : 60);
     }
 
     auto appBarItemCornerRadius() noexcept
@@ -106,9 +113,14 @@ namespace
         return Utils::scale_value(4);
     }
 
+    auto appBarItemNormalColor()
+    {
+        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
+    }
+
     auto appBarItemSelectedColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY, 0.1);
+        return Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_SELECTED);
     }
 
     auto appBarItemHoveredColor()
@@ -130,17 +142,23 @@ namespace
     {
         return std::chrono::milliseconds(500);
     }
+
+    auto getBadgeColor(const QString& _type) noexcept
+    {
+        static std::unordered_set<QString> grayCounterTypes = { Utils::MiniApps::getTasksId(), Utils::MiniApps::getNewsId(), Utils::MiniApps::getPollsId()};
+        if (grayCounterTypes.find(_type) != grayCounterTypes.end())
+            return Utils::Badge::Color::Gray;
+        return Utils::Badge::Color::Red;
+    }
 }
 
 namespace Ui
 {
-    BaseBarItem::BaseBarItem(const QString& _iconPath, const QString& _iconActivePath, const QColor& _activeColor, const QColor& _hoveredColor, const QColor& _normalColor, QWidget* _parent)
+    BaseBarItem::BaseBarItem(const QString& _iconPath, const QString& _iconActivePath, QWidget* _parent)
         : SimpleListItem(_parent)
-        , iconPath_(_iconPath)
-        , iconActivePath_(_iconActivePath)
-        , activeIconPixmap_(Utils::renderSvg(iconActivePath_, { tabIconSize(), tabIconSize() }, activeColor()))
-        , hoveredIconPixmap_(Utils::renderSvg(iconPath_, { tabIconSize(), tabIconSize() }, hoveredColor()))
-        , normalIconPixmap_(Utils::renderSvg(iconPath_, { tabIconSize(), tabIconSize() }, normalColor()))
+        , activeIconPixmap_(Utils::StyledPixmap(_iconActivePath, { tabIconSize(), tabIconSize() }, activeColor()))
+        , hoveredIconPixmap_(Utils::StyledPixmap(_iconPath, { tabIconSize(), tabIconSize() }, hoveredColor()))
+        , normalIconPixmap_(Utils::StyledPixmap(_iconPath, { tabIconSize(), tabIconSize() }, normalColor()))
         , isSelected_(false)
     {
 
@@ -164,16 +182,20 @@ namespace Ui
 
     void BaseBarItem::setBadgeText(const QString& _text)
     {
-        if (badgeText_ != _text)
+        if (badgeText_ == _text)
+            return;
+
+        badgeText_ = _text;
+        if (badgeTextUnit_)
         {
-            badgeText_ = _text;
-            if (badgeTextUnit_)
-                badgeTextUnit_->setText(badgeText_);
-            else
-                badgeTextUnit_ = TextRendering::MakeTextUnit(badgeText_);
-            setBadgeFont(areOnlyDigits(badgeText_) ? getBadgeTextForNumbersFont() : getBadgeTextFont());
-            update();
+            badgeTextUnit_->setText(badgeText_);
         }
+        else
+        {
+            badgeTextUnit_ = TextRendering::MakeTextUnit(badgeText_);
+            setBadgeFont(getBadgeTextForNumbersFont());
+        }
+        update();
     }
 
     void BaseBarItem::setBadgeIcon(const QString& _icon)
@@ -181,15 +203,34 @@ namespace Ui
         if (badgeIcon_ != _icon)
         {
             badgeIcon_ = _icon;
-            badgePixmap_ = !badgeIcon_.isEmpty() ? Utils::renderSvgLayered(badgeIcon_,
+            using st = Styling::StyleVariable;
+            auto getColor = [](st _color)
+            {
+                return Styling::ThemeColorKey { _color };
+            };
+            badgePixmap_ = Utils::LayeredPixmap(
+                badgeIcon_,
                 {
-                    {qsl("border"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE)},
-                    {qsl("bg"), Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION)},
-                    {qsl("star"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE)},
+                    { qsl("border"), getColor(st::BASE_GLOBALWHITE) },
+                    { qsl("bg"), getColor(st::SECONDARY_ATTENTION) },
+                    { qsl("star"), getColor(st::BASE_GLOBALWHITE) },
                 },
-                {badgeHeight(), badgeHeight()}) : QPixmap();
+                { badgeHeight(), badgeHeight() });
             update();
         }
+    }
+
+    void BaseBarItem::updateItemInfo()
+    {
+        const auto counters = Logic::getUnreadCounters();
+        setBadgeText(Utils::getUnreadsBadgeStr(counters.unreadMessages_));
+        setBadgeIcon(counters.attention_ ? qsl(":/tab/attention") : QString());
+    }
+
+    void BaseBarItem::resetItemInfo()
+    {
+        setBadgeText(Utils::getUnreadsBadgeStr(0));
+        setBadgeIcon(QString());
     }
 
     void BaseBarItem::setName(const QString& _name)
@@ -197,29 +238,79 @@ namespace Ui
         name_ = _name;
     }
 
-    const QPixmap& BaseBarItem::activeIconPixmap() const
+    void BaseBarItem::setNormalIconPixmap(const Utils::StyledPixmap& _px)
     {
-        return activeIconPixmap_;
+        if (normalIconPixmap_ == _px)
+            return;
+        normalIconPixmap_ = _px;
+        update();
     }
 
-    const QPixmap& BaseBarItem::hoveredIconPixmap() const
+    void BaseBarItem::setHoveredIconPixmap(const Utils::StyledPixmap& _px)
     {
-        return hoveredIconPixmap_;
+        if (hoveredIconPixmap_ == _px)
+            return;
+        hoveredIconPixmap_ = _px;
+        update();
     }
 
-    const QPixmap& BaseBarItem::normalIconPixmap() const
+    void BaseBarItem::setActiveIconPixmap(const Utils::StyledPixmap& _px)
     {
-        return normalIconPixmap_;
+        if (activeIconPixmap_ == _px)
+            return;
+        activeIconPixmap_ = _px;
+        update();
+    }
+
+    QPixmap BaseBarItem::activeIconPixmap()
+    {
+        return activeIconPixmap_.actualPixmap();
+    }
+
+    QPixmap BaseBarItem::hoveredIconPixmap()
+    {
+        return hoveredIconPixmap_.actualPixmap();
+    }
+
+    QPixmap BaseBarItem::normalIconPixmap()
+    {
+        return normalIconPixmap_.actualPixmap();
     }
 
     void BaseBarItem::setBadgeFont(const QFont & _font)
     {
         if (badgeTextUnit_ && badgeTextUnit_->getFont() != _font)
-            badgeTextUnit_->init(_font, badgeTextColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
+        {
+            TextRendering::TextUnit::InitializeParameters params{ _font, badgeTextColor() };
+            params.align_ = TextRendering::HorAligment::CENTER;
+            badgeTextUnit_->init(params);
+        }
     }
 
-    AppBarItem::AppBarItem(AppPageType _type, const QString& _iconPath, const QString& _iconActivePath, QWidget* _parent)
-        : BaseBarItem(_iconPath, _iconActivePath, appBarIconActiveColor(), appBarIconNormalColor(), appBarIconNormalColor(), _parent)
+    void BaseBarItem::drawBadge(QPainter& _p, Utils::Badge::Color _color, const QColor& _borderColor)
+    {
+        const auto inNavigationBar = Features::isStatusInAppsNavigationBar();
+        const auto balloonY = badgeTopOffset() + (inNavigationBar ? appBarContentMargin() : 0);
+        if (!badgeText_.isEmpty())
+        {
+            auto balloonX = 0;
+            if (inNavigationBar)
+                balloonX = width() - appBarContentMargin() - badgeRightOffset();
+            else
+                balloonX = (width() + tabIconSize() + Utils::Badge::getSize(1).width()) / 2;
+
+            Utils::Badge::drawBadge(badgeTextUnit_, _p, balloonX, balloonY, _color, _borderColor, inNavigationBar);
+        }
+        else if (const auto pixmap = badgePixmap_.actualPixmap(); !pixmap.isNull())
+        {
+            const auto balloonX = ((width() - tabIconSize()) / 2.0) + badgeOffset();
+            _p.drawPixmap(balloonX, balloonY, badgeHeight(), badgeHeight(), pixmap);
+        }
+    }
+
+
+    AppBarItem::AppBarItem(const QString& _type, const QString& _iconPath, const QString& _iconActivePath, QWidget* _parent)
+        : BaseBarItem(_iconPath, _iconActivePath, _parent)
         , tooltipTimer_(new QTimer(this))
         , type_(_type)
         , tooltipVisible_(false)
@@ -272,22 +363,11 @@ namespace Ui
         {
             p.setBrush(appBarItemHoveredColor());
             p.drawRoundedRect(r, cornerRadius, cornerRadius);
-
         }
 
-        p.drawPixmap((w - iconSize) / 2, (height() - iconSize) / 2, isSelected() ? activeIconPixmap() : (isHovered() ? hoveredIconPixmap() : normalIconPixmap()));
+        p.drawPixmap((w - iconSize) / 2.0, (height() - iconSize) / 2.0, isSelected() ? activeIconPixmap() : (isHovered() ? hoveredIconPixmap() : normalIconPixmap()));
 
-        if (!badgeText_.isEmpty())
-        {
-            const auto balloonX = (w - iconSize) / 2 + badgeOffset();
-            Utils::Badge::drawBadge(badgeTextUnit_, p, balloonX, badgeTopOffset() + m, Utils::Badge::Color::Red);
-        }
-        else if (!badgePixmap_.isNull())
-        {
-            const auto h = badgeHeight();
-            const auto balloonX = (w - iconSize) / 2.0 + badgeOffset();
-            p.drawPixmap(balloonX, badgeTopOffset() + m, h, h, badgePixmap_);
-        }
+        drawBadge(p, getBadgeColor(type_), (isSelected() || isHovered()) ? p.brush().color() : appBarItemNormalColor());
     }
 
     QSize AppBarItem::sizeHint() const
@@ -338,14 +418,14 @@ namespace Ui
         Tooltip::hide();
     }
 
-    CalendarItem::CalendarItem(AppPageType _type, const QString& _iconPath, const QString& _iconActivePath, QWidget* _parent)
+    CalendarItem::CalendarItem(const QString& _type, const QString& _iconPath, const QString& _iconActivePath, QWidget* _parent)
         : CalendarItem(_iconPath, _iconActivePath, _parent)
     {
 
     }
 
     CalendarItem::CalendarItem(const QString& _iconPath, const QString& _iconActivePath, QWidget* _parent)
-        : AppBarItem(AppPageType::calendar, _iconPath, _iconActivePath, _parent)
+        : AppBarItem(Utils::MiniApps::getCalendarId(), _iconPath, _iconActivePath, _parent)
     {
 
     }
@@ -354,17 +434,18 @@ namespace Ui
     {
         AppBarItem::paintEvent(_event);
         QPainter p(this);
-        p.setFont(Fonts::appFontScaled(14, Fonts::FontWeight::Medium));
-        p.setPen(Styling::getParameters().getColor(isSelected() ? Styling::StyleVariable::BASE_GLOBALWHITE : Styling::StyleVariable::BASE_PRIMARY));
+        p.setFont(getCalendarFont());
+        using st = Styling::StyleVariable;
+        p.setPen(Styling::getParameters().getColor(isSelected() ? st::BASE_GLOBALWHITE : st::BASE_PRIMARY));
         p.setRenderHint(QPainter::TextAntialiasing);
         if constexpr (platform::is_apple())
             p.translate(0, Utils::scale_value(1));
 
-        p.drawText(rect(), QDate::currentDate().toString(qsl("dd")), QTextOption(Qt::AlignCenter));
+        p.drawText(rect(), QDate::currentDate().toString(qsl("d")), QTextOption(Qt::AlignCenter));
     }
 
     TabItem::TabItem(const QString& _iconPath, const QString& _iconActivePath, QWidget* _parent)
-        : BaseBarItem(_iconPath, _iconActivePath, activeColor(), hoveredColor(), normalColor(), _parent)
+        : BaseBarItem(_iconPath, _iconActivePath, _parent)
     {
         setFixedHeight(tabBarDefaultHeight());
         QObject::connect(this, &SimpleListItem::hoverChanged, this, &TabItem::updateTextColor);
@@ -392,7 +473,9 @@ namespace Ui
             else
             {
                 nameTextUnit_ = TextRendering::MakeTextUnit(name_);
-                nameTextUnit_->init(getNameTextFont(), normalColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
+                TextRendering::TextUnit::InitializeParameters params{ getNameTextFont(), normalColor() };
+                params.align_ = TextRendering::HorAligment::CENTER;
+                nameTextUnit_->init(params);
                 updateTextColor();
             }
             update();
@@ -412,17 +495,7 @@ namespace Ui
 
         p.drawPixmap((w - iconSize) / 2.0, padding, isSelected() ? activeIconPixmap() : (isHovered() ? hoveredIconPixmap() : normalIconPixmap()));
 
-        if (!badgeText_.isEmpty())
-        {
-            const auto balloonX = (w - iconSize) / 2.0 + badgeOffset();
-            Utils::Badge::drawBadge(badgeTextUnit_, p, balloonX, badgeTopOffset(), Utils::Badge::Color::Red);
-        }
-        else if (!badgePixmap_.isNull())
-        {
-            const auto h = badgeHeight();
-            const auto balloonX = (w - iconSize) / 2.0 + badgeOffset();
-            p.drawPixmap(balloonX, badgeTopOffset(), h, h, badgePixmap_);
-        }
+        drawBadge(p, Utils::Badge::Color::Red);
 
         if (nameTextUnit_)
         {
@@ -435,7 +508,11 @@ namespace Ui
     void TabItem::updateTextColor()
     {
         if (nameTextUnit_)
-            nameTextUnit_->setColor(Styling::getParameters().getColor(isSelected() ? Styling::StyleVariable::TEXT_PRIMARY : (isHovered() ? Styling::StyleVariable::BASE_SECONDARY_HOVER : Styling::StyleVariable::BASE_PRIMARY)));
+        {
+            using sv = Styling::StyleVariable;
+            const auto var = isSelected() ? sv::TEXT_PRIMARY : (isHovered() ? sv::BASE_SECONDARY_HOVER : sv::BASE_PRIMARY);
+            nameTextUnit_->setColor(Styling::ThemeColorKey{ var });
+        }
     }
 
     BaseTabBar::BaseTabBar(Qt::Orientation _orientation, QWidget* _parent)

@@ -1,0 +1,19 @@
+mailto:test@test.ru test@test.ru
+[test@test.ru|mailto:test@test.ru] test@test.ru test@test.ru
+check_recent_chat_state(myteam(<autotest92@im-auto.com>),|<classes.Common.Common_object_at_0x000002705BAEF790> autotest92@im-auto.com
+[скрин|https://jira.mail.ru/secure/attachment/1540014/%D1%8D%D0%BA%D1%80%D0%B0%D0%BD%20%D1%81%20%D0%BA%D0%B0%D0%BF%D1%87%D0%B5%D0%B8%CC%86.PNG]. https://jira.mail.ru/secure/attachment/1540014/%D1%8D%D0%BA%D1%80%D0%B0%D0%BD%20%D1%81%20%D0%BA%D0%B0%D0%BF%D1%87%D0%B5%D0%B8%CC%86.PNG
+http://100.99.5.35:8010/#/builders/11/builds/108 http://100.99.5.35:8010/#/builders/11/builds/108
+mail.ru/fertrgtgtgtgttgtgtg]: mail.ru/fertrgtgtgtgttgtgtg
+https://en.wikipedia.org/wiki/Coupling_(computer_programming) https://en.wikipedia.org/wiki/Coupling_(computer_programming)
+https://medium.com/@ibnRubaXa/godraft-93307bb56794 https://medium.com/@ibnRubaXa/godraft-93307bb56794
+&site_filter=lady.mail.ru lady.mail.ru
+{{{&site_filter=lady.mail.ru}: lady.mail.ru
+https://example.com?foo=(bar) https://example.com?foo=(bar)
+https://example.com#foo=(bar) https://example.com#foo=(bar)
+https://example.com/?foo=(bar) https://example.com/?foo=(bar)
+example.com/?foo=(bar) example.com/?foo=(bar)
+<https://en.wikipedia.org/wiki/Coupling_(computer_programming)>_&site_filter=lady.mail.ru https://en.wikipedia.org/wiki/Coupling_(computer_programming) lady.mail.ru
+?>test.ru/Joli/?filter=bigslider1.jpg#top<. test.ru/Joli/?filter=bigslider1.jpg#top
+«https://mail.ru/» https://mail.ru/
+<http://a1.biz/b/c/d;p?q#s> http://a1.biz/b/c/d;p?q#s
+[скрин|https://kibana-elk.youla.p.smailru.net/app/kibana#/discover?_g=(refreshInterval:(pause:!t,value:0),time:(from:now-24h,mode:quick,to:now))&_a=(columns:!(message),index:c3d90950-9465-11ea-a444-b9e2ef7181b1,interval:auto,query:(language:lucene,query:'message:%20%22canceling%20statement%20due%20to%20conflict%22'),sort:!('@timestamp',desc))))]: https://kibana-elk.youla.p.smailru.net/app/kibana#/discover?_g=(refreshInterval:(pause:!t,value:0),time:(from:now-24h,mode:quick,to:now))&_a=(columns:!(message),index:c3d90950-9465-11ea-a444-b9e2ef7181b1,interval:auto,query:(language:lucene,query:'message:%20%22canceling%20statement%20due%20to%20conflict%22'),sort:!('@timestamp',desc))

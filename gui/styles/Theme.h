@@ -1,6 +1,7 @@
 #pragma once
 
 #include "WallpaperId.h"
+#include "StyleVariable.h"
 
 namespace Styling
 {
@@ -13,8 +14,6 @@ namespace Styling
     class ThemeWallpaper;
     using WallpaperPtr = std::shared_ptr<ThemeWallpaper>;
     using WallpapersVector = std::vector<WallpaperPtr>;
-
-    enum class StyleVariable;
 
     class Property
     {
@@ -57,15 +56,19 @@ namespace Styling
         QString name_;
         WallpapersVector availableWallpapers_;
         WallpaperId defaultWallpaperId_;
+        size_t idHash_;
         bool underlinedLinks_;
         bool isDark_;
+        bool isHidden_;
 
     public:
         Theme();
         const QString& getId() const { return id_; };
+        size_t idHash() const { return idHash_; }
         const QString& getName() const { return name_; };
         bool isLinksUnderlined() const { return underlinedLinks_; };
         bool isDark() const { return isDark_; }
+        bool isHidden() const { return isHidden_; }
         void addWallpaper(WallpaperPtr _wallpaper);
         WallpaperPtr getWallpaper(const WallpaperId& _id) const;
         const WallpapersVector& getAvailableWallpapers() const { return availableWallpapers_; }
@@ -108,6 +111,7 @@ namespace Styling
 
         const WallpaperId& getId() const noexcept { return id_; }
         void setId(const WallpaperId& _newId) { id_ = _newId; }
+        size_t idHash() const { return id_.idHash(); }
 
         QColor getBgColor() const { return color_; }
         QColor getTint() const { return tint_; }

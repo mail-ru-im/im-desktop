@@ -2,40 +2,46 @@
 
 #include "Splitter.h"
 #include "../utils/InterConnector.h"
+#include "../controls/CustomButton.h"
+#include "WebChannelProxy.h"
 
 
 namespace Ui
 {
     class Sidebar;
-    enum class AppPageType;
+    class ProgressAnimation;
+    class TextWidget;
+    enum class FrameCountMode;
+    enum class ConnectionState;
 
-    enum class InfoType
+    enum class SidebarContentType
     {
         person,
-        thread
+        thread,
+        task,
+        threadInfo
     };
 
     enum class TabPage;
-    enum class FrameCountMode;
+    enum PageState
+    {
+        load,
+        content,
+        error,
+        unavailable
+    };
 
-    class Helper : public QObject
+    class ReloadButton : public RoundButton
     {
         Q_OBJECT
 
-    Q_SIGNALS:
-        void showInfo(const QString& _aimId, const InfoType _infoType);
-        void createTask();
-        void editTask(const QString& _taskId);
-
     public:
-        explicit Helper(QObject* _parent = nullptr)
-            : QObject(_parent)
-        {
-        }
+        explicit ReloadButton(QWidget* _parent = nullptr, int _radius = 0);
+        ~ReloadButton();
 
-    public Q_SLOTS:
-        void postEvent(const QJsonObject& _action);
+        QSize minimumSizeHint() const override;
     };
+
 
     class WebView : public QWebEngineView
     {
@@ -43,9 +49,8 @@ namespace Ui
 
     public:
         WebView(QWidget* _parent = nullptr);
-        virtual ~WebView();
 
-        virtual void setVisible(bool _visible) override;
+        void setVisible(bool _visible) override;
 
         void beginReload();
         void endReload();
@@ -60,64 +65,134 @@ namespace Ui
     {
         Q_OBJECT
 
+    Q_SIGNALS:
+        void setTitle(const QString& _type, const QString& _title);
+        void setLeftButton(const QString& _type, const QString& _text, const QString& _color, bool _enabled);
+        void setRightButton(const QString& _type, const QString& _text, const QString& _color, bool _enabled);
+        void pageIsHidden();
+
     public Q_SLOTS:
-        void showInfo(const QString& _aimId, const InfoType _infoType);
+        void showInfo(const QString& _aimId, const SidebarContentType _infoType);
         void createTask();
+        void onSetTitle(const QString& _title);
+        void onSetLeftButton(const QString& _text, const QString& _color, bool _enabled);
+        void onSetRightButton(const QString& _text, const QString& _color, bool _enabled);
         void editTask(const QString& _taskId);
+        void forwardTask(const QString& _taskId);
         void onShowProfile(const QString& _aimId);
         void onSidebarVisibilityChanged(bool _visible);
         void showMessengerPage();
         void onTaskCreated(qint64 _seq, int _error);
         void reloadPage();
+        void refreshPageIfConnectionStateOnline(const Ui::ConnectionState& _state);
+        void headerLeftButtonClicked(const QString& _type);
+        void headerRightButtonClicked(const QString& _type);
 
     public:
-        explicit WebAppPage(AppPageType _type, QWidget* _parent);
-        ~WebAppPage();
+        explicit WebAppPage(const QString& _type, QWidget* _parent);
 
-        virtual void setUrl(const QUrl& _url);
-        virtual QUrl getUrl() const;
+        const QString& type() const { return type_; }
 
-        static QUrl webAppUrl(AppPageType _type);
-        static QString webAppId(AppPageType _type);
+        void setUrl(const QUrl& _url, bool _force = false);
+        QUrl getUrl() const;
 
         bool isSideBarInSplitter() const;
         void insertSidebarToSplitter();
         void takeSidebarFromSplitter();
         void refreshPageIfNeeded();
+        bool isSidebarVisible() const;
+
+        void showThreadInfo(const QString& _aimId);
+        void closeThreadInfo(const QString& _aimId);
+        void showProfile(const QString& _aimId);
+        void showProfileFromThreadInfo(const QString& _aimId);
+        bool isProfileFromThreadInfo();
+        bool isPageLoaded();
+        void markUnavailable(bool _isUnavailable);
+        bool isUnavailable() const;
+
+        QString getAimId() const;
 
     private Q_SLOTS:
         void tryCreateTask(qint64 _seq);
-        void onLoadFinished(bool _ok);
+        void onLoadFinished(bool _ok, int _err);// reaction to QWebEnginePage signal
+        void onPageLoadFinished(bool _ok);// reaction to the event from the server
+        void onLoadStarted();
+        void onReloadPageTimeout();
+        void downloadRequested(QWebEngineDownloadItem* _download);
+        void onNativeClientFunctionCalled(const QString& _reqId, const QString& _name, const QJsonObject& _requestParams);
+        void sendFunctionCallReply(const QJsonObject& _reply);
+        void onUrlChanged(const QUrl& _url);
 
     protected:
         void resizeEvent(QResizeEvent* _event) override;
+        void hideEvent(QHideEvent* _event) override;
 
     private:
+        void saveSplitterState();
+        void restoreSidebar();
         void updateSplitterStretchFactors();
         void updateSidebarPos(int _width);
-        void resizeUpdateFocus(QWidget* _prevFocused);
+        void updateSplitterHandle(int _width);
+        void updateSidebarWidth(int _desiredWidth);
+        void removeSidebarPlaceholder();
+        void updatePageMaxWidth(bool _isSidebarVisible);
+        void updateHeaderVisibility();
 
-    private:
-        void setUrlPrivate(const QUrl& _url);
+        void resizeUpdateFocus(QWidget* _prevFocused);
+        bool isWidthOutlying(int _width) const;
+
+        void loadPreparedUrl();
         void initWebEngine();
+        void initWebPage();
+        void refreshPage();
+
+        void connectToPageSignals();
+        void disconnectFromPageSignals();
+
+#if QT_CONFIG(menu)
+        QMenu* createContextMenu(const QPoint& _pos);
+#endif
+
+        QWidget* createWebContainer();
+        QWidget* createLoadingContainer();
+        QWidget* createErrorContainer(bool _unavailable);
+
+        bool needsWebCache() const;
+
 
     protected:
         void showEvent(QShowEvent* _event) override;
 
     private:
-        AppPageType type_;
-        QUrl url_;
+        const QString type_;
+        QUrl urlToSet_;
 
-        QWidget* webContainer_;
+        QStackedWidget* stackedWidget_ = nullptr;
+        ProgressAnimation* progressAnimation_ = nullptr;
         WebView* webView_ = nullptr;
-        QWebChannel* webChannel_;
-        Splitter* splitter_;
-        Sidebar* sidebar_;
+        QWebEngineProfile* profile_ = nullptr;
+        QWebChannel* webChannel_ = nullptr;
+        QWebEnginePage* page_ = nullptr;
+        Splitter* splitter_ = nullptr;
+        Sidebar* sidebar_ = nullptr;
+        QWidget* sidebarPlaceholderWidget_ = nullptr;
         QString aimId_;
-        InfoType infoType_;
+        SidebarContentType infoType_;
+        WebChannelProxy webChannelProxy_;
+        QTimer reloadTimer_;
+        std::vector<std::chrono::milliseconds> reloadIntervals_;
+        QString activeColor_;
+        QStringList activeDownloads_;
+        TextWidget* unavailableLabel_ = nullptr;
         int64_t taskCreateId_ = -1;
-        Helper helper_;
-        bool urlChanged_ = false;
+        size_t reloadIntervalIdx_ = 0;
+        bool needsWebCache_ = false;
+        bool needForceChangeUrl_ = false;
+        bool pageIsLoaded_ = false;
+        bool showProfileFromThreadInfo_ = false;
+        bool isUnavailable_ = false;
+        bool isCustomApp_ = false;
     };
 
 }

@@ -18,6 +18,8 @@
 #include "contact_list/SelectionContactsForGroupChat.h"
 #include "history_control/HistoryControlPage.h"
 #include "history_control/MessagesScrollArea.h"
+#include "history_control/feeds/FeedPage.h"
+#include "input_widget/InputWidget.h"
 #include "containers/PrivacySettingsContainer.h"
 #include "containers/ThreadSubContainer.h"
 #include "statuses/LocalStatuses.h"
@@ -37,9 +39,12 @@
 #include "main_window/contact_list/SearchWidget.h"
 #include "main_window/containers/InputStateContainer.h"
 #include "main_window/containers/TaskContainer.h"
+#include "main_window/containers/FileSharingMetaContainer.h"
+#include "main_window/input_widget/HistoryTextEdit.h"
 #include "../controls/CustomButton.h"
 #include "../previewer/GalleryWidget.h"
 #include "../utils/utils.h"
+#include "../utils/MimeDataUtils.h"
 #include "../utils/features.h"
 #include "../utils/InterConnector.h"
 #include "../utils/gui_metrics.h"
@@ -55,8 +60,11 @@
 #include "ConnectionWidget.h"
 #include "../utils/RegisterCustomSchemeTask.h"
 #include "LocalPIN.h"
+#include "styles/ThemesContainer.h"
 
 #include "styles/ThemeParameters.h"
+#include "styles/StyleSheetContainer.h"
+#include "styles/StyleSheetGenerator.h"
 #include "previewer/toast.h"
 
 #include "../core_dispatcher.h"
@@ -64,6 +72,13 @@
 #include "../../common.shared/config/config.h"
 #include "TermsPrivacyWidget.h"
 #include "statuses/SelectStatusWidget.h"
+#ifndef STRIP_VOIP
+#include "../voip/VideoWindow.h"
+#endif
+
+#ifdef HAS_WEB_ENGINE
+#include "WebAppPage.h"
+#endif
 
 #ifdef _WIN32
 #include <windowsx.h>
@@ -83,6 +98,9 @@
 #else
 #include "../utils/win32/VirtualDesktopManager.h"
 #endif //__APPLE__
+
+#include "mini_apps/MiniAppsUtils.h"
+#include "mini_apps/MiniAppsContainer.h"
 
 namespace
 {
@@ -279,7 +297,8 @@ namespace
 #endif
             }();
             const auto space = branchName.size() > 0 ? QStringView(u" ") : QStringView();
-            return appTitle % u" develop version" % space % branchName;
+            const auto devWindowFlag = config::get().has_develop_cli_flag() ? QStringView(u" dev_window") : QStringView();
+            return appTitle % u" develop version" % space % branchName % devWindowFlag;
         }
         return appTitle;
     }
@@ -589,11 +608,7 @@ namespace Ui
     void MainWindow::lock()
     {
         if (!appsPage_) // init main page to show it faster after unlock
-        {
-            appsPage_ = new AppsPage(this);
-            Testing::setAccessibleName(appsPage_, qsl("AS AppsPage"));
-            stackedWidget_->addWidget(appsPage_);
-        }
+            initAppsPage();
 
         if (!localPINWidget_)
         {
@@ -687,49 +702,11 @@ namespace Ui
         getMacSupport()->listenSystemEvents();
 #endif // __APPLE__
 
-        // initialize format actions
-        const auto normalIconColor = Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY);
-        const auto disabledIconColor = Styling::getParameters().getColor(Styling::StyleVariable::BASE_TERTIARY);
-        auto loadIcon = [&normalIconColor, &disabledIconColor](const QString& _name)
-        {
-            auto icon = QIcon(Utils::renderSvgScaled(_name, ContextMenu::defaultIconSize(), normalIconColor));
-            icon.addPixmap(Utils::renderSvgScaled(_name, ContextMenu::defaultIconSize(), disabledIconColor), QIcon::Mode::Disabled);
-            return icon;
-        };
-        auto makeFormatActionData = [](const QString& _command)
-        {
-            QMap<QString, QVariant> result;
-            result[qsl("command")] = _command;
-            return result;
-        };
-        const auto actionsData = std::array{
-            std::make_tuple(core::data::format_type::bold, QT_TRANSLATE_NOOP("context_menu", "Bold"), qsl("Ctrl+B"), loadIcon(qsl(":/context_menu/bold")), qsl("format/bold")),
-            std::make_tuple(core::data::format_type::italic, QT_TRANSLATE_NOOP("context_menu", "Italic"), qsl("Ctrl+I"), loadIcon(qsl(":/context_menu/italic")), qsl("format/italic")),
-            std::make_tuple(core::data::format_type::underline, QT_TRANSLATE_NOOP("context_menu", "Underline"), qsl("Ctrl+U"), loadIcon(qsl(":/context_menu/underline")), qsl("format/underline")),
-            std::make_tuple(core::data::format_type::strikethrough, QT_TRANSLATE_NOOP("context_menu", "Strike through"), qsl("Ctrl+Shift+X"), loadIcon(qsl(":/context_menu/strikethrough")), qsl("format/strikethrough")),
-            std::make_tuple(core::data::format_type::monospace, QT_TRANSLATE_NOOP("context_menu", "Monospace"), qsl("Ctrl+Shift+M"), loadIcon(qsl(":/context_menu/monospace")), qsl("format/monospace")),
-            std::make_tuple(core::data::format_type::link, QT_TRANSLATE_NOOP("context_menu", "Create link"), qsl("Ctrl+Shift+K"), loadIcon(qsl(":/context_menu/link")), qsl("format/link")),
-            std::make_tuple(core::data::format_type::unordered_list, QT_TRANSLATE_NOOP("context_menu", "List"), qsl("Ctrl+Shift+8"), loadIcon(qsl(":/context_menu/unordered_list")), qsl("format/unordered_list")),
-            std::make_tuple(core::data::format_type::ordered_list, QT_TRANSLATE_NOOP("context_menu", "Ordered list"), qsl("Ctrl+Shift+7"), loadIcon(qsl(":/context_menu/ordered_list")), qsl("format/ordered_list")),
-            std::make_tuple(core::data::format_type::quote, QT_TRANSLATE_NOOP("context_menu", "Quote"), qsl("Ctrl+Shift+9"), loadIcon(qsl(":/context_menu/quote")), qsl("format/quote")),
-            std::make_tuple(core::data::format_type::pre, QT_TRANSLATE_NOOP("context_menu", "Code"), qsl("Ctrl+Shift+Alt+C"), loadIcon(qsl(":/context_menu/code")), qsl("format/code")),
-            std::make_tuple(core::data::format_type::none, QT_TRANSLATE_NOOP("context_menu", "Clear format"), qsl("Ctrl+Shift+N"), loadIcon(qsl(":/context_menu/close")), qsl("format/clear")),
-        };
-        for (const auto& [type, name, shortcut, icon, command] : actionsData)
-        {
-            auto action = new QAction(name, this);
-            action->setShortcut(QKeySequence(shortcut));
-            action->setShortcutVisibleInContextMenu(true);
-            action->setIcon(icon);
-            action->setData(makeFormatActionData(command));
-            formatActions_[type] = action;
-        }
+        updateFormatActions();
 
         setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
         setLayoutDirection(Qt::LeftToRight);
-        setAutoFillBackground(false);
-
-        Utils::ApplyStyle(this, Styling::getParameters().getScrollBarQss());
+        Utils::setDefaultBackground(this);
 
         mainWidget_ = new QWidget(this);
         mainWidget_->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
@@ -747,7 +724,8 @@ namespace Ui
         titleLayout_ = Utils::emptyHLayout(titleWidget_);
 
         logo_ = new QLabel(titleWidget_);
-        logo_->setPixmap(Utils::renderSvgScaled(qsl(":/logo/logo_16"), QSize(16, 16)));
+        auto pixmap = QPixmap(Utils::parse_image_name(qsl(":/logo/logo_16_100")));
+        logo_->setPixmap(pixmap.isNull() ? Utils::renderSvgScaled(qsl(":/logo/logo_16"), QSize(16, 16)) : pixmap);
         logo_->setObjectName(qsl("windowIcon"));
         logo_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
         logo_->setFocusPolicy(Qt::NoFocus);
@@ -756,9 +734,7 @@ namespace Ui
 
         title_ = new QLabel(titleWidget_);
         title_->setFocusPolicy(Qt::NoFocus);
-        QPalette pal = title_->palette();
-        pal.setColor(QPalette::Foreground, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
-        title_->setPalette(pal);
+        updateTitlePalette();
 
         title_->setFont(Fonts::appFontScaled(12, Fonts::FontWeight::SemiBold));
         title_->setContentsMargins(Utils::scale_value(8), 0, 0, 0);
@@ -769,12 +745,12 @@ namespace Ui
         spacer_ = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
         titleLayout_->addItem(spacer_);
 
-        const auto titleBtn = [p = titleWidget_](const auto& _path, const auto& _accName, const auto _hoverClr, const auto _pressClr)
+        const auto titleBtn = [p = titleWidget_](const auto& _path, const auto& _accName, const auto _hoverClr, const auto _pressClr) -> CustomButton*
         {
             auto btn = new CustomButton(p, _path, getTitleButtonOriginalSize());
-            btn->setBackgroundNormal(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
-            btn->setBackgroundHovered(Styling::getParameters().getColor(_hoverClr));
-            btn->setBackgroundPressed(Styling::getParameters().getColor(_pressClr));
+            btn->setBackgroundNormal(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_BRIGHT_INVERSE });
+            btn->setBackgroundHovered(Styling::ThemeColorKey{ _hoverClr });
+            btn->setBackgroundPressed(Styling::ThemeColorKey{ _pressClr });
             btn->setFixedSize(getTitleButtonSize());
             btn->setFocusPolicy(Qt::NoFocus);
             Testing::setAccessibleName(btn, _accName);
@@ -790,8 +766,8 @@ namespace Ui
         titleLayout_->addWidget(maximizeButton_);
 
         closeButton_ = titleBtn(qsl(":/titlebar/close_button"), qsl("AS MainWindow closeButton"), Styling::StyleVariable::SECONDARY_ATTENTION, Styling::StyleVariable::SECONDARY_ATTENTION);
-        closeButton_->setHoverColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
-        closeButton_->setPressedColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
+        closeButton_->setHoverColor(Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID_PERMANENT });
+        closeButton_->setPressedColor(Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID_PERMANENT });
         titleLayout_->addWidget(closeButton_);
 
         mainLayout_->addWidget(titleWidget_);
@@ -880,6 +856,13 @@ namespace Ui
             }
         });
 
+        if constexpr (platform::is_windows())
+        {
+            connect(&Utils::InterConnector::instance(), &Utils::InterConnector::incomingCallAlert, this, [this]() {
+                QApplication::alert(this, 500);
+            });
+        }
+        
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::openStatusPicker, this, &MainWindow::openStatusPicker);
 
         connect(this, &MainWindow::needActivate, this, &MainWindow::activate);
@@ -888,7 +871,17 @@ namespace Ui
         connect(get_gui_settings(), &Ui::qt_gui_settings::changed, this, &MainWindow::guiSettingsChanged);
 
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::memberAddFailed, this, Ui::memberAddFailed);
+        connect(Ui::GetDispatcher(), &Ui::core_dispatcher::needExternalUserAgreement, this, &MainWindow::showUserAgreementPage, Qt::UniqueConnection);
+
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated, this, &MainWindow::omicronUpdated);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::startSearchHashtag, this, [](const QString& _pattern)
+        {
+            if (const auto& aimId = Logic::getContactListModel()->selectedContact();
+                !aimId.isEmpty() && !ServiceContacts::isServiceContact(aimId))
+            {
+                Q_EMIT Utils::InterConnector::instance().startSearchInDialog(aimId, _pattern);
+            }
+        });
 #if 0
         if constexpr (platform::is_windows())
         {
@@ -943,9 +936,11 @@ namespace Ui
         // initialize cache in main thread
         LottieHandleCache::instance();
 #endif
+
+        connect(&Styling::getThemesContainer(), &Styling::ThemesContainer::globalThemeChanged, this, &MainWindow::onThemeChanged, Qt::QueuedConnection);
     }
 
-    MainWindow::~MainWindow()
+    void MainWindow::onDestroy()
     {
         Tooltip::resetDefaultTooltip();
         Tooltip::resetDefaultMultilineTooltip();
@@ -969,6 +964,11 @@ namespace Ui
 
         VirtualDesktops::resetVirtualDesktopManager();
 #endif
+
+    }
+
+    MainWindow::~MainWindow()
+    {
     }
 
     void MainWindow::init(bool _needShow)
@@ -1133,6 +1133,11 @@ namespace Ui
         return isAppsPage() && appsPage_->isTasksPage();
     }
 
+    bool MainWindow::isFeedAppPage() const
+    {
+        return isAppsPage() && appsPage_->isFeedPage();
+    }
+
     int MainWindow::getScreen() const
     {
         return QApplication::desktop()->screenNumber(this);
@@ -1162,7 +1167,7 @@ namespace Ui
     int MainWindow::getMinWindowHeight() const
     {
         const auto screenHeight = screenAvailableGeometry().height();
-        return std::min(Utils::scale_value(550), screenHeight - getWindowMarginOnScreen());
+        return std::min(Utils::scale_value(580), screenHeight - getWindowMarginOnScreen());
     }
 
     QRect MainWindow::getDefaultWindowSize() const
@@ -1209,6 +1214,13 @@ namespace Ui
     {
         return appsPage_ ? appsPage_->messengerPage() : nullptr;
     }
+
+#if HAS_WEB_ENGINE
+    Ui::WebAppPage* MainWindow::getTasksPage() const
+    {
+        return appsPage_ ? appsPage_->tasksPage() : nullptr;
+    }
+#endif
 
     AppsPage* MainWindow::getAppsPage() const
     {
@@ -1307,6 +1319,74 @@ namespace Ui
                     mainPage->setSearchFocus();
             }
         }
+    }
+
+    void MainWindow::initAppsPage()
+    {
+        appsPage_ = new AppsPage(this);
+        connect(Logic::GetAppsContainer(), &Logic::MiniAppsContainer::updateApps, this, &MainWindow::onMiniAppsUpdated, Qt::UniqueConnection);
+        Testing::setAccessibleName(appsPage_, qsl("AS AppsPage"));
+        stackedWidget_->addWidget(appsPage_);
+    }
+
+    void MainWindow::updateFormatActions()
+    {
+        const auto normalIconColor = Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY);
+        const auto disabledIconColor = Styling::getParameters().getColor(Styling::StyleVariable::BASE_TERTIARY);
+        auto loadIcon = [&normalIconColor, &disabledIconColor](const QString& _name)
+        {
+            auto icon = QIcon(Utils::renderSvgScaled(_name, ContextMenu::defaultIconSize(), normalIconColor));
+            icon.addPixmap(Utils::renderSvgScaled(_name, ContextMenu::defaultIconSize(), disabledIconColor), QIcon::Mode::Disabled);
+            return icon;
+        };
+        auto makeFormatActionData = [](const QString& _command)
+        {
+            QMap<QString, QVariant> result;
+            result[qsl("command")] = _command;
+            return result;
+        };
+
+        const auto actionsData = std::array
+        {
+            std::make_tuple(core::data::format_type::bold, QT_TRANSLATE_NOOP("context_menu", "Bold"), qsl("Ctrl+B"), loadIcon(qsl(":/context_menu/bold")), qsl("format/bold")),
+            std::make_tuple(core::data::format_type::italic, QT_TRANSLATE_NOOP("context_menu", "Italic"), qsl("Ctrl+I"), loadIcon(qsl(":/context_menu/italic")), qsl("format/italic")),
+            std::make_tuple(core::data::format_type::underline, QT_TRANSLATE_NOOP("context_menu", "Underline"), qsl("Ctrl+U"), loadIcon(qsl(":/context_menu/underline")), qsl("format/underline")),
+            std::make_tuple(core::data::format_type::strikethrough, QT_TRANSLATE_NOOP("context_menu", "Strike through"), qsl("Ctrl+Shift+X"), loadIcon(qsl(":/context_menu/strikethrough")), qsl("format/strikethrough")),
+            std::make_tuple(core::data::format_type::monospace, QT_TRANSLATE_NOOP("context_menu", "Monospace"), qsl("Ctrl+Shift+M"), loadIcon(qsl(":/context_menu/monospace")), qsl("format/monospace")),
+            std::make_tuple(core::data::format_type::link, QT_TRANSLATE_NOOP("context_menu", "Create link"), qsl("Ctrl+Shift+K"), loadIcon(qsl(":/context_menu/link")), qsl("format/link")),
+            std::make_tuple(core::data::format_type::unordered_list, QT_TRANSLATE_NOOP("context_menu", "List"), qsl("Ctrl+Shift+8"), loadIcon(qsl(":/context_menu/unordered_list")), qsl("format/unordered_list")),
+            std::make_tuple(core::data::format_type::ordered_list, QT_TRANSLATE_NOOP("context_menu", "Ordered list"), qsl("Ctrl+Shift+7"), loadIcon(qsl(":/context_menu/ordered_list")), qsl("format/ordered_list")),
+            std::make_tuple(core::data::format_type::quote, QT_TRANSLATE_NOOP("context_menu", "Quote"), qsl("Ctrl+Shift+9"), loadIcon(qsl(":/context_menu/quote")), qsl("format/quote")),
+            std::make_tuple(core::data::format_type::pre, QT_TRANSLATE_NOOP("context_menu", "Code"), qsl("Ctrl+Shift+Alt+C"), loadIcon(qsl(":/context_menu/code")), qsl("format/code")),
+            std::make_tuple(core::data::format_type::none, QT_TRANSLATE_NOOP("context_menu", "Clear format"), qsl("Ctrl+Shift+N"), loadIcon(qsl(":/context_menu/close")), qsl("format/clear")),
+        };
+
+        static Styling::ThemeChecker checker;
+        if (checker.checkAndUpdateHash())
+            formatActions_.clear();
+
+        for (const auto& [type, name, shortcut, icon, command] : actionsData)
+        {
+            if (formatActions_.count(type))
+            {
+                formatActions_[type]->setIcon(icon);
+                return;
+            }
+            QAction* action = new QAction(name, this);
+
+            action->setShortcut(QKeySequence(shortcut));
+            action->setShortcutVisibleInContextMenu(true);
+            action->setIcon(icon);
+            action->setData(makeFormatActionData(command));
+            formatActions_[type] = action;
+        }
+    }
+
+    void MainWindow::updateTitlePalette()
+    {
+        QPalette pal = title_->palette();
+        pal.setColor(QPalette::Foreground, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        title_->setPalette(pal);
     }
 
     void MainWindow::updateWindowTitle()
@@ -1775,52 +1855,95 @@ namespace Ui
         {
             case QEvent::KeyPress:
             {
+                const auto keyEvent = static_cast<QKeyEvent*>(_event);
+#ifndef STRIP_VOIP
+                if (MainPage::hasInstance() && MainPage::instance()->getVideoWindow() && MainPage::instance()->isVideoWindowOn())
+                {
+                    const auto videoWindow = MainPage::instance()->getVideoWindow();
+                    if ((keyEvent->modifiers() & Qt::ControlModifier) && (keyEvent->modifiers() & Qt::ShiftModifier))
+                    {
+                        switch (keyEvent->key())
+                        {
+                            case Qt::Key_S:
+                            {
+                                videoWindow->switchScreenSharingEnableByShortcut();
+                                return true;
+                            };
+                            case Qt::Key_V:
+                            {
+                                videoWindow->switchVideoEnableByShortcut();
+                                return true;
+                            };
+                            case Qt::Key_A:
+                            {
+                                videoWindow->switchMicrophoneEnableByShortcut();
+                                return true;
+                            };
+                            case Qt::Key_D:
+                            {
+                                videoWindow->switchSoundEnableByShortcut();
+                                return true;
+                            };
+                        }
+                    }
+                }
+#endif
                 userActivity();
                 Q_EMIT anyKeyPressed(QPrivateSignal());
 
-                if (isAppsPage() && MainPage::hasInstance() && !MainPage::instance()->isSemiWindowVisible())
+                auto& interConnector = Utils::InterConnector::instance();
+
+                if (isAppsPage())
                 {
-                    const auto keyEvent = static_cast<QKeyEvent*>(_event);
+                    const auto mainPage = MainPage::instance();
+                    const bool infoOnlyVisible = interConnector.isSidebarVisible()
+                                                 && mainPage && (!mainPage->isSideBarInSplitter() || mainPage->isOneFrameSidebar())
+                                                 && !mainPage->isSidebarWithThreadPage();
                     const auto isSearchWidgetActive = (qobject_cast<Ui::SearchEdit*>(QApplication::focusWidget()) != nullptr);
                     const auto isGalleryActive = gallery_ && gallery_->isActiveWindow();
-                    auto page = Utils::InterConnector::instance().getHistoryPage(Logic::getContactListModel()->selectedContact());
-
-                    if (!isSearchWidgetActive && !isGalleryActive)
+                    const auto contact = getCurrentAimId();
+                    auto page = interConnector.getHistoryPage(contact);
+                    if (mainPage && (!mainPage->isSemiWindowVisible() || mainPage->isSidebarWithThreadPage()))
                     {
-                        if (Utils::InterConnector::instance().isMultiselect() && Utils::InterConnector::instance().getVisibleHistoryPages().size() == 1)
+                        if (!isSearchWidgetActive && !isGalleryActive)
                         {
-                            bool handled = true;
-                            if (keyEvent->key() == Qt::Key_Right)
-                                Utils::InterConnector::instance().multiselectNextElementRight();
-                            else if (keyEvent->key() == Qt::Key_Left)
-                                Utils::InterConnector::instance().multiselectNextElementLeft();
-                            else if (keyEvent->key() == Qt::Key_Up)
-                                Utils::InterConnector::instance().multiSelectCurrentMessageUp(keyEvent->modifiers() & Qt::ShiftModifier);
-                            else if (keyEvent->key() == Qt::Key_Down)
-                                Utils::InterConnector::instance().multiSelectCurrentMessageDown(keyEvent->modifiers() & Qt::ShiftModifier);
-                            else if (keyEvent->key() == Qt::Key_Tab)
-                                Utils::InterConnector::instance().multiselectNextElementTab();
-                            else if (keyEvent->key() == Qt::Key_Escape)
-                                Utils::InterConnector::instance().setMultiselect(false);
-                            else if (keyEvent->key() == Qt::Key_Space)
-                                Utils::InterConnector::instance().multiselectSpace();
-                            else if (keyEvent->key() == Qt::Key_Enter || keyEvent->key() == Qt::Key_Return)
-                                Utils::InterConnector::instance().multiselectEnter();
-                            else
-                                handled = false;
+                            if (interConnector.isMultiselect(contact) && !infoOnlyVisible)
+                            {
+                                bool handled = true;
+                                if (keyEvent->key() == Qt::Key_Right)
+                                    interConnector.multiselectNextElementRight();
+                                else if (keyEvent->key() == Qt::Key_Left)
+                                    interConnector.multiselectNextElementLeft();
+                                else if (keyEvent->key() == Qt::Key_Up)
+                                    interConnector.multiSelectCurrentMessageUp(keyEvent->modifiers() & Qt::ShiftModifier);
+                                else if (keyEvent->key() == Qt::Key_Down)
+                                    interConnector.multiSelectCurrentMessageDown(keyEvent->modifiers() & Qt::ShiftModifier);
+                                else if (keyEvent->key() == Qt::Key_Tab)
+                                    interConnector.multiselectNextElementTab();
+                                else if (keyEvent->key() == Qt::Key_Escape)
+                                    interConnector.setMultiselect(false, contact);
+                                else if (keyEvent->key() == Qt::Key_Space)
+                                    interConnector.multiselectSpace();
+                                else if (keyEvent->key() == Qt::Key_Enter || keyEvent->key() == Qt::Key_Return)
+                                    interConnector.multiselectEnter();
+                                else
+                                    handled = false;
 
-                            if (handled)
+                                if (handled)
+                                    return true;
+                            }
+                            else if (keyEvent->key() == Qt::Key_Up && (keyEvent->modifiers() & Qt::ShiftModifier && keyEvent->modifiers() & Qt::AltModifier))
+                            {
+                                interConnector.setMultiselect(true, contact, true);
+                                if (page)
+                                    page->setFocusOnArea();
+
                                 return true;
-                        }
-                        else if (keyEvent->key() == Qt::Key_Up && (keyEvent->modifiers() & Qt::ShiftModifier && keyEvent->modifiers() & Qt::AltModifier))
-                        {
-                            Utils::InterConnector::instance().setMultiselect(true, QString(), true);
-                            if (page)
-                                page->setFocusOnArea();
-
-                            return true;
+                            }
                         }
                     }
+
+                    page = interConnector.getHistoryPage(Logic::getContactListModel()->selectedContact());
 
                     if ((keyEvent->key() == Qt::Key_Tab || keyEvent->key() == Qt::Key_Backtab) && !(keyEvent->modifiers() & Qt::ControlModifier))
                     {
@@ -1831,11 +1954,7 @@ namespace Ui
                         if (cur == this)
                         {
                             const bool tabForward = keyEvent->key() == Qt::Key_Tab;
-                            const auto setToInput =
-                                tabForward &&
-                                !Logic::getContactListModel()->selectedContact().isEmpty() &&
-                                page &&
-                                page->canSetFocusOnInput();
+                            const auto setToInput = tabForward && !Logic::getContactListModel()->selectedContact().isEmpty() && page && page->canSetFocusOnInput();
 
                             if (setToInput)
                                 page->setFocusOnInputFirstFocusable();
@@ -1852,22 +1971,28 @@ namespace Ui
                             page->closePttRecording();
                             return true;
                         }
+                        else if (lastPttInput_ && lastPttInput_->isRecordingPtt() && lastPttInput_->isActive())
+                        {
+                            lastPttInput_->closePttPanel();
+                            lastPttInput_->stopPttRecording();
+                        }
                     }
                     else if (keyEvent->key() == Qt::Key_Space)
                     {
                         if (page && (page->tryPlayPttRecord() || page->tryPausePttRecord()))
                             return true;
+                        else if (lastPttInput_ && lastPttInput_->isActive())
+                            return lastPttInput_->tryPlayPttRecord() || lastPttInput_->tryPausePttRecord();
                     }
                 }
                 if (Statuses::isStatusEnabled() && isMessengerPage())
                 {
-                    if (const auto keyEvent = static_cast<QKeyEvent*>(_event); keyEvent->key() == Qt::Key_S && (keyEvent->modifiers() & Qt::ControlModifier))
+                    if (keyEvent->key() == Qt::Key_S && (keyEvent->modifiers() & Qt::ControlModifier) && !(keyEvent->modifiers() & Qt::ShiftModifier))
                     {
-                        Q_EMIT  Utils::InterConnector::instance().openStatusPicker();
+                        Q_EMIT interConnector.openStatusPicker();
                         return true;
                     }
                 }
-
                 break;
             }
             case QEvent::MouseButtonPress:
@@ -1897,7 +2022,6 @@ namespace Ui
                     previousFocusedWidget_ = w;
                 break;
             }
-
             default:
                 break;
         }
@@ -2046,22 +2170,20 @@ namespace Ui
     {
         if (isMessengerPage())
         {
-            const auto& aimId = Logic::getContactListModel()->selectedContact();
-
-            if (MainPage::hasInstance() && !MainPage::instance()->isSemiWindowVisible())
+            const auto aimId = getCurrentAimId(true);
+            if (MainPage::hasInstance())
             {
                 if (_event->modifiers() & Qt::ControlModifier && _event->key() == Qt::Key_F)
                 {
-                    const auto searchCode = get_gui_settings()->get_value<int>(settings_shortcuts_search_action, static_cast<int>(ShortcutsSearchAction::Default));
-                    const auto searchAct = static_cast<ShortcutsSearchAction>(searchCode);
-                    const auto isGlobalAct = searchAct == ShortcutsSearchAction::GlobalSearch;
-                    const bool isGlobalHotkey = _event->modifiers() & Qt::ShiftModifier;
-                    const auto isSearchInDialog = isGlobalAct == isGlobalHotkey;
-
-                    if (isSearchInDialog)
+                    if (isSearchInDialog(_event))
                     {
-                        if (!aimId.isEmpty() && !ServiceContacts::isServiceContact(aimId))
-                            Q_EMIT Utils::InterConnector::instance().startSearchInDialog(aimId);
+                        if (!aimId.isEmpty())
+                        {
+                            if (Logic::getContactListModel()->isThread(aimId))
+                                Q_EMIT Utils::InterConnector::instance().startSearchInThread(aimId);
+                            else if (aimId != ServiceContacts::getTasksName())
+                                Q_EMIT Utils::InterConnector::instance().startSearchInDialog(aimId);
+                        }
                     }
                     else
                     {
@@ -2083,9 +2205,14 @@ namespace Ui
                 if (MainPage::hasInstance() && MainPage::instance()->isInSettingsTab())
                 {
                     if (MainPage::instance()->isOneFrameTab())
+                    {
+                        showMessengerPage();
                         MainPage::instance()->selectRecentsTab();
+                    }
                     else
+                    {
                         Q_EMIT Utils::InterConnector::instance().myProfileBack();
+                    }
                 }
                 else
                 {
@@ -2094,9 +2221,12 @@ namespace Ui
             }
             else if (_event->key() == Qt::Key_Enter || _event->key() == Qt::Key_Return)
             {
-                auto page = Utils::InterConnector::instance().getHistoryPage(aimId);
-                if (page && page->isVisible() && page->isRecordingPtt())
+                auto page = Logic::getContactListModel()->isThread(aimId) ? Utils::InterConnector::instance().getHistoryPage(aimId)
+                                                                          : qobject_cast<HistoryControlPage*>(Utils::InterConnector::instance().getPage(aimId));
+                if (page && page->isVisible() && page->isRecordingPtt() && page->isInputActive())
                     page->sendPttRecord();
+                else if (lastPttInput_ && lastPttInput_->isRecordingPtt() && lastPttInput_->isActive())
+                    lastPttInput_->sendPtt();
             }
             else if (_event->key() == Qt::Key_Space)
             {
@@ -2104,9 +2234,7 @@ namespace Ui
             }
             else if (_event->modifiers() == Qt::ControlModifier && _event->key() == Qt::Key_T)
             {
-                auto page = Utils::InterConnector::instance().getHistoryPage(aimId);
-                if (page && page->isVisible() && !page->isRecordingPtt())
-                    page->startPttRecordingLock();
+                Q_EMIT Utils::InterConnector::instance().startPttRecord();
             }
 
             if (MainPage::hasInstance() && !MainPage::instance()->isSearchActive() && qApp->focusObject() == this)
@@ -2158,8 +2286,14 @@ namespace Ui
 
         if (isWebAppTasksPage())
         {
+            const auto aimId = getCurrentAimId();
             if (_event->key() == Qt::Key_Escape)
                 Q_EMIT Utils::InterConnector::instance().closeSidebar();
+            else if (_event->modifiers() & Qt::ControlModifier && _event->key() == Qt::Key_F)
+            {
+                if (isSearchInDialog(_event) && !aimId.isEmpty())
+                    Q_EMIT Utils::InterConnector::instance().startSearchInThread(aimId);
+            }
         }
 
         if constexpr (platform::is_linux() || platform::is_windows())
@@ -2538,6 +2672,11 @@ namespace Ui
         getMacSupport()->windowTitle()->updateTitleBgColor();
         getMacSupport()->windowTitle()->updateTitleTextColor();
 #endif
+        updateFormatActions();
+        updateTitlePalette();
+        Utils::setDefaultBackground(this);
+        Utils::updateBgColor(titleWidget_, Styling::getParameters().getAppTitlebarColor());
+        update();
     }
 
     void MainWindow::needChangeState()
@@ -2685,6 +2824,7 @@ namespace Ui
 
         if (MainPage::hasInstance() && MainPage::instance()->isVideoWindowOn() && !MainPage::instance()->isVideoWindowMinimized())
             MainPage::instance()->showVideoWindow();
+
         updateMainMenu();
     }
 
@@ -2717,7 +2857,10 @@ namespace Ui
     {
         // delete messenger & super app page page
         if (appsPage_)
+        {
             appsPage_->resetPages();
+            appsPage_ = nullptr;
+        }
 
         Logic::ResetMentionModel();
         Logic::ResetContactListModel();
@@ -2732,14 +2875,11 @@ namespace Ui
 
         Ui::ResetMyInfo();
         Statuses::LocalStatuses::instance()->resetToDefaults();
-        Logic::ResetPrivacySettingsContainer();
 
         Utils::InterConnector::instance().clearInternalCaches();
         Logic::ResetTaskContainer();
-
-#ifndef STRIP_VOIP
-        Ui::GetDispatcher()->getVoipController().resetMaskManager();
-#endif
+        Logic::ResetFileSharingMetaContainer();
+        Logic::ResetAppsContainer();
 
         Ui::Stickers::resetCache();
 
@@ -2749,6 +2889,7 @@ namespace Ui
     void MainWindow::showLoginPage(const bool _is_auth_error)
     {
         closePopups({ Utils::CloseWindowInfo::Initiator::MainWindow, Utils::CloseWindowInfo::Reason::ShowLoginPage });
+        Ui::GetDispatcher()->unsubscribeTasksCounter();
 
         auto showLoginPageInternal = [this, _is_auth_error]()
         {
@@ -2790,16 +2931,13 @@ namespace Ui
     {
         connect(MyInfo(), &my_info::needGDPR, this, &MainWindow::showGDPRPage, Qt::UniqueConnection);
 
+        Styling::getThemesContainer().chooseAndSetTheme();
+
         if (!appsPage_)
-        {
-            appsPage_ = new AppsPage(this);
-            Testing::setAccessibleName(appsPage_, qsl("AS AppsPage"));
-            stackedWidget_->addWidget(appsPage_);
-        }
+            initAppsPage();
         else
-        {
             appsPage_->prepareForShow();
-        }
+
 #ifdef __APPLE__
         getMacSupport()->createMenuBar(false);
 #endif
@@ -2828,21 +2966,26 @@ namespace Ui
                 options.isGdprUpdate_ = true;
                 const auto product = config::get().translation(config::translations::gdpr_welcome);
 
-                gdprPage_ = new TermsPrivacyWidget(QT_TRANSLATE_NOOP("terms_privacy_widget", product.data()),
-                    QT_TRANSLATE_NOOP("terms_privacy_widget",
-                        "By clicking \"Accept and agree\", you confirm that you have read carefully "
-                        "and agree to our <a href=\"%1\">Terms</a> "
-                        "and <a href=\"%2\">Privacy Policy</a>")
-                    .arg(legalTermsUrl(), privacyPolicyUrl()),
-                    options);
+                const auto title = QT_TRANSLATE_NOOP("terms_privacy_widget", product.data());
+                const auto description = QT_TRANSLATE_NOOP("terms_privacy_widget",
+                                                           "By clicking \"Accept and agree\", you confirm that you have read carefully "
+                                                           "and agree to our <a href=\"%1\">Terms</a> "
+                                                           "and <a href=\"%2\">Privacy Policy</a>").arg(legalTermsUrl(), privacyPolicyUrl());
 
-                Testing::setAccessibleName(gdprPage_, qsl("AS GDPR"));
-                stackedWidget_->addWidget(gdprPage_);
+                gdprPage_ = new TermsPrivacyWidget(title, description, options);
+                if (gdprPage_)
+                {
+                    gdprPage_->init();
 
-                connect(gdprPage_, &TermsPrivacyWidget::agreementAccepted, this, &MainWindow::showAppsPage);
+                    Testing::setAccessibleName(gdprPage_, qsl("AS GDPR"));
+                    stackedWidget_->addWidget(gdprPage_);
+
+                    connect(gdprPage_, &TermsPrivacyWidget::agreementAccepted, this, &MainWindow::showAppsPage);
+                }
             }
 
-            setCurrentWidget(gdprPage_);
+            if (gdprPage_)
+                setCurrentWidget(gdprPage_);
 
             GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::gdpr_show_update);
         };
@@ -2853,7 +2996,14 @@ namespace Ui
             showGDPRPageInternal();
     }
 
-    void MainWindow::checkForUpdates()
+void MainWindow::showUserAgreementPage(const QString& _termsOfUseUrl, const QString& _privacyPolicyUrl)
+{
+    closePopups({ Utils::CloseWindowInfo::Initiator::MainWindow, Utils::CloseWindowInfo::Reason::ShowUserAgreementPage });
+    this->loginPage_->openUserAgreement(_termsOfUseUrl, _privacyPolicyUrl);
+}
+
+
+void MainWindow::checkForUpdates()
     {
 #ifdef __APPLE__
         getMacSupport()->runMacUpdater();
@@ -2894,11 +3044,17 @@ namespace Ui
             {
                 const auto area = qobject_cast<Ui::MessagesScrollArea*>(focused);
                 if (area)
-                {
-                #ifdef __APPLE__
-                    MimeData::copyMimeData(*area);
-                #endif
                     handled = true;
+
+                if (!area || area && !MimeData::copyMimeData(*area))
+                {
+                    const auto text = Utils::InterConnector::instance().getSidebarSelectedText();
+                    if (!text.isEmpty())
+                    {
+                        QApplication::clipboard()->setText(text);
+                        Utils::showCopiedToast();
+                        handled = true;
+                    }
                 }
 
                 if (!Utils::InterConnector::instance().isMultiselect())
@@ -2972,7 +3128,7 @@ namespace Ui
     {
         if (MainPage::hasInstance())
         {
-            activate();
+            activateIfNeeded();
             closePopups({ Utils::CloseWindowInfo::Initiator::Unknown, Utils::CloseWindowInfo::Reason::Keep_Sidebar });
             MainPage::instance()->recentsTabActivate(true);
         }
@@ -2982,7 +3138,7 @@ namespace Ui
     {
         if (MainPage::hasInstance())
         {
-            activate();
+            activateIfNeeded();
             MainPage::instance()->nextChat();
         }
     }
@@ -2991,7 +3147,7 @@ namespace Ui
     {
         if (MainPage::hasInstance())
         {
-            activate();
+            activateIfNeeded();
             MainPage::instance()->prevChat();
         }
     }
@@ -3000,7 +3156,7 @@ namespace Ui
     {
         if (MainPage::hasInstance())
         {
-            activate();
+            activateIfNeeded();
             MainPage::instance()->settingsTabActivate(Utils::CommonSettingsType::CommonSettingsType_About);
         }
     }
@@ -3009,7 +3165,7 @@ namespace Ui
     {
         if (MainPage::hasInstance())
         {
-            activate();
+            activateIfNeeded();
             MainPage::instance()->settingsClicked();
         }
     }
@@ -3211,11 +3367,58 @@ namespace Ui
         Ui::GeneralDialog::Options opt;
         opt.fixedSize_ = false;
         Ui::GeneralDialog dialog(w, this, opt);
-        dialog.showInCenter();
+        dialog.execute();
+        setFocus();
     }
 
     void MainWindow::omicronUpdated()
     {
         setMinimumWidth(getMinWindowWidth());
+    }
+
+    void MainWindow::onMiniAppsUpdated()
+    {
+        if (Logic::GetAppsContainer()->isAppEnabled(Utils::MiniApps::getTasksId()))
+            Ui::GetDispatcher()->subscribeTasksCounter();
+        else
+            Ui::GetDispatcher()->unsubscribeTasksCounter();
+
+        if (Logic::GetAppsContainer()->isAppEnabled(Utils::MiniApps::getMailId()))
+            Ui::GetDispatcher()->subscribeMailsCounter();
+        else
+            Ui::GetDispatcher()->unsubscribeMailsCounter();
+    }
+
+    QString MainWindow::getCurrentAimId(bool _checkSearchFocus) const
+    {
+        const auto mainPage = MainPage::instance();
+        auto aimId = Logic::getContactListModel()->selectedContact();
+        if (mainPage && mainPage->isSidebarWithThreadPage() && mainPage->isSidebarInFocus(_checkSearchFocus))
+        {
+            aimId = mainPage->getSidebarAimid(Sidebar::ResolveThread::Yes);
+        }
+#ifdef HAS_WEB_ENGINE
+        else if (isWebAppTasksPage())
+        {
+            if (auto tasks = appsPage_->tasksPage(); tasks && tasks->isSidebarVisible())
+                aimId = tasks->getAimId();
+        }
+#endif
+        return aimId;
+    }
+
+    bool MainWindow::isSearchInDialog(QKeyEvent* _event) const
+    {
+        const auto searchCode = get_gui_settings()->get_value<int>(settings_shortcuts_search_action, static_cast<int>(ShortcutsSearchAction::Default));
+        const auto searchAct = static_cast<ShortcutsSearchAction>(searchCode);
+        const auto isGlobalAct = searchAct == ShortcutsSearchAction::GlobalSearch;
+        const bool isGlobalHotkey = _event->modifiers() & Qt::ShiftModifier;
+        return isGlobalAct == isGlobalHotkey;
+    }
+
+    void MainWindow::activateIfNeeded()
+    {
+        if (!isActive())
+            activate();
     }
 }

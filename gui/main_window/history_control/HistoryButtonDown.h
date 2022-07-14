@@ -2,6 +2,7 @@
 
 #include "../../namespaces.h"
 #include "../../controls/ClickWidget.h"
+#include "utils/SvgUtils.h"
 
 // Round button in history pane with icon and counter
 
@@ -32,9 +33,9 @@ public:
     static const int bubbleSize = 38;
 
 private:
+    Utils::StyledPixmap icon_;
+    Utils::StyledPixmap iconHover_;
     int counter_;
-    QPixmap icon_;
-    QPixmap iconHover_;
 };
 
 UI_NS_END

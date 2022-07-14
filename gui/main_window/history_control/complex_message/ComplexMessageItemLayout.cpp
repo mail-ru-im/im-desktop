@@ -68,10 +68,10 @@ QRect ComplexMessageItemLayout::evaluateBlocksContainerLtr(const QRect& _avatarR
         : _avatarRect.right() + 1 + MessageStyle::getAvatarRightMargin();
     auto right = _widgetContentLtr.right();
 
-    if (auto desired = Item_->desiredWidth(); desired != 0)
+    if (const auto desiredWidth = Item_->desiredWidth(); desiredWidth != 0)
     {
-        const auto cur = right - left;
-        if (auto diff = cur - desired; diff > 0)
+        const auto currentWidth = right - left;
+        if (const auto diff = currentWidth - desiredWidth; diff > 0)
         {
             if (isOutgoingPosition())
                 left += diff;
@@ -80,12 +80,10 @@ QRect ComplexMessageItemLayout::evaluateBlocksContainerLtr(const QRect& _avatarR
         }
     }
 
-    QRect blocksContainerLtr;
+    QRect blocksContainerLtr = _widgetContentLtr;
 
     blocksContainerLtr.setLeft(left);
     blocksContainerLtr.setRight(right);
-    blocksContainerLtr.setTop(_widgetContentLtr.top());
-    blocksContainerLtr.setHeight(_widgetContentLtr.height());
 
     im_assert(blocksContainerLtr.width() > 0);
 
@@ -163,37 +161,36 @@ QRect ComplexMessageItemLayout::evaluateSenderContentLtr(const QRect& _widgetCon
     return QRect();
 }
 
-QRect ComplexMessageItemLayout::evaluateWidgetContentLtr(const int32_t widgetWidth) const
+QRect ComplexMessageItemLayout::evaluateWidgetContentLtr(const int32_t _widgetWidth) const
 {
     const auto isOutgoing = isOutgoingPosition();
     const auto isChat = Item_->isChat();
     const auto avatarWidth = MessageStyle::getAvatarSize() + MessageStyle::getAvatarRightMargin();
 
-    auto widgetContentLeftMargin = MessageStyle::getLeftMargin(isOutgoing, widgetWidth);
+    auto widgetContentLeftMargin = MessageStyle::getLeftMargin(isOutgoing, _widgetWidth);
     if (!isOutgoing)
         widgetContentLeftMargin -= avatarWidth;
 
-    const auto widgetContentRightMargin = MessageStyle::getRightMargin(isOutgoing, widgetWidth, Item_->getChatAimid());
+    const auto widgetContentRightMargin = MessageStyle::getRightMargin(isOutgoing, _widgetWidth, Item_->isMultiselected());
 
     im_assert(widgetContentLeftMargin > 0);
     im_assert(widgetContentRightMargin > 0);
 
-    auto widgetContentWidth = widgetWidth - (widgetContentLeftMargin + widgetContentRightMargin);
+    auto widgetContentWidth = _widgetWidth - (widgetContentLeftMargin + widgetContentRightMargin);
 
     auto itemMaxWidth = Item_->getMaxWidth();
     if (itemMaxWidth > 0 && Item_->isBubbleRequired())
         itemMaxWidth += getBubbleLeftPadding() + getBubbleRightPadding();
 
-    const auto maxWidth = [itemMaxWidth, isChat, isOutgoing, avatarWidth, widgetContentWidth]()
-    {
-        auto res = MessageStyle::getMessageMaxWidth();
-        if (itemMaxWidth > 0)
-            res = std::min(itemMaxWidth, res);
-        if (isChat && !isOutgoing)
-            res += avatarWidth;
+    const bool onlyTextAndCodeBlocks = Item_->hasOnlyTextAndExpandableBlocks();
 
-        return std::min(widgetContentWidth, res);
-    }();
+    auto messageMaxWidth = onlyTextAndCodeBlocks ? MessageStyle::getTextCodeMessageMaxWidth() : MessageStyle::getMessageMaxWidth();
+    if (itemMaxWidth > 0)
+        messageMaxWidth = std::min(itemMaxWidth, messageMaxWidth);
+    if (isChat && !isOutgoing)
+        messageMaxWidth += avatarWidth;
+
+    const auto maxWidth = std::min(widgetContentWidth, messageMaxWidth);
 
     if (widgetContentWidth > maxWidth)
     {
@@ -445,12 +442,11 @@ QRect ComplexMessageItemLayout::setBlocksGeometry(
     return QRect(blocksLeft, topY, blocksWidth, blocksHeight);
 }
 
-void ComplexMessageItemLayout::setGeometryInternal(const int32_t widgetWidth)
+void ComplexMessageItemLayout::setGeometryInternal(const int32_t _widgetWidth)
 {
-    auto widgetContentLtr = evaluateWidgetContentLtr(widgetWidth);
+    const QRect widgetContentLtr = evaluateWidgetContentLtr(_widgetWidth);
 
-    const auto enoughSpace = (widgetContentLtr.width() > MessageStyle::getBubbleHorPadding());
-    if (!enoughSpace)
+    if (widgetContentLtr.width() <= MessageStyle::getBubbleHorPadding())
         return;
 
     AvatarRect_ = (Item_->isChat() && !isOutgoingPosition()) ? evaluateAvatarRect(widgetContentLtr) : QRect(); // vertical pos invalid at this point

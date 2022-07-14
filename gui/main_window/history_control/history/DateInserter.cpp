@@ -7,6 +7,7 @@
 
 #include "../HistoryControlPageItem.h"
 #include "../../contact_list/ContactListModel.h"
+#include "../complex_message/ComplexMessageItem.h"
 
 namespace hist
 {
@@ -14,14 +15,14 @@ namespace hist
         : QObject(_parent), contact_(_contact)
     {
     }
-    bool DateInserter::needDate(const Logic::MessageKey& prev, const Logic::MessageKey& key)
+    bool DateInserter::needDate(const Logic::MessageKey& _prev, const Logic::MessageKey& _key)
     {
-        return needDate(prev.getDate(), key.getDate());
+        return needDate(_prev.getDate(), _key.getDate());
     }
 
-    bool DateInserter::needDate(const QDate& prev, const QDate& key)
+    bool DateInserter::needDate(const QDate& _prev, const QDate& _key)
     {
-        return prev != key;
+        return _prev != _key;
     }
 
     bool DateInserter::isChat() const
@@ -29,17 +30,17 @@ namespace hist
         return Utils::isChat(contact_);
     }
 
-    Logic::MessageKey DateInserter::makeDateKey(const Logic::MessageKey& key) const
+    Logic::MessageKey DateInserter::makeDateKey(const Logic::MessageKey& _key) const
     {
-        auto dateKey = key;
+        auto dateKey = _key;
         dateKey.setType(core::message_type::undefined);
-        dateKey.setControlType(Logic::control_type::ct_date);
+        dateKey.setControlType(Logic::ControlType::Date);
         return dateKey;
     }
 
-    std::unique_ptr<QWidget> DateInserter::makeDateItem(const Logic::MessageKey& key, int width, QWidget* parent) const
+    Data::MessageBuddy DateInserter::makeDateMessage(const Logic::MessageKey& _key) const
     {
-        const auto& dateKey = key.isDate() ? makeDateKey(key) : key;
+        const auto& dateKey = _key.isDate() ? makeDateKey(_key) : _key;
         Data::MessageBuddy message;
         message.Id_ = dateKey.getId();
         message.Prev_ = dateKey.getPrev();
@@ -49,6 +50,17 @@ namespace hist
         message.SetDate(dateKey.getDate());
         message.SetType(core::message_type::undefined);
 
-        return hist::MessageBuilder::makePageItem(message, width, parent);
+        return message;
+    }
+
+    std::unique_ptr<Ui::HistoryControlPageItem> DateInserter::makeDateItem(const Logic::MessageKey& _key, int _width, QWidget* _parent) const
+    {
+        Data::MessageBuddy message = makeDateMessage(_key);
+        return hist::MessageBuilder::makePageItem(message, _width, _parent);
+    }
+
+    std::unique_ptr<Ui::HistoryControlPageItem> DateInserter::makeDateItem(const Data::MessageBuddy& _message, int _width, QWidget* _parent) const
+    {
+        return hist::MessageBuilder::makePageItem(_message, _width, _parent);
     }
 }

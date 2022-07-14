@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../types/message.h"
+#include "../../main_window/tray/RecentMessagesAlert.h"
 
 class QPainter;
 
@@ -22,7 +23,7 @@ namespace Ui
         void closed(const QString&, const QString&, qint64);
 
     public:
-        MessageAlertWidget(const Data::DlgState& _state, QWidget* _parent);
+        MessageAlertWidget(const Data::DlgState& _state, Ui::AlertType _alertType, QWidget* _parent);
         virtual ~MessageAlertWidget();
 
         QString id() const;

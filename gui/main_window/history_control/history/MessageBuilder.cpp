@@ -32,8 +32,7 @@ namespace hist::MessageBuilder
         if (_msg.IsDeleted())
             return nullptr;
 
-        const auto isServiceMessage = (!_msg.IsBase() && !_msg.IsFileSharing() && !_msg.IsSticker() && !_msg.IsChatEvent() && !_msg.IsVoipEvent());
-        if (isServiceMessage)
+        if (_msg.IsServiceMessage())
         {
             auto serviceMessageItem = std::make_unique<Ui::ServiceMessageItem>(_parent);
             serviceMessageItem->setContact(_msg.AimId_);
@@ -52,7 +51,6 @@ namespace hist::MessageBuilder
         {
             auto item = std::make_unique<Ui::ChatEventItem>(_parent, _msg.GetChatEvent(), _msg.Id_, _msg.Prev_);
             item->setContact(_msg.AimId_);
-            item->updateStyle();
             item->setHasAvatar(false);
             if (_itemWidth > 0)
                 item->setFixedWidth(_itemWidth);
@@ -111,20 +109,6 @@ namespace hist::MessageBuilder
         {
             item->updateFriendly(_aimId, _friendly);
         });
-
-        if (Features::isSpellCheckEnabled()/* && item->isEditable()*/)
-        {
-            QObject::connect(Ui::get_gui_settings(), &Ui::qt_gui_settings::changed, item.get(), [item = item.get()](const QString& _text)
-            {
-                if (_text == ql1s(settings_spell_check))
-                    item->updateStyle();
-            });
-
-            QObject::connect(&spellcheck::Spellchecker::instance(), &spellcheck::Spellchecker::dictionaryChanged, item.get(), [item = item.get()]()
-            {
-                item->updateStyle();
-            });
-        }
 
         QObject::connect(
             item.get(),

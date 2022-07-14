@@ -31,7 +31,8 @@ namespace core
 
             hide_chat(wim_packet_params _params, const std::string& _aimid, int64_t _last_msg_id);
             virtual ~hide_chat();
-            virtual std::string_view get_method() const override;
+            std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
         };
 
     }

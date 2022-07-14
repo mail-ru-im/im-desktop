@@ -1,3 +1,5 @@
+#include "stdafx.h"
+
 #include "SlideController.h"
 
 namespace Utils
@@ -35,6 +37,7 @@ public:
     void rollFrame(QTransform& _transform, const QRectF& _rect, qreal _value, int _frame) const;
     void rotateFrame(QTransform& _transform, const QRectF& _rect, qreal _value, int _frame) const;
     void shearFrame(QTransform& _transform, const QRectF& _rect, qreal _value, int _frame) const;
+    void clearCache();
 };
 
 
@@ -206,10 +209,28 @@ void SlideControllerPrivate::renderFrame(int _frame, double _value, QPainter& _p
     _painter.resetTransform();
 }
 
+void SlideControllerPrivate::clearCache()
+{
+    // erase pixmaps and free the memory according to caching policy
+    switch (caching_)
+    {
+    case SlideController::CachingPolicy::CacheNone: // release all pixmaps
+        frames_[0] = QPixmap();
+        frames_[1] = QPixmap();
+        backbuffer_ = QPixmap();
+        break;
+    case SlideController::CachingPolicy::CacheCurrent: // release all but current pixmap
+        frames_[1] = QPixmap();
+        backbuffer_ = QPixmap();
+        break;
+    default: // do not release anything
+        break;
+    }
+}
 
 SlideController::SlideController(QWidget* _parent)
     : QObject(_parent)
-    , d(new SlideControllerPrivate(this))
+    , d(std::make_unique<SlideControllerPrivate>(this))
 {
     d->overlay_->setParent(_parent);
     connect(d->timeLine_, &QTimeLine::valueChanged, this, &SlideController::render);
@@ -341,13 +362,14 @@ void SlideController::setEnabled(bool _on)
     {
         if (_on)
         {
-            connect(d->widget_, &QStackedWidget::currentChanged, this, &SlideController::onCurrentChange);
+            connect(d->widget_, &QStackedWidget::currentChanged, this, &SlideController::onCurrentChange, Qt::UniqueConnection);
             d->widget_->installEventFilter(this);
         }
         else
         {
             disconnect(d->widget_);
             d->widget_->removeEventFilter(this);
+            d->clearCache();
         }
     }
     d->enabled_ = _on;
@@ -413,6 +435,9 @@ bool SlideController::eventFilter(QObject* _object, QEvent* _event)
 {
     static bool lock = false;
 
+    if (d->previousIndex_ == -1)
+        return false;
+
     if (_object == d->widget_)
     {
         if (_event->type() == QEvent::Resize)
@@ -424,7 +449,7 @@ bool SlideController::eventFilter(QObject* _object, QEvent* _event)
             QWidget* current = currentWidget();
             QWidget* previous = widget(d->previousIndex_);
             QRect r = current->rect();
-            if (!lock)
+            if (!lock && previous)
             {
                 lock = true;
                 d->frames_[0] = current->grab(r);
@@ -467,6 +492,9 @@ void SlideController::onCurrentChange(int _index)
     if (!isEnabled())
         return;
 
+    if (d->previousIndex_ == -1)
+        return;
+
     QWidget* w = currentWidget();
 
     d->cursor_ = d->widget_->cursor(); // save current cursor
@@ -499,9 +527,21 @@ void SlideController::onCurrentChange(int _index)
 
 void SlideController::onAnimationFinished()
 {
+    if (!d->widget_)
+    {
+        d->clearCache();
+        return;
+    }
+
     d->widget_->setCursor(d->cursor_); // restore cursor
 
     QWidget* w = currentWidget();
+    if (!w)
+    {
+        d->clearCache();
+        return;
+    }
+
     d->opacity_ = 0.0;
     w->updateGeometry();
 
@@ -509,20 +549,7 @@ void SlideController::onAnimationFinished()
 
     Q_EMIT currentIndexChanged(currentIndex(), QPrivateSignal{});
     // erase pixmaps and free the memory according to caching policy
-    switch (d->caching_)
-    {
-    case SlideController::CachingPolicy::CacheNone: // release all pixmaps
-        d->frames_[0] = QPixmap();
-        d->frames_[1] = QPixmap();
-        d->backbuffer_ = QPixmap();
-        break;
-    case SlideController::CachingPolicy::CacheCurrent: // release all but current pixmap
-        d->frames_[1] = QPixmap();
-        d->backbuffer_ = QPixmap();
-        break;
-    default: // do not release anything
-        break;
-    }
+    d->clearCache();
 }
 
 void SlideController::render(double _value)

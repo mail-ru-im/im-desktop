@@ -2,6 +2,7 @@
 
 #include "authorization.h"
 #include "utils/gui_coll_helper.h"
+#include "../main_window/mini_apps/MiniAppsUtils.h"
 
 namespace Data
 {
@@ -28,8 +29,11 @@ namespace Data
         }
     }
 
-    const QString& AuthParams::getMiniAppAimsid(const QString& _miniAppId) const
+    const QString& AuthParams::getMiniAppAimsid(const QString& _miniAppId, bool _canUseMainAimisid) const
     {
+        if (_canUseMainAimisid && Utils::MiniApps::isAppUseMainAimsid(_miniAppId))
+            return aimsid_;
+
         if (auto it = miniApps_.find(_miniAppId); it != miniApps_.end())
             return it->second.aimsid_;
 

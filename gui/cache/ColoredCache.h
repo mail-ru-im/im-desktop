@@ -48,6 +48,11 @@ namespace Utils
 
         inline const T& get(const QString& _aimId) const { return get(var_, _aimId); }
 
+        void clear()
+        {
+            cache_.clear();
+        }
+
     private:
         Styling::StyleVariable var_;
         QString aimId_;

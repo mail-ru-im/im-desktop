@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../common.shared/threads/thread_types.h"
+#include "chat_member.h"
 
 namespace core
 {
@@ -35,7 +36,7 @@ namespace Data
         QString chat_;
         int64_t msgId_ = -1;
 
-        static QString getChat(const std::shared_ptr<ParentTopic>& _topic);
+        static QString getChat(const ParentTopic* _topic);
 
         void serialize(core::coll_helper& _coll) const override;
         void unserialize(const core::coll_helper& _coll) override;
@@ -63,6 +64,24 @@ namespace Data
         int64_t yoursLastRead_ = -1;
         int64_t yoursLastReadMention_ = -1;
         bool isSubscriber_ = false;
+
+        void unserialize(const core::coll_helper& _coll);
+    };
+
+    struct ThreadInfoShort
+    {
+        QString parentChatId_;
+        int64_t msgId_ = -1;
+        bool areYouSubscriber_ = false;
+        bool isTaskThread_ = false;
+    };
+
+    struct ThreadInfo : public ThreadInfoShort
+    {
+        QString threadId_;
+        int subscribersCount_ = -1;
+
+        QVector<Data::ChatMemberInfo> subscribers_;
 
         void unserialize(const core::coll_helper& _coll);
     };

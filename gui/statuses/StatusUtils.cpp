@@ -93,4 +93,10 @@ namespace Statuses
         else
             Utils::showTextToastOverContactDialog(QT_TRANSLATE_NOOP("status_popup", "Status is set for %1").arg(Statuses::getTimeString(_time)));
     }
+
+    const Status& getBotStatus()
+    {
+        static const Status botStatus(Emoji::EmojiCode::toQString(Emoji::EmojiCode(0x1F916)), QT_TRANSLATE_NOOP("status_plate", "Bot"));
+        return botStatus;
+    }
 }

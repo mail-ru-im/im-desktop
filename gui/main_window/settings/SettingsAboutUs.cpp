@@ -27,7 +27,7 @@ void GeneralSettingsWidget::Creator::initAbout(QWidget* _parent)
 {
     auto scrollArea = CreateScrollAreaAndSetTrScrollBarV(_parent);
     scrollArea->setWidgetResizable(true);
-    scrollArea->setStyleSheet(ql1s("QWidget{border: none; background-color: %1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
+    scrollArea->setStyleSheet(ql1s("QWidget{border: none; background-color: transparent;}"));
     Utils::grabTouchWidget(scrollArea->viewport(), true);
 
     auto scrollAreaWidget = new QWidget(scrollArea);
@@ -54,7 +54,7 @@ void GeneralSettingsWidget::Creator::initAbout(QWidget* _parent)
         mainLayout->setAlignment(Qt::AlignTop);
         mainLayout->setSpacing(0);
         {
-            const auto textColor = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
+            const auto textColor = Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID };
             auto aboutWidget = new QWidget(mainWidget);
             auto aboutLayout = Utils::emptyVLayout(aboutWidget);
             Utils::grabTouchWidget(aboutWidget);
@@ -69,14 +69,45 @@ void GeneralSettingsWidget::Creator::initAbout(QWidget* _parent)
                 Testing::setAccessibleName(versionText, qsl("AS AboutUsPage versionText"));
                 aboutLayout->addWidget(versionText);
             }
+            if (Features::hasRegistryAbout())
             {
+                aboutLayout->addSpacing(Utils::scale_value(20));
+                auto registrylLabel = new TextEmojiWidget(aboutWidget, Fonts::appFontScaled(15), textColor);
+                Utils::grabTouchWidget(registrylLabel);
+                registrylLabel->setMultiline(true);
+                registrylLabel->setText(QT_TRANSLATE_NOOP("about_us", "The product is registered in the Unified Register of Russian Software and Databases"));
+                aboutLayout->addWidget(registrylLabel);
+
+                auto registryButton = new QPushButton(aboutWidget);
+                auto registryLayout = Utils::emptyVLayout(registryButton);
+                registryButton->setFlat(true);
+                registryButton->setStyleSheet(qsl("background-color: transparent;"));
+                registryButton->setSizePolicy(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Fixed);
+                registryButton->setCursor(QCursor(Qt::CursorShape::PointingHandCursor));
+                registryLayout->setAlignment(Qt::AlignTop);
+                {
+                    auto registryLink = new TextEmojiWidget(registryButton, Fonts::appFontScaled(15), Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY });
+                    Utils::grabTouchWidget(registryLink);
+                    registryLink->setHoverColor(Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_HOVER });
+                    registryLink->setActiveColor(Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_ACTIVE });
+                    registryLink->setText(QT_TRANSLATE_NOOP("about_us", "https://reestr.digital.gov.ru/reestr/307994/"));
+                    connect(registryButton, &QPushButton::pressed, [registryLink]()
+                        {
+                            QDesktopServices::openUrl(registryLink->text());
+                        });
+                    registryButton->setFixedHeight(registryLink->height());
+                    registryLayout->addWidget(registryLink);
+                }
+                aboutLayout->addWidget(registryButton);
+            }
+            {
+                aboutLayout->addSpacing(Utils::scale_value(20));
                 auto opensslLabel = new TextEmojiWidget(aboutWidget, Fonts::appFontScaled(15), textColor);
                 Utils::grabTouchWidget(opensslLabel);
                 opensslLabel->setMultiline(true);
                 opensslLabel->setText(QT_TRANSLATE_NOOP("about_us", "This product includes software developed by the OpenSSL project for use in the OpenSSL Toolkit"));
                 Testing::setAccessibleName(opensslLabel, qsl("AS AboutUsPage opensslLabel"));
                 aboutLayout->addWidget(opensslLabel);
-                aboutLayout->addSpacing(Utils::scale_value(20));
             }
             {
                 auto opensslButton = new QPushButton(aboutWidget);
@@ -87,10 +118,10 @@ void GeneralSettingsWidget::Creator::initAbout(QWidget* _parent)
                 opensslButton->setCursor(QCursor(Qt::CursorShape::PointingHandCursor));
                 opensslLayout->setAlignment(Qt::AlignTop);
                 {
-                    auto opensslLink = new TextEmojiWidget(opensslButton, Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
+                    auto opensslLink = new TextEmojiWidget(opensslButton, Fonts::appFontScaled(15), Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY });
                     Utils::grabTouchWidget(opensslLink);
-                    opensslLink->setHoverColor(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_HOVER));
-                    opensslLink->setActiveColor(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_ACTIVE));
+                    opensslLink->setHoverColor(Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_HOVER });
+                    opensslLink->setActiveColor(Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_ACTIVE });
                     opensslLink->setText(QT_TRANSLATE_NOOP("about_us", "https://openssl.org"));
                     connect(opensslButton, &QPushButton::pressed, [opensslLink]()
                     {
@@ -121,6 +152,15 @@ void GeneralSettingsWidget::Creator::initAbout(QWidget* _parent)
                 Testing::setAccessibleName(emojiLabel, qsl("AS AboutUsPage emojiLabel"));
                 aboutLayout->addWidget(emojiLabel);
                 aboutLayout->addSpacing(Utils::scale_value(20));
+            }
+
+            if (Features::hasRegistryAbout())
+            {
+                auto registryCopyrightLabel = new TextEmojiWidget(aboutWidget, Fonts::appFontScaled(15), textColor);
+                Utils::grabTouchWidget(registryCopyrightLabel);
+                const auto aboutUs = QT_TRANSLATE_NOOP("about_us", "registry_copyright");
+                registryCopyrightLabel->setText(aboutUs % u", " % QDate::currentDate().toString(u"yyyy"));
+                aboutLayout->addWidget(registryCopyrightLabel);
             }
             {
                 auto copyrightLabel = new TextEmojiWidget(aboutWidget, Fonts::appFontScaled(15), textColor);
@@ -155,7 +195,7 @@ void GeneralSettingsWidget::Creator::initAbout(QWidget* _parent)
                 betaLayout->setContentsMargins(Utils::scale_value(20), 0, 0, 0);
 
                 {
-                    auto betaDescription = new TextEmojiWidget(aboutWidget, Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY_HOVER));
+                    auto betaDescription = new TextEmojiWidget(aboutWidget, Fonts::appFontScaled(15), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY_HOVER });
                     Utils::grabTouchWidget(betaDescription);
                     betaDescription->setMultiline(true);
                     betaDescription->setText(QT_TRANSLATE_NOOP("about_us", "Beta version contains new features, but it is not complete yet.\nYou can leave your feedback or report an error here:"));
@@ -170,10 +210,10 @@ void GeneralSettingsWidget::Creator::initAbout(QWidget* _parent)
                     betachatButton->setCursor(QCursor(Qt::CursorShape::PointingHandCursor));
                     betachatLayout->setAlignment(Qt::AlignTop);
                     {
-                        auto betachatLink = new TextEmojiWidget(betachatButton, Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
+                        auto betachatLink = new TextEmojiWidget(betachatButton, Fonts::appFontScaled(15), Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY });
                         Utils::grabTouchWidget(betachatLink);
-                        betachatLink->setHoverColor(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_HOVER));
-                        betachatLink->setActiveColor(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_ACTIVE));
+                        betachatLink->setHoverColor(Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_HOVER });
+                        betachatLink->setActiveColor(Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_ACTIVE });
                         betachatLink->setText(QT_TRANSLATE_NOOP("about_us", "https://icq.im/desktopbeta"));
                         connect(betachatButton, &QPushButton::pressed, []()
                         {

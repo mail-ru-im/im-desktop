@@ -3,6 +3,7 @@
 #include "../../../http_request.h"
 #include "../../../../common.shared/json_helper.h"
 #include "archive/history_message.h"
+#include "../log_replace_functor.h"
 
 #include "add_reaction.h"
 
@@ -32,6 +33,11 @@ bool add_reaction::is_reactions_for_message_disabled() const
 std::string_view add_reaction::get_method() const
 {
     return "reaction/add";
+}
+
+int add_reaction::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t add_reaction::init_request(const std::shared_ptr<http_request_simple>& _request)

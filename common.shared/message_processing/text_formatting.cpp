@@ -20,6 +20,7 @@ namespace
     constexpr std::string_view c_format_quote = "quote";
     constexpr std::string_view c_format_offset = "offset";
     constexpr std::string_view c_format_length = "length";
+    constexpr std::string_view c_format_start_index = "startIndex";
     constexpr std::string_view c_format_data = "data";
     constexpr std::string_view c_format_lang = "lang";
 }
@@ -170,6 +171,7 @@ namespace core::data
             auto result = core::data::range();
             tools::unserialize_value(_value, c_format_offset, result.offset_);
             tools::unserialize_value(_value, c_format_length, result.size_);
+            tools::unserialize_value(_value, c_format_start_index, result.start_index_);
             return result;
         };
 
@@ -208,8 +210,7 @@ namespace core::data
         im_assert(std::is_sorted(formats_.cbegin(), formats_.cend()));
         im_assert(std::is_sorted(_other.formats_.cbegin(), _other.formats_.cend()));
 
-        const auto& otherFormats = _other.formats();
-        return std::equal(formats_.cbegin(), formats_.cend(), otherFormats.cbegin(), otherFormats.cend());
+        return formats_ == _other.formats();
     }
 
     rapidjson::Value core::data::format::serialize(rapidjson_allocator& _a) const
@@ -219,6 +220,8 @@ namespace core::data
             rapidjson::Value result(rapidjson::Type::kObjectType);
             result.AddMember("offset", _entry.range_.offset_, _a);
             result.AddMember("length", _entry.range_.size_, _a);
+            if (_entry.range_.start_index_ > 1)
+                result.AddMember("startIndex", _entry.range_.start_index_, _a);
 
             if (_entry.data_)
             {
@@ -256,6 +259,18 @@ namespace core::data
 
         if (auto it = std::remove_if(formats_.begin(), formats_.end(), _pred); it != formats_.end())
             formats_.erase(it, formats_.end());
+    }
+
+    void format::add_start_index_to_ordered_list(int _start_index)
+    {
+        for (auto& f : formats_)
+        {
+            if (f.type_ == format_type::ordered_list)
+            {
+                f.range_.start_index_ = _start_index;
+                return;//since formats are sorted we need to apply startIndex only to the first ordered_list
+            }
+        }
     }
 
     void format::sort()

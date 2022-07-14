@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "../../../http_request.h"
+#include "../log_replace_functor.h"
 
 #include "create_task.h"
 
@@ -18,17 +19,22 @@ namespace core::wim
         return "add";
     }
 
+    int create_task::minimal_supported_api_version() const
+    {
+        return core::urls::api_version::instance().minimal_supported();
+    }
+
     int32_t create_task::init_request(const std::shared_ptr<core::http_request_simple>& _request)
     {
         rapidjson::Document doc(rapidjson::Type::kObjectType);
         auto& a = doc.GetAllocator();
-        
+
         rapidjson::Value node_params(rapidjson::Type::kObjectType);
         task_.serialize(node_params, a);
         doc.AddMember("params", std::move(node_params), a);
-        
+
         setup_common_and_sign(doc, a, _request, get_method(), robusto_packet::use_aimsid::yes, urls::url_type::tasks_host);
-        
+
         if (!robusto_packet::params_.full_log_)
         {
             log_replace_functor f;

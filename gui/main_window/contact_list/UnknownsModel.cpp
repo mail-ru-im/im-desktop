@@ -11,6 +11,7 @@
 #include "../../utils/utils.h"
 #include "../common.shared/config/config.h"
 #include "../containers/StatusContainer.h"
+#include "Common.h"
 
 namespace
 {
@@ -19,7 +20,7 @@ namespace
 
 namespace Logic
 {
-    std::unique_ptr<UnknownsModel> g_unknownsModel;
+    QObjectUniquePtr<UnknownsModel> g_unknownsModel;
 
     UnknownsModel::UnknownsModel(QObject* _parent)
         : CustomAbstractListModel(_parent)
@@ -504,7 +505,7 @@ namespace Logic
     UnknownsModel* getUnknownsModel()
     {
         if (!g_unknownsModel)
-            g_unknownsModel = std::make_unique<UnknownsModel>(nullptr);
+            g_unknownsModel = makeUniqueQObjectPtr<UnknownsModel>();
 
         return g_unknownsModel.get();
     }

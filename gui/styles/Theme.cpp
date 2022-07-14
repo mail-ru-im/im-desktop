@@ -91,8 +91,10 @@ namespace Styling
     Theme::Theme()
         : id_(qsl("default"))
         , name_(qsl("Noname"))
+        , idHash_(qHash(id_))
         , underlinedLinks_(false)
         , isDark_(false)
+        , isHidden_(false)
     {
     }
 
@@ -125,8 +127,12 @@ namespace Styling
         JsonUtils::unserialize_value(_node, "name", name_);
         JsonUtils::unserialize_value(_node, "underline", underlinedLinks_);
         JsonUtils::unserialize_value(_node, "dark", isDark_);
+        JsonUtils::unserialize_value(_node, "hidden", isHidden_);
+        QString id;
+        unserializeWallpaperId(_node, "defaultWallpaper", id);
+        defaultWallpaperId_.setId(id);
 
-        unserializeWallpaperId(_node, "defaultWallpaper", defaultWallpaperId_.id_);
+        idHash_ = qHash(id_);
     }
 
     bool Theme::isWallpaperAvailable(const WallpaperId& _wallpaperId) const
@@ -156,7 +162,9 @@ namespace Styling
         if (const auto nodeIter = _node.FindMember("style"); nodeIter->value.IsObject() && !nodeIter->value.ObjectEmpty())
             Style::unserialize(nodeIter->value);
 
-        unserializeWallpaperId(_node, "id", id_.id_);
+        QString id;
+        unserializeWallpaperId(_node, "id", id);
+        id_.setId(id);
 
         JsonUtils::unserialize_value(_node, "need_border", needBorder_);
         JsonUtils::unserialize_value(_node, "preview", previewUrl_);

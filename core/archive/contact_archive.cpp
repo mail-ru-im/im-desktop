@@ -21,6 +21,22 @@
 #include "re2/re2.h"
 #endif
 
+namespace
+{
+    constexpr size_t archive_history_version = 6;
+    constexpr size_t archive_gallery_version = 3;
+
+    std::wstring get_history_filename(const std::wstring& _prefix)
+    {
+        return su::wconcat(_prefix, std::to_wstring(archive_history_version));
+    }
+
+    std::wstring get_gallery_filename(const std::wstring& _prefix)
+    {
+        return su::wconcat(_prefix, std::to_wstring(archive_gallery_version));
+    }
+}
+
 using namespace core;
 using namespace archive;
 
@@ -41,6 +57,11 @@ contact_archive::contact_archive(std::wstring _archive_path, const std::string& 
 
 
 contact_archive::~contact_archive() = default;
+
+int64_t contact_archive::get_last_msgid() const
+{
+    return index_->get_last_msgid();
+}
 
 void contact_archive::get_messages(int64_t _from, int64_t _count_early, int64_t _count_later, history_block& _messages, get_message_policy policy) const
 {
@@ -213,6 +234,14 @@ void contact_archive::make_holes()
 bool contact_archive::is_gallery_hole_requested() const
 {
     return gallery_->is_hole_requested();
+}
+
+void contact_archive::invaliadte_history()
+{
+    bool first_load = false;
+    load_from_local(first_load);
+    index_->invalidate();
+    index_->save_all();
 }
 
 void contact_archive::invalidate_message_data(const std::vector<int64_t>& _ids)
@@ -624,17 +653,20 @@ const draft& contact_archive::get_draft()
 
 std::wstring_view archive::db_filename() noexcept
 {
-    return L"_db3";
+    static std::wstring filename = get_history_filename(L"_db");
+    return filename;
 }
 
 std::wstring_view archive::index_filename() noexcept
 {
-    return L"_idx3";
+    static std::wstring filename = get_history_filename(L"_idx");
+    return filename;
 }
 
 std::wstring_view archive::dlg_state_filename() noexcept
 {
-    return L"_ste3";
+    static std::wstring filename = get_history_filename(L"_ste");
+    return filename;
 }
 
 std::wstring_view archive::cache_filename() noexcept
@@ -649,12 +681,14 @@ std::wstring_view archive::mentions_filename() noexcept
 
 std::wstring_view archive::gallery_cache_filename() noexcept
 {
-    return L"_gc3";
+    static std::wstring filename = get_gallery_filename(L"_gc");
+    return filename;
 }
 
 std::wstring_view archive::gallery_state_filename() noexcept
 {
-    return L"_gs3";
+    static std::wstring filename = get_gallery_filename(L"_gs");
+    return filename;
 }
 
 std::wstring_view archive::reactions_index_filename() noexcept

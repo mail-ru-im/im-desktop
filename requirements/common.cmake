@@ -1,11 +1,15 @@
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.19)
 
 message(STATUS "")
 message(STATUS "[CMAKE]")
 message(STATUS "[CMAKE] including <requirements/common.cmake>")
 message(STATUS "[CMAKE]")
 
-set(DOWNLOADS_PATH "${ICQ_ROOT}/downloads")
+if(NOT DOWNLOADS_PATH)
+    message(STATUS "[CMAKE] Set custom DOWNLOADS_PATH")
+    set(DOWNLOADS_PATH "${ICQ_ROOT}/downloads")
+endif()
+message(STATUS "[CMAKE] DOWNLOADS_PATH = ${DOWNLOADS_PATH}")
 set(ICQ_EXTERNAL "${ICQ_ROOT}/external_deps")
 
 set(EXT_LIBS_VERSION "v42")
@@ -13,9 +17,9 @@ set(deps_ver_qt_utils "v13")
 
 # Inform QA team if the variable is deleted, moved or the name will be changed
 if(IM_QT_DYNAMIC)
-    set(VOIP_LIBS_VERSION "3.6.5.2097") #dynamic
+    set(VOIP_LIBS_VERSION "3.8.6.2280") #dynamic
 else()
-    set(VOIP_LIBS_VERSION "3.6.5.2099") #static
+    set(VOIP_LIBS_VERSION "3.8.6.2280") #static
 endif()
 
 set(DOWNLOADS_URL "https://hb.bizmrg.com/icq-www")
@@ -64,8 +68,8 @@ function(common_download_file URL FILENAME MD5_FILENAME)
     message(STATUS "[downloading] Downloading the file")
     file(DOWNLOAD "${URL}" "${FILENAME}"
          SHOW_PROGRESS
-         TIMEOUT 900
-         INACTIVITY_TIMEOUT 900
+         TIMEOUT 3600
+         INACTIVITY_TIMEOUT 3600
          TLS_VERIFY ON
          STATUS DOWNLOAD_STATE)
 

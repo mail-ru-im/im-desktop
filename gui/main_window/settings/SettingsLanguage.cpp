@@ -66,8 +66,7 @@ void GeneralSettingsWidget::Creator::initLanguage(QWidget* _parent)
     auto scrollAreaWidget = new QWidget(scrollArea);
     Utils::grabTouchWidget(scrollAreaWidget);
     Testing::setAccessibleName(scrollAreaWidget, qsl("AS LanguagePage scrollAreaWidget"));
-    scrollArea->setStyleSheet(ql1s("QWidget{border: none; background-color: %1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
-    //scrollAreaWidget->setStyleSheet(scrollAreaWidget->styleSheet() % u("background-color: green;");
+    scrollArea->setStyleSheet(ql1s("QWidget{border: none; background-color: transparent;}"));
 
     auto scrollAreaLayout = Utils::emptyVLayout(scrollAreaWidget);
     scrollAreaLayout->setAlignment(Qt::AlignTop);
@@ -112,17 +111,15 @@ void GeneralSettingsWidget::Creator::initLanguage(QWidget* _parent)
 
         list->setCurrentIndex(li);
 
-        QObject::connect(list, &SimpleListWidget::clicked, list, [&ls, lc, list, restartLabel](int idx)
+        QObject::connect(list, &SimpleListWidget::clicked, list, [&ls, list, li, restartLabel](int _idx)
         {
-            if (idx < 0 && idx >= int(ls.size()))
+            if (_idx < 0 && _idx >= int(ls.size()))
                 return;
             const static auto sl = get_gui_settings()->get_value(settings_language, QString());
-            const auto lang = stringToLanguage(ls[idx]);
-            get_gui_settings()->set_value(settings_language, lang);
-            Utils::GetTranslator()->updateLocale();
-            list->setCurrentIndex(idx);
+            const auto lang = stringToLanguage(ls[_idx]);
             if (sl != lang)
             {
+                list->setCurrentIndex(_idx);
                 restartLabel->show();
 
                 const QString text = QT_TRANSLATE_NOOP("popup_window", "To change the language you must restart the application. Continue?");
@@ -137,14 +134,15 @@ void GeneralSettingsWidget::Creator::initLanguage(QWidget* _parent)
 
                 if (confirmed)
                 {
+                    get_gui_settings()->set_value(settings_language, lang);
+                    Utils::GetTranslator()->updateLocale();
                     Utils::restartApplication();
-
-                    return;
                 }
-            }
-            else
-            {
-                restartLabel->hide();
+                else
+                {
+                    list->setCurrentIndex(li);
+                    restartLabel->hide();
+                }
             }
         }, Qt::UniqueConnection);
 

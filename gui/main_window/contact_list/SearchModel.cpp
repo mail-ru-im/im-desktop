@@ -7,16 +7,18 @@
 
 #include "../../search/ContactSearcher.h"
 #include "../../search/MessageSearcher.h"
+#include "../../search/ThreadSearcher.h"
 
 #include "../../utils/InterConnector.h"
+#include "../../utils/features.h"
 #include "../../core_dispatcher.h"
 #include "../../utils/SearchPatternHistory.h"
 #include "../../cache/avatars/AvatarStorage.h"
 #include "../../gui_settings.h"
-#include "../containers/FriendlyContainer.h"
 #include "../containers/StatusContainer.h"
 
 #include "../../../common.shared/config/config.h"
+#include "ServiceContacts.h"
 
 Q_LOGGING_CATEGORY(searchModel, "searchModel")
 
@@ -40,14 +42,15 @@ namespace Logic
         : AbstractSearchModel(_parent)
         , contactSearcher_(new ContactSearcher(this))
         , messageSearcher_(new MessageSearcher(this))
+        , threadSearcher_(nullptr)
         , isCategoriesEnabled_(true)
         , isSortByTime_(false)
         , isSearchInDialogsEnabled_(true)
         , isSearchInContactsEnabled_(true)
         , localMsgSearchNoMore_(false)
         , timerSearch_(new QTimer(this))
-        , allContactResRcvd_(false)
-        , allMessageResRcvd_(false)
+        , allContactResultsReceived_(false)
+        , allMessageResultsReceived_(false)
         , favoritesOnTop_(false)
     {
         timerSearch_->setSingleShot(true);
@@ -62,8 +65,15 @@ namespace Logic
         connect(messageSearcher_, &MessageSearcher::serverResults, this, &SearchModel::onMessagesServer);
         connect(messageSearcher_, &MessageSearcher::allResults, this, &SearchModel::onMessagesAll);
 
+        allThreadsResultsReceived_ = !Features::isThreadsEnabled();
+        initThreadSearcher();
+
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::repeatSearch, this, &SearchModel::repeatSearch);
-        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::disableSearchInDialog, this, [this]() { setSearchInSingleDialog(QString()); });
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::disableSearchInDialog, this, [this]()
+            {
+                if (!Logic::getContactListModel()->isThread(messageSearcher_->getDialogAimId()))
+                    setSearchInSingleDialog(QString());
+            });
 
         connect(getContactListModel(), &ContactListModel::contact_removed, this, &SearchModel::contactRemoved);
 
@@ -73,7 +83,9 @@ namespace Logic
             avatarLoaded(_aimid);
         });
 
-        for (auto v : { &results_, &contactLocalRes_, &contactServerRes_, &msgLocalRes_, &msgServerRes_})
+        connect(Logic::getContactListModel(), &Logic::ContactListModel::contactChanged, this, &SearchModel::onDataChanged);
+
+        for (auto v : { &results_, &messagesResults_, &threadsResults_, &contactLocalRes_, &contactServerRes_, &msgLocalRes_, &msgServerRes_, &threadsLocalRes_, &threadsServerRes_})
             v->reserve(common::get_limit_search_results());
 
         Logic::getLastSearchPatterns(); // init
@@ -104,12 +116,26 @@ namespace Logic
         }
     }
 
+    void SearchModel::endThreadLocalSearch()
+    {
+        if (Features::isThreadsEnabled() && threadSearcher_)
+            threadSearcher_->endLocalSearch();
+    }
+
     void SearchModel::requestMore()
     {
-        if (messageSearcher_->haveMoreResults() && !messageSearcher_->isDoingServerRequest())
+        if (format_ == SearchFormat::ContactsAndMessages)
         {
-            qCDebug(searchModel) << this << "requested more results from server, currently have" << msgServerRes_.size() << "items";
-            messageSearcher_->requestMoreResults();
+            if (messageSearcher_->haveMoreResults() && !messageSearcher_->isDoingServerRequest())
+            {
+                qCDebug(searchModel) << this << "requested more results from server, currently have" << msgServerRes_.size() << "items";
+                messageSearcher_->requestMoreResults();
+            }
+        }
+        else if (Features::isThreadsEnabled() && threadSearcher_ && threadSearcher_->haveMoreResults() && !threadSearcher_->isDoingServerRequest())
+        {
+            qCDebug(searchModel) << this << "threads requested more results from server, currently have" << threadsServerRes_.size() << "items";
+            threadSearcher_->requestMoreResults();
         }
     }
 
@@ -160,7 +186,7 @@ namespace Logic
             im_assert(!searchPattern_.isEmpty());
             uint32_t src = SearchDataSource::none;
 
-            if (isServerMessagesNeeded())
+            if (isServerMessagesNeeded() || ServiceContacts::isServiceContact(messageSearcher_->getDialogAimId()))
                 src |= SearchDataSource::server;
 
             if (!localMsgSearchNoMore_)
@@ -168,6 +194,17 @@ namespace Logic
 
             messageSearcher_->setSearchSource(static_cast<SearchDataSource>(src));
             messageSearcher_->search(searchPattern_);
+
+            if (Features::isThreadsEnabled() && !messageSearcher_->getDialogAimId().isEmpty())
+            {
+                initThreadSearcher();
+                if(!Logic::getContactListModel()->isThread(threadSearcher_->getDialogAimId())
+                && messageSearcher_->getDialogAimId() != ServiceContacts::getThreadsName())
+                {
+                    threadSearcher_->setSearchSource(SearchDataSource::localAndServer);
+                    threadSearcher_->search(searchPattern_);
+                }
+            }
 
             if (src & SearchDataSource::server)
                 Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chat_search_dialog_server_first_req);
@@ -196,6 +233,7 @@ namespace Logic
             return simpleSort(first, second, sortByTime, searchPattern, favoritesOnTop);
         });
 
+        setMessagesSearchFormat();
         composeResults();
     }
 
@@ -215,12 +253,14 @@ namespace Logic
             }
         }
 
+        setMessagesSearchFormat();
         composeResults();
     }
 
     void SearchModel::onContactsAll()
     {
-        allContactResRcvd_ = true;
+        allContactResultsReceived_ = true;
+        setMessagesSearchFormat();
         composeResults();
     }
 
@@ -229,7 +269,7 @@ namespace Logic
         if (messageSearcher_->getSearchPattern() != searchPattern_)
             return;
 
-        if (messageResServerRcvd_) // if we already have server results - do nothing
+        if (messageServerResultsReceived_) // if we already have server results - do nothing
             return;
 
         msgLocalRes_ = messageSearcher_->getLocalResults();
@@ -252,6 +292,12 @@ namespace Logic
         if (msgLocalRes_.size() > (int)common::get_limit_search_results())
             msgLocalRes_.resize(common::get_limit_search_results());
 
+        for (const auto& res : msgLocalRes_)
+        {
+            if (const auto msg = std::static_pointer_cast<Data::SearchResultMessage>(res); msg && msg->parentTopic_)
+                Logic::getContactListModel()->markAsThread(msg->message_->AimId_, msg->parentTopic_.get());
+        }
+        setMessagesSearchFormat();
         composeResults();
     }
 
@@ -265,8 +311,8 @@ namespace Logic
 
         endLocalSearch();
 
-        messageResServerRcvd_ = true;
-        allMessageResRcvd_ = true;
+        messageServerResultsReceived_ = true;
+        allMessageResultsReceived_ = true;
 
         if (msgServerRes_.isEmpty())
             Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chat_search_dialog_server_first_ans);
@@ -274,6 +320,13 @@ namespace Logic
         msgServerRes_ = messageSearcher_->getServerResults();
         qCDebug(searchModel) << this << "got more results from server, currently have" << msgServerRes_.size() << "items";
 
+        for (const auto& res : msgServerRes_)
+        {
+            if (const auto msg = std::static_pointer_cast<Data::SearchResultMessage>(res); msg && msg->parentTopic_)
+                Logic::getContactListModel()->markAsThread(msg->message_->AimId_, msg->parentTopic_.get());
+        }
+
+        setMessagesSearchFormat();
         composeResults();
     }
 
@@ -283,12 +336,90 @@ namespace Logic
         {
             for (const auto& res : resV)
             {
-                if (const auto msg = std::static_pointer_cast<Data::SearchResultMessage>(res))
-                    Logic::getContactListModel()->markAsThread(msg->message_->threadData_.id_, Data::MessageParentTopic::getChat(msg->message_->threadData_.parentTopic_));
+                if (const auto msg = std::static_pointer_cast<Data::SearchResultMessage>(res); msg && msg->parentTopic_)
+                    Logic::getContactListModel()->markAsThread(msg->message_->AimId_, msg->parentTopic_.get());
             }
         }
 
-        allMessageResRcvd_ = true;
+        allMessageResultsReceived_ = true;
+        setMessagesSearchFormat();
+        composeResults();
+    }
+
+    void SearchModel::onThreadsLocal()
+    {
+        if (threadSearcher_->getSearchPattern() != searchPattern_)
+            return;
+
+        if (threadsServerResultsReceived_) // if we already have server results - do nothing
+            return;
+
+        threadsLocalRes_ = threadSearcher_->getLocalResults();
+        localThreadSearchNoMore_ = threadsLocalRes_.isEmpty();
+
+        std::sort(threadsLocalRes_.begin(), threadsLocalRes_.end(),
+            [](const Data::AbstractSearchResultSptr& _first, const Data::AbstractSearchResultSptr& _second)
+            {
+                if (!_first->isMessage() || !_second->isMessage())
+                    return false;
+
+                const auto msgFirst  = std::static_pointer_cast<Data::SearchResultMessage>(_first);
+                const auto msgSecond = std::static_pointer_cast<Data::SearchResultMessage>(_second);
+
+                return msgFirst->message_->GetTime() > msgSecond->message_->GetTime();
+            });
+
+        if (threadsLocalRes_.size() > (int)common::get_limit_search_results())
+            threadsLocalRes_.resize(common::get_limit_search_results());
+
+        for (const auto& res : threadsLocalRes_)
+        {
+            if (const auto msg = std::static_pointer_cast<Data::SearchResultMessage>(res))
+                Logic::getContactListModel()->markAsThread(msg->message_->AimId_, msg->parentTopic_.get());
+        }
+        setThreadsSearchFormat();
+        composeResults();
+    }
+
+    void SearchModel::onThreadsServer()
+    {
+        if (threadSearcher_->getSearchPattern() != searchPattern_)
+            return;
+
+        if (threadSearcher_->isServerTimedOut())
+            return;
+
+        endThreadLocalSearch();
+
+        threadsServerResultsReceived_ = true;
+        allThreadsResultsReceived_ = true;
+
+        threadsServerRes_ = threadSearcher_->getServerResults();
+        qCDebug(searchModel) << this << "got more results from server, currently have" << threadsServerRes_.size() << "items";
+
+        for (const auto& res : threadsServerRes_)
+        {
+            if (const auto msg = std::static_pointer_cast<Data::SearchResultMessage>(res))
+                Logic::getContactListModel()->markAsThread(msg->message_->AimId_, msg->parentTopic_.get());
+        }
+
+        setThreadsSearchFormat();
+        composeResults();
+    }
+
+    void SearchModel::onThreadsAll()
+    {
+        for (const auto& resV : { threadsLocalRes_, threadsServerRes_ })
+        {
+            for (const auto& res : resV)
+            {
+                if (const auto msg = std::static_pointer_cast<Data::SearchResultMessage>(res))
+                    Logic::getContactListModel()->markAsThread(msg->message_->AimId_, msg->parentTopic_.get());
+            }
+        }
+
+        allThreadsResultsReceived_ = true;
+        setThreadsSearchFormat();
         composeResults();
     }
 
@@ -364,6 +495,12 @@ namespace Logic
         return false;
     }
 
+    bool SearchModel::isDropableItem(const QModelIndex& _index) const
+    {
+        const auto item = results_[_index.row()];
+        return item->isChat() || item->isContact();
+    }
+
     bool SearchModel::isClickableItem(const QModelIndex& _index) const
     {
         if (_index.isValid())
@@ -394,15 +531,22 @@ namespace Logic
     void SearchModel::clear()
     {
         timerSearch_->stop();
+        setMessagesSearchFormat();
 
         contactSearcher_->clear();
         messageSearcher_->clear();
+        if (Features::isThreadsEnabled() && threadSearcher_)
+            threadSearcher_->clear();
+        allContactResultsReceived_ = !isSearchInContacts();
+        allMessageResultsReceived_ = !isSearchInDialogs();
+        messageServerResultsReceived_ = false;
+        if (Features::isThreadsEnabled())
+        {
+            allThreadsResultsReceived_ = !isSearchInDialogs();
+            threadsServerResultsReceived_ = false;
+        }
 
-        allContactResRcvd_ = !isSearchInContacts();
-        allMessageResRcvd_ = !isSearchInDialogs();
-        messageResServerRcvd_ = false;
-
-        for (auto v : { &results_, &contactLocalRes_, &contactServerRes_, &msgLocalRes_, &msgServerRes_ })
+        for (auto v : { &results_, &messagesResults_, &threadsResults_, &contactLocalRes_, &contactServerRes_, &msgLocalRes_, &msgServerRes_, &threadsLocalRes_, &threadsServerRes_ })
             v->clear();
 
         Q_EMIT dataChanged(index(0), index(rowCount()));
@@ -442,13 +586,20 @@ namespace Logic
 
     void SearchModel::setSearchInSingleDialog(const QString& _contact)
     {
-        if (messageSearcher_->getDialogAimId() != _contact)
+        if (messageSearcher_->getDialogAimId() != _contact
+            || (Features::isThreadsEnabled() && (!threadSearcher_ || (threadSearcher_ && threadSearcher_->getDialogAimId() != _contact))))
         {
             messageSearcher_->setDialogAimId(_contact);
+            if (Features::isThreadsEnabled())
+            {
+                initThreadSearcher();
+                threadSearcher_->setDialogAimId(_contact);
+            }
             setSearchInContacts(!isSearchInSingleDialog());
 
             clear();
             endLocalSearch();
+            endThreadLocalSearch();
 
             if (!_contact.isEmpty())
             {
@@ -495,9 +646,14 @@ namespace Logic
 
     QModelIndex SearchModel::contactIndex(const QString& _aimId) const
     {
-        const auto it = std::find_if(results_.begin(), results_.end(), [&_aimId](const auto& _res) { return _res->getAimId() == _aimId; });
-        if (it != results_.end())
-            return index(std::distance(results_.begin(), it));
+        auto total = messagesResults_ + threadsResults_;
+        const auto it = std::find_if(total.begin(), total.end(), [&_aimId](const auto& _res) { return _res->getAimId() == _aimId; });
+        if (it != total.end())
+        {
+            if (_aimId == getThreadsAimId())
+                return index(hasOnlyThreadResults() ? 0 : messagesResults_.size() - 1);
+            return index(std::distance(total.begin(), it));
+        }
 
         return QModelIndex();
     }
@@ -509,7 +665,9 @@ namespace Logic
 
     bool Logic::SearchModel::isAllDataReceived() const
     {
-        return allContactResRcvd_ && allMessageResRcvd_;
+        const auto aimId = messageSearcher_->getDialogAimId();
+        const auto inThreadOrService = Logic::getContactListModel()->isThread(aimId) || ServiceContacts::isServiceContact(aimId);
+        return allContactResultsReceived_ && allMessageResultsReceived_ && (!isSearchInSingleDialog() || inThreadOrService || allThreadsResultsReceived_);
     }
 
     QString SearchModel::getContactsAndGroupsAimId()
@@ -520,6 +678,16 @@ namespace Logic
     QString SearchModel::getMessagesAimId()
     {
         return qsl("~messages~");
+    }
+
+    QString SearchModel::getThreadsAimId()
+    {
+        return qsl("~threads~");
+    }
+
+    QString SearchModel::getSingleThreadAimId()
+    {
+        return qsl("~thread~");
     }
 
     const bool SearchModel::simpleSort(const Data::AbstractSearchResultSptr& _first,
@@ -618,6 +786,29 @@ namespace Logic
         temporaryLocalContacts_.clear();
     }
 
+    void SearchModel::setSearchFormat(SearchFormat _format)
+    {
+        if (format_ == _format)
+            return;
+
+        beginResetModel();
+        format_ = _format;
+        results_.clear();
+        results_ = format_ == SearchFormat::ContactsAndMessages ? messagesResults_ : threadsResults_;
+        Q_EMIT dataChanged(QModelIndex(), QModelIndex());
+        endResetModel();
+    }
+
+    bool SearchModel::isSearchInThreads(bool _checkMessages) const
+    {
+        return (format_ == SearchFormat::Threads) && (!_checkMessages || !hasOnlyThreadResults());
+    }
+
+    bool SearchModel::hasOnlyThreadResults() const
+    {
+        return messagesResults_.empty();
+    }
+
     void SearchModel::refreshComposeResults()
     {
         composeResults();
@@ -636,15 +827,25 @@ namespace Logic
     void SearchModel::composeResults()
     {
         results_.clear();
-        results_.reserve(contactLocalRes_.size() + contactServerRes_.size() + std::max(msgLocalRes_.size(), msgServerRes_.size()));
+        messagesResults_.clear();
+        threadsResults_.clear();
+        results_.reserve(contactLocalRes_.size() + contactServerRes_.size() + std::max(msgLocalRes_.size(), msgServerRes_.size()) + std::max(threadsLocalRes_.size(), threadsServerRes_.size()));
+        messagesResults_.reserve(contactLocalRes_.size() + contactServerRes_.size() + std::max(msgLocalRes_.size(), msgServerRes_.size()));
+        threadsResults_.reserve(std::max(threadsLocalRes_.size(), threadsServerRes_.size()));
 
         if (isCategoriesEnabled())
             composeResultsChatsCategorized();
         else
             composeResultsChatsSimple();
 
-        if (allMessageResRcvd_)
+        if (allMessageResultsReceived_)
             composeResultsMessages();
+
+        if (allThreadsResultsReceived_ && Features::isThreadsEnabled())
+            composeResultsThreads();
+
+        setThreadsSearchFormat();
+        results_ = isSearchInThreads() ? threadsResults_ : messagesResults_;
 
         modifyResultsBeforeEmit(results_);
 
@@ -677,10 +878,10 @@ namespace Logic
         {
             const Data::AbstractSearchResultSptr hdr = makeServiceResult(
                 getContactsAndGroupsAimId(),
-                QT_TRANSLATE_NOOP("search", "CONTACTS AND GROUPS") % u": " % QString::number(contactLocalRes_.size() + contactServerRes_.size()),
+                QT_TRANSLATE_NOOP("search", "Contacts and groups") % u": " % QString::number(contactLocalRes_.size() + contactServerRes_.size()),
                 qsl("search_results contactsAndGroups"));
 
-            results_.append(hdr);
+            messagesResults_.append(hdr);
 
             composeResultsChatsSimple();
         }
@@ -688,32 +889,77 @@ namespace Logic
 
     void SearchModel::composeResultsChatsSimple()
     {
-        results_.append(contactLocalRes_);
+        messagesResults_.append(contactLocalRes_);
 
         for (const auto& res : std::as_const(contactServerRes_))
             if (std::none_of(contactLocalRes_.cbegin(), contactLocalRes_.cend(), [&res](const auto& _localRes) { return _localRes->getAimId() == res->getAimId(); }))
-                results_.append(res);
+                messagesResults_.append(res);
     }
 
     void SearchModel::composeResultsMessages()
     {
-        const bool haveMessages = !msgServerRes_.isEmpty() || (!msgLocalRes_.isEmpty() && !messageResServerRcvd_);
+        const bool haveMessages = !msgServerRes_.isEmpty() || (!msgLocalRes_.isEmpty() && !messageServerResultsReceived_);
         if (haveMessages)
         {
             if (isCategoriesEnabled())
             {
+                const auto isInThread = Logic::getContactListModel()->isThread(messageSearcher_->getDialogAimId());
                 const Data::AbstractSearchResultSptr msgsHdr = makeServiceResult(
-                    qsl("~messages~"),
-                    QT_TRANSLATE_NOOP("search", "MESSAGES") % u": " % QString::number(getTotalMessagesCount()),
+                    isInThread ? getSingleThreadAimId() : getMessagesAimId(),
+                    QT_TRANSLATE_NOOP("search", "Messages") % u": " % QString::number(getTotalMessagesCount()),
                     qsl("search_results messages"));
 
-                results_.append(msgsHdr);
+                messagesResults_.append(msgsHdr);
             }
 
-            if (!messageResServerRcvd_)
-                results_.append(msgLocalRes_);
+            if (!messageServerResultsReceived_)
+                messagesResults_.append(msgLocalRes_);
             else
-                results_.append(msgServerRes_);
+                messagesResults_.append(msgServerRes_);
+        }
+    }
+
+    void SearchModel::composeResultsThreads()
+    {
+        const bool haveMessages = !threadsServerRes_.isEmpty() || (!threadsLocalRes_.isEmpty() && !threadsServerResultsReceived_);
+        if (haveMessages)
+        {
+            Data::SearchResultsV tmpResults;
+            if (!threadsServerResultsReceived_)
+                tmpResults.append(threadsLocalRes_);
+            else
+                tmpResults.append(threadsServerRes_);
+
+            Data::SearchResultsV tmpMsgResults;
+            if (!messageServerResultsReceived_)
+                tmpMsgResults.append(msgLocalRes_);
+            else
+                tmpMsgResults.append(msgServerRes_);
+
+            for (const auto& msg : tmpMsgResults)
+            {
+                auto iter = std::remove_if(tmpResults.begin(), tmpResults.end(), [id = msg->getMessageId()](const auto& _res) { return _res->getMessageId() == id; });
+                if (iter != tmpResults.end())
+                    tmpResults.erase(iter);
+            }
+
+            if (!tmpResults.isEmpty())
+            {
+                if (isCategoriesEnabled())
+                {
+                    const auto replaceHeaderWithMessages = !threadsServerResultsReceived_ && ServiceContacts::isServiceContact(threadSearcher_->getDialogAimId());
+                    const auto searchHeader = replaceHeaderWithMessages ? QT_TRANSLATE_NOOP("search", "Messages") : QT_TRANSLATE_NOOP("search", "Threads");
+                    const auto aimId = replaceHeaderWithMessages ? getMessagesAimId() : getThreadsAimId();
+
+                    const Data::AbstractSearchResultSptr msgsHdr = makeServiceResult(
+                        aimId,
+                        searchHeader % u": " % QString::number(tmpResults.size()),
+                        qsl("search_results threads"));
+
+                    threadsResults_.append(msgsHdr);
+                }
+                threadsResults_.append(tmpResults);
+            }
         }
     }
 
@@ -731,6 +977,8 @@ namespace Logic
             return;
 
         results_.clear();
+        messagesResults_.clear();
+        threadsResults_.clear();
 
         if (isCategoriesEnabled())
         {
@@ -753,5 +1001,47 @@ namespace Logic
         qCDebug(searchModel) << this << "composed" << results_.size() - 1 << "suggests for" << dialogAimId;
         Q_EMIT dataChanged(index(0), index(rowCount()));
         Q_EMIT suggests(QPrivateSignal());
+    }
+
+    void SearchModel::onDataChanged(const QString& _aimId)
+    {
+        if (_aimId.isEmpty())
+            return;
+
+        int i = 0;
+        for (const auto& item : std::as_const(results_))
+        {
+            if ((item->isChat() || item->isContact() || item->isMessage()) && (item->getAimId() == _aimId || item->getSenderAimId() == _aimId))
+            {
+                const auto idx = index(i);
+                Q_EMIT dataChanged(idx, idx);
+            }
+            ++i;
+        }
+    }
+
+    void SearchModel::setMessagesSearchFormat()
+    {
+        format_ = SearchFormat::ContactsAndMessages;
+    }
+
+    void SearchModel::setThreadsSearchFormat()
+    {
+        if (hasOnlyThreadResults())
+            format_ = SearchFormat::Threads;
+    }
+
+    void Logic::SearchModel::initThreadSearcher()
+    {
+        if (threadSearcher_)
+            return;
+
+        if (Features::isThreadsEnabled())
+        {
+            threadSearcher_ = new ThreadSearcher(this);
+            connect(threadSearcher_, &MessageSearcher::localResults, this, &SearchModel::onThreadsLocal);
+            connect(threadSearcher_, &MessageSearcher::serverResults, this, &SearchModel::onThreadsServer);
+            connect(threadSearcher_, &MessageSearcher::allResults, this, &SearchModel::onThreadsAll);
+        }
     }
 }

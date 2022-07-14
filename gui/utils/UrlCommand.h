@@ -29,6 +29,17 @@ private:
     QString aimId_;
 };
 
+class OpenAppCommand : public UrlCommand
+{
+public:
+    OpenAppCommand(const QString& _appType, const QString& _urlQuery, const QString& _urlFragment);
+    void execute() override;
+private:
+    QString app_;
+    QString urlQuery_;
+    QString urlFragment_;
+};
+
 class OpenChatCommand : public UrlCommand
 {
 public:
@@ -88,4 +99,37 @@ public:
     void execute() override;
 private:
     QString url_;
+};
+
+class AuthModalResult : public UrlCommand
+{
+public:
+    AuthModalResult(const QString& _requestId, const QString& _urlQuery);
+    void execute() override;
+private:
+    QString urlQuery_;
+    QString requestId_;
+};
+
+class CreateChatCommand : public UrlCommand
+{
+public:
+    CreateChatCommand(const QString& _url);
+    void execute() override;
+};
+
+class CreateChannelCommand : public UrlCommand
+{
+public:
+    CreateChannelCommand(const QString& _url);
+    void execute() override;
+};
+
+class CopyToClipboardCommand : public UrlCommand
+{
+public:
+    CopyToClipboardCommand(const QString& _text);
+    void execute() override;
+private:
+    QString text_;
 };

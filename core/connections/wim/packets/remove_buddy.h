@@ -20,8 +20,8 @@ namespace core
     {
         class remove_buddy : public wim_packet
         {
-            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
-            virtual int32_t parse_response_data(const rapidjson::Value& _data) override;
+            int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            int32_t parse_response_data(const rapidjson::Value& _data) override;
 
             std::string		aimid_;
 
@@ -33,7 +33,8 @@ namespace core
 
             virtual ~remove_buddy();
 
-            virtual std::string_view get_method() const override;
+            std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
         };
 
     }

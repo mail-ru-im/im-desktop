@@ -19,7 +19,6 @@ class HistoryControlPage;
 class MessageTimeWidget;
 class CustomButton;
 enum class MediaType;
-enum class FileStatus;
 
 UI_NS_END
 
@@ -85,6 +84,7 @@ Q_SIGNALS:
 
     void readOnlyUser(const QString& _aimId, bool _isReadOnly, QPrivateSignal) const;
     void blockUser(const QString& _aimId, bool _isBlock, QPrivateSignal) const;
+    void contextMenuOpened();
 
 public:
     ComplexMessageItem(QWidget *parent, const Data::MessageBuddy& _msg);
@@ -92,6 +92,8 @@ public:
     ~ComplexMessageItem();
 
     void clearSelection(bool _keepSingleSelection) override;
+
+    bool isContextMenuOpened() const { return isContextMenuOpened_; };
 
     QString formatRecentsText() const override;
 
@@ -132,6 +134,8 @@ public:
     bool isEditable() const override;
     bool isSingleMedia() const override;
 
+    bool hasOnlyTextAndExpandableBlocks() const;
+
     int32_t getTime() const override;
 
     void setTime(const int32_t time);
@@ -143,7 +147,6 @@ public:
     void onHoveredBlockChanged(IItemBlock *newHoveredBlock);
     void onSharingBlockHoverChanged(IItemBlock *newHoveredBlock);
 
-    void updateStyle() override;
     void updateFonts() override;
 
     void startSpellChecking() override;
@@ -276,7 +279,7 @@ public:
 
     GenericBlock* addSnippetBlock(Data::FStringView _link, const bool _linkInText, SnippetBlock::EstimatedType _estimatedType, size_t _insertAt, bool _quoteOrForward = false);
 
-    virtual void setSelected(bool _selected) override;
+    void setSelected(bool _selected) override;
 
     bool containsText() const;
 
@@ -299,11 +302,14 @@ public:
 
     void fillGalleryData(Utils::GalleryData& _data);
 
-    std::optional<Data::FileSharingMeta> getMeta(const Utils::FileSharingId& _id) const override;
-
     bool canBeThreadParent() const override;
 
-    void updateFileStatus(FileStatus _status);
+    //! Non-empty for message in chat with associated thread and first message in thread
+    QString getAssociatedThread() const;
+
+    void markTrustRequired();
+
+    QStringList messageLinks() const override;
 
 protected:
 
@@ -326,6 +332,7 @@ private Q_SLOTS:
     void onLinkMetainfoMetaDownloaded(int64_t _seq, bool _success, Data::LinkMetadata _meta);
     void onBotCallbackAnswer(const int64_t _seq, const QString& _reqId, const QString& text, const QString& _url, bool _showAlert);
     void updateButtons();
+    void onContextMenuClose();
 
 public Q_SLOTS:
     void trackMenu(const QPoint &globalPos);
@@ -359,7 +366,7 @@ private:
 
     void drawButtons(QPainter &p, const QColor& quote_color);
 
-    Data::FString getBlocksText(const IItemBlocksVec& _items, const bool _isSelected, TextFormat _format = TextFormat::Formatted) const;
+    Data::FString getBlocksText(const IItemBlocksVec& _items, const bool _isSelected, const bool _isQuote = true, TextFormat _format = TextFormat::Formatted) const;
 
     void drawGrid(QPainter &p);
 
@@ -369,7 +376,7 @@ private:
         Yes
     };
 
-    IItemBlock* findBlockUnder(const QPoint& _pos, FindForSharing _findFor = FindForSharing::No) const;
+    IItemBlock* findBlockUnder(const QPoint& _pos, FindForSharing _findFor = FindForSharing::No, bool _recurseBlockSearch = true) const;
 
     void initializeShareButton();
 
@@ -423,6 +430,9 @@ private:
     bool hasBlockedFilesharings() const;
     bool hasFilesharingsWithStatus() const;
 
+    void connectMenuItemHandler(ContextMenu* _menu);
+
+private:
     struct BubbleHorMargins
     {
         int left_ = 0;
@@ -495,6 +505,7 @@ private:
     Data::FilesPlaceholderMap files_;
 
     QPoint PressPoint_;
+    QPoint contextMenuPoint_;
     QString Url_;
     Data::FString Description_;
 
@@ -516,6 +527,7 @@ private:
 
     QTimer* buttonsUpdateTimer_;
     QVariantAnimation* buttonsAnimation_;
+    bool isContextMenuOpened_ = false;
 };
 
 UI_COMPLEX_MESSAGE_NS_END

@@ -10,6 +10,7 @@
 
 #include "../../../url_config.h"
 
+#include "utils/UrlParser.h"
 
 const Ui::ComplexMessage::TextChunk Ui::ComplexMessage::TextChunk::Empty(Ui::ComplexMessage::TextChunk::Type::Undefined, QString(), QString(), -1);
 
@@ -32,37 +33,25 @@ namespace
         return std::any_of(std::begin(urls), std::end(urls), [&_url](const auto& x) { return _url.startsWith(x); });
     }
 
-    bool isAlwaysWithPreview(const common::tools::url& _url)
+    bool isAlwaysWithPreview(const Utils::UrlParser& _parser)
     {
-        const auto isSticker =
-            _url.type_ == common::tools::url::type::filesharing &&
-            Ui::ComplexMessage::getFileSharingContentType(QString::fromStdString(_url.original_)).is_sticker();
-        const auto isProfile = _url.type_ == common::tools::url::type::profile;
-        const auto isMedia = _url.type_ == common::tools::url::type::image || _url.type_ == common::tools::url::type::video;
-        return isSticker || isProfile || isMedia;
+        const bool isSticker = _parser.isFileSharing() &&
+            Ui::ComplexMessage::getFileSharingContentType(_parser.rawUrlString()).is_sticker();
+        return isSticker || _parser.isProfile() || _parser.isMedia();
     }
 }
 
 
-
-Ui::ComplexMessage::ChunkIterator::ChunkIterator(const QString &_text)
-    : ChunkIterator(_text, FixedUrls())
+Ui::ComplexMessage::ChunkIterator::ChunkIterator(const QString& _text, Utils::UrlParser& _parser)
+    : tokenizer_(std::u16string_view{ (const char16_t*)_text.utf16(), (size_t)_text.size() })
+    , parser_(&_parser)
 {
 }
 
-Ui::ComplexMessage::ChunkIterator::ChunkIterator(const QString& _text, FixedUrls&& _urls)
-    : tokenizer_(_text.toStdU16String()
-               , Ui::getUrlConfig().getUrlFilesParser().toStdString()
-               , std::move(_urls))
-{
-}
-
-Ui::ComplexMessage::ChunkIterator::ChunkIterator(const Data::FString& _text, FixedUrls&& _urls)
-    : tokenizer_(_text.string().toStdU16String()
-               , _text.formatting()
-               , Ui::getUrlConfig().getUrlFilesParser().toStdString()
-               , std::move(_urls))
+Ui::ComplexMessage::ChunkIterator::ChunkIterator(const Data::FString& _text, Utils::UrlParser& _parser)
+    : tokenizer_(std::u16string_view{ (const char16_t*)_text.string().utf16(), (size_t)_text.size() }, _text.formatting())
     , formattedText_(_text)
+    , parser_(&_parser)
 {
 }
 
@@ -78,29 +67,32 @@ Ui::ComplexMessage::TextChunk Ui::ComplexMessage::ChunkIterator::current(bool _a
     if (token.type_ == common::tools::message_token::type::text)
     {
         const auto& text = boost::get<common::tools::tokenizer_string>(token.data_);
-        auto sourceText = QString::fromStdU16String(text);
+        auto sourceText = QString::fromStdWString(text);
         return TextChunk(TextChunk::Type::Text, std::move(sourceText));
     }
     else if (token.type_ == common::tools::message_token::type::formatted_text)
     {
         const auto& text = boost::get<common::tools::tokenizer_string>(token.data_);
-        auto sourceText = QString::fromStdU16String(text);
+        auto sourceText = QString::fromStdWString(text);
         const auto textSize = sourceText.size();
         im_assert(token.formatted_source_offset_ >= 0);
         im_assert(token.formatted_source_offset_ < formattedText_.size());
-        auto view = formattedText_.mid(token.formatted_source_offset_, textSize);
-        return TextChunk(view);
+        const auto view = formattedText_.mid(token.formatted_source_offset_, textSize);
+        const auto type = view.containsFormat(core::data::format_type::pre) ? TextChunk::Type::Pre : TextChunk::Type::FormattedText;
+        return TextChunk(view, type);
     }
 
     im_assert(token.type_ == common::tools::message_token::type::url);
 
-    const auto& url = boost::get<common::tools::url>(token.data_);
+    const auto& url = boost::get<common::tools::url_view>(token.data_);
 
-    auto linkText = QString::fromStdString(url.original_);
+    auto linkText = QString::fromStdWString(url.text_);
     im_assert(!linkText.isEmpty());
     auto linkTextView = decltype(formattedText_)();
 
-    const auto forbidPreview = url.type_ == common::tools::url::type::site && !arePreviewsEnabled();
+    parser_->setUrl(url.scheme_, url.text_);
+
+    const auto forbidPreview = parser_->isSite() && !arePreviewsEnabled();
     if (!formattedText_.isEmpty() && token.formatted_source_offset_ != -1)
     {
         const auto textSize = linkText.size();
@@ -117,31 +109,32 @@ Ui::ComplexMessage::TextChunk Ui::ComplexMessage::ChunkIterator::current(bool _a
             : TextChunk(linkTextView, _formattedChunkType, _imageType);
     };
 
-    if (url.type_ != common::tools::url::type::filesharing &&
-        url.type_ != common::tools::url::type::image &&
-        url.type_ != common::tools::url::type::email &&
-        url.type_ != common::tools::url::type::profile &&
+    if (!parser_->isFileSharing() &&
+        !parser_->isImage() &&
+        !parser_->isEmail() &&
+        !parser_->isProfile() &&
         !_allowSnipet || !isSnippetUrl(linkText) ||
-        (forbidPreview && !_forcePreview && !isAlwaysWithPreview(url)))
+        (forbidPreview && !_forcePreview && !isAlwaysWithPreview(*parser_)))
     {
         return addChunk(TextChunk::Type::Text, TextChunk::Type::FormattedText);
     }
 
-    switch (url.type_)
+    im_assert(!linkTextView.isEmpty());
+    switch (parser_->category())
     {
-    case common::tools::url::type::image:
-    case common::tools::url::type::video:
+    case Utils::UrlParser::UrlCategory::Image:
+    case Utils::UrlParser::UrlCategory::Video:
     {
         // spike for cloud.mail.ru, (temporary code)
         if (shouldForceSnippetUrl(linkText))
             return addChunk(TextChunk::Type::GenericLink, TextChunk::Type::GenericLink);
 
-        return addChunk(TextChunk::Type::ImageLink, TextChunk::Type::ImageLink, QString::fromLatin1(to_string(url.extension_)));
+        return addChunk(TextChunk::Type::ImageLink, TextChunk::Type::ImageLink, parser_->fileSuffix());
     }
-    case common::tools::url::type::filesharing:
+    case Utils::UrlParser::UrlCategory::FileSharing:
     {
         const auto id = extractIdFromFileSharingUri(linkText);
-        const auto content_type = extractContentTypeFromFileSharingId(id.fileId);
+        const auto content_type = extractContentTypeFromFileSharingId(id.fileId_);
 
         auto Type = TextChunk::Type::FileSharingGeneral;
         switch (content_type.type_)
@@ -165,23 +158,23 @@ Ui::ComplexMessage::TextChunk Ui::ComplexMessage::ChunkIterator::current(bool _a
             break;
         }
 
-        const auto durationSec = extractDurationFromFileSharingId(id.fileId);
+        const auto durationSec = extractDurationFromFileSharingId(id.fileId_);
         return TextChunk(Type, std::move(linkText), QString(), durationSec);
     }
-    case common::tools::url::type::site:
+    case Utils::UrlParser::UrlCategory::Site:
     {
-        if (url.has_prtocol())
+        if (parser_->hasScheme())
             return addChunk(TextChunk::Type::GenericLink, TextChunk::Type::GenericLink);
         else
             return addChunk(TextChunk::Type::Text, TextChunk::Type::FormattedText);
     }
-    case common::tools::url::type::email:
+    case Utils::UrlParser::UrlCategory::Email:
         return addChunk(TextChunk::Type::Text, TextChunk::Type::FormattedText);
-    case common::tools::url::type::ftp:
-        return TextChunk(TextChunk::Type::GenericLink, std::move(linkText));
-    case common::tools::url::type::icqprotocol:
-        return TextChunk(TextChunk::Type::GenericLink, std::move(linkText));
-    case common::tools::url::type::profile:
+    case Utils::UrlParser::UrlCategory::Ftp:
+        return addChunk(TextChunk::Type::GenericLink, TextChunk::Type::FormattedText);
+    case Utils::UrlParser::UrlCategory::ImProtocol:
+        return addChunk(TextChunk::Type::GenericLink, TextChunk::Type::FormattedText);
+    case Utils::UrlParser::UrlCategory::Profile:
         return TextChunk(TextChunk::Type::ProfileLink, std::move(linkText));
     default:
         break;
@@ -226,9 +219,9 @@ int32_t Ui::ComplexMessage::TextChunk::length() const
 
 Ui::ComplexMessage::TextChunk Ui::ComplexMessage::TextChunk::mergeWith(const TextChunk& _other) const
 {
-    if ((Type_ == Type::FormattedText && _other.Type_ == Type::FormattedText)
-     || (Type_ == Type::FormattedText && _other.Type_ == Type::GenericLink)
-     || (Type_ == Type::GenericLink && _other.Type_ == Type::FormattedText))
+    if ((Type_ == Type::FormattedText && _other.Type_ == Type::GenericLink) ||
+        (Type_ == Type::GenericLink && _other.Type_ == Type::FormattedText) ||
+        (Type_ == Type::FormattedText && _other.Type_ == Type::FormattedText))
     {
         if (auto text = getFView(); text.tryToAppend(_other.getFView()))
             return text;

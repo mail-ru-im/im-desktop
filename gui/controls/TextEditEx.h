@@ -8,13 +8,6 @@
 
 #include "../utils/Text2DocConverter.h"
 
-FONTS_NS_BEGIN
-
-enum class FontFamily;
-enum class FontWeight;
-
-FONTS_NS_END
-
 namespace Emoji
 {
     class EmojiCode;
@@ -31,7 +24,7 @@ namespace Ui
     Q_SIGNALS:
 
         void focusIn();
-        void focusOut();
+        void focusOut(Qt::FocusReason _reason);
         void clicked();
         void emptyTextBackspace();
         void escapePressed();
@@ -51,10 +44,10 @@ namespace Ui
         void onContentsChanged(int _pos, int _removed, int _added);
         void onTextChanged();
         void onFormatUserAction(core::data::format_type _type);
+        void updatePalette();
 
     public:
-        TextEditEx(QWidget* _parent, const QFont& _font, const QPalette& _palette, bool _input, bool _isFitToText);
-        TextEditEx(QWidget* _parent, const QFont& _font, const QColor& _color, bool _input, bool _isFitToText);
+        TextEditEx(QWidget* _parent, const QFont& _font, const Styling::ThemeColorKey& _color, bool _input, bool _isFitToText);
 
         void setFormatEnabled(bool _isEnabled) { isFormatEnabled_ = _isEnabled; }
         void limitCharacters(const int _count);
@@ -66,7 +59,7 @@ namespace Ui
         QString getPlainText() const;
         Data::FString getText() const;
         void setPlainText(const QString& _text, bool _convertLinks = true, const QTextCharFormat::VerticalAlignment _alignment = QTextCharFormat::AlignBottom);
-        void insertFormattedText(Data::FStringView _text, const QTextCharFormat::VerticalAlignment _alignment = QTextCharFormat::AlignBottom);
+        void insertFormattedText(Data::FStringView _text, const QTextCharFormat::VerticalAlignment _alignment = QTextCharFormat::AlignBottom, const bool _isInsertFromMimeData = false);
         void setFormattedText(Data::FStringView _text, const QTextCharFormat::VerticalAlignment _alignment = QTextCharFormat::AlignBottom);
         void clear();
 
@@ -94,7 +87,7 @@ namespace Ui
         //! Open url edit dialog for user interaction
         void formatRangeCreateLink(core::data::range _range);
 
-        core::data::range formatRange(const core::data::range_format& _format);
+        core::data::range formatRange(const core::data::range_format& _format, const bool _isInsertFromMimeData = false);
 
         void formatRangeStyleType(core::data::range_format _format);
 
@@ -107,13 +100,18 @@ namespace Ui
 
         core::data::range surroundWithNewLinesIfNone(core::data::range _range, bool _onlyIfBlock = false);
 
+
+        bool clearBlockFormatOnDemand(core::data::range_format _format);
+
         //! Returns new range as it could be changed
-        core::data::range formatRangeBlockType(core::data::range_format _format);
+        core::data::range formatRangeBlockType(core::data::range_format _format, const bool _isInsertFromMimeData = false);
 
         void formatRangeClearBlockTypes(core::data::range _range);
 
         //! Might perform auxiliary user interaction, e. g. show url editor dialog
         void formatSelectionUserAction(core::data::format_type _type);
+
+        void clearSelectionFormats();
 
         bool isAnyFormatActionAllowed() const;
         bool isFormatActionAllowed(core::data::format_type _type, bool _justCheckIfAnyAllowed = false) const;
@@ -141,10 +139,11 @@ namespace Ui
 
         int adjustHeight(int _width);
 
-        void addSpace(int _space) { add_ = _space; }
+        void setHeightSupplement(int _space) { heightSupplement_ = _space; }
         void setMaxHeight(int _height);
 
         void setViewportMargins(int left, int top, int right, int bottom);
+        void setDocumentMargin(int _margin);
 
         const QFont& getFont() const noexcept { return font_; }
 
@@ -152,6 +151,7 @@ namespace Ui
         void clearAdjacentLinkFormats(core::data::range _range, std::string_view _url);
 
         void execContextMenu(QPoint _globalPos);
+        void clearCache();
 
     protected:
         void focusInEvent(QFocusEvent*) override;
@@ -167,7 +167,7 @@ namespace Ui
 
         QMimeData* createMimeDataFromSelection() const override;
         void insertFromMimeData(const QMimeData* _source) override;
-        void contextMenuEvent(QContextMenuEvent *e) override;
+        void contextMenuEvent(QContextMenuEvent* _e) override;
         bool isCursorInBlockFormat() const;
 
     private:
@@ -213,8 +213,17 @@ namespace Ui
             if (wasAnythingChanged)
             {
                 if (const auto newSize = document()->size(); newSize != prevSize)
-                    Q_EMIT document()->documentLayout()->documentSizeChanged(newSize);
+                {
+                    if (isFitToText_)
+                    {
+                        const auto docHeight = qBound(Utils::scale_value(20),
+                            qRound(document()->size().height()),
+                            maxHeight_);
 
+                        setFixedHeight(docHeight + heightSupplement_);
+                    }
+                    Q_EMIT document()->documentLayout()->documentSizeChanged(newSize);
+                }
                 update();
             }
         }
@@ -224,19 +233,27 @@ namespace Ui
 
         bool doesBlockNeedADescentHack(int _blockNumber) const;
 
+    private Q_SLOTS:
+        void onThemeChange();
+
+    private:
         int index_;
 
         ResourceMap resourceIndex_;
         Data::MentionMap mentions_;
         Data::FilesPlaceholderMap files_;
         QFont font_;
+        Styling::ThemeColorKey color_;
         int prevPos_;
         bool input_;
         bool isFitToText_;
-        int add_;
+        int heightSupplement_;
         int limit_;
         int prevCursorPos_;
         bool isFormatEnabled_ = false;
+        qreal defaultDocumentMargin_;
+
+        mutable Data::FString cache_;
 
         QString placeholderText_;
 
@@ -247,4 +264,35 @@ namespace Ui
 
         std::vector<int> blockNumbersToApplyDescentHack_;
     };
+
+    class TextEditBox : public QFrame
+    {
+        Q_OBJECT
+    public:
+        explicit TextEditBox(QWidget* _parent, const QFont& _font, const Styling::ThemeColorKey& _color, bool _input, bool _isFitToText, const QSize& _iconSize);
+        virtual ~TextEditBox();
+
+        void initUi();
+
+        template<class _Edit>
+        _Edit* textEdit() const { return qobject_cast<_Edit*>(textWidget()); }
+
+        template<class _Button>
+        _Button* emojiButton() const { return qobject_cast<_Button*>(emojiWidget()); }
+
+        QWidget* textWidget() const;
+        QWidget* emojiWidget() const;
+
+    protected:
+        void paintEvent(QPaintEvent* _event) override;
+        bool eventFilter(QObject* _object, QEvent* _event) override;
+
+        virtual QWidget* createTextEdit(QWidget* _parent) const;
+        virtual QWidget* createEmojiButton(QWidget* _parent) const;
+
+    private:
+        std::unique_ptr<class TextEditBoxPrivate> d;
+    };
 }
+
+

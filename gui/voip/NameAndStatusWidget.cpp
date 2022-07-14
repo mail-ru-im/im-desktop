@@ -83,7 +83,7 @@ Ui::NameAndStatusWidget::NameAndStatusWidget(QWidget* _parent, int _nameBaseline
     QHBoxLayout* nameLayout = Utils::emptyHLayout();
     nameLayout->addStretch(1);
 
-    name_ = new TextEmojiWidget(this, font, Qt::white);
+    name_ = new TextEmojiWidget(this, font, Styling::ColorContainer{ Qt::white });
     name_->setEllipsis(true);
     name_->setMaximumWidth(maxAvalibleWidth);
 
@@ -97,7 +97,7 @@ Ui::NameAndStatusWidget::NameAndStatusWidget(QWidget* _parent, int _nameBaseline
     statusLayout->addStretch(1);
     font.setPixelSize(Utils::scale_value(9));
     font.setCapitalization(QFont::AllUppercase);
-    status_ = new TextEmojiWidget(this, font, Qt::white);
+    status_ = new TextEmojiWidget(this, font, Styling::ColorContainer{ Qt::white });
     status_->disableFixedPreferred();
     statusLayout->addWidget(status_);
     statusLayout->addStretch(1);

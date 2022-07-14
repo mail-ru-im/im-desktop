@@ -25,6 +25,6 @@ namespace Ui
     void SpacerSettingsRow::paintEvent(QPaintEvent *)
     {
         QPainter p(this);
-        p.fillRect(rect(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_LIGHT));
+        p.fillRect(rect(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
     }
 }

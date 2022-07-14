@@ -34,6 +34,9 @@ namespace
     app_config::AppConfigMap parse_ptree_into_map(const pt::ptree& property_tree_);
     const char* option_name(const app_config::AppConfigOption option_);
     bool external_config = false;
+
+    constexpr auto default_http_connect_timeout = std::chrono::seconds(5);
+    constexpr auto default_http_execute_timeout = std::chrono::seconds(8);
 }
 
 app_config::app_config()
@@ -135,6 +138,12 @@ pt::ptree app_config::as_ptree() const
             break;
         case app_config::AppConfigOption::ssl_verification_enabled:
             result.add(option_name(key), is_ssl_verification_enabled());
+            break;
+        case app_config::AppConfigOption::curl_timeout:
+            result.add(option_name(key), get_curl_timeout().count());
+            break;
+        case app_config::AppConfigOption::curl_connection_timeout:
+            result.add(option_name(key), get_curl_connection_timeout().count());
             break;
         default:
             im_assert(!"unhandled option for as_ptree");
@@ -434,6 +443,20 @@ std::string app_config::get_update_url(std::string_view _updateble_build_version
     }
 }
 
+std::chrono::seconds app_config::get_curl_timeout() const
+{
+    auto it = app_config_options_.find(app_config::AppConfigOption::curl_timeout);
+    return it == app_config_options_.end() ? default_http_execute_timeout
+        : std::chrono::seconds(boost::any_cast<int>(it->second));
+}
+
+std::chrono::seconds app_config::get_curl_connection_timeout() const
+{
+    auto it = app_config_options_.find(app_config::AppConfigOption::curl_connection_timeout);
+    return it == app_config_options_.end() ? default_http_connect_timeout
+        : std::chrono::seconds(boost::any_cast<int>(it->second));
+}
+
 uint32_t app_config::update_interval() const
 {
     auto it = app_config_options_.find(app_config::AppConfigOption::update_interval);
@@ -475,6 +498,8 @@ void app_config::serialize(Out core::coll_helper& _collection) const
     _collection.set<uint32_t>(option_name(app_config::AppConfigOption::app_update_interval_secs), app_update_interval_secs());
     _collection.set<bool>(option_name(app_config::AppConfigOption::net_compression), is_net_compression_enabled());
     _collection.set<bool>(option_name(app_config::AppConfigOption::ssl_verification_enabled), is_ssl_verification_enabled());
+    _collection.set<int>(option_name(app_config::AppConfigOption::curl_timeout), get_curl_timeout().count());
+    _collection.set<int>(option_name(app_config::AppConfigOption::curl_connection_timeout), get_curl_timeout().count());
 
     // urls
     _collection.set<std::string_view>("urls.url_update_mac_alpha", get_update_mac_alpha_url());
@@ -680,6 +705,16 @@ namespace
                 app_config::AppConfigOption::ssl_verification_enabled,
                 property_tree_.get<bool>(option_name(app_config::AppConfigOption::ssl_verification_enabled), true)
             }
+            ,
+            {
+                app_config::AppConfigOption::curl_timeout,
+                property_tree_.get<int>(option_name(app_config::AppConfigOption::curl_timeout), default_http_execute_timeout.count())
+            }
+            ,
+            {
+                app_config::AppConfigOption::curl_connection_timeout,
+                property_tree_.get<int>(option_name(app_config::AppConfigOption::curl_connection_timeout), default_http_connect_timeout.count())
+            }
         };
     }
 
@@ -739,6 +774,10 @@ namespace
             return "dev.net_compression";
         case app_config::AppConfigOption::ssl_verification_enabled:
             return "dev.webview_ssl_check";
+        case app_config::AppConfigOption::curl_timeout:
+            return "dev.curl_timeout";
+        case app_config::AppConfigOption::curl_connection_timeout:
+            return "dev.curl_connection_timeout";
         default:
             im_assert(!"unhandled option for option_name");
             return "";

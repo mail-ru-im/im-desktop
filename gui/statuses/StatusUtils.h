@@ -19,4 +19,6 @@ namespace Statuses
     constexpr std::chrono::milliseconds tooltipShowDelay() noexcept { return std::chrono::milliseconds(400); }
 
     void showToastWithDuration(std::chrono::seconds _time);
+
+    const Status& getBotStatus();
 }

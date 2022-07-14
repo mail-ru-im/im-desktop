@@ -26,10 +26,15 @@
         <file alias="ico_unread">main_window/appicon_unread.ico</file>
         <file alias="logo">main_window/logo.svg</file>
         <file alias="logo_16">main_window/logo_16.svg</file>
+        <file alias="logo_16_100">main_window/logo_16_100.png</file>
+        <file alias="logo_16_125">main_window/logo_16_125.png</file>
+        <file alias="logo_16_150">main_window/logo_16_150.png</file>
+        <file alias="logo_16_200">main_window/logo_16_200.png</file>
         <file alias="logo_small_100">main_window/logo_small_100.png</file>
         <file alias="logo_small_125">main_window/logo_small_125.png</file>
         <file alias="logo_small_150">main_window/logo_small_150.png</file>
         <file alias="logo_small_200">main_window/logo_small_200.png</file>
+        <file alias="logo_linux">main_window/logo_linux.png</file>
     </qresource>
     <qresource prefix="/sounds">
         <file alias="incoming">sounds/incoming.wav</file>

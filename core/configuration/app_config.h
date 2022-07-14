@@ -42,7 +42,9 @@ public:
         app_update_interval_secs = 22,
         net_compression = 23,
         cache_history_pages_check_interval_secs = 24,
-        ssl_verification_enabled = 25
+        ssl_verification_enabled = 25,
+        curl_timeout = 26,
+        curl_connection_timeout = 27
     };
 
     enum class gdpr_report_to_server_state
@@ -95,6 +97,9 @@ public:
     std::string_view get_url_attach_phone() const;
 
     std::string get_update_url(std::string_view _updateble_build_version) const;
+
+    std::chrono::seconds get_curl_timeout() const;
+    std::chrono::seconds get_curl_connection_timeout() const;
 
     void serialize(Out core::coll_helper& _collection) const;
 

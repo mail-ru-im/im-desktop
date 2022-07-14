@@ -2,11 +2,15 @@
 
 #include "controls/TextUnit.h"
 #include "main_window/input_widget/FileToSend.h"
+#include "utils/SvgUtils.h"
 
 namespace Ui
 {
     class TextEditEx;
+    class TextEditBox;
     class ThreadPlate;
+    class CustomButton;
+    class EmojiPickerDialog;
 
     class FilesAreaItem : public QWidget
     {
@@ -64,7 +68,7 @@ namespace Ui
 
     private:
         std::vector<std::unique_ptr<FilesAreaItem>> items_;
-        QPixmap removeButton_;
+        Utils::StyledPixmap removeButton_;
         int removeIndex_;
         bool hovered_;
         bool dnd_;
@@ -107,15 +111,16 @@ namespace Ui
         ~FilesWidget();
 
         FilesToSend getFiles() const;
-        QString getDescription() const;
+        Data::FString getDescription() const;
         int getCursorPos() const;
         const Data::MentionMap& getMentions() const;
         void setFocusOnInput();
-        void setDescription(const QString& _text, const Data::MentionMap& _mentions = {});
+        void setDescription(const Data::FString& _text, const Data::MentionMap& _mentions = {});
 
     protected:
         void paintEvent(QPaintEvent* _event) override;
         void resizeEvent(QResizeEvent* _event) override;
+        void keyPressEvent(QKeyEvent* _event) override;
 
     private Q_SLOTS:
         void descriptionChanged();
@@ -124,6 +129,8 @@ namespace Ui
         void enter();
         void duration(qint64 _duration);
         void scrollRangeChanged(int, int);
+        void popupEmojiPicker(bool _on);
+        void onEmojiSelected(const Emoji::EmojiCode& _code);
 
     private:
         void initPreview(const FilesToSend& _files);
@@ -135,7 +142,10 @@ namespace Ui
     private:
         std::unique_ptr<TextRendering::TextUnit> title_;
         std::unique_ptr<TextRendering::TextUnit> durationLabel_;
+        TextEditBox* descriptionBox_;
         TextEditEx* description_;
+        CustomButton* emojiButton_;
+        QPointer<EmojiPickerDialog> emojiPicker_;
 
         FileToSend singleFile_;
         QPixmap singlePreview_;

@@ -43,7 +43,7 @@ QSize limitSize(const QSize& _size, const QSize& _maxSize, const QSize& _minSize
 }
 
 template <typename T>
-bool mergeToPreviousOrReplaceByTextImpl(std::vector<T*>& _blocks, IItemBlock* _base, ComplexMessageItem* _parent, ReplaceReason _reason)
+bool mergeReplaceByTextImpl(std::vector<T*>& _blocks, IItemBlock* _base, ComplexMessageItem* _parent, ReplaceReason _reason)
 {
     auto iter = std::find(_blocks.begin(), _blocks.end(), _base);
     if (iter == _blocks.end())
@@ -60,7 +60,7 @@ bool mergeToPreviousOrReplaceByTextImpl(std::vector<T*>& _blocks, IItemBlock* _b
         : existingBlock->getSourceText();
     auto replaceByTextBlock = [_parent](auto& _blockToReplaceRef, Data::FStringView _text)
     {
-        auto newBlock = new TextBlock(_parent, _text);
+        TextBlock* newBlock = new TextBlock(_parent, _text);
         newBlock->onActivityChanged(true);
         newBlock->show();
 
@@ -68,36 +68,63 @@ bool mergeToPreviousOrReplaceByTextImpl(std::vector<T*>& _blocks, IItemBlock* _b
         _blockToReplaceRef = newBlock;
     };
 
-    if (iter > _blocks.begin())
+    replaceByTextBlock(existingBlock, blockText);
+
+    if (_blocks.size() < 2)
+        return true;
+
+    auto it = _blocks.begin();
+    auto next = std::next(it);
+    auto last = _blocks.end();
+    for (; next < last; it = next, next = std::next(it))
     {
-        if (auto& previousBlock = *std::prev(iter); IItemBlock::ContentType::Text == previousBlock->getContentType())
+        Data::FString text;
+        auto& currentBlock = *it;
+        auto& nextBlock = *next;
+        while (currentBlock->getContentType() == IItemBlock::ContentType::Text &&
+               nextBlock->getContentType() == IItemBlock::ContentType::Text)
         {
-            existingBlock->deleteLater();
-            _blocks.erase(iter);
+            text += nextBlock->getSourceText();
 
-            Data::FString::Builder builder;
-            builder %= previousBlock->getSourceText();
-            builder %= blockText;
+            nextBlock->deleteLater();
 
-            replaceByTextBlock(previousBlock, builder.finalize());
+            std::copy(std::next(next), last, next);
+            --last;
+            *last = nextBlock;
+
+            next = std::next(it);
+            if (next == last)
+                break;
+
+            nextBlock = *next;
         }
+
+        if (!text.isEmpty())
+        {
+            Data::FString replacementText = currentBlock->getSourceText();
+            replacementText += text;
+            replaceByTextBlock(currentBlock, replacementText);
+        }
+
+        text.clear();
+
+        if (next >= last)
+            break;
     }
-    else
-    {
-        replaceByTextBlock(existingBlock, blockText);
-    }
+
+    _blocks.erase(last, _blocks.end());
 
     return true;
 }
 
-bool mergeToPreviousOrReplaceByText(std::vector<IItemBlock*>& _blocks, IItemBlock* _base, ComplexMessageItem* _parent, ReplaceReason _reason)
+bool mergeReplaceByText(std::vector<IItemBlock*>& _blocks, IItemBlock* _base, ComplexMessageItem* _parent, ReplaceReason _reason)
 {
-    return mergeToPreviousOrReplaceByTextImpl(_blocks, _base, _parent, _reason);
+    return mergeReplaceByTextImpl(_blocks, _base, _parent, _reason);
 }
 
-bool mergeToPreviousOrReplaceByText(std::vector<GenericBlock*>& _blocks, IItemBlock* _base, ComplexMessageItem* _parent, ReplaceReason _reason)
+bool mergeReplaceByText(std::vector<GenericBlock*>& _blocks, IItemBlock* _base, ComplexMessageItem* _parent, ReplaceReason _reason)
 {
-    return mergeToPreviousOrReplaceByTextImpl(_blocks, _base, _parent, _reason);
+    return mergeReplaceByTextImpl(_blocks, _base, _parent, _reason);
 }
 
 UI_COMPLEX_MESSAGE_NS_END

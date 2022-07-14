@@ -68,7 +68,7 @@ namespace Ui
     {
         auto scrollArea = CreateScrollAreaAndSetTrScrollBarV(_parent);
         scrollArea->setWidgetResizable(true);
-        scrollArea->setStyleSheet(ql1s("QWidget{ background: %1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
+        scrollArea->setStyleSheet(ql1s("QWidget{ background: transparent;}"));
         Utils::grabTouchWidget(scrollArea->viewport(), true);
 
         auto layout = Utils::emptyHLayout(this);
@@ -87,7 +87,7 @@ namespace Ui
             btn->setText(_text);
             btn->setTextAlignment(Qt::AlignVCenter | Qt::AlignLeft);
             btn->setTextLeftOffset( getLeftOffset() + getIconSize() + getTextLeftOffset());
-            btn->setNormalTextColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+            btn->setNormalTextColor(Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
             btn->setSizePolicy(QSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed));
             btn->setMouseTracking(true);
             btn->setIconAlignment(Qt::AlignLeft);

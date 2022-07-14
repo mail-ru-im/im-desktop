@@ -1,8 +1,107 @@
 #include "stdafx.h"
 
+#include <unordered_map>
+
 #include "message_tokenizer.h"
 #include "../core/tools/strings.h"
+#include "../uri_matcher/uri_matcher.h"
 
+#include "../core/core.h"
+#include "../config/config.h"
+
+namespace
+{
+    // https://jira.vk.team/browse/IMDESKTOP-18772 Fix view url profile vkteams group, nickname icq and talks vk
+    namespace helper_parse_url
+    {
+        using tokenizer_char = wchar_t;
+        using tokenizer_string = std::basic_string<tokenizer_char>;
+
+        enum class domain_type 
+        {
+            vkteams,
+            icq,
+            vk
+        };
+
+        bool check_punct_url(const tokenizer_string& _url) 
+        {
+            static std::unordered_map<domain_type, tokenizer_string> domain_url_ =
+            {
+                { domain_type::vkteams, L"://u.internal.myteam.mail.ru/profile" },
+                { domain_type::icq, L"://icq.im" },
+                { domain_type::vk, L"://vk.com" }
+            };
+
+            // lambda until we not use C++20
+            const auto start_with = [](const tokenizer_string& _str, const tokenizer_string& _prefix) -> bool
+            {
+                return _str.size() >= _prefix.size() && 0 == _str.compare(0, _prefix.size(), _prefix);
+            };
+
+            const auto start = _url.find_first_of(L"://");
+            if (start > _url.size() || start == tokenizer_string::npos)
+                return true;
+
+            const auto path = _url.substr(start, _url.size());
+            if (start_with(path, domain_url_[domain_type::vkteams]) || start_with(path, domain_url_[domain_type::icq]))
+                return false;
+            else if (start_with(path, domain_url_[domain_type::vk]) && path.back() == L'=')
+                return false;
+            return true;
+        }
+    }
+
+    /*!
+     * Exclude smaller range from a sorted vector of ranges
+     * \param ranges vector of splitted ranges
+     * \param victim range to exclude
+     * \detail
+     * Algorithm excludes victim range from list of ranges represented by ranges argument.
+     * The common case is when we start from single full range and then exclude some ranges
+     * one-by-one.
+     * On each call of exclude_range_inplace the ranges vector is being modified in a
+     * following way:
+     * - the last element is popped from back and stored in a temporary variable.
+     * - if offset of victim is same as offset of last popped element, than it trimmed to the length of victim.
+     * - otherwise it splits into two (leftwise and rightwise beside the victim).
+     * - all the received ranges are stored back into ranges vector.
+     * \note: Algorithm rely on that ranges vector is sorted in ascending order by offsets of ranges,
+     * and also suppose that victim range is always contained in the very last one element of ranges
+     * vector (i.e. in the greatest one). All empty ranges are discarded.
+     */
+    inline void exclude_range_inplace(std::vector<core::data::range>& _ranges, const core::data::range& _victim)
+    {
+        im_assert(std::is_sorted(_ranges.begin(), _ranges.end()));
+        if (_ranges.empty())
+            return;
+        auto r = _ranges.back();
+        if (_victim.size_ == 0 || _victim.offset_ < r.offset_ || _victim.end() > r.end())
+            return;
+
+        _ranges.pop_back(); // get the greatest range
+
+        if (r.offset_ == _victim.offset_) // trim
+        {
+            r.offset_ = r.offset_ + _victim.size_;
+            r.size_ -= _victim.size_;
+            if (r.size_ != 0)  // discard empty range
+                _ranges.emplace_back(r);
+        }
+        else // split - warning: the order of emplace_back() calls is important
+        {
+            size_t offset = r.offset_;
+            size_t size = _victim.offset_ - r.offset_;
+            if (size != 0) // discard empty empty range
+                _ranges.emplace_back(offset, size);
+
+            offset = _victim.offset_ + _victim.size_;
+            size = (r.offset_ + r.size_) - offset;
+            if (size != 0)  // discard empty empty range
+                _ranges.emplace_back(offset, size);
+        }
+    }
+}
 
 common::tools::message_token::message_token()
     : type_(type::undefined)
@@ -16,35 +115,45 @@ common::tools::message_token::message_token(tokenizer_string&& _text, type _type
 {
 }
 
-common::tools::message_token::message_token(const url& _url, int _source_offset)
+common::tools::message_token::message_token(tokenizer_string&& _url, int32_t scheme_, int _source_offset)
     : type_(type::url)
-    , data_(_url)
+    , data_(url_view(_url, scheme_))
     , formatted_source_offset_(_source_offset)
 {
 }
 
-common::tools::message_tokenizer::message_tokenizer(
-    const tokenizer_string& _message,
-    const std::string& _files_url,
-    std::vector<url_parser::compare_item>&& _items)
-    : token_text_type_(message_token::type::text)
+common::tools::message_tokenizer::message_tokenizer(std::u16string_view _message)
+    : message_tokenizer(std::wstring{ _message.begin(), _message.end() })
 {
-    parse(_message, {}, _files_url, std::move(_items));
 }
 
-common::tools::message_tokenizer::message_tokenizer(
-    const tokenizer_string& _message,
-    const core::data::format& _formatting,
-    const std::string& _files_url,
-    std::vector<url_parser::compare_item>&& _items)
+common::tools::message_tokenizer::message_tokenizer(std::u16string_view _message,
+                                                    const core::data::format& _formatting)
+    : message_tokenizer(std::wstring{ _message.begin(), _message.end() }, _formatting.formats())
+{
+}
+
+common::tools::message_tokenizer::message_tokenizer(std::u16string_view _message, const std::vector<core::data::range_format>& _formats)
+    : message_tokenizer(std::wstring{ _message.begin(), _message.end() }, _formats)
+{
+}
+
+common::tools::message_tokenizer::message_tokenizer(const tokenizer_string& _message)
+    : token_text_type_(message_token::type::text)
+{
+    parse_message(_message, {});
+}
+
+common::tools::message_tokenizer::message_tokenizer(const tokenizer_string& _message,
+                                                    const std::vector<core::data::range_format>& _formats)
     : token_text_type_(message_token::type::formatted_text)
 {
-    parse(_message, _formatting, _files_url, std::move(_items));
+    parse_message(_message, _formats);
 }
 
 bool common::tools::message_tokenizer::has_token() const
 {
-    return tokens_.size() > 1;
+    return !tokens_.empty();
 }
 
 const common::tools::message_token& common::tools::message_tokenizer::current() const
@@ -55,130 +164,100 @@ const common::tools::message_token& common::tools::message_tokenizer::current() 
 void common::tools::message_tokenizer::next()
 {
     if (has_token())
-        tokens_.pop();
+        tokens_.pop_front();
 }
 
-void common::tools::message_tokenizer::parse(const tokenizer_string& _message, const core::data::format& _formatting, const std::string& _files_url, std::vector<url_parser::compare_item>&& _items)
+void common::tools::message_tokenizer::parse_message(const tokenizer_string& _message, const std::vector<core::data::range_format>& _formats)
 {
-    using manual_url_range = std::pair<core::data::range, tokenizer_string_view>;
+    using core::data::range;
+    using ftype = core::data::format_type;
 
-    auto add_text_token = [this](tokenizer_string&& _s, int _source_offset)
+    static auto is_excluded = [](const core::data::range_format& _fmt) -> bool
     {
-        tokens_.push(message_token(std::move(_s), token_text_type_, _source_offset));
+        return (_fmt.type_ == ftype::link || _fmt.type_ == ftype::mention || _fmt.type_ == ftype::pre);
     };
 
-    const auto get_ranges_to_skip_sorted = [](const core::data::format& _f)
+    range _message_range = { 0, (int)_message.size() }; // full range of message
+
+    if (_formats.empty())
     {
-        auto result = std::vector<manual_url_range>();
-
-        for (const auto& [type, range, _] : _f.formats())
-        {
-            using ftype = core::data::format_type;
-            if (type == ftype::link || type == ftype::mention || type == ftype::pre)
-                result.emplace_back(range, tokenizer_string_view());
-        }
-
-        std::sort(result.begin(), result.end(),
-            [](const auto& _r1, const auto& _r2) { return _r1.first.offset_ < _r2.first.offset_; });
-
-        return result;
-    };
-
-    const auto ranges_to_skip = get_ranges_to_skip_sorted(_formatting);
-
-    auto get_next_range_start = [end_it = ranges_to_skip.cend(), end_pos = _message.size()](const auto it)
-    {
-        return (it == end_it) ? end_pos : it->first.offset_;
-    };
-
-    size_t prev = 0;
-    size_t i = 0;
-    url_parser_utf16 parser(_files_url);
-    parser.add_fixed_urls(std::move(_items));
-
-    auto append_tokens = [&_message, &parser, &prev, &i, this, &add_text_token](bool _finish)
-    {
-        const auto tail_size = parser.tail_size();
-        const auto url_chars_parsed = parser.num_processed_chars_since_url_start() - static_cast<int>(!_finish);
-        const auto url_size = url_chars_parsed - tail_size;
-        const auto url_start = i - std::min(static_cast<size_t>(url_size + tail_size), i);
-        const auto text_size = url_start - prev;
-        im_assert(text_size >= 0);
-
-        if (text_size > 0)
-            add_text_token(_message.substr(prev, text_size), prev);
-
-        tokens_.push(message_token(parser.get_url(), url_start));
-
-        if (_finish && tail_size > 0)
-            add_text_token(_message.substr(url_start + url_size, tail_size), url_start + url_size);
-
-        prev += text_size + url_size;
-        i = prev;
-        parser.reset();
-    };
-
-    const auto message_size = _message.size();
-    auto range_it = ranges_to_skip.cbegin();
-    auto range_start = get_next_range_start(range_it);
-    for (i = 0; i < message_size; )
-    {
-        if (i == range_start)
-        {
-            const auto skip_range = range_it->first;
-            const auto manual_url = range_it->second;
-
-            if (auto n = i - prev; n > 0)
-                add_text_token(_message.substr(prev, n), prev);
-
-            parser.reset();
-            auto range_text = _message.substr(i, skip_range.size_);
-            if (manual_url.empty())
-            {
-                add_text_token(std::move(range_text), i);
-            }
-            else
-            {
-                for (const auto ch : manual_url)
-                    parser.process(ch);
-                parser.finish();
-                if (parser.has_url())
-                    add_text_token(std::move(range_text), i);
-
-                parser.reset();
-            }
-            i += skip_range.size_;
-            if (i >= message_size)
-                i = message_size;
-            prev = i;
-            ++range_it;
-            range_start = get_next_range_start(range_it);
-        }
-
-        if (i < message_size)
-            parser.process(_message[i]);
-        else
-            break;
-
-        if (parser.has_url())
-            append_tokens(false);
-
-        ++i;
-    }
-
-    parser.finish();
-
-    if (parser.has_url())
-    {
-        append_tokens(true);
+        // no formats - process the whole message
+        parse_range(_message_range, _message);
     }
     else
     {
-        if (const auto text_size = i - prev; text_size > 0)
-            add_text_token(_message.substr(prev, text_size), prev);
+        // formats must be sorted - see format class in text_formatting.cpp
+        im_assert(std::is_sorted(_formats.begin(), _formats.end()));
+
+        std::vector<range> unformatted_ranges = { _message_range };
+
+        for (const auto& _fmt : _formats)
+        {
+            if (is_excluded(_fmt)) // excluded formats
+            {
+                exclude_range_inplace(unformatted_ranges, _fmt.range_);
+                tokens_.emplace_back(_message.substr(_fmt.range_.offset_, _fmt.range_.size_), token_text_type_, _fmt.range_.offset_);
+            }
+        }
+
+        // process unformatted ranges
+        if (!unformatted_ranges.empty())
+        {
+            for (const auto& range : unformatted_ranges)
+                parse_range(range, _message);
+        }
     }
 
-    tokens_.push(message_token()); // terminator
+    std::sort(tokens_.begin(), tokens_.end(), [](const auto& x, const auto& y) { return x.formatted_source_offset_ < y.formatted_source_offset_; });
+}
+
+void common::tools::message_tokenizer::parse_range(const core::data::range& _range, const common::tools::tokenizer_string& _message)
+{
+    using matcher_type = basic_uri_matcher<tokenizer_char>;
+
+    tokenizer_string_view sv = _message; // get the string view from message to avoid allocations on substr()
+    sv = sv.substr(_range.offset_, _range.size_);
+
+    tokenizer_string_view result;
+
+    scheme_type scheme;
+    matcher_type matcher;
+    size_t pos = _range.offset_;
+
+    auto p = matcher.search(sv.begin(), sv.end(), result, scheme, helper_parse_url::check_punct_url({ sv.begin(), sv.end() }));
+    while (p != sv.end())
+    {
+        // compute size and offset
+        size_t size = result.size();
+        size_t offset = _range.offset_ + std::distance(sv.begin(), p - size);
+        if (offset > pos) // add whitespaces tokens
+            tokens_.emplace_back(_message.substr(pos, offset - pos), token_text_type_, pos);
+        pos = offset + size; // adjust current position
+
+        if (!result.empty())
+        {
+            // add url token
+            tokens_.emplace_back((tokenizer_string)result, (int32_t)scheme, offset);
+            result = {};
+        }
+
+        p = matcher.search(p, sv.end(), result, scheme);
+    }
+
+    // process the last result
+    if (!result.empty())
+    {
+        // compute size and offset
+        size_t size = result.size();
+        size_t offset = _range.offset_ + std::distance(sv.begin(), p - size);
+        if (offset > pos) // add the whitespaces token
+            tokens_.emplace_back(_message.substr(pos, offset - pos), token_text_type_, pos);
+        tokens_.emplace_back((tokenizer_string)result, (int32_t)scheme, offset);
+        pos = offset + size; // adjust current position
+    }
+
+    if (pos < (size_t)_range.end()) // add trailing whitespaces token
+        tokens_.emplace_back(_message.substr(pos, _range.end() - pos), token_text_type_, pos);
 }
 
 std::ostream& operator<<(std::ostream& _out, common::tools::message_token::type _type)

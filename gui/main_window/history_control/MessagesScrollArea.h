@@ -26,7 +26,7 @@ namespace Ui
     {
         Data::FString text_;
         bool isOutgoing_ = false;
-        bool isUnsupported_ = false;
+        bool isDisabled_ = false;
         Data::QuotesVec quotes_;
         QPoint from_;
         QPoint to_;
@@ -126,7 +126,6 @@ namespace Ui
         QVector<Logic::MessageKey> getKeysToUnloadBottom() const;
 
         void insertWidget(const Logic::MessageKey &key, std::unique_ptr<QWidget> widget);
-
         void insertWidgets(InsertHistMessagesParams&& _params);
 
         bool isScrolling() const;
@@ -145,7 +144,6 @@ namespace Ui
 
         void replaceWidget(const Logic::MessageKey &key, std::unique_ptr<QWidget> widget);
 
-        bool touchScrollInProgress() const;
         bool needFetchMoreToTop() const;
         bool needFetchMoreToBottom() const;
 
@@ -195,6 +193,7 @@ namespace Ui
 
         void countSelected(int& _forMe, int& _forAll) const;
         std::vector<DeleteMessageInfo> getSelectedMessagesForDelete() const;
+        bool messagesCanBeDeleted() const;
 
         int getSelectedCount() const;
         int getSelectedUnsupportedCount() const;
@@ -211,8 +210,19 @@ namespace Ui
         QString getAimid() const;
 
         void clearPttProgress();
+        void applySelection();
 
-        std::optional<Data::FileSharingMeta> getMeta(const Utils::FileSharingId& _id) const;
+
+    public:
+        enum State
+        {
+            None                     = 0,
+            IsSelecting_             = 1 << 1,
+            IsTouchScrollInProgress_ = 1 << 2,
+            IsScrollShowOnOpen_      = 1 << 3,
+            IsSearching_             = 1 << 4
+        };
+        Q_DECLARE_FLAGS (States, State)
 
     public Q_SLOTS:
         void notifySelectionChanges();
@@ -252,6 +262,7 @@ namespace Ui
         void multiSelectCurrentMessageUp(bool);
         void multiSelectCurrentMessageDown(bool);
         void messageSelected(qint64, const QString&);
+        bool switchMessageSelection(Logic::MessageKey _key, std::optional<bool> _prevSelection = std::nullopt);
 
     public Q_SLOTS:
         void onWheelEvent(QWheelEvent* e);
@@ -267,44 +278,7 @@ namespace Ui
 
         void onSelectionChanged(int _selectedCount);
 
-    private:
-        enum class ScrollingMode;
-
-        bool IsSelecting_;
-
-        bool TouchScrollInProgress_;
-
-        int64_t LastAnimationMoment_;
-
-        QPoint LastMouseGlobalPos_;
-
-        QPoint SelectionBeginAbsPos_;
-
-        QPoint SelectionEndAbsPos_;
-
-        ScrollingMode Mode_;
-
-        bool ScrollShowOnOpen_ = false;
-        MessagesScrollbar *Scrollbar_;
-
-        MessagesScrollAreaLayout *Layout_;
-
-        QTimer ScrollAnimationTimer_;
-        QTimer HideScrollbarTimer_;
-
-        double ScrollDistance_;
-
-        QPointF PrevTouchPoint_;
-
-        bool IsUserActive_;
-
-        std::deque<int32_t> WheelEventsBuffer_;
-
-        QTimer WheelEventsBufferResetTimer_;
-
         void updateMode();
-
-        void applySelection(const bool forShift = false);
 
         bool enqueWheelEvent(const int32_t delta);
 
@@ -316,6 +290,9 @@ namespace Ui
 
         void scheduleWheelBufferReset();
 
+        std::map<Logic::MessageKey, QWidget*> getWidgetsMapFromParams(const InsertHistMessagesParams& _params);
+
+        enum class ScrollingMode;
         void startScrollAnimation(const ScrollingMode mode);
 
         void stopScrollAnimation();
@@ -324,14 +301,39 @@ namespace Ui
 
         int minViewPortHeightForUnload() const;
 
-        std::unordered_set<QString> contacts_;
+        void updateStateFlag(State _flag, bool _enabled);
 
-        bool IsSearching_;
+    private:
+        int64_t LastAnimationMoment_;
+
+        QPoint LastMouseGlobalPos_;
+
+        QPoint SelectionBeginAbsPos_;
+
+        QPoint SelectionEndAbsPos_;
+
+        ScrollingMode Mode_;
+
+        MessagesScrollbar *Scrollbar_;
+
+        MessagesScrollAreaLayout *Layout_;
+
+        QTimer ScrollAnimationTimer_;
+        QTimer HideScrollbarTimer_;
+
+        double ScrollDistance_;
+
+        QPointF PrevTouchPoint_;
+
+        std::deque<int32_t> WheelEventsBuffer_;
+
+        QTimer WheelEventsBufferResetTimer_;
+
+        std::unordered_set<QString> contacts_;
 
         int scrollValue_;
 
         qint64 messageId_;
-        bool recvLastMessage_;
 
         Logic::MessageKey lastSelectedMessageId_;
 
@@ -348,6 +350,10 @@ namespace Ui
         };
 
         std::vector<PttProgress> pttProgress_;
-    };
 
+        States areaState_ = State::None;
+    };
 }
+
+Q_DECLARE_OPERATORS_FOR_FLAGS(Ui::MessagesScrollArea::States)
+

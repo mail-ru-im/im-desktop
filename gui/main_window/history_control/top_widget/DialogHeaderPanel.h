@@ -26,9 +26,7 @@ namespace Ui
 
     public:
         DialogHeaderPanel(const QString& _aimId, QWidget* _parent);
-
-        void updateStyle();
-        void setPrevChatButtonVisible(bool _visible);
+        void setPrevChatButtonVisible(bool _visible, bool _saveState = true);
         void setOverlayTopWidgetVisible(bool _visible);
         void updatePendingButtonPosition();
         void updateCallButtonsVisibility();
@@ -43,7 +41,7 @@ namespace Ui
         void updateName();
 
     protected:
-        void resizeEvent(QResizeEvent* _e);
+        void resizeEvent(QResizeEvent* _e) override;
 
     private:
         void deactivateSearchButton();
@@ -62,6 +60,8 @@ namespace Ui
 
         void updateGalleryButtonVisibility();
         void requestDialogGallery();
+
+        void onChangeBackButtonVisibility(const QString& _aimId, bool _isVisible);
 
     private:
         QString aimId_;
@@ -87,5 +87,6 @@ namespace Ui
 
         bool hasGallery_ = false;
         bool youMember_ = false;
+        bool backButtonWasVisible_ = false;
     };
 }

@@ -3,6 +3,7 @@
 #include "../../../http_request.h"
 #include "../../../../common.shared/json_helper.h"
 #include "archive/history_message.h"
+#include "../log_replace_functor.h"
 
 #include "get_reaction.h"
 
@@ -25,6 +26,11 @@ reactions_vector_sptr get_reaction::get_result() const
 std::string_view get_reaction::get_method() const
 {
     return "reaction/get";
+}
+
+int get_reaction::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t get_reaction::init_request(const std::shared_ptr<http_request_simple>& _request)

@@ -39,7 +39,7 @@ namespace Ui
     {
         Q_OBJECT
     public:
-        StatusTooltipWidget(const Statuses::Status& _status, QWidget* _object, QWidget* _parent, Qt::CursorShape _objectCursorShape);
+        StatusTooltipWidget(const Statuses::Status& _status, QWidget* _object, QWidget* _parent, Qt::CursorShape _objectCursorShape, bool _showTimeString = true);
         ~StatusTooltipWidget();
 
         void showAt(const QRect& _objectRect);

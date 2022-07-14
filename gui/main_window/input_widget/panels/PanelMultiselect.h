@@ -19,7 +19,8 @@ namespace Ui
 
     private Q_SLOTS:
         void multiSelectCurrentElementChanged();
-        void selectedCount(const QString& _aimid, int _totalCount, int _unsupported, int _plainFiles);
+        void selectedCount(const QString& _aimid, int _totalCount, int _unsupported, int _plainFiles, bool _deleteEnabled = true);
+        bool isDisabled() const;
 
     private:
         RoundButton* delete_;

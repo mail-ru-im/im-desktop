@@ -7,27 +7,40 @@ namespace core
     class coll_helper;
     class core_settings;
 
+    namespace proxy_detail
+    {
+        class ignore_list
+        {
+            std::vector<std::string> host_list_; // example.com
+            std::vector<std::string> host_mask_list_; // [*.example.com] without '*'
+            std::vector<std::string> ip_list_; // 10.215.0.1
+            std::vector<std::string> ip_mask_list_; // 10.215
+
+        public:
+            void parse_hosts(std::string_view _hosts);
+            bool need_ignore(std::string_view _url, std::string_view _ip_address);
+
+            std::string to_string() const;
+
+        private:
+            void add_host(std::string_view _host);
+        };
+    }
+
     struct proxy_settings
     {
         static const int32_t default_proxy_port;
 
-        bool                use_proxy_;
-        bool                need_auth_;
-        std::wstring        proxy_server_;
-        int32_t             proxy_port_;
-        std::wstring        login_;
-        std::wstring        password_;
-        int32_t             proxy_type_;
-        core::proxy_auth    auth_type_;
-
-        proxy_settings()
-            : use_proxy_(false)
-            , need_auth_(false)
-            , proxy_port_(default_proxy_port)
-            , proxy_type_((int32_t)core::proxy_type::auto_proxy)
-            , auth_type_(core::proxy_auth::basic)
-        {
-        }
+        std::string proxy_server_;
+        std::string login_;
+        std::string password_;
+        proxy_detail::ignore_list ignore_list_;
+        int32_t proxy_port_ = default_proxy_port;
+        int32_t proxy_type_ = (int32_t)core::proxy_type::auto_proxy;
+        core::proxy_auth auth_type_ = core::proxy_auth::basic;
+        bool use_proxy_ = false;
+        bool need_auth_ = false;
+        bool is_system_ = false;
 
         void serialize(tools::binary_stream& _bs) const;
         bool unserialize(tools::binary_stream& _bs);
@@ -38,6 +51,14 @@ namespace core
         {
             return proxy_settings();
         }
+
+        bool need_use_proxy(std::string_view _url, std::string_view _ip_address);
+        bool parse_servers_list(std::string_view _server);
+
+        std::string to_string() const;
+
+    private:
+        bool parse_server(std::string_view _server);
     };
 
     class proxy_settings_manager
@@ -56,7 +77,6 @@ namespace core
 
     public:
         explicit proxy_settings_manager(core_settings& _settings_storage);
-        virtual ~proxy_settings_manager();
 
         proxy_settings get_current_settings() const;
 

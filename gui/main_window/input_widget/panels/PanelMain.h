@@ -90,6 +90,7 @@ namespace Ui
         void showEdit(Data::MessageBuddySptr _message, const MediaType _type);
         void cancelEdit();
         void showDraftVersion(const Data::Draft& _draft);
+        void cancelDraft();
         void hidePopups();
 
         void setFocusOnInput();

@@ -13,6 +13,9 @@ namespace TextRendering
     class TextUnit;
 }
 
+enum class SoundType;
+
+
 UI_NS_END
 
 UI_COMPLEX_MESSAGE_NS_BEGIN
@@ -33,19 +36,18 @@ namespace PttDetails
             pause
         };
         void setState(const ButtonState _state);
-        void updateStyle();
 
     protected:
         void paintEvent(QPaintEvent* _e) override;
 
     private:
-        QString aimId_;
-        bool isPressed_;
-        ButtonState state_;
+        Styling::ColorContainer normal_;
+        Styling::ColorContainer hovered_;
+        Styling::ColorContainer pressed_;
 
-        QColor normal_;
-        QColor hovered_;
-        QColor pressed_;
+        QString aimId_;
+        ButtonState state_ = ButtonState::play;
+        bool isPressed_ = false;
     };
 
     class ButtonWithBackground : public CustomButton
@@ -54,7 +56,6 @@ namespace PttDetails
 
     public:
         ButtonWithBackground(QWidget* _parent, const QString& _icon, const QString& _aimId, bool _isOutgoing = false);
-        void updateStyle();
 
     protected:
         void paintEvent(QPaintEvent* _e) override;
@@ -78,7 +79,6 @@ namespace PttDetails
         ~ProgressWidget();
 
         void setProgress(const double _progress);
-        void updateStyle();
 
     protected:
         void paintEvent(QPaintEvent* _e) override;
@@ -257,11 +257,9 @@ private:
     void updatePlayButtonState();
     void updateCollapseState();
 
-    void updateStyle() override;
     void updateFonts() override;
 
     void updateDecodedTextStyle();
-    QColor getDecodedTextColor() const;
     QColor getProgressColor() const;
     QColor getPlaybackColor() const;
 
@@ -300,9 +298,9 @@ private:
     int32_t playbackProgressMsec_;
 
     QPropertyAnimation *playbackProgressAnimation_;
-
-    int playingId_;
-
+#ifndef STRIP_AV_MEDIA
+    SoundType playingId_;
+#endif // !STRIP_AV_MEDIA
     PttBlockLayout *pttLayout_;
 
     int64_t textRequestId_;
@@ -332,11 +330,11 @@ private Q_SLOTS:
     void showDownloadAnimation();
 
     void onPlayButtonClicked();
+
     void onTextButtonClicked();
 
-    void onPttFinished(int _id, bool _byPlay);
-
-    void onPttPaused(int _id);
+    void onPttFinished(SoundType _id, bool _byPlay);
+    void onPttPaused(SoundType _id);
 
     void onPttText(qint64 _seq, int _error, QString _text, int _comeback);
 

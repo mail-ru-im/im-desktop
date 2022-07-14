@@ -13,14 +13,15 @@ namespace core
     {
         class check_group_nick : public robusto_packet
         {
-            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
-            virtual int32_t on_response_error_code() override;
+            int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            int32_t on_response_error_code() override;
 
             std::string nickname_;
 
         public:
             check_group_nick(wim_packet_params _params, const std::string& _nick);
-            virtual std::string_view get_method() const override;
+            std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
         };
     }
 }

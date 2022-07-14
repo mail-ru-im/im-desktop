@@ -85,7 +85,9 @@ public:
 
     void setText(const Data::FString& _text) override;
 
-    bool clickOnFirstLink() const;
+    QStringList messageLinks() const override;
+
+    bool activateLink(size_t _linkIndex) const;
 
     void setEmojiSizeType(const TextRendering::EmojiSizeType _emojiSizeType) override;
 
@@ -124,12 +126,12 @@ private:
     void reinit();
     void initTextUnit();
     void initTripleClickTimer();
+    void updateLinkMap();
 
     void onTextUnitChanged();
 
     void adjustEmojiSize();
 
-    void updateStyle() override;
     void updateFonts() override;
 
     QPoint mapPoint(const QPoint& _complexMsgPoint) const;
@@ -137,15 +139,17 @@ private:
     void startSpellCheckingIfNeeded();
 
     void showTooltip(const QString& _text, QRect _size);
+    void botCommandsDisabledChatsUpdated();
 
 private:
     TextBlockLayout* Layout_;
 
     std::unique_ptr<TextRendering::TextUnit> textUnit_;
-
+    std::vector<const TextRendering::TextWord*> linkWordMap_;
     QTimer* TripleClickTimer_ = nullptr;
     TextRendering::EmojiSizeType emojiSizeType_;
     bool needSpellCheck_ = false;
+    bool commandsDisabledForThisChat_ = false;
 };
 
 UI_COMPLEX_MESSAGE_NS_END

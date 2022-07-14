@@ -14,44 +14,66 @@ namespace
         static int64_t v = 0;
         return ++v;
     }
+
+    void extractBlockLinks(std::vector<const Ui::TextRendering::TextWord*>& _mapping, const Ui::TextRendering::BaseDrawingBlockPtr& block);
+
+    void extractLinks(std::vector<const Ui::TextRendering::TextWord*>& _mapping, const Ui::TextRendering::TextDrawingBlock* _text)
+    {
+        if (!_text)
+            return;
+
+        for (const auto& word : _text->getWords())
+            if (word.isLink())
+                _mapping.emplace_back(&word);
+    }
+
+    void extractLinks(std::vector<const Ui::TextRendering::TextWord*>& _mapping, const Ui::TextRendering::TextDrawingParagraph* _paragraph)
+    {
+        if (!_paragraph)
+            return;
+
+        for (const auto& b : _paragraph->getBlocks())
+            extractBlockLinks(_mapping, b);
+    }
+
+    void extractBlockLinks(std::vector<const Ui::TextRendering::TextWord*>& _mapping, const Ui::TextRendering::BaseDrawingBlockPtr& block)
+    {
+        using namespace Ui::TextRendering;
+        switch (block->getType())
+        {
+        case BlockType::Text:
+            extractLinks(_mapping, static_cast<TextDrawingBlock*>(block.get()));
+            break;
+        case BlockType::Paragraph:
+            extractLinks(_mapping, static_cast<TextDrawingParagraph*>(block.get()));
+            break;
+        default:
+            break;
+        }
+    }
 }
 
 namespace Ui
 {
 namespace TextRendering
 {
+
     TextUnit::TextUnit()
-        : horOffset_(0)
-        , verOffset_(0)
-        , showLinks_(LinksVisible::SHOW_LINKS)
+        : showLinks_(LinksVisible::SHOW_LINKS)
         , processLineFeeds_(ProcessLineFeeds::KEEP_LINE_FEEDS)
         , emojiSizeType_(EmojiSizeType::REGULAR)
-        , align_(HorAligment::LEFT)
-        , maxLinesCount_(-1)
-        , appended_(-1)
-        , lineBreak_(LineBreakType::PREFER_WIDTH)
         , linksStyle_(isLinksUnderlined() ? LinksStyle::UNDERLINED : LinksStyle::PLAIN)
-        , lineSpacing_(0)
-        , needsEmojiMargin_(false)
         , blockId_(counter())
     {
     }
 
     TextUnit::TextUnit(std::vector<BaseDrawingBlockPtr>&& _blocks, const Data::MentionMap& _mentions, LinksVisible _showLinks, ProcessLineFeeds _processLineFeeds, EmojiSizeType _emojiSizeType)
         : blocks_(std::move(_blocks))
-        , horOffset_(0)
-        , verOffset_(0)
         , mentions_(_mentions)
         , showLinks_(_showLinks)
         , processLineFeeds_(_processLineFeeds)
         , emojiSizeType_(_emojiSizeType)
-        , align_(HorAligment::LEFT)
-        , maxLinesCount_(-1)
-        , appended_(-1)
-        , lineBreak_(LineBreakType::PREFER_WIDTH)
         , linksStyle_(isLinksUnderlined() ? LinksStyle::UNDERLINED : LinksStyle::PLAIN)
-        , lineSpacing_(0)
-        , needsEmojiMargin_(false)
         , blockId_(counter())
     {
     }
@@ -64,11 +86,36 @@ namespace TextRendering
             sourceText_.replace(QChar::LineFeed, QChar::Space);
     }
 
+
+    int TextUnit::sourceTextWidth() const
+    {
+        QFontMetrics fm(getFont());
+        return fm.width(getSourceText().string());
+    }
+
+    int TextUnit::textWidth() const
+    {
+        QFontMetrics fm(getFont());
+        return fm.width(getText());
+    }
+
     void TextUnit::appendToSourceText(TextUnit& _suffix)
     {
         const auto viewShift = sourceText_.size();
         sourceText_ += _suffix.sourceText_;
         TextRendering::updateWordsView(_suffix.blocks_, sourceText_, viewShift);
+    }
+
+    void TextUnit::initializeBlocks()
+    {
+        initBlocks(blocks_, font_, monospaceFont_, color_.actualColor(), linkColor_.actualColor(), selectionColor_.actualColor(), highlightColor_.actualColor(), align_, emojiSizeType_, linksStyle_);
+    }
+
+    void TextUnit::initializeBlocksAndSelectedTextColor()
+    {
+        initializeBlocks();
+        if (highlightTextColor_.isValid())
+            setBlocksHighlightedTextColor(blocks_, highlightTextColor_.actualColor());
     }
 
     TextUnit::TextUnit(const Data::FString& _text, const Data::MentionMap& _mentions, LinksVisible _showLinks, ProcessLineFeeds _processLineFeeds, EmojiSizeType _emojiSizeType)
@@ -78,21 +125,21 @@ namespace TextRendering
         blocks_ = parseForParagraphs(sourceText_, _mentions, _showLinks);
     }
 
-    void TextUnit::setText(const QString& _text, const QColor& _color)
+    void TextUnit::setText(const QString& _text, const Styling::ThemeColorKey& _color)
     {
         setText(Data::FString(_text), _color);
     }
 
-    void TextUnit::setText(const Data::FString& _text, QColor _color)
+    void TextUnit::setText(const Data::FString& _text, const Styling::ThemeColorKey& _color)
     {
         if (_color.isValid())
-            color_ = std::move(_color);
+            color_ = _color;
 
         setSourceText(_text, processLineFeeds_);
         blocks_ = parseForParagraphs(sourceText_, mentions_, showLinks_);
 
         blockId_ = counter();
-        initBlocks(blocks_, font_, monospaceFont_, color_, linkColor_, selectionColor_, highlightColor_, align_, emojiSizeType_, linksStyle_);
+        initializeBlocks();
         setBlocksMaxLinesCount(blocks_, maxLinesCount_, lineBreak_);
         evaluateDesiredSize();
     }
@@ -219,6 +266,7 @@ namespace TextRendering
     void TextUnit::draw(QPainter& _painter, VerPosition _pos)
     {
         lastVerPosition_ = _pos;
+        updateColors();
         return drawBlocks(blocks_, _painter, QPoint(horOffset_, verOffset_), _pos);
     }
 
@@ -242,25 +290,20 @@ namespace TextRendering
         getHeight(desiredWidth());
     }
 
-    void TextUnit::init(const QFont& _font, const QColor& _color, const QFont& _monospaceFont, const QColor& _linkColor, const QColor& _selectionColor, const QColor& _highlightColor, HorAligment _align, int _maxLinesCount, LineBreakType _lineBreak, EmojiSizeType _emojiSizeType, const LinksStyle _linksStyle)
+    void TextUnit::init(const InitializeParameters& _parameters)
     {
-        font_ = _font;
-        monospaceFont_ = _monospaceFont;
-        color_ = _color;
-        linkColor_ = _linkColor;
-        selectionColor_ = _selectionColor;
-        highlightColor_ = _highlightColor;
-        align_ = _align;
-        maxLinesCount_ = _maxLinesCount;
-        lineBreak_ = _lineBreak;
-        linksStyle_ = _linksStyle;
-        initBlocks(blocks_, _font, _monospaceFont, _color, _linkColor, _selectionColor, _highlightColor, _align, _emojiSizeType, _linksStyle);
-        setBlocksMaxLinesCount(blocks_, _maxLinesCount, lineBreak_);
-    }
-
-    void TextUnit::init(const QFont& _font, const QColor& _color, const QColor& _linkColor, const QColor& _selectionColor, const QColor& _highlightColor, HorAligment _align, int _maxLinesCount, LineBreakType _lineBreak, EmojiSizeType _emojiSizeType, const LinksStyle _linksStyle)
-    {
-        init(_font, _color, _font, _linkColor, _selectionColor, _highlightColor, _align, _maxLinesCount, _lineBreak, _emojiSizeType, _linksStyle);
+        font_ = _parameters.font_;
+        monospaceFont_ = _parameters.monospaceFont_;
+        color_ = Styling::ColorContainer{ _parameters.color_ };
+        linkColor_ = _parameters.linkColor_;
+        selectionColor_ = _parameters.selectionColor_;
+        highlightColor_ = _parameters.highlightColor_;
+        align_ = _parameters.align_;
+        maxLinesCount_ = _parameters.maxLinesCount_;
+        lineBreak_ = _parameters.lineBreak_;
+        linksStyle_ = _parameters.linksStyle_;
+        initializeBlocks();
+        setBlocksMaxLinesCount(blocks_, maxLinesCount_, lineBreak_);
     }
 
     void TextUnit::setLastLineWidth(int _width)
@@ -334,15 +377,19 @@ namespace TextRendering
         {
             if (auto view = w->word.view().trimmed(); !view.isEmpty())
             {
-                const auto sourceView = Data::FStringView(view.sourceString());
-                const auto sourceRange = view.sourceRange();
+                const auto sourceView = view.sourceView();
+                const auto sourceRange = view.getRangeOf(_old);
 
-                Data::FString::Builder builder;
-                builder %= sourceView.left(sourceRange.offset_);
-                builder %= _new;
-                builder %= sourceView.mid(sourceRange.end());
-                setText(builder.finalize());
-                return true;
+                if(sourceRange != core::data::range())
+                {
+                    Data::FString::Builder builder;
+                    builder %= sourceView.left(sourceRange.offset_);
+                    builder %= _new;
+                    builder %= sourceView.mid(sourceRange.end());
+                    setText(builder.finalize());
+                    return true;
+                }
+
             }
         }
         return false;
@@ -401,43 +448,49 @@ namespace TextRendering
         return cachedSize_;
     }
 
-    void TextUnit::setColor(const QColor& _color)
+    void TextUnit::setColor(const Styling::ColorParameter& _color)
     {
-        color_ = _color;
-        setBlocksColor(blocks_, _color);
+        color_ = Styling::ColorContainer{ _color };
+        setBlocksColor(blocks_, color_.cachedColor());
     }
 
-    void TextUnit::setColor(const Styling::StyleVariable _var, const QString& _aimid)
+    void TextUnit::setLinkColor(const Styling::ThemeColorKey& _color)
     {
-        setColor(Styling::getParameters(_aimid).getColor(_var));
+        linkColor_ = _color;
+        setBlocksLinkColor(blocks_, linkColor_.cachedColor());
     }
 
-    void TextUnit::setLinkColor(const QColor& _color)
-    {
-        setBlocksLinkColor(blocks_, _color);
-    }
-
-    void TextUnit::setSelectionColor(const Styling::StyleVariable _var, const QString & _aimid)
-    {
-        selectionColor_ = Styling::getParameters(_aimid).getColor(_var);
-        setBlocksSelectionColor(blocks_, selectionColor_);
-    }
-
-    void TextUnit::setSelectionColor(const QColor _color)
+    void TextUnit::setSelectionColor(const Styling::ThemeColorKey& _color)
     {
         selectionColor_ = _color;
-        setBlocksSelectionColor(blocks_, selectionColor_);
+        setBlocksSelectionColor(blocks_, selectionColor_.cachedColor());
     }
 
-    void TextUnit::setHighlightedTextColor(const QColor& _color)
+    void TextUnit::setHighlightedTextColor(const Styling::ThemeColorKey& _color)
     {
         highlightTextColor_ = _color;
-        setBlocksHighlightedTextColor(blocks_, highlightTextColor_);
+        setBlocksHighlightedTextColor(blocks_, highlightTextColor_.cachedColor());
+    }
+
+    void TextUnit::setHighlightColor(const Styling::ThemeColorKey& _color)
+    {
+        highlightColor_ = _color;
+        setBlocksHighlightColor(blocks_, highlightColor_.cachedColor());
+    }
+
+    Styling::ThemeColorKey TextUnit::getColorKey() const
+    {
+        return color_.key();
     }
 
     QColor TextUnit::getColor() const
     {
-        return color_;
+        return color_.cachedColor();
+    }
+
+    Styling::ThemeColorKey TextUnit::getLinkColorKey() const
+    {
+        return linkColor_.key();
     }
 
     HorAligment TextUnit::getAlign() const
@@ -445,9 +498,9 @@ namespace TextRendering
         return align_;
     }
 
-    void TextUnit::setColorForAppended(const QColor& _color)
+    void TextUnit::setColorForAppended(const Styling::ThemeColorKey& _color)
     {
-        return setBlocksColorForAppended(blocks_, _color, appended_);
+        return setBlocksColorForAppended(blocks_, Styling::getColor(_color), appended_);
     }
 
     const QFont& TextUnit::getFont() const
@@ -505,11 +558,13 @@ namespace TextRendering
             emojiSizeType_ = _emojiSizeType;
 
             if (hasEmoji())
-            {
-                initBlocks(blocks_, font_, monospaceFont_, color_, linkColor_, selectionColor_, highlightColor_, align_, emojiSizeType_, linksStyle_);
-                setBlocksHighlightedTextColor(blocks_, highlightTextColor_);
-            }
+                initializeBlocksAndSelectedTextColor();
         }
+    }
+
+    LinksVisible TextUnit::linksVisibility() const
+    {
+        return showLinks_;
     }
 
     bool TextUnit::needsEmojiMargin() const
@@ -639,6 +694,20 @@ namespace TextRendering
             [](const auto& _b) { return _b->mightStretchForLargerWidth(); });
     }
 
+    void TextUnit::updateColors()
+    {
+        if (color_.canUpdateColor())
+            setBlocksColor(blocks_, color_.actualColor());
+        if (linkColor_.canUpdateColor())
+            setBlocksLinkColor(blocks_, linkColor_.actualColor());
+        if (selectionColor_.canUpdateColor())
+            setBlocksSelectionColor(blocks_, selectionColor_.actualColor());
+        if (highlightColor_.canUpdateColor())
+            setBlocksHighlightColor(blocks_, highlightColor_.actualColor());
+        if (highlightTextColor_.canUpdateColor())
+            setBlocksHighlightedTextColor(blocks_, highlightTextColor_.actualColor());
+    }
+
     QPoint TextUnit::mapPoint(QPoint _p) const
     {
         auto p = QPoint(_p.x() - horOffset_, _p.y() - verOffset_);
@@ -650,8 +719,7 @@ namespace TextRendering
     void TextUnit::setAlign(HorAligment _align)
     {
         align_ = _align;
-        initBlocks(blocks_, font_, monospaceFont_, color_, linkColor_, selectionColor_, highlightColor_, align_, emojiSizeType_, isLinksUnderlined() ? LinksStyle::UNDERLINED : LinksStyle::PLAIN);
-        setBlocksHighlightedTextColor(blocks_, highlightTextColor_);
+        initializeBlocksAndSelectedTextColor();
     }
 
     TextUnitPtr MakeTextUnit(
@@ -674,6 +742,16 @@ namespace TextRendering
     TextUnitPtr MakeTextUnit(const QString& _text, const Data::MentionMap& _mentions, LinksVisible _showLinks, ProcessLineFeeds _processLineFeeds, EmojiSizeType _emojiSizeType)
     {
         return MakeTextUnit(Data::FString(_text), _mentions, _showLinks, _processLineFeeds, _emojiSizeType);
+    }
+
+    void ExtractLinkWords(TextUnitPtr& _textUnit, std::vector<const TextWord*>& _words)
+    {
+        _words.clear();
+        if (!_textUnit)
+            return;
+
+        for (auto& block : _textUnit->blocks())
+            extractBlockLinks(_words, block);
     }
 }
 

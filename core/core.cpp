@@ -16,6 +16,7 @@
 #include "connections/login_info.h"
 #include "connections/im_login.h"
 #include "connections/send_feedback.h"
+#include "configuration/external_config.h"
 
 #ifndef STRIP_VOIP
 #include "Voip/VoipManager.h"
@@ -53,12 +54,14 @@
 #include "../../../common.shared/version_info.h"
 #include "connections/urls_cache.h"
 #include "connections/wim/wim_packet.h"
+#include "connections/wim/log_replace_functor.h"
 
 #ifndef STRIP_NET_CHANGE_NOTIFY
 #include "network/network_change_notifier.h"
 #include "network/network_change_observer.h"
 #endif // !STRIP_NET_CHANGE_NOTIFY
 
+#include "tools/features.h"
 
 #ifdef _WIN32
     #include "../common.shared/win32/crash_handler.h"
@@ -234,7 +237,6 @@ namespace
     }
 
     thread_local core::stack_vec current_stack_;
-    constexpr auto need_stack() noexcept { return build::is_debug() || platform::is_apple(); }
 }
 
 using namespace core;
@@ -278,8 +280,9 @@ static constexpr std::string_view get_omicron_arch() noexcept
 
 stacked_task::stacked_task(std::function<void()> _func)
     : func_(std::move(_func))
+    , need_stack_(core::configuration::get_app_config().is_task_trace_enabled())
 {
-    if (need_stack())
+    if (need_stack_)
     {
         stack_.reserve(current_stack_.size() + 1);
         stack_.push_back(std::make_shared<boost::stacktrace::stacktrace>());
@@ -294,19 +297,19 @@ stacked_task::operator bool() const noexcept
 
 void stacked_task::execute()
 {
-    if (need_stack())
+    if (need_stack_)
         current_stack_.push_back(stack_.front());
 
     if (func_)
         func_();
 
-    if (need_stack())
+    if (need_stack_)
         current_stack_.pop_back();
 }
 
 const stack_vec& stacked_task::get_stack() const
 {
-    if (!need_stack())
+    if (!need_stack_)
     {
         static const stack_vec empty;
         return empty;
@@ -357,6 +360,52 @@ void core::core_dispatcher::execute_core_context(stacked_task _func)
     }
 
     core_thread_->execute_core_context(std::move(_func));
+}
+
+void core::core_dispatcher::on_external_config_changed()
+{
+    auto update_config = [this]()
+    {
+        if (config::get().is_on(config::features::omicron_enabled))
+            start_omicron_service();
+        load_statistics();
+        load_im_stats();
+        try_send_crash_report(); // base url is received, try to send
+        update_parellel_packets_count();
+        if (urls::api_version::instance().update())
+        {
+            if (auto im = im_container_->get_im_by_id(0))
+                im->handle_net_error({}, wim::wim_protocol_internal_error::wpie_error_need_relogin);
+        }
+    };
+
+    if (is_core_thread())
+    {
+        update_config();
+    }
+    else
+    {
+        execute_core_context({ [update_config = std::move(update_config)] ()
+        {
+            update_config();
+        } });
+    }
+
+    if (voip_manager_)
+        voip_manager_->voip_statistics_enable();
+}
+
+void core::core_dispatcher::on_omicron_updated(const std::string& _data)
+{
+    execute_core_context({ [this, _data] ()
+    {
+        coll_helper cl_coll(g_core->create_collection(), true);
+        cl_coll.set_value_as_string("data", _data);
+        post_message_to_gui("omicron/update/data", 0, cl_coll.get());
+
+        check_if_network_change_notifier_available();
+        update_parellel_packets_count();
+    } });
 }
 
 void core::core_dispatcher::write_data_to_network_log(tools::binary_stream _data)
@@ -434,6 +483,9 @@ void core::core_dispatcher::link_gui(icore_interface* _core_face, const common::
     core_factory_ = _core_face->get_factory();
     core_thread_ = new main_thread();
 
+    const auto app_ini_path = utils::get_app_ini_path();
+    configuration::load_app_config(app_ini_path);
+
     execute_core_context({ [this, _settings]
     {
         start(_settings);
@@ -453,9 +505,6 @@ void core::core_dispatcher::start(const common::core_gui_settings& _settings)
     curl_handler::instance().init();
 
     core_gui_settings_ = _settings;
-
-    const auto app_ini_path = utils::get_app_ini_path();
-    configuration::load_app_config(app_ini_path);
 
     // called from core thread
     network_log_ = std::make_unique<network_log>(utils::get_logs_path());
@@ -500,6 +549,8 @@ void core::core_dispatcher::start(const common::core_gui_settings& _settings)
     if (config::get().is_on(config::features::omicron_enabled))
         start_omicron_service();
 
+    update_parellel_packets_count();
+
     config::hosts::load_dns_cache();
 
     if (config::get().is_debug())
@@ -525,7 +576,7 @@ void core::core_dispatcher::start(const common::core_gui_settings& _settings)
     post_theme_settings_and_meta();
 
     post_gui_settings();
-    post_user_proxy_to_gui();
+    post_proxy_to_gui(get_proxy_settings());
 
     post_logins();
 
@@ -569,10 +620,8 @@ void core::core_dispatcher::unlink_gui()
 
         gui_settings_.reset();
         scheduler_.reset();
-        if (is_stats_enabled())
-            statistics_.reset();
-        if (is_im_stats_enabled())
-            im_stats_.reset();
+        statistics_.reset();
+        im_stats_.reset();
         async_executer_.reset();
         updater_.reset();
         report_sender_.reset();
@@ -859,12 +908,14 @@ void core_dispatcher::load_gui_settings()
 
 bool core_dispatcher::is_stats_enabled() const
 {
-    return config::get().is_on(config::features::statistics);
+    if (config::hosts::external_url_config::instance().is_external_config_loaded())
+        return config::get().is_on(config::features::statistics);
+    return false;
 }
 
 void core_dispatcher::load_statistics()
 {
-    if (!is_stats_enabled())
+    if (!is_stats_enabled() || statistics_)
         return;
 
     statistics_ = std::make_shared<core::stats::statistics>(utils::get_product_data_path() + L"/stats/stats_mt.stg");
@@ -894,11 +945,19 @@ bool core_dispatcher::is_im_stats_enabled() const
 
 void core_dispatcher::load_im_stats()
 {
-    if (!is_im_stats_enabled())
+    if (!is_im_stats_enabled() || im_stats_)
         return;
 
     im_stats_ = std::make_shared<core::stats::im_stats>(utils::get_product_data_path() + L"/stats/im_stats.stg");
     im_stats_->init();
+}
+
+void core::core_dispatcher::update_parellel_packets_count()
+{
+    const auto new_count = features::wim_parallel_packets_count();
+    if (auto im = im_container_->get_im_by_id(0))
+        im->update_parellel_packets_count(new_count);
+    curl_handler::instance().set_multi_max_parallel_packets_count(2 * new_count);
 }
 
 void core_dispatcher::start_session_stats(bool _delayed)
@@ -983,6 +1042,7 @@ void core_dispatcher::post_gui_settings()
 
     cl_coll.set_value_as_string("data_path", core::tools::from_utf16(core::utils::get_product_data_path()));
     cl_coll.set_value_as_string("os_version", core::tools::system::get_os_version_string());
+    cl_coll.set_value_as_string(settings_user_agent, utils::get_user_agent("%1"));
 
     post_message_to_gui("gui_settings", 0, cl_coll.get());
 }
@@ -1406,9 +1466,12 @@ void core::core_dispatcher::receive_message_from_gui(std::string_view _message, 
             bs.write<std::string_view>(_message_data->get_value("message")->get_as_string());
             bs.write<std::string_view>("\r\n");
 
-            log_replace_functor f;
-            f.add_marker("aimsid", aimsid_range_evaluator());
-            f(bs);
+            if (!core::configuration::get_app_config().is_full_log_enabled())
+            {
+                log_replace_functor f;
+                f.add_marker("aimsid", aimsid_range_evaluator());
+                f(bs);
+            }
 
             write_data_to_network_log(bs);
         }
@@ -1587,13 +1650,31 @@ proxy_settings core_dispatcher::get_proxy_settings() const
 
 bool core_dispatcher::try_to_apply_alternative_settings()
 {
-    return proxy_settings_manager_->try_to_apply_alternative_settings();
+    const bool apply_success = proxy_settings_manager_->try_to_apply_alternative_settings();
+    if (apply_success)
+    {
+        const auto proxy_settings = get_proxy_settings();
+        post_proxy_to_gui(proxy_settings);
+
+        g_core->write_string_to_network_log(su::concat("Switch to proxy: ", proxy_settings.use_proxy_ ? proxy_settings.to_string() : std::string{ "disabled" }, "\r\n"));
+    }
+    return apply_success;
+}
+
+void core_dispatcher::post_proxy_to_gui(const proxy_settings& _proxy_settings)
+{
+    coll_helper cl_coll(create_collection(), true);
+    _proxy_settings.serialize(cl_coll);
+    g_core->post_message_to_gui("proxy_change", 0, cl_coll.get());
 }
 
 void core_dispatcher::set_user_proxy_settings(const proxy_settings& _user_proxy_settings)
 {
     proxy_settings_manager_->apply(_user_proxy_settings);
-    g_core->post_user_proxy_to_gui();
+    const auto proxy_settings = get_proxy_settings();
+    post_proxy_to_gui(proxy_settings);
+
+    g_core->write_string_to_network_log(su::concat("Switch to user proxy: ", proxy_settings.use_proxy_ ? proxy_settings.to_string() : std::string{ "disabled" }));
 }
 
 bool core_dispatcher::locale_was_changed() const
@@ -1624,14 +1705,6 @@ std::string core_dispatcher::get_locale() const
     im_assert(is_core_thread());
 
     return settings_->get_locale();
-}
-
-void core_dispatcher::post_user_proxy_to_gui()
-{
-    auto user_proxy = proxy_settings_manager_->get_current_settings();
-    coll_helper cl_coll(create_collection(), true);
-    user_proxy.serialize(cl_coll);
-    g_core->post_message_to_gui("user_proxy/result", 0, cl_coll.get());
 }
 
 void core_dispatcher::setup_memory_stats_collector()
@@ -1691,16 +1764,7 @@ static void omicron_log_helper(const std::string& _text)
 static void omicron_update_helper(const std::string& _data)
 {
     if (g_core)
-    {
-        g_core->execute_core_context({ [_data]
-        {
-            coll_helper cl_coll(g_core->create_collection(), true);
-            cl_coll.set_value_as_string("data", _data);
-            g_core->post_message_to_gui("omicron/update/data", 0, cl_coll.get());
-
-            g_core->check_if_network_change_notifier_available();
-        } });
-    }
+        g_core->on_omicron_updated(_data);
 }
 
 static bool omicron_download_helper(const omicronlib::omicron_proxy_settings& /*_proxy_settings*/, const std::string& _url, std::string& _json_data, long& _response_code)
@@ -1762,8 +1826,33 @@ static std::string omicron_load_helper(const std::wstring& _path)
     return res;
 }
 
+void core::core_dispatcher::update_omicron(bool _need_add_account)
+{
+    if (!config::get().is_on(config::features::omicron_enabled))
+        return;
+
+    start_omicron_service();
+
+    static auto need_add_account = _need_add_account;
+    if (need_add_account && g_core)
+    {
+        auto account = g_core->get_root_login();
+        if (!account.empty())
+        {
+            need_add_account = false;
+            omicronlib::omicron_add_fingerprint("account", account);
+        }
+    }
+
+    omicronlib::omicron_update();
+}
+
 void core::core_dispatcher::start_omicron_service()
 {
+    static bool service_started = false;
+    if (service_started)
+        return;
+    service_started = true;
     std::string inifile_dev_id = core::configuration::get_app_config().device_id();
     const auto app_id = inifile_dev_id.empty() ? std::string(get_omicron_dev_id()) : inifile_dev_id;
 
@@ -1799,18 +1888,7 @@ void core::core_dispatcher::start_omicron_service()
     auto update_period = (inifile_update_interval == 0) ? omicronlib::default_update_interval() : std::chrono::seconds(inifile_update_interval);
     omicron_update_timer_id_ = add_timer({ [fl = account.empty()] ()
     {
-        static auto need_add_account = fl;
-        if (need_add_account && g_core)
-        {
-            auto account = g_core->get_root_login();
-            if (!account.empty())
-            {
-                need_add_account = false;
-                omicronlib::omicron_add_fingerprint("account", account);
-            }
-        }
-
-        omicronlib::omicron_update();
+        g_core->update_omicron(fl);
     } }, update_period);
 }
 
@@ -1961,6 +2039,15 @@ void core_dispatcher::try_send_crash_report()
         if (auto url = config::hosts::get_host_url(config::hosts::host_url_type::base_binary); !url.empty())
             report_sender_->send_report(url);
 #endif
+}
+
+void core_dispatcher::notify_history_dropped(const std::string& _aimid)
+{
+    execute_core_context({ [this, _aimid]()
+    {
+        if (auto im = find_im_by_id(0))
+            im->notify_history_droppped(_aimid);
+    } });
 }
 
 bool core_dispatcher::is_smartreply_available() const

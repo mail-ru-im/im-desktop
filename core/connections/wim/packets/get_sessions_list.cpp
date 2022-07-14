@@ -3,6 +3,7 @@
 #include "get_sessions_list.h"
 #include "../../../http_request.h"
 #include "../../../../common.shared/json_helper.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -14,7 +15,12 @@ get_sessions_list::get_sessions_list(wim_packet_params _params)
 
 std::string_view get_sessions_list::get_method() const
 {
-    return "session/list"; 
+    return "session/list";
+}
+
+int core::wim::get_sessions_list::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t get_sessions_list::init_request(const std::shared_ptr<core::http_request_simple>& _request)

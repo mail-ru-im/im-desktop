@@ -99,6 +99,8 @@ namespace core
 
         void resolve_host(std::string_view _host, std::function<void(std::string _result, int _error)> _callback);
 
+        void set_multi_max_parallel_packets_count(size_t _count);
+
     private:
         curl_handler();
 

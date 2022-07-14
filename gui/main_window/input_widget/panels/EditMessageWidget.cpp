@@ -29,15 +29,14 @@ namespace Ui
         , mediaType_(MediaType::noMedia)
     {
         caption_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("input_widget", "Edit message"));
-        caption_->init(Fonts::appFontScaled(14, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_INVERSE));
+        caption_->init({ Fonts::appFontScaled(14, Fonts::FontWeight::SemiBold), Styling::ThemeColorKey{Styling::StyleVariable::PRIMARY_INVERSE} });
         caption_->setOffsets(getInputTextLeftMargin(), Utils::scale_value(15));
 
         text_ = TextRendering::MakeTextUnit(QString(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-        text_->init(
-            Fonts::appFontScaled(13, Fonts::FontWeight::Normal),
-            Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID),
-            Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID),
-            QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+        TextRendering::TextUnit::InitializeParameters params(Fonts::appFontScaled(13, Fonts::FontWeight::Normal), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
+        params.linkColor_ = Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID };
+        params.maxLinesCount_ = 1;
+        text_->init(params);
         text_->setOffsets(getInputTextLeftMargin(), Utils::scale_value(32));
 
         elide();

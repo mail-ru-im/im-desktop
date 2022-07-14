@@ -87,7 +87,8 @@ namespace Logic
         if (isSearchInSingleDialog())
             collection.set_value_as_qstring("contact", dialogAimid_);
 
-        localReqId_ = Ui::GetDispatcher()->post_message_to_core("dialogs/search/local", collection.get());
+        const auto message = dialogAimid_ == qsl("~threads~") ? "thread/feed/search/local" : "dialogs/search/local";
+        localReqId_ = Ui::GetDispatcher()->post_message_to_core(message, collection.get());
     }
 
     void MessageSearcher::onLocalResults(const Data::SearchResultsV& _localResults, const qint64 _reqId)

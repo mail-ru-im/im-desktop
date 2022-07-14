@@ -23,6 +23,7 @@
 #include "../libomicron/include/omicron/omicron.h"
 #include "../common.shared/config/config.h"
 #include "../common.shared/string_utils.h"
+#include "../common.shared/uri_matcher/uri.h"
 
 #ifndef STRIP_ZSTD
 #include "zstd_helper.h"
@@ -264,9 +265,13 @@ bool core::curl_context::init_handler(CURL* _curl)
         curl_easy_setopt(_curl, CURLOPT_LOW_SPEED_TIME, timeout_.count() / 1000);
     }
 
-    if (proxy_settings_.use_proxy_)
+    basic_uri_view uri_view { original_url_ };
+    const auto host = uri_view.host();
+    const std::optional<config::hosts::dns_entry> resolved_ip = config::hosts::resolve_host(std::string { host });
+
+    if (proxy_settings_.need_use_proxy(original_url_, resolved_ip ? resolved_ip->ip_ : std::string_view{}))
     {
-        curl_easy_setopt(_curl, CURLOPT_PROXY, tools::from_utf16(proxy_settings_.proxy_server_).c_str());
+        curl_easy_setopt(_curl, CURLOPT_PROXY, proxy_settings_.proxy_server_.c_str());
 
         if (proxy_settings_.proxy_port_ != proxy_settings::default_proxy_port)
             curl_easy_setopt(_curl, CURLOPT_PROXYPORT, (long)proxy_settings_.proxy_port_);
@@ -275,7 +280,7 @@ bool core::curl_context::init_handler(CURL* _curl)
 
         if (proxy_settings_.need_auth_)
         {
-            curl_easy_setopt(_curl, CURLOPT_PROXYUSERPWD, tools::from_utf16(su::wconcat(proxy_settings_.login_, L':', proxy_settings_.password_)).c_str());
+            curl_easy_setopt(_curl, CURLOPT_PROXYUSERPWD, su::concat(proxy_settings_.login_, ':', proxy_settings_.password_).c_str());
 
             if (proxy_settings_.proxy_type_ == static_cast<int32_t>(core::proxy_type::http_proxy))
                 curl_easy_setopt(_curl, CURLOPT_PROXYAUTH, curl_auth_type(proxy_settings_.auth_type_));
@@ -283,9 +288,9 @@ bool core::curl_context::init_handler(CURL* _curl)
     }
 
     curl_easy_setopt(_curl, CURLOPT_URL, original_url_.c_str());
-    auto resolved = config::hosts::format_resolve_host_str(original_url_, 443);
-    if (!resolved.empty())
+    if (resolved_ip)
     {
+        const std::string resolved = config::hosts::format_resolve_host_str(host, *resolved_ip);
         resolve_host_ = curl_slist_append(resolve_host_, resolved.c_str());
         curl_easy_setopt(_curl, CURLOPT_RESOLVE, resolve_host_);
     }
@@ -294,9 +299,7 @@ bool core::curl_context::init_handler(CURL* _curl)
     curl_easy_setopt(_curl, CURLOPT_MAXREDIRS, 10L);
 
     if (!keep_alive_)
-    {
         curl_easy_setopt(_curl, CURLOPT_COOKIEFILE, "");
-    }
 
     if (curl_range_from_ != -1 && curl_range_to_ != -1)
     {
@@ -611,13 +614,13 @@ void core::curl_context::load_info(CURL* _curl, CURLcode _result)
             if (!stat_d)
                 return;
 
-            if (config::get().is_on(config::features::statistics))
+            if (const auto& statistics = g_core->get_statistics(); config::get().is_on(config::features::statistics) && statistics)
             {
-                g_core->get_statistics()->increment_event_prop(stats::stats_event_names::send_used_traffic_size_event,
+                statistics->increment_event_prop(stats::stats_event_names::send_used_traffic_size_event,
                     std::string("download"),
                     (*stat_d).total_downloaded_);
 
-                g_core->get_statistics()->increment_event_prop(stats::stats_event_names::send_used_traffic_size_event,
+                statistics->increment_event_prop(stats::stats_event_names::send_used_traffic_size_event,
                     std::string("upload"),
                     (*stat_d).total_uploaded_);
             }
@@ -694,9 +697,6 @@ core::curl_easy::completion_code core::curl_context::execute_request()
 {
     auto handler = curl_handler::instance().perform(shared_from_this());
     im_assert(handler.valid());
-
-    handler.wait();
-
     return handler.get();
 }
 

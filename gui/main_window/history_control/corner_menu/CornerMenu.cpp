@@ -49,6 +49,10 @@ namespace
         using IconCache = std::unordered_map<QString, IconColors>;
         static IconCache cache;
 
+        static Styling::ThemeChecker checker;
+        if (checker.checkAndUpdateHash())
+            cache.clear();
+
         auto& pm = cache[_path][_color];
         if (pm.isNull())
             pm = Utils::renderSvg(_path, getIconSize(), Styling::getParameters().getColor(_color));

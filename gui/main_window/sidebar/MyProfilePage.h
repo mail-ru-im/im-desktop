@@ -24,19 +24,14 @@ namespace Ui
             text_ = TextRendering::MakeTextUnit(std::forward<Args>(args)...);
         }
 
-        template <typename... Args>
-        void init(Args&&... args)
-        {
-            text_->init(std::forward<Args>(args)...);
-            update();
-        }
+        void init(const TextRendering::TextUnit::InitializeParameters& _params);
 
         QSize sizeHint() const override;
         QSize minimumSizeHint() const override;
 
         void setMaximumWidth(int _width);
 
-        void setText(const QString& _text, const QColor& _color = QColor());
+        void setText(const QString& _text, const Styling::ThemeColorKey& _color = {});
         void setOpacity(qreal _opacity);
 
         QString getText() const;
@@ -73,6 +68,9 @@ namespace Ui
         void enterEvent(QEvent* _event) override;
         void leaveEvent(QEvent* _event) override;
 
+    private Q_SLOTS:
+        void updateIcon();
+
     private:
         int leftMargin_;
         TextResizedWidget* header_;
@@ -80,8 +78,8 @@ namespace Ui
         QString infoStr_;
         QString infoEmptyStr_;
         QLabel* iconArea_;
-        QPixmap iconHovered_;
-        QPixmap iconPressed_;
+        Utils::StyledPixmap iconHovered_;
+        Utils::StyledPixmap iconPressed_;
         QPoint pos_;
         bool hovered_;
         bool pressed_;
@@ -131,6 +129,7 @@ namespace Ui
     private:
         QString currentAimId_;
         QString firstName_;
+        QString middleName_;
         QString lastName_;
         QWidget* mainWidget_;
         ContactAvatarWidget* avatar_;

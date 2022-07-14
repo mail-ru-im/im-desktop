@@ -12,6 +12,7 @@
 #include "core_dispatcher.h"
 #include "DefaultReactions.h"
 #include "main_window/ContactDialog.h"
+#include "main_window/contact_list/ServiceContacts.h"
 
 #include "AddReactionPlate.h"
 
@@ -73,29 +74,12 @@ QColor backgroundColor()
     return Styling::getParameters().getColor(Styling::StyleVariable::CHAT_PRIMARY);
 }
 
-const QColor& myReactionOverlayColor(bool _pressed)
+QColor myReactionOverlayColor(bool _pressed)
 {
-    if (_pressed)
-    {
-        static auto color = []()
-        {
-            auto color = Styling::getParameters().getColor(Styling::StyleVariable::CHAT_PRIMARY_ACTIVE);
-            color.setAlphaF(0.8);
-            return color;
-        }();
-        return color;
-    }
-    else
-    {
-        static auto color = []()
-        {
-            auto color = Styling::getParameters().getColor(Styling::StyleVariable::CHAT_PRIMARY);
-            color.setAlphaF(0.8);
-            return color;
-        }();
-        return color;
-    }
+    static Styling::ColorContainer pressed{ Styling::ThemeColorKey{ Styling::StyleVariable::CHAT_PRIMARY_ACTIVE, 0.8 } };
+    static Styling::ColorContainer normal{ Styling::ThemeColorKey{ Styling::StyleVariable::CHAT_PRIMARY, 0.8 } };
 
+    return (_pressed ? pressed : normal).actualColor();
 }
 
 QSize overlaySizeDiff()
@@ -148,20 +132,9 @@ QSize removeIconSize()
     return Utils::scale_value(QSize(20, 20));
 }
 
-QSize removeIconSizeBig()
-{
-    return Utils::scale_value(QSize(32, 32));
-}
-
 QPixmap removeIcon(double _scale)
 {
     return Utils::renderSvg(qsl(":/controls/close_icon"), _scale * removeIconSize(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
-}
-
-const QPixmap& removeIconBig()
-{
-    static const auto icon = Utils::renderSvg(qsl(":/controls/close_icon"), removeIconSizeBig(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
-    return icon;
 }
 
 double emojiOpacityOtherHovered()
@@ -298,6 +271,7 @@ public:
     QString chatId_;
     int64_t msgId_;
     bool outgoingPosition_;
+    bool isThreadFeedItem_;
 
     PlateWithShadow* plate_;
     QTimer animationTimer_;
@@ -368,9 +342,14 @@ void AddReactionPlate::setChatId(const QString& _chatId)
     d->chatId_ = _chatId;
 }
 
+void AddReactionPlate::setThreadFeedFlag(bool _isThreadFeed)
+{
+    d->isThreadFeedItem_ = _isThreadFeed;
+}
+
 void AddReactionPlate::showOverButton(const QPoint& _buttonTopCenterGlobal)
 {
-    auto page = Utils::InterConnector::instance().getPage(d->chatId_);
+    auto page = Utils::InterConnector::instance().getPage(d->isThreadFeedItem_ ? ServiceContacts::getThreadsName() : d->chatId_);
     if (!page)
         return;
 

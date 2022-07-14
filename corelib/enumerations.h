@@ -191,6 +191,7 @@ namespace core
         chat_join_moderation_modified,
         chat_public_modified,
         chat_trust_requied_modified,
+        chat_threads_enabled_modified,
 
         mchat_adm_granted,
         mchat_adm_revoked,
@@ -591,7 +592,6 @@ namespace core
             messages_from_created_2_delivered = 40001,
 
             // Voip status.
-            voip_calls_users_tech = 41000,
             voip_calls_interface_buttons = 41001,
             voip_calls_users_caller = 41002,
 
@@ -1018,7 +1018,6 @@ namespace core
             case stats_event_names::messages_from_created_2_sent: return std::string_view("Messages_fromCreatedToSent");
             case stats_event_names::messages_from_created_2_delivered: return std::string_view("Messages_fromCreatedToDelivered");
 
-            case stats_event_names::voip_calls_users_tech: return std::string_view("Calls_Users_Tech");
             case stats_event_names::voip_calls_interface_buttons: return std::string_view("Calls_Interface_Buttons");
             case stats_event_names::voip_calls_users_caller: return std::string_view("Calls_Users_Caller");
 

@@ -3,6 +3,7 @@
 
 #include "../../../http_request.h"
 #include "../../../tools/system.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -26,6 +27,11 @@ resolve_pending::~resolve_pending()
 std::string_view resolve_pending::get_method() const
 {
     return "chatResolvePending";
+}
+
+int core::wim::resolve_pending::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t resolve_pending::init_request(const std::shared_ptr<core::http_request_simple>& _request)

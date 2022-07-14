@@ -4,6 +4,7 @@
 
 #include "../../../http_request.h"
 #include "../../urls_cache.h"
+#include "../log_replace_functor.h"
 
 
 using namespace core;
@@ -56,4 +57,9 @@ int32_t gdpr_agreement::get_response_error_code()
 std::string_view gdpr_agreement::get_method() const
 {
     return "setUserAgreement";
+}
+
+int core::wim::gdpr_agreement::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }

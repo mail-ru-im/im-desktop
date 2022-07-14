@@ -9,6 +9,7 @@
 #include "../../../../common.shared/json_helper.h"
 #include "../../urls_cache.h"
 #include "../common.shared/string_utils.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -35,6 +36,11 @@ get_gateway::~get_gateway() = default;
 std::string_view get_gateway::get_method() const
 {
     return "filesCreateUploadSession";
+}
+
+int core::wim::get_gateway::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t get_gateway::init_request(const std::shared_ptr<core::http_request_simple>& _request)

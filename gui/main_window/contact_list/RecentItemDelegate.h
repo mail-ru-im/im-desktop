@@ -3,8 +3,10 @@
 #include "../../types/message.h"
 #include "../../types/typing.h"
 #include "Common.h"
+#include "IconsDelegate.h"
 
 #include "../../controls/TextUnit.h"
+#include "../../main_window/tray/RecentMessagesAlert.h"
 
 namespace Ui
 {
@@ -36,21 +38,26 @@ namespace Ui
             const bool _isSelected,
             const bool _isHovered,
             const bool _isDrag,
-            const bool _isKeyboardFocused);
+            const bool _isKeyboardFocused) const;
 
-        virtual void drawMouseState(QPainter& _p, const QRect& _rect, const bool _isHovered, const bool _isSelected, const bool _isKeyboardFocused = false);
+        virtual void drawMouseState(QPainter& _p, const QRect& _rect, const bool _isHovered, const bool _isSelected, const bool _isKeyboardFocused = false) const;
 
         const QString& getAimid() const;
 
         virtual bool needsTooltip(QPoint _posCursor = {}) const { return false; }
+        virtual QRect getDraftIconRectWrapper() const {return {};};
     };
 
-    class PinnedServiceItem : public RecentItemBase
+    class PinnedServiceItem : public RecentItemBase, Logic::IconsDelegate
     {
         Q_OBJECT
     public:
         PinnedServiceItem(const Data::DlgState& _state);
         ~PinnedServiceItem();
+
+        QRect getDraftIconRectWrapper() const override {return Logic::IconsDelegate::getDraftIconRect();};
+        bool needsTooltip(QPoint _posCursor = {}) const override;
+        bool needDrawDraft(const Ui::ViewParams& _viewParams, const Data::DlgState& _state) const override;
 
     protected:
         void draw(
@@ -60,7 +67,16 @@ namespace Ui
             const bool _isSelected,
             const bool _isHovered,
             const bool _isDrag,
-            const bool _isKeyboardFocused) override;
+            const bool _isKeyboardFocused) const override;
+
+        bool needDrawUnreads(const Data::DlgState& _state) const override;
+        bool needDrawMentions(const Ui::ViewParams& _viewParams, const Data::DlgState& _state) const override;
+        bool needDrawAttention(const Data::DlgState& _state) const override { return false; };
+
+        void drawDraft(QPainter* _painter, const Data::DlgState& _state, bool _isSelected, const QRect& _rect, const Ui::ViewParams& _viewParams, int& _rightAreaRight) const override;
+        void drawUnreads(QPainter* _painter, const Data::DlgState& _state, bool _isSelected, const QRect& _rect, const Ui::ViewParams& _viewParams, int& _unreadsX, int& _unreadsY) const override;
+        void drawMentions(QPainter* _painter, const Data::DlgState& _state, bool _isSelected, const QRect& _rect, const Ui::ViewParams& _viewParams, int& _unreadsX, int& _unreadsY) const override;
+        void drawAttention(QPainter* _painter, const Data::DlgState& _state, bool _isSelected, const QRect& _rect, const Ui::ViewParams& _viewParams, int& _unreadsX, int& _unreadsY) const override {};
 
     private:
         ::Ui::TextRendering::TextUnitPtr text_;
@@ -99,7 +115,7 @@ namespace Ui
             const bool _isSelected,
             const bool _isHovered,
             const bool _isDrag,
-            const bool _isKeyboardFocused) override;
+            const bool _isKeyboardFocused) const override;
 
     public:
 
@@ -131,7 +147,7 @@ namespace Ui
             const bool _isSelected,
             const bool _isHovered,
             const bool _isDrag,
-            const bool _isKeyboardFocused) override;
+            const bool _isKeyboardFocused) const override;
 
     public:
 
@@ -142,9 +158,12 @@ namespace Ui
     //////////////////////////////////////////////////////////////////////////
     // RecentItemRecent
     //////////////////////////////////////////////////////////////////////////
-    class RecentItemRecent : public RecentItemBase
+    class RecentItemRecent : public RecentItemBase, public Logic::IconsDelegate
     {
         Q_OBJECT
+    public:
+        bool needDrawDraft(const Ui::ViewParams& _viewParams, const Data::DlgState& _state) const override;
+        QRect getDraftIconRectWrapper() const override { return Logic::IconsDelegate::getDraftIconRect(); };
 
     protected:
 
@@ -173,9 +192,9 @@ namespace Ui
 
         bool mention_;
 
-        int prevWidthName_;
+        mutable int prevWidthName_;
 
-        int prevWidthMessage_;
+        mutable int prevWidthMessage_;
 
         const bool muted_;
 
@@ -208,15 +227,37 @@ namespace Ui
             const bool _isSelected,
             const bool _isHovered,
             const bool _isDrag,
-            const bool _isKeyboardFocused) override;
+            const bool _isKeyboardFocused) const override;
+
+        int getUnknownUnreads(const Ui::ViewParams& _viewParams, const QRect& _rect) const;
+
+        bool isPictOnly(const Ui::ViewParams& _viewParams) const;
+        bool isUnknown(const Ui::ViewParams& _viewParams) const;
+        bool isUnknownAndNotPictOnly(const Ui::ViewParams& _viewParams) const;
+
+        bool needDrawUnreads(const Data::DlgState& _state) const override;
+        bool needDrawMentions(const Ui::ViewParams& _viewParams, const Data::DlgState& _state) const override;
+        bool needDrawAttention(const Data::DlgState& _state) const override;
+
+        void fixMaxWidthIfIcons(const Ui::ViewParams& _viewParams, int& _maxWidth) const;
+
+        void drawDraft(QPainter* _painter, const Data::DlgState& _state, bool _isSelected, const QRect& _rect, const Ui::ViewParams& _viewParams, int& _rightAreaRight) const override;
+        void drawUnreads(QPainter* _painter, const Data::DlgState& _state, bool _isSelected, const QRect& _rect, const Ui::ViewParams& _viewParams, int& _unreadsX, int& _unreadsY) const override;
+        void drawMentions(QPainter* _painter, const Data::DlgState& _state, bool _isSelected, const QRect& _rect, const Ui::ViewParams& _viewParams, int& _unreadsX, int& _unreadsY) const override;
+        void drawAttention(QPainter* _painter, const Data::DlgState& _state, bool _isSelected, const QRect& _rect, const Ui::ViewParams& _viewParams, int& _unreadsX, int& _unreadsY) const override;
+
+        void drawRemoveIcon(QPainter& _p, bool _isSelected, const QRect& _rect, const Ui::ViewParams& _viewParams) const;
 
     public:
 
         RecentItemRecent(
             const Data::DlgState& _state,
-            const bool _compactMode,
-            const bool _hideMessage,
-            const bool _showHeads);
+            bool _compactMode,
+            bool _hideSender,
+            bool _hideMessage,
+            bool _showHeads,
+            AlertType _alertType = AlertType::alertTypeMessage,
+            bool _isNotification = false);
         virtual ~RecentItemRecent();
 
         bool needsTooltip(QPoint _posCursor = {}) const override;
@@ -240,15 +281,14 @@ namespace Ui
             const bool _isSelected,
             const bool _isHovered,
             const bool _isDrag,
-            const bool _isKeyboardFocused) override;
+            const bool _isKeyboardFocused) const override;
 
-        MessageAlertItem(const Data::DlgState& _state, const bool _compactMode);
+        MessageAlertItem(const Data::DlgState& _state, const bool _compactMode, Ui::AlertType _alertType);
         virtual ~MessageAlertItem();
+
+    private:
+        QImage cachedLogo_;
     };
-
-
-
-
 
 
     //////////////////////////////////////////////////////////////////////////
@@ -277,7 +317,7 @@ namespace Ui
             const bool _isSelected,
             const bool _isHovered,
             const bool _isDrag,
-            const bool _isKeyboardFocused) override;
+            const bool _isKeyboardFocused) const override;
 
         MailAlertItem(const Data::DlgState& _state);
         virtual ~MailAlertItem();
@@ -303,7 +343,7 @@ namespace Ui
             const bool _isSelected,
             const bool _isHovered,
             const bool _isDrag,
-            const bool _isKeyboardFocused) override;
+            const bool _isKeyboardFocused) const override;
 
         ComplexMailAlertItem(const Data::DlgState& _state);
         virtual ~ComplexMailAlertItem();
@@ -344,6 +384,7 @@ namespace Ui
         static bool shouldDisplayHeads(const Data::DlgState& _state);
 
         bool needsTooltip(const QString& _aimId, const QModelIndex& _index, QPoint _posCursor = {}) const override;
+        QRect getDraftIconRectWrapper(const QString& _aimId, const QModelIndex& _index, QPoint _posCursor = {}) const override;
 
     private:
         void onFriendlyChanged(const QString& _aimId, const QString& _friendly);

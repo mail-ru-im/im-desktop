@@ -27,7 +27,8 @@ namespace core
 
             virtual ~join_chat();
 
-            virtual std::string_view get_method() const override;
+            std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
         };
 
     }

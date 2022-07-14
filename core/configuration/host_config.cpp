@@ -5,6 +5,7 @@
 #include "../curl_handler.h"
 #include "../tools/features.h"
 #include "../archive/storage.h"
+#include "../connections/urls_cache.h"
 #include "../../corelib/collection_helper.h"
 #include "../../corelib/enumerations.h"
 #include "host_config.h"
@@ -16,6 +17,11 @@
 using namespace core;
 using namespace config;
 using namespace hosts;
+
+namespace
+{
+    constexpr std::string_view default_https_port() { return "443"; }
+}
 
 static const host_cache& get_bundled_cache()
 {
@@ -29,10 +35,16 @@ static const host_cache& get_bundled_cache()
         { host_url_type::profile,           std::string(config::get().url(config::urls::profile)) },
 
         { host_url_type::mail_auth,         std::string(config::get().url(config::urls::auth_mail_ru)) },
-        { host_url_type::mail_oauth2,       std::string(config::get().url(config::urls::oauth2_mail_ru)) },
         { host_url_type::mail_redirect,     std::string(config::get().url(config::urls::r_mail_ru)) },
         { host_url_type::mail_win,          std::string(config::get().url(config::urls::win_mail_ru)) },
         { host_url_type::mail_read,         std::string(config::get().url(config::urls::read_msg)) },
+
+        { host_url_type::privacy_policy_url,       std::string(config::get().url(config::urls::privacy_policy_url)) },
+        { host_url_type::terms_of_use_url,         std::string(config::get().url(config::urls::terms_of_use_url)) },
+
+        { host_url_type::oauth_url,         std::string(config::get().url(config::urls::oauth_url)) },
+        { host_url_type::token_url,         std::string(config::get().url(config::urls::token_url)) },
+        { host_url_type::redirect_uri,      std::string(config::get().url(config::urls::redirect_uri)) }
     };
 
     return cache;
@@ -40,11 +52,6 @@ static const host_cache& get_bundled_cache()
 
 constexpr int32_t dns_cache_field = 1;
 
-struct dns_entry
-{
-    bool ip_mode_ = true;
-    std::string ip_;
-};
 
 typedef std::unordered_map<std::string, dns_entry> dns_cache;
 static dns_cache dns_cache_;
@@ -87,13 +94,9 @@ static void load_dns_cahe_from_string(std::string_view _str)
     auto parse_entry = [](std::string_view _entry)
     {
         if (const auto pos = _entry.find(':'); pos != _entry.npos)
-        {
             modify_dns_cache(_entry.substr(0, pos), _entry.substr(pos + 1, _entry.size() - pos - 1), true);
-        }
         else
-        {
             im_assert(false);
-        }
     };
 
     auto pos = _str.find(';');
@@ -127,7 +130,7 @@ static std::string save_dns_cache_to_string()
 
 static std::wstring get_dns_cache_path()
 {
-    return su::wconcat(utils::get_product_data_path(),  L"/cache/dns_.cache");
+    return su::wconcat(utils::get_product_data_path(), L"/cache/dns_.cache");
 }
 
 static void send_stat(core::stats::stats_event_names _event, std::string_view _url, int _error)
@@ -198,59 +201,43 @@ static void load_dns_cache()
             return 0;
         }
 
-        auto load_from_config = []()
+        archive::storage_mode mode;
+        mode.flags_.read_ = true;
+
+        if (auto storage = std::make_unique<archive::storage>(get_dns_cache_path()); storage->open(mode))
         {
-            g_core->write_string_to_network_log("DNS: failed to load cache from disk\r\n");
-            auto str = config::get().url(config::urls::dns_cache);
-            load_dns_cahe_from_string(str);
-
-            save_dns_cache();
-        };
-
-        if (check_dns_workaround())
-        {
-            archive::storage_mode mode;
-            mode.flags_.read_ = true;
-
-            auto storage = std::make_unique<archive::storage>(get_dns_cache_path());
-            if (storage->open(mode))
+            core::tools::binary_stream stream;
+            while (storage->read_data_block(-1, stream))
             {
-                core::tools::binary_stream stream;
-                while (storage->read_data_block(-1, stream))
+                while (stream.available())
                 {
-                    while (stream.available())
-                    {
-                        core::tools::tlvpack pack;
+                    core::tools::tlvpack pack;
 
-                        if (pack.unserialize(stream))
+                    if (pack.unserialize(stream))
+                    {
+                        for (auto tlv_field = pack.get_first(); tlv_field; tlv_field = pack.get_next())
                         {
-                            for (auto tlv_field = pack.get_first(); tlv_field; tlv_field = pack.get_next())
-                            {
-                                switch (tlv_field->get_type())
-                                {
-                                case dns_cache_field:
-                                    load_dns_cahe_from_string(tlv_field->get_value<std::string>());
-                                    break;
-                                default:
-                                    break;
-                                }
-                            }
+                            if (tlv_field->get_type() == dns_cache_field)
+                                load_dns_cahe_from_string(tlv_field->get_value<std::string>());
                         }
                     }
                 }
-                stream.reset();
-                storage->close();
+            }
+            stream.reset();
+            storage->close();
 
-                if (!get_dns_cache().empty())
-                {
-                    g_core->write_string_to_network_log("DNS: cache was loaded from disk\r\n");
-                    config::hosts::resolve_hosts(true);
-                    return 0;
-                }
+            if (!get_dns_cache().empty())
+            {
+                g_core->write_string_to_network_log("DNS: cache was loaded from disk\r\n");
+                config::hosts::resolve_hosts(true);
+                return 0;
             }
         }
 
-        load_from_config();
+        g_core->write_string_to_network_log("DNS: failed to load cache from disk\r\n");
+        load_dns_cahe_from_string(config::get().url(config::urls::dns_cache));
+        save_dns_cache();
+
         config::hosts::resolve_hosts(true);
         return 0;
     });
@@ -272,6 +259,7 @@ void config::hosts::send_config_to_gui()
         coll.set_value_as_string("baseBinary", get_value(host_url_type::base_binary));
         coll.set_value_as_string("filesParse", get_value(host_url_type::files_parse));
         coll.set_value_as_string("stickerShare", get_value(host_url_type::stickerpack_share));
+        coll.set_value_as_string("miniappSharing", get_value(host_url_type::miniapp_sharing));
         coll.set_value_as_string("profile", get_value(host_url_type::profile));
 
         coll.set_value_as_string("mailAuth", get_value(host_url_type::mail_auth));
@@ -282,21 +270,31 @@ void config::hosts::send_config_to_gui()
         if (::features::is_update_from_backend_enabled())
             coll.set_value_as_string("appUpdate", get_value(host_url_type::app_update));
 
-        coll.set_value_as_string("di", get_value(host_url_type::di));
-        coll.set_value_as_string("di_dark", get_value(host_url_type::di_dark));
-        coll.set_value_as_string("tasks", get_value(host_url_type::tasks));
-        coll.set_value_as_string("calendar", get_value(host_url_type::calendar));
         coll.set_value_as_string("config-host", g_core->get_external_config_url());
+        coll.set_value_as_string("avatars", su::concat(core::urls::get_url(core::urls::url_type::avatars), "/get/"));
+
+        coll.set_value_as_string("auth_url", core::urls::get_url(core::urls::url_type::oauth2_login));
+        coll.set_value_as_string("redirect_uri", core::urls::get_url(core::urls::url_type::oauth2_redirect));
 
         core::ifptr<core::iarray> arr(coll->create_array());
         arr->reserve(_vcs_urls.size());
-        for (const auto& url: _vcs_urls)
+        for (const auto& url : _vcs_urls)
         {
             core::ifptr<core::ivalue> val(coll->create_value());
             val->set_as_string(url.data(), url.size());
             arr->push_back(val.get());
         }
         coll.set_value_as_array("vcs_urls", arr.get());
+
+        // TODO: remove when deprecated
+        coll.set_value_as_string("di", get_value(host_url_type::di));
+        coll.set_value_as_string("di_dark", get_value(host_url_type::di_dark));
+        coll.set_value_as_string("tasks", get_value(host_url_type::tasks));
+        coll.set_value_as_string("calendar", get_value(host_url_type::calendar));
+        coll.set_value_as_string("mail", get_value(host_url_type::mail));
+        coll.set_value_as_string("tarm_mail", get_value(host_url_type::tarm_mail));
+        coll.set_value_as_string("tarm_cloud", get_value(host_url_type::tarm_cloud));
+        coll.set_value_as_string("tarm_calls", get_value(host_url_type::tarm_calls));
     };
 
     if (config::get().is_on(config::features::external_url_config))
@@ -345,19 +343,15 @@ void config::hosts::load_dns_cache()
 
 void config::hosts::load_external_config_from_url(std::string_view _url, load_callback_t _callback)
 {
-    external_url_config::instance().load_async(_url, [_callback = std::move(_callback)](core::ext_url_config_error _error, std::string _url)
+    external_url_config::instance().load_async(_url, [_callback = std::move(_callback)]
+    (core::ext_url_config_error _error, std::string _url)
     {
         if (_error == core::ext_url_config_error::ok)
         {
+            if (g_core)
+                g_core->on_external_config_changed();
             load_dns_cache();
             send_config_to_gui();
-            if (g_core)
-            {
-                g_core->execute_core_context({ []()
-                {
-                    g_core->try_send_crash_report(); // base url is received, try to send
-                } });
-            }
         }
         _callback(_error, std::move(_url));
     });
@@ -373,13 +367,22 @@ void config::hosts::load_external_url_config(std::vector<std::string>&& _hosts, 
 
     auto host = std::move(_hosts.back());
     _hosts.pop_back();
-    load_external_config_from_url(host, [_hosts = std::move(_hosts), _callback = std::move(_callback)](core::ext_url_config_error _error, std::string _host) mutable
+    if (external_url_config::instance().is_develop_local_config())
     {
-        if (_error == ext_url_config_error::ok || _hosts.empty())
-            _callback(_error, std::move(_host));
-        else
-            load_external_url_config(std::move(_hosts), std::move(_callback));
-    });
+        external_url_config::instance().load_from_file();
+        _callback(core::ext_url_config_error::ok, std::move(host));
+    }
+    else
+    {
+        load_external_config_from_url(host, [_hosts = std::move(_hosts), _callback = std::move(_callback)]
+        (core::ext_url_config_error _error, std::string _host) mutable
+        {
+            if (_error == ext_url_config_error::ok || _hosts.empty())
+                _callback(_error, std::move(_host));
+            else
+                load_external_url_config(std::move(_hosts), std::move(_callback));
+        });
+    }
 }
 
 void config::hosts::clear_external_config()
@@ -390,50 +393,38 @@ void config::hosts::clear_external_config()
     load_dns_cache();
 }
 
-std::string config::hosts::format_resolve_host_str(std::string_view _host, unsigned port)
+std::optional<dns_entry> config::hosts::resolve_host(const std::string& _host)
 {
-    std::string result;
+    const auto cache = get_dns_cache();
+    const auto it = cache.find(_host);
+    if (it != cache.cend())
+        return it->second;
+    return {};
+}
+
+std::string config::hosts::format_resolve_host_str(std::string_view _host, const dns_entry& _dns_entry)
+{
     if (!check_dns_workaround() && !dns_workaround_was_enabled)
-        return result;
+        return std::string();
 
-    if (get_dns_cache().empty())
-        load_dns_cache();
-
-    auto format = [_host, port](std::string_view _cached, std::string_view _resolved, bool _ip_mode)
+    if (_dns_entry.ip_mode_)
     {
-        if (_host.find(_cached) != _host.npos)
-        {
-            if (_ip_mode)
-            {
-                if (_resolved.empty())
-                    return su::concat('-', _cached, ':', std::to_string(port));
+        if (_dns_entry.ip_.empty())
+            return su::concat('-', _host, ':', default_https_port());
 
-                if (check_dns_workaround())
-                    return su::concat(_cached, ':', std::to_string(port), ':', _resolved);
-                else if (dns_workaround_was_enabled)
-                    return su::concat('-', _cached, ':', std::to_string(port));
-                else
-                    im_assert(false);
-
-                return std::string();
-            }
-            else
-            {
-                return su::concat('-', _cached, ':', std::to_string(port));
-            }
-        }
+        if (check_dns_workaround())
+            return su::concat(_host, ':', default_https_port(), ':', _dns_entry.ip_);
+        else if (dns_workaround_was_enabled)
+            return su::concat('-', _host, ':', default_https_port());
+        else
+            im_assert(false);
 
         return std::string();
-    };
-
-    for (const auto& [url, entry] : get_dns_cache())
-    {
-        result = format(url, entry.ip_, entry.ip_mode_);
-        if (!result.empty())
-            break;
     }
-
-     return result;
+    else
+    {
+        return su::concat('-', _host, ':', default_https_port());
+    }
 }
 
 void config::hosts::resolve_hosts(bool _load)
@@ -454,8 +445,8 @@ void config::hosts::resolve_hosts(bool _load)
             }
             else
             {
-                auto cache = get_dns_cache();
-                auto entry = cache.find(url);
+                const auto cache = get_dns_cache();
+                const auto entry = cache.find(url);
                 if (entry == cache.end())
                 {
                     im_assert(false);

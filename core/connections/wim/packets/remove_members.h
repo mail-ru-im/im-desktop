@@ -33,6 +33,7 @@ namespace core
             const std::string& get_aimid() const noexcept { return aimid_; }
 
             std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
         };
     }
 }

@@ -18,11 +18,6 @@ namespace Logic
    public:
        MessageSearcher(QObject* _parent);
 
-       enum class CursorMode
-       {
-           new_search,
-           continue_search
-       };
        void searchByCursor(const QString& _cursor, const CursorMode _mode = CursorMode::new_search);
        void requestMoreResults();
        bool haveMoreResults() const;
@@ -46,6 +41,7 @@ namespace Logic
 
        void onServerTimedOut() override;
 
+    private:
        QString dialogAimid_;
        QString cursorNext_;
        int totalServerEntries_;

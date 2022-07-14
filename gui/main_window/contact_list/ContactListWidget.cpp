@@ -21,16 +21,15 @@
 #include "CallItemDelegate.h"
 #include "TaskAssigneeListDelegate.h"
 #include "TaskAssigneeModel.h"
+#include "ServiceContacts.h"
 
 #include "ContactListUtils.h"
 #include "FavoritesUtils.h"
 #include "SearchWidget.h"
-
 #include "../../app_config.h"
 #include "../../controls/LabelEx.h"
 #include "../../controls/ContextMenu.h"
 #include "../../controls/TooltipWidget.h"
-#include "../../utils/InterConnector.h"
 #include "../../utils/SearchPatternHistory.h"
 #include "../../utils/features.h"
 #include "../../gui_settings.h"
@@ -39,9 +38,13 @@
 #include "../proxy/FriendlyContaInerProxy.h"
 #include "../history_control/VoipEventInfo.h"
 #include "main_window/containers/StatusContainer.h"
+#include "main_window/AppsPage.h"
 #include "statuses/StatusTooltip.h"
+#include "../containers/LastseenContainer.h"
 
 #include "styles/ThemeParameters.h"
+#include "styles/ThemesContainer.h"
+#include "IconsDelegate.h"
 
 namespace
 {
@@ -77,7 +80,10 @@ namespace
         return std::any_of(regimsWithFavorites.begin(), regimsWithFavorites.end(), [_regim](const auto _r) { return _r == _regim;});
     }
 
-    Logic::AbstractItemDelegateWithRegim* delegateFromRegim(QObject* parent, Logic::MembersWidgetRegim _regim, Logic::CustomAbstractListModel* _membersModel)
+    Logic::AbstractItemDelegateWithRegim* delegateFromRegim(QObject* parent,
+        Logic::MembersWidgetRegim _regim,
+        Logic::CustomAbstractListModel* _membersModel,
+        Logic::DrawIcons _needDrawIcons = Logic::DrawIcons::NoNeedDrawIcons)
     {
         Logic::AbstractItemDelegateWithRegim* delegate = nullptr;
 
@@ -90,7 +96,7 @@ namespace
         else if (_regim == Logic::MembersWidgetRegim::TASK_ASSIGNEE)
             delegate = new Logic::TaskAssigneeListDelegate(parent);
         else
-            delegate = new Logic::ContactListItemDelegate(parent, _regim, _membersModel);
+            delegate = new Logic::ContactListItemDelegate(parent, _regim, _membersModel, _needDrawIcons);
 
         delegate->setReplaceFavorites(isRegimWithFavorites(_regim));
         return delegate;
@@ -189,34 +195,42 @@ namespace
 
         return qobject_cast<Logic::ChatMembersModel*>(_membersModel);
     }
+
+    QSize placeholderSize() noexcept
+    {
+        return Utils::scale_value(QSize(84, 84));
+    }
+
+    QPixmap noResultsPixmap()
+    {
+        return Utils::renderSvg(qsl(":/placeholders/empty_search"), placeholderSize(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
+    }
+
+    const QString& getGlobalSearchHeaderName()
+    {
+        static const QString name = qsl("globalSearchViewHeader");
+        return name;
+    }
 }
 
 namespace Ui
 {
-    ContactListWidget::ContactListWidget(QWidget* _parent, const Logic::MembersWidgetRegim& _regim, Logic::CustomAbstractListModel* _chatMembersModel,
-                                         Logic::AbstractSearchModel* _searchModel, Logic::CommonChatsModel* _commonChatsModel)
+    ContactListWidget::ContactListWidget(QWidget* _parent,
+        const Logic::MembersWidgetRegim& _regim,
+        Logic::CustomAbstractListModel* _chatMembersModel,
+        Logic::AbstractSearchModel* _searchModel,
+        Logic::CommonChatsModel* _commonChatsModel,
+        Logic::DrawIcons _needDrawIcons)
         : QWidget(_parent)
-        , EmptyListLabel_(nullptr)
-        , dialogSearchViewHeader_(nullptr)
-        , globalSearchViewHeader_(nullptr)
-        , scrollToItemAnim_(nullptr)
         , scrollStatsTimer_(new QTimer(this))
-        , clDelegate_(nullptr)
-        , searchDelegate_(nullptr)
-        , contactsPlaceholder_(nullptr)
-        , noSearchResults_(nullptr)
-        , searchSpinner_(nullptr)
         , viewContainer_(new QWidget(this))
         , regim_(_regim)
         , chatMembersModel_(_chatMembersModel)
         , searchModel_(_searchModel)
         , commonChatsModel_(_commonChatsModel)
         , popupMenu_(nullptr)
-        , tooltipTimer_(nullptr)
-        , noSearchResultsShown_(false)
-        , searchResultsRcvdFirst_(false)
-        , searchResultsStatsSent_(false)
-        , initial_(false)
+        , personTooltip_(new Utils::PersonTooltip(this))
+        , needDrawIcons_(_needDrawIcons)
     {
         initSearchModel(_searchModel);
         clModel_ = new Logic::ContactListWithHeaders(this, Logic::getContactListModel(), false);
@@ -291,6 +305,8 @@ namespace Ui
                 Q_EMIT forceSearchClear(!getSearchInDialog() && _msgid == -1 && Ui::get_gui_settings()->get_value<bool>(settings_fast_drop_search_results, settings_fast_drop_search_default()));
             });
         }
+
+        connect(&Styling::getThemesContainer(), &Styling::ThemesContainer::globalThemeChanged, this, &ContactListWidget::onThemeChanged);
     }
 
     ContactListWidget::~ContactListWidget() = default;
@@ -310,10 +326,14 @@ namespace Ui
         {
             _widget->setNeedClear(false);
         });
-        connect(_widget, &SearchWidget::escapePressed, this, []()
+
+        if (searchDialogContact_.isEmpty() || !Logic::getContactListModel()->isThread(searchDialogContact_))
         {
-            Logic::updatePlaceholders({ Logic::Placeholder::Contacts });
-        });
+            connect(_widget, &SearchWidget::escapePressed, this, []()
+            {
+                Logic::updatePlaceholders({ Logic::Placeholder::Contacts });
+            });
+        }
     }
 
     void ContactListWidget::installEventFilterToView(QObject* _filter)
@@ -344,7 +364,8 @@ namespace Ui
 
     void ContactListWidget::setDragIndexForDelegate(const QModelIndex& _index)
     {
-        clDelegate_->setDragIndex(_index);
+        auto delegate = isSearchMode() ? searchDelegate_ : clDelegate_;
+        delegate->setDragIndex(_index);
     }
 
     void ContactListWidget::setPictureOnlyForDelegate(bool _value)
@@ -386,7 +407,8 @@ namespace Ui
 
         searchDialogContact_ = _contact;
 
-        if (getSearchInDialog())
+        const auto isThread = Logic::getContactListModel()->isThread(searchDialogContact_);
+        if (getSearchInDialog() && !isThread)
         {
             if (!dialogSearchViewHeader_)
             {
@@ -395,18 +417,25 @@ namespace Ui
                 layout_->insertWidget(0, dialogSearchViewHeader_);
                 dialogSearchViewHeader_->hide();
 
-                connect(dialogSearchViewHeader_, &DialogSearchViewHeader::contactFilterRemoved, this, &ContactListWidget::onDisableSearchInDialog);
+                if (openedAs_ == PageOpenedAs::MainPage)
+                    connect(dialogSearchViewHeader_, &DialogSearchViewHeader::contactFilterRemoved, this, &ContactListWidget::onDisableSearchInDialog);
+
+                connect(dialogSearchViewHeader_,
+                    &DialogSearchViewHeader::contactFilterRemoved,
+                    this,
+                    [aimId = _contact]() { Q_EMIT Utils::InterConnector::instance().contactFilterRemoved(aimId); });
             }
 
-            const auto name = Logic::getFriendlyContainerProxy(Logic::FriendlyContainerProxy::ReplaceFavorites).getFriendly(_contact).toUpper();
+            QString name;
+            if (_contact == ServiceContacts::getThreadsName())
+                name = QT_TRANSLATE_NOOP("search", "Threads");
+            else
+                name = Logic::getFriendlyContainerProxy(Logic::FriendlyContainerProxy::ReplaceFavorites).getFriendly(_contact);
             dialogSearchViewHeader_->setChatNameFilter(name);
         }
 
-        if (globalSearchViewHeader_)
-            globalSearchViewHeader_->hide();
-
         if (dialogSearchViewHeader_)
-            dialogSearchViewHeader_->setVisible(getSearchInDialog());
+            dialogSearchViewHeader_->setVisible(getSearchInDialog() && !isThread);
 
         if (_switchModel)
             view_->setModel(modelForRegim(regim_, searchModel_, chatMembersModel_, clModel_, commonChatsModel_, callsModel_));
@@ -526,7 +555,7 @@ namespace Ui
             }
         }
 
-        select(aimid, msgId, highlights, Logic::UpdateChatSelection::No);
+        select(aimid, msgId, highlights, Logic::UpdateChatSelection::No, false, openedAs_);
 
         if (msgId == -1)
             Q_EMIT itemClicked(aimid);
@@ -543,17 +572,50 @@ namespace Ui
         select(_aimId, -1, {}, Logic::UpdateChatSelection::No);
     }
 
-    void ContactListWidget::select(const QString& _aimId, const qint64 _messageId, const highlightsV& _highlights, Logic::UpdateChatSelection _mode, bool _ignoreScroll)
+    void ContactListWidget::select(const QString& _aimId, const qint64 _messageId, const highlightsV& _highlights, Logic::UpdateChatSelection _mode, bool _ignoreScroll, PageOpenedAs _openedAs)
     {
         const auto isSelectMembers = isSelectMembersRegim();
+        const auto isThread = Logic::getContactListModel()->isThread(_aimId);
+        const auto isTask = Logic::getContactListModel()->isTaskThread(_aimId);
+        const auto isServiceContact = ServiceContacts::isServiceContact(Logic::getContactListModel()->selectedContact())
+                || !Utils::InterConnector::instance().getAppsPage()->isMessengerPage();
 
-        if (!isSelectMembers && regim_ != Logic::MembersWidgetRegim::IGNORE_LIST && regim_ != Logic::MembersWidgetRegim::COUNTRY_LIST)
-            Utils::InterConnector::instance().openDialog(_aimId, _messageId, regim_ == Logic::MembersWidgetRegim::CONTACT_LIST_POPUP);
+        auto selectionAimId = _aimId;
+        if (isThread)
+        {
+            if (isServiceContact || Logic::getContactListModel()->isTaskThread(_aimId))
+                selectionAimId = Logic::getContactListModel()->selectedContact();
+            else
+                selectionAimId = Logic::getContactListModel()->getThreadParent(_aimId).value_or(QString());
+        }
 
-        if (_messageId == -1 || _mode == Logic::UpdateChatSelection::Yes)
+        if (selectionAimId.isEmpty() || isTask)
+            selectionAimId = Logic::getContactListModel()->selectedContact();
+
+        const auto parentMessageId = Logic::getContactListModel()->getThreadParentMessage(_aimId);
+        const auto msgId = isThread && parentMessageId != -1 ? parentMessageId : _messageId;
+
+        if (!isTask && !isSelectMembers && regim_ != Logic::MembersWidgetRegim::IGNORE_LIST && regim_ != Logic::MembersWidgetRegim::COUNTRY_LIST)
+        {
+            if (!isThread)
+                Q_EMIT Utils::InterConnector::instance().threadSearchClosed();
+            Utils::InterConnector::instance().openDialog(selectionAimId, msgId, regim_ == Logic::MembersWidgetRegim::CONTACT_LIST_POPUP, _openedAs);
+        }
+
+        if (parentMessageId != -1 || _messageId == -1 || _mode == Logic::UpdateChatSelection::Yes)
             Q_EMIT changeSelected(_aimId);
 
-        Q_EMIT itemSelected(_aimId, _messageId, _highlights, _ignoreScroll);
+        Q_EMIT itemSelected(selectionAimId, msgId, isThread ? _messageId : -1, _highlights, _ignoreScroll);
+
+        if (isThread)
+        {
+            if (closeOnThreadResult_)
+                Q_EMIT Utils::InterConnector::instance().searchEnd();
+            else
+                Q_EMIT Utils::InterConnector::instance().threadSearchClosed();
+
+            Utils::InterConnector::instance().openThreadSearchResult(_aimId, _messageId, _highlights);
+        }
 
         if (regim_ != Logic::MembersWidgetRegim::UNKNOWN && !isSelectMembers && _messageId == -1)
             Q_EMIT searchEnd();
@@ -615,8 +677,29 @@ namespace Ui
 
                         statResType = searchRes->isMessage() ? "messages" : (searchRes->isChat() ? "own_chats" : "contacts");
 
-                        Q_EMIT Utils::InterConnector::instance().clearDialogHistory();
-                        selectionChanged(_current);
+                        if (openedAs_ == PageOpenedAs::FeedPage)
+                        {
+                            const auto aimId = Logic::aimIdFromIndex(_current);
+
+                            qint64 msgId = -1;
+                            highlightsV highlights;
+                            if (const auto searchModel = qobject_cast<const Logic::SearchModel*>(_current.model()))
+                            {
+                                const auto searchRes = _current.data().value<Data::AbstractSearchResultSptr>();
+                                if (searchRes && searchRes->isMessage())
+                                {
+                                    msgId = searchRes->getMessageId();
+                                    highlights = searchRes->highlights_;
+                                }
+                            }
+
+                            Q_EMIT Utils::InterConnector::instance().scrollToNewsFeedMesssage(aimId, msgId, highlights);
+                        }
+                        else
+                        {
+                            Q_EMIT Utils::InterConnector::instance().clearDialogHistory();
+                            selectionChanged(_current);
+                        }
                     }
                     else if (!searchRes->isLocalResult_ && Features::isGlobalContactSearchAllowed() && Logic::isRegimWithGlobalContactSearch(regim_))
                     {
@@ -628,7 +711,7 @@ namespace Ui
                     {
                         const auto aimid = searchRes->getAimId();
                         Utils::InterConnector::instance().openDialog(aimid, -1, false);
-                        Q_EMIT itemSelected(aimid, -1, {});
+                        Q_EMIT itemSelected(aimid, -1, -1, {});
 
                         statResType = searchRes->isChat() ? "public_chats" : "contacts";
                     }
@@ -694,15 +777,17 @@ namespace Ui
             if (model && model->isServiceItem(_current))
                 return;
 
-            const auto srchModel = qobject_cast<const Logic::SearchModel*>(_current.model());
-            if (srchModel)
+            const auto searchModel = qobject_cast<const Logic::SearchModel*>(_current.model());
+            if (searchModel)
             {
                 const auto searchRes = _current.data().value<Data::AbstractSearchResultSptr>();
-                if (searchRes && searchRes->isContact())
+                if (searchRes)
                 {
                     const auto cont = Logic::getContactListModel()->getContactItem(searchRes->getAimId());
                     if (cont)
-                        showContactsPopupMenu(cont->get_aimid(), cont->is_chat());
+                        showContactsPopupMenu(cont->get_aimid(), (cont->is_chat() || searchRes->isMessage()));
+                    else
+                        showContactsNotFromCLPopupMenu(searchRes->getAimId());
                 }
             }
             else
@@ -728,15 +813,15 @@ namespace Ui
                 }
                 else
                 {
-                    const auto rigthX = width() - Utils::scale_value(8);
-                    const auto removeX = rigthX - Utils::scale_value(32);
+                    const auto rightX = width() - Utils::scale_value(8);
+                    const auto removeX = rightX - Utils::scale_value(32);
                     const auto approveX = removeX - Utils::scale_value(32);
 
                     if (auto dlgt = qobject_cast<Logic::ContactListItemDelegate*>(clDelegate_))
                     {
                         const auto cursorPos = view_->mapFromGlobal(QCursor::pos());
                         const auto regim = dlgt->regim();
-                        if (cursorPos.x() > removeX && cursorPos.x() <= rigthX)
+                        if (cursorPos.x() > removeX && cursorPos.x() <= rightX)
                         {
                             if (regim == Logic::MembersWidgetRegim::ADMIN_MEMBERS)
                             {
@@ -762,7 +847,9 @@ namespace Ui
                                         Q_EMIT selected(aimId);
                                 }
                                 else
+                                {
                                     Q_EMIT selected(aimId);
+                                }
                             }
                         }
                         else if (regim == Logic::MembersWidgetRegim::PENDING_MEMBERS && cursorPos.x() >= approveX && cursorPos.x() <= removeX)
@@ -786,11 +873,16 @@ namespace Ui
 
         setKeyboardFocused(false);
 
-        const auto srchModel = qobject_cast<const Logic::SearchModel*>(_index.model());
-        auto srchDelegate = qobject_cast<Logic::SearchItemDelegate*>(clDelegate_);
+        const auto searchModel = qobject_cast<const Logic::SearchModel*>(_index.model());
+        auto searchDelegate = qobject_cast<Logic::SearchItemDelegate*>(clDelegate_);
 
-        if (srchModel && srchDelegate)
+        auto clDelegate = qobject_cast<Logic::ContactListItemDelegate*>(clDelegate_);
+        if (clDelegate && searchModel)
+            clDelegate->setModel(const_cast<Logic::SearchModel*>(searchModel));
+
+        if (searchModel && searchDelegate)
         {
+            searchDelegate->setModel(const_cast<Logic::SearchModel*>(searchModel));
             if (const auto item = _index.data().value<Data::AbstractSearchResultSptr>())
             {
                 bool updated = false;
@@ -798,43 +890,35 @@ namespace Ui
                 {
                     const auto rect = view_->visualRect(_index);
                     if (getDeleteSuggestBtnRect(rect).contains(_pos))
-                        updated = srchDelegate->setHoveredSuggetRemove(_index);
+                        updated = searchDelegate->setHoveredSuggetRemove(_index);
                     else
-                        updated = srchDelegate->setHoveredSuggetRemove(QModelIndex());
+                        updated = searchDelegate->setHoveredSuggetRemove(QModelIndex());
                 }
                 else
-                    updated = srchDelegate->setHoveredSuggetRemove(QModelIndex());
+                    updated = searchDelegate->setHoveredSuggetRemove(QModelIndex());
 
                 if (updated)
                     view_->update();
             }
         }
 
-        if (Statuses::isStatusEnabled())
+        bool showMemberTooltip = false;
+        const auto aimId = Logic::senderAimIdFromIndex(_index);
+        const auto tooltipRect = getAvatarRect(_index);
+
+        if ((!Favorites::isFavorites(aimId) || !isRegimWithFavorites(regim_)) && tooltipRect.contains(view_->mapFromGlobal(QCursor::pos())))
         {
-            const auto aimId = Logic::senderAimIdFromIndex(_index);
-            const auto tooltipRect = getAvatarRect(_index);
-            const auto muted = Logic::getContactListModel()->isMuted(aimId);
-
-            if (!muted && (!Favorites::isFavorites(aimId) || !isRegimWithFavorites(regim_)) && tooltipRect.contains(view_->mapFromGlobal(QCursor::pos())))
-            {
-                StatusTooltip::instance()->objectHovered([this, aimId]()
-                {
-                    auto index = view_->indexAt(view_->mapFromGlobal(QCursor::pos()));
-                    if (aimId != Logic::senderAimIdFromIndex(index))
-                        return QRect();
-
-                    const auto tooltipRect = getAvatarRect(index);
-                    return QRect(view_->mapToGlobal(tooltipRect.topLeft()), tooltipRect.size());
-                }, aimId, view_->viewport(), view_);
-            }
+            auto linkGlobalRect = QRect(view_->mapToGlobal(tooltipRect.topLeft()), tooltipRect.size());
+            personTooltip_->show(Utils::PersonTooltipType::Person, aimId, linkGlobalRect, Tooltip::ArrowDirection::Down, Tooltip::ArrowPointPos::Top);
+            showMemberTooltip = true;
         }
 
         if (Features::longPathTooltipsAllowed())
         {
             const auto aimId = Logic::senderAimIdFromIndex(_index);
             auto delegate = isSearchMode() ? searchDelegate_ : clDelegate_;
-            if (!aimId.isEmpty() && delegate->needsTooltip(aimId, _index))
+            auto cursorPos = _pos;
+            if (!aimId.isEmpty() && delegate->needsTooltip(aimId, _index, _pos))
             {
                 if (tooltipIndex_ != _index)
                 {
@@ -847,10 +931,20 @@ namespace Ui
                     auto name = callItemDelegate ? callItemDelegate->getFriendly(_index) : Logic::GetFriendlyContainer()->getFriendly(aimId);
                     const auto direction = rect.y() < 0 ? Tooltip::ArrowDirection::Up : Tooltip::ArrowDirection::Down;
                     const auto arrowPosition = rect.y() < 0 ? Tooltip::ArrowPointPos::Bottom : Tooltip::ArrowPointPos::Top;
-                    showTooltip(std::move(name), ttRect, direction, arrowPosition);
+                    Data::DlgState state = Logic::getRecentsModel()->getDlgState(aimId);
+                    Ui::ViewParams viewParams;
+                    Logic::IconsDelegate* iconsDelegate = dynamic_cast<Logic::IconsDelegate*>(delegate);
+                    const bool needDrawDraft = iconsDelegate ? iconsDelegate->needDrawDraft(viewParams, state): false;
+                    auto draftIconRect = iconsDelegate ? iconsDelegate->getDraftIconRect() : QRect();
+                    auto cursorInDraftRect = draftIconRect.contains(_pos);
+                    draftIconRect.moveTop(ttRect.y());
+                    draftIconRect.moveLeft(ttRect.x() + draftIconRect.x() - draftIconRect.width()/2);
+                    const bool needShowDraftTooltip = needDrawDraft && cursorInDraftRect;
+                    const auto draftMessageFormatted = makeDraftText(aimId);
+                    personTooltip_->show(Utils::PersonTooltipType::Text, needShowDraftTooltip ? draftMessageFormatted : name, needShowDraftTooltip ? draftIconRect : ttRect, direction, arrowPosition, TextRendering::HorAligment::CENTER);
                 }
             }
-            else
+            else if (!showMemberTooltip)
             {
                 hideTooltip();
             }
@@ -881,7 +975,8 @@ namespace Ui
         if (!model || !model->rowCount() || model->getSearchPattern().isEmpty())
             return;
 
-        if ((regim_ == Logic::MembersWidgetRegim::CONTACT_LIST || regim_ == Logic::MembersWidgetRegim::CONTACT_LIST_POPUP) && !getSearchInDialog())
+        if (!ServiceContacts::isServiceContact(searchDialogContact_)
+            && (regim_ == Logic::MembersWidgetRegim::CONTACT_LIST || regim_ == Logic::MembersWidgetRegim::CONTACT_LIST_POPUP))
         {
             if (const auto searchModel = qobject_cast<const Logic::SearchModel*>(model))
             {
@@ -891,8 +986,8 @@ namespace Ui
                     if (!globalSearchViewHeader_)
                     {
                         globalSearchViewHeader_ = new GlobalSearchViewHeader(this);
+                        globalSearchViewHeader_->setObjectName(getGlobalSearchHeaderName());
                         Testing::setAccessibleName(globalSearchViewHeader_, qsl("AS Search globalSearchViewHeader"));
-                        layout_->insertWidget(0, globalSearchViewHeader_);
                         globalSearchViewHeader_->hide();
 
                         if (regim_ != Logic::MembersWidgetRegim::CONTACT_LIST)
@@ -901,13 +996,21 @@ namespace Ui
                         connect(globalSearchViewHeader_, &GlobalSearchViewHeader::categorySelected, this, &ContactListWidget::scrollToCategory);
                     }
 
-                    if (searchModel->isAllDataReceived())
-                    {
-                        for (const auto&[cat, ndx] : headers)
-                            globalSearchViewHeader_->setCategoryVisible(cat, ndx.isValid());
-                    }
+                    if (auto w = layout_->findChild<GlobalSearchViewHeader*>(getGlobalSearchHeaderName()))
+                        layout_->removeWidget(w);
 
+                    layout_->insertWidget(getSearchInDialog() && !Logic::getContactListModel()->isThread(searchDialogContact_) ? 1 : 0, globalSearchViewHeader_);
+
+                    globalSearchViewHeader_->setCategoryVisible(SearchCategory::ContactsAndGroups, !getSearchInDialog());
+
+                    auto threadsHeader = std::find_if(headers.begin(), headers.end(), [](const auto& _h) { return _h.first == SearchCategory::Threads; });
+                    if (threadsHeader != headers.end())
+                        globalSearchViewHeader_->setCategoryVisible(SearchCategory::Threads, threadsHeader->second.isValid() && getSearchInDialog());
+
+                    for (const auto& [cat, ndx] : headers)
+                        globalSearchViewHeader_->setCategoryVisible(cat, ndx.isValid());
                     globalSearchViewHeader_->show();
+
                     selectCurrentSearchCategory();
                 }
                 else if (globalSearchViewHeader_)
@@ -973,7 +1076,7 @@ namespace Ui
                         highlights = searchRes->highlights_;
                     }
                 }
-                Q_EMIT itemSelected(aimid, msgId, highlights);
+                Q_EMIT itemSelected(aimid, msgId, -1, highlights);
             }
             return;
         }
@@ -1021,33 +1124,9 @@ namespace Ui
             popupMenu_->clear();
         }
 
-        if (!_is_chat)
-        {
-#ifndef STRIP_VOIP
-            popupMenu_->addActionWithIcon(qsl(":/context_menu/call"), QT_TRANSLATE_NOOP("context_menu", "Call"), Logic::makeData(qsl("contacts/call"), aimId));
-#endif //STRIP_VOIP
-            popupMenu_->addActionWithIcon(qsl(":/context_menu/profile"), QT_TRANSLATE_NOOP("context_menu", "Profile"), Logic::makeData(qsl("contacts/Profile"), aimId));
+        const Data::DlgState dlg = Logic::getRecentsModel()->getDlgState(aimId);
 
-            popupMenu_->addSeparator();
-        }
-
-        popupMenu_->addActionWithIcon(qsl(":/context_menu/ignore"), QT_TRANSLATE_NOOP("context_menu", "Block"), Logic::makeData(qsl("contacts/ignore"), aimId));
-
-        if (_is_chat || Features::clRemoveContactsAllowed())
-        {
-
-            if (_is_chat)
-            {
-                popupMenu_->addActionWithIcon(qsl(":/exit_icon"), QT_TRANSLATE_NOOP("context_menu", "Leave and delete"), Logic::makeData(qsl("contacts/remove"), aimId));
-            }
-            else
-            {
-                popupMenu_->addActionWithIcon(qsl(":/alert_icon"), QT_TRANSLATE_NOOP("context_menu", "Report"), Logic::makeData(qsl("contacts/spam"), aimId));
-                popupMenu_->addActionWithIcon(qsl(":/context_menu/delete"), QT_TRANSLATE_NOOP("context_menu", "Remove"), Logic::makeData(qsl("recents/remove"), aimId));
-            }
-        }
-
-        popupMenu_->popup(QCursor::pos());
+        Logic::addItemToContextMenu(popupMenu_, aimId, dlg);
     }
 
     void ContactListWidget::showCallsPopupMenu(Data::CallInfoPtr _call)
@@ -1067,6 +1146,43 @@ namespace Ui
 
         popupMenu_->addActionWithIcon(qsl(":/context_menu/delete"), QT_TRANSLATE_NOOP("context_menu", "Remove"), Logic::makeData(qsl("calls/remove"), _call));
 
+        popupMenu_->popup(QCursor::pos());
+    }
+
+
+    void ContactListWidget::showContactsNotFromCLPopupMenu(const QString& _aimId)
+    {
+        if (Logic::is_members_regim(regim_) || Logic::is_select_members_regim(regim_) || Favorites::isFavorites(_aimId))
+            return;
+
+        if (!popupMenu_)
+        {
+            popupMenu_ = new ContextMenu(this);
+            Testing::setAccessibleName(popupMenu_, qsl("AS Search view popupMenu"));
+            connect(popupMenu_, &ContextMenu::triggered, this, &ContactListWidget::showPopupMenu);
+        }
+        else
+        {
+            popupMenu_->clear();
+        }
+
+        popupMenu_->addActionWithIcon(qsl(":/context_menu/profile"), QT_TRANSLATE_NOOP("context_menu", "Profile"), Logic::makeData(qsl("contacts/Profile"), _aimId));
+
+        if (!Logic::getRecentsModel()->isUnimportant(_aimId))
+        {
+            if (Logic::getRecentsModel()->isFavorite(_aimId))
+                popupMenu_->addActionWithIcon(qsl(":/context_menu/unpin"), QT_TRANSLATE_NOOP("context_menu", "Unpin"), Logic::makeData(qsl("recents/unfavorite"), _aimId));
+            else
+                popupMenu_->addActionWithIcon(qsl(":/context_menu/pin"), QT_TRANSLATE_NOOP("context_menu", "Pin"), Logic::makeData(qsl("recents/favorite"), _aimId));
+        }
+
+        if (!Logic::getRecentsModel()->isFavorite(_aimId))
+        {
+            if (Logic::getRecentsModel()->isUnimportant(_aimId))
+                popupMenu_->addActionWithIcon(qsl(":/context_menu/unmark_unimportant"), QT_TRANSLATE_NOOP("context_menu", "Remove from Unimportant"), Logic::makeData(qsl("recents/remove_from_unimportant"), _aimId));
+            else
+                popupMenu_->addActionWithIcon(qsl(":/context_menu/mark_unimportant"), QT_TRANSLATE_NOOP("context_menu", "Move to Unimportant"), Logic::makeData(qsl("recents/mark_unimportant"), _aimId));
+        }
         popupMenu_->popup(QCursor::pos());
     }
 
@@ -1098,6 +1214,9 @@ namespace Ui
 
     void ContactListWidget::onDisableSearchInDialog()
     {
+        if (globalSearchViewHeader_)
+            globalSearchViewHeader_->hide();
+
         Q_EMIT Utils::InterConnector::instance().disableSearchInDialog();
 
         if (searchModel_)
@@ -1120,23 +1239,28 @@ namespace Ui
         clDelegate_->blockState(_state != QScroller::Inactive);
     }
 
-    void ContactListWidget::scrollToCategory(const SearchCategory _category)
+    void ContactListWidget::scrollToCategory(const SearchCategory _category, bool _animated)
     {
+        if (auto srchModel = qobject_cast<Logic::SearchModel*>(searchModel_))
+            srchModel->setSearchFormat(_category == SearchCategory::Threads ? Logic::SearchFormat::Threads : Logic::SearchFormat::ContactsAndMessages);
+
         switch (_category)
         {
         case SearchCategory::ContactsAndGroups:
             scrollToItem(Logic::SearchModel::getContactsAndGroupsAimId());
             break;
         case SearchCategory::Messages:
-            scrollToItem(Logic::SearchModel::getMessagesAimId());
+            scrollToItem(Logic::SearchModel::getMessagesAimId(), _animated);
             break;
-
+        case SearchCategory::Threads:
+            scrollToItem(Logic::SearchModel::getThreadsAimId(), _animated);
+            break;
         default:
             break;
         }
     }
 
-    void ContactListWidget::scrollToItem(const QString& _aimId)
+    void ContactListWidget::scrollToItem(const QString& _aimId, bool _animated)
     {
         if (_aimId.isEmpty())
             return;
@@ -1173,11 +1297,18 @@ namespace Ui
             }
             setUpdatesEnabled(true);
 
-            ensureScrollToItemAnimationInitialized();
-            scrollToItemAnim_->stop();
-            scrollToItemAnim_->setStartValue(curValue);
-            scrollToItemAnim_->setEndValue(endValue);
-            scrollToItemAnim_->start();
+            if (_animated)
+            {
+                ensureScrollToItemAnimationInitialized();
+                scrollToItemAnim_->stop();
+                scrollToItemAnim_->setStartValue(curValue);
+                scrollToItemAnim_->setEndValue(endValue);
+                scrollToItemAnim_->start();
+            }
+            else
+            {
+                view_->verticalScrollBar()->setValue(endValue);
+            }
         }
     }
 
@@ -1245,9 +1376,6 @@ namespace Ui
                 {
                     auto mainLayout = Utils::emptyVLayout(noSearchResults_);
                     {
-                        const auto textColor = Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
-                        const auto imgColor = Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY);
-
                         auto noSearchResultsWidget = new QWidget(noSearchResults_);
                         auto noSearchLayout = new QVBoxLayout(noSearchResultsWidget);
                         noSearchResultsWidget->setSizePolicy(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Fixed);
@@ -1255,20 +1383,19 @@ namespace Ui
                         noSearchLayout->setContentsMargins(0, Utils::scale_value(60), 0, 0);
                         noSearchLayout->setSpacing(Utils::scale_value(36));
                         {
-                            auto noResultsPlaceholder = new QLabel(noSearchResultsWidget);
+                            noResultsPlaceholder_ = new QLabel(noSearchResultsWidget);
 
-                            const auto phSize = Utils::scale_value(QSize(84, 84));
-                            noResultsPlaceholder->setPixmap(Utils::renderSvg(qsl(":/placeholders/empty_search"), phSize, imgColor));
-                            noResultsPlaceholder->setFixedSize(phSize);
-                            Testing::setAccessibleName(noResultsPlaceholder, qsl("AS Search noSearchResultsPlaceholder"));
+                            noResultsPlaceholder_->setPixmap(noResultsPixmap());
+                            noResultsPlaceholder_->setFixedSize(placeholderSize());
+                            Testing::setAccessibleName(noResultsPlaceholder_, qsl("AS Search noSearchResultsPlaceholder"));
 
                             auto hLayout = Utils::emptyHLayout();
-                            hLayout->addWidget(noResultsPlaceholder);
+                            hLayout->addWidget(noResultsPlaceholder_);
                             noSearchLayout->addLayout(hLayout);
                         }
                         {
                             auto noSearchResultsLabel = new LabelEx(noSearchResultsWidget);
-                            noSearchResultsLabel->setColor(textColor);
+                            noSearchResultsLabel->setColor(Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY });
                             noSearchResultsLabel->setFont(Fonts::appFontScaled(14, Fonts::FontWeight::SemiBold));
                             noSearchResultsLabel->setSizePolicy(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Fixed);
                             noSearchResultsLabel->setAlignment(Qt::AlignCenter);
@@ -1359,7 +1486,7 @@ namespace Ui
         {
             if (clDelegate_ == nullptr)
             {
-                auto deleg = delegateFromRegim(this, regim_, chatMembersModel_);
+                auto deleg = delegateFromRegim(this, regim_, chatMembersModel_, needDrawIcons_);
                 connectSearchDelegate(deleg);
                 setClDelegate(deleg);
             }
@@ -1505,6 +1632,10 @@ namespace Ui
         if (!globalSearchViewHeader_ || !globalSearchViewHeader_->isVisible())
             return;
 
+        auto srchModel = qobject_cast<Logic::SearchModel*>(searchModel_);
+        if (!srchModel || srchModel->isSearchInThreads(true))
+            return;
+
         if (auto index = view_->indexAt(QPoint(0, 0)); index.isValid())
         {
             auto headers = getCurrentCategories();
@@ -1583,43 +1714,18 @@ namespace Ui
             {
                 { SearchCategory::ContactsAndGroups, searchModel->contactIndex(Logic::SearchModel::getContactsAndGroupsAimId()) },
                 { SearchCategory::Messages, searchModel->contactIndex(Logic::SearchModel::getMessagesAimId()) },
+                { SearchCategory::Threads, searchModel->contactIndex(Logic::SearchModel::getThreadsAimId()) },
+                { SearchCategory::SingleThread, searchModel->contactIndex(Logic::SearchModel::getSingleThreadAimId()) },
             };
         }
 
         return headers;
     }
 
-    void ContactListWidget::showTooltip(QString _text, QRect _rect, Tooltip::ArrowDirection _arrowDir, Tooltip::ArrowPointPos _arrowPos)
-    {
-        Tooltip::hide();
-
-        if (!tooltipTimer_)
-        {
-            tooltipTimer_ = new QTimer(this);
-            tooltipTimer_->setInterval(Tooltip::getDefaultShowDelay());
-            tooltipTimer_->setSingleShot(true);
-        }
-        else
-        {
-            tooltipTimer_->stop();
-            tooltipTimer_->disconnect(this);
-        }
-
-        connect(tooltipTimer_, &QTimer::timeout, this, [text = std::move(_text), _rect, _arrowDir, _arrowPos]()
-        {
-            Tooltip::show(text, _rect, {}, _arrowDir, _arrowPos, {}, Tooltip::TooltipMode::Multiline);
-        });
-        tooltipTimer_->start();
-    }
-
     void ContactListWidget::hideTooltip()
     {
         tooltipIndex_ = {};
-
-        if (tooltipTimer_)
-            tooltipTimer_->stop();
-
-        Tooltip::hide();
+        personTooltip_->hide();
     }
 
     QRect ContactListWidget::getAvatarRect(const QModelIndex& _index) const
@@ -1636,6 +1742,16 @@ namespace Ui
         const auto avatarX = isPictureOnly ? (itemRect.width() - params.getAvatarSize()) / 2 : params.getAvatarX();
 
         return QRect(itemRect.topLeft() + QPoint(avatarX, params.getAvatarY()), QSize(params.getAvatarSize(), params.getAvatarSize()));
+    }
+
+    void ContactListWidget::setPageOpenedAs(PageOpenedAs _openedAs)
+    {
+        openedAs_ = _openedAs;
+    }
+
+    void ContactListWidget::setCloseOnThreadResult(bool _val)
+    {
+        closeOnThreadResult_ = _val;
     }
 
     void ContactListWidget::scrolled(const int _value)
@@ -1676,6 +1792,12 @@ namespace Ui
             if (auto model = qobject_cast<Logic::DisallowedInvitersModel*>(searchModel_))
                 model->requestMore();
         }
+    }
+
+    void ContactListWidget::onThemeChanged()
+    {
+        if (noResultsPlaceholder_)
+            noResultsPlaceholder_->setPixmap(noResultsPixmap());
     }
 
     void ContactListWidget::leaveEvent(QEvent*)

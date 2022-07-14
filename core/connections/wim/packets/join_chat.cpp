@@ -2,6 +2,7 @@
 #include "join_chat.h"
 
 #include "../../../http_request.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -18,6 +19,11 @@ join_chat::~join_chat() = default;
 std::string_view join_chat::get_method() const
 {
     return "joinChat";
+}
+
+int core::wim::join_chat::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t join_chat::init_request(const std::shared_ptr<core::http_request_simple>& _request)

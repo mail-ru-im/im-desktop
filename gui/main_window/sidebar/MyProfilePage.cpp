@@ -23,6 +23,7 @@
 #include "../../utils/translator.h"
 #include "../../utils/features.h"
 #include "../../styles/ThemeParameters.h"
+#include "../../styles/ThemesContainer.h"
 #include "../../gui_settings.h"
 #include "../../core_dispatcher.h"
 
@@ -144,6 +145,12 @@ namespace
 
 namespace Ui
 {
+    void TextResizedWidget::init(const TextRendering::TextUnit::InitializeParameters& _params)
+    {
+        text_->init(_params);
+        update();
+    }
+
     QSize TextResizedWidget::sizeHint() const
     {
         auto width = qMin(maxAvalibleWidth_ ? maxAvalibleWidth_ : text_->desiredWidth(), QWidget::width());
@@ -164,7 +171,7 @@ namespace Ui
         update();
     }
 
-    void TextResizedWidget::setText(const QString& _text, const QColor& _color)
+    void TextResizedWidget::setText(const QString& _text, const Styling::ThemeColorKey& _color)
     {
         text_->setText(_text, _color);
         updateGeometry();
@@ -217,7 +224,7 @@ namespace Ui
             auto textLayout = Utils::emptyVLayout();
             textLayout->setContentsMargins(leftMargin_, 0, 0, 0);
             header_ = new Ui::TextResizedWidget(this, QString(), Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS);
-            header_->init(getHeaderTextFont(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+            header_->init({ getHeaderTextFont(), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY } });
             header_->setSizePolicy(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Fixed);
             textLayout->addWidget(header_);
 
@@ -225,10 +232,10 @@ namespace Ui
 
             auto infoLayout = Utils::emptyHLayout();
             info_ = new Ui::TextResizedWidget(this, QString(), Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS);
-            info_->init(getInfoTextFont(),
-                        Styling::getParameters().getColor(redoAvailable_ ? Styling::StyleVariable::TEXT_SOLID : Styling::StyleVariable::BASE_PRIMARY),
-                        QColor(), QColor(), QColor(),
-                        TextRendering::HorAligment::LEFT, _maxInfoLinesCount, Ui::TextRendering::LineBreakType::PREFER_SPACES);
+            TextRendering::TextUnit::InitializeParameters params{ getInfoTextFont(), Styling::ThemeColorKey{ redoAvailable_ ? Styling::StyleVariable::TEXT_SOLID : Styling::StyleVariable::BASE_PRIMARY } };
+            params.maxLinesCount_ = _maxInfoLinesCount;
+            params.lineBreak_ = TextRendering::LineBreakType::PREFER_SPACES;
+            info_->init(params);
             sp.setHorizontalStretch(1);
             info_->setSizePolicy(sp);
             info_->setMaximumWidth(getInfoPlateTextMaximumWidth());
@@ -246,9 +253,9 @@ namespace Ui
             iconWidget->setFixedSize(getInfoPlateIconSize());
             auto iconWLayout = Utils::emptyVLayout(iconWidget);
             iconArea_ = new QLabel(this);
-            iconHovered_ = Utils::renderSvg(_iconPath, getInfoPlateIconSize(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER));
-            iconPressed_ = Utils::renderSvg(_iconPath, getInfoPlateIconSize(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_ACTIVE));
-            iconArea_->setPixmap(iconHovered_);
+            iconHovered_ = Utils::StyledPixmap(_iconPath, getInfoPlateIconSize(), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY_HOVER });
+            iconPressed_ = Utils::StyledPixmap(_iconPath, getInfoPlateIconSize(), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY_ACTIVE });
+            iconArea_->setPixmap(iconHovered_.cachedPixmap());
             iconArea_->hide();
             iconWLayout->addWidget(iconArea_);
             iconLayout->addWidget(iconWidget);
@@ -257,6 +264,8 @@ namespace Ui
             Utils::grabTouchWidget(this);
         }
         rootVLayout->addLayout(rootHLayout);
+
+        connect(&Styling::getThemesContainer(), &Styling::ThemesContainer::globalThemeChanged, this, &MyInfoPlate::updateIcon);
     }
 
     void MyInfoPlate::setHeader(const QString& _header)
@@ -272,14 +281,14 @@ namespace Ui
 
         if (infoStr_.isEmpty() && !infoEmptyStr_.isEmpty())
         {
-            info_->setText(infoEmptyStr_, Styling::getParameters().getColor(redoAvailable_ ? Styling::StyleVariable::TEXT_PRIMARY : Styling::StyleVariable::BASE_PRIMARY));
+            info_->setText(infoEmptyStr_, Styling::ThemeColorKey{ redoAvailable_ ? Styling::StyleVariable::TEXT_PRIMARY : Styling::StyleVariable::BASE_PRIMARY });
         }
         else
         {
             if (!infoStr_.startsWith(_prefix))
                 infoStr_ = _prefix % infoStr_;
 
-            info_->setText(infoStr_, Styling::getParameters().getColor(redoAvailable_ ? Styling::StyleVariable::TEXT_SOLID : Styling::StyleVariable::BASE_PRIMARY));
+            info_->setText(infoStr_, Styling::ThemeColorKey{ redoAvailable_ ? Styling::StyleVariable::TEXT_SOLID : Styling::StyleVariable::BASE_PRIMARY });
         }
         Testing::setAccessibleName(info_, qsl("AS ProfilePage body"));
 
@@ -304,7 +313,7 @@ namespace Ui
             p.fillRect(rect(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
             if (iconArea_->isHidden())
             {
-                iconArea_->setPixmap(iconHovered_);
+                iconArea_->setPixmap(iconHovered_.cachedPixmap());
                 iconArea_->show();
             }
         }
@@ -320,7 +329,7 @@ namespace Ui
         {
             pressed_ = true;
             pos_ = _event->pos();
-            iconArea_->setPixmap(iconPressed_);
+            iconArea_->setPixmap(iconPressed_.cachedPixmap());
         }
 
         QWidget::mousePressEvent(_event);
@@ -338,7 +347,7 @@ namespace Ui
                     Q_EMIT clicked();
 
                 if (hovered_)
-                    iconArea_->setPixmap(iconHovered_);
+                    iconArea_->setPixmap(iconHovered_.cachedPixmap());
             }
         }
 
@@ -369,6 +378,13 @@ namespace Ui
         QWidget::leaveEvent(_event);
     }
 
+    void MyInfoPlate::updateIcon()
+    {
+        iconPressed_.updatePixmap();
+        iconHovered_.updatePixmap();
+        iconArea_->setPixmap((pressed_ ? iconPressed_ : iconHovered_).cachedPixmap());
+    }
+
 
     MyProfilePage::MyProfilePage(QWidget* _parent)
         : SidebarPage(_parent)
@@ -397,8 +413,8 @@ namespace Ui
             w->setInfoText(text);
             Ui::GeneralDialog generalDialog(w, Utils::InterConnector::instance().getMainWindow());
             generalDialog.addLabel(caption);
-            generalDialog.addButtonsPair(btnCancel, btnConfirm, true);
-            confirm = generalDialog.showInCenter();
+            generalDialog.addButtonsPair(btnCancel, btnConfirm);
+            confirm = generalDialog.execute();
             clearData = w->isChecked();
         }
         else
@@ -434,7 +450,7 @@ namespace Ui
             auto phoneWidget = new PhoneWidget(0, PhoneWidgetState::ENTER_PHONE_STATE, title, text, true, Ui::AttachState::NEED_PHONE);
             auto attachPhoneDialog = std::make_unique<GeneralDialog>(phoneWidget, Utils::InterConnector::instance().getMainWindow());
             QObject::connect(phoneWidget, &PhoneWidget::requestClose, attachPhoneDialog.get(), &GeneralDialog::acceptDialog);
-            attachPhoneDialog->showInCenter();
+            attachPhoneDialog->execute();
             return;
         }
 
@@ -446,7 +462,7 @@ namespace Ui
         const auto attachState = emptyPhone ? Ui::AttachState::NEED_PHONE : Ui::AttachState::CHANGE_PHONE;
         auto phoneWidget = new PhoneWidget(nullptr, phoneState, QString(), aboutText, true, attachState);
         auto generalDialog = std::make_unique<GeneralDialog>(phoneWidget, Utils::InterConnector::instance().getMainWindow());
-        generalDialog->showInCenter();
+        generalDialog->execute();
     }
 
     void MyProfilePage::initFor(const QString& _aimId, SidebarParams _params)
@@ -549,9 +565,9 @@ namespace Ui
                     auto hLayout = Utils::emptyHLayout();
                     permissionsInfo_ = new LabelEx(mainWidget_);
                     permissionsInfo_->setFont(getLabelTextFont());
-                    permissionsInfo_->setColors(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY),
-                                                Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_HOVER),
-                                                Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_ACTIVE));
+                    permissionsInfo_->setColors(Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY },
+                        Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY_HOVER },
+                        Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY_ACTIVE });
                     permissionsInfo_->setText(QT_TRANSLATE_NOOP("sidebar", "Who can see my data"));
                     permissionsInfo_->setCursor(Qt::PointingHandCursor);
                     permissionsInfo_->setVisible(config::get().is_on(config::features::show_data_visibility_link));
@@ -569,9 +585,9 @@ namespace Ui
                     auto hLayout = Utils::emptyHLayout();
                     signOut_ = new LabelEx(mainWidget_);
                     signOut_->setFont(getLabelTextFont());
-                    signOut_->setColors(Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION),
-                                        Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION_HOVER),
-                                        Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION_ACTIVE));
+                    signOut_->setColors(Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_ATTENTION },
+                        Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_ATTENTION_HOVER },
+                        Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_ATTENTION_ACTIVE });
                     signOut_->setText(QT_TRANSLATE_NOOP("sidebar", "Sign out"));
                     signOut_->setCursor(Qt::PointingHandCursor);
                     Utils::grabTouchWidget(signOut_);
@@ -697,8 +713,14 @@ namespace Ui
             return;
 
         firstName_ = _info.firstName_;
+        middleName_ = _info.middleName_;
         lastName_ = _info.lastName_;
-        name_->setInfo(_info.friendly_);
+
+        if (_info.middleName_.isEmpty())
+            name_->setInfo(_info.friendly_);
+        else
+            name_->setInfo(Features::leadingLastName() ? (_info.lastName_ % QChar::Space % _info.firstName_ % QChar::Space % _info.middleName_) 
+                                                       : (_info.firstName_ % QChar::Space % _info.middleName_ % QChar::Space % _info.lastName_));
 
         aboutMe_->setInfo(_info.about_);
 
@@ -782,7 +804,7 @@ namespace Ui
 
     void MyProfilePage::editNameClicked()
     {
-        auto form = new EditNameWidget(this, {firstName_, lastName_});
+        auto form = new EditNameWidget(this, {firstName_, middleName_, lastName_});
 
         Ui::GeneralDialog::Options options;
         options.preferredWidth_ = form->width();
@@ -800,15 +822,16 @@ namespace Ui
             QString friendly = firstName_ % nameSpacer % lastName_;
             name_->setInfo(friendly);
             MyInfo()->setFriendly(friendly);
+            GetDispatcher()->getUserInfo(currentAimId_);
             update();
         });
 
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profileeditscr_name_action);
 
-        auto buttonsPair = gd->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "Apply"), true, false, false);
+        auto buttonsPair = gd->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "Apply"), ButtonsStateFlag::RejectionForbidden | ButtonsStateFlag::AcceptingForbidden);
         form->setButtonsPair(buttonsPair);
         gd->setButtonsAreaMargins(QMargins(0, getButtonsTopMargin(), 0, getButtonsBottomMargin()));
-        gd->showInCenter();
+        gd->execute();
     }
 
     void MyProfilePage::editAboutMeClicked()
@@ -830,10 +853,10 @@ namespace Ui
 
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profileeditscr_aboutme_action);
 
-        auto buttonsPair = gd->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "Apply"), true, false, false);
+        auto buttonsPair = gd->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "Apply"), ButtonsStateFlag::RejectionForbidden | ButtonsStateFlag::AcceptingForbidden);
         form->setButtonsPair(buttonsPair);
         gd->setButtonsAreaMargins(QMargins(0, getButtonsTopMargin(), 0, getButtonsBottomMargin()));
-        gd->showInCenter();
+        gd->execute();
     }
 
     void MyProfilePage::editNicknameClicked()

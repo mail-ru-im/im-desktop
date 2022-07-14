@@ -71,8 +71,9 @@ namespace core
             void insert_header(archive::message_header& header, const std::chrono::seconds _current_time);
 
             void notify_core_outgoing_msg_count();
+
             int32_t get_outgoing_count() const;
-            bool is_outgoing_header(archive::message_header& header, const std::chrono::seconds _current_time) const;
+            bool is_outgoing_header(const archive::message_header& _header, const std::chrono::seconds _current_time) const;
 
             void drop_outdated_headers(const std::chrono::seconds _current_time);
 
@@ -123,6 +124,7 @@ namespace core
             archive::error get_last_error() const { return last_error_; }
 
             void make_holes();
+            void invalidate();
             void invalidate_message_data(int64_t _msgid, mark_as_updated _mark_as_updated = mark_as_updated::no);
             void invalidate_message_data(int64_t _from, int64_t _before_count, int64_t _after_count);
             int64_t get_memory_usage() const;

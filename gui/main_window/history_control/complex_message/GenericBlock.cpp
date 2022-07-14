@@ -27,6 +27,11 @@ namespace
     constexpr std::chrono::milliseconds resourcesUnloadDelay = std::chrono::seconds(build::is_debug() ? 1 : 5);
 
     constexpr auto tooltipMode = Tooltip::TooltipMode::Multiline;
+
+    QSize mentionTooltipMaxSize()
+    {
+        return {Utils::scale_value(416), Utils::scale_value(100)};
+    }
 }
 
 GenericBlock::GenericBlock(
@@ -34,25 +39,31 @@ GenericBlock::GenericBlock(
     const Data::FString& _sourceText,
     const MenuFlags _menuFlags,
     const bool _isResourcesUnloadingEnabled)
+    : GenericBlock(_parent, Data::FStringView{ _sourceText }, _menuFlags, _isResourcesUnloadingEnabled)
+{
+}
+
+GenericBlock::GenericBlock(
+    ComplexMessageItem* _parent,
+    Data::FStringView _sourceText,
+    const MenuFlags _menuFlags,
+    const bool _isResourcesUnloadingEnabled)
     : QWidget(_parent)
-    , Initialized_(false)
-    , IsResourcesUnloadingEnabled_(_isResourcesUnloadingEnabled)
+    , QuoteAnimation_(new QuoteColorAnimation(this))
     , MenuFlags_(_menuFlags)
     , Parent_(_parent)
-    , ResourcesUnloadingTimer_(nullptr)
-    , SourceText_(_sourceText)
-    , IsBubbleRequired_(true)
-    , galleryId_(-1)
-    , IsInsideQuote_(false)
-    , IsInsideForward_(false)
-    , IsSelected_(false)
-    , tooltipTimer_(nullptr)
-    , tooltipActivated_(false)
+    , personTooltip_(new Utils::PersonTooltip(this))
+    , SourceText_(_sourceText.toFString())
+    , IsResourcesUnloadingEnabled_(_isResourcesUnloadingEnabled)
 {
     im_assert(Parent_);
-    QuoteAnimation_ = new QuoteColorAnimation(this);
     QuoteAnimation_->setAimId(getChatAimid());
     connect(this, &GenericBlock::setQuoteAnimation, _parent, &ComplexMessageItem::setQuoteAnimation);
+
+    connect(&Utils::InterConnector::instance(), &Utils::InterConnector::stopTooltipTimer, this, [this]()
+    {
+            personTooltip_->hide();
+    }, Qt::DirectConnection);
 }
 
 GenericBlock::GenericBlock()
@@ -147,6 +158,11 @@ const QString& GenericBlock::getLink() const
 {
     static QString emptyLink;
     return emptyLink;
+}
+
+QStringList GenericBlock::messageLinks() const
+{
+    return QStringList();
 }
 
 QString GenericBlock::getTextForCopy() const
@@ -710,7 +726,7 @@ qint64 GenericBlock::getGalleryId() const
 
 bool GenericBlock::isTooltipActivated() const
 {
-    auto tooltip = (tooltipMode == Tooltip::TooltipMode::Multiline) ? Tooltip::getDefaultMultilineTooltip() : Tooltip::getDefaultTooltip();
+    auto tooltip = Tooltip::getDefaultMultilineTooltip();
     if (tooltip)
         return tooltipActivated_ && tooltip->isTooltipVisible();
     return tooltipActivated_;
@@ -719,34 +735,19 @@ bool GenericBlock::isTooltipActivated() const
 void GenericBlock::showTooltip(QString _text, QRect _rect, Tooltip::ArrowDirection _arrowDir, Tooltip::ArrowPointPos _arrowPos)
 {
     hideTooltip();
+    personTooltip_->show(Utils::PersonTooltipType::Text, _text, _rect, _arrowDir, _arrowPos);
+    tooltipActivated_ = true;
+}
 
-    if (!tooltipTimer_)
-    {
-        tooltipTimer_ = new QTimer(this);
-        tooltipTimer_->setInterval(Tooltip::getDefaultShowDelay());
-        tooltipTimer_->setSingleShot(true);
-    }
-    else
-    {
-        tooltipTimer_->disconnect(this);
-    }
-
-    connect(tooltipTimer_, &QTimer::timeout, this, [text = std::move(_text), _rect, _arrowDir, _arrowPos]()
-    {
-        Tooltip::show(text, _rect, {}, _arrowDir, _arrowPos, {}, tooltipMode);
-    });
-    tooltipTimer_->start();
-
+void GenericBlock::showMentionTooltip(QString _text, QString, QRect _rect, Tooltip::ArrowDirection _arrowDir, Tooltip::ArrowPointPos _arrowPos)
+{
+    personTooltip_->show(Utils::PersonTooltipType::Person, _text, _rect, _arrowDir, _arrowPos);
     tooltipActivated_ = true;
 }
 
 void GenericBlock::hideTooltip()
 {
-    if (tooltipTimer_)
-        tooltipTimer_->stop();
-
-    Tooltip::hide();
-
+    personTooltip_->hide();
     tooltipActivated_ = false;
 }
 

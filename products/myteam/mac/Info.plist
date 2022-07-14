@@ -22,7 +22,7 @@
 				<string>public.data</string>
 			</array>
 			<key>CFBundleTypeName</key>
-			<string>Myteam</string>
+			<string>VK Teams</string>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSHandlerRank</key>
@@ -30,7 +30,7 @@
 		</dict>
 	</array>
 	<key>CFBundleExecutable</key>
-	<string>Myteam</string>
+	<string>VK Teams</string>
 	<key>CFBundleIconFile</key>
 	<string>icons-bundle</string>
 	<key>CFBundleIdentifier</key>
@@ -38,7 +38,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Myteam</string>
+	<string>VK Teams</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -47,6 +47,18 @@
 	<string>????</string>
 	<key>CFBundleURLTypes</key>
 	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>CFBundleURLIconFile</key>
+			<string>icons-bundle</string>
+			<key>CFBundleURLName</key>
+			<string>icq</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>vkteams</string>
+			</array>
+		</dict>
 		<dict>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
@@ -81,7 +93,7 @@
 	<key>LSFileQuarantineEnabled</key>
 	<true/>
 	<key>LSMinimumSystemVersion</key>
-	<string>10.13</string>
+	<string>10.14</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
@@ -115,5 +127,7 @@
 	<string>HolMjZAxnC1J9hv9hrUfR3aiJtRPPuMzGXeay+NraNc=</string>
 	<key>SUShowReleaseNotes</key>
 	<false/>
+	<key>SUBundleName</key>
+	<string>VK Teams</string>
 </dict>
 </plist>

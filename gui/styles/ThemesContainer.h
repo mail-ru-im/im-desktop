@@ -30,6 +30,8 @@ namespace Styling
         void unserialize(core::coll_helper _collection);
 
         bool isLoaded() const { return isLoaded_; }
+        bool isDarkTheme() const { return getCurrentThemeId() == darkThemeId(); }
+        const QStringView darkThemeId() const noexcept{ return QStringView(u"black"); }
 
         [[nodiscard]] ThemePtr getCurrentTheme() const;
         [[nodiscard]] QString getCurrentThemeId() const;
@@ -38,6 +40,7 @@ namespace Styling
         [[nodiscard]] ThemePtr getTheme(const QString& _themeName) const;
 
         [[nodiscard]] std::vector<std::pair<QString, QString>> getAvailableThemes() const;
+        [[nodiscard]] std::vector<std::pair<QString, QString>> getAdditionalThemes() const;
 
         [[nodiscard]] WallpaperPtr getContactWallpaper(const QString& _aimId) const;
         [[nodiscard]] WallpaperPtr getGlobalWallpaper() const;
@@ -71,6 +74,9 @@ namespace Styling
         QColor getDefaultBackgroundColor();
 
         void unloadUnusedWallpaperImages();
+
+        void mergeAdditionalThemes(const QStringList& _themes);
+        void chooseAndSetTheme();
 
     private:
         void unserializeMeta(const QString& _meta);
@@ -106,17 +112,24 @@ namespace Styling
 
         ThemePtr currentTheme_;
         std::vector<ThemePtr> availableThemes_;
+        std::vector<ThemePtr> additionalThemes_;
 
         WallpaperPtr currentWallpaper_;
-        std::unordered_map<QString, WallpaperPtr, Utils::QStringHasher> contactWallpapers_;
+        std::unordered_map<QString, WallpaperPtr> contactWallpapers_;
 
         WallpaperPtr tryOnWallpaper_;
         QString tryOnContact_;
 
         bool isLoaded_;
+
+    public:
+        static inline bool themesAreLoaded_ = false;
     };
 
     [[nodiscard]] ThemesContainer& getThemesContainer();
+
+    bool getThemesAreLoaded();
+    void setThemesAreLoaded(bool v);
 
     QString getTryOnAccount();
 }

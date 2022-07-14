@@ -6,7 +6,7 @@
 #include "utils/features.h"
 #include "utils/InterConnector.h"
 #include "core_dispatcher.h"
-#include "controls/TooltipWidget.h"
+#include "controls/TextWidget.h"
 #include "controls/DialogButton.h"
 #include "controls/DateTimeWidget.h"
 #include "styles/ThemeParameters.h"
@@ -98,14 +98,16 @@ StatusDurationWidget::StatusDurationWidget(QWidget* _parent)
     auto layout = Utils::emptyVLayout(this);
 
     auto label = new TextWidget(this, QT_TRANSLATE_NOOP("status_popup", "Status duration"));
-    label->init(headerLabelFont(), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
+    TextRendering::TextUnit::InitializeParameters params{ headerLabelFont(), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } };
+    params.align_ = TextRendering::HorAligment::CENTER;
+    label->init(params);
     label->setMaxWidthAndResize(maxWidth());
 
     layout->addSpacing(labelTopMargin());
     layout->addWidget(label);
     layout->addSpacing(labelBottomMargin());
 
-    d->dateTime_ = new DateTimePicker(this, Ui::GetAppConfig().showSecondsInTimePicker());
+    d->dateTime_ = new DateTimePicker(this, Ui::GetAppConfig().showSecondsInTimePicker(), true);
     d->dateTime_->setAccessibilityPrefix(qsl("StatusDurationWidget"));
     connect(d->dateTime_, &DateTimePicker::dateTimeChanged, this, &StatusDurationWidget::validateDate);
     connect(d->dateTime_, &DateTimePicker::dateTimeValidityChanged, this, &StatusDurationWidget::validateDate);
@@ -152,6 +154,7 @@ void StatusDurationWidget::setDateTime(const QDateTime& _dateTime)
 
 void StatusDurationWidget::showEvent(QShowEvent* _event)
 {
+    d->dateTime_->setEnabledTime(true);
     d->dateTime_->setFocus();
 }
 

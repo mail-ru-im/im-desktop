@@ -1,5 +1,10 @@
 #pragma once
 
+namespace Utils
+{
+    enum class OpenUrlConfirm;
+}
+
 namespace Ui
 {
     class WebPage : public QWebEnginePage
@@ -7,18 +12,31 @@ namespace Ui
         Q_OBJECT
 
     public:
-        explicit WebPage(QWidget* parent = nullptr);
+        explicit WebPage(QWebEngineProfile* _profile, Utils::OpenUrlConfirm _confirm, QWidget* _parent = nullptr);
+        void initializeJsBridge();
+        void sendFunctionCallReply(const QJsonObject& _reply);
 
     protected:
         bool certificateError(const QWebEngineCertificateError&) override;
-        void javaScriptConsoleMessage(JavaScriptConsoleMessageLevel level, const QString& message, int lineNumber, const QString& sourceID) override;
-        bool acceptNavigationRequest(const QUrl& _url, NavigationType _type, bool _isMainFrame) override;
+        void javaScriptConsoleMessage(JavaScriptConsoleMessageLevel _level, const QString& _message, int _lineNumber, const QString& _sourceID) override;
         QWebEnginePage* createWindow(WebWindowType) override;
+        QStringList chooseFiles(FileSelectionMode _mode, const QStringList& _oldFiles, const QStringList& _acceptedMimeTypes) override;
 
     private Q_SLOTS:
         void onLinkHovered(const QString& _url);
+        void unload();
+        void printRequested();
+
+    private:
+        void openHoveredUrl();
+        QWebEnginePage* resetBackgroundPage();
 
     private:
         QString hoveredUrl_;
+        QPointer<QWebEnginePage> backgroundPage_;
+        std::unique_ptr<QPrinter> printer_;
+        QTimer* unloadTimer_;
+        Utils::OpenUrlConfirm type_;
+        std::chrono::system_clock::time_point startTime_;
     };
 }

@@ -23,6 +23,7 @@
 #include "../common.shared/common_defs.h"
 
 #include "../core/tools/strings.h"
+#include "../utils.h"
 
 /************************************************************************/
 /* DumpCallback                                                         */
@@ -132,11 +133,9 @@ namespace crash_system
     reporter reporter::make()
     {
 #ifdef _WIN32
-        return reporter(su::wconcat(common::get_user_profile(), L'\\', core::tools::from_utf8(config::get().string(config::values::product_path))));
-#elif __APPLE__
-        return reporter(su::concat(common::get_home_directory(), "/Library/Application Support/", config::get().string(config::values::product_path_mac), "/reports"));
-#elif __linux__
-        return reporter(su::concat(common::get_home_directory(), "/.config/", config::get().string(config::values::product_path), "/reports"));
+        return reporter(core::utils::get_product_data_path());
+#else
+        return reporter(su::concat(core::tools::from_utf16(core::utils::get_product_data_path()), "/reports"));
 #endif
     }
 

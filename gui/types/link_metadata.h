@@ -23,7 +23,6 @@ public:
 
     LinkMetadata(const QString& _title,
         const QString& _description,
-        const QString& _siteName,
         const QString& _contentType,
         const QString& _previewUri,
         const QString& _faviconUri,
@@ -39,7 +38,6 @@ public:
     const QString& getTitle() const;
     const QString& getDescription() const;
     const QString& getDownloadUri() const;
-    const QString& getSiteName() const;
     const QString& getContentTypeStr() const;
     const QString& getPreviewUri() const;
     const QString& getFaviconUri() const;
@@ -54,7 +52,6 @@ private:
     QString title_;
     QString description_;
     QString downloadUri_;
-    QString siteName_;
     QString contentTypeStr_;
     QString previewUri_;
     QString faviconUri_;

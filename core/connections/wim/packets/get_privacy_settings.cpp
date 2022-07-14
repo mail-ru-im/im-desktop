@@ -2,6 +2,7 @@
 
 #include "get_privacy_settings.h"
 #include "../../../http_request.h"
+#include "../log_replace_functor.h"
 
 namespace core::wim
 {
@@ -18,6 +19,11 @@ namespace core::wim
     std::string_view get_privacy_settings::get_method() const
     {
         return "getPrivacySettings";
+    }
+
+    int get_privacy_settings::minimal_supported_api_version() const
+    {
+        return core::urls::api_version::instance().minimal_supported();
     }
 
     int32_t get_privacy_settings::init_request(const std::shared_ptr<core::http_request_simple>& _request)

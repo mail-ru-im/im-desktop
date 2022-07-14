@@ -35,16 +35,39 @@ struct filesharing_preview_size_info
     std::string_view url_path_;
 };
 
-struct filesharing_id
+class filesharing_id
 {
-    std::string file_id_;
-    std::optional<std::string> source_id_;
+public:
+    filesharing_id() = default;
+    explicit filesharing_id(std::string_view _file_id, std::string_view _source_id = {});
+    const std::string& full_id() const { return full_id_; }
+    std::string_view file_id() const { return file_id_; }
+    const std::optional<std::string_view>& source_id() const { return source_id_; }
+
+    bool is_empty() const { return file_id_.empty(); }
+    void set_source_id(std::string_view _source_id);
+
+    filesharing_id(const filesharing_id& _other);
+    filesharing_id(filesharing_id&& _other) noexcept;
+
+    filesharing_id& operator=(const filesharing_id& _other);
+    filesharing_id& operator=(filesharing_id&& _other) noexcept;
+
+    static filesharing_id from_filesharing_uri(std::string_view _uri);
+
+    std::string file_hash_for_subscription() const;
+    std::string file_url_part() const;
 
 private:
     friend bool operator==(const filesharing_id& _lhs, const filesharing_id& _rhs)
     {
-        return _lhs.file_id_ == _rhs.file_id_ && _lhs.source_id_ == _rhs.source_id_;
+        return _lhs.full_id_ == _rhs.full_id_;
     }
+
+private:
+    std::string full_id_;
+    std::string_view file_id_;
+    std::optional<std::string_view> source_id_;
 };
 
 const std::vector<filesharing_preview_size_info>& get_available_fs_preview_sizes();

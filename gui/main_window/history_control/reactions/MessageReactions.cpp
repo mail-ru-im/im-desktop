@@ -209,6 +209,7 @@ AddReactionPlate* MessageReactions::createAddReactionPlate(const HistoryControlP
     plate->setOutgoingPosition(_item->isOutgoingPosition());
     plate->setMsgId(_item->getId());
     plate->setChatId(_item->getContact());
+    plate->setThreadFeedFlag(_item->isThreadFeedMessage());
 
     connect(plate, &AddReactionPlate::addReactionClicked, _reactions, &MessageReactions::onAddReactionClicked);
     connect(plate, &AddReactionPlate::removeReactionClicked, _reactions, &MessageReactions::onRemoveReactionClicked);
@@ -239,7 +240,7 @@ void MessageReactions::onReactionClicked(const QString& _reaction)
     opt.fixedSize_ = false;
     GeneralDialog dialog(w, Utils::InterConnector::instance().getMainWindow(), opt);
     dialog.addCancelButton(QT_TRANSLATE_NOOP("reactions", "Close"), true);
-    dialog.showInCenter();
+    dialog.execute();
 }
 
 void MessageReactions::onAddReactionClicked(const QString& _reaction)

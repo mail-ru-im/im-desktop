@@ -1,9 +1,8 @@
+#include <utils/features.h>
 #include "stdafx.h"
 
 #include "ContactListUtils.h"
 #include "ContactListModel.h"
-#include "ContactListWithHeaders.h"
-#include "ContactListItemDelegate.h"
 #include "RecentsModel.h"
 #include "UnknownsModel.h"
 #include "SearchModel.h"
@@ -11,19 +10,20 @@
 #include "Common.h"
 #include "../containers/FriendlyContainer.h"
 
-#include "RecentItemDelegate.h"
-
 #include "../ReportWidget.h"
 #include "../GroupChatOperations.h"
 #include "../../core_dispatcher.h"
 #include "../../utils/InterConnector.h"
-#include "../../utils/utils.h"
-#include "../../utils/gui_coll_helper.h"
 #include "ServiceContacts.h"
 
 #include "../../controls/CustomButton.h"
+#include "../../controls/TextWidget.h"
 
 #include "styles/ThemeParameters.h"
+
+#include "IgnoreMembersModel.h"
+#include "controls/ContextMenu.h"
+#include "main_window/contact_list/FavoritesUtils.h"
 
 namespace Logic
 {
@@ -147,6 +147,81 @@ namespace Logic
         return result;
     }
 
+    void addItemToContextMenu(QMenu* _popupMenu, const QString& _aimId, const Data::DlgState& _dlg)
+    {
+        auto popupMenu = qobject_cast<Ui::ContextMenu *>(_popupMenu);
+        if (_dlg.UnreadCount_ != 0 || _dlg.Attention_)
+            popupMenu->addActionWithIcon(qsl(":/context_menu/mark_read"), QT_TRANSLATE_NOOP("context_menu", "Mark as read"), Logic::makeData(qsl("recents/mark_read"), _aimId));
+        else if (!_dlg.Attention_)
+            popupMenu->addActionWithIcon(qsl(":/context_menu/mark_unread"), QT_TRANSLATE_NOOP("context_menu", "Mark as unread"), Logic::makeData(qsl("recents/mark_unread"), _aimId));
+
+        if (!Logic::getRecentsModel()->isUnimportant(_aimId))
+        {
+            if (Logic::getRecentsModel()->isFavorite(_aimId))
+                popupMenu->addActionWithIcon(qsl(":/context_menu/unpin"), QT_TRANSLATE_NOOP("context_menu", "Unpin"), Logic::makeData(qsl("recents/unfavorite"), _aimId));
+            else
+                popupMenu->addActionWithIcon(qsl(":/context_menu/pin"), QT_TRANSLATE_NOOP("context_menu", "Pin"), Logic::makeData(qsl("recents/favorite"), _aimId));
+        }
+
+        if (!Logic::getRecentsModel()->isFavorite(_aimId))
+        {
+            if (Logic::getRecentsModel()->isUnimportant(_aimId))
+                popupMenu->addActionWithIcon(qsl(":/context_menu/unmark_unimportant"), QT_TRANSLATE_NOOP("context_menu", "Remove from Unimportant"), Logic::makeData(qsl("recents/remove_from_unimportant"), _aimId));
+            else
+                popupMenu->addActionWithIcon(qsl(":/context_menu/mark_unimportant"), QT_TRANSLATE_NOOP("context_menu", "Move to Unimportant"), Logic::makeData(qsl("recents/mark_unimportant"), _aimId));
+        }
+
+        const auto isNewsFeed = Logic::getContactListModel()->isFeed(_aimId);
+        const auto canLeaveAndReport = !isNewsFeed || (isNewsFeed && Logic::getContactListModel()->areYouAdmin(_aimId));
+
+        if (!Favorites::isFavorites(_aimId))
+        {
+            if (Logic::getContactListModel()->contains(_aimId))
+            {
+                if (Logic::getContactListModel()->isMuted(_aimId))
+                    popupMenu->addActionWithIcon(qsl(":/context_menu/mute_off"), QT_TRANSLATE_NOOP("context_menu", "Turn on notifications"), Logic::makeData(qsl("recents/unmute"), _aimId));
+                else
+                    popupMenu->addActionWithIcon(qsl(":/context_menu/mute"), QT_TRANSLATE_NOOP("context_menu", "Turn off notifications"), Logic::makeData(qsl("recents/mute"), _aimId));
+            }
+
+            if (canLeaveAndReport)
+            {
+                popupMenu->addSeparator();
+
+                popupMenu->addActionWithIcon(qsl(":/clear_chat_icon"), QT_TRANSLATE_NOOP("context_menu", "Clear history"), Logic::makeData(qsl("recents/clear_history"),_aimId));
+
+
+                if (Logic::getIgnoreModel()->contains(_aimId))
+                    popupMenu->addActionWithIcon(qsl(":/context_menu/unblock"), QT_TRANSLATE_NOOP("context_menu", "Unblock"), Logic::makeData(qsl("recents/unblock"), _aimId));
+                else
+                    popupMenu->addActionWithIcon(qsl(":/ignore_icon"), QT_TRANSLATE_NOOP("context_menu", "Block"), Logic::makeData(qsl("recents/ignore"), _aimId));
+
+                if (Logic::getContactListModel()->isChat(_aimId))
+                {
+                    if (Features::isReportMessagesEnabled())
+                        popupMenu->addActionWithIcon(qsl(":/alert_icon"), QT_TRANSLATE_NOOP("context_menu", "Report and block"), Logic::makeData(qsl("recents/report"), _aimId));
+
+                    popupMenu->addActionWithIcon(qsl(":/exit_icon"), QT_TRANSLATE_NOOP("context_menu", "Leave and delete"), Logic::makeData(qsl("contacts/remove"), _aimId));
+                }
+                else if (Features::clRemoveContactsAllowed())
+                {
+                    popupMenu->addActionWithIcon(qsl(":/alert_icon"), QT_TRANSLATE_NOOP("context_menu", "Report"), Logic::makeData(qsl("recents/report"), _aimId));
+                }
+            }
+        }
+
+        if (!Logic::getRecentsModel()->isFavorite(_aimId) && !Logic::getRecentsModel()->isUnimportant(_aimId))
+        {
+            if (Features::clRemoveContactsAllowed() && !Logic::getContactListModel()->isChat(_aimId) && !Favorites::isFavorites(_aimId) && canLeaveAndReport)
+                popupMenu->addActionWithIcon(qsl(":/context_menu/delete"), QT_TRANSLATE_NOOP("context_menu", "Remove"), Logic::makeData(qsl("recents/remove"), _aimId));
+
+            popupMenu->addSeparator();
+            popupMenu->addActionWithIcon(qsl(":/context_menu/close"), QT_TRANSLATE_NOOP("context_menu", "Hide"), Logic::makeData(qsl("recents/close"), _aimId));
+        }
+
+        popupMenu->popup(QCursor::pos());
+    }
+
     void showContactListPopup(QAction* _action)
     {
         const auto params = _action->data().toMap();
@@ -186,6 +261,11 @@ namespace Logic
         {
             if (Logic::getContactListModel()->ignoreContactWithConfirm(aimId))
                 Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::ignore_contact, { { "From", "Recents_Menu" } });
+        }
+        else if (command == u"recents/unblock")
+        {
+            if (Logic::getContactListModel()->unblockContactWithConfirm(aimId))
+                Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_unblockuser_action, { {"From", "Recents_Menu" } });
         }
         else if (command == u"recents/close")
         {
@@ -349,14 +429,91 @@ namespace Logic
 
 namespace
 {
-    int emptyLabelHorMargin() { return Utils::scale_value(16); }
+    int emptyLabelHorMargin() noexcept
+    {
+        return Utils::scale_value(16);
+    }
 
-    constexpr auto btnHeight = 24;
-    constexpr auto btnMaxWidth = 256;
-    constexpr auto leftMargin = 8;
-    constexpr auto rightMargin = 8;
-    constexpr auto btnSize = QSize(12, 12);
-    constexpr auto headerViewHeight = 10 + 24 + 10;
+    auto btnHeight() noexcept
+    {
+        return Utils::scale_value(30);
+    }
+
+    auto btnMaxWidth() noexcept
+    {
+        return Utils::scale_value(256);
+    }
+
+    auto leftMargin() noexcept
+    {
+        return Utils::scale_value(12);
+    }
+
+    auto rightMargin() noexcept
+    {
+        return Utils::scale_value(12);
+    }
+
+    constexpr QSize btnSizeUnscaled() noexcept
+    {
+        return QSize(14, 14);
+    }
+
+    auto headerViewHeight() noexcept
+    {
+        return Utils::scale_value(44); // 10 + 24 + 10
+    }
+
+    auto categoryMargin() noexcept
+    {
+        return Utils::scale_value(12);
+    }
+
+    auto categorySpacing() noexcept
+    {
+        return Utils::scale_value(8);
+    }
+
+    auto searchFilterBtnColorKey()
+    {
+        return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_GLOBALWHITE };
+    }
+
+    auto topSearchFilterBtnTextOffset() noexcept
+    {
+        return Utils::scale_value(2);
+    }
+
+    auto bottomSearchFilterBtnTextOffset() noexcept
+    {
+        return Utils::scale_value(2);
+    }
+
+    auto offsetIconSearchFilterBtn() noexcept
+    {
+        return Utils::scale_value(8);
+    }
+
+    auto iconSearchRightOffset() noexcept
+    {
+        return Utils::scale_value(8);
+    }
+
+    auto radiusSearchFilterBtn() noexcept
+    {
+        return Utils::scale_value(btnHeight() / 2);
+    }
+
+    QSize sizeFullIconSearchFilterBtnUnscaled() noexcept
+    {
+        return QSize(btnSizeUnscaled().width() + offsetIconSearchFilterBtn() + iconSearchRightOffset(),
+                     Utils::unscale_value(btnHeight()));
+    }
+
+    auto getCategoryFont()
+    {
+        return Fonts::appFontScaled(15, Fonts::FontWeight::SemiBold);
+    }
 }
 
 namespace Ui
@@ -383,13 +540,10 @@ namespace Ui
         }
 
         label_ = TextRendering::MakeTextUnit(text, {});
-        label_->init(
-            Fonts::appFontScaled(16),
-            Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID),
-            Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY),
-            QColor(),
-            QColor(),
-            TextRendering::HorAligment::CENTER);
+        TextRendering::TextUnit::InitializeParameters params(Fonts::appFontScaled(16), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID });
+        params.linkColor_ = Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY };
+        params.align_ = TextRendering::HorAligment::CENTER;
+        label_->init(params);
 
         if (_regim == Logic::MembersWidgetRegim::DISALLOWED_INVITERS)
             label_->applyLinks({ { QT_TRANSLATE_NOOP("settings", "Add to list"), QString() } });
@@ -441,7 +595,7 @@ namespace Ui
     void EmptyListLabel::setLinkHighlighted(bool _hl)
     {
         setCursor(_hl ? Qt::PointingHandCursor : Qt::ArrowCursor);
-        label_->setLinkColor(Styling::getParameters().getColor(_hl ? Styling::StyleVariable::TEXT_PRIMARY_HOVER : Styling::StyleVariable::TEXT_PRIMARY));
+        label_->setLinkColor(Styling::ThemeColorKey{ _hl ? Styling::StyleVariable::TEXT_PRIMARY_HOVER : Styling::StyleVariable::TEXT_PRIMARY });
     }
 
     SearchCategoryButton::SearchCategoryButton(QWidget* _parent, const QString& _text)
@@ -453,17 +607,16 @@ namespace Ui
 
         label_ = TextRendering::MakeTextUnit(_text, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
 
-        label_->init(Fonts::appFontScaled(12, Fonts::FontWeight::SemiBold), getTextColor());
-        label_->setOffsets(Utils::scale_value(leftMargin), Utils::scale_value(btnHeight / 2));
+        label_->init({ getCategoryFont(), getTextColor() });
+        label_->setOffsets(leftMargin(), (btnHeight() - topSearchFilterBtnTextOffset()) / 2);
         label_->evaluateDesiredSize();
 
-        setFixedSize(label_->desiredWidth() + Utils::scale_value(leftMargin + rightMargin), Utils::scale_value(btnHeight));
+        setFixedSize(label_->desiredWidth() + leftMargin() + rightMargin(), btnHeight());
+        connect(this, &SearchCategoryButton::hoverChanged, this, qOverload<>(&SearchCategoryButton::update));
         update();
     }
 
-    SearchCategoryButton::~SearchCategoryButton()
-    {
-    }
+    SearchCategoryButton::~SearchCategoryButton() = default;
 
     bool SearchCategoryButton::isSelected() const
     {
@@ -485,26 +638,33 @@ namespace Ui
     void SearchCategoryButton::paintEvent(QPaintEvent* _e)
     {
         QPainter p(this);
+        p.setRenderHint(QPainter::Antialiasing);
+
+        const auto radius = height() / 2;
+        const auto backgroundColor = Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_SELECTED);
+        const auto backgroundColorHovered = Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT);
 
         if (selected_)
-        {
-            p.setRenderHint(QPainter::Antialiasing);
+            p.setBrush(backgroundColor);
+        else if (isHovered())
+            p.setBrush(backgroundColorHovered);
+        else
+            p.setBrush(Qt::NoBrush);
 
-            static const auto radius = Utils::scale_value(btnHeight / 2);
-            static const auto bgColor(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
-
-            p.setBrush(bgColor);
+        if (selected_ || isHovered())
             p.setPen(Qt::NoPen);
-            p.drawRoundedRect(rect(), radius, radius);
-        }
+        else
+            p.setPen(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT));
+        p.drawRoundedRect(rect(), radius, radius);
+
 
         if (label_)
             label_->draw(p, TextRendering::VerPosition::MIDDLE);
     }
 
-    QColor SearchCategoryButton::getTextColor() const
+    Styling::ThemeColorKey SearchCategoryButton::getTextColor() const
     {
-        return Styling::getParameters().getColor( selected_ ? Styling::StyleVariable::BASE_GLOBALWHITE : Styling::StyleVariable::TEXT_SOLID);
+        return Styling::ThemeColorKey{ selected_ ? Styling::StyleVariable::TEXT_PRIMARY : Styling::StyleVariable::BASE_PRIMARY };
     }
 
     HeaderScrollOverlay::HeaderScrollOverlay(QWidget* _parent, QScrollArea* _scrollArea)
@@ -556,14 +716,16 @@ namespace Ui
         : QWidget(_parent)
         , animScroll_(nullptr)
     {
-        setFixedHeight(Utils::scale_value(headerViewHeight));
+        setFixedHeight(headerViewHeight());
 
         auto rootLayout = Utils::emptyHLayout(this);
 
         viewArea_ = new QScrollArea(this);
         viewArea_->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         viewArea_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        viewArea_->setFrameShape(QFrame::NoFrame);
         auto scrollAreaWidget = new QWidget(viewArea_);
+        Utils::setDefaultBackground(scrollAreaWidget);
         viewArea_->setWidget(scrollAreaWidget);
         viewArea_->setWidgetResizable(true);
         viewArea_->setFocusPolicy(Qt::NoFocus);
@@ -575,9 +737,11 @@ namespace Ui
         Utils::grabTouchWidget(scrollAreaWidget);
 
         auto layout = Utils::emptyHLayout();
-        layout->setContentsMargins(Utils::scale_value(12), 0, Utils::scale_value(12), 0);
+        const auto margin = categoryMargin();
+        layout->setContentsMargins(margin, 0, margin, 0);
         layout->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
         scrollAreaWidget->setLayout(layout);
+        layout->setSpacing(categorySpacing());
 
         auto overlay = new HeaderScrollOverlay(this, viewArea_);
         overlay->raise();
@@ -596,8 +760,10 @@ namespace Ui
 
         buttons_ =
         {
-            { SearchCategory::ContactsAndGroups, addCat(QT_TRANSLATE_NOOP("search", "CONTACTS AND GROUPS"), qsl("contactsAndGroups")) },
-            { SearchCategory::Messages, addCat(QT_TRANSLATE_NOOP("search", "MESSAGES"), qsl("messages")) },
+            { SearchCategory::ContactsAndGroups, addCat(QT_TRANSLATE_NOOP("search", "Contacts and groups"), qsl("contactsAndGroups")) },
+            { SearchCategory::Messages, addCat(QT_TRANSLATE_NOOP("search", "Messages"), qsl("messages")) },
+            { SearchCategory::Threads, addCat(QT_TRANSLATE_NOOP("search", "Threads"), qsl("threads")) },
+            { SearchCategory::SingleThread, addCat(QT_TRANSLATE_NOOP("search", "Thread"), qsl("thread")) },
         };
 
         selectFirstVisible();
@@ -605,11 +771,27 @@ namespace Ui
 
     void GlobalSearchViewHeader::selectCategory(const SearchCategory _cat, const SelectType _selectType)
     {
+        SearchCategory currentCat { SearchCategory::Messages };
+        for (auto [cat, btn] : buttons_)
+        {
+            if (btn->isSelected())
+            {
+                currentCat = cat;
+                break;
+            }
+        }
+
+        const auto betweenMessagesAndThreads = (currentCat == SearchCategory::Messages && _cat == SearchCategory::Threads)
+                || (currentCat == SearchCategory::Threads && _cat == SearchCategory::Messages);
+
+        if (betweenMessagesAndThreads)
+            Q_EMIT categorySelected(_cat, false);
+
         for (auto [cat, btn] : buttons_)
         {
             const auto isNeededCat = cat == _cat;
 
-            if (_selectType != SelectType::Click)
+            if (_selectType != SelectType::Click || betweenMessagesAndThreads)
                 btn->setSelected(isNeededCat);
 
             if (isNeededCat)
@@ -708,17 +890,32 @@ namespace Ui
 
     SearchFilterButton::SearchFilterButton(QWidget* _parent)
         : QWidget(_parent)
+        , labelWidget_(new TextWidget(_parent, QString{}, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS))
     {
         setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
+        setCursor(Qt::PointingHandCursor);
 
         auto layout = Utils::emptyHLayout(this);
+        layout->addSpacing(leftMargin());
+
+        labelWidget_->init({ getCategoryFont(), searchFilterBtnColorKey() });
+
+        auto vertTextLayout = Utils::emptyVLayout();
+        vertTextLayout->addStretch();
+        if constexpr (platform::is_apple())
+            vertTextLayout->addSpacing(topSearchFilterBtnTextOffset());
+        vertTextLayout->addWidget(labelWidget_);
+        if constexpr (!platform::is_apple())
+            vertTextLayout->addSpacing(bottomSearchFilterBtnTextOffset());
+        vertTextLayout->addStretch();
+
+        layout->addLayout(vertTextLayout);
         layout->addStretch();
 
-        auto btn = new CustomButton(this, qsl(":/controls/close_icon_round"), btnSize, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
-        btn->setHoverColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
-        btn->setPressedColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
-        btn->setFixedSize(Utils::scale_value(QSize(btnSize.width() + rightMargin * 2, btnHeight)));
+        const auto btn = new CustomButton(this, qsl(":/controls/close_icon_round"), btnSizeUnscaled(), searchFilterBtnColorKey());
+        btn->setFixedSize(Utils::scale_value(sizeFullIconSearchFilterBtnUnscaled()));
         Testing::setAccessibleName(btn, qsl("AS Search deleteChatButton"));
+
         layout->addWidget(btn);
 
         connect(btn, &CustomButton::clicked, this, &SearchFilterButton::onRemoveClicked);
@@ -730,11 +927,7 @@ namespace Ui
 
     void SearchFilterButton::setLabel(const QString& _label)
     {
-        label_ = TextRendering::MakeTextUnit(_label, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-        label_->init(Fonts::appFontScaled(12, Fonts::FontWeight::SemiBold),
-                     Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
-        label_->setOffsets(Utils::scale_value(leftMargin), Utils::scale_value(btnHeight / 2));
-        label_->evaluateDesiredSize();
+        labelWidget_->setText(Data::FString(_label));
 
         resize(sizeHint());
         elideLabel();
@@ -743,11 +936,7 @@ namespace Ui
 
     QSize SearchFilterButton::sizeHint() const
     {
-        const auto labelWidth = label_ ? label_->horOffset() + label_->desiredWidth() : 0;
-        const auto fullWidth = labelWidth + Utils::scale_value(btnSize.width() + rightMargin * 2);
-        const auto w = std::min(Utils::scale_value(btnMaxWidth), fullWidth);
-        const auto h = Utils::scale_value(btnHeight);
-        return QSize(w, h);
+        return QSize(std::min(btnMaxWidth(), labelWidget_->width()), btnHeight());
     }
 
     void SearchFilterButton::paintEvent(QPaintEvent* _event)
@@ -755,15 +944,9 @@ namespace Ui
         QPainter p(this);
         p.setRenderHint(QPainter::Antialiasing);
 
-        static const auto radius = Utils::scale_value(btnHeight / 2);
-        static const auto bgColor(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
-
-        p.setBrush(bgColor);
+        p.setBrush(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
         p.setPen(Qt::NoPen);
-        p.drawRoundedRect(rect(), radius, radius);
-
-        if (label_)
-            label_->draw(p, TextRendering::VerPosition::MIDDLE);
+        p.drawRoundedRect(rect(), radiusSearchFilterBtn(), radiusSearchFilterBtn());
     }
 
     void SearchFilterButton::resizeEvent(QResizeEvent* _event)
@@ -774,8 +957,8 @@ namespace Ui
 
     void SearchFilterButton::elideLabel()
     {
-        if (label_)
-            label_->elide(width() - label_->horOffset() - Utils::scale_value(btnSize.width() + rightMargin * 2));
+        if (!labelWidget_->isEmpty())
+            labelWidget_->elide(width() - Utils::scale_value(sizeFullIconSearchFilterBtnUnscaled().width()) - offsetIconSearchFilterBtn());
     }
 
     void SearchFilterButton::onRemoveClicked()
@@ -786,7 +969,7 @@ namespace Ui
     DialogSearchViewHeader::DialogSearchViewHeader(QWidget* _parent)
         : QWidget(_parent)
     {
-        setFixedHeight(Utils::scale_value(headerViewHeight));
+        setFixedHeight(headerViewHeight());
 
         auto layout = Utils::emptyHLayout(this);
         layout->setContentsMargins(Utils::scale_value(12), 0, Utils::scale_value(12), 0);

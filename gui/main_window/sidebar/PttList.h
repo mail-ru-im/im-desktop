@@ -11,6 +11,8 @@ namespace Ui
         class TextUnit;
     }
 
+    enum class SoundType;
+
     class BasePttItem : public SidebarListItem
     {
     public:
@@ -178,8 +180,8 @@ namespace Ui
 
         QString localPath_;
         QString text_;
-        QPixmap playIcon_;
-        QPixmap textIcon_;
+        Utils::StyledPixmap playIcon_;
+        Utils::StyledPixmap textIcon_;
         bool outgoing_;
         qint64 reqId_;
         QString sender_;
@@ -224,15 +226,18 @@ namespace Ui
     private Q_SLOTS:
         void onFileDownloaded(qint64, const Data::FileSharingDownloadResult& _result);
         void onPttText(qint64 _seq, int _error, QString _text, int _comeback);
-        void finishPtt(int _id, const PttFinish _state = PttFinish::DropProgress);
+        void finishPtt(SoundType _id, const PttFinish _state = PttFinish::DropProgress);
 
     private:
         void play(const std::unique_ptr<BasePttItem>& _item);
         void invalidateHeight();
         void validateDates();
 
-        void onPttFinished(int _id, bool _byPlay);
-        void onPttPaused(int _id);
+#ifndef STRIP_AV_MEDIA
+        void onPttFinished(SoundType _id, bool _byPlay);
+        void onPttPaused(SoundType _id);
+        void onValueChanged(const QVariant& _value);
+#endif // !STRIP_AV_MEDIA
 
         void updateTooltipState(const std::unique_ptr<BasePttItem>& _item, const QPoint& _p, int _dH);
         bool isItemPlaying(const std::unique_ptr<BasePttItem>& _item) const;
@@ -252,7 +257,9 @@ namespace Ui
         std::vector<std::unique_ptr<BasePttItem>> Items_;
         std::vector<qint64> RequestIds_;
         QPoint pos_;
-        int playingId_;
+#ifndef STRIP_AV_MEDIA
+        SoundType playingId_;
+#endif // !STRIP_AV_MEDIA
         std::pair<qint64, qint64> playingIndex_;
         int lastProgress_;
         QVariantAnimation* animation_;

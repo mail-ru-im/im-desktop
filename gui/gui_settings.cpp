@@ -338,6 +338,12 @@ namespace Ui
             set_value_simple_data(QString::fromUtf8(coll_val.get_value_as_string("name")), (const char*) idata->read(len), len, false);
         }
 
+        if (_collection.is_value_exist(settings_user_agent))
+        {
+            std::string data = _collection.get_value_as_string(settings_user_agent);
+            set_value_simple_data(QString::fromUtf8(settings_user_agent), data.c_str(), data.size() + 1, false);
+        }
+
         Q_EMIT received();
         setIsLoaded(true);
     }

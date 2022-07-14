@@ -20,7 +20,7 @@ namespace
 
         void fill(const QColor& _color)
         {
-            const auto makeIcon = [&_color](const auto& _path)
+            const auto makeIcon = [&_color](const QString& _path)
             {
                 return Utils::renderSvg(_path, Ui::MessageStyle::getLastStatusIconSize(), _color);
             };
@@ -35,6 +35,11 @@ namespace
     const IconStatusSet& getStatusPixmaps(const QColor& _color)
     {
         static Utils::ColoredCache<IconStatusSet> sets;
+
+        static Styling::ThemeChecker checker;
+        if (checker.checkAndUpdateHash())
+            sets.clear();
+
         return sets[_color];
     }
 }

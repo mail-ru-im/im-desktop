@@ -3,6 +3,7 @@
 #include "MainPage.h"
 #include "MainWindow.h"
 #include "TabBar.h"
+#include "ConnectionWidget.h"
 #ifdef HAS_WEB_ENGINE
 #include "WebAppPage.h"
 #endif
@@ -16,37 +17,125 @@
 #include "../controls/ContactAvatarWidget.h"
 #include "../controls/SemitransparentWindowAnimated.h"
 #include "../controls/ContextMenu.h"
+#include "../controls/CustomButton.h"
+#include "../controls/TransparentScrollBar.h"
+#include "../controls/GradientWidget.h"
+#include "../controls/GeneralDialog.h"
+#include "../previewer/toast.h"
 #include "../styles/ThemeParameters.h"
+#include "../styles/ThemesContainer.h"
 #include "../core_dispatcher.h"
+#include "../url_config.h"
 
 #include "contact_list/RecentsModel.h"
 #include "contact_list/ContactListModel.h"
 #include "contact_list/UnknownsModel.h"
 
+#include "../common.shared/config/config.h"
+
+#include "mini_apps/MiniApps.h"
+#include "mini_apps/MiniAppsUtils.h"
+#include "mini_apps/MiniAppsContainer.h"
+
+#include "containers/StatusContainer.h"
+
 namespace
 {
+    const auto MIN_APPS_BAR_HEIGHT = 400;
+    const auto APPS_BAR_WIDTH = 66;
+    const auto NAV_BAR_WIDTH = 69;
+    const auto AVATAR_HEIGHT = 32;
+    const auto LEFT_SHIFT = 6;
+    const auto STATUS_TOP_SHIFT = 10;
+    const auto STATUS_LEFT_SHIFT = 5;
+    const auto APPS_BAR_TOP_SHIFT = 0;
+    const auto APPS_BAR_LSHIFT = 2;
+    const auto STATUS_WIDGET_SIZE = 38;
+
+    Styling::ThemeColorKey appsNavigationBarBackgroundColorKey()
+    {
+        return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_GLOBALWHITE };
+    }
+
+    Styling::ThemeColorKey appsNavigationBarBorderColorKey()
+    {
+        return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_BRIGHT };
+    }
+
     QColor appsNavigationBarBackgroundColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
+        return Styling::getColor(appsNavigationBarBackgroundColorKey());
     }
 
     QColor appsNavigationBarBorderColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT);
+        return Styling::getColor(appsNavigationBarBorderColorKey());
+    }
+
+    void setButtonDefaultColors(Ui::CustomButton* _button, const QString& _color, bool _enabled)
+    {
+        if (!_button)
+            return;
+
+        using st = Styling::StyleVariable;
+        auto getColor = [](Styling::StyleVariable _color) { return Styling::ThemeColorKey{ _color }; };
+
+        if (!_enabled || _color == qsl("gray") || _color.isEmpty())
+        {
+            _button->setNormalTextColor(getColor(st::BASE_SECONDARY));
+            _button->setHoveredTextColor(getColor(st::BASE_SECONDARY_HOVER));
+            _button->setPressedTextColor(getColor(st::BASE_SECONDARY_ACTIVE));
+        }
+        else if (_color == qsl("green"))
+        {
+            _button->setNormalTextColor(getColor(st::PRIMARY));
+            _button->setHoveredTextColor(getColor(st::PRIMARY_HOVER));
+            _button->setPressedTextColor(getColor(st::PRIMARY_ACTIVE));
+        }
+        else
+        {
+            im_assert(!"unknown color");
+        }
+    }
+
+    void setButtonImageDefaultColors(Ui::CustomButton* _button, const QString& _icon, const QString& _color, bool _enabled)
+    {
+        if (!_button)
+            return;
+
+        using st = Styling::StyleVariable;
+
+        if (!_enabled || _color == qsl("gray") || _color.isEmpty())
+        {
+            _button->setDefaultImage(_icon, Styling::ThemeColorKey{ st::BASE_SECONDARY });
+            _button->setHoverImage(_icon, Styling::ThemeColorKey{ st::BASE_SECONDARY_HOVER });
+            _button->setPressedImage(_icon, Styling::ThemeColorKey{ st::BASE_SECONDARY_ACTIVE });
+        }
+        else if (_color == qsl("green"))
+        {
+            _button->setDefaultImage(_icon, Styling::ThemeColorKey{ st::PRIMARY });
+            _button->setHoverImage(_icon, Styling::ThemeColorKey{ st::PRIMARY_HOVER });
+            _button->setPressedImage(_icon, Styling::ThemeColorKey{ st::PRIMARY_ACTIVE });
+        }
+        else
+        {
+            im_assert(!"unknown color");
+        }
+    }
+
+    int getLeftRightMargin() noexcept
+    {
+        return Utils::scale_value(24);
+    }
+
+    int getConnectionWidgetHeight() noexcept
+    {
+        return Utils::scale_value(36);
     }
 
     constexpr auto getMessengerPageIndex() noexcept { return 0; }
 
-    constexpr auto appTabsOrder = std::array{
-        Ui::AppPageType::messenger,
-        Ui::AppPageType::tasks,
-        Ui::AppPageType::org_structure,
-        Ui::AppPageType::calendar,
-        Ui::AppPageType::calls,
-        Ui::AppPageType::settings,
-    };
-
-    auto getByTypePred(Ui::AppPageType _type)
+    auto getByTypePred(const QString& _type)
     {
         return [_type](const Ui::SimpleListItem* _item)
         {
@@ -55,137 +144,318 @@ namespace
         };
     }
 
-    bool isWebApp(Ui::AppPageType _type) noexcept
+    QString getIconByText(const QString& _text)
     {
-        switch (_type)
-        {
-        case Ui::AppPageType::tasks:
-        case Ui::AppPageType::org_structure:
-        case Ui::AppPageType::calendar:
-            return true;
+        if (_text == qsl("+"))
+            return qsl(":/plus_icon");
 
-        case Ui::AppPageType::messenger:
-        case Ui::AppPageType::settings:
-        case Ui::AppPageType::calls:
-        case Ui::AppPageType::contacts:
-            return false;
-        }
+        if (_text == qsl("<"))
+            return qsl(":/controls/back_icon_thin");
 
-        im_assert(!"Unknown app page type");
-        return false;
+        return {};
     }
 
-    bool isMessengerApp(Ui::AppPageType _type) noexcept
+    QSize getIconSize() noexcept
     {
-        return !isWebApp(_type);
+        return { Utils::scale_value(32), Utils::scale_value(32) };
     }
 
-    std::pair<QUrl, bool> makeWebAppUrl(Ui::AppPageType _type)
+    bool isMessengerApp(const QString& _type) noexcept
+    {
+        const auto& apps = Utils::MiniApps::getMessengerAppTypes();
+        return (apps.find(_type) != apps.end());
+    }
+
+    bool isWebApp(const QString& _type) noexcept
+    {
+        return !isMessengerApp(_type);
+    }
+
+    std::pair<QUrl, bool> makeWebAppUrl(const QString& _type, const Ui::MiniApp& _app)
     {
 #ifdef HAS_WEB_ENGINE
-        const auto appUrl = Ui::WebAppPage::webAppUrl(_type);
-        const auto id = Ui::WebAppPage::webAppId(_type);
-        return Utils::InterConnector::instance().signUrl(id, appUrl);
+        QUrl appUrl(_app.getUrl(Styling::getThemesContainer().getCurrentTheme()->isDark()));
+        if(!_app.needsAuth())
+            return { appUrl, true };
+
+        return Utils::InterConnector::instance().signUrl(_type, appUrl);
 #else
         return { QUrl(), false };
 #endif
     }
 
-    void requestMiniAppAuthParams(const QString& id)
+    void requestMiniAppAuthParams(const QString& _id)
     {
         Ui::gui_coll_helper coll(Ui::GetDispatcher()->create_collection(), true);
-        coll.set_value_as_qstring("id", id);
+        coll.set_value_as_qstring("id", _id);
         Ui::GetDispatcher()->post_message_to_core("miniapp/start_session", coll.get());
     }
 
-    void startMiniAppSession(Ui::AppPageType _type)
+    void startMiniAppSession(const QString& _type)
     {
 #ifdef HAS_WEB_ENGINE
-        auto id = Ui::WebAppPage::webAppId(_type);
-        if (!id.isEmpty() && !Utils::InterConnector::instance().isMiniAppAuthParamsValid(id))
-            requestMiniAppAuthParams(id);
+        if (!Utils::InterConnector::instance().isMiniAppAuthParamsValid(_type, false))
+            requestMiniAppAuthParams(_type);
 #endif
     }
 
-    Ui::TabType appPageTypeToMessengerTabType(Ui::AppPageType _pageType)
+    Ui::TabType appPageTypeToMessengerTabType(const QString& _pageType)
     {
         im_assert(isMessengerApp(_pageType));
 
-        switch (_pageType)
-        {
-        case Ui::AppPageType::messenger:
+        if (_pageType == Utils::MiniApps::getMessengerId())
             return Ui::TabType::Recents;
-        case Ui::AppPageType::settings:
+
+        if (_pageType == Utils::MiniApps::getSettingsId())
             return Ui::TabType::Settings;
-        case Ui::AppPageType::calls:
+
+        if (_pageType == Utils::MiniApps::getCallsId())
             return Ui::TabType::Calls;
-        case Ui::AppPageType::contacts:
-            return Ui::TabType::Contacts;
-        default:
-            im_assert(false);
-            return Ui::TabType::Recents;
-        }
+
+        return Ui::TabType::Recents;
     }
 
-    using Factory = Utils::ObjectFactory<Ui::AppBarItem, Ui::AppPageType, Ui::AppPageType, const QString&, const QString&, QWidget*>;
-    std::unique_ptr<Factory> itemFactory = []()
+    int getGradientHeight() noexcept
     {
-        auto factory = std::make_unique<Factory>();
-        factory->registerClass<Ui::CalendarItem>(Ui::AppPageType::calendar);
-        factory->registerDefaultClass<Ui::AppBarItem>();
-        return factory;
-    }();
+        return Utils::scale_value(26);
+    }
 }
+
+void Ui::AppsHeaderData::setLeftButton(const QString& _text, const QString& _color, bool _enabled)
+{
+    leftButtonText_ = _text;
+    leftButtonColor_ = _color;
+    leftButtonEnabled_ = _enabled;
+}
+
+void Ui::AppsHeaderData::setRightButton(const QString& _text, const QString& _color, bool _enabled)
+{
+    rightButtonText_ = _text;
+    rightButtonColor_ = _color;
+    rightButtonEnabled_ = _enabled;
+}
+
+void Ui::AppsHeaderData::clear()
+{
+    title_.clear();
+    leftButtonText_.clear();
+    rightButtonText_.clear();
+}
+
+Ui::AppsHeader::AppsHeader(QWidget* _parent)
+    : QWidget(_parent)
+    , left_(new CustomButton(this))
+    , right_(new CustomButton(this))
+    , connectionWidget_(new ConnectionWidget(this))
+    , state_(ConnectionState::stateUnknown)
+    , currentType_(Utils::MiniApps::getMessengerId())
+    , visible_(true)
+{
+    left_->setMinimumSize(getIconSize());
+    left_->setFont(Fonts::appFontScaled(14, Fonts::FontWeight::Medium));
+    right_->setMinimumSize(getIconSize());
+    right_->setFont(Fonts::appFontScaled(14, Fonts::FontWeight::Medium));
+
+    connectionWidget_->setFixedHeight(getConnectionWidgetHeight());
+    setFixedHeight(Utils::getTopPanelHeight());
+    auto layout = Utils::emptyHLayout(this);
+    setContentsMargins(getLeftRightMargin(), 0, getLeftRightMargin(), 0);
+    layout->addWidget(left_);
+    layout->addSpacerItem(new QSpacerItem(0, 0, QSizePolicy::Expanding));
+    layout->addWidget(right_);
+
+    connect(left_, &CustomButton::clicked, this, [this] { Q_EMIT AppsHeader::leftClicked(currentType_); });
+    connect(right_, &CustomButton::clicked, this, [this] { Q_EMIT AppsHeader::rightClicked(currentType_); });
+
+    connect(GetDispatcher(), &Ui::core_dispatcher::connectionStateChanged, this, &AppsHeader::connectionStateChanged);
+    connectionStateChanged(GetDispatcher()->getConnectionState());
+}
+
+void Ui::AppsHeader::setData(const QString& _type, const AppsHeaderData& _data)
+{
+    currentType_ = _type;
+    visible_ = !_data.isEmpty();
+    setVisible(visible_);
+    setTitleText(_data.title());
+
+    auto setButtonText = [](CustomButton* _button, const QString& _text, const QString& _color, bool _enabled)
+    {
+        _button->setVisible(!_text.isEmpty());
+        if (auto icon = getIconByText(_text); !icon.isEmpty())
+        {
+            _button->setText({});
+            setButtonImageDefaultColors(_button, icon, _color, _enabled);
+            _button->setEnabled(_enabled);
+            _button->update();
+            return;
+        }
+
+        _button->clearIcon();
+        _button->setText(_text);
+        setButtonDefaultColors(_button, _color, _enabled);
+        _button->setEnabled(_enabled);
+        _button->update();
+    };
+
+    setButtonText(left_, _data.leftButtonText(), _data.leftButtonColor(), _data.leftButtonEnabled());
+    setButtonText(right_, _data.rightButtonText(), _data.rightButtonColor(), _data.rightButtonEnabled());
+
+    update();
+}
+
+void Ui::AppsHeader::updateVisibility(bool _isVisible)
+{
+    setVisible(visible_ && _isVisible);
+}
+
+void Ui::AppsHeader::setTitleText(const QString& _text)
+{
+    if (!title_)
+    {
+        title_ = Ui::TextRendering::MakeTextUnit(_text);
+        title_->init({ Fonts::appFontScaled(16, Fonts::FontWeight::SemiBold), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } });
+        title_->evaluateDesiredSize();
+    }
+    else
+    {
+        title_->setText(_text);
+    }
+
+    connectionWidget_->move(width() / 2 - connectionWidget_->width() / 2, height() / 2 - connectionWidget_->height() / 2);
+}
+
+void Ui::AppsHeader::connectionStateChanged(const Ui::ConnectionState& _state)
+{
+    state_ = _state;
+    connectionWidget_->setVisible(state_ != ConnectionState::stateOnline);
+}
+
+void Ui::AppsHeader::paintEvent(QPaintEvent* _event)
+{
+    QPainter p(this);
+    auto getColor = [](Styling::StyleVariable _color){ return Styling::getParameters().getColor(_color); };
+    using st = Styling::StyleVariable;
+    Utils::drawBackgroundWithBorders(p, rect(), getColor(st::BASE_GLOBALWHITE), getColor(st::BASE_BRIGHT), Qt::AlignBottom);
+    if (title_ && state_ == ConnectionState::stateOnline)
+    {
+        title_->setOffsets(width() / 2 - title_->cachedSize().width() / 2, height() / 2);
+        title_->draw(p, TextRendering::VerPosition::MIDDLE);
+    }
+    else if (state_ != ConnectionState::stateOnline)
+    {
+        connectionWidget_->adjustSize();
+        connectionWidget_->move(width() / 2 - connectionWidget_->width() / 2, height() / 2 - connectionWidget_->height() / 2);
+    }
+}
+
+void Ui::AppsHeader::resizeEvent(QResizeEvent* _event)
+{
+    connectionWidget_->adjustSize();
+    connectionWidget_->move(width() / 2 - connectionWidget_->width() / 2, height() / 2 - connectionWidget_->height() / 2);
+    QWidget::resizeEvent(_event);
+}
+
+using Factory = Utils::ObjectFactory<Ui::AppBarItem, QString, const QString&, const QString&, const QString&, QWidget*>;
+std::unique_ptr<Factory> itemFactory = []()
+{
+    auto factory = std::make_unique<Factory>();
+    factory->registerClass<Ui::CalendarItem>(Utils::MiniApps::getCalendarId());
+    factory->registerDefaultClass<Ui::AppBarItem>();
+    return factory;
+}();
 
 
 Ui::AppsNavigationBar::AppsNavigationBar(QWidget* _parent)
     : QWidget(_parent)
-    , appsBar_(new AppsBar(this))
+    , appsBar_(new AppsBar())
     , bottomAppsBar_(new AppsBar(this))
+    , gradientTop_(new GradientWidget(this, appsNavigationBarBackgroundColorKey(), Styling::ColorParameter{ Qt::transparent }, Qt::Vertical))
+    , gradientBottom_(new GradientWidget(this, Styling::ColorParameter{ Qt::transparent }, appsNavigationBarBackgroundColorKey(), Qt::Vertical))
 {
     Testing::setAccessibleName(appsBar_, qsl("AS AppsNavigationBar AppsBar"));
     auto rootLayout = Utils::emptyVLayout(this);
 
     if (Features::isStatusInAppsNavigationBar())
     {
-        auto statusWidget = new ContactAvatarWidget(this, QString(), QString(), Utils::scale_value(24), true);
-        statusWidget->SetMode(ContactAvatarWidget::Mode::ChangeStatus);
-        statusWidget->setStatusTooltipEnabled(true);
-        Testing::setAccessibleName(statusWidget, qsl("AS AppsNavigationBar statusButton"));
+        avatarWidget_ = new ContactAvatarWidget(this, QString(), QString(), Utils::scale_value(AVATAR_HEIGHT), true);
+        avatarWidget_->SetMode(ContactAvatarWidget::Mode::ChangeStatus, true);
+        avatarWidget_->setStatusTooltipEnabled(true);
+        Testing::setAccessibleName(avatarWidget_, qsl("AS AppsNavigationBar statusButton"));
         auto statusLayout = Utils::emptyHLayout();
-        statusLayout->setContentsMargins(Utils::scale_value(6), Utils::scale_value(8), 0, 0);
+        statusLayout->setContentsMargins(Utils::scale_value(STATUS_LEFT_SHIFT), Utils::scale_value(STATUS_TOP_SHIFT), 0, 0);
+        avatarWidget_->setFixedSize(Utils::scale_value(STATUS_WIDGET_SIZE), Utils::scale_value(STATUS_WIDGET_SIZE));
         statusLayout->addStretch();
-        statusLayout->addWidget(statusWidget);
+        statusLayout->addWidget(avatarWidget_);
+        statusLayout->setAlignment(Qt::AlignCenter);
         statusLayout->addStretch();
         rootLayout->addLayout(statusLayout);
 
-        connect(MyInfo(), &my_info::received, this, [statusWidget]()
+        connect(MyInfo(), &my_info::received, this, [this]()
         {
-            statusWidget->UpdateParams(MyInfo()->aimId(), MyInfo()->friendly());
+            avatarWidget_->UpdateParams(MyInfo()->aimId(), MyInfo()->friendly());
         });
     }
 
     // See https://jira.mail.ru/browse/IMDESKTOP-17256?focusedCommentId=12423296&page=com.atlassian.jira.plugin.system.issuetabpanels%3Acomment-tabpanel#comment-12423296
     appsBar_->layout()->setSizeConstraint(QLayout::SizeConstraint::SetFixedSize);
 
-    rootLayout->addWidget(appsBar_);
-    rootLayout->addStretch();
+    addScrollArea(rootLayout);
+    bottomAppsBar_->setContentsMargins(Utils::scale_value(LEFT_SHIFT), Utils::scale_value(LEFT_SHIFT), Utils::scale_value(LEFT_SHIFT), Utils::scale_value(LEFT_SHIFT));
     rootLayout->addWidget(bottomAppsBar_);
 
-    connect(appsBar_, &AppsBar::clicked, this, [this](int _index) { selectTab(appsBar_, _index); });
+    setFixedWidth(Utils::scale_value(NAV_BAR_WIDTH));
+
+    connect(appsBar_, &AppsBar::clicked, this, [this](int _index)
+    {
+        selectTab(appsBar_, _index);
+        scrollArea_->ensureWidgetVisible(appsBar_->itemAt(_index));
+    });
     connect(appsBar_, &AppsBar::rightClicked, this, [this](int _index) { onRightClick(appsBar_, _index); });
     connect(bottomAppsBar_, &AppsBar::clicked, this, [this](int _index) { selectTab(bottomAppsBar_, _index); });
     connect(bottomAppsBar_, &AppsBar::rightClicked, this, [this](int _index) { onRightClick(bottomAppsBar_, _index); });
 }
 
-Ui::AppBarItem* Ui::AppsNavigationBar::addTab(AppPageType _type, const QString& _name, const QString& _icon, const QString& _iconActive)
+void Ui::AppsNavigationBar::addScrollArea(QVBoxLayout* _rootLayout)
 {
-    auto findTabIndexAccordingToTabsOrder = [this](AppPageType _type)
+    scrollArea_ = CreateScrollAreaAndSetTrScrollBarV(this);
+    scrollArea_->setStyleSheet(ql1s("border: none; background-color: transparent;"));
+    scrollArea_->setWidgetResizable(true);
+    Utils::grabTouchWidget(scrollArea_->viewport(), true);
+    scrollArea_->setMaximumWidth(Utils::scale_value(APPS_BAR_WIDTH));
+    scrollArea_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
+    auto mainWidget = new QWidget(scrollArea_);
+    mainWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
+    Utils::grabTouchWidget(mainWidget);
+    Utils::ApplyStyle(mainWidget, Styling::getParameters().getGeneralSettingsQss());
+    mainWidget->setContentsMargins(Utils::scale_value(APPS_BAR_LSHIFT), Utils::scale_value(APPS_BAR_TOP_SHIFT), 0, 0);
+
+    auto mainLayout = Utils::emptyVLayout(mainWidget);
+    mainLayout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
+
+    scrollArea_->setWidget(mainWidget);
+    scrollArea_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
+    scrollArea_->setAlignment(Qt::AlignCenter);
+    QObject::connect(scrollArea_->verticalScrollBar(), &QScrollBar::valueChanged, this, &AppsNavigationBar::onScroll);
+    QObject::connect(scrollArea_->verticalScrollBar(), &QScrollBar::rangeChanged, this, &AppsNavigationBar::resetGradient);
+
+    mainLayout->addWidget(appsBar_);
+    _rootLayout->addWidget(scrollArea_);
+}
+
+void Ui::AppsNavigationBar::resetGradient()
+{
+    onScroll(scrollArea_->verticalScrollBar()->value());
+}
+
+Ui::AppBarItem* Ui::AppsNavigationBar::addTab(const std::vector<QString>& _order, const AppPageData& _data)
+{
+    auto findTabIndexAccordingToTabsOrder = [this, _order](const QString& _type)
     {
         auto targetIndex = 0;
-        auto precedingTypeIt = std::find(appTabsOrder.cbegin(), appTabsOrder.cend(), _type);
-        im_assert(precedingTypeIt != appTabsOrder.cend());
-        while (precedingTypeIt != appTabsOrder.cbegin() && targetIndex == 0)
+        auto precedingTypeIt = std::find(_order.cbegin(), _order.cend(), _type);
+        im_assert(precedingTypeIt != _order.cend());
+        while (precedingTypeIt != _order.cbegin() && targetIndex == 0)
         {
             precedingTypeIt = std::prev(precedingTypeIt);
             for (int i = 0; i < appsBar_->count(); ++i)
@@ -203,25 +473,29 @@ Ui::AppBarItem* Ui::AppsNavigationBar::addTab(AppPageType _type, const QString& 
         return targetIndex;
     };
 
-    return addTab(appsBar_, findTabIndexAccordingToTabsOrder(_type), _type, _name, _icon, _iconActive);
+    return addTab(appsBar_, findTabIndexAccordingToTabsOrder(_data.type_), _data);
 }
 
-Ui::AppBarItem* Ui::AppsNavigationBar::addTab(AppsBar* _bar, int _index, AppPageType _type, const QString& _name, const QString& _icon, const QString& _iconActive)
+Ui::AppBarItem* Ui::AppsNavigationBar::addTab(AppsBar* _bar, int _index, const AppPageData& _data)
 {
-    auto index = _bar->indexOf(getByTypePred(_type));
+    const auto type = _data.type_;
+    _bar->layout()->invalidate();
+    auto index = _bar->indexOf(getByTypePred(type));
 
     if (_bar->isValidIndex(index))
-        return qobject_cast<AppBarItem*>(_bar->itemAt(index));
+        _bar->removeItemAt(index);
 
-    auto item = itemFactory->create(_type, _type, _icon, _iconActive, this);
-    item->setName(_name);
+    auto item = itemFactory->create(type, type, _data.icon_, _data.iconActive_, this);
+    item->setName(_data.name_);
     index = _bar->addItem(item, _index);
     if (_bar->count() == 1)
         _bar->setCurrentIndex(0);
+    _bar->updateGeometry();
+    resetGradient();
     return item;
 }
 
-std::pair<Ui::AppsBar*, int> Ui::AppsNavigationBar::getBarAndIndexByType(AppPageType _type)
+std::pair<Ui::AppsBar*, int> Ui::AppsNavigationBar::getBarAndIndexByType(const QString& _type)
 {
     for (const auto bar : std::array{ appsBar_, bottomAppsBar_ })
     {
@@ -234,16 +508,16 @@ std::pair<Ui::AppsBar*, int> Ui::AppsNavigationBar::getBarAndIndexByType(AppPage
     return {nullptr, -1};
 }
 
-Ui::AppPageType Ui::AppsNavigationBar::getTabType(AppsBar* _bar, int _index) const
+QString Ui::AppsNavigationBar::getTabType(AppsBar* _bar, int _index) const
 {
     if (const auto item = qobject_cast<AppBarItem*>(_bar->itemAt(_index)))
         return item->getType();
 
     im_assert(!"tab type cannot be identified");
-    return AppPageType();
+    return {};
 }
 
-Ui::AppPageType Ui::AppsNavigationBar::currentPage() const
+QString Ui::AppsNavigationBar::currentPage() const
 {
     auto index = -1;
     AppsBar* bar = nullptr;
@@ -254,31 +528,76 @@ Ui::AppPageType Ui::AppsNavigationBar::currentPage() const
         bar = bottomAppsBar_;
 
     if (index == -1 || !bar)
-    {
-        im_assert(!"no app is selected");
-        return AppPageType::messenger;
-    }
+        return {};
 
     return getTabType(bar, index);
 }
 
-Ui::AppBarItem* Ui::AppsNavigationBar::addBottomTab(AppPageType _type, const QString& _name, const QString& _icon, const QString& _iconActive)
+void Ui::AppsNavigationBar::clearAppsSelection()
 {
-    auto bottomTab = addTab(bottomAppsBar_, -1, _type, _name, _icon, _iconActive);
+    appsBar_->clearSelection();
+}
+
+void Ui::AppsNavigationBar::resetAvatar()
+{
+    if (avatarWidget_)
+        avatarWidget_->UpdateParams(QString(), QString());
+}
+
+Ui::AppBarItem* Ui::AppsNavigationBar::addBottomTab(const AppPageData& _data)
+{
+    auto bottomTab = addTab(bottomAppsBar_, -1, _data);
     bottomAppsBar_->clearSelection();
     return bottomTab;
 }
 
-void Ui::AppsNavigationBar::removeTab(AppPageType _type)
+void Ui::AppsNavigationBar::updateTabIcons(const QString& _type)
+{
+    const auto index = appsBar_->indexOf(getByTypePred(_type));
+    if (appsBar_->isValidIndex(index))
+    {
+        if (const auto& app = Logic::GetAppsContainer()->getApp(_type); app.isValid())
+        {
+            auto tab = qobject_cast<AppBarItem*>(appsBar_->itemAt(index));
+            if (const auto& px = app.getIcon(false); !px.cachedPixmap().isNull())
+            {
+                tab->setNormalIconPixmap(px);
+                tab->setHoveredIconPixmap(px);
+            }
+            if (const auto& px = app.getIcon(true); !px.cachedPixmap().isNull())
+                tab->setActiveIconPixmap(px);
+        }
+    }
+}
+
+void Ui::AppsNavigationBar::updateTabInfo(const QString& _type)
+{
+    const auto index = appsBar_->indexOf(getByTypePred(_type));
+    if (!appsBar_->isValidIndex(index))
+        return;
+    const auto& app = Logic::GetAppsContainer()->getApp(_type);
+    if (!app.isValid())
+        return;
+    auto tab = qobject_cast<AppBarItem*>(appsBar_->itemAt(index));
+    if (const auto& px = app.getIcon(false); !px.cachedPixmap().isNull())
+    {
+        tab->setNormalIconPixmap(px);
+        tab->setHoveredIconPixmap(px);
+    }
+    if (const auto& px = app.getIcon(true); !px.cachedPixmap().isNull())
+        tab->setActiveIconPixmap(px);
+    tab->setName(app.getTitle());
+}
+
+void Ui::AppsNavigationBar::removeTab(const QString& _type)
 {
     if (const auto [bar, index] = getBarAndIndexByType(_type); bar && index != -1)
         bar->removeItemAt(index);
-    else
-        im_assert(!"Cannot remove tab which does not exist");
 
+    resetGradient();
 }
 
-bool Ui::AppsNavigationBar::contains(AppPageType _type) const
+bool Ui::AppsNavigationBar::contains(const QString& _type) const
 {
     auto pred = getByTypePred(_type);
     return appsBar_->contains(pred) || bottomAppsBar_->contains(pred);
@@ -289,29 +608,49 @@ int Ui::AppsNavigationBar::defaultWidth()
     return Utils::scale_value(68);
 }
 
-void Ui::AppsNavigationBar::selectTab(AppsBar* _bar, int _index)
+void Ui::AppsNavigationBar::selectTab(AppsBar* _bar, int _index, bool _emitClick)
 {
     const auto oldTab = currentPage();
     const auto newTab = getTabType(_bar, _index);
-    Q_EMIT appTabClicked(newTab, oldTab, QPrivateSignal());
+
+    if (_emitClick)
+    {
+        if (oldTab != newTab)
+        {
+            if (newTab != Utils::MiniApps::getMessengerId())
+                MainPage::instance()->saveSidebarState();
+            else
+                MainPage::instance()->restoreSidebarState();
+        }
+        Q_EMIT appTabClicked(newTab, oldTab, QPrivateSignal());
+    }
 
     if (newTab != oldTab)
     {
-        (_bar == appsBar_ ? bottomAppsBar_ : appsBar_)->clearSelection();
-        _bar->setCurrentIndex(_index);
+        if (!Utils::MiniApps::isTarmApp(newTab))
+        {
+            for (auto& bar : { appsBar_, bottomAppsBar_ })
+            {
+                if (bar != _bar)
+                    bar->clearSelection();
+            }
+
+            _bar->setCurrentIndex(_index);
+        }
+        else
+        {
+            // TODO: Temporary, for the correct logic of work
+            _bar->itemAt(_index)->setHovered(false);
+        }
     }
 }
 
-void Ui::AppsNavigationBar::selectTab(AppPageType _pageType)
+void Ui::AppsNavigationBar::selectTab(const QString& _pageType, bool _emitClick)
 {
     if (const auto [bar, pageIndex] = getBarAndIndexByType(_pageType); bar && pageIndex != -1)
     {
         if (pageIndex != bar->getCurrentIndex())
-            selectTab(bar, pageIndex);
-    }
-    else
-    {
-        im_assert(!"attempt to select not existing tab");
+            selectTab(bar, pageIndex, _emitClick);
     }
 }
 
@@ -322,11 +661,11 @@ void Ui::AppsNavigationBar::onRightClick(AppsBar* _bar, int _index)
     if (!areModifiersPressed)
         return;
 
-    if (pageType == AppPageType::settings)
+    if (pageType == Utils::MiniApps::getSettingsId())
     {
         Q_EMIT Utils::InterConnector::instance().showDebugSettings();
     }
-    else if (isWebApp(pageType))
+    else if (isWebApp(pageType) && !Utils::MiniApps::isFeedApp(pageType))
     {
         auto menu = new ContextMenu(this);
         Testing::setAccessibleName(menu, qsl("AS WebApp menu"));
@@ -338,55 +677,124 @@ void Ui::AppsNavigationBar::onRightClick(AppsBar* _bar, int _index)
     }
 }
 
+void Ui::AppsNavigationBar::onScroll(int _value)
+{
+    const auto updateVisibility = [](GradientWidget* _w, bool _visible)
+    {
+        if (_w->isVisible() != _visible)
+        {
+            _w->setVisible(_visible);
+            if (_visible)
+                _w->raise();
+        }
+    };
+
+    updateVisibility(gradientTop_, _value != 0);
+    const auto scrollMax = scrollArea_->verticalScrollBar()->maximum();
+    updateVisibility(gradientBottom_, (scrollMax != 0 && _value != scrollMax) || appsBar_->height() > scrollArea_->height());
+}
+
 void Ui::AppsNavigationBar::paintEvent(QPaintEvent* _event)
 {
     QPainter p(this);
     Utils::drawBackgroundWithBorders(p, rect(), appsNavigationBarBackgroundColor(), appsNavigationBarBorderColor(), Qt::AlignRight);
 }
 
+void Ui::AppsNavigationBar::resizeEvent(QResizeEvent* _event)
+{
+    const auto sRect = scrollArea_->geometry();
+
+    gradientTop_->setGeometry(sRect.left(), sRect.top(), sRect.width(), getGradientHeight());
+    gradientBottom_->setGeometry(sRect.left(), sRect.bottom() - getGradientHeight() + 1, sRect.width(), getGradientHeight());
+    resetGradient();
+
+    QWidget::resizeEvent(_event);
+}
+
+void Ui::AppsPage::initNavigationBar()
+{
+    navigationBar_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
+    Testing::setAccessibleName(navigationBar_, qsl("AS AppsPage AppsNavigationBar"));
+    connect(navigationBar_, &AppsNavigationBar::appTabClicked, this, &AppsPage::onTabClicked);
+    connect(navigationBar_, &AppsNavigationBar::reloadWebPage, this, &AppsPage::reloadWebAppPage);
+}
+
+void Ui::AppsPage::addMessengerPage()
+{
+    messengerPage_ = MainPage::instance(this);
+    Testing::setAccessibleName(messengerPage_, qsl("AS MessengerPage"));
+    messengerItem_ = addTab(messengerPage_, { Utils::MiniApps::getMessengerId(), QT_TRANSLATE_NOOP("tab", "Chats"), qsl(":/tab/chats"), qsl(":/tab/chats_active") });
+}
+
+void Ui::AppsPage::addInterConnectorConnections()
+{
+    using uic = Utils::InterConnector;
+    auto interConnector = &uic::instance();
+    connect(interConnector, &uic::authParamsChanged, this, &AppsPage::onAuthParamsChanged);
+    connect(interConnector, &uic::omicronUpdated, this,&AppsPage::onConfigChanged);
+    connect(interConnector, &uic::logout, this, &AppsPage::onLogout);
+    connect(interConnector, &uic::composeEmail, this, &AppsPage::composeEmail);
+    connect(interConnector, &uic::headerBack, this, [this]()
+    {
+        if (navigationBar_ && navigationBar_->contains(Utils::MiniApps::getMessengerId()))
+            navigationBar_->selectTab(Utils::MiniApps::getMessengerId());
+    });
+}
+
+void Ui::AppsPage::addDispatcherConnections()
+{
+    auto dispatcher = Ui::GetDispatcher();
+    connect(dispatcher, &core_dispatcher::externalUrlConfigUpdated, this, &AppsPage::onConfigChanged);
+    connect(dispatcher, &core_dispatcher::im_created, this, &AppsPage::loggedIn);
+    connect(dispatcher, &core_dispatcher::appUnavailable, this, &AppsPage::appUnavailable);
+}
+
 Ui::AppsPage::AppsPage(QWidget* _parent)
     : QWidget(_parent)
     , pages_(new QStackedWidget(this))
     , messengerPage_(nullptr)
-    , navigationBar_(nullptr)
+    , navigationBar_(new AppsNavigationBar(this))
     , messengerItem_(nullptr)
     , semiWindow_(new SemitransparentWindowAnimated(this))
+    , header_(new AppsHeader(this))
 {
+    appTabsOrder_.push_back(Utils::MiniApps::getMessengerId());
+    appTabsOrder_.push_back(Utils::MiniApps::getCallsId());
+    appTabsOrder_.push_back(Utils::MiniApps::getSettingsId());
+
     auto rootLayout = Utils::emptyHLayout(this);
-    navigationBar_ = new AppsNavigationBar(this);
-    navigationBar_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
-    Testing::setAccessibleName(navigationBar_, qsl("AS AppsPage AppsNavigationBar"));
+
+    initNavigationBar();
     rootLayout->addWidget(navigationBar_);
-
-    connect(navigationBar_, &AppsNavigationBar::appTabClicked, this, &AppsPage::onTabClicked);
-    connect(navigationBar_, &AppsNavigationBar::reloadWebPage, this, &AppsPage::reloadWebAppPage);
-    messengerPage_ = MainPage::instance(this);
-    Testing::setAccessibleName(messengerPage_, qsl("AS MessengerPage"));
-
-    messengerItem_ = addTab(AppPageType::messenger, messengerPage_, QT_TRANSLATE_NOOP("tab", "Chats"), qsl(":/tab/chats"), qsl(":/tab/chats_active"));
-
+    addMessengerPage();
     updateNavigationBarVisibility();
+    addSettingsTab();
 
-    if (get_gui_settings()->get_value<bool>(settings_show_calls_tab, true))
-        addCallsTab();
+    addInterConnectorConnections();
+    addDispatcherConnections();
+    connect(Logic::GetAppsContainer(), &Logic::MiniAppsContainer::appIconUpdated, this, &AppsPage::updateTabIcon);
+    connect(Logic::GetAppsContainer(), &Logic::MiniAppsContainer::updateApps, this, &AppsPage::onAppsUpdate, Qt::QueuedConnection);
+    connect(Logic::GetAppsContainer(), &Logic::MiniAppsContainer::removeTab, this, &AppsPage::onRemoveTab);
+    connect(Logic::GetAppsContainer(), &Logic::MiniAppsContainer::removeApp, this, &AppsPage::onRemoveApp);
+    connect(Logic::GetAppsContainer(), &Logic::MiniAppsContainer::updateAppFields, this, &AppsPage::onUpdateAppFields);
+    connect(Logic::GetAppsContainer(), &Logic::MiniAppsContainer::removeHiddenPage, this, &AppsPage::onRemoveHiddenPage, Qt::QueuedConnection);
+    connect(&Utils::InterConnector::instance(), &Utils::InterConnector::updateMiniAppCounter, this, &AppsPage::updateTabCounter);
+    connect(Ui::MyInfo(), &Ui::my_info::received, this, &AppsPage::onMyInfoReceived);
+    connect(&Styling::getThemesContainer(), &Styling::ThemesContainer::globalThemeChanged, this, &AppsPage::onThemeChanged);
 
-    auto settingsTab = navigationBar_->addBottomTab(AppPageType::settings, QT_TRANSLATE_NOOP("tab", "Settings"), qsl(":/tab/settings"), qsl(":/tab/settings_active"));
-    Testing::setAccessibleName(settingsTab, qsl("AS Tab ") % MainPage::settingsTabAccessibleName());
-
-    connect(&Utils::InterConnector::instance(), &Utils::InterConnector::headerBack, this, [this]()
-    {
-        navigationBar_->selectTab(AppPageType::messenger);
-    });
-    connect(get_gui_settings(), &Ui::qt_gui_settings::changed, this, &AppsPage::onGuiSettingsChanged);
-    connect(&Utils::InterConnector::instance(), &Utils::InterConnector::authParamsChanged, this, &AppsPage::onAuthParamsChanged);
-    connect(Ui::GetDispatcher(), &Ui::core_dispatcher::externalUrlConfigUpdated, this, &AppsPage::onConfigChanged);
-    connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated, this, &AppsPage::onConfigChanged);
-    connect(Ui::GetDispatcher(), &core_dispatcher::im_created, this, &AppsPage::loggedIn);
+    connect(&Utils::InterConnector::instance(), &Utils::InterConnector::requestApp, this, &AppsPage::openApp);
 
     loggedIn();
 
-    rootLayout->addWidget(pages_);
+    auto vLayout = Utils::emptyVLayout();
+    vLayout->addWidget(header_);
+    vLayout->addWidget(pages_);
+    rootLayout->addLayout(vLayout);
+
     Testing::setAccessibleName(pages_, qsl("AS AppsPage AppsPages"));
+
+    const auto messengerType = Utils::MiniApps::getMessengerId();
+    header_->setData(messengerType, headerData_[messengerType]);
 
     semiWindow_->setCloseWindowInfo({ Utils::CloseWindowInfo::Initiator::Unknown, Utils::CloseWindowInfo::Reason::Keep_Sidebar });
     hideSemiWindow();
@@ -400,11 +808,23 @@ Ui::AppsPage::AppsPage(QWidget* _parent)
 Ui::AppsPage::~AppsPage()
 {
     MainPage::reset();
+    messengerItem_ = nullptr;
+    messengerPage_ = nullptr;
 }
 
 Ui::MainPage* Ui::AppsPage::messengerPage() const
 {
     return messengerPage_;
+}
+
+Ui::WebAppPage* Ui::AppsPage::tasksPage() const
+{
+#ifdef HAS_WEB_ENGINE
+    const auto tasksIter = pagesByType_.find(Utils::MiniApps::getTasksId());
+    return tasksIter != pagesByType_.end() ? qobject_cast<Ui::WebAppPage*>(tasksIter->second.page_.data()) : nullptr;
+#else
+    return nullptr;
+#endif
 }
 
 bool Ui::AppsPage::isMessengerPage() const
@@ -419,46 +839,54 @@ bool Ui::AppsPage::isContactDialog() const
 
 bool Ui::AppsPage::isTasksPage() const
 {
-    const auto tasksIter = pagesByType_.find(AppPageType::tasks);
-    return (tasksIter != pagesByType_.end()) && (tasksIter->second == pages_->currentWidget());
+    const auto tasksIter = pagesByType_.find(Utils::MiniApps::getTasksId());
+    return (tasksIter != pagesByType_.end()) && (tasksIter->second.page_ == pages_->currentWidget());
+}
+
+bool Ui::AppsPage::isFeedPage() const
+{
+    return navigationBar_ && Utils::MiniApps::isFeedApp(navigationBar_->currentPage());
 }
 
 void Ui::AppsPage::resetPages()
 {
-    pages_->removeWidget(messengerPage_);
-    pagesByType_.erase(AppPageType::messenger);
     messengerPage_ = nullptr;
-    MainPage::reset();
-
+    messengerItem_ = nullptr;
     authDataValid_ = false;
 
-    for (auto type : { AppPageType::org_structure, AppPageType::tasks, AppPageType::calendar })
+    for (auto& type : appTabsOrder_)
         removeTab(type, false);
-    if (containsTab(AppPageType::calls))
-        removeTab(AppPageType::calls, false);
-    if (containsTab(AppPageType::settings))
-        removeTab(AppPageType::settings, false);
+
+    MainPage::reset();
+
+    if (messengerItem_)
+        messengerItem_->resetItemInfo();
 }
 
 void Ui::AppsPage::prepareForShow()
 {
+    Logic::GetStatusContainer()->setAvatarVisible(MyInfo()->aimId(), true);
+
     if (!MainPage::hasInstance())
     {
         messengerPage_ = MainPage::instance(this);
         Testing::setAccessibleName(messengerPage_, qsl("AS MessengerPage"));
         pages_->insertWidget(getMessengerPageIndex(), messengerPage_);
         pages_->setCurrentIndex(getMessengerPageIndex());
-        pagesByType_[AppPageType::messenger] = messengerPage_;
-        selectTab(AppPageType::messenger);
+        const auto messengerId = Utils::MiniApps::getMessengerId();
+        pagesByType_[messengerId].page_ = messengerPage_;
+        selectTab(messengerId);
     }
 }
 
 void Ui::AppsPage::showMessengerPage()
 {
-    selectTab(AppPageType::messenger);
+    if (!navigationBar_ || !navigationBar_->contains(Utils::MiniApps::getMessengerId()))
+        return;
+    selectTab(Utils::MiniApps::getMessengerId());
 }
 
-Ui::AppBarItem* Ui::AppsPage::addTab(AppPageType _type, QWidget* _widget, const QString& _name, const QString& _icon, const QString& _iconActive)
+Ui::AppBarItem* Ui::AppsPage::addTab(QWidget* _widget, const AppPageData& _data, const QString& _defaultTitle, bool _selected)
 {
     if (!navigationBar_)
     {
@@ -466,56 +894,61 @@ Ui::AppBarItem* Ui::AppsPage::addTab(AppPageType _type, QWidget* _widget, const 
         return nullptr;
     }
 
+    const auto addToNavigationBar = [this, _widget, &_data, _defaultTitle, _selected](int index) -> Ui::AppBarItem*
+    {
+        const auto type = _data.type_;
+        auto tabItem = navigationBar_->addTab(appTabsOrder_, _data);
+        headerData_[type] = _defaultTitle;
+        Testing::setAccessibleName(tabItem, u"AS AppTab " % _widget->accessibleName());
+        if (_selected)
+            pages_->setCurrentIndex(index);
+        pagesByType_[type].tabItem_ = tabItem;
+        return tabItem;
+    };
+
+    const auto type = _data.type_;
     if (int index = pages_->indexOf(_widget); index == -1)
     {
         index = pages_->addWidget(_widget);
-        im_assert(_type != AppPageType::messenger || index == getMessengerPageIndex());
-        im_assert(pagesByType_.count(_type) == 0);
-        pagesByType_[_type] = _widget;
-
-        auto tabItem = navigationBar_->addTab(_type, _name, _icon, _iconActive);
-        Testing::setAccessibleName(tabItem, u"AS AppTab " % _widget->accessibleName());
-        if (index == 0)
-            pages_->setCurrentIndex(index);
-
-        return tabItem;
+        im_assert(type != Utils::MiniApps::getMessengerId() || index == getMessengerPageIndex());
+        im_assert(pagesByType_.count(type) == 0);
+        pagesByType_[type].page_ = _widget;
+        return addToNavigationBar(index);
     }
     else
     {
-        im_assert(pagesByType_.count(_type) == 1);
-        qWarning("TabWidget: widget is already in tabWidget");
+        if (!navigationBar_->contains(type))
+            return addToNavigationBar(index);
     }
 
     return nullptr;
 }
 
-void Ui::AppsPage::removeTab(AppPageType _type, bool _showDefaultPage)
+void Ui::AppsPage::removeTab(const QString& _type, bool _showDefaultPage)
 {
-    if (_type == AppPageType::messenger || _type == AppPageType::contacts || _type == AppPageType::calls)
-    {
-        im_assert(!"Can't remove messenger tab");
+    if (_type == Utils::MiniApps::getSettingsId())
         return;
-    }
 
     if (const auto it = pagesByType_.find(_type); it != pagesByType_.end())
     {
         auto page = it->second;
-        im_assert(page);
-        if (const int index = pages_->indexOf(page); index != -1)
+        im_assert(page.page_);
+        if (const int index = pages_->indexOf(page.page_); index != -1)
         {
-            if (pages_->currentIndex() == index && _showDefaultPage)
-                showMessengerPage();
-            pages_->removeWidget(page);
-            page->deleteLater();
+            pages_->removeWidget(page.page_);
+            headerData_[_type].clear();
+            page.page_->deleteLater();
+            page.tabItem_->deleteLater();
+            page.tabItem_ = nullptr;
         }
-        else
+        else if (!Utils::MiniApps::isFeedApp(_type))
         {
             im_assert(!"pages are supposed to have page of this type");
         }
         pagesByType_.erase(it);
     }
 
-    if (navigationBar_)
+    if (navigationBar_ && navigationBar_->contains(_type))
         navigationBar_->removeTab(_type);
 }
 
@@ -536,21 +969,59 @@ bool Ui::AppsPage::isSemiWindowVisible() const
     return semiWindow_->isSemiWindowVisible();
 }
 
+int Ui::AppsPage::getHeaderHeight() const
+{
+    return (header_ && header_->isVisible()) ? header_->height() : 0;
+}
+
 void Ui::AppsPage::resizeEvent(QResizeEvent* _event)
 {
     semiWindow_->setFixedSize(size());
+    QWidget::resizeEvent(_event);
 }
 
-void Ui::AppsPage::selectTab(AppPageType _pageType)
+void Ui::AppsPage::openApp(const QString& _appId, const QString& _urlQuery, const QString& _urlFragment)
+{
+    if (const auto iter = pagesByType_.find(_appId); iter != pagesByType_.end())
+    {
+#ifdef HAS_WEB_ENGINE
+        if (auto page = qobject_cast<Ui::WebAppPage*>(iter->second.page_.data()))
+        {
+            const auto& app = Logic::GetAppsContainer()->getApp(_appId);
+            if (!app.isValid() || !app.isEnabled())
+                return;
+
+            const bool isDarkTheme = Styling::getThemesContainer().getCurrentTheme()->isDark();
+            QUrl url = app.getUrl(isDarkTheme);
+            url = Utils::addQueryItemsToUrl(std::move(url), QUrlQuery(_urlQuery), Utils::AddQueryItemPolicy::KeepExistingItem);
+            url.setFragment(_urlFragment);
+
+            if (app.needsAuth())
+                url = Utils::InterConnector::instance().signUrl(_appId, std::move(url)).first;
+
+            if (!url.isEmpty())
+                page->setUrl(url, true);
+        }
+#endif //HAS_WEB_ENGINE
+        selectTab(_appId, true);
+        MainPage::instance()->setSidebarState(SidebarStateFlag::Closed);
+    }
+    else
+    {
+        Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("toast", "App not found"), Utils::defaultToastVerOffset());
+    }
+}
+
+void Ui::AppsPage::selectTab(const QString& _pageType, bool _emitClick)
 {
     if (navigationBar_)
     {
-        navigationBar_->selectTab(_pageType);
+        navigationBar_->selectTab(_pageType, _emitClick);
     }
     else
     {
         if (auto it = pagesByType_.find(_pageType); it != pagesByType_.end())
-            pages_->setCurrentWidget(it->second);
+            pages_->setCurrentWidget(it->second.page_);
         else
             im_assert(false);
     }
@@ -558,61 +1029,241 @@ void Ui::AppsPage::selectTab(AppPageType _pageType)
 
 void Ui::AppsPage::addCallsTab()
 {
-    auto callsTab = navigationBar_->addTab(AppPageType::calls, QT_TRANSLATE_NOOP("tab", "Calls"), qsl(":/tab/calls"), qsl(":/tab/calls_active"));
+    if (!navigationBar_ || navigationBar_->contains(Utils::MiniApps::getCallsId()))
+        return;
+
+    auto callsTab = navigationBar_->addTab(appTabsOrder_, { Utils::MiniApps::getCallsId(), QT_TRANSLATE_NOOP("tab", "Calls"), qsl(":/tab/calls"), qsl(":/tab/calls_active") });
     Testing::setAccessibleName(callsTab, qsl("AS Tab ") % MainPage::callsTabAccessibleName());
+}
+
+void Ui::AppsPage::updateCallsTab()
+{
+    const auto isTabInConfig = std::find(appTabsOrder_.begin(), appTabsOrder_.end(), Utils::MiniApps::getCallsId()) != appTabsOrder_.end();
+    if (isTabInConfig)
+        addCallsTab();
+    else
+        navigationBar_->removeTab(Utils::MiniApps::getCallsId());
+}
+
+void Ui::AppsPage::addSettingsTab()
+{
+    if (!navigationBar_)
+        return;
+    auto settingsTab = navigationBar_->addBottomTab({ Utils::MiniApps::getSettingsId(), QT_TRANSLATE_NOOP("tab", "Settings"), qsl(":/tab/settings"), qsl(":/tab/settings_active") });
+    Testing::setAccessibleName(settingsTab, qsl("AS Tab ") % MainPage::settingsTabAccessibleName());
 }
 
 void Ui::AppsPage::updateWebPages()
 {
-    auto makeWebPage = [this](AppPageType _type, const QString& _accessibleName)
+    const auto currentPage = getCurrentPage();
+    Logic::GetAppsContainer()->setCurrentApp(currentPage);
+    Logic::GetAppsContainer()->updateAppsConfig();
+    navigationBar_->clearAppsSelection();
+}
+
+void Ui::AppsPage::onAppsUpdate(const QString& _selectedId)
+{
+    auto miniApps = Logic::GetAppsContainer()->getAppsOrder();
+    miniApps.insert(miniApps.begin(), Utils::MiniApps::getMessengerId());
+    auto iter = std::unique(miniApps.begin(), miniApps.end());
+    if (iter != miniApps.end())
+        miniApps.erase(iter, miniApps.end());
+    appTabsOrder_ = std::move(miniApps);
+
+    auto makeWebPage = [this](const QString& _type, const QString& _accessibleName)
     {
-#ifdef HAS_WEB_ENGINE
+#ifndef HAS_WEB_ENGINE
+        auto w = new QWidget(this);
+#else
         auto w = new WebAppPage(_type, this);
 
-        const auto [url, isSigned] = makeWebAppUrl(_type);
-        w->setUrl(url);
+        const auto& app = Logic::GetAppsContainer()->getApp(_type); // if we are here, app is definitely in map
+        const auto isSigned = Utils::InterConnector::instance().isMiniAppAuthParamsValid(_type, false);
+        const auto url = makeWebAppUrl(_type, app).first;
+        if (isSigned)
+            w->markUnavailable(false);
 
-        if (authDataValid_ && !isSigned)
+        w->setUrl(url, true);
+
+        if (authDataValid_ && !isSigned && !w->isUnavailable())
             startMiniAppSession(_type);
-#else
-        auto w = new QWidget(this);
+
+        connect(w, &WebAppPage::setTitle, this, &AppsPage::onSetTitle);
+        connect(w, &WebAppPage::setLeftButton, this, &AppsPage::onSetLeftButton);
+        connect(w, &WebAppPage::setRightButton, this, &AppsPage::onSetRightButton);
+        connect(w, &WebAppPage::pageIsHidden, this, [type = _type]() { Logic::GetAppsContainer()->onAppHidden(type); });
+        connect(header_, &AppsHeader::leftClicked, w, &WebAppPage::headerLeftButtonClicked);
+        connect(header_, &AppsHeader::rightClicked, w, &WebAppPage::headerRightButtonClicked);
 #endif
         w->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         Testing::setAccessibleName(w, _accessibleName);
         return w;
     };
 
-    auto updateTab = [this, makeWebPage](bool _enabled, auto _type, const QString& _accName, auto... _params)
+    auto updateTab = [this, makeWebPage](const AppPageData& _data, const QString& _accName, const QString& _defaultTitle, bool _selected)
     {
-        const auto hasTab = containsTab(_type);
-        if (!_enabled && hasTab)
-            removeTab(_type);
-        else if (_enabled && !hasTab)
-            addTab(_type, makeWebPage(_type, _accName), _params...);
+        const auto& type = _data.type_;
+        const auto widget = containsTab(type) ? pagesByType_[type].page_.data() : makeWebPage(type, _accName);
+        addTab(widget, _data, _defaultTitle, _selected);
+        updateTabIcon(type);
     };
 
     updateNavigationBarVisibility();
-    updateTab(Features::isTasksEnabled(), AppPageType::tasks, qsl("AS TasksPage"), QT_TRANSLATE_NOOP("tab", "Tasks"), qsl(":/tab/tasks"), qsl(":/tab/tasks_active"));
-    updateTab(Features::isOrganizationStructureEnabled(), AppPageType::org_structure, qsl("AS StructurePage"), QT_TRANSLATE_NOOP("tab", "Contacts"), qsl(":/tab/structure"), qsl(":/tab/structure_active"));
-    updateTab(Features::isCalendarEnabled(), AppPageType::calendar, qsl("AS CalendarPage"), QT_TRANSLATE_NOOP("tab", "Calendar"), qsl(":/tab/calendar"), qsl(":/tab/calendar_active"));
+    for (const auto& tab : appTabsOrder_)
+    {
+        if (tab != Utils::MiniApps::getMessengerId() && tab != Utils::MiniApps::getCallsId() && tab != Utils::MiniApps::getSettingsId())
+        {
+            if (const auto& app = Logic::GetAppsContainer()->getApp(tab); app.isValid() && app.isEnabled())
+            {
+                const auto defaultTitle = tab != Utils::MiniApps::getMailId() ? app.getTitle() : QString();
+                const AppPageData appData(tab, app.getTitle(), app.getDefaultIconPath(false), app.getDefaultIconPath(true));
+
+                if (Utils::MiniApps::isFeedApp(tab))
+                {
+                    auto feedTab = navigationBar_->addTab(appTabsOrder_, appData);
+                    pagesByType_[tab].tabItem_ = feedTab;
+                    Logic::getContactListModel()->markAsFeed(app.getAimid(), app.getStamp(), tab);
+                }
+                else
+                {
+                    updateTab(appData, app.getAccessibleName(), defaultTitle, tab == _selectedId);
+                }
+            }
+        }
+        else if (tab == Utils::MiniApps::getCallsId())
+        {
+            updateCallsTab();
+        }
+
+        if (tab == _selectedId)
+            selectTab(tab, false);
+    }
+}
+
+QString Ui::AppsPage::getCurrentPage() const
+{
+    auto currentPage = navigationBar_->currentPage();
+#ifdef HAS_WEB_ENGINE
+    if (currentPage.isEmpty())
+    {
+        if (auto page = qobject_cast<WebAppPage*>(pages_->currentWidget()))
+            currentPage = page->type();
+    }
+#endif
+
+    if (currentPage.isEmpty())
+        currentPage = Utils::MiniApps::getMessengerId();
+    return currentPage;
+}
+
+void Ui::AppsPage::onRemoveTab(const QString& _id)
+{
+    auto currentPage = getCurrentPage();
+    navigationBar_->removeTab(_id);
+    if (_id == currentPage)
+        navigationBar_->clearAppsSelection();
+}
+
+void Ui::AppsPage::onRemoveApp(const QString& _id, Logic::KeepWebPage _keepAppPage)
+{
+    if (_keepAppPage == Logic::KeepWebPage::Yes)
+        onRemoveTab(_id);
+    else
+        removeTab(_id);
+}
+
+#ifdef HAS_WEB_ENGINE
+Ui::WebAppPage* Ui::AppsPage::getWebPage(const QString& _id)
+{
+    auto it = pagesByType_.find(_id);
+    if (it == pagesByType_.end())
+        return nullptr;
+    return qobject_cast<WebAppPage*>(it->second.page_);
+}
+
+void Ui::AppsPage::updateWebPage(const QString& _id)
+{
+    auto webPage = getWebPage(_id);
+    if (!webPage)
+        return;
+    const auto& app = Logic::GetAppsContainer()->getApp(_id);
+    if (!app.isValid())
+        return;
+
+    auto oldUrl = webPage->getUrl();
+    webPage->setUrl(makeWebAppUrl(_id, app).first);
+    webPage->setTitle(_id, app.getTitle());
+
+    if (header_->currentType() == _id && oldUrl != webPage->getUrl())
+        reloadWebAppPage(_id);
+}
+#endif
+
+void Ui::AppsPage::onUpdateAppFields(const QString& _id)
+{
+#ifdef HAS_WEB_ENGINE
+    updateWebPage(_id);
+#endif
+    if (navigationBar_)
+        navigationBar_->updateTabInfo(_id);
+}
+
+void Ui::AppsPage::onRemoveHiddenPage(const QString& _id)
+{
+    if (const auto it = pagesByType_.find(_id); it != pagesByType_.end())
+    {
+        auto page = it->second;
+        if (const int index = pages_->indexOf(page.page_); index != -1)
+        {
+            pages_->removeWidget(page.page_);
+            headerData_[_id].clear();
+            page.page_->deleteLater();
+            page.tabItem_->deleteLater();
+        }
+        pagesByType_.erase(it);
+    }
+}
+
+void Ui::AppsPage::onThemeChanged()
+{
+#ifdef HAS_WEB_ENGINE
+    for (auto [type, pageData] : pagesByType_)
+    {
+        if (type == Utils::MiniApps::getMessengerId())
+            continue;
+
+        if (auto page = qobject_cast<WebAppPage*>(pageData.page_))
+        {
+            if (const auto& app = Logic::GetAppsContainer()->getApp(type); app.isValid())
+                page->setUrl(makeWebAppUrl(type, app).first);
+        }
+    }
+#endif
 }
 
 void Ui::AppsPage::updatePagesAimsids()
 {
 #ifdef HAS_WEB_ENGINE
-    for (auto [type, widget] : pagesByType_)
+    for (auto [type, pageData] : pagesByType_)
     {
-        auto id = Ui::WebAppPage::webAppId(type);
-        if (!id.isEmpty() && !Utils::InterConnector::instance().isMiniAppAuthParamsValid(id))
+        if (type == Utils::MiniApps::getMessengerId())
+            continue;
+
+        auto page = qobject_cast<WebAppPage*>(pageData.page_);
+        if (!page)
+            return;
+
+        if (!Utils::InterConnector::instance().isMiniAppAuthParamsValid(type, false))
         {
-            requestMiniAppAuthParams(id);
+            if (!page->isUnavailable())
+                requestMiniAppAuthParams(type);
         }
         else
         {
-            if (auto page = qobject_cast<WebAppPage*>(widget))
-                page->setUrl(makeWebAppUrl(type).first);
+            page->markUnavailable(false);
+            if (const auto& app = Logic::GetAppsContainer()->getApp(type); app.isValid())
+                page->setUrl(makeWebAppUrl(type, app).first);
         }
-
     }
 #endif
 }
@@ -631,9 +1282,14 @@ void Ui::AppsPage::onAuthParamsChanged(bool _aimsidChanged)
 
     const auto oldValid = std::exchange(authDataValid_, isValid);
     if (!oldValid) // first time receiving auth params
+    {
+        Logic::GetAppsContainer()->initApps();
         updateWebPages();
+    }
     else if (_aimsidChanged)
+    {
         updatePagesAimsids();
+    }
 }
 
 void Ui::AppsPage::onConfigChanged()
@@ -642,53 +1298,123 @@ void Ui::AppsPage::onConfigChanged()
         updateWebPages();
 }
 
-void Ui::AppsPage::onGuiSettingsChanged(const QString& _key)
+void Ui::AppsPage::onMyInfoReceived()
 {
-    if (_key != ql1s(settings_show_calls_tab))
-        return;
-
-    if (get_gui_settings()->get_value<bool>(settings_show_calls_tab, true))
-        addCallsTab();
-    else
-        navigationBar_->removeTab(AppPageType::calls);
+    if (authDataValid_)
+        updateWebPages();
 }
 
-bool Ui::AppsPage::containsTab(AppPageType _type) const
+void Ui::AppsPage::onLogout()
+{
+    Logic::GetStatusContainer()->setAvatarVisible(MyInfo()->aimId(), false);
+    navigationBar_->resetAvatar();
+#ifdef HAS_WEB_ENGINE
+    auto profile = Utils::InterConnector::instance().getLocalProfile();
+    profile->cookieStore()->deleteAllCookies();
+    profile->clearHttpCache();
+#endif //HAS_WEB_ENGINE
+    currentMessengerDialog_.clear();
+}
+
+void Ui::AppsPage::updateTabIcon(const QString& _id)
+{
+    if (navigationBar_)
+        navigationBar_->updateTabIcons(_id);
+}
+
+void Ui::AppsPage::updateTabCounter(const QString& _miniAppId, int _counter)
+{
+    if (const auto it = pagesByType_.find(_miniAppId); it != pagesByType_.end())
+    {
+        if (auto item = qobject_cast<AppBarItem*>(it->second.tabItem_))
+            item->setBadgeText(Utils::getUnreadsBadgeStr(_counter));
+    }
+}
+
+bool Ui::AppsPage::containsTab(const QString& _type) const
 {
     return pagesByType_.find(_type) != pagesByType_.end();
 }
 
-void Ui::AppsPage::onTabClicked(AppPageType _newTab, AppPageType _oldTab)
+void Ui::AppsPage::onTabClicked(const QString& _newId, const QString& _oldId)
 {
-    const auto isSameTabClicked = _newTab == _oldTab;
+    if (const auto& app = Logic::GetAppsContainer()->getApp(_newId); app.isValid())
+    {
+        if (app.isExternal())
+            return Utils::openUrl(makeWebAppUrl(_newId, app).first.toString());
+    }
 
-    if (isMessengerApp(_newTab))
-        messengerPage_->onTabClicked(appPageTypeToMessengerTabType(_newTab), isSameTabClicked);
+    const auto isSameTabClicked = _newId == _oldId;
+    const auto toMessenger = _newId == Utils::MiniApps::getMessengerId();
+    const auto toSettings = _newId == Utils::MiniApps::getSettingsId();
+    const auto toMessengerOrSettings = toMessenger || toSettings;
+    const auto fromSettingsOrFeed = Utils::MiniApps::isFeedApp(_oldId) || _oldId == Utils::MiniApps::getSettingsId();
+
+    if (isMessengerApp(_newId) && messengerPage_)
+        messengerPage_->onTabClicked(appPageTypeToMessengerTabType(_newId), isSameTabClicked);
 
     if (!isSameTabClicked)
-        onTabChanged(_newTab);
+    {
+        if (Utils::MiniApps::isFeedApp(_newId))
+        {
+            if (_oldId == Utils::MiniApps::getMessengerId() && currentMessengerDialog_.isEmpty())
+                currentMessengerDialog_ = Logic::getContactListModel()->selectedContact();
+            if (!_oldId.isEmpty())
+                Q_EMIT Utils::InterConnector::instance().searchEnd();
+            Utils::openFeedContact(Logic::GetAppsContainer()->getApp(_newId).getAimid());
+        }
+        else if (toSettings)
+        {
+            if (_oldId == Utils::MiniApps::getMessengerId() && currentMessengerDialog_.isEmpty())
+                currentMessengerDialog_ = Logic::getContactListModel()->selectedContact();
+        }
+
+        if (!_oldId.isEmpty())
+            Q_EMIT Utils::InterConnector::instance().clearSelection();
+
+        onTabChanged(_newId);
+
+        if (toMessengerOrSettings || Utils::MiniApps::isFeedApp(_newId))
+        {
+            const auto aimId = toMessenger ? (Utils::MiniApps::isFeedApp(_oldId) ? currentMessengerDialog_ : Logic::getContactListModel()->selectedContact())
+                                           : Logic::GetAppsContainer()->getApp(_newId).getAimid();
+            messengerPage_->setOpenedAs(toMessengerOrSettings ? PageOpenedAs::MainPage : PageOpenedAs::FeedPage);
+            Q_EMIT Utils::InterConnector::instance().changeBackButtonVisibility(aimId, toMessengerOrSettings);
+        }
+    }
+
+    if (fromSettingsOrFeed && toMessenger)
+        QMetaObject::invokeMethod(this, [this, contact = currentMessengerDialog_]() { reopenDialog(contact); }, Qt::QueuedConnection);
 }
 
-void Ui::AppsPage::onTabChanged(AppPageType _pageType)
+void Ui::AppsPage::onTabChanged(const QString& _pageType)
 {
     if (isWebApp(_pageType))
     {
         if (auto it = pagesByType_.find(_pageType); it != pagesByType_.end())
-            pages_->setCurrentWidget(it->second);
+            pages_->setCurrentWidget(it->second.page_);
         else
             im_assert(false);
     }
     else
     {
-        pages_->setCurrentIndex(getMessengerPageIndex());
-        messengerPage_->selectTab(appPageTypeToMessengerTabType(_pageType));
+        if (pages_ && !Utils::MiniApps::isFeedApp(_pageType))
+            pages_->setCurrentIndex(getMessengerPageIndex());
+        if (messengerPage_)
+            messengerPage_->selectTab(appPageTypeToMessengerTabType(_pageType));
     }
 
     Utils::InterConnector::instance().getMainWindow()->updateMainMenu();
+    auto type = Utils::MiniApps::getMessengerId();
 #ifdef HAS_WEB_ENGINE
     if (auto page = qobject_cast<WebAppPage*>(pages_->currentWidget()))
-        page->refreshPageIfNeeded();
+    {
+        type = page->type();
+        if (page->isUnavailable())
+            startMiniAppSession(type);
+    }
 #endif
+    header_->setData(type, headerData_[type]);
     Q_EMIT Utils::InterConnector::instance().currentPageChanged();
 }
 
@@ -705,22 +1431,111 @@ void Ui::AppsPage::loggedIn()
 
 void Ui::AppsPage::chatUnreadChanged()
 {
-    messengerPage_->chatUnreadChanged();
+    if (messengerPage_)
+        messengerPage_->chatUnreadChanged();
     if (messengerItem_)
+        messengerItem_->updateItemInfo();
+
+    const auto& feeds = Utils::MiniApps::getFeedAppTypes();
+    for (const auto& feed : feeds)
     {
-        const auto totalUnreadsStr = Utils::getUnreadsBadgeStr(Logic::getRecentsModel()->totalUnreads() + Logic::getUnknownsModel()->totalUnreads());
-        messengerItem_->setBadgeText(totalUnreadsStr);
+        if (const auto aimId = Logic::getContactListModel()->getFeedAimId(feed))
+            updateTabCounter(feed, Logic::getRecentsModel()->getUnreadCount(*aimId));
     }
+
 }
 
-void Ui::AppsPage::reloadWebAppPage(AppPageType _pageType)
+void Ui::AppsPage::reloadWebAppPage(const QString& _pageType)
 {
 #ifdef HAS_WEB_ENGINE
     im_assert(isWebApp(_pageType));
-    if (auto it = pagesByType_.find(_pageType); it != pagesByType_.end())
-    {
-        if (auto page = qobject_cast<WebAppPage*>(it->second))
-            page->reloadPage();
-    }
+    if (auto webPage = getWebPage(_pageType))
+        webPage->reloadPage();
 #endif
+}
+
+void Ui::AppsPage::onSetTitle(const QString& _type, const QString& _title)
+{
+    auto& data = headerData_[_type];
+    data.setTitle(_title);
+    if (header_->currentType() == _type)
+        header_->setData(_type, data);
+}
+
+void Ui::AppsPage::onSetLeftButton(const QString& _type, const QString& _text, const QString& _color, bool _enabled)
+{
+    auto& data = headerData_[_type];
+    data.setLeftButton(_text, _color, _enabled);
+    if (header_->currentType() == _type)
+        header_->setData(_type, data);
+}
+
+void Ui::AppsPage::onSetRightButton(const QString& _type, const QString& _text, const QString& _color, bool _enabled)
+{
+    auto& data = headerData_[_type];
+    data.setRightButton(_text, _color, _enabled);
+    if (header_->currentType() == _type)
+        header_->setData(_type, data);
+}
+
+void Ui::AppsPage::onSettingsClicked()
+{
+    if (!navigationBar_ || !navigationBar_->bottomAppsBar())
+        return;
+    navigationBar_->selectTab(navigationBar_->bottomAppsBar(), 0);
+}
+
+void Ui::AppsPage::composeEmail(const QString& _email)
+{
+    if (std::find(appTabsOrder_.begin(), appTabsOrder_.end(), Utils::MiniApps::getMailId()) == appTabsOrder_.end())
+        return;
+
+#ifdef HAS_WEB_ENGINE
+    const auto mail = Utils::MiniApps::getMailId();
+    if (const auto iter = pagesByType_.find(mail); iter != pagesByType_.end())
+    {
+        auto query = QUrlQuery();
+        query.addQueryItem(qsl("to"), _email);
+        openApp(mail, query.toString());
+    }
+#endif//HAS_WEB_ENGINE
+}
+
+void Ui::AppsPage::appUnavailable(const QString& _id)
+{
+#ifdef HAS_WEB_ENGINE
+    im_assert(isWebApp(_id));
+    const auto iter = pagesByType_.find(_id);
+    if (iter != pagesByType_.end())
+    {
+        if (auto page = dynamic_cast<Ui::WebAppPage*>(iter->second.page_.data()))
+            page->markUnavailable(true);
+    }
+#endif //HAS_WEB_ENGINE
+}
+
+void Ui::AppsPage::setHeaderVisible(bool _isVisible)
+{
+    if (!header_)
+        return;
+
+    header_->updateVisibility(_isVisible);
+
+    if (pages_)
+    {
+        pages_->move(pages_->geometry().left(), getHeaderHeight());
+        pages_->resize(pages_->width(), height() - getHeaderHeight());
+    }
+}
+
+void Ui::AppsPage::reopenDialog(const QString& _aimid)
+{
+    Q_EMIT Utils::InterConnector::instance().searchEnd();
+    currentMessengerDialog_.clear();
+    Utils::InterConnector::instance().openDialog(_aimid, -1, true, Ui::PageOpenedAs::ReopenedMainPage);
+}
+
+void Ui::AppsPage::setPageToReopen(const QString& _aimId)
+{
+    currentMessengerDialog_ = _aimId;
 }

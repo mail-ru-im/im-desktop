@@ -64,6 +64,116 @@
     </message>
 </context>
 <context>
+    <name>RenderViewContextMenuQt</name>
+    <message>
+        <source>Back</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Forward</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Reload</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cut</source>
+        <translation type="unfinished">Vyjmout</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation type="unfinished">Kopírovat</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation type="unfinished">Vložit</translation>
+    </message>
+    <message>
+        <source>Undo</source>
+        <translation type="unfinished">Zpět</translation>
+    </message>
+    <message>
+        <source>Redo</source>
+        <translation type="unfinished">Znovu</translation>
+    </message>
+    <message>
+        <source>Paste and match style</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select all</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open link in new window</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open link in new tab</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy link address</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save link</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy image</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy image address</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save image</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy media address</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show controls</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Loop</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save media</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Inspect</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Exit full screen</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save page</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>View page source</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>Ui::WebPage</name>
+    <message>
+        <source>Select folder to upload</source>
+        <translation type="unfinished">Vyberte složku pro stahování</translation>
+    </message>
+</context>
+<context>
     <name>UpdaterButton</name>
     <message>
         <source>Update %1</source>
@@ -118,6 +228,18 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
         <source>Server error</source>
         <translation>Chyba serveru</translation>
     </message>
+    <message>
+        <source>https://reestr.digital.gov.ru/reestr/307994/</source>
+        <translation>https://reestr.digital.gov.ru/reestr/307994/</translation>
+    </message>
+    <message>
+        <source>registry_copyright</source>
+        <translation>© Mail.Ru Digital Technologies LLC</translation>
+    </message>
+    <message>
+        <source>The product is registered in the Unified Register of Russian Software and Databases</source>
+        <translation>Produkt VK Teams je registrován v Jednotném registru ruských programů pro elektronické počítače a databáze pod názvem Myteam (Майтим)</translation>
+    </message>
 </context>
 <context>
     <name>active_call_plate</name>
@@ -128,6 +250,26 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
     <message>
         <source>Active call</source>
         <translation>Aktivní hovor</translation>
+    </message>
+    <message>
+        <source>participant</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -285,6 +427,14 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
     <message>
         <source>Turquoise</source>
         <translation>Tyrkysový</translation>
+    </message>
+    <message>
+        <source>Sibur</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Dark Sibur</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -470,7 +620,7 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
     </message>
     <message>
         <source>Feb</source>
-        <translation>únor</translation>
+        <translation>února</translation>
     </message>
     <message>
         <source>Mar</source>
@@ -527,10 +677,6 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
 </context>
 <context>
     <name>call_link</name>
-    <message>
-        <source>Link on call</source>
-        <translation>Volat odkaz</translation>
-    </message>
     <message>
         <source>Link on webinar</source>
         <translation>Odkaz na webinář</translation>
@@ -1068,8 +1214,20 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
         <translation>%1 Klikněte na OK nebo odpovězte a %2 může</translation>
     </message>
     <message>
+        <source> %3 call you</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source> %3 add you to groups</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>%1 From now on %2 is able to</source>
         <translation>%1 nyní %2 může</translation>
+    </message>
+    <message>
+        <source> see if you read his messages</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>%1 You have canceled your join request</source>
@@ -1132,12 +1290,44 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
         <translation>%1 změnil termín na %2</translation>
     </message>
     <message>
-        <source>%1 changed task assignee to &quot;%2&quot;</source>
-        <translation>%1 změnil umělce na &quot;%2&quot;</translation>
+        <source>%1 changed task assignee to %2</source>
+        <translation>%1 změnil umělce na %2</translation>
     </message>
     <message>
         <source>Task status changed to &quot;%1&quot;</source>
         <translation>Stav úkolu změněn na &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>You</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The administrator</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>have allowed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>have forbidden</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>has allowed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>has forbidden</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 %2 threads creation in this channel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 %2 threads creation in this group</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -1418,6 +1608,26 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
         <comment>21</comment>
         <translation>Vybrány zprávy: %1</translation>
     </message>
+    <message>
+        <source>%1 subscriber</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 subscribers</source>
+        <comment>2</comment>
+        <translation>%1 odběratelů</translation>
+    </message>
+    <message>
+        <source>%1 subscribers</source>
+        <comment>5</comment>
+        <translation>%1 odběratelů</translation>
+    </message>
+    <message>
+        <source>%1 subscribers</source>
+        <comment>21</comment>
+        <translation>%1 odběratel</translation>
+    </message>
 </context>
 <context>
     <name>contactus_page</name>
@@ -1617,10 +1827,6 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
 <context>
     <name>context_menu</name>
     <message>
-        <source>Call</source>
-        <translation>Call</translation>
-    </message>
-    <message>
         <source>Profile</source>
         <translation>Profil</translation>
     </message>
@@ -1671,6 +1877,10 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
     <message>
         <source>Reply</source>
         <translation>Odpovědět</translation>
+    </message>
+    <message>
+        <source>Create task</source>
+        <translation>Vytvořit úkol</translation>
     </message>
     <message>
         <source>Copy to clipboard</source>
@@ -1855,6 +2065,22 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
     <message>
         <source>Code</source>
         <translation>Kód</translation>
+    </message>
+    <message>
+        <source>Unsubscribe from thread</source>
+        <translation>Odhlásit odběr vlákna</translation>
+    </message>
+    <message>
+        <source>Subscribe to thread</source>
+        <translation>Přihlásit se k odběru vlákna</translation>
+    </message>
+    <message>
+        <source>Unblock</source>
+        <translation>Odblokovat</translation>
+    </message>
+    <message>
+        <source>Compose email</source>
+        <translation>Napsat dopis</translation>
     </message>
 </context>
 <context>
@@ -3121,10 +3347,18 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
 Only for private groups
 
 This option cannot be disabled</source>
-        <translation>Povolte přístup k souborům pouze důvěryhodným zařízením
+        <translation>Povolit přístup k souborům pouze důvěryhodným zařízením
 Pouze pro neveřejné skupiny
 
-Vypnutí nastavení je nemožné</translation>
+Nastavení není možné deaktivovat</translation>
+    </message>
+    <message>
+        <source>Enable thread feeds</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Allow chat members to create threads</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -3169,8 +3403,8 @@ Vypnutí nastavení je nemožné</translation>
         <translation>Autostatus ukazuje, kdo volá</translation>
     </message>
     <message>
-        <source>Advantages of calls in Myteam</source>
-        <translation>Výhody volání na Myteam</translation>
+        <source>Advantages of calls in %1</source>
+        <translation>Výhody volání na %1</translation>
     </message>
     <message>
         <source>Group calls up to %1 participants</source>
@@ -3258,6 +3492,10 @@ Vypnutí nastavení je nemožné</translation>
     <message>
         <source>The join request has been sent to administrator</source>
         <translation>Požadavek spojení byl odeslán správci</translation>
+    </message>
+    <message>
+        <source>The user is blocked</source>
+        <translation>Uživatel je zablokován</translation>
     </message>
     <message>
         <source>Play record</source>
@@ -3509,6 +3747,10 @@ Vypnutí nastavení je nemožné</translation>
         <translation>Neplatné uživatelské jméno nebo heslo</translation>
     </message>
     <message>
+        <source>Wrong Email</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Wrong Email or password</source>
         <translation>Neplatný e-mail nebo heslo</translation>
     </message>
@@ -3595,6 +3837,10 @@ Vypnutí nastavení je nemožné</translation>
     <message>
         <source>Sign in with Mail.ru</source>
         <translation>Přihlaste se pomocí Mail.ru</translation>
+    </message>
+    <message>
+        <source>Enter your corporate email</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -3754,6 +4000,10 @@ Vypnutí nastavení je nemožné</translation>
         <source>Report a problem</source>
         <translation>Nahlásit problém</translation>
     </message>
+    <message>
+        <source>Delete Account</source>
+        <translation>Smazání účtu</translation>
+    </message>
 </context>
 <context>
     <name>mentions</name>
@@ -3841,10 +4091,6 @@ Vypnutí nastavení je nemožné</translation>
     <message>
         <source>You have been mentioned</source>
         <translation>Někdo se o tobě zmínil</translation>
-    </message>
-    <message>
-        <source>You have been mentioned in %1</source>
-        <translation>Někdo se o tobě zmínil v chatu %1</translation>
     </message>
 </context>
 <context>
@@ -4030,8 +4276,8 @@ Kontakt</translation>
         <translation>Najděte kolegu e-mailem a napište mu</translation>
     </message>
     <message>
-        <source>Install Myteam on mobile</source>
-        <translation>Nainstalovat Myteam na mobilu</translation>
+        <source>Install VK Teams on mobile</source>
+        <translation>Nainstalujte si VK Teams na mobil</translation>
     </message>
     <message>
         <source>First name*</source>
@@ -4157,10 +4403,6 @@ Kontakt</translation>
         <source>%1 poll - %2 votes</source>
         <comment>5</comment>
         <translation>Hlasování %1 - %2 hlasů</translation>
-    </message>
-    <message>
-        <source>Poll</source>
-        <translation>Anketa</translation>
     </message>
     <message>
         <source>Poll: %1</source>
@@ -4404,10 +4646,6 @@ Kontakt</translation>
     <message>
         <source>Report</source>
         <translation>Poslat stížnost</translation>
-    </message>
-    <message>
-        <source>To change the appearance you must restart the application. Continue?</source>
-        <translation>Chcete-li změnit návrh, musíte restartovat aplikaci. Pokračovat?</translation>
     </message>
     <message>
         <source>Update url, empty for default</source>
@@ -4674,6 +4912,26 @@ Kontakt</translation>
         <translation>Psát</translation>
     </message>
     <message>
+        <source>contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Cancel request?</source>
         <translation>Zrušit žádost?</translation>
     </message>
@@ -4778,6 +5036,26 @@ Kontakt</translation>
         <translation>Tvůrce robotů zakázal přidávání do skupin</translation>
     </message>
     <message>
+        <source>Cannot add %1 contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot add %1 contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot add %1 contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot add %1 contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Are you sure you want to delete user from list?</source>
         <translation>Opravdu chcete odebrat uživatele ze seznamu?</translation>
     </message>
@@ -4792,6 +5070,26 @@ Kontakt</translation>
     <message>
         <source>You can not join the call. It already has</source>
         <translation>K hovoru se nemůžete připojit. Už v tom</translation>
+    </message>
+    <message>
+        <source>participant</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>participants</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>No</source>
@@ -4934,6 +5232,66 @@ Kontakt</translation>
         <translation>Přístup odepřen</translation>
     </message>
     <message>
+        <source>Cannot remove %1 contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot remove %1 contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot remove %1 contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot remove %1 contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot block %1 contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contact</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contacts</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contacts</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot unblock %1 contacts</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Error removing federation user</source>
         <translation>Chyba při mazání uživatele federace</translation>
     </message>
@@ -4981,13 +5339,21 @@ Kontakt</translation>
         <source>Only channel subscribers can view replies</source>
         <translation>Odpovědi mohou zobrazit pouze předplatitelé kanálu</translation>
     </message>
+    <message>
+        <source>Delete Account</source>
+        <translation>Smazání účtu</translation>
+    </message>
+    <message>
+        <source>To delete an account, you must attach a phone number</source>
+        <translation>Chcete-li smazat účet, musíte propojit telefonní číslo</translation>
+    </message>
+    <message>
+        <source>Attach</source>
+        <translation>svázat</translation>
+    </message>
 </context>
 <context>
     <name>previewer</name>
-    <message>
-        <source>Unable to download the image</source>
-        <translation>Obrázek nelze stáhnout</translation>
-    </message>
     <message>
         <source>%1 of %2</source>
         <translation>%1 z %2</translation>
@@ -5047,6 +5413,10 @@ Kontakt</translation>
     <message>
         <source>Add to favorites</source>
         <translation>Přidat k oblíbeným</translation>
+    </message>
+    <message>
+        <source>File %1 is being downloaded</source>
+        <translation>Soubor %1 načítá</translation>
     </message>
 </context>
 <context>
@@ -5121,6 +5491,10 @@ Kontakt</translation>
     <message>
         <source>A short text about you</source>
         <translation>Něco málo o vás</translation>
+    </message>
+    <message>
+        <source>Middle Name</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -5253,6 +5627,13 @@ Kontakt</translation>
         <source>OK</source>
         <translation>OK</translation>
     </message>
+    <message>
+        <source> ﻿ ﻿— Reactions
+  — Statuses
+  — New themes
+  — Unreads counter in window title — turn it on in settings :) </source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>report_widget</name>
@@ -5300,12 +5681,20 @@ Kontakt</translation>
 <context>
     <name>search</name>
     <message>
-        <source>CONTACTS AND GROUPS</source>
-        <translation>KONTAKTY A SKUPINY</translation>
+        <source>Contacts and groups</source>
+        <translation>Kontakty a skupiny</translation>
     </message>
     <message>
-        <source>MESSAGES</source>
-        <translation>ZPRÁVY</translation>
+        <source>Messages</source>
+        <translation>Příspěvky</translation>
+    </message>
+    <message>
+        <source>Threads</source>
+        <translation type="unfinished">Vlákna</translation>
+    </message>
+    <message>
+        <source>Thread</source>
+        <translation type="unfinished">vlákno</translation>
     </message>
 </context>
 <context>
@@ -5440,6 +5829,10 @@ Kontakt</translation>
     <message>
         <source>Play sounds</source>
         <translation>Přehrát zvuky</translation>
+    </message>
+    <message>
+        <source>Notification volume:</source>
+        <translation>Hlasitost oznámení:</translation>
     </message>
     <message>
         <source>Outgoing messages sound</source>
@@ -5774,10 +6167,6 @@ Kontakt</translation>
         <translation>Volání</translation>
     </message>
     <message>
-        <source>Show calls tab</source>
-        <translation>Zobrazit kartu volání</translation>
-    </message>
-    <message>
         <source>Show reactions to messages</source>
         <translation>Zobrazit reakce na zprávy</translation>
     </message>
@@ -5820,6 +6209,30 @@ Kontakt</translation>
     <message>
         <source>Warn about disabled microphone</source>
         <translation>Varovat před ztlumeným mikrofonem</translation>
+    </message>
+    <message>
+        <source>Hide sender name in notifications</source>
+        <translation>Skrýt odesílatele zprávy v oznámeních</translation>
+    </message>
+    <message>
+        <source>This setting can&apos;t be changed due to security reasons</source>
+        <translation>Z bezpečnostních důvodů nelze toto nastavení deaktivovat.</translation>
+    </message>
+    <message>
+        <source>Delete Account</source>
+        <translation>smazat účet</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Zavřít</translation>
+    </message>
+    <message>
+        <source>Your corporate account was created by a domain administrator. To remove, contact with your domain administrator</source>
+        <translation>Váš firemní účet byl vytvořen administrátorem domény. Chcete-li smazat, kontaktujte správce domény</translation>
+    </message>
+    <message>
+        <source>All information associated with your profile will be deleted. It will be impossible to restore your account</source>
+        <translation>Všechny informace spojené s vaším profilem budou smazány. Obnovení účtu nebude možné</translation>
     </message>
 </context>
 <context>
@@ -6020,8 +6433,28 @@ Kontakt</translation>
         <translation>Nastavit stav</translation>
     </message>
     <message>
-        <source>Switch microphone state</source>
-        <translation>Změnit stav mikrofonu</translation>
+        <source>Paste text without formatting</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Switch %1 state</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>microphone</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>video</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>presentation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>sound</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -6145,6 +6578,10 @@ Uprav telefonní číslo a opakuj akci.</translation>
         <translation>Sdílet skupinu</translation>
     </message>
     <message>
+        <source>Subscribe to all threads</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>All members</source>
         <translation>Všichni účastníci</translation>
     </message>
@@ -6223,6 +6660,10 @@ Uprav telefonní číslo a opakuj akci.</translation>
     <message>
         <source>Common groups</source>
         <translation>Společné skupiny</translation>
+    </message>
+    <message>
+        <source>My groups and channels</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Who can see my data</source>
@@ -6369,6 +6810,46 @@ Uprav telefonní číslo a opakuj akci.</translation>
         <translation>Stoupenci</translation>
     </message>
     <message>
+        <source>%1 SUBSCRIBER</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 SUBSCRIBERS</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 SUBSCRIBERS</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 SUBSCRIBERS</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 MEMBER</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 MEMBERS</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 MEMBERS</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 MEMBERS</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>All subscribers</source>
         <translation>Všichni předplatitelé</translation>
     </message>
@@ -6388,6 +6869,14 @@ Uprav telefonní číslo a opakuj akci.</translation>
         <source>Replies</source>
         <translation>Odpovědi</translation>
     </message>
+    <message>
+        <source>Subscription to replies</source>
+        <translation>Přihlásit se k odběru odpovědí</translation>
+    </message>
+    <message>
+        <source>Task</source>
+        <translation type="unfinished">Úkol</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -6406,6 +6895,10 @@ Uprav telefonní číslo a opakuj akci.</translation>
     <message>
         <source>About the group</source>
         <translation>O skupině</translation>
+    </message>
+    <message>
+        <source>Send link to call or invite participants from the contact list</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -6474,6 +6967,86 @@ Uprav telefonní číslo a opakuj akci.</translation>
     <message>
         <source>Custom status</source>
         <translation>Stav uživatele</translation>
+    </message>
+    <message>
+        <source>second</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>seconds</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>seconds</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>seconds</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>minute</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>minutes</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>minutes</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>minutes</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>hour</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>hours</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>hours</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>hours</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>day</source>
+        <comment>1</comment>
+        <translation type="unfinished">day</translation>
+    </message>
+    <message>
+        <source>days</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>days</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>days</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Show always</source>
@@ -6659,6 +7232,22 @@ Uprav telefonní číslo a opakuj akci.</translation>
         <source>Calendar</source>
         <translation>Kalendář</translation>
     </message>
+    <message>
+        <source>Mail</source>
+        <translation>pošta</translation>
+    </message>
+    <message>
+        <source>Cloud</source>
+        <translation>Mrak</translation>
+    </message>
+    <message>
+        <source>News</source>
+        <translation type="unfinished">Zprávy</translation>
+    </message>
+    <message>
+        <source>Polls</source>
+        <translation type="unfinished">Ankety</translation>
+    </message>
 </context>
 <context>
     <name>tab header</name>
@@ -6710,16 +7299,12 @@ Uprav telefonní číslo a opakuj akci.</translation>
         <translation>Dělat</translation>
     </message>
     <message>
-        <source>No assignee</source>
-        <translation>Bez umělce</translation>
+        <source>Unassigned</source>
+        <translation type="unfinished">Žádný umělec</translation>
     </message>
 </context>
 <context>
     <name>task_block</name>
-    <message>
-        <source>Not assigned</source>
-        <translation>Nepřiřazený</translation>
-    </message>
     <message>
         <source>Task</source>
         <translation>Úkol</translation>
@@ -6736,12 +7321,16 @@ Uprav telefonní číslo a opakuj akci.</translation>
         <source>Task edit: an error occured</source>
         <translation>Úprava úlohy: došlo k chybě</translation>
     </message>
+    <message>
+        <source>Unassigned</source>
+        <translation type="unfinished">Žádný umělec</translation>
+    </message>
 </context>
 <context>
     <name>task_popup</name>
     <message>
         <source>Edit task</source>
-        <translation>Změna úkolu</translation>
+        <translation>Změnit úkol</translation>
     </message>
     <message>
         <source>Create task</source>
@@ -6778,8 +7367,8 @@ not found</source>
 název nebyl nalezen</translation>
     </message>
     <message>
-        <source>No deadline</source>
-        <translation>Žádný termín</translation>
+        <source>Deadline for the task</source>
+        <translation>Termín plnění úkolu</translation>
     </message>
 </context>
 <context>
@@ -6797,20 +7386,20 @@ název nebyl nalezen</translation>
         <translation>Vítejte v agentovi Mail.ru</translation>
     </message>
     <message>
-        <source>Welcome to Myteam</source>
-        <translation>Vítejte v myteam</translation>
+        <source>Welcome to VK Teams</source>
+        <translation>Vítejte ve VK Teams</translation>
     </message>
     <message>
         <source>Welcome to Messenger</source>
         <translation>Vítejte v messengeru</translation>
     </message>
     <message>
-        <source>ICQ New - the evolution of communication</source>
-        <translation>ICQ New — vývoj komunikace</translation>
+        <source>ICQ - the evolution of communication</source>
+        <translation>ICQ — vývoj komunikace</translation>
     </message>
     <message>
-        <source>Welcome to ICQ New</source>
-        <translation>Vítejte v ICQ New</translation>
+        <source>Welcome to ICQ</source>
+        <translation>Vítejte v ICQ</translation>
     </message>
 </context>
 <context>
@@ -6822,6 +7411,46 @@ název nebyl nalezen</translation>
     <message>
         <source>Threads you subscribed for will be here</source>
         <translation>Zde se zobrazí vlákna, k jejichž odběru jste přihlášeni</translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more new</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show %1 more</source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Replies</source>
@@ -6839,8 +7468,8 @@ název nebyl nalezen</translation>
         <translation>Messenger</translation>
     </message>
     <message>
-        <source>Myteam</source>
-        <translation>Myteam</translation>
+        <source>VK Teams</source>
+        <translation>VK Teams</translation>
     </message>
     <message>
         <source>ICQ</source>
@@ -6866,10 +7495,6 @@ název nebyl nalezen</translation>
         <translation>Profil nebo skupina s&#xa0;takovou přezdívkou neexistuje</translation>
     </message>
     <message>
-        <source>Copied to clipboard</source>
-        <translation>Zkopírováno do schránky</translation>
-    </message>
-    <message>
         <source>There are no profiles with this email</source>
         <translation>S tímto e-mailem není žádný profil</translation>
     </message>
@@ -6890,28 +7515,28 @@ název nebyl nalezen</translation>
         <translation>Správce skupiny nastavil omezení přístupu k souborům</translation>
     </message>
     <message>
-        <source>Awaiting antivirus check, patience</source>
-        <translation>Čekáme na antivirovou kontrolu, trpělivost</translation>
-    </message>
-    <message>
-        <source>Antivirus check in progress, patience</source>
-        <translation>Probíhá kontrola antiviru, trpělivost</translation>
-    </message>
-    <message>
         <source>File is blocked by the antivirus</source>
         <translation>Soubor zablokován antivirem</translation>
     </message>
     <message>
-        <source>Checked</source>
-        <translation>Odhlásil</translation>
-    </message>
-    <message>
-        <source>No access. You may not have enough rights</source>
-        <translation>Žádný přístup. Možná nemáte dostatečná práva</translation>
-    </message>
-    <message>
         <source>File not checked (and never will be). Available to download</source>
         <translation>Soubor nebyl ověřen (a nebude ověřen). K dispozici ke stažení</translation>
+    </message>
+    <message>
+        <source>No access. Antivirus check in progress</source>
+        <translation>Žádný přístup. Probíhá antivirová kontrola</translation>
+    </message>
+    <message>
+        <source>No access. File is blocked by the antivirus</source>
+        <translation>Žádný přístup. Soubor blokovaný antivirem</translation>
+    </message>
+    <message>
+        <source>The file is available. No viruses found</source>
+        <translation>Soubor je k dispozici. Nebyly nalezeny žádné viry</translation>
+    </message>
+    <message>
+        <source>App not found</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -6953,10 +7578,6 @@ název nebyl nalezen</translation>
         <translation>Zvukový hovor</translation>
     </message>
     <message>
-        <source>Link to call</source>
-        <translation>Volat odkaz</translation>
-    </message>
-    <message>
         <source>Chat gallery</source>
         <translation>Galerie chatu</translation>
     </message>
@@ -6968,8 +7589,8 @@ název nebyl nalezen</translation>
 <context>
     <name>tray_menu</name>
     <message>
-        <source>Quit</source>
-        <translation>Ukončit</translation>
+        <source>Close</source>
+        <translation>Zavřít</translation>
     </message>
     <message>
         <source>Open</source>
@@ -6998,6 +7619,36 @@ název nebyl nalezen</translation>
         <source> new emails</source>
         <comment>21</comment>
         <translation> nové e-maily</translation>
+    </message>
+</context>
+<context>
+    <name>user_agreement_widget</name>
+    <message>
+        <source>Accept</source>
+        <translation>Pokračovat</translation>
+    </message>
+    <message>
+        <source>Agree with %1</source>
+        <translation>Agree with %1</translation>
+    </message>
+    <message>
+        <source>processing confidential data</source>
+        <translation>omezení zpracování důvěrných informací</translation>
+    </message>
+    <message>
+        <source>using personal data</source>
+        <translation>zpracování osobních údajů</translation>
+    </message>
+</context>
+<context>
+    <name>video_pages</name>
+    <message>
+        <source>Link</source>
+        <translation type="unfinished">Odkaz</translation>
+    </message>
+    <message>
+        <source>View</source>
+        <translation type="unfinished">Zobrazení</translation>
     </message>
 </context>
 <context>
@@ -7082,32 +7733,8 @@ nebo otevřete hovor
 kliknutím</translation>
     </message>
     <message>
-        <source>VOICE</source>
-        <translation>HLAS</translation>
-    </message>
-    <message>
-        <source>Connecting...</source>
-        <translation>Připojení...</translation>
-    </message>
-    <message>
-        <source>Calling</source>
-        <translation>Volání</translation>
-    </message>
-    <message>
-        <source>Busy</source>
-        <translation>Zaneprázdněný</translation>
-    </message>
-    <message>
         <source>Hold Space key for temporary unmute</source>
         <translation>Podržením mezerníku dočasně zapnete mikrofon</translation>
-    </message>
-    <message>
-        <source>Microphone disabled</source>
-        <translation>Mikrofon vypnutý</translation>
-    </message>
-    <message>
-        <source>Microphone enabled</source>
-        <translation>Mikrofon zapnutý</translation>
     </message>
     <message>
         <source>Call members</source>
@@ -7143,6 +7770,26 @@ Stisknutím %1 zapněte mikrofon
 
 Stisknutím a podržením mezerníku dočasně zapnete mikrofon</translation>
     </message>
+    <message>
+        <source>Press Esc to exit from fullscreen mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Grid</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Speaker</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Microphone disabled</source>
+        <translation type="unfinished">Mikrofon vypnutý</translation>
+    </message>
+    <message>
+        <source>Microphone enabled</source>
+        <translation type="unfinished">Mikrofon zapnutý</translation>
+    </message>
 </context>
 <context>
     <name>voip_video_panel</name>
@@ -7151,16 +7798,8 @@ Stisknutím a podržením mezerníku dočasně zapnete mikrofon</translation>
         <translation>Obrazovka</translation>
     </message>
     <message>
-        <source>More</source>
-        <translation>Dosud</translation>
-    </message>
-    <message>
         <source>Go to chat</source>
         <translation>Přejít na chat</translation>
-    </message>
-    <message>
-        <source>Open masks</source>
-        <translation>Povolit masky</translation>
     </message>
     <message>
         <source>Add user</source>
@@ -7183,16 +7822,8 @@ Stisknutím a podržením mezerníku dočasně zapnete mikrofon</translation>
         <translation>Požádejte o vypnutí videa jiného účastníka. U hovorů s více než %1 lidmi lze zobrazit pouze jedno video</translation>
     </message>
     <message>
-        <source>Masks aren&apos;t available in calls with more than %1 members</source>
-        <translation>U hovorů s více než %1 účastníky nejsou masky k dispozici</translation>
-    </message>
-    <message>
         <source>Only the creator of the webinar can show the video</source>
         <translation>Video může zobrazit pouze tvůrce webináře</translation>
-    </message>
-    <message>
-        <source>Only the creator of the webinar can use masks</source>
-        <translation>Masky mohou používat pouze tvůrci webináře</translation>
     </message>
     <message>
         <source>Only the creator of the webinar can use a microphone</source>
@@ -7278,10 +7909,6 @@ Meeting</source>
         <translation>Dokončit</translation>
     </message>
     <message>
-        <source>SHOW ALL</source>
-        <translation>UKÁZAT VŠE</translation>
-    </message>
-    <message>
         <source>Show
 participants</source>
         <translation>Koukni se
@@ -7295,44 +7922,48 @@ participants</source>
         <source>Show one</source>
         <translation>Ukaž jeden</translation>
     </message>
+    <message>
+        <source>Cancel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation type="unfinished">Ano</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to end the meeting?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>End meeting</source>
+        <translation type="unfinished">Dokončit</translation>
+    </message>
+    <message>
+        <source>Go to the chat</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open the profile</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>End call</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Share call link</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Call participants management</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>voip_video_panel_mini</name>
     <message>
         <source>End meeting</source>
         <translation>Dokončit</translation>
-    </message>
-    <message>
-        <source>Mute</source>
-        <translation>Ztlumit mikrofon</translation>
-    </message>
-    <message>
-        <source>Unmute</source>
-        <translation>Zapněte mikrofon</translation>
-    </message>
-    <message>
-        <source>Stop video</source>
-        <translation>Vypnout video</translation>
-    </message>
-    <message>
-        <source>Start video</source>
-        <translation>Přehrát video</translation>
-    </message>
-    <message>
-        <source>Disable sound</source>
-        <translation>Vypněte zvuk</translation>
-    </message>
-    <message>
-        <source>Enable sound</source>
-        <translation>Zapněte zvuk</translation>
-    </message>
-    <message>
-        <source>Stop share</source>
-        <translation>Přestaňte zobrazovat</translation>
-    </message>
-    <message>
-        <source>Start share</source>
-        <translation>Sdílet obrazovku</translation>
     </message>
 </context>
 <context>
@@ -7380,6 +8011,29 @@ participants</source>
     <message>
         <source>I miss you too :)</source>
         <translation>Také se mi po tobě stýskalo :)</translation>
+    </message>
+</context>
+<context>
+    <name>web_app</name>
+    <message>
+        <source>Page is loading...</source>
+        <translation>Načítání stránky ...</translation>
+    </message>
+    <message>
+        <source>Unable to load</source>
+        <translation>Nelze načíst</translation>
+    </message>
+    <message>
+        <source>Retry</source>
+        <translation>Zkusit znovu</translation>
+    </message>
+    <message>
+        <source>Print</source>
+        <translation>Těsnění</translation>
+    </message>
+    <message>
+        <source>The service is not available for your account. Contact technical support</source>
+        <translation>Tato služba zatím není pro váš Office dostupná</translation>
     </message>
 </context>
 </TS>

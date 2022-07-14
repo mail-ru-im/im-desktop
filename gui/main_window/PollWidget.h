@@ -3,10 +3,13 @@
 #include "controls/DraggableList.h"
 #include "types/message.h"
 
+namespace Emoji
+{
+    class EmojiCode;
+}
+
 namespace Ui
 {
-    class PollWidget_p;
-
     //////////////////////////////////////////////////////////////////////////
     // PollWidget
     //////////////////////////////////////////////////////////////////////////
@@ -20,23 +23,29 @@ namespace Ui
 
         void setFocusOnQuestion();
 
-        void setInputData(const QString& _text, const Data::QuotesVec& _quotes, const Data::MentionMap& _mentions);
+        void setInputData(const Data::FString& _text, const Data::QuotesVec& _quotes, const Data::MentionMap& _mentions);
 
-        QString getInputText() const;
+        Data::FString getInputText() const;
         int getCursorPos() const;
 
     private Q_SLOTS:
-        void onAdd();
         void onCancel();
         void onSend();
+        void onEmojiSelected(const Emoji::EmojiCode& _code);
         void onEnterPressed();
+        void onItemAdded();
         void onItemRemoved();
         void onInputChanged();
+        void popupEmojiPicker(bool _on);
+
+    protected:
+        void keyPressEvent(QKeyEvent* _event) override;
+        void closeEvent(QCloseEvent* _event) override;
 
     private:
-        std::unique_ptr<PollWidget_p> d;
+        friend class PollWidgetPrivate;
+        std::unique_ptr<class PollWidgetPrivate> d;
     };
-
 
     class PollItem;
     class PollItemsList_p;
@@ -62,20 +71,22 @@ namespace Ui
 
     Q_SIGNALS:
         void enterPressed();
+        void itemAdded();
         void itemRemoved();
         void textChanged();
-
+        void focusIn();
 
     private Q_SLOTS:
         void onRemoveItem();
 
+    protected:
+        void paintEvent(QPaintEvent* _event) override;
+
     private:
-        std::unique_ptr<PollItemsList_p> d;
+        friend class PollItemsListPrivate;
+        std::unique_ptr<class PollItemsListPrivate> d;
     };
 
-    class DraggableItem;
-
-    class PollItem_p;
 
     //////////////////////////////////////////////////////////////////////////
     // PollItem
@@ -97,6 +108,7 @@ namespace Ui
         void remove();
         void enterPressed();
         void textChanged();
+        void focusIn();
 
     protected:
         void paintEvent(QPaintEvent* _event) override;
@@ -107,7 +119,8 @@ namespace Ui
         void onTextChanged();
 
     private:
-        std::unique_ptr<PollItem_p> d;
+        friend class PollItemPrivate;
+        std::unique_ptr<class PollItemPrivate> d;
     };
 
-}
+} // namespace Ui

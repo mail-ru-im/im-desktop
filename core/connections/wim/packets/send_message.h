@@ -20,9 +20,8 @@ namespace core
         using shared_contact = std::optional<shared_contact_data>;
         using geo = std::optional<geo_data>;
         using poll = std::optional<poll_data>;
-    }
-}
-
+    } // namespace archive
+} // namespace core
 
 namespace core
 {
@@ -71,7 +70,6 @@ namespace core
             std::optional<int64_t> draft_delete_time_;
 
         public:
-
             uint32_t get_sms_error() const { return sms_error_; }
             uint32_t get_sms_count() const { return sms_count_; }
 
@@ -87,7 +85,8 @@ namespace core
             const std::string& get_poll_id() const { return poll_id_; }
             const std::string& get_task_id() const { return task_id_; }
 
-            send_message(wim_packet_params _params,
+            send_message(
+                wim_packet_params _params,
                 const int64_t _updated_id,
                 const message_type _type,
                 const std::string& _internal_id,
@@ -108,15 +107,17 @@ namespace core
 
             virtual ~send_message();
 
-            virtual priority_t get_priority() const override;
-            virtual bool is_post() const override { return true; }
+            priority_t get_priority() const override;
+            bool is_post() const override { return true; }
 
-            virtual std::string_view get_method() const override;
+            std::string_view get_method() const override;
 
-            virtual bool support_self_resending() const override { return true; }
-            virtual bool support_partially_async_execution() const override { return true; }
+            bool support_self_resending() const override { return true; }
+            bool support_partially_async_execution() const override { return true; }
+
+            int minimal_supported_api_version() const override;
         };
 
-    }
+    } // namespace wim
 
-}
+} // namespace core

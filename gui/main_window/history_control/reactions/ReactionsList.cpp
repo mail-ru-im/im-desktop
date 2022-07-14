@@ -3,12 +3,13 @@
 #include "utils/utils.h"
 #include "utils/DrawUtils.h"
 #include "utils/InterConnector.h"
+#include "utils/PersonTooltip.h"
 #include "core_dispatcher.h"
 #include "controls/TextUnit.h"
 #include "main_window/containers/FriendlyContainer.h"
 #include "controls/TransparentScrollBar.h"
 #include "cache/avatars/AvatarStorage.h"
-#include "controls/TooltipWidget.h"
+#include "controls/TextWidget.h"
 #include "styles/ThemeParameters.h"
 #include "previewer/Drawable.h"
 #include "previewer/toast.h"
@@ -105,14 +106,14 @@ namespace
         Yes
     };
 
-    QColor headerItemTextColor(Hovered _hovered, Pressed _pressed)
+    auto headerItemTextColor(Hovered _hovered, Pressed _pressed)
     {
         if (_pressed == Pressed::Yes)
-            return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY_ACTIVE);
+            return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY_ACTIVE };
         else if (_hovered == Hovered::Yes)
-            return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY_HOVER);
+            return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY_HOVER };
         else
-            return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
+            return Styling::ThemeColorKey{ Styling::StyleVariable::BASE_PRIMARY };
     }
 
     QColor headerItemBackgroundColor(Hovered _hovered, Pressed _pressed)
@@ -127,7 +128,7 @@ namespace
 
     const QImage& emojiImage(const QString& _emojiStr)
     {
-        static std::unordered_map<QString, QImage, Utils::QStringHasher> cache;
+        static std::unordered_map<QString, QImage> cache;
 
         auto it = cache.find(_emojiStr);
         if (it != cache.end())
@@ -139,10 +140,10 @@ namespace
         return cache[_emojiStr];
     }
 
-    const QColor& itemHoveredBackground()
+    QColor itemHoveredBackground()
     {
-        static const auto color = Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE);
-        return color;
+        static Styling::ColorContainer color{ Styling::ThemeColorKey{ Styling::StyleVariable::BASE_BRIGHT_INVERSE } };
+        return color.actualColor();
     }
 
     QSize removeButtonSize()
@@ -165,14 +166,9 @@ namespace
         return Utils::scale_value(12);
     }
 
-    QColor itemFontColor()
+    Styling::ThemeColorKey itemFontColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
-    }
-
-    QColor headerColor()
-    {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID };
     }
 
     QFont itemFont()
@@ -180,16 +176,11 @@ namespace
         return Fonts::adjustedAppFont(15);
     }
 
-    const QPixmap& removeButtonIcon(bool _hovered)
+    QPixmap removeButtonIcon(bool _hovered)
     {
-        if (_hovered)
-        {
-            static const auto icon = Utils::renderSvg(qsl(":/controls/close_icon"), removeButtonSize(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER));
-            return icon;
-        }
-
-        static const auto icon = Utils::renderSvg(qsl(":/controls/close_icon"), removeButtonSize(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
-        return icon;
+        static auto hovered= Utils::StyledPixmap(qsl(":/controls/close_icon"), removeButtonSize(), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY_HOVER });
+        static auto normal = Utils::StyledPixmap(qsl(":/controls/close_icon"), removeButtonSize(), Styling::ThemeColorKey{ Styling::StyleVariable::BASE_SECONDARY });
+        return (_hovered ? hovered : normal).actualPixmap();
     }
 }
 
@@ -276,10 +267,9 @@ ReactionsList::ReactionsList(int64_t _msgId, const QString& _contact, const QStr
     QHBoxLayout* labelLayout = Utils::emptyHLayout();
     labelLayout->addSpacing(Utils::scale_value(12));
     auto label = new Ui::TextWidget(this, QT_TRANSLATE_NOOP("reactions", "Reactions"));
-    label->init(
-        Fonts::appFontScaled(22),
-        Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID),
-        QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+    TextRendering::TextUnit::InitializeParameters params{ Fonts::appFontScaled(22), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } };
+    params.maxLinesCount_ = 1;
+    label->init(params);
 
     labelLayout->addWidget(label);
     labelLayout->addStretch();
@@ -485,7 +475,7 @@ public:
 
             label_ = std::make_unique<Label>();
             label_->setTextUnit(TextRendering::MakeTextUnit(text_));
-            label_->initTextUnit(Fonts::adjustedAppFont(14), headerItemTextColor(Hovered::No, Pressed::No));
+            label_->initTextUnit({ Fonts::adjustedAppFont(14), headerItemTextColor(Hovered::No, Pressed::No) });
 
             label_->setDefaultColor(headerItemTextColor(Hovered::No, Pressed::No));
             label_->setHoveredColor(headerItemTextColor(Hovered::Yes, Pressed::No));
@@ -904,8 +894,9 @@ public:
 //////////////////////////////////////////////////////////////////////////
 
 ReactionsListContent::ReactionsListContent(QWidget* _parent)
-    : QWidget(_parent),
-      d(std::make_unique<ReactionsListContent_p>(this))
+    : QWidget(_parent)
+    , d(std::make_unique<ReactionsListContent_p>(this))
+    , personTooltip_(new Utils::PersonTooltip(_parent))
 {
     setMouseTracking(true);
 
@@ -936,7 +927,9 @@ void ReactionsListContent::addReactions(const Data::ReactionsPage& _page)
         bool isDefault;
         item->avatar_ = Logic::GetAvatarStorage()->GetRounded(reaction.contact_, friendly, avatarSize(), isDefault, false, false);
         item->nameUnit_ = TextRendering::MakeTextUnit(friendly, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        item->nameUnit_->init(itemFont(), itemFontColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+        TextRendering::TextUnit::InitializeParameters params{ itemFont(), itemFontColor() };
+        params.maxLinesCount_ = 1;
+        item->nameUnit_->init(params);
 
         d->items_.push_back(item);
         d->itemsIndexByContact_[item->contact_] = item;
@@ -969,15 +962,15 @@ void ReactionsListContent::paintEvent(QPaintEvent* _event)
 void ReactionsListContent::mouseMoveEvent(QMouseEvent* _event)
 {
     auto lastHoveredItem = d->hoveredItem_;
-
     auto handCursor = false;
+    const auto pos = _event->pos();
 
-    if (!lastHoveredItem || !lastHoveredItem->rect_.contains(_event->pos()))
+    if (!lastHoveredItem || !lastHoveredItem->rect_.contains(pos))
     {
-        if (auto hoveredItem = d->itemAt(_event->pos().y()))
+        if (auto hoveredItem = d->itemAt(pos.y()))
         {
             hoveredItem->hovered_ = true;
-            hoveredItem->buttonHovered_ = hoveredItem->buttonRect_.contains(_event->pos());
+            hoveredItem->buttonHovered_ = hoveredItem->buttonRect_.contains(pos);
             QRect updateRect;
             if (lastHoveredItem)
             {
@@ -995,13 +988,20 @@ void ReactionsListContent::mouseMoveEvent(QMouseEvent* _event)
     }
     else if (lastHoveredItem)
     {
-        lastHoveredItem->buttonHovered_ = lastHoveredItem->buttonRect_.contains(_event->pos());
+        lastHoveredItem->buttonHovered_ = lastHoveredItem->buttonRect_.contains(pos);
         update(lastHoveredItem->rect_);
 
         handCursor = !lastHoveredItem->myReaction_ || lastHoveredItem->buttonHovered_;
+        if (!lastHoveredItem->avatarRect_.contains(pos))
+            personTooltip_->hide();
     }
 
     setCursor(handCursor ? Qt::PointingHandCursor : Qt::ArrowCursor);
+    if (const auto avatarRect = d->hoveredItem_->avatarRect_; avatarRect.isValid() && avatarRect.contains(pos))
+    {
+        const auto globalAvatarRect = QRect(mapToGlobal(avatarRect.topLeft()), avatarRect.size());
+        personTooltip_->show(Utils::PersonTooltipType::Person, d->hoveredItem_->contact_, globalAvatarRect, Tooltip::ArrowDirection::Down, Tooltip::ArrowPointPos::Top);
+    }
 
     QWidget::mouseMoveEvent(_event);
 }
@@ -1082,6 +1082,7 @@ void ReactionsListContent::onLeaveTimer()
 
         d->hoveredItem_.clear();
         d->leaveTimer_.stop();
+        personTooltip_->hide();
     }
 }
 

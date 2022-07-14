@@ -7,6 +7,7 @@
 #include "history_control/HistoryControlPage.h"
 #include "contact_list/ContactListModel.h"
 #include "utils/utils.h"
+#include "utils/MimeDataUtils.h"
 #include "utils/async/AsyncTask.h"
 #include "utils/features.h"
 #include "utils/stat_utils.h"
@@ -20,17 +21,17 @@ namespace
 {
     constexpr std::chrono::milliseconds dragActivateDelay() noexcept { return std::chrono::milliseconds(500); }
 
-    auto dragOverlayPadding()
+    auto dragOverlayPadding() noexcept
     {
         return Utils::scale_value(20);
     }
 
-    auto dragOverlayRadius()
+    auto dragOverlayRadius() noexcept
     {
         return Utils::scale_value(5);
     }
 
-    auto dragOverlayOffset()
+    auto dragOverlayOffset() noexcept
     {
         return Utils::scale_value(14);
     }
@@ -47,7 +48,7 @@ namespace
             return false;
         }();
 
-        const bool mimeDataWithImage = Utils::isMimeDataWithImage(_mimeData);
+        const bool mimeDataWithImage = MimeData::isMimeDataWithImage(_mimeData);
 
         if (oneExternalUrl && !mimeDataWithImage)
             return Ui::DragOverlayWindow::QuickSend;
@@ -73,6 +74,17 @@ namespace Ui
         connect(&dragMouseoverTimer_, &QTimer::timeout, this, &DragOverlayWindow::onTimer);
     }
 
+    void DragOverlayWindow::setClipPath(const QPainterPath& _clip)
+    {
+        clipPath_ = _clip;
+        update();
+    }
+
+    QPainterPath DragOverlayWindow::clipPath() const
+    {
+        return clipPath_;
+    }
+
     void DragOverlayWindow::onTimer()
     {
         Utils::InterConnector::instance().getMainWindow()->activate();
@@ -95,7 +107,7 @@ namespace Ui
 
     void DragOverlayWindow::processMimeData(const QMimeData* _mimeData)
     {
-        const auto mimeDataWithImage = Utils::isMimeDataWithImage(_mimeData);
+        const auto mimeDataWithImage = MimeData::isMimeDataWithImage(_mimeData);
         if (_mimeData->hasUrls() || mimeDataWithImage)
         {
             const auto& inputState = Logic::InputStateContainer::instance().getState(aimId_);
@@ -103,7 +115,7 @@ namespace Ui
 
             if (mimeDataWithImage)
             {
-                files.emplace_back(QPixmap::fromImage(Utils::getImageFromMimeData(_mimeData)));
+                files.emplace_back(QPixmap::fromImage(MimeData::getImageFromMimeData(_mimeData)));
             }
             else
             {
@@ -153,28 +165,15 @@ namespace Ui
             {
                 bool mayQuotesSent = false;
 
-                const auto sendFiles = [&contact = aimId_, &mayQuotesSent, &quotes](const FilesToSend& _files, const QString& desc, const Data::MentionMap& descMentions)
+                const auto sendFiles = [&contact = aimId_, &mayQuotesSent, &quotes](const FilesToSend& _files, const Data::FString& _desc, const Data::MentionMap& descMentions)
                 {
                     if (_files.empty())
                         return;
 
-                    auto descriptionInside = false;
-                    if (_files.size() == 1)
+                    const bool descriptionInside = (_files.size() == 1);
+                    if (!_desc.isEmpty() && !descriptionInside)
                     {
-                        if (_files.front().isFile())
-                        {
-                            const auto suffix = _files.front().getFileInfo().suffix();
-                            descriptionInside = Utils::is_image_extension(suffix) || Utils::is_video_extension(suffix);
-                        }
-                        else
-                        {
-                            descriptionInside = true;
-                        }
-                    }
-
-                    if (!desc.isEmpty() && !descriptionInside)
-                    {
-                        Ui::GetDispatcher()->sendMessageToContact(contact, desc, quotes, descMentions);
+                        Ui::GetDispatcher()->sendMessageToContact(contact, _desc, quotes, descMentions);
                         mayQuotesSent = true;
                     }
 
@@ -188,19 +187,20 @@ namespace Ui
                         const auto isWebpScreenshot = Features::isWebpScreenshotEnabled() && f.canConvertToWebp();
                         if (f.isFile() && (alreadySentWebp || !isWebpScreenshot))
                         {
-                            Ui::GetDispatcher()->uploadSharedFile(contact, f.getFileInfo().absoluteFilePath(), sendQuotesOnce ? quotes : Data::QuotesVec(), descriptionInside ? desc : QString(), descriptionInside ? descMentions : Data::MentionMap());
+                            Ui::GetDispatcher()->uploadSharedFile(contact, f.getFileInfo().absoluteFilePath(), sendQuotesOnce ? quotes : Data::QuotesVec(),
+                                descriptionInside ? _desc : Data::FString(), descriptionInside ? descMentions : Data::MentionMap());
                         }
                         else
                         {
                             if (isWebpScreenshot)
                                 alreadySentWebp = true;
-                            Async::runAsync([f, contact, quotes, desc, descMentions, isWebpScreenshot]() mutable
+                            Async::runAsync([f, contact, quotes, _desc, descMentions, isWebpScreenshot]() mutable
                             {
                                 auto array = FileToSend::loadImageData(f, isWebpScreenshot ? FileToSend::Format::webp : FileToSend::Format::png);
                                 if (array.isEmpty())
                                     return;
 
-                                Async::runInMain([array = std::move(array), contact = std::move(contact), quotes = std::move(quotes), desc = std::move(desc), descMentions = std::move(descMentions), isWebpScreenshot]()
+                                Async::runInMain([array = std::move(array), contact = std::move(contact), quotes = std::move(quotes), desc = std::move(_desc), descMentions = std::move(descMentions), isWebpScreenshot]()
                                 {
                                     Ui::GetDispatcher()->uploadSharedFile(contact, array, isWebpScreenshot ? u".webp" : u".png", quotes, desc, descMentions);
                                 });
@@ -217,7 +217,7 @@ namespace Ui
 
                     const core::stats::event_props_type props = { { "chat_type", Utils::chatTypeByAimId(contact) }, { "count", _files.size() > 1 ? "multi" : "single" }, { "type", "dndchat" } };
                     Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_sendmedia_action, props);
-                    if (!desc.isEmpty())
+                    if (!_desc.isEmpty())
                         Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_sendmediawcapt_action, props);
                 };
 
@@ -225,18 +225,21 @@ namespace Ui
                 {
                     const auto target = Logic::getContactListModel()->isThread(aimId_) ? FilesWidget::Target::Thread : FilesWidget::Target::Chat;
                     auto filesWidget = new FilesWidget(files, target, this);
+                    Q_EMIT sentFilesOpened();
 
                     GeneralDialog::Options options;
                     options.preferredWidth_ = filesWidget->width();
 
                     GeneralDialog generalDialog(filesWidget, Utils::InterConnector::instance().getMainWindow(), options);
                     connect(filesWidget, &FilesWidget::setButtonActive, &generalDialog, &GeneralDialog::setButtonActive);
-                    generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("files_widget", "Cancel"), QT_TRANSLATE_NOOP("files_widget", "Send"), true);
+                    generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("files_widget", "Cancel"), QT_TRANSLATE_NOOP("files_widget", "Send"));
 
-                    filesWidget->setDescription(inputText.string(), inputMentions);
+                    filesWidget->setDescription(inputText, inputMentions);
                     filesWidget->setFocusOnInput();
 
-                    if (generalDialog.showInCenter())
+                    generalDialog.setFocusPolicyButtons(Qt::TabFocus);
+
+                    if (generalDialog.execute())
                     {
                         sendFiles(filesWidget->getFiles(), filesWidget->getDescription(), filesWidget->getMentions());
                     }
@@ -252,6 +255,7 @@ namespace Ui
                 else
                 {
                     sendFiles(files, QString(), {});
+                    Q_EMIT onQuickSent();
                 }
 
                 if (mayQuotesSent && !quotes.isEmpty())
@@ -266,11 +270,13 @@ namespace Ui
     void DragOverlayWindow::paintEvent(QPaintEvent *)
     {
         QPainter painter(this);
+        if (!clipPath_.isEmpty())
+            painter.setClipPath(clipPath_);
 
         painter.setPen(Qt::NoPen);
         painter.setRenderHint(QPainter::Antialiasing);
 
-        static const QColor overlayColor = Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE, 0.98);
+        const QColor overlayColor = Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
 
         painter.fillRect(rect(), overlayColor);
 
@@ -292,6 +298,7 @@ namespace Ui
         hide();
         _e->accept();
         Utils::InterConnector::instance().setDragOverlay(false);
+        update();
     }
 
     void DragOverlayWindow::dragMoveEvent(QDragMoveEvent *_e)
@@ -314,6 +321,7 @@ namespace Ui
         _e->acceptProposedAction();
         hide();
         Utils::InterConnector::instance().setDragOverlay(false);
+        update();
     }
 
     void DragOverlayWindow::drawQuickSend(QPainter& _p)
@@ -355,18 +363,18 @@ namespace Ui
 
             _p.setPen(pen);
             _p.drawRoundedRect(dragOverlayPadding(),
-                               rectY,
-                               rect().width() - dragOverlayPadding() * 2,
-                               rectHeight - dragOverlayPadding() * 2,
-                               dragOverlayRadius(),
-                               dragOverlayRadius());
+                rectY,
+                rect().width() - dragOverlayPadding() * 2,
+                rectHeight - dragOverlayPadding() * 2,
+                dragOverlayRadius(),
+                dragOverlayRadius());
 
             _p.setFont(Fonts::appFontScaled(24));
 
             Utils::drawText(_p,
-                            QPointF(rect().width() / 2, textY - dragOverlayPadding() / 2),
-                            Qt::AlignCenter,
-                            QT_TRANSLATE_NOOP("chat_page", "Quick send"));
+                QPointF(rect().width() / 2, textY - _p.font().pointSize() / 2),
+                Qt::AlignCenter,
+                QT_TRANSLATE_NOOP("chat_page", "Quick send"));
         }
     }
 
@@ -403,17 +411,17 @@ namespace Ui
 
             _p.setPen(pen);
             _p.drawRoundedRect(dragOverlayPadding(),
-                               dragOverlayPadding(),
-                               rect().width() - dragOverlayPadding() * 2,
-                               rectHeight - dragOverlayPadding() * 2 + dragOverlayOffset(),
-                               dragOverlayRadius(),
-                               dragOverlayRadius());
+                dragOverlayPadding(),
+                rect().width() - dragOverlayPadding() * 2,
+                rectHeight - dragOverlayPadding() * 2 + dragOverlayOffset(),
+                dragOverlayRadius(),
+                dragOverlayRadius());
 
             _p.setFont(Fonts::appFontScaled(24));
             Utils::drawText(_p,
-                            QPointF(rect().width() / 2, rectHeight / 2 + dragOverlayPadding() / 2),
-                            Qt::AlignCenter,
-                            QT_TRANSLATE_NOOP("files_widget", "Send with caption"));
+                QPointF(rect().width() / 2, rectHeight / 2 + dragOverlayPadding() / 2),
+                Qt::AlignCenter,
+                QT_TRANSLATE_NOOP("files_widget", "Send with caption"));
         }
     }
 }

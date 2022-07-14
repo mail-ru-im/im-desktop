@@ -1,12 +1,12 @@
 #include "stdafx.h"
 #include "VoipProxy.h"
-#include "MaskManager.h"
 #include "../core_dispatcher.h"
 #include "../fonts.h"
 #include "../gui_settings.h"
 #include "../my_info.h"
 #include "../cache/avatars/AvatarStorage.h"
 #include "../controls/TextEmojiWidget.h"
+#include "../controls/GeneralDialog.h"
 #include "../utils/gui_coll_helper.h"
 #include "../utils/utils.h"
 #include "../utils/features.h"
@@ -20,9 +20,10 @@
 #include "main_window/history_control/HistoryControlPage.h"
 #include "media/permissions/MediaCapturePermissions.h"
 #include "MicroAlert.h"
+#include "VideoWindow.h"
 #include <functional>
 #ifdef __APPLE__
-#include "macos/VideoFrameMacos.h"
+#include "macos/macosspec.h"
 #endif
 
 namespace voip_proxy
@@ -41,46 +42,7 @@ namespace
     constexpr int kAvatarLargeSize = 360;
     constexpr QSize kVCSAvatarImageSize(1280, 720);
 
-    const QColor kBackgroundColor(40, 40, 40, 255);
     constexpr QImage::Format kImageFormat = QImage::Format_RGBA8888;
-
-    void addImageToCollection(Ui::gui_coll_helper& collection, const std::string& dir, const std::string& name, const std::string& filenamePrefix, const std::string& filenamePostfix, bool withPng = true, const QSize& outputSize = QSize())
-    {
-        std::stringstream resourceStr;
-
-        int currentScale = std::min(kMaximumImageScale, Utils::scale_bitmap_with_value(kDefaultImageScale));
-        resourceStr << ":/" + (!dir.empty() ? dir + "/" : "") << filenamePrefix << currentScale << filenamePostfix << (withPng ? ".png" : "");
-        QImage image(QString::fromStdString(resourceStr.str()));
-
-        im_assert(!image.isNull());
-
-        if (outputSize.height() > 0 && outputSize.width() > 0)
-        {
-            QImage bigImage(outputSize.width(), outputSize.height(), kImageFormat);
-            bigImage.fill(Qt::transparent);
-            {
-                QPainter painter(&bigImage);
-                QSize position = (bigImage.size() - image.size()) / 2;
-                painter.drawImage(QPoint(position.width(), position.height()), image);
-            }
-            image = bigImage.copy();
-        }
-
-        auto dataSize = image.sizeInBytes();
-        auto dataPtr = image.constBits();
-        auto sz = image.size();
-
-        im_assert(dataSize && dataPtr);
-        if (dataSize && dataPtr)
-        {
-            core::ifptr<core::istream> stream(collection->create_stream());
-            stream->write(dataPtr, dataSize);
-
-            collection.set_value_as_stream(name, stream.get());
-            collection.set_value_as_int(name + "_height", sz.height());
-            collection.set_value_as_int(name + "_width", sz.width());
-        }
-    }
 
     void addTextToCollection(Ui::gui_coll_helper& collection, const std::string& name, const QString& text, const QColor& penColor, const QFont& font)
     {
@@ -211,13 +173,6 @@ voip_proxy::VoipController::VoipController(Ui::core_dispatcher& _dispatcher)
     voipEmojiManager_.addMap(128, 128, ":/emoji/secure_emoji_128.png", codePoints, 128);
     voipEmojiManager_.addMap(160, 160, ":/emoji/secure_emoji_160.png", codePoints, 160);
     voipEmojiManager_.addMap(192, 192, ":/emoji/secure_emoji_192.png", codePoints, 192);
-
-    connect(this, &VoipController::onVoipCallIncoming, this, qOverload<const std::string&, const std::string&>(&VoipController::updateUserAvatar));
-    connect(this, &VoipController::onVoipCallConnected, this, qOverload<const voip_manager::ContactEx&>(&VoipController::updateUserAvatar));
-    connect(this, &VoipController::onVoipMaskEngineEnable, this, &VoipController::updateVoipMaskEngineEnable);
-    connect(this, &VoipController::onVoipCallCreated, this, &VoipController::onCallCreate);
-
-    resetMaskManager();
 }
 
 voip_proxy::VoipController::~VoipController()
@@ -245,11 +200,6 @@ void voip_proxy::VoipController::setAvatars(int _size, const char*_contact, bool
     };
 
     sendAvatar(_size, _contact, forPreview, AVATAR_ROUND | USER_NAME_ONE_IS_BIG, voip_manager::MAIN_ONE_BIG);
-    sendAvatar(_size, _contact, forPreview, AVATAR_SQUARE_BACKGROUND | USER_NAME_ALL_THE_SAME, voip_manager::MAIN_ALL_THE_SAME);
-    sendAvatar(_size, _contact, forPreview, AVATAR_SQUARE_BACKGROUND | USER_NAME_MINI, voip_manager::MINI_WINDOW);
-    sendAvatar(_size, _contact, forPreview, AVATAR_SQUARE_WITH_LETTER, voip_manager::INCOME_WINDOW);
-    sendAvatar(_size, _contact, forPreview, AVATAR_SQUARE_BACKGROUND | USER_NAME_ALL_THE_SAME | USER_NAME_ALL_THE_SAME_5_PEERS, voip_manager::MAIN_ALL_THE_SAME_5_PEERS);
-    sendAvatar(_size, _contact, forPreview, AVATAR_SQUARE_BACKGROUND | USER_NAME_ALL_THE_SAME | USER_NAME_ALL_THE_SAME_LARGE, voip_manager::MAIN_ALL_THE_SAME_LARGE);
 }
 
 std::string voip_proxy::VoipController::formatCallName(const std::vector<std::string>& _names, const char* _clip)
@@ -312,7 +262,7 @@ void voip_proxy::VoipController::_prepareUserBitmaps(Ui::gui_coll_helper& _colle
     bool defaultAvatar = false;
     if (needAvatar)
     {
-        if (isCallVCS() && !isSelf)
+        if (!isSelf)
         {
             Utils::loadPixmap(qsl(":/voip/videoconference"), realAvatar);
         }
@@ -345,7 +295,7 @@ void voip_proxy::VoipController::_prepareUserBitmaps(Ui::gui_coll_helper& _colle
         {
             enum AvatarType {AT_AVATAR_SQUARE_BACKGROUND = 0, AT_AVATAR_SQUARE_WITH_LETTER, AT_AVATAR_ROUND};
 
-            auto makeAvatar = [_size, &rawAvatar, packAvatar, vcsModifyAvatar = (isCallVCS() && isSelf)](AvatarType avatarType)
+            auto makeAvatar = [_size, &rawAvatar, packAvatar, vcsModifyAvatar = (isSelf)](AvatarType avatarType)
             {
                 bool squareBackground = (avatarType == AT_AVATAR_SQUARE_BACKGROUND);
                 bool squareLetter = (avatarType == AT_AVATAR_SQUARE_WITH_LETTER);
@@ -379,81 +329,12 @@ void voip_proxy::VoipController::_prepareUserBitmaps(Ui::gui_coll_helper& _colle
                 if (squareAvatar)
                     painter.fillRect(image.rect(), QColor(0, 0, 0, 128));
 
-                packAvatar(image, squareAvatar ? "background_" : "");
-                if (!squareAvatar)
-                    packAvatar(image, "rem_camera_offline_");
+                packAvatar(image, "");
             };
 
-            if (userBitmapParamBitSet & AVATAR_SQUARE_BACKGROUND)
-                makeAvatar(AT_AVATAR_SQUARE_BACKGROUND);
-
             if (userBitmapParamBitSet & AVATAR_ROUND)
-            {
                 makeAvatar(AT_AVATAR_ROUND);
-                makeAvatar(AT_AVATAR_SQUARE_BACKGROUND);
-            }
-
-            if (userBitmapParamBitSet & AVATAR_SQUARE_WITH_LETTER)
-                makeAvatar(AT_AVATAR_SQUARE_WITH_LETTER);
         }
-    }
-
-    if (!isCallVCS() && ((USER_NAME_ONE_IS_BIG & userBitmapParamBitSet)
-        || (USER_NAME_ALL_THE_SAME & userBitmapParamBitSet)
-        || (USER_NAME_MINI & userBitmapParamBitSet)))
-    {
-        QPainter painter;
-
-        const auto fontSize = 16;
-        QFont font = Fonts::appFont(Utils::scale_bitmap_with_value(fontSize), Fonts::FontWeight::SemiBold);
-        font.setStyleStrategy(QFont::PreferAntialias);
-
-        QFontMetrics fm(font);
-        bool miniWindow = (USER_NAME_MINI & userBitmapParamBitSet);
-        bool allTheSame = (USER_NAME_ALL_THE_SAME & userBitmapParamBitSet);
-        bool allTheSame5Peers = (USER_NAME_ALL_THE_SAME_5_PEERS & userBitmapParamBitSet);
-        bool allTheSameLarge  = (USER_NAME_ALL_THE_SAME_LARGE & userBitmapParamBitSet);
-
-        const int nickW = Utils::scale_bitmap_with_value(
-            miniWindow ? voip_manager::kNickTextMiniWW :
-                         (allTheSame ? (allTheSame5Peers ? voip_manager::kNickTextAllSameW5peers :
-                             (allTheSameLarge ? voip_manager::kNickTextAllSameWLarge :
-                                                voip_manager::kNickTextAllSameW)) : voip_manager::kNickTextW));
-
-        const int nickH = Utils::scale_bitmap_with_value(miniWindow ?
-            voip_manager::kNickTextMiniWH : (allTheSame ? voip_manager::kNickTextAllSameH : voip_manager::kNickTextH));
-
-        QImage pm(nickW, nickH, kImageFormat);
-        pm.fill(Qt::transparent);
-
-        const QPen pen(QColor(u"#ffffff"));
-
-        painter.begin(&pm);
-        painter.setRenderHint(QPainter::Antialiasing);
-        painter.setRenderHint(QPainter::TextAntialiasing);
-        painter.setRenderHint(QPainter::SmoothPixmapTransform);
-
-        //auto oldCompostion = painter.compositionMode();
-        painter.setCompositionMode(QPainter::CompositionMode_Clear);
-        painter.fillRect(pm.rect(), Qt::black);
-        painter.setCompositionMode(QPainter::CompositionMode_Plus);
-        painter.setPen(pen);
-        painter.setFont(font);
-
-        Ui::CompiledText compiledText;
-        Ui::CompiledText::compileText(friendContact, compiledText, false, true);
-
-        // Align to center.
-        int xOffset = std::max((nickW - compiledText.width(fm)) / 2, 0);
-        int yOffset = std::max(nickH - Utils::scale_bitmap_with_value(fontSize) / 2, 0);
-        compiledText.draw(painter, xOffset, yOffset, nickW);
-
-#ifdef _DEBUG
-        painter.drawRect(QRect(0, 0, nickW - 1, nickH - 1));
-#endif
-        painter.end();
-
-        packAvatar(pm, "sign_normal_");
     }
 }
 
@@ -480,16 +361,13 @@ void voip_proxy::VoipController::handlePacket(core::coll_helper& _collParams)
         voip_manager::ContactsList contacts;
         contacts << _collParams;
 
-        vcsWebinar_ = contacts.is_webinar;
-        vcsConferenceUrl_ = contacts.conference_url;
-
         if (contacts.isActive)
+        {
+            vcsWebinar_ = contacts.is_webinar;
+            vcsConferenceUrl_ = contacts.conference_url;
             activePeerList_ = contacts;
-
-        for (auto contact: contacts.contacts)
-        {   // Update avatars for conference.
-            setAvatars(kAvatarVideoSize, contact.contact.c_str(), false);
         }
+
         Q_EMIT onVoipCallNameChanged(contacts);
     } else if (sigType == "voip_window_add_complete")
     {
@@ -570,12 +448,6 @@ void voip_proxy::VoipController::handlePacket(core::coll_helper& _collParams)
         localCameraEnabled_ = currentSelectedVideoDevice_.video_dev_type == kvoipDeviceCamera ? localVideoEnabled_ : localCameraEnabled_;
         Q_EMIT onVoipMediaLocalAudio(localAudioEnabled_);
         Q_EMIT onVoipMediaLocalVideo(localVideoEnabled_);
-    } else if (sigType == "mouse_tap")
-    {
-        const quintptr hwnd = _collParams.get_value_as_int64("hwnd");
-        const std::string tapType(_collParams.get_value_as_string("mouse_tap_type"));
-        const std::string contact(_collParams.get_value_as_string("contact"));
-        Q_EMIT onVoipMouseTapped(hwnd, tapType, contact);
     } else if (sigType == "call_created")
     {
         voip_manager::ContactEx contactEx;
@@ -617,17 +489,18 @@ void voip_proxy::VoipController::handlePacket(core::coll_helper& _collParams)
             haveEstablishedConnection_ = false;
             chatId_ = {};
             callType_ = voip_proxy::kCallType_NONE;
+            vcsConferenceUrl_.clear();
             disconnectedPeers_.clear();
             activePeerList_ = {};
             onEndCall();
 
             Q_EMIT onVoipCallTimeChanged(callTimeElapsed_, false);
-            Ui::GetSoundsManager()->callInProgress(false);
 
             voip_manager::CallEndStat stat(elapsed, contactEx.contact.contact);
             Q_EMIT onVoipCallEndedStat(stat);
         }
         Q_EMIT onVoipCallDestroyed(contactEx);
+        Ui::GetSoundsManager()->callInProgress(false);
 
         QString text;
         QString title;
@@ -720,42 +593,21 @@ void voip_proxy::VoipController::handlePacket(core::coll_helper& _collParams)
         }
 
         Q_EMIT onVoipCallConnected(contactEx);
-    /*} else if (sigType == "frame_size_changed")
-    {
-        voip_manager::FrameSize fs;
-        fs << _collParams;
-        Q_EMIT onVoipFrameSizeChanged(fs);*/
     } else if (sigType == "media_rem_v_changed")
     {
         voip_manager::VideoEnable videoEnable;
         videoEnable << _collParams;
         Q_EMIT onVoipMediaRemoteVideo(videoEnable);
-    } else if (sigType == "call_out_accepted")
-    {
-        voip_manager::ContactEx contactEx;
-        contactEx << _collParams;
-        Q_EMIT onVoipCallOutAccepted(contactEx);
-    } else if (sigType == "voip_mask_engine_enable")
-    {
-        const bool enabled = _collParams.get_value_as_bool("enable");
-        Q_EMIT onVoipMaskEngineEnable(enabled);
     }
     else if (sigType == "voice_detect")
     {
         const bool enabled = _collParams.get_value_as_bool("param");
         Q_EMIT onVoipVoiceEnable(enabled);
-    } else if (sigType == "layout_changed")
+    } else if (sigType == "voice_vad_info")
     {
-        bool bTray = _collParams.get_value_as_bool("tray");
-        std::string layout = _collParams.get_value_as_string("layout_type");
-        intptr_t hwnd = _collParams.get_value_as_int64("hwnd");
-        Q_EMIT onVoipChangeWindowLayout(hwnd, bTray, layout);
-    } else if (sigType == "voip_main_video_layout_changed")
-    {
-        voip_manager::MainVideoLayout mainLayout;
-        mainLayout << _collParams;
-
-        Q_EMIT onVoipMainVideoLayoutChanged(mainLayout);
+        std::vector<im::VADInfo> peers;
+        peers << _collParams;
+        Q_EMIT onVoipVadInfo(peers);
     } else if (sigType == "media_loc_v_device_changed")
     {
         voip_manager::device_description device;
@@ -938,7 +790,6 @@ void voip_proxy::VoipController::setAcceptCall(const char* call_id, bool video)
     video = checkPermissions(true, video);
     video &= localCamPermission_;
 
-    // fix IMDESKTOP-15084
     setAvatars(kAvatarLargeSize, Ui::MyInfo()->aimId().toStdString().c_str(), true);
     Ui::gui_coll_helper collection(dispatcher_.create_collection(), true);
     collection.set_value_as_string("type", "voip_call_accept");
@@ -973,26 +824,39 @@ bool voip_proxy::VoipController::checkPermissions(bool _audio, bool _video, bool
 {
     if (_audio)
     {
+        const auto restartDevice = [this]()
+        {
+            // restart audio device if permission just granted
+            voip_proxy::device_desc description = activeDevices_[kvoipDevTypeAudioCapture];
+            setActiveDevice(description, true);
+        };
         auto p = media::permissions::checkPermission(media::permissions::DeviceType::Microphone);
-        localAudPermission_ = (media::permissions::Permission::Allowed == p);
+        const auto localAudPermission = (media::permissions::Permission::Allowed == p);
+        const auto needReset = localAudPermission != localAudPermission_;
+        localAudPermission_ = localAudPermission;
+
         if (_doRequest && !localAudPermission_)
         {
             if (media::permissions::Permission::NotDetermined == p)
             {
-                media::permissions::requestPermission(media::permissions::DeviceType::Microphone, [this](bool granted){
-                    if (granted)
-                    {   // restart audio device if permission just granted
-                        voip_proxy::device_desc description = activeDevices_[kvoipDevTypeAudioCapture];
-                        setActiveDevice(description, true);
-                    }
-                    localAudPermission_ = granted;
-                    Q_EMIT onVoipMediaLocalAudio(localAudioEnabled_);
-                });
+                media::permissions::requestPermission(media::permissions::DeviceType::Microphone, [this, restartDevice](bool granted)
+                    {
+                        if (granted)
+                            restartDevice();
+                        localAudPermission_ = granted;
+                        Q_EMIT onVoipMediaLocalAudio(localAudioEnabled_);
+                    });
             }
             else
             {
                 Utils::showPermissionDialog(Utils::InterConnector::instance().getMainWindow());
             }
+        }
+        else
+        {
+            if (needReset && localAudPermission_)
+                restartDevice();
+            Q_EMIT onVoipMediaLocalAudio(localAudioEnabled_);
         }
     }
     if (_video)
@@ -1032,13 +896,10 @@ bool voip_proxy::VoipController::setStartCall(const std::vector<QString>& _conta
         if (Cancelled == check || SameCall == check)
             return SameCall == check;
     }
+
     if (!_attach)
         _video = checkPermissions(true, _video);
     _video &= localCamPermission_;
-
-    //!! todo: change support for all contacts avatars
-    //setAvatars(kAvatarVideoSize, _contacts[0].toUtf8().constData(), false);
-    //!!!!!!!!
 
     Ui::gui_coll_helper collection(dispatcher_.create_collection(), true);
     collection.set_value_as_string("type", "voip_call_start");
@@ -1080,9 +941,6 @@ bool voip_proxy::VoipController::setStartChatRoomCall(const QStringView _chatId,
         return SameCall == check;
     _video = checkPermissions(true, _video);
     _video &= localCamPermission_;
-
-    //if (!_contacts.empty())
-    //    setAvatars(kAvatarVideoSize, _contacts[0].toUtf8().constData(), false);
 
     Ui::gui_coll_helper collection(dispatcher_.create_collection(), true);
     collection.set_value_as_string("type", "voip_call_start");
@@ -1131,18 +989,8 @@ void voip_proxy::VoipController::setStartVCS(const QString &_urlConference)
         pendingCallStart_.reset(new Ui::gui_coll_helper(collection));
     else
         dispatcher_.post_message_to_core("voip_call", collection.get());
-}
 
-void voip_proxy::VoipController::setWindowOffsets(quintptr _hwnd, int _l, int _t, int _r, int _b)
-{
-    Ui::gui_coll_helper collection(dispatcher_.create_collection(), true);
-    collection.set_value_as_string("type", "voip_set_window_offsets");
-    collection.set_value_as_int64("handle", _hwnd);
-    collection.set_value_as_int("left", _l);
-    collection.set_value_as_int("top", _t);
-    collection.set_value_as_int("right", _r);
-    collection.set_value_as_int("bottom", _b);
-    dispatcher_.post_message_to_core("voip_call", collection.get());
+    setAvatars(kAvatarLargeSize, Ui::MyInfo()->aimId().toStdString().c_str(), true);
 }
 
 void voip_proxy::VoipController::setWindowAdd(quintptr _hwnd, const char *call_id, bool _primaryWnd, bool _incomeingWnd, int _panelHeight)
@@ -1157,39 +1005,7 @@ void voip_proxy::VoipController::setWindowAdd(quintptr _hwnd, const char *call_i
     collection.set_value_as_bool("incoming_mode", _incomeingWnd);
     collection.set_value_as_int64("handle", _hwnd);
 
-    if (kIncludeCameraOffStatus && _primaryWnd)
-    {
-        QColor penColor = QColor(255, 255, 255, (255 * 90) / 100);
-        QFont font = Fonts::appFont(Utils::scale_bitmap_with_value(12), Fonts::FontWeight::SemiBold);
-        addTextToCollection(collection, "camera_status", QT_TRANSLATE_NOOP("voip_pages", "VOICE"), penColor, font);
-        addTextToCollection(collection, "connecting_status", QT_TRANSLATE_NOOP("voip_pages", "Connecting..."), penColor, font);
-        addTextToCollection(collection, "calling", QT_TRANSLATE_NOOP("voip_pages", "Calling"), penColor, font);
-        addTextToCollection(collection, "closedByBusy", QT_TRANSLATE_NOOP("voip_pages", "Busy"), penColor, font);
-    }
-
-    if (kIncludeWatermark && _primaryWnd)
-    {
-        addImageToCollection(collection, "voip/", "watermark", "watermark_", "", false);
-    }
-
-    if (kIncludeCameraOffStatus && !_primaryWnd && !_incomeingWnd)
-    {
-        auto color = QColor(255, 255, 255, 255 * 70 / 100);
-        //QFont font = Fonts::appFontScaled(12, Fonts::FontWeight::Medium); //? Have problem in the mac
-        QFont font = Fonts::appFont(Utils::scale_bitmap_with_value(12), Fonts::FontWeight::SemiBold);
-       // font.setStyleStrategy(QFont::PreferAntialias);
-
-        addTextToCollection(collection, "camera_status", QT_TRANSLATE_NOOP("voip_pages", "VOICE"), color, font);
-        addTextToCollection(collection, "connecting_status", QT_TRANSLATE_NOOP("voip_pages", "Connecting..."), color, font);
-        addTextToCollection(collection, "calling", QT_TRANSLATE_NOOP("voip_pages", "Calling"), color, font);
-    }
-
     dispatcher_.post_message_to_core("voip_call", collection.get());
-
-    if (!_incomeingWnd)
-        setWindowOffsets(_hwnd, Utils::scale_value(0), Utils::scale_value(0), Utils::scale_value(0), Utils::scale_value(_panelHeight) * Utils::scale_bitmap_ratio());
-
-    setWindowBackground(_hwnd);
 }
 
 void voip_proxy::VoipController::setWindowRemove(quintptr _hwnd)
@@ -1201,12 +1017,6 @@ void voip_proxy::VoipController::setWindowRemove(quintptr _hwnd)
     collection.set_value_as_int64("handle", _hwnd);
     dispatcher_.post_message_to_core("voip_call", collection.get());
 }
-
-/*void voip_proxy::VoipController::getSecureCode(voip_manager::CipherState& _state) const
-{
-    _state.state      = cipherState_.state;
-    _state.secureCode = cipherState_.secureCode;
-}*/
 
 void voip_proxy::VoipController::setAPlaybackMute(bool _mute)
 {
@@ -1258,8 +1068,7 @@ void voip_proxy::VoipController::onStartCall(bool _bOutgoing)
     // Change volume from application settings only for incomming calls.
     if (!_bOutgoing)
     {
-        bool soundEnabled = Ui::get_gui_settings()->get_value<bool>(settings_sounds_enabled, true);
-        setMuteSounds(!soundEnabled);
+        setMuteSounds(false);
     }
 #ifdef __APPLE__
     // Pause iTunes if we have call.
@@ -1282,82 +1091,9 @@ void voip_proxy::VoipController::onEndCall()
     disconnect(Logic::GetAvatarStorage(), &Logic::AvatarStorage::avatarChanged, this, &voip_proxy::VoipController::avatarChanged);
 }
 
-void voip_proxy::VoipController::setWindowBackground(quintptr _hwnd)
+bool voip_proxy::VoipController::isResetCallDialogActive() const
 {
-    unsigned char r = (char)kBackgroundColor.red();
-    unsigned char g = (char)kBackgroundColor.green();
-    unsigned char b = (char)kBackgroundColor.blue();
-    unsigned char a = (char)kBackgroundColor.alpha();
-    Ui::gui_coll_helper collection(dispatcher_.create_collection(), true);
-
-    collection.set_value_as_string("type", "backgroung_update");
-
-    core::ifptr<core::istream> background_stream(collection->create_stream());
-    const unsigned  char pixel[] = {r, g, b, a, r, g, b, a, r, g, b, a, r, g, b, a};
-    background_stream->write((const uint8_t*)pixel, 4 * 4);
-
-    collection.set_value_as_stream("background", background_stream.get());
-    collection.set_value_as_int("background_height", 2);
-    collection.set_value_as_int("background_width", 2);
-    collection.set_value_as_int64("window_handle", _hwnd);
-
-    dispatcher_.post_message_to_core("voip_call", collection.get());
-}
-
-void voip_proxy::VoipController::updateUserAvatar(const voip_manager::ContactEx& _contactEx)
-{
-    setAvatars(kAvatarVideoSize, _contactEx.contact.contact.c_str(), false);
-}
-
-void voip_proxy::VoipController::updateUserAvatar(const std::string& _account, const std::string& _contact)
-{
-    setAvatars(kAvatarVideoSize, _contact.c_str(), false);
-}
-
-void voip_proxy::VoipController::loadMask(const std::string& maskPath)
-{
-    Ui::gui_coll_helper collection(dispatcher_.create_collection(), true);
-    collection.set_value_as_string("type", "voip_load_mask");
-    collection.set_value_as_string("path", maskPath);
-    dispatcher_.post_message_to_core("voip_call", collection.get());
-}
-
-void voip_proxy::VoipController::setWindowSetPrimary(quintptr _hwnd, const char* _contact)
-{
-    Ui::gui_coll_helper collection(dispatcher_.create_collection(), true);
-    collection.set_value_as_string("type", "window_set_primary");
-    collection.set_value_as_int64("handle", _hwnd);
-    collection.set_value_as_string("contact", _contact);
-
-    dispatcher_.post_message_to_core("voip_call", collection.get());
-}
-
-voip_masks::MaskManager* voip_proxy::VoipController::getMaskManager() const
-{
-    return maskManager_.get();
-}
-
-void voip_proxy::VoipController::updateVoipMaskEngineEnable(bool _enable)
-{
-    maskEngineEnable_ = _enable;
-}
-
-bool voip_proxy::VoipController::isMaskEngineEnabled() const
-{
-    return maskEngineEnable_;
-}
-
-void voip_proxy::VoipController::initMaskEngine() const
-{
-    Ui::gui_coll_helper collection(dispatcher_.create_collection(), true);
-    collection.set_value_as_string("type", "voip_init_mask_engine");
-
-    dispatcher_.post_message_to_core("voip_call", collection.get());
-}
-
-void voip_proxy::VoipController::resetMaskManager()
-{
-    maskManager_.reset(new voip_masks::MaskManager(dispatcher_, this));
+    return isResetDialogActive_;
 }
 
 const std::vector<voip_proxy::device_desc>& voip_proxy::VoipController::deviceList(EvoipDevTypes type) const
@@ -1379,52 +1115,6 @@ std::optional<voip_proxy::device_desc> voip_proxy::VoipController::activeDevice(
     return std::nullopt;
 }
 
-bool voip_proxy::VoipController::hasActiveAudioCaptureDevice() const
-{
-    if (const auto it = activeDevices_.find(kvoipDevTypeAudioCapture); it != activeDevices_.end())
-    {
-        const auto& device = it->second;
-        const auto& devices = deviceList(kvoipDevTypeAudioCapture);
-
-        // found "default" device on macos
-        // this is bug here: activeDevices_[] does not updates when macos change default device
-        // it contain previous default device name as is "default (My BT headphones)"
-        constexpr const char defaultStr[] = "default";
-        constexpr const size_t defaultStrLen = sizeof(defaultStr) - 1;
-        if (device.uid.compare(0, defaultStrLen, defaultStr, defaultStrLen) == 0)
-        {
-            return std::any_of(devices.begin(), devices.end(), [defaultStr, defaultStrLen](const auto& dev)
-            {
-                return dev.uid.compare(0, defaultStrLen, defaultStr, defaultStrLen) != 0;
-            });
-        }
-        else
-        {
-            return std::any_of(devices.begin(), devices.end(), [&uid = device.uid](const auto& dev)
-            {
-                return uid == dev.uid;
-            });
-        }
-
-    }
-    return false;
-}
-
-void voip_proxy::VoipController::setWindowVideoLayout(quintptr _hwnd, voip_manager::VideoLayout& layout)
-{
-    Ui::gui_coll_helper collection(dispatcher_.create_collection(), true);
-    collection.set_value_as_string("type", "voip_window_set_conference_layout");
-    collection.set_value_as_int64("handle", _hwnd);
-    collection.set_value_as_int("layout", layout);
-
-    dispatcher_.post_message_to_core("voip_call", collection.get());
-}
-
-void voip_proxy::VoipController::onCallCreate(const voip_manager::ContactEx& _contactEx)
-{
-    setAvatars(kAvatarLargeSize, Ui::MyInfo()->aimId().toStdString().c_str(), true);
-}
-
 void voip_proxy::VoipController::avatarChanged(const QString& aimId)
 {
     auto currentContact = aimId.toStdString();
@@ -1433,11 +1123,6 @@ void voip_proxy::VoipController::avatarChanged(const QString& aimId)
         setAvatars(kAvatarLargeSize, currentContact.c_str(), true);
         return;
     }
-    auto foundContact = std::find_if(activePeerList_.contacts.begin(), activePeerList_.contacts.end(), [&currentContact](const voip_manager::Contact& contact) {
-        return currentContact == contact.contact;
-    });
-    if (foundContact != activePeerList_.contacts.end())
-        setAvatars(kAvatarLargeSize, currentContact.c_str(), false);
 }
 
 const std::vector<voip_manager::Contact>& voip_proxy::VoipController::currentCallContacts() const
@@ -1534,10 +1219,21 @@ voip_proxy::CheckActiveCallResult voip_proxy::VoipController::checkActiveCall(co
     if (isConnectionEstablished())
     {
         const auto sameRoom = isCallPinnedRoom() && getChatId() == _contact;
-        const auto sameVCS  = isCallVCS() && vcsConferenceUrl_ == _contact;
+        const auto sameVCS = isCallVCS() && vcsConferenceUrl_ == _contact && chatId_ == _contact;
+        const auto sameVCSLink = isCallVCSLink() && chatId_ == _contact;
         const auto sameContact = callType_ == voip::kCallType_NORMAL && 1 == activePeerList_.contacts.size() && activePeerList_.contacts[0].contact == _contact;
-        if (!sameRoom && !sameContact && !sameVCS)
+
+        if (!sameRoom && !sameContact && !sameVCS && !sameVCSLink)
         {
+            if (Ui::GeneralDialog* instance = Ui::GeneralDialog::activeInstance())
+            {
+                if (Utils::hasAncestorOf<Ui::VideoWindow*>(instance))
+                {
+                    disconnect(this, &voip_proxy::VoipController::onVoipWindowRemoveComplete, instance, &Ui::GeneralDialog::reject);
+                    instance->reject();
+                }
+            }
+            QScopedValueRollback guard(isResetDialogActive_, true);
             QString text;
             auto page = Utils::InterConnector::instance().getHistoryPage(QString::fromStdString(_contact));
             if (page && page->chatRoomCallParticipantsCount() > 0)
@@ -1573,23 +1269,13 @@ const QList<voip_proxy::device_desc>& voip_proxy::VoipController::screenList() c
     return screenList_;
 }
 
-void voip_proxy::VoipController::passWindowHover(quintptr _hwnd, bool hover)
+void voip_proxy::VoipController::setRenderResolution(std::string_view _contact, int _width, int _height)
 {
     Ui::gui_coll_helper collection(dispatcher_.create_collection(), true);
-    collection.set_value_as_string("type", "voip_window_set_hover");
-    collection.set_value_as_int64("handle", _hwnd);
-    collection.set_value_as_bool("hover", hover);
-
-    dispatcher_.post_message_to_core("voip_call", collection.get());
-}
-
-void voip_proxy::VoipController::updateLargeState(quintptr _hwnd, bool large)
-{
-    Ui::gui_coll_helper collection(dispatcher_.create_collection(), true);
-    collection.set_value_as_string("type", "voip_window_large_state");
-    collection.set_value_as_int64("handle", _hwnd);
-    collection.set_value_as_bool("large", large);
-
+    collection.set_value_as_string("type", "voip_peer_resolution_changed");
+    collection.set_value_as_string("contact", _contact);
+    collection.set_value_as_int("width", _width);
+    collection.set_value_as_int("height", _height);
     dispatcher_.post_message_to_core("voip_call", collection.get());
 }
 

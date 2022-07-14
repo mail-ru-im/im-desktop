@@ -26,6 +26,7 @@ namespace  Ui
         virtual void cancelSelection() {}
         virtual void suspendVisisbleItems() {}
         virtual void pageLeave() {}
+        virtual void mainPageChanged() { pageLeave(); }
         virtual void setPinnedMessage(Data::MessageBuddySptr _msg) {}
         virtual void setUnreadBadgeText(const QString& _text) {}
         virtual const QString& aimId() const { static QString empty; return empty; }
@@ -47,5 +48,7 @@ namespace  Ui
         virtual QWidget* getTopWidget() const { return nullptr; }
         virtual void pageOpen() {}
         virtual void updateItems() {}
+        virtual void scrollToInput(const QString&) {}
+        virtual void scrollToTop() {}
     };
 }

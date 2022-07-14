@@ -20,10 +20,10 @@ namespace Ui
     class PhoneInputContainer;
     class CodeInputContainer;
     class TextEditEx;
-    class CountrySearchCombobox;
     class CustomButton;
     class DialogButton;
     class TermsPrivacyWidget;
+    class UserAgreementWidget;
     class IntroduceYourself;
     class TextWidget;
     class ContextMenu;
@@ -66,6 +66,7 @@ namespace Ui
         void sendCode();
         void callPhone();
         void getSmsResult(int64_t, int, int, const QString& _ivrUrl, const QString& _checks);
+        void oauthRequired();
         void loginResult(int64_t, int, bool);
         void loginResultAttachPhone(int64_t, int);
         void clearErrors(bool ignorePhoneInfo = false);
@@ -78,18 +79,25 @@ namespace Ui
         void onUrlConfigError(const int _error);
 
     public Q_SLOTS:
+        void loginAfterUserAgreementAccept();
+        void logoutAfterUserAgreementAccept();
+        void doLogin();
         void prevPage();
         void switchLoginType();
         void openProxySettings();
+        void openUserAgreement(const QString& _confidentialLink, const QString& _pdLink);
 
    private Q_SLOTS:
         void openOAuth2Dialog();
         void onAuthCodeReceived(const QString& _token);
         void onAuthDialogResult(int _result);
+        void onLogout();
 
     public:
         LoginPage(QWidget* _parent);
         ~LoginPage() = default;
+        void enableLoginPage(bool _needInitSubPage = false);
+        void userAgreementSwitchPages(bool _needEnable);
 
         static bool isCallCheck(const QString& _checks);
 
@@ -116,8 +124,11 @@ namespace Ui
         void initGDPR();
         bool needGDPRPage() const;
         void connectGDPR();
-        void setGDPRacceptedThisSession(bool _accepted);
-        bool gdprAcceptedThisSession() const;
+        void setGDPRacceptedThisSession(bool _accepted) { gdprAccepted_ = _accepted; };
+        bool gdprAcceptedThisSession() const{ return gdprAccepted_; };
+        bool needUserAgreementPage() const;
+        void setUserAgreementAcceptedThisSession(bool _accepted) { userAgreementAccepted_ = _accepted; };
+        bool userAgreementAcceptedThisSession() const { return userAgreementAccepted_; }
         void setErrorText(int _result);
         void setErrorText(const QString& _customError);
         void updateErrors(int _result);
@@ -155,9 +166,10 @@ namespace Ui
 
     private:
 
-        QStackedWidget*         mainStakedWidget_;
+        QStackedWidget*         mainStakedWidget_ = nullptr;
 
-        TermsPrivacyWidget*     termsWidget_;
+        TermsPrivacyWidget*     termsWidget_ = nullptr;
+        UserAgreementWidget*    userAgreementWidget_ = nullptr;
         QTimer*                 timer_;
         LineEditEx*             countryCode_;
         PhoneInputContainer*    phone_;
@@ -190,6 +202,7 @@ namespace Ui
         int                     codeLength_;
         bool                    phoneChangedAuto_;
         bool                    gdprAccepted_;
+        bool                    userAgreementAccepted_;
         bool                    loggedIn_;
 
         Data::PhoneInfo         receivedPhoneInfo_;

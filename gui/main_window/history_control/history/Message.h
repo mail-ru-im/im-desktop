@@ -20,11 +20,12 @@ namespace HistoryControl
 
 namespace Logic
 {
-    enum class control_type
+    enum class ControlType
     {
-        ct_date = 0,
-        ct_message = 1,
-        ct_new_messages = 2
+        Date,
+        Message,
+        ThreadReplies,
+        NewMessages
     };
 
     class MessageKey
@@ -37,7 +38,7 @@ namespace Logic
 
         MessageKey(
             const qint64 _id,
-            const control_type _control_type);
+            const ControlType _control_type);
 
         MessageKey(
             const qint64 _id,
@@ -51,7 +52,7 @@ namespace Logic
             const qint32 _time,
             const core::message_type _type,
             const bool _outgoing,
-            const control_type _control_type,
+            const ControlType _control_type,
             const QDate _date);
 
         bool isEmpty() const noexcept
@@ -119,8 +120,6 @@ namespace Logic
 
         bool isNewMessagesPlate() const noexcept;
 
-        bool iNewPlate() const noexcept;
-
         void setId(const int64_t _id) noexcept;
 
         qint64 getId() const noexcept;
@@ -129,8 +128,8 @@ namespace Logic
 
         QString toLogStringShort() const;
 
-        void setControlType(const control_type _controlType) noexcept;
-        control_type getControlType() const noexcept;
+        void setControlType(const ControlType _controlType) noexcept;
+        ControlType getControlType() const noexcept;
 
         core::message_type getType() const noexcept;
         void setType(core::message_type _type) noexcept;
@@ -157,7 +156,7 @@ namespace Logic
 
         core::message_type type_;
 
-        control_type controlType_;
+        ControlType controlType_;
 
         qint32 time_;
 

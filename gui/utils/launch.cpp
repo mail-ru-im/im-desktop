@@ -6,7 +6,6 @@
 #include "../types/link_metadata.h"
 #include "../types/message.h"
 #include "../types/typing.h"
-#include "../types/masks.h"
 #include "../types/session_info.h"
 #include "../types/thread.h"
 #include "../cache/stickers/stickers.h"
@@ -15,6 +14,7 @@
 #include "../main_window/history_control/history/History.h"
 #include "../main_window/history_control/corner_menu/CornerMenu.h"
 #include "../main_window/tray/RecentMessagesAlert.h"
+#include "../main_window/sidebar/GalleryList.h"
 #include "../voip/quality/ShowQualityStarsPopupConfig.h"
 #include "../voip/quality/ShowQualityReasonsPopupConfig.h"
 #include "../core_dispatcher.h"
@@ -24,6 +24,8 @@
 #include "styles/WallpaperId.h"
 #include "sys/sys.h"
 #include "controls/ClickWidget.h"
+#include "../fonts.h"
+#include "opengl.h"
 
 
 #ifndef STRIP_CRASH_HANDLER
@@ -56,6 +58,7 @@
 
 #ifdef __linux__
     Q_IMPORT_PLUGIN(QXcbIntegrationPlugin)
+    Q_IMPORT_PLUGIN(QXcbGlxIntegrationPlugin)
 #endif //__linux__
 
 #ifdef __APPLE__
@@ -120,130 +123,6 @@ namespace
 #endif //_WIN32
     }
 
-    bool checkDesktopGl()
-    {
-        //qtbase\src\plugins\platforms\windows\qwindowsopengltester.cpp
-        //we try this code before it crashes
-#ifdef _WIN32
-        typedef HGLRC(WINAPI* CreateContextType)(HDC);
-        typedef BOOL(WINAPI* DeleteContextType)(HGLRC);
-        typedef BOOL(WINAPI* MakeCurrentType)(HDC, HGLRC);
-        typedef PROC(WINAPI* WglGetProcAddressType)(LPCSTR);
-
-        HMODULE lib = nullptr;
-        HWND wnd = nullptr;
-        HDC dc = nullptr;
-        HGLRC context = nullptr;
-        LPCTSTR className = L"opengltest";
-
-        CreateContextType CreateContext = nullptr;
-        DeleteContextType DeleteContext = nullptr;
-        MakeCurrentType MakeCurrent = nullptr;
-        WglGetProcAddressType WGL_GetProcAddress = nullptr;
-
-        bool result = false;
-
-        lib = LoadLibraryA("opengl32.dll");
-        if (lib) 
-        {
-            CreateContext = reinterpret_cast<CreateContextType>(reinterpret_cast<QFunctionPointer>(::GetProcAddress(lib, "wglCreateContext")));
-            if (!CreateContext)
-                goto cleanup;
-            DeleteContext = reinterpret_cast<DeleteContextType>(reinterpret_cast<QFunctionPointer>(::GetProcAddress(lib, "wglDeleteContext")));
-            if (!DeleteContext)
-                goto cleanup;
-            MakeCurrent = reinterpret_cast<MakeCurrentType>(reinterpret_cast<QFunctionPointer>(::GetProcAddress(lib, "wglMakeCurrent")));
-            if (!MakeCurrent)
-                goto cleanup;
-            WGL_GetProcAddress = reinterpret_cast<WglGetProcAddressType>(reinterpret_cast<QFunctionPointer>(::GetProcAddress(lib, "wglGetProcAddress")));
-            if (!WGL_GetProcAddress)
-                goto cleanup;
-
-            WNDCLASS wclass;
-            wclass.cbClsExtra = 0;
-            wclass.cbWndExtra = 0;
-            wclass.hInstance = static_cast<HINSTANCE>(GetModuleHandle(nullptr));
-            wclass.hIcon = nullptr;
-            wclass.hCursor = nullptr;
-            wclass.hbrBackground = HBRUSH(COLOR_BACKGROUND);
-            wclass.lpszMenuName = nullptr;
-            wclass.lpfnWndProc = DefWindowProc;
-            wclass.lpszClassName = className;
-            wclass.style = CS_OWNDC;
-            if (!RegisterClass(&wclass))
-                goto cleanup;
-            wnd = CreateWindow(className, L"openglproxytest", WS_OVERLAPPED, 0, 0, 640, 480, nullptr, nullptr, wclass.hInstance, nullptr);
-            if (!wnd)
-                goto cleanup;
-            dc = GetDC(wnd);
-            if (!dc)
-                goto cleanup;
-
-            PIXELFORMATDESCRIPTOR pfd;
-            memset(&pfd, 0, sizeof(PIXELFORMATDESCRIPTOR));
-            pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
-            pfd.nVersion = 1;
-            pfd.dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW | PFD_GENERIC_FORMAT;
-            pfd.iPixelType = PFD_TYPE_RGBA;
-            int pixelFormat = ChoosePixelFormat(dc, &pfd);
-            if (!pixelFormat)
-                goto cleanup;
-            if (!SetPixelFormat(dc, pixelFormat, &pfd))
-                goto cleanup;
-            context = CreateContext(dc);
-            if (!context)
-                goto cleanup;
-            if (!MakeCurrent(dc, context))
-                goto cleanup;
-
-            typedef const GLubyte* (APIENTRY* GetString_t)(GLenum name);
-            auto GetString = reinterpret_cast<GetString_t>(reinterpret_cast<QFunctionPointer>(::GetProcAddress(lib, "glGetString")));
-            if (GetString) 
-            {
-                if (const char* versionStr = reinterpret_cast<const char*>(GetString(GL_VERSION))) {
-                    const QByteArray version(versionStr);
-                    const int majorDot = version.indexOf('.');
-                    if (majorDot != -1) 
-                    {
-                        int minorDot = version.indexOf('.', majorDot + 1);
-                        if (minorDot == -1)
-                            minorDot = version.size();
-
-                        const int major = version.mid(0, majorDot).toInt();
-                        const int minor = version.mid(majorDot + 1, minorDot - majorDot - 1).toInt();
-                        if (major == 1)
-                            result = false;
-                    }
-                }
-            }
-            else 
-            {
-                result = false;
-            }
-
-            if (WGL_GetProcAddress("glCreateShader"))
-                result = true;
-        }
-
-    cleanup:
-        if (MakeCurrent)
-            MakeCurrent(nullptr, nullptr);
-        if (context)
-            DeleteContext(context);
-        if (dc && wnd)
-            ReleaseDC(wnd, dc);
-        if (wnd) 
-        {
-            DestroyWindow(wnd);
-            UnregisterClass(className, GetModuleHandle(nullptr));
-        }
-
-        return result;
-#else
-        return false;
-#endif //_WIN32
-    }
-
     void checkGpuDrivers()
     {
 #ifdef _WIN32
@@ -256,12 +135,86 @@ namespace
             MessageBoxW(NULL, L"Please update your graphics card driver", L"Error", MB_OK);
         }
 #endif //_WIN32
+#ifdef __APPLE__
+        QSurfaceFormat glFormat = QSurfaceFormat::defaultFormat();
+        glFormat.setAlphaBufferSize(8);
+        QSurfaceFormat::setDefaultFormat(glFormat);
+#endif
+    }
+
+    void copyRecursively(const QString &srcFilePath, const QString &tgtFilePath)
+    {
+        QFileInfo srcFileInfo(srcFilePath);
+        if (srcFileInfo.isDir())
+        {
+            QDir targetDir(tgtFilePath);
+            targetDir.cdUp();
+
+            targetDir.mkdir(QFileInfo(tgtFilePath).fileName());
+
+            QDir sourceDir(srcFilePath);
+            QStringList fileNames = sourceDir.entryList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System);
+            for (const auto& fileName : fileNames)
+            {
+                if (fileName == qsl("config.json") || fileName == qsl("app.ini") || fileName == qsl("myteam-config.json") || fileName == qsl("omicron.stg"))
+                    continue;
+
+                const QString newSrcFilePath = srcFilePath + QLatin1Char('/') + fileName;
+                const QString newTgtFilePath = tgtFilePath + QLatin1Char('/') + fileName;
+                copyRecursively(newSrcFilePath, newTgtFilePath);
+            }
+        }
+        else
+        {
+            QFile::copy(srcFilePath, tgtFilePath);
+        }
+    }
+
+    void migrate(char* binary_path)
+    {
+        if (platform::is_windows())
+            return;
+
+        const auto productPathOld = config::get().string(config::values::product_path_old);
+        if (productPathOld.empty())
+            return;
+
+        if (platform::is_linux() && binary_path)
+        {
+            const auto oldBinary = config::get().string(config::values::product_name_old);
+            if (!oldBinary.empty())
+            {
+                QDir d = QFileInfo(QString::fromLatin1(binary_path)).absoluteDir();
+                QString oldBinaryPath = (d.path() % ql1c('/') % QString::fromUtf8(oldBinary.data(), oldBinary.size()));
+                QFile::remove(oldBinaryPath);//remove symlink after update
+            }
+        }
+
+        const auto productPath = config::get().string(platform::is_apple() ? config::values::product_path_mac : config::values::product_path);
+        const QString fullProductPathOld = QStandardPaths::writableLocation(platform::is_apple() ? QStandardPaths::GenericDataLocation : QStandardPaths::ConfigLocation) % u'/' % QString::fromUtf8(productPathOld.data(), productPathOld.size());
+        const QString fullProductPath = QStandardPaths::writableLocation(platform::is_apple() ? QStandardPaths::GenericDataLocation : QStandardPaths::ConfigLocation) % u'/' % QString::fromUtf8(productPath.data(), productPath.size());
+        const QString migratedFile = fullProductPath % qsl("/migrated");
+        if (QFile::exists(migratedFile))
+            return;
+
+        QDir dir;
+        if (!dir.exists(fullProductPath))
+            dir.mkpath(fullProductPath);
+
+        copyRecursively(fullProductPathOld, fullProductPath);
+
+        QFile file(migratedFile);
+        file.open(QIODevice::WriteOnly);
+        file.close();
+    };
+
+    constexpr std::string_view develop_argument() noexcept
+    {
+        return "--develop";
     }
 }
 
 launch::CommandLineParser::CommandLineParser(int _argc, char* _argv[])
-    : isUrlCommand_(false)
-    , isVersionCommand_(false)
 {
     if (_argc > 0)
     {
@@ -272,19 +225,25 @@ launch::CommandLineParser::CommandLineParser(int _argc, char* _argv[])
             const auto arg = _argv[i];
             if (arg == std::string_view("-urlcommand"))
             {
-                isUrlCommand_ = true;
-
-                ++i;
-
-                if (i >= _argc)
+                const auto commandIndex = i + 1;
+                if (commandIndex >= _argc)
                     break;
 
-                urlCommand_ = QString::fromUtf8(_argv[i]);
+                const auto urlCommand = QString::fromUtf8(_argv[commandIndex]);
+                if (!urlCommand_.startsWith(qsl("-")))
+                {
+                    urlCommand_ = urlCommand;
+                    ++i;
+                }
             }
             else if (!platform::is_windows() && i == 1 && arg == std::string_view("--version"))
             {
                 isVersionCommand_ = true;
                 break;
+            }
+            else if (arg == develop_argument())
+            {
+                developFlag_ = true;
             }
         }
     }
@@ -294,12 +253,17 @@ launch::CommandLineParser::~CommandLineParser() = default;
 
 bool launch::CommandLineParser::isUrlCommand() const
 {
-    return isUrlCommand_;
+    return !urlCommand_.isEmpty();
 }
 
 bool launch::CommandLineParser::isVersionCommand() const
 {
     return isVersionCommand_;
+}
+
+bool launch::CommandLineParser::hasDevelopFlag() const
+{
+    return developFlag_;
 }
 
 const QString& launch::CommandLineParser::getUrlCommand() const
@@ -377,19 +341,31 @@ int launch::main(int _argc, char* _argv[])
     if constexpr (build::is_debug())
         defaultHandler = qInstallMessageHandler(debugMessageHandler);
 
+    migrate(_argv[0]);
+
     handleRlimits();
     checkGpuDrivers();
     handleGpuBlacklist();
+
+    CommandLineParser cmd_parser(_argc, _argv);
+    if (cmd_parser.isVersionCommand())
+    {
+        qInfo() << qPrintable(Utils::getVersionPrintable());
+        return 0;
+    }
+
+    config::get_mutable().set_develop_command_line_flag(cmd_parser.hasDevelopFlag());
+    config::try_replace_with_develop_config();
 
     int result;
     bool restarting;
 
 #ifdef __linux__
-        sigset_t set;
-        sigemptyset(&set);
-        sigaddset(&set, SIGPIPE);
-        if (pthread_sigmask(SIG_BLOCK, &set, NULL) != 0)
-            im_assert(false);
+    sigset_t set;
+    sigemptyset(&set);
+    sigaddset(&set, SIGPIPE);
+    if (pthread_sigmask(SIG_BLOCK, &set, NULL) != 0)
+        im_assert(false);
 #else
 #ifndef STRIP_CRASH_HANDLER
     crash_system::reporter::instance();
@@ -448,20 +424,15 @@ int launch::main(int _argc, char* _argv[])
 
         int argCount = int(v_args.size());
 
+        if constexpr (platform::is_linux())
+            qputenv("QTWEBENGINE_CHROMIUM_FLAGS", QByteArray::fromStdString("--no-sandbox"));
+
         //qputenv("QTWEBENGINE_CHROMIUM_FLAGS", QByteArray::fromStdString("--enable-logging --log-level=0 --v=1 --single-process"));
 
         Utils::Application app(argCount, v_args.data());
         QLoggingCategory::setFilterRules(getLoggingCategoryFilter());
 
         commandLine = qApp->arguments().constFirst();
-
-        CommandLineParser cmd_parser(_argc, _argv);
-
-        if (cmd_parser.isVersionCommand())
-        {
-            qInfo() << qPrintable(Utils::getVersionPrintable());
-            return 0;
-        }
 
         if (!app.isMainInstance())
             return app.switchInstance(cmd_parser);
@@ -512,7 +483,6 @@ int launch::main(int _argc, char* _argv[])
             qRegisterMetaType<hist::FetchDirection>("hist::FetchDirection");
             qRegisterMetaType<std::map<QString, int32_t>>("std::map<QString, int32_t>");
             qRegisterMetaType<Styling::WallpaperId>("Styling::WallpaperId");
-            qRegisterMetaType<std::vector<Data::Mask>>("std::vector<Data::Mask>");
             qRegisterMetaType<Data::MentionMap>("Data::MentionMap");
             qRegisterMetaType<std::chrono::seconds>("std::chrono::seconds");
             qRegisterMetaType<std::chrono::milliseconds>("std::chrono::milliseconds");
@@ -549,6 +519,13 @@ int launch::main(int _argc, char* _argv[])
 #endif
             qRegisterMetaType<Data::TaskData>("Data::TaskData");
             qRegisterMetaType<Data::TaskChange>("Data::TaskChange");
+
+            qRegisterMetaType<Styling::StyleVariable>("Styling::StyleVariable");
+
+            qRegisterMetaType<Fonts::FontFamily>("Fonts::FontFamily");
+            qRegisterMetaType<Fonts::FontWeight>("Fonts::FontWeight");
+
+            qRegisterMetaType<Ui::MediaContentType>("Ui::MediaContentType");
         }
         else
         {
@@ -573,10 +550,37 @@ int launch::main(int _argc, char* _argv[])
         QT_TRANSLATE_NOOP("QLineEdit", "Delete");
         QT_TRANSLATE_NOOP("QLineEdit", "Select All");
 
+        QT_TRANSLATE_NOOP("RenderViewContextMenuQt", "Back");
+        QT_TRANSLATE_NOOP("RenderViewContextMenuQt", "Forward");
+        QT_TRANSLATE_NOOP("RenderViewContextMenuQt", "Reload");
+        QT_TRANSLATE_NOOP("RenderViewContextMenuQt", "Cut");
+        QT_TRANSLATE_NOOP("RenderViewContextMenuQt", "Copy");
+        QT_TRANSLATE_NOOP("RenderViewContextMenuQt", "Paste");
+        QT_TRANSLATE_NOOP("RenderViewContextMenuQt", "Undo");
+        QT_TRANSLATE_NOOP("RenderViewContextMenuQt", "Redo");
+        QT_TRANSLATE_NOOP("RenderViewContextMenuQt", "Select all");
+        QT_TRANSLATE_NOOP("RenderViewContextMenuQt", "Paste and match style");
+        QT_TRANSLATE_NOOP("RenderViewContextMenuQt", "Open link in new window");
+        QT_TRANSLATE_NOOP("RenderViewContextMenuQt", "Open link in new tab");
+        QT_TRANSLATE_NOOP("RenderViewContextMenuQt", "Copy link address");
+        QT_TRANSLATE_NOOP("RenderViewContextMenuQt", "Save link");
+        QT_TRANSLATE_NOOP("RenderViewContextMenuQt", "Copy image");
+        QT_TRANSLATE_NOOP("RenderViewContextMenuQt", "Copy image address");
+        QT_TRANSLATE_NOOP("RenderViewContextMenuQt", "Save image");
+        QT_TRANSLATE_NOOP("RenderViewContextMenuQt", "Copy media address");
+        QT_TRANSLATE_NOOP("RenderViewContextMenuQt", "Show controls");
+        QT_TRANSLATE_NOOP("RenderViewContextMenuQt", "Loop");
+        QT_TRANSLATE_NOOP("RenderViewContextMenuQt", "Save media");
+        QT_TRANSLATE_NOOP("RenderViewContextMenuQt", "Inspect");
+        QT_TRANSLATE_NOOP("RenderViewContextMenuQt", "Exit full screen");
+        QT_TRANSLATE_NOOP("RenderViewContextMenuQt", "Save page");
+        QT_TRANSLATE_NOOP("RenderViewContextMenuQt", "View page source");
+
         result = app.exec();
         restarting = qApp->property("restarting").toBool();
     }
 
+    config::reset_config();
     Ui::destroyDispatcher();
 
     // Cleanup
@@ -588,7 +592,7 @@ int launch::main(int _argc, char* _argv[])
 #ifdef __linux__
         execv(_argv[0], _argv);
 #else
-        System::launchApplication(commandLine);
+        System::launchApplication(commandLine, cmd_parser.hasDevelopFlag() ? QStringList{ QString::fromStdString(std::string(develop_argument())) } : QStringList{});
 #endif
     }
 

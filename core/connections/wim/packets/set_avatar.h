@@ -34,10 +34,11 @@ namespace core
             set_avatar(wim_packet_params _params, tools::binary_stream _image, const std::string& _aimId, const bool _chat);
             virtual ~set_avatar();
 
-            inline const std::string &get_id() const { return id_; }
-            virtual bool is_post() const override { return true; }
-            virtual bool support_async_execution() const override { return false; }
-            virtual std::string_view get_method() const override;
+            inline const std::string& get_id() const { return id_; }
+            bool is_post() const override { return true; }
+            bool support_async_execution() const override { return false; }
+            std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
         };
     }
 }

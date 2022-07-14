@@ -4,6 +4,7 @@
 
 #include "../../../http_request.h"
 #include "../wim_history.h"
+#include "../log_replace_functor.h"
 
 #include "../../urls_cache.h"
 
@@ -58,4 +59,9 @@ const permit_info& get_permit_deny::get_ignore_list() const
 std::string_view get_permit_deny::get_method() const
 {
     return "getPreferencePermitDeny";
+}
+
+int core::wim::get_permit_deny::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }

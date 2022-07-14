@@ -95,7 +95,7 @@ namespace Ui
         void paintEvent(QPaintEvent* _e) override;
 
     private:
-        QColor getTextColor() const;
+        Styling::ThemeColorKey getTextColor() const;
         QColor getBubbleColor() const;
 
         void updateColors();

@@ -18,7 +18,8 @@ namespace core::wim
 
         const id_info_response& get_response() const;
         const std::shared_ptr<core::archive::persons_map>& get_persons() const override;
-        virtual std::string_view get_method() const override;
+        std::string_view get_method() const override;
+        int minimal_supported_api_version() const override;
 
     private:
         int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;

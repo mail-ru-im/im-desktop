@@ -11,5 +11,6 @@ struct ShadowLayer
 };
 
 void drawLayeredShadow(QPainter& _p, const QPainterPath& _path, const std::vector<ShadowLayer>& _layers);
+void drawRoundedShadow(QPaintDevice* _paintDevice, const QRect& _rect, int _width, QStyle::State _state);
 
 }

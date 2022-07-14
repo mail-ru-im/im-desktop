@@ -50,14 +50,24 @@ namespace Ui::MessageStyle
         return getTextFont();
     }
 
+    Styling::ThemeColorKey getTextColorKey()
+    {
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID };
+    }
+
     QColor getTextColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
+        return Styling::getColor(getTextColorKey());
+    }
+
+    Styling::ThemeColorKey getLinkColorKey()
+    {
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_PRIMARY };
     }
 
     QColor getLinkColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY);
+        return Styling::getColor(getLinkColorKey());
     }
 
     QColor getSelectionFontColor()
@@ -65,24 +75,34 @@ namespace Ui::MessageStyle
         return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
     }
 
+    Styling::ThemeColorKey getTextSelectionColorKey(const QString& _aimId)
+    {
+        return Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY_BRIGHT_HOVER, _aimId };
+    }
+
     QColor getTextSelectionColor(const QString& _aimId)
     {
-        return Styling::getParameters(_aimId).getColor(Styling::StyleVariable::PRIMARY_BRIGHT_HOVER);
+        return Styling::getColor(getTextSelectionColorKey(_aimId));
+    }
+
+    Styling::ThemeColorKey getSelectionColorKey()
+    {
+        return Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY, 0.3 };
     }
 
     QColor getSelectionColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY, 0.3);
+        return Styling::getColor(getSelectionColorKey());
     }
 
-    QColor getHighlightColor()
+    Styling::ThemeColorKey getHighlightColorKey()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_RAINBOW_WARNING);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::SECONDARY_RAINBOW_WARNING };
     }
 
-    QColor getHighlightTextColor()
+    Styling::ThemeColorKey getHighlightTextColorKey()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::GHOST_PRIMARY);
+        return Styling::ThemeColorKey{ Styling::StyleVariable::GHOST_PRIMARY };
     }
 
     QFont getSenderFont()
@@ -118,9 +138,14 @@ namespace Ui::MessageStyle
         return Utils::scale_value(1);
     }
 
+    QColor getBodyColor(const bool _isOutgoing, const QString& _aimId)
+    {
+        return Styling::getParameters(_aimId).getColor(_isOutgoing ? Styling::StyleVariable::CHAT_SECONDARY : Styling::StyleVariable::CHAT_PRIMARY);
+    }
+
     QBrush getBodyBrush(const bool _isOutgoing, const QString& _aimId)
     {
-        auto color = Styling::getParameters(_aimId).getColor(_isOutgoing ? Styling::StyleVariable::CHAT_SECONDARY : Styling::StyleVariable::CHAT_PRIMARY);
+        auto color = getBodyColor(_isOutgoing, _aimId);
         if (Utils::InterConnector::instance().isMultiselect(_aimId))
             color.setAlpha(255 * 0.95);
 
@@ -147,10 +172,10 @@ namespace Ui::MessageStyle
         return Utils::scale_value(hasTopMargin ? 8 : 2);
     }
 
-    int32_t getRightBubbleMargin(const QString& _aimId)
+    int32_t getRightBubbleMargin(bool _isMultiselected)
     {
-        const auto added = Utils::InterConnector::instance().isMultiselect(_aimId)
-            ? (Utils::InterConnector::instance().multiselectAnimationCurrent() * Utils::scale_value(8) / 100.0)
+        const auto added = _isMultiselected
+            ? (Utils::InterConnector::instance().multiselectAnimationCurrent() * Utils::scale_value(8))
             : 0;
         return Utils::scale_value(32) + added;
     }
@@ -199,10 +224,10 @@ namespace Ui::MessageStyle
         return calcMarginFromBreakpoints(breakpoints, _width, getLeftBubbleMargin);
     }
 
-    int32_t getRightMargin(const bool _isOutgoing, const int _width, const QString& _aimId)
+    int32_t getRightMargin(const bool _isOutgoing, const int _width, bool _isMultiselected)
     {
         if (_isOutgoing)
-            return getRightBubbleMargin(_aimId);
+            return getRightBubbleMargin(_isMultiselected);
 
         constexpr auto breakpoints = std::array{
             WidthBreakpoint{5, getHeadsWidthUnscaled(5), 136                                   , 0.},
@@ -210,7 +235,7 @@ namespace Ui::MessageStyle
             WidthBreakpoint{3, getHeadsWidthUnscaled(3), 136 - 2 * getSingleHeadWidthUnscaled(), 1.},
             WidthBreakpoint{0, 396,  32, 1.},
         };
-        return calcMarginFromBreakpoints(breakpoints, _width, [&_aimId]() { return getRightBubbleMargin(_aimId); });
+        return calcMarginFromBreakpoints(breakpoints, _width, [&_isMultiselected]() { return getRightBubbleMargin(_isMultiselected); });
     }
 
     int32_t getSenderTopPadding()
@@ -491,9 +516,14 @@ namespace Ui::MessageStyle
         return Utils::scale_value(50);
     }
 
-    int getMessageMaxWidth()
+    int getMessageMaxWidth() noexcept
     {
         return Utils::scale_value(600);
+    }
+
+    int getTextCodeMessageMaxWidth() noexcept 
+    {
+        return Utils::scale_value(1100);
     }
 
     QColor getBlockedFileIconBackground(bool _isOutgoing)
@@ -514,21 +544,39 @@ namespace Ui::MessageStyle
         return Styling::getParameters().getColor(var);
     }
 
-    QColor getFileStatusIconBackground(FileStatus _status, bool _isOutgoing)
+    QColor getInfectedFileIconBackground(bool _isOutgoing)
     {
-        if (_status == FileStatus::AntivirusOk)
+        const auto var = _isOutgoing
+            ? Styling::StyleVariable::PRIMARY_BRIGHT
+            : Styling::StyleVariable::GHOST_ULTRALIGHT_INVERSE;
+
+        return Styling::getParameters().getColor(var);
+    }
+
+    QColor getInfectedFileIconColor(bool _isOutgoing)
+    {
+        const auto var = _isOutgoing
+            ? Styling::StyleVariable::PRIMARY_PASTEL
+            : Styling::StyleVariable::BASE_SECONDARY;
+
+        return Styling::getParameters().getColor(var);
+    }
+
+    QColor getFileStatusIconBackground(FileStatusType _status, bool _isOutgoing)
+    {
+        if (_status == FileStatusType::AntivirusOk)
             return Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_RAINBOW_MINT, _isOutgoing ? 0.15 : 0.12);
-        else if (_status == FileStatus::AntivirusInfected)
+        else if (_status == FileStatusType::VirusInfected)
             return Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION, _isOutgoing ? 0.15 : 0.12);
 
         return Styling::getParameters().getColor(_isOutgoing ? Styling::StyleVariable::PRIMARY_BRIGHT : Styling::StyleVariable::BASE_BRIGHT);
     }
 
-    Styling::StyleVariable getFileStatusIconColor(FileStatus _status, bool _isOutgoing) noexcept
+    Styling::StyleVariable getFileStatusIconColor(FileStatusType _type, bool _isOutgoing) noexcept
     {
-        if (_status == FileStatus::AntivirusOk)
+        if (_type == FileStatusType::AntivirusOk)
             return Styling::StyleVariable::SECONDARY_RAINBOW_MINT;
-        else if (_status == FileStatus::AntivirusInfected)
+        else if (_type == FileStatusType::VirusInfected)
             return Styling::StyleVariable::SECONDARY_ATTENTION;
 
         return _isOutgoing ? Styling::StyleVariable::PRIMARY_PASTEL : Styling::StyleVariable::BASE_PRIMARY;
@@ -650,7 +698,7 @@ namespace Ui::MessageStyle
 
         QFont getSiteNameFont()
         {
-            return adjustedAppFont(12, Fonts::FontWeight::SemiBold);
+            return Fonts::adjustedAppFont(12, Fonts::FontWeight::SemiBold);
         }
 
         QSize getSiteNamePlaceholderSize()
@@ -675,7 +723,7 @@ namespace Ui::MessageStyle
 
         QFont getYoutubeTitleFont()
         {
-            return adjustedAppFont(15, Fonts::FontWeight::SemiBold);
+            return Fonts::adjustedAppFont(15, Fonts::FontWeight::SemiBold);
         }
 
         int32_t getSiteNameLeftPadding()
@@ -727,32 +775,32 @@ namespace Ui::MessageStyle
 
         QFont getTitleFont()
         {
-            return adjustedAppFont(15, Fonts::FontWeight::SemiBold);
+            return Fonts::adjustedAppFont(15, Fonts::FontWeight::SemiBold);
         }
 
         QFont getDescriptionFont()
         {
-            return adjustedAppFont(15, Fonts::FontWeight::Normal);
+            return Fonts::adjustedAppFont(15, Fonts::FontWeight::Normal);
         }
 
         QFont getLinkFont()
         {
-            return adjustedAppFont(13, Fonts::FontWeight::Medium);
+            return Fonts::adjustedAppFont(13, Fonts::FontWeight::Medium);
         }
 
-        QColor getTitleColor()
+        Styling::ThemeColorKey getTitleColorKey()
         {
-            return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
+            return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID };
         }
 
-        QColor getDescriptionColor()
+        Styling::ThemeColorKey getDescriptionColorKey()
         {
-            return Styling::getParameters().getColor(Styling::StyleVariable::GHOST_PRIMARY_INVERSE_ACTIVE);
+            return Styling::ThemeColorKey{ Styling::StyleVariable::GHOST_PRIMARY_INVERSE_ACTIVE };
         }
 
-        QColor getLinkColor(bool _isOutgoing)
+        Styling::ThemeColorKey getLinkColorKey(bool _isOutgoing)
         {
-            return Styling::getParameters().getColor(_isOutgoing ? Styling::StyleVariable::PRIMARY_PASTEL : Styling::StyleVariable::BASE_PRIMARY);
+            return Styling::ThemeColorKey{ _isOutgoing ? Styling::StyleVariable::PRIMARY_PASTEL : Styling::StyleVariable::BASE_PRIMARY };
         }
 
         int32_t getTitleTopPadding()
@@ -890,9 +938,9 @@ namespace Ui::MessageStyle
             return Fonts::adjustedAppFont(16);
         }
 
-        QColor getFileSizeColor(bool _isOutgoing)
+        Styling::ThemeColorKey getFileSizeColorKey(bool _isOutgoing)
         {
-            return Styling::getParameters().getColor(_isOutgoing ? Styling::StyleVariable::PRIMARY_PASTEL : Styling::StyleVariable::BASE_PRIMARY);
+            return Styling::ThemeColorKey{ _isOutgoing ? Styling::StyleVariable::PRIMARY_PASTEL : Styling::StyleVariable::BASE_PRIMARY };
         }
 
         QFont getFileSizeFont()

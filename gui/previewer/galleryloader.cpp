@@ -15,6 +15,8 @@
 
 #include "../core_dispatcher.h"
 
+#include "../utils/features.h"
+
 using namespace Previewer;
 
 GalleryLoader::GalleryLoader(const Utils::GalleryData& _data)
@@ -377,7 +379,7 @@ void GalleryLoader::move(Previewer::GalleryLoader::Direction _direction)
 
     if (auto current = static_cast<GalleryItem*>(currentItem()))
     {
-        if (!current->path().isEmpty())
+        if (current->isMediaVirusInfected() || !current->path().isEmpty())
         {
             Q_EMIT mediaLoaded();
         }
@@ -476,16 +478,12 @@ GalleryItem::GalleryItem(const QString &_link, qint64 _msg, qint64 _seq, time_t 
     Utils::UrlParser parser;
     parser.process(_link);
 
-    const auto loadMetaType =
-#ifndef STRIP_AV_MEDIA
-        attachedPlayer_ ? Utils::MediaLoader::LoadMeta::BeforePreview :
-#endif // !STRIP_AV_MEDIA
-        Utils::MediaLoader::LoadMeta::BeforeMedia;
+    const auto loadMetaType = Utils::MediaLoader::LoadMeta::BeforePreview;
 
-    if (parser.hasUrl() && parser.getUrl().is_filesharing())
-        loader_.reset(new Utils::FileSharingLoader(_link, loadMetaType));
+    if (parser.hasUrl() && parser.isFileSharing())
+        loader_ = std::make_unique<Utils::FileSharingLoader>(_link, loadMetaType);
     else
-        loader_.reset(new Utils::CommonMediaLoader(_link, loadMetaType));
+        loader_ = std::make_unique<Utils::CommonMediaLoader>(_link, loadMetaType);
 
     connect(loader_.get(), &Utils::MediaLoader::fileLoaded, this, &GalleryItem::onFileLoaded);
     connect(loader_.get(), &Utils::MediaLoader::previewLoaded, this, &GalleryItem::onPreviewLoaded);
@@ -522,7 +520,7 @@ QString GalleryItem::fileName() const
 
     Utils::UrlParser parser;
     parser.process(link);
-    if (!parser.getUrl().is_filesharing())
+    if (!parser.isFileSharing())
         return formatFileName(QUrl(link).fileName());
 
     auto filePath = path_;
@@ -558,6 +556,13 @@ void GalleryItem::cancelLoading()
 
 void GalleryItem::showMedia(Previewer::ImageViewerWidget *_viewer)
 {
+    if (isMediaVirusInfected() && Features::isAntivirusCheckEnabled())
+    {
+        QPixmap pixmap(originSize_);
+        pixmap.fill(Qt::black);
+        _viewer->showPixmap(pixmap, originSize_, isVideo());
+        return;
+    }
     MediaData mediaData;
     mediaData.preview = preview_;
     mediaData.fileName = path_;
@@ -618,6 +623,11 @@ void GalleryItem::save(const QString &_path, bool _exportAsPng)
 void GalleryItem::copyToClipboard()
 {
     Utils::copyFileToClipboard(path_);
+}
+
+bool GalleryItem::isMediaVirusInfected() const
+{
+    return loader_->isMediaVirusInfected();
 }
 
 void GalleryItem::onFileLoaded(const QString& _path)

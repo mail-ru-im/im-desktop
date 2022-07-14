@@ -21,6 +21,8 @@
 #include "previewer/Drawable.h"
 #include "previewer/toast.h"
 
+#include "../../utils/opengl.h"
+
 #ifdef __APPLE__
 #include "utils/macos/mac_support.h"
 #include "macos/MetalRenderer.h"
@@ -91,9 +93,9 @@ namespace Ui
         return QSize(20,20);
     }
 
-    QColor getSoundButtonDefaultColor()
+    Styling::ColorParameter getSoundButtonDefaultColorKey()
     {
-        return QColor(255, 255, 255, 255 * 0.8);
+        return Styling::ColorParameter{ QColor(255, 255, 255, 255 * 0.8) };
     }
 
     bool useMetalRenderer() noexcept
@@ -259,7 +261,7 @@ namespace Ui
                 soundButton_ = new CustomButton(this);
                 soundButton_->setFixedHeight(getControlPanelButtonSize(isFullScreen()));
                 soundButton_->setFixedWidth(getControlPanelButtonSize(isFullScreen()));
-                soundButton_->setDisabledImage(qsl(":/videoplayer/no_sound"), getSoundButtonDefaultColor(), getSoundButtonIconSize());
+                soundButton_->setDisabledImage(qsl(":/videoplayer/no_sound"), getSoundButtonDefaultColorKey(), getSoundButtonIconSize());
                 soundButton_->setCursor(Qt::PointingHandCursor);
                 soundButton_->installEventFilter(this);
                 dummySoundButtonLayout->addWidget(soundButton_);
@@ -740,7 +742,7 @@ namespace Ui
 
     void VideoPlayerControlPanel::setSoundMode(VideoPlayerControlPanel::SoundMode _mode)
     {
-        static auto color = getSoundButtonDefaultColor();
+        static auto color = getSoundButtonDefaultColorKey();
         static auto size = getSoundButtonIconSize();
 
         switch (_mode)
@@ -756,7 +758,7 @@ namespace Ui
                 break;
         }
 
-        soundButton_->setHoverColor(Qt::white);
+        soundButton_->setHoverColor(Styling::ColorParameter{ Qt::white });
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -1628,14 +1630,8 @@ namespace Ui
                 }
                 else
                 {
-                    auto checkOpenGL = []()
-                    {
-                        QOpenGLContext context;
-                        return context.create();
-                    };
-                    static bool openGLSupported = checkOpenGL();
 
-                    if (openGLSupported)
+                    if (isOpenGLSupported())
                         renderer = std::make_unique<OpenGLRenderer>(_parent);
                     else
                         renderer = std::make_unique<GDIRenderer>(_parent);

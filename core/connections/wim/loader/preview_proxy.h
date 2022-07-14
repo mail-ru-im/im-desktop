@@ -21,7 +21,6 @@ public:
         const std::string &_preview_uri,
         const std::string &_download_uri,
         const std::string &_favicon_uri,
-        const std::string &_site_name,
         const std::string &_content_type,
         const preview_size &_preview_size,
         const int64_t _file_size,
@@ -51,8 +50,6 @@ public:
 
     origin_size get_origin_size() const;
 
-    const std::string& get_site_name() const;
-
     const std::string& get_title() const;
 
     const std::string& get_filename() const;
@@ -75,8 +72,6 @@ private:
     std::string annotation_;
 
     std::string favicon_uri_;
-
-    std::string site_name_;
 
     std::string content_type_;
 
@@ -114,7 +109,7 @@ str_2_str_map format_get_preview_params(
 
 str_2_str_map format_get_url_content_params(std::string_view _uri);
 
-link_meta_uptr parse_json(InOut char *_json, const std::string &_uri);
+link_meta_uptr parse_json(InOut char *_json);
 
 namespace uri
 {

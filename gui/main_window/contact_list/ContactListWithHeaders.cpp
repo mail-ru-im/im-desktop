@@ -59,14 +59,14 @@ namespace Logic
         return clRowCount + add;
     }
 
-    QVariant ContactListWithHeaders::data(const QModelIndex & _index, int _role) const
+    QVariant ContactListWithHeaders::data(const QModelIndex& _index, int _role) const
     {
         if (!_index.isValid())
             return QVariant();
 
-        const auto makeIcon = [](const QString& _icon, const Styling::StyleVariable _var)
+        const auto makeIcon = [](const QString& _icon, const Styling::StyleVariable _var) -> Utils::StyledPixmap
         {
-            return Utils::renderSvg(_icon, Utils::scale_value(QSize(24, 24)), Styling::getParameters().getColor(_var));
+            return Utils::StyledPixmap(_icon, Utils::scale_value(QSize(24, 24)), Styling::ThemeColorKey{ _var });
         };
 
         const auto dropDownBtn = [&makeIcon](QString _aimId, QString _friendly, const QString& _icon)
@@ -259,12 +259,12 @@ namespace Logic
         const auto row = _sourceIndex.row();
         auto shift = getMenuSize();
         if (isWithHeaders())
-            shift += row < clModel_->getTopSortedCount() ? hdrTopContactsCount : (hdrTopContactsCount + hdrAllContactsCount);
+            shift += (row < clModel_->getTopSortedCount() ? hdrTopContactsCount : (hdrTopContactsCount + hdrAllContactsCount));
 
         return index(row + shift);
     }
 
-    QModelIndex ContactListWithHeaders::mapToSource(const QModelIndex & _proxyIndex) const
+    QModelIndex ContactListWithHeaders::mapToSource(const QModelIndex& _proxyIndex) const
     {
         if (!_proxyIndex.isValid())
             return QModelIndex();

@@ -40,7 +40,8 @@ namespace core
 
             bool is_reset_pages() const { return reset_pages_; }
 
-            virtual std::string_view get_method() const override;
+            std::string_view get_method() const override;
+            int minimal_supported_api_version() const override;
         };
     }
 }

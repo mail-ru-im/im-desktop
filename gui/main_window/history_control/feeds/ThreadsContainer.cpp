@@ -1,24 +1,22 @@
 #include "stdafx.h"
-#include "controls/TransparentScrollBar.h"
 #include "controls/StableScrollArea.h"
 #include "main_window/input_widget/InputWidget.h"
 #include "main_window/contact_list/ContactListModel.h"
 #include "../HistoryControlPageItem.h"
-#include "../history/MessageBuilder.h"
 #include "utils/utils.h"
 #include "utils/InterConnector.h"
 #include "ThreadsContainer.h"
 #include "ThreadFeedItem.h"
 #include "ThreadsFeedLoader.h"
 #include "styles/ThemeParameters.h"
-#include "main_window/contact_list/ServiceContacts.h"
 #include "../MessageStyle.h"
 #include "core_dispatcher.h"
 #include "controls/LoaderSpinner.h"
+#include "main_window/MainPage.h"
 
 namespace
 {
-    constexpr auto preloadDistance() noexcept { return 0.75; }
+    constexpr auto preloadDistance() noexcept { return 0.5; }
 
     QSize getSpinnerSize()
     {
@@ -26,11 +24,10 @@ namespace
     }
 
     constexpr std::chrono::milliseconds getLoaderDelay() noexcept { return std::chrono::milliseconds(300); }
-    
+
     int threadsTopMargin() noexcept
     {
-        // Left 0 on purpose, to keep places there the margin might be needed
-        return Utils::scale_value(0);
+        return Utils::scale_value(12);
     }
 
     int threadItemsSeparatorHeight() noexcept
@@ -59,7 +56,7 @@ public:
 
     void loadIfNeccessary()
     {
-        if (!loader_->isLoading() && scrollArea_->widget()->height() - scrollArea_->widgetPosition() - scrollArea_->height() < preloadDistance())
+        if (!loader_->isLoading() && scrollArea_->isVisible() && (scrollArea_->widget()->height() - scrollArea_->widgetPosition() - scrollArea_->height()) < preloadDistance() * scrollArea_->height())
             loader_->loadNext();
     }
 
@@ -73,11 +70,13 @@ public:
         QLayoutItem* item = nullptr;
         while (item = contentLayout_->takeAt(0))
         {
+            item->widget()->disconnect();
             item->widget()->deleteLater();
             delete item;
         }
 
         items_.clear();
+        index_.clear();
         anchorWatcher_->clear();
         scrollArea_->setAnchor(nullptr);
     }
@@ -92,10 +91,15 @@ public:
         return viewTop() + scrollArea_->height();
     }
 
-    void updateItemsVisibleRects()
+    void updateItemsVisibleRects(int _width)
     {
+        const auto max = MessageStyle::getHistoryWidgetMaxWidth();
+        const auto w = std::min(_width, max);
         for (auto item : items_)
+        {
             item->updateVisibleRects();
+            item->setFixedWidth(w);
+        }
     }
 
     void showSpinner()
@@ -160,17 +164,13 @@ ThreadsContainer::ThreadsContainer(QWidget* _parent)
 
     auto contentContainer = new QWidget(d->scrollArea_);
     d->contentContainerLayoutH_ = Utils::emptyHLayout(contentContainer);
-    auto contentContainerLayoutV = Utils::emptyVLayout();
     d->content_ = new QWidget(contentContainer);
     d->content_->installEventFilter(this);
     d->content_->setMaximumWidth(MessageStyle::getHistoryWidgetMaxWidth());
     d->contentLayout_ = Utils::emptyVLayout(d->content_);
-    d->contentLayout_->setSizeConstraint(QLayout::SetFixedSize);
-    contentContainerLayoutV->addSpacing(threadsTopMargin());
-    contentContainerLayoutV->addWidget(d->content_);
-    contentContainerLayoutV->addStretch(1);
-    d->contentContainerLayoutH_->addLayout(contentContainerLayoutV);
-    d->contentContainerLayoutH_->setAlignment(Qt::AlignLeft);
+    d->contentContainerLayoutH_->addWidget(d->content_);
+    d->contentContainerLayoutH_->setContentsMargins(0, threadsTopMargin(), 0, 0);
+    d->contentContainerLayoutH_->setAlignment(Qt::AlignTop|Qt::AlignHCenter);
 
     d->scrollArea_->setWidget(contentContainer);
     d->anchorWatcher_ = new AnchorWatcher(d->scrollArea_);
@@ -197,7 +197,6 @@ ThreadsContainer::ThreadsContainer(QWidget* _parent)
         if (d->items_.empty() && !d->loader_->isExhausted())
             d->showSpinner();
     });
-
 }
 
 ThreadsContainer::~ThreadsContainer() = default;
@@ -231,6 +230,7 @@ void ThreadsContainer::onPageLeft()
 {
     QTimer::singleShot(0, this, [this]()
     {
+        canReopenSidebar_ = true;
         d->clearItems();
         d->loaderDelayTimer_->stop();
         d->hideSpinner();
@@ -239,12 +239,29 @@ void ThreadsContainer::onPageLeft()
     });
 }
 
+void ThreadsContainer::scrollToInput(const QString& _id)
+{
+    if (auto [idx, item] = d->anchorWatcher_->getItem(_id); item)
+    {
+        d->scrollArea_->scrollToWidget(item->inputWidget());
+        d->anchorWatcher_->setCurrent(idx);
+        d->anchorWatcher_->setFocusOnInput();
+    }
+}
+
+void ThreadsContainer::scrollToTop()
+{
+    d->scrollArea_->ensureVisible(0);
+    d->anchorWatcher_->setCurrent(0);
+    d->anchorWatcher_->setFocusOnInput();
+}
+
 bool ThreadsContainer::eventFilter(QObject* _o, QEvent* _e)
 {
     if (_e->type() == QEvent::Resize && (_o == d->scrollArea_ || _o == d->content_))
     {
        updateVisibleRects();
-       d->loadIfNeccessaryAsync();       
+       d->loadIfNeccessaryAsync();
        d->anchorWatcher_->setViewBounds(d->viewTop(), d->viewBottom());
     }
 
@@ -253,14 +270,14 @@ bool ThreadsContainer::eventFilter(QObject* _o, QEvent* _e)
 
 void ThreadsContainer::resizeEvent(QResizeEvent* _event)
 {
-    const auto max = MessageStyle::getHistoryWidgetMaxWidth();
-    const auto w = std::min(width(), max);
-    for (auto& i : d->items_)
-        i->setFixedWidth(w);
+    d->updateItemsVisibleRects(_event->size().width());
+    FeedDataContainer::resizeEvent(_event);
+}
 
-    d->contentContainerLayoutH_->setAlignment(w < max ? Qt::AlignLeft : Qt::AlignHCenter);
-
-    return FeedDataContainer::resizeEvent(_event);
+void ThreadsContainer::showEvent(QShowEvent* _event)
+{
+    d->updateItemsVisibleRects(width());
+    FeedDataContainer::showEvent(_event);
 }
 
 void ThreadsContainer::onPageLoaded(const std::vector<Data::ThreadFeedItemData>& _items)
@@ -276,8 +293,6 @@ void ThreadsContainer::onPageLoaded(const std::vector<Data::ThreadFeedItemData>&
         d->contentLayout_->addWidget(threadItem);
         if (&item != &_items.back())
             d->contentLayout_->addWidget(createThreadItemsSeparator(this));
-        if (!wereSomeItemsLoadedBefore && &item == &_items.front())
-            threadItem->setIsFirstInFeed(true);
         threadItem->show();
         auto index = d->items_.size();
         d->items_.push_back(threadItem);
@@ -289,7 +304,7 @@ void ThreadsContainer::onPageLoaded(const std::vector<Data::ThreadFeedItemData>&
             d->anchorWatcher_->setCurrent(index);
         });
 
-        connect(threadItem, &ThreadFeedItem::selected, this, [this]()
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::selectionStateChanged, this, [this]()
         {
             for (auto& i : d->items_)
                 i->clearSelection();
@@ -297,6 +312,9 @@ void ThreadsContainer::onPageLoaded(const std::vector<Data::ThreadFeedItemData>&
 
         connect(threadItem, &ThreadFeedItem::sizeUpdated, d->scrollArea_, &StableScrollArea::updateSize);
         connect(threadItem, &ThreadFeedItem::inputHeightChanged, d->scrollArea_, &StableScrollArea::updateSize);
+        connect(threadItem, &ThreadFeedItem::quote, this, &ThreadsContainer::onItemActivated);
+        connect(threadItem, &ThreadFeedItem::editing, this, &ThreadsContainer::onItemActivated);
+        connect(threadItem, &ThreadFeedItem::activated, this, &ThreadsContainer::onItemActivated);
     }
 
     if (!d->items_.empty())
@@ -317,6 +335,15 @@ void ThreadsContainer::onPageLoaded(const std::vector<Data::ThreadFeedItemData>&
 
     updateVisibleRects();
     d->loadIfNeccessaryAsync();
+    if (canReopenSidebar_ && !wereSomeItemsLoadedBefore && !d->items_.empty())
+    {
+        tryUpdateSidebar();
+        canReopenSidebar_ = false;
+    }
+    else if (showPlaceholder)
+    {
+        Q_EMIT Utils::InterConnector::instance().closeAnySemitransparentWindow({});
+    }
 }
 
 void ThreadsContainer::onScrolled(int _val)
@@ -330,30 +357,50 @@ void ThreadsContainer::onScrollTo(const QString& _threadId, int64_t _msgId)
 {
     if (const auto it = d->index_.find(_threadId); it != d->index_.end())
     {
-        if (auto item = it->second; item->containsMessage(_msgId))
+        if (auto item = it->second)
         {
-            d->scrollArea_->ensureVisible(item->geometry().top() + item->messageY(_msgId));
-            item->highlightQuote(_msgId);
-        }
-        else
-        {
-            Utils::InterConnector::instance().openThread(_threadId, item->parentMsgId(), item->parentChatId());
+            Q_EMIT Utils::InterConnector::instance().openThread(_threadId, item->parentMsgId(), item->parentChatId());
             Q_EMIT Utils::InterConnector::instance().scrollThreadToMsg(_threadId, _msgId);
         }
+    }
+    else
+    {
+        if (const auto& selected = Logic::getContactListModel()->selectedContact(); selected != _threadId)
+            Q_EMIT Utils::InterConnector::instance().addPageToDialogHistory(selected);
+        Utils::InterConnector::instance().openDialog(_threadId, _msgId);
     }
 }
 
 void ThreadsContainer::onResetPage()
 {
+    canReopenSidebar_ = true;
     d->clearItems();
     d->loaderDelayTimer_->stop();
     d->hideSpinner();
 }
 
+void ThreadsContainer::onItemActivated()
+{
+    if (const auto threadItem = qobject_cast<ThreadFeedItem*>(sender()))
+        scrollToInput(threadItem->threadId());
+}
+
 void ThreadsContainer::updateVisibleRects()
 {
-    d->updateItemsVisibleRects();
+    d->updateItemsVisibleRects(width());
     d->updateSpinnerPosition(rect());
+}
+
+void ThreadsContainer::tryUpdateSidebar()
+{
+    if (Utils::InterConnector::instance().getMessengerPage()->isSidebarVisible())
+    {
+        if (const auto top = d->items_.front(); top && !top->threadId().isEmpty())
+            Q_EMIT Utils::InterConnector::instance().openThread(top->threadId(), top->parentMsgId(), top->threadId());
+        else
+            Q_EMIT Utils::InterConnector::instance().closeAnySemitransparentWindow({});
+    }
+    d->anchorWatcher_->setFocusOnInput();
 }
 
 class AnchorWatcher_p
@@ -437,6 +484,17 @@ void AnchorWatcher::setFocusOnInput()
 {
     if (!d->items_.empty() && d->current_ >= 0)
         d->items_[d->current_]->inputWidget()->setFocusOnInput();
+}
+
+std::pair<int, ThreadFeedItem*> AnchorWatcher::getItem(const QString& _id) const
+{
+    if (!d->items_.empty() && d->current_ >= 0)
+    {
+        auto it = std::find_if(d->items_.begin(), d->items_.end(), [_id](auto item) { return item->threadId() == _id; });
+        if (it != d->items_.end())
+            return { std::distance(d->items_.begin(), it), *it };
+    }
+    return { -1, nullptr };
 }
 
 }

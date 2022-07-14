@@ -4,7 +4,6 @@
 #include "styles/ThemesContainer.h"
 #include "../../../utils/utils.h"
 #include "../../../utils/InterConnector.h"
-#include "../../../utils/Text2DocConverter.h"
 #include "../../../my_info.h"
 #include "../../../core_dispatcher.h"
 #include "../../../cache/stickers/stickers.h"
@@ -25,10 +24,9 @@ namespace
         return Utils::scale_value(QSize(160, 160));
     }
 
-    QPixmap getGhost()
+    auto getGhost()
     {
-        static const auto ghost = Utils::renderSvg(qsl("://themes/stickers/ghost_sticker"), getGhostSize());
-        return ghost;
+        return Utils::StyledPixmap(qsl("://themes/stickers/ghost_sticker"), getGhostSize());
     }
 
     core::sticker_size getStickerSize()
@@ -118,16 +116,16 @@ void StickerBlock::requestPinPreview()
     requestSticker();
 }
 
-void StickerBlock::drawBlock(QPainter &p, const QRect& _rect, const QColor& _quoteColor)
+void StickerBlock::drawBlock(QPainter& _p, const QRect& _rect, const QColor& _quoteColor)
 {
-    Utils::PainterSaver ps(p);
+    Utils::PainterSaver ps(_p);
 
     if (Sticker_.isNull())
     {
-        if (!Placeholder_.isNull())
+        if (!Placeholder_.actualPixmap().isNull())
         {
             const auto offset = (isOutgoing() ? (width() - getGhostSize().width()) : 0);
-            p.drawPixmap(QRect(QPoint(offset, 0), LastSize_), Placeholder_);
+            _p.drawPixmap(QRect(QPoint(offset, 0), LastSize_), Placeholder_.cachedPixmap());
         }
     }
     else
@@ -137,12 +135,12 @@ void StickerBlock::drawBlock(QPainter &p, const QRect& _rect, const QColor& _quo
         const auto offset = (isOutgoing() ? (width() - LastSize_.width()) : 0);
         const auto rect = QRect(QPoint(offset, 0), LastSize_);
 
-        p.drawImage(rect, Sticker_);
+        _p.drawImage(rect, Sticker_);
 
         if (_quoteColor.isValid())
         {
-            p.setBrush(QBrush(_quoteColor));
-            p.drawRoundedRect(rect, Utils::scale_value(8), Utils::scale_value(8), Qt::RelativeSize);
+            _p.setBrush(QBrush(_quoteColor));
+            _p.drawRoundedRect(rect, Utils::scale_value(8), Utils::scale_value(8), Qt::RelativeSize);
         }
     }
 }
@@ -217,19 +215,11 @@ void StickerBlock::updateStickerSize()
 
 void StickerBlock::initPlaceholder()
 {
-    if (Placeholder_.isNull())
+    if (Placeholder_.cachedPixmap().isNull())
     {
         Placeholder_ = getGhost();
         LastSize_ = getGhostSize();
     }
-}
-
-void StickerBlock::updateStyle()
-{
-}
-
-void StickerBlock::updateFonts()
-{
 }
 
 void StickerBlock::onSticker(const qint32 _error, const Utils::FileSharingId&, const qint32 _setId, const qint32 _stickerId)

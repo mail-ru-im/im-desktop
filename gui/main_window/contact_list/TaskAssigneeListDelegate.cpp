@@ -68,7 +68,10 @@ namespace
 
     const QPixmap& noAssigneeAvatar()
     {
-        static const auto avatar = renderNoAssigneeAvatar();
+        static auto avatar = renderNoAssigneeAvatar();
+        static Styling::ThemeChecker checker;
+        if (checker.checkAndUpdateHash())
+            avatar = renderNoAssigneeAvatar();
         return avatar;
     }
 }
@@ -79,7 +82,7 @@ namespace Logic
         : AbstractItemDelegateWithRegim(_parent)
     {
         name_ = Ui::TextRendering::MakeTextUnit(QString(), {}, Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS, Ui::TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-        name_->init(nameFont(), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        name_->init({ nameFont(), Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID } });
     }
 
     void TaskAssigneeListDelegate::paint(QPainter* _painter, const QStyleOptionViewItem& _option, const QModelIndex& _index) const

@@ -2,6 +2,7 @@
 
 #include "../../../log/log.h"
 #include "../../../http_request.h"
+#include "../log_replace_functor.h"
 
 #include "report_abuse.h"
 
@@ -43,6 +44,11 @@ report_abuse::report_abuse(wim_packet_params _params)
 std::string_view report_abuse::get_method() const
 {
     return "reportAbuse";
+}
+
+int report_abuse::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t report_abuse::parse_response_data(const rapidjson::Value& _data)

@@ -4,6 +4,7 @@
 #include "../../../http_request.h"
 #include "../../../tools/system.h"
 #include "../../urls_cache.h"
+#include "../log_replace_functor.h"
 
 using namespace core;
 using namespace wim;
@@ -20,6 +21,11 @@ set_timezone::~set_timezone()
 std::string_view set_timezone::get_method() const
 {
     return "timezoneSet";
+}
+
+int core::wim::set_timezone::minimal_supported_api_version() const
+{
+    return core::urls::api_version::instance().minimal_supported();
 }
 
 int32_t set_timezone::init_request(const std::shared_ptr<core::http_request_simple>& _request)

@@ -2,7 +2,7 @@
 
 #include "HistoryControl.h"
 #include "HistoryControlPage.h"
-#include "GalleryPage.h"
+#include "gallery/GalleryPage.h"
 
 #include "../MainPage.h"
 #include "../MainWindow.h"
@@ -14,6 +14,7 @@
 #include "../contact_list/ContactListModel.h"
 #include "../contact_list/UnknownsModel.h"
 #include "../contact_list/RecentsModel.h"
+#include "../contact_list/ServiceContacts.h"
 #include "../containers/FriendlyContainer.h"
 #include "../containers/LastseenContainer.h"
 #include "../../core_dispatcher.h"
@@ -37,9 +38,14 @@ namespace
         return Utils::scale_value(36);
     }
 
+    Styling::ThemeColorKey getTextColorKey()
+    {
+        return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID };
+    }
+
     QColor getTextColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
+        return Styling::getColor(getTextColorKey());
     }
 
     int bubbleLeftMarginForWidgetWithSpinner() noexcept { return Utils::scale_value(8); }
@@ -134,8 +140,8 @@ namespace Ui
         static QFont titleFont() { return Fonts::appFontScaled(15, Fonts::FontWeight::Medium); }
         static QFont textFont() { return Fonts::appFontScaled(15); }
         static QFont buttonTextFont() { return Fonts::appFontScaled(13); }
-        static QColor buttonTextColor() { return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT); }
-        static QColor buttonBackgroundColor() { return Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY); }
+        static Styling::ThemeColorKey buttonTextColorKey() { return Styling::ThemeColorKey{ Styling::StyleVariable::TEXT_SOLID_PERMANENT }; }
+        static Styling::ThemeColorKey buttonBackgroundColorKey() { return Styling::ThemeColorKey{ Styling::StyleVariable::PRIMARY }; }
         static int textToButtonSpacing() noexcept { return Utils::scale_value(12 - 8); }
         static int tittleToTextSpacing() noexcept { return Utils::scale_value(8); }
 
@@ -160,14 +166,14 @@ namespace Ui
             Testing::setAccessibleName(button, qsl("AS HistoryPage startCallButton"));
             button->setFont(buttonTextFont());
             button->setFixedSize(createCallButtonSize());
-            button->setTextColor(buttonTextColor());
-            button->setColors(buttonBackgroundColor());
+            button->setTextColor(buttonTextColorKey());
+            button->setColors(buttonBackgroundColorKey());
             connect(button, &RoundButton::clicked, this, []()
             {
                 Q_EMIT Utils::InterConnector::instance().createGroupCall();
             });
 
-            tittle_->setText(QT_TRANSLATE_NOOP("history", "Advantages of calls in Myteam"));
+            tittle_->setText(QT_TRANSLATE_NOOP("history", "Advantages of calls in %1").arg(Utils::getAppTitle()));
             tittle_->setAlignment(Qt::AlignCenter);
             tittle_->setFont(titleFont());
             setLabelTextColor(tittle_, tittleColor());
@@ -194,7 +200,7 @@ namespace Ui
         : BackgroundWidget(_parent)
         , dialogWidget_(new QWidget(this))
         , bubblePlate_(new BubblePlateWidget(dialogWidget_))
-        , connectionWidget_(new ConnectionWidget(bubblePlate_, getTextColor()))
+        , connectionWidget_(new ConnectionWidget(bubblePlate_, getTextColorKey()))
         , selectDialogWidget_(new SelectDialogWidget(bubblePlate_))
         , startCallDialogWidget_(new StartCallDialogWidget(bubblePlate_))
     {
@@ -224,6 +230,7 @@ namespace Ui
 
         connect(GetDispatcher(), &core_dispatcher::connectionStateChanged, this, &EmptyConnectionInfoPage::connectionStateChanged);
         connect(&Styling::getThemesContainer(), &Styling::ThemesContainer::globalWallpaperChanged, this, &EmptyConnectionInfoPage::onGlobalWallpaperChanged);
+        connect(&Styling::getThemesContainer(), &Styling::ThemesContainer::globalThemeChanged, this, &EmptyConnectionInfoPage::onGlobalThemeChanged);
     }
 
     void EmptyConnectionInfoPage::setPageType(OnlineWidgetType _pageType)
@@ -249,6 +256,12 @@ namespace Ui
         startCallDialogWidget_->setVisible(isOnline && pageType_ == OnlineWidgetType::Calls);
     }
 
+    void EmptyConnectionInfoPage::onGlobalThemeChanged()
+    {
+        setColor(Styling::getParameters().getChatWallpaperPlainColor());
+        onGlobalWallpaperChanged();
+    }
+
     void EmptyConnectionInfoPage::connectionStateChanged(const ConnectionState& _state)
     {
         if (_state != connectionState_)
@@ -262,7 +275,6 @@ namespace Ui
     {
         const auto clr = getTextColor();
         selectDialogWidget_->setTextColor(clr);
-        connectionWidget_->setTextColor(clr);
         startCallDialogWidget_->setTextColor(clr);
     }
 
@@ -296,6 +308,7 @@ namespace Ui
         connect(&Styling::getThemesContainer(), &Styling::ThemesContainer::globalWallpaperChanged, this, &HistoryControl::onGlobalWallpaperChanged);
         connect(&Styling::getThemesContainer(), &Styling::ThemesContainer::contactWallpaperChanged, this, &HistoryControl::onContactWallpaperChanged);
         connect(&Styling::getThemesContainer(), &Styling::ThemesContainer::wallpaperImageAvailable, this, &HistoryControl::onWallpaperAvailable);
+        connect(&Styling::getThemesContainer(), &Styling::ThemesContainer::globalThemeChanged, this, &HistoryControl::onGlobalThemeChanged);
 
         connect(Logic::getContactListModel(), &Logic::ContactListModel::leave_dialog, this, &HistoryControl::leaveDialog);
         connect(Logic::getContactListModel(), &Logic::ContactListModel::contact_removed, this, &HistoryControl::closeDialog);
@@ -338,8 +351,7 @@ namespace Ui
 
     PageBase* HistoryControl::getPage(const QString& _aimId) const
     {
-        auto it = pages_.find(_aimId);
-        if (it != pages_.end())
+        if (const auto it = pages_.find(_aimId); it != pages_.end())
             return *it;
         return nullptr;
     }
@@ -354,32 +366,28 @@ namespace Ui
     {
         if (!isActive)
         {
-            for (const auto &page : std::as_const(pages_))
+            for (const auto& page : std::as_const(pages_))
                 page->suspendVisisbleItems();
         }
         else
         {
-            auto page = getCurrentHistoryPage();
-            if (page)
+            if (auto page = getCurrentHistoryPage())
                 page->resumeVisibleItems();
         }
 
-        auto page = getCurrentHistoryPage();
-        if (page)
+        if (auto page = getCurrentHistoryPage())
             page->notifyApplicationWindowActive(isActive);
     }
 
     void HistoryControl::notifyUIActive(const bool _isActive)
     {
-        auto page = getCurrentHistoryPage();
-        if (page)
+        if (auto page = getCurrentHistoryPage())
             page->notifyUIActive(_isActive);
     }
 
     void HistoryControl::scrollHistoryToBottom(const QString& _contact) const
     {
-        auto page = getHistoryPage(_contact);
-        if (page)
+        if (auto page = getHistoryPage(_contact))
             page->scrollToBottom();
     }
 
@@ -389,7 +397,7 @@ namespace Ui
         std::chrono::seconds time = std::max(GetAppConfig().CacheHistoryControlPagesFor(), std::chrono::seconds(1));
         for (auto iter = times_.begin(); iter != times_.end(); )
         {
-            if (iter.value().secsTo(currentTime) >= time.count() && iter.key() != current_)
+            if (iter.value().secsTo(currentTime) >= time.count() && iter.key() != current_ && GalleryPage::createGalleryAimId(iter.key()) != current_)
             {
                 closeDialog(iter.key());
                 iter = times_.erase(iter);
@@ -468,6 +476,9 @@ namespace Ui
         if (createNewPage)
             statistic::getGuiMetrics().eventChatOpen(_aimId);
 
+        if (_aimId == ServiceContacts::getThreadsName())
+            page->scrollToTop();
+
         const auto prevButtonVisible = !dialogHistory_.empty() && dialogHistory_.back() != _aimId;
         for (const auto& p : std::as_const(pages_))
         {
@@ -537,7 +548,6 @@ namespace Ui
         window()->setFocus();
         stackPages_->setCurrentWidget(emptyPage_);
         emptyPage_->updateGeometry();
-        updateEmptyPageWallpaper();
         MainPage::instance()->onSwitchedToEmpty();
     }
 
@@ -575,7 +585,9 @@ namespace Ui
             qint64 msgId = -1;
             if (GalleryPage::isGalleryAimId(currentAimId()) && lastInitedParams_.aimId_ == prev)
                 msgId = lastInitedParams_.messageId_;
-            Utils::InterConnector::instance().openDialog(prev, msgId, true, {}, true);
+
+            const auto openAs = (openedAs_ == PageOpenedAs::FeedPage && prev.isEmpty()) ? PageOpenedAs::MainPage : openedAs_;
+            Utils::InterConnector::instance().openDialog(prev, msgId, true, openAs, {}, true);
         }
         else
         {
@@ -620,7 +632,7 @@ namespace Ui
             }
             else
             {
-                page->pageLeave();
+                page->mainPageChanged();
             }
         }
     }
@@ -657,6 +669,15 @@ namespace Ui
         else
         {
             updateEmptyPageWallpaper();
+        }
+    }
+
+    void HistoryControl::onGlobalThemeChanged()
+    {
+        if (const auto page = getCurrentPage())
+        {
+            updateWallpaper(page->aimId());
+            page->updateWidgetsTheme();
         }
     }
 
@@ -775,6 +796,8 @@ namespace Ui
 
             pages_[galleryAimId] = page;
             stackPages_->addWidget(page);
+
+            Testing::setAccessibleName(page, u"AS GalleryPage " % _contact);
         }
 
         if (auto oldPage = getCurrentHistoryPage())
@@ -791,7 +814,6 @@ namespace Ui
         page->setCancelCallback([this]() { switchToPrevDialogPage(false); });
         escCancel_->addChild(page);
 
-        rememberCurrentDialogTime();
         current_ = galleryAimId;
 
         suspendBackgroundPages();
@@ -804,7 +826,7 @@ namespace Ui
     PageBase* HistoryControl::createPage(const QString& _aimId)
     {
         PageBase* page;
-        if (_aimId == qsl("~threads~"))
+        if (_aimId == ServiceContacts::getThreadsName())
         {
             page = new FeedPage(_aimId, this);
         }
@@ -838,5 +860,10 @@ namespace Ui
                 page->setOverlayTopWidgetVisible(frameCountMode_ == FrameCountMode::_1);
             }
         }
+    }
+
+    void Ui::HistoryControl::setPageOpenedAs(PageOpenedAs _openedAs)
+    {
+        openedAs_ = _openedAs;
     }
 }

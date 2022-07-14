@@ -46,7 +46,7 @@ namespace Ui
         bool draftLoaded_ = false;
 
         FilesToSend filesToSend_;
-        QString description_;
+        Data::FString description_;
 
         struct EditData
         {

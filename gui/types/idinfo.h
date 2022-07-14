@@ -15,6 +15,9 @@ namespace Data
         QString name_;
         QString nick_;
         QString sn_;
+        QString firstName_;
+        QString middleName_;
+        QString lastName_;
 
         bool isBot_ = false;
 
@@ -25,6 +28,7 @@ namespace Data
 
         bool isValid() const noexcept { return type_ != IdType::Invalid; }
         bool isChatInfo() const noexcept { return type_ == IdType::Chat; }
+        QString getName() const;
     };
 
     IdInfo UnserializeIdInfo(core::coll_helper& helper);
